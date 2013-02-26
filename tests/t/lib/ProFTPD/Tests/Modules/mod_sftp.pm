@@ -2248,7 +2248,6 @@ EOC
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -2270,7 +2269,7 @@ EOC
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -2499,7 +2498,6 @@ EOC
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -2521,7 +2519,7 @@ EOC
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -2750,7 +2748,6 @@ EOC
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -2772,7 +2769,7 @@ EOC
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -3533,6 +3530,7 @@ sub ssh2_hostkey_dss_bug3634 {
 
         my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
         waitpid($sftp_pid, 0);
+        my $exit_status = $?;
 
         # Restore the perms on the priv key
         unless (chmod(0644, $dsa_priv_key)) {
@@ -3540,7 +3538,7 @@ sub ssh2_hostkey_dss_bug3634 {
         }
 
         my ($res, $errstr);
-        if ($? >> 8) {
+        if ($exit_status >> 8 == 0) {
           $errstr = join('', <$sftp_eh>);
           $res = 0;
 
@@ -3553,7 +3551,7 @@ sub ssh2_hostkey_dss_bug3634 {
           $res = 1;
         }
 
-        $self->assert($res == 1, test_msg("Can't pwd on server: $errstr"));
+        $self->assert($res == 0, test_msg("Can't pwd on server: $errstr"));
       }
     };
 
@@ -3906,7 +3904,6 @@ EOC
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -3928,7 +3925,7 @@ EOC
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -4156,7 +4153,6 @@ EOC
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -4178,7 +4174,7 @@ EOC
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -4406,7 +4402,6 @@ EOC
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -4428,7 +4423,7 @@ EOC
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -10612,7 +10607,6 @@ sub ssh2_ext_auth_publickey_ecdsa256 {
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -10634,7 +10628,7 @@ sub ssh2_ext_auth_publickey_ecdsa256 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -10843,7 +10837,6 @@ sub ssh2_ext_auth_publickey_ecdsa384 {
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -10865,7 +10858,7 @@ sub ssh2_ext_auth_publickey_ecdsa384 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -11074,7 +11067,6 @@ sub ssh2_ext_auth_publickey_ecdsa521 {
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
-
       my $exit_status = $?;
 
       # Restore the perms on the priv key
@@ -11096,7 +11088,7 @@ sub ssh2_ext_auth_publickey_ecdsa521 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -18195,6 +18187,7 @@ sub sftp_ext_upload_bug3550 {
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -18202,7 +18195,7 @@ sub sftp_ext_upload_bug3550 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$sftp_eh>);
         $res = 0;
 
@@ -18215,7 +18208,7 @@ sub sftp_ext_upload_bug3550 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -19397,6 +19390,7 @@ sub sftp_ext_download_bug3550 {
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -19404,7 +19398,7 @@ sub sftp_ext_download_bug3550 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$sftp_eh>);
         $res = 0;
 
@@ -19417,7 +19411,7 @@ sub sftp_ext_download_bug3550 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't download $src_file from server: $errstr");
       }
 
@@ -19652,6 +19646,7 @@ sub sftp_ext_download_rekey {
 
       my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
       waitpid($sftp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -19659,7 +19654,7 @@ sub sftp_ext_download_rekey {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$sftp_eh>);
         $res = 0;
 
@@ -19672,7 +19667,7 @@ sub sftp_ext_download_rekey {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't download $src_file from server: $errstr");
       }
 
@@ -39505,6 +39500,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -39512,7 +39508,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$scp_eh>);
         $res = 0;
 
@@ -39520,7 +39516,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_dir to server: $errstr");
       }
 
@@ -39797,6 +39793,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -39804,7 +39801,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$scp_eh>);
         $res = 0;
 
@@ -39812,7 +39809,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_dir to server: $errstr");
       }
 
@@ -40024,6 +40021,7 @@ sub scp_ext_upload_different_name_bug3425 {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -40031,7 +40029,7 @@ sub scp_ext_upload_different_name_bug3425 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$scp_eh>);
         $res = 0;
 
@@ -40039,7 +40037,7 @@ sub scp_ext_upload_different_name_bug3425 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_file to server: $errstr");
       }
 
@@ -40216,6 +40214,7 @@ sub scp_ext_upload_recursive_empty_dir {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -40223,15 +40222,16 @@ sub scp_ext_upload_recursive_empty_dir {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
-        $errstr = join('', <$scp_eh>);
+
+      $errstr = join('', <$scp_eh>);
+      if ($exit_status >> 8 == 0) {
         $res = 0;
 
       } else {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't upload $src_dir to server: $errstr");
       }
 
@@ -41193,6 +41193,7 @@ sub scp_ext_download_bug3544 {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -41200,7 +41201,7 @@ sub scp_ext_download_bug3544 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$scp_eh>);
         $res = 0;
 
@@ -41213,7 +41214,7 @@ sub scp_ext_download_bug3544 {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't download $config_file from server: $errstr");
       }
 
@@ -41388,6 +41389,7 @@ sub scp_ext_download_bug3798 {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -41395,20 +41397,20 @@ sub scp_ext_download_bug3798 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
-        $errstr = join('', <$scp_eh>);
+      $errstr = join('', <$scp_eh>);
+
+      if ($exit_status >> 8 == 0) {
         $res = 0;
 
       } else {
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$scp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
         $res = 1;
       }
 
-      $self->assert(!$res,
+      $self->assert($res == 1,
         "Downloading $test_file from server succeeded unexpectedly");
 
       $self->assert(!-f $dst_file,
@@ -41604,7 +41606,7 @@ sub scp_ext_download_glob_single_match_bug3904 {
         $res = 1;
       }
 
-      $self->assert($res,
+      $self->assert($res == 0,
         "Downloading $test_file from server failed unexpectedly");
 
       $self->assert(-f $dst_file,
@@ -41830,7 +41832,7 @@ sub scp_ext_download_glob_multiple_matches_bug3904 {
         $res = 1;
       }
 
-      $self->assert(!$res,
+      $self->assert($res == 0,
         "Downloading $src_glob from server failed unexpectedly");
 
       $self->assert(-f $dst_file1,
@@ -42021,7 +42023,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    Trace => 'DEFAULT:10 ssh2:20 scp:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -42098,6 +42100,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -42105,7 +42108,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
+      if ($exit_status >> 8 == 0) {
         $errstr = join('', <$scp_eh>);
         $res = 0;
 
@@ -42317,6 +42320,7 @@ sub scp_ext_download_recursive_empty_dir {
 
       my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
       waitpid($scp_pid, 0);
+      my $exit_status = $?;
 
       # Restore the perms on the priv key
       unless (chmod(0644, $rsa_priv_key)) {
@@ -42324,15 +42328,16 @@ sub scp_ext_download_recursive_empty_dir {
       }
 
       my ($res, $errstr);
-      if ($? >> 8) {
-        $errstr = join('', <$scp_eh>);
+
+      $errstr = join('', <$scp_eh>);
+      if ($exit_status >> 8 == 0) {
         $res = 0;
 
       } else {
         $res = 1;
       }
 
-      unless ($res) {
+      unless ($res == 0) {
         die("Can't download $src_dir from server: $errstr");
       }
 
