@@ -1373,7 +1373,7 @@ sub list_tests {
     }
   }
 
-  return @tests
+  return @tests;
 }
 
 sub set_up {
