@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.78 2013-02-15 22:46:42 castaglia Exp $
+ * $Id: scp.c,v 1.79 2013-02-27 17:10:27 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1679,7 +1679,7 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
 
     pr_trace_msg(trace_channel, 3, "sending '%s' data (%lu bytes)", sp->path,
-      (unsigned long) chunklen);
+      need_confirm ? (unsigned long) (chunklen - 1) : (unsigned long) chunklen);
 
     res = sftp_channel_write_data(p, channel_id, chunk, chunklen);
     if (res < 0) {
@@ -2124,8 +2124,16 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         /* If we've sent all the paths, and we're here, assume that everything
          * is OK.  We may just have received the final "OK" ACK byte from the
          * scp client, and have nothing more to do.
+         *
+         * We would normally return 1 here, to indicate that we are done with
+         * the transfer.  However, doing so indicates to the channel-handling
+         * code that the channel is done, and should be closed.
+         *
+         * In the case of scp, though, we want the client to close the
+         * connection, in order ensure that it has received all of the data
+         * (see Bug#3904).
          */
-        return 1;
+        return 0;
       }
 
       return -1;
