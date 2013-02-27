@@ -113,6 +113,7 @@ static void forensic_add_msg(unsigned int log_type, int log_level,
     const char *log_msg, size_t log_msglen) {
   struct forensic_msg *fm;
   pool *sub_pool;
+  char *fm_msg;
 
   /* Get the message that's currently in the ring where we want add our new
    * one.
@@ -134,7 +135,12 @@ static void forensic_add_msg(unsigned int log_type, int log_level,
   fm->fm_pool_msgno = forensic_subpool_msgno;
   fm->fm_log_type = log_type;
   fm->fm_log_level = log_level;
-  fm->fm_msg = pstrndup(fm->fm_pool, log_msg, log_msglen);
+
+  fm_msg = palloc(fm->fm_pool, log_msglen + 1);
+  memcpy(fm_msg, log_msg, log_msglen);
+  fm_msg[log_msglen] = '\0';   
+
+  fm->fm_msg = fm_msg;
   fm->fm_msglen = log_msglen;
 
   forensic_msgs[forensic_msg_idx] = fm;
