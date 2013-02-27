@@ -63,6 +63,9 @@ ChangeLog files.
     The new format does not use textual month abbreviations, and includes
     milliseconds in the timestamp.
 
+    This will have impact on sites using DenyHosts, banhosts, fail2ban.
+    XXX
+
 
 1.3.5rc1
 ---------
@@ -285,4 +288,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-02-20 23:28:37 $
+Last Updated: $Date: 2013-02-27 17:29:34 $
