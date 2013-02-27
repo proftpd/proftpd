@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.19 2013-01-18 23:35:48 castaglia Exp $
+ * $Id: mkhome.c,v 1.20 2013-02-27 00:50:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,8 +93,6 @@ static int create_path(pool *p, const char *path, const char *user,
     return -1;
   }
 
-  pr_event_generate("core.creating-home", user);
-
   /* The special-case values of -1 for dir UID/GID mean that the destination
    * UID/GID should be used for the parent directories.
    */
@@ -131,8 +129,6 @@ static int create_path(pool *p, const char *path, const char *user,
 
     pr_signals_handle();
   }
-
-  pr_event_generate("core.created-home", user);
 
   pr_trace_msg(trace_channel, 5, "home directory '%s' created", path);
   pr_log_debug(DEBUG3, "home directory '%s' created", path);
@@ -297,6 +293,8 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
     PRIVS_ROOT
   }
 
+  pr_event_generate("core.creating-home", user);
+
   res = create_path(p, home, user, dir_uid, dir_gid, dir_mode,
     dst_uid, dst_gid, dst_mode);
 
@@ -322,6 +320,8 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
       pr_log_debug(DEBUG4, "CreateHome: error copying skel files");
     }
   }
+
+  pr_event_generate("core.created-home", user);
 
   PRIVS_RELINQUISH
   return 0;
