@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.20 2013-02-27 00:50:11 castaglia Exp $
+ * $Id: mkhome.c,v 1.21 2013-02-27 22:22:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -321,7 +321,9 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
     }
   }
 
-  pr_event_generate("core.created-home", user);
+  if (res == 0) {
+    pr_event_generate("core.created-home", user);
+  }
 
   PRIVS_RELINQUISH
   return 0;
