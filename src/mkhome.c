@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.21 2013-02-27 22:22:00 castaglia Exp $
+ * $Id: mkhome.c,v 1.22 2013-02-27 22:50:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -316,8 +316,14 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
       skel_dir, home);
     pr_log_debug(DEBUG4, "CreateHome: copying skel files from '%s' into '%s'",
       skel_dir, home);
+
+    pr_event_generate("core.copying-skel", user);
+
     if (copy_dir(p, skel_dir, home, uid, gid) < 0) {
       pr_log_debug(DEBUG4, "CreateHome: error copying skel files");
+
+    } else {
+      pr_event_generate("core.copied-skel", user);
     }
   }
 
