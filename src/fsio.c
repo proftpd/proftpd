@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.133 2013-02-20 01:04:29 castaglia Exp $
+ * $Id: fsio.c,v 1.134 2013-02-27 17:32:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -355,6 +355,7 @@ static int fs_cmp(const void *a, const void *b) {
 /* Statcache stuff */
 typedef struct {
   char sc_path[PR_TUNABLE_PATH_MAX+1];
+  size_t sc_pathlen;
   struct stat sc_stat;
   int sc_errno;
   int sc_retval;
@@ -371,14 +372,15 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
   int res = -1;
   char pathbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
+  size_t pathlen;
 
   /* Sanity checks */
-  if (!fs) {
+  if (fs == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!path) {
+  if (path == NULL) {
     errno = ENOENT;
     return -1;
   }
@@ -411,8 +413,11 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
     mystat = fs->lstat ? fs->lstat : sys_lstat;
   }
 
+  pathlen = strlen(pathbuf);
+
   /* Can the last cached stat be used? */
-  if (strcmp(pathbuf, statcache.sc_path) == 0) {
+  if (pathlen == statcache.sc_pathlen &&
+      strncmp(pathbuf, statcache.sc_path, pathlen + 1) == 0) {
 
     /* Update the given struct stat pointer with the cached info */
     memcpy(sbuf, &statcache.sc_stat, sizeof(struct stat));
@@ -429,6 +434,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
   memset(statcache.sc_path, '\0', sizeof(statcache.sc_path));
   sstrncpy(statcache.sc_path, pathbuf, sizeof(statcache.sc_path));
   memcpy(&statcache.sc_stat, sbuf, sizeof(struct stat));
+  statcache.sc_pathlen = pathlen;
   statcache.sc_errno = errno;
   statcache.sc_retval = res;
 
@@ -4572,6 +4578,9 @@ int init_fs(void) {
     pr_fsio_chdir("/", FALSE);
     pr_fs_setcwd("/");
   }
+
+  /* Prepare the stat cache as well. */
+  memset(&statcache, '\0', sizeof(statcache));
 
   return 0;
 }
