@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1505 2013-02-27 17:10:27 castaglia Exp $
+$Id: NEWS,v 1.1506 2013-02-28 01:20:02 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -65,6 +65,7 @@ CVS
 - Bug 3905 - Handle the Linux-specific PAM_RADIO_TYPE message properly.
 - Bug 3709 - Support download-triggered emails in the ftpmail script.
 - Bug 3904 - scp downloads using glob pattern sometimes fails.
+- Bug 3900 - ProFTPD terminating (signal 11) on some sftp connections.
 
 1.3.5rc1 - Released 04-Jan-2013
 --------------------------------

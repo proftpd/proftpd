@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.187 2013-02-22 02:02:41 castaglia Exp $
+ * $Id: fxp.c,v 1.188 2013-02-28 01:20:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2622,7 +2622,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   pool *sub_pool;
   struct fxp_handle *fxh;
 
-  sub_pool = pr_pool_create_sz(p, 128);
+  sub_pool = make_sub_pool(p);
   fxh = pcalloc(sub_pool, sizeof(struct fxp_handle));
   fxh->pool = sub_pool;
 
@@ -2687,6 +2687,9 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error closing aborted directory '%s': %s", fxh->dir, strerror(errno));
     }
+
+    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -2836,7 +2839,7 @@ static struct fxp_packet *fxp_packet_create(pool *p, uint32_t channel_id) {
   pool *sub_pool;
   struct fxp_packet *fxp;
 
-  sub_pool = pr_pool_create_sz(p, 128);
+  sub_pool = make_sub_pool(p);
   fxp = pcalloc(sub_pool, sizeof(struct fxp_packet));
   fxp->pool = sub_pool;
   fxp->channel_id = channel_id;
@@ -4080,7 +4083,6 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   cmd = pr_cmd_alloc(fxp->pool, 4, pstrdup(fxp->pool, "SITE"),
     pstrdup(fxp->pool, "COPY"), src, dst);
   cmd->arg = pstrcat(fxp->pool, "COPY ", src, " ", dst, NULL);
-  cmd->tmp_pool = pr_pool_create_sz(fxp->pool, 128);
   cmd->cmd_class = CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
@@ -7369,6 +7371,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       reason, NULL);
 
     pr_fsio_close(fh);
+    destroy_pool(fxh->pool);
 
     if (cmd2) {
       pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -7397,7 +7400,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   }
   memset(&session.xfer, 0, sizeof(session.xfer));
 
-  session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
+  session.xfer.p = make_sub_pool(fxp_pool);
   session.xfer.path = pstrdup(session.xfer.p, orig_path);
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
@@ -7669,6 +7672,8 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
         "error closing directory '%s': %s", fxh->dir, strerror(xerrno));
     }
 
+    destroy_pool(fxh->pool);
+
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
 
@@ -7699,7 +7704,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   if (session.xfer.p == NULL) {
     memset(&session.xfer, 0, sizeof(session.xfer));
 
-    session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
+    session.xfer.p = make_sub_pool(fxp_pool);
     memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);
     session.xfer.direction = PR_NETIO_IO_WR;
@@ -9467,7 +9472,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
   pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
-  session.xfer.p = pr_pool_create_sz(fxp_pool, 64);
+  session.xfer.p = make_sub_pool(fxp_pool);
   session.xfer.path = pstrdup(session.xfer.p, new_path);
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
