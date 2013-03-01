@@ -225,12 +225,13 @@ static const char *forensic_get_level_str(int log_level) {
 }
 
 static void forensic_write_metadata(void) {
-  const char *client_ip, *server_ip, *proto;
+  const char *client_ip, *server_ip, *proto, *unique_id;
   int server_port;
   char server_port_str[32], uid_str[32], gid_str[32], elapsed_str[64],
     raw_bytes_in_str[64], raw_bytes_out_str[64],
     total_bytes_in_str[64], total_bytes_out_str[64],
     total_files_in_str[64], total_files_out_str[64];
+  size_t unique_idlen = 0;
 
   /* 64 vectors is currently more than necessary, but it's better to have
    * too many than too little.
@@ -249,6 +250,7 @@ static void forensic_write_metadata(void) {
    * User:
    * UID:
    * GID:
+   * [UNIQUE_ID:]
    * Raw-Bytes-In:
    * Raw-Bytes-Out:
    * Total-Bytes-In:
@@ -357,6 +359,22 @@ static void forensic_write_metadata(void) {
   iov[niov].iov_base = gid_str;
   iov[niov].iov_len = res;
   niov++;
+
+  /* UNIQUE_ID (from mod_unique_id), if present. */
+  unique_id = pr_table_get(session.notes, "UNIQUE_ID", &unique_idlen);
+  if (unique_id != NULL) {
+    iov[niov].iov_base = "UNIQUE_ID: ";
+    iov[niov].iov_len = 11;
+    niov++;
+
+    iov[niov].iov_base = unique_id;
+    iov[niov].iov_len = unique_idlen;
+    niov++;
+
+    iov[niov].iov_base = "\n";
+    iov[niov].iov_len = 1;
+    niov++;
+  }
 
   /* Raw bytes in */
   iov[niov].iov_base = "Raw-Bytes-In: ";
