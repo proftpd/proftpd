@@ -36,6 +36,8 @@ ChangeLog files.
     AuthUserFile, AuthGroupFile (Bug#3892)
       No world-readable/world-writable files, no world-writable parent dir
 
+    BanOnEvent TLSHandshake (Bug#3906)
+
     HiddenStores (Bug#3872)
 
     LogFormat (Bug#3889)
@@ -288,4 +290,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-02-27 17:29:34 $
+Last Updated: $Date: 2013-03-01 19:57:43 $

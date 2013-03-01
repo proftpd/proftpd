@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.65 2013-02-14 21:48:34 castaglia Exp $
+ * $Id: mod_ban.c,v 1.66 2013-03-01 19:57:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.6"
+#define MOD_BAN_VERSION			"mod_ban/0.6.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -125,6 +125,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_LOGIN_RATE			12
 #define BAN_EV_TYPE_MAX_CMD_RATE		13
 #define BAN_EV_TYPE_UNHANDLED_CMD		14
+#define BAN_EV_TYPE_TLS_HANDSHAKE		15
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
@@ -212,6 +213,7 @@ static void ban_maxloginattempts_ev(const void *, void *);
 static void ban_timeoutidle_ev(const void *, void *);
 static void ban_timeoutlogin_ev(const void *, void *);
 static void ban_timeoutnoxfer_ev(const void *, void *);
+static void ban_tlshandshake_ev(const void *, void *);
 static void ban_unhandledcmd_ev(const void *, void *);
 
 static void ban_handle_event(unsigned int, int, const char *,
@@ -1159,6 +1161,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
 
     case BAN_EV_TYPE_UNHANDLED_CMD:
       return "UnhandledCommand";
+
+    case BAN_EV_TYPE_TLS_HANDSHAKE:
+      return "TLSHandshake";
   }
 
   return NULL;
@@ -1542,6 +1547,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           case BAN_EV_TYPE_LOGIN_RATE:
           case BAN_EV_TYPE_MAX_CMD_RATE:
           case BAN_EV_TYPE_UNHANDLED_CMD:
+          case BAN_EV_TYPE_TLS_HANDSHAKE:
             if (!have_banner) {
               pr_ctrls_add_response(ctrl, "Ban Events:");
               have_banner = TRUE;
@@ -2369,6 +2375,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
     pr_event_register(&ban_module, "core.timeout-no-transfer",
       ban_timeoutnoxfer_ev, bee);
 
+  } else if (strcasecmp(cmd->argv[1], "TLSHandshake") == 0) {
+    bee->bee_type = BAN_EV_TYPE_TLS_HANDSHAKE;
+    pr_event_register(&ban_module, "mod_tls.ctrl-handshake",
+      ban_tlshandshake_ev, bee);
+
   } else if (strcasecmp(cmd->argv[1], "UnhandledCommand") == 0) {
     bee->bee_type = BAN_EV_TYPE_UNHANDLED_CMD;
     pr_event_register(&ban_module, "core.unhandled-command",
@@ -2897,6 +2908,7 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&ban_module, "mod_auth.max-login-attempts", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-users-per-host", NULL);
   pr_event_unregister(&ban_module, "mod_ban.client-connect-rate", NULL);
+  pr_event_unregister(&ban_module, "mod_tls.ctrl-handshake", NULL);
 
   /* Close the BanLog file descriptor; it will be reopened by the postparse
    * event listener.
@@ -2955,6 +2967,22 @@ static void ban_timeoutnoxfer_ev(const void *event_data, void *user_data) {
     return;
   
   ban_handle_event(BAN_EV_TYPE_TIMEOUT_NO_TRANSFER, BAN_TYPE_HOST, ipstr, tmpl);
+}
+
+static void ban_tlshandshake_ev(const void *event_data, void *user_data) {
+
+  /* For this event, event_data is the client. */
+  conn_t *c = (conn_t *) event_data;
+  const char *ipstr;
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  ban_handle_event(BAN_EV_TYPE_TLS_HANDSHAKE, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_unhandledcmd_ev(const void *event_data, void *user_data) {

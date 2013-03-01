@@ -6912,6 +6912,7 @@ MODRET tls_auth(cmd_rec *cmd) {
     pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
 
     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
+    pr_event_generate("mod_tls.ctrl-handshake", session.c);
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
 
