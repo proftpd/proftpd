@@ -66,6 +66,11 @@ my $TESTS = {
     test_class => [qw(bug forking os_linux)],
   },
 
+  ban_on_event_tlshandshake => {
+    order => ++$order,
+    test_class => [qw(forking mod_tls)],
+  },
+
 };
 
 sub new {
@@ -1807,6 +1812,173 @@ sub ban_sighup_bug3751 {
 
   # Stop server
   server_stop($pid_file);
+  unlink($log_file);
+}
+
+sub ban_on_event_tlshandshake {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/ban.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ban.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ban.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+  
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'event:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_ban.c' => {
+        BanEngine => 'on',
+        BanLog => $log_file,
+
+        # This says to ban a client which requests TLS handshakes (control
+        # connection) more than twice in the last 1 minute will be banned for
+        # 5 secs
+        BanOnEvent => 'TLSHandshake 2/00:01:00 00:00:05',
+
+        BanTable => $ban_tab,
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $log_file,
+        TLSProtocol => 'SSLv3 TLSv1',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client_opts = {
+        Encryption => 'E',
+        Port => $port,
+      };
+
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 1;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($user, $passwd)) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      $client->quit();
+
+      # Now try again; we should be banned.  Note that we have to create a
+      # separate connection for this.
+
+      $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
+      if ($client) {
+        die("Client successfully connected to FTPS unexpectedly");
+      }
+
+      my $errstr = IO::Socket::SSL::errstr();
+      my $expected = 'connect attempt failed';
+      $self->assert(qr/$expected/, $errstr,
+        test_msg("Expected error message '$expected', got '$errstr'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
   unlink($log_file);
 }
 
