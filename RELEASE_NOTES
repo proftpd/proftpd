@@ -38,6 +38,18 @@ ChangeLog files.
 
     BanOnEvent TLSHandshake (Bug#3906)
 
+      There is a particular type of Denial-of-Service attack where malicious
+      clients request just enough of an SSL/TLS handshake to cause the server
+      to perform the expensive decryption operations; if this happens
+      frequently enough, the server will consume much of its CPU, thus
+      starving other clients.  See:
+
+        http://vincent.bernat.im/en/blog/2011-ssl-dos-mitigation.html
+        http://www.thc.org/thc-ssl-dos/
+
+      The BanOnEvent directive now supports a TLSHandshake rule, to impose
+      bans on such clients.
+
     HiddenStores (Bug#3872)
 
     LogFormat (Bug#3889)
@@ -290,4 +302,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-03-01 19:57:43 $
+Last Updated: $Date: 2013-03-01 20:06:32 $
