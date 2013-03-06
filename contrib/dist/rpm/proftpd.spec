@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.85 2013-01-04 22:16:41 castaglia Exp $
+# $Id: proftpd.spec,v 1.86 2013-03-06 19:03:36 castaglia Exp $
 
 # Module List:
 #
@@ -50,12 +50,12 @@
 #
 # NOTE: rpmbuild is really bloody stupid, and CANNOT handle a leading '#'
 # character followed by a '%' character.  
-%global release_cand_version      rc1
+%global release_cand_version      rc2
 
 %global usecvsversion             0%{?_with_cvs:1}
 
-%global proftpd_cvs_version_main  1.3.5rc1
-%global proftpd_cvs_version_date  20130104
+%global proftpd_cvs_version_main  1.3.5rc2
+%global proftpd_cvs_version_date  20130306
 
 # Handle optional functionality
 #
