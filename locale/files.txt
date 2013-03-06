@@ -10,6 +10,7 @@
 ../contrib/mod_ldap.c
 ../contrib/mod_load/getloadavg.c
 ../contrib/mod_load/mod_load.c
+../contrib/mod_log_forensic.c
 ../contrib/mod_qos.c
 ../contrib/mod_quotatab.c
 ../contrib/mod_quotatab_file.c
@@ -99,6 +100,7 @@
 ../contrib/mod_wrap2/mod_wrap2.c
 ../contrib/mod_wrap2_sql.c
 ../contrib/mod_wrap.c
+../include/ascii.h
 ../include/auth.h
 ../include/bindings.h
 ../include/child.h
@@ -141,6 +143,7 @@
 ../include/pr-syslog.h
 ../include/regexp.h
 ../include/response.h
+../include/rlimit.h
 ../include/scoreboard.h
 ../include/session.h
 ../include/sets.h
@@ -172,6 +175,7 @@
 ../modules/mod_log.c
 ../modules/mod_ls.c
 ../modules/mod_memcache.c
+../modules/mod_rlimit.c
 ../modules/mod_site.c
 ../modules/mod_xfer.c
 ../src/auth.c
@@ -209,6 +213,7 @@
 ../src/proctitle.c
 ../src/regexp.c
 ../src/response.c
+../src/rlimit.c
 ../src/scoreboard.c
 ../src/session.c
 ../src/sets.c
