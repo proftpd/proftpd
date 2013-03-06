@@ -367,7 +367,7 @@ static void forensic_write_metadata(void) {
     iov[niov].iov_len = 11;
     niov++;
 
-    iov[niov].iov_base = unique_id;
+    iov[niov].iov_base = (char *) unique_id;
     iov[niov].iov_len = unique_idlen;
     niov++;
 
