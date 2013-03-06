@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.8 2013-01-16 17:25:13 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.9 2013-03-06 17:30:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -118,7 +118,7 @@ See also: <a href="#HiddenStores"><code>HiddenStores</code></a>
 <p>
 <hr>
 <h2><a name="HiddenStores">HiddenStores</a></h2>
-<strong>Syntax:</strong> HiddenStores <em>on|off|prefix</em><br>
+<strong>Syntax:</strong> HiddenStores <em>on|off|prefix [suffix]</em><br>
 <strong>Default:</strong> <code>HiddenStores off</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
 <strong>Module:</strong> mod_xfer<br>
@@ -141,7 +141,7 @@ The FTP <code>REST</code> command is automatically blocked when
 code to the client.
 
 <p>
-In <code>proftpd-1.3.3rc2</code> and later, the ".in." prefix can be
+In <code>proftpd-1.3.3rc2</code> and later, the ".in." <em>prefix</em> can be
 customised via the <code>HiddenStores</code> directive, <i>e.g.</i>:
 <pre>
   # Use a different prefix for HiddenStores
@@ -149,8 +149,8 @@ customised via the <code>HiddenStores</code> directive, <i>e.g.</i>:
 </pre>
 
 <p>
-In <code>proftpd-1.3.5rc2</code> and later, the "." suffix can be customised
-using the <code>HiddenStores</code> directive as well, <i>e.g.</i>:
+In <code>proftpd-1.3.5rc2</code> and later, the "." <em>suffix</em> can be
+customised using the <code>HiddenStores</code> directive as well, <i>e.g.</i>:
 <pre>
   # Use a different prefix <b>and</b> suffix for HiddenStores
   HiddenStores incoming- .lock
@@ -431,7 +431,7 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-16 17:25:13 $</i><br>
+Last Updated: <i>$Date: 2013-03-06 17:30:15 $</i><br>
 
 <br><hr>
 
