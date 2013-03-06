@@ -12,32 +12,56 @@ ChangeLog files.
   + New Modules
 
     mod_log_forensic
-      The mod_log_forensic module ...
-      See doc/contrib/mod_log_forensic.html for more information.
+      The mod_log_forensic module is intended to collect logging information
+      while a session runs, but only to write that log information out to
+      a file when certain conditions happen, and thus to avoid logging
+      redundant information for "normal" sessions.  See
+      doc/contrib/mod_log_forensic.html for more information.
 
     mod_rlimit
-      Same RLimitCPU, RLimitMemory, RLimitOpenFiles directives
-      New setting of RLIMIT_NPROC (unless mod_exec.c/ExecEngine on)
+      The handling of the RLimitCPU, RLimitMemory, and RLimitOpenFiles
+      directives were refactored into a new mod_rlimit module.  This module
+      also automatically sets the RLIMIT_NPROC resource limit for session
+      processes (as a protective measure).  See doc/modules/mod_rlimit.html
+      for details.
 
 
   + New Configuration Directives
 
-    GeoIPPolicy (Bug#3860)
+    GeoIPPolicy
+      The GeoIPPolicy directive for the mod_geoip module is used to configure
+      the default allow/deny policy of the module, when evaluating any
+      configured GeoIPFilters.  See doc/contrib/mod_geoip.html#GeoIPPolicy.
 
-    SQLLogOnEvent (Bug#3893)
+    TLSMasqueradeAddress
+      There are particular situations where MasqueradeAddress functionality
+      is needed, but *only for FTPS connections*.  For these situations,
+      use the new TLSMasqueradeAddress directive; see
+      doc/contrib/mod_tls.html#TLSMasqueradeAddress for details.
 
-    TLSMasqueradeAddress (Bug#3862)
+    TLSUserName
+      The mod_tls module can now be configured to authenticate users based
+      on contents of a client-provided certificate (assuming the client
+      provided one).  By using:
 
-    TLSUserName (Bug#3899)
+       TLSVerifyClient on
+
+      and the new TLSUserName directive, mod_tls may verify the user
+      without requiring a password.  See doc/contrib/mod_tls.html#TLSUserName.
 
 
   + Changed Configuration Directives
 
-    AuthUserFile, AuthGroupFile (Bug#3892)
-      No world-readable/world-writable files, no world-writable parent dir
+    AuthUserFile, AuthGroupFile
+      The mod_auth_file module is now more strict about the permissions
+      on configured AuthUserFile and AuthGroupFile, and about the permissions
+      of the directories containing these files.  These restrictions are to
+      prevent accidental (or malicious) altering of these files by any
+      user on the system.  See
+      doc/modules/mod_auth_file.html#AuthFilePermissions for a discussion
+      of these new restrictions.
 
-    BanOnEvent TLSHandshake (Bug#3906)
-
+    BanOnEvent TLSHandshake
       There is a particular type of Denial-of-Service attack where malicious
       clients request just enough of an SSL/TLS handshake to cause the server
       to perform the expensive decryption operations; if this happens
@@ -50,16 +74,31 @@ ChangeLog files.
       The BanOnEvent directive now supports a TLSHandshake rule, to impose
       bans on such clients.
 
-    HiddenStores (Bug#3872)
+    HiddenStores
+      The default "." suffix used for HiddenStores filenames can now be
+      customised.  See doc/modules/mod_xfer.html#HiddenStores.
 
-    LogFormat (Bug#3889)
-      %{iso8601}
-      %{microsecs}
-      %{millisecs}
+    LogFormat
+      The LogFormat directive now supports variables for timestamps with
+      millisecond and microsecond granularity, via %{millisecs} and
+      %{microsecs}, respectively.  In addition, a new shorthand variable,
+      %{iso8601}, is supported.  See doc/modules/mod_log.html#LogFormat.
 
-    TLSProtocol (Bug#3891)
+      Important note: the new %{iso8601} timestamp format is *also* now the
+      timestamp format used for the default system logging that proftpd uses.
 
-    TLSSessionCache (Bug#3869)
+    TLSProtocol
+      Almost all of the mod_tls configuration directives can be configured
+      on a per-<VirtualHost> basis, except for the TLSProtocol directive.
+      This has now been corrected, such that TLSProtocol can be set on
+      a per-<VirtualHost> basis (and is also allowed in <Global> sections).
+
+    TLSSessionCache
+      The default SSL session cache timeout, when no explicit timeout has
+      been configured, has been increased to be slightly longer than the
+      default control channel renegotiation timeout.  This means that the
+      out-of-the-box mod_tls behavior will be better for FTPS clients that
+      have long-lived (i.e. on the order of multiple hours) sessions.
 
 
   + Logging Format changes
@@ -75,10 +114,11 @@ ChangeLog files.
       Jan 31 15:33:03
 
     The new format does not use textual month abbreviations, and includes
-    milliseconds in the timestamp.
+    milliseconds in the timestamp, for finer-grained logging granularity.
 
-    This will have impact on sites using DenyHosts, banhosts, fail2ban.
-    XXX
+    NOTE: This WILL have impact on sites using DenyHosts, banhosts, fail2ban,
+    depending on the configured log recognition patterns used by those
+    applications.
 
 
 1.3.5rc1
@@ -302,4 +342,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-03-01 20:06:32 $
+Last Updated: $Date: 2013-03-06 17:55:27 $
