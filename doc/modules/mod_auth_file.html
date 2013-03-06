@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth_file.html,v 1.4 2013-02-05 17:24:08 castaglia Exp $ -->
+<!-- $Id: mod_auth_file.html,v 1.5 2013-03-06 17:26:48 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth_file.html,v $ -->
 
 <html>
@@ -159,11 +159,31 @@ enhanced versions of <code>crypt(3)</code>, some do not.  The
 <a href="../utils/ftpasswd.html"><code>ftpasswd</code></a> script can generate
 <code>AuthUserFiles</code> which use the MD5 algorithm instead of DES.
 
+<p><a name="AuthFilePermissions">
+<font color=red>Question</font>: Why does <code>mod_auth_file</code> refuse
+to use an <code>AuthUserFile</code> (or <code>AuthGroupFile</code> that is
+world-writable?<br>
+<font color=blue>Answer</font>:  If an <code>AuthUserFile</code> or
+<code>AuthGroupFile</code> is world-writable, then <b>any user on the system
+can edit that file</b>.  They can create new users, or change the entries
+for existing users such that those users have different privileges, perhaps
+even root privileges.  In short, having <code>AuthUserFile<code> or
+<code>AuthGroupFile</code> with world-writable permissions is an unsafe
+configuration, and now <code>mod_auth_file</code> prevents this.
+
+<p>
+Similarly, <code>mod_auth_file</code> will refuse to use an
+<code>AuthUserFile</code> or <code>AuthGroupFile</code> if that file lives
+in a directory, and that directory has world-writable permissions (even if
+the configured file itself is <b>not</b> world-writable).  A world-writable
+directory would allow <b>any system user to delete the <code>AuthUserFile</code></b>, and add their own, or to add a symlink, <i>etc</i>.  It is another
+unsafe configuration against which <code>mod_auth_file</code> now guards.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-02-05 17:24:08 $</i><br>
+Last Updated: <i>$Date: 2013-03-06 17:26:48 $</i><br>
 
 <br><hr>
 
