@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.134 2013-02-27 17:32:10 castaglia Exp $
+ * $Id: fsio.c,v 1.135 2013-03-07 00:46:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4429,13 +4429,13 @@ int pr_fs_is_nfs(const char *path) {
   if (fs.f_type == NFS_SUPER_MAGIC) {
     pr_trace_msg(trace_channel, 12,
       "path '%s' resides on an NFS_SUPER_MAGIC filesystem (type 0x%08x)", path,
-      fs.f_type);
+      (int) fs.f_type);
     res = TRUE;
 
   } else {
     pr_trace_msg(trace_channel, 12,
       "path '%s' resides on a filesystem of type 0x%08x (not NFS_SUPER_MAGIC)",
-      path, fs.f_type);
+      path, (int) fs.f_type);
   }
 # else
   pr_trace_msg(trace_channel, 12,
