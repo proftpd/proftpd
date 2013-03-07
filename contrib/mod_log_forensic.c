@@ -508,7 +508,7 @@ static void forensic_write_msgs(unsigned int criterion) {
   unsigned int start_idx, end_idx;
   int res;
   const char *crit_marker = NULL;
-  size_t crit_markerlen;
+  size_t crit_markerlen = 0;
 
   /* XXX An interesting optimization would be to rework this code so that
    * we used writev(2) to write out the buffer as quickly as possible,
@@ -516,7 +516,9 @@ static void forensic_write_msgs(unsigned int criterion) {
    */
 
   crit_marker = forensic_get_begin_marker(criterion, &crit_markerlen);
-  res = write(forensic_logfd, crit_marker, crit_markerlen);
+  if (crit_marker != NULL) {
+    res = write(forensic_logfd, crit_marker, crit_markerlen);
+  }
 
   forensic_write_metadata();
 
@@ -627,7 +629,9 @@ static void forensic_write_msgs(unsigned int criterion) {
   }
 
   crit_marker = forensic_get_end_marker(criterion, &crit_markerlen);
-  res = write(forensic_logfd, crit_marker, crit_markerlen);
+  if (crit_marker != NULL) {
+    res = write(forensic_logfd, crit_marker, crit_markerlen);
+  }
 }
 
 /* Configuration handlers
