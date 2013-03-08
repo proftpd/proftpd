@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: packet.c,v 1.45 2013-02-25 20:29:50 castaglia Exp $
+ * $Id: packet.c,v 1.46 2013-03-08 16:22:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1173,16 +1173,23 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
     }
   }
 
+  if (packet_poll(sockfd, SFTP_PACKET_IO_WR) < 0) {
+    int xerrno = errno;
+
+    /* Socket not writable?  Clear the array, and try again. */
+    memset(packet_iov, 0, sizeof(packet_iov));
+    packet_niov = 0;
+
+    errno = xerrno;
+    return -1;
+  }
+
   /* Generate an event for any interested listeners.  Since the data are
    * probably encrypted and such, and since listeners won't/shouldn't
    * have the facilities for handling such data, we only pass the
    * amount of data to be written out.
    */
   pr_event_generate("ssh2.netio-write", &write_len);
-
-  if (packet_poll(sockfd, SFTP_PACKET_IO_WR) < 0) {
-    return -1;
-  }
 
   /* The socket we accept is blocking, thus there's no need to handle
    * EAGAIN/EWOULDBLOCK errors.
