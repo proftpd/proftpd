@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.310 2013-02-14 19:38:38 castaglia Exp $
+ * $Id: mod_auth.c,v 1.311 2013-03-08 00:00:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1145,11 +1145,21 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
 #ifndef PR_DEVEL_COREDUMP
 # ifdef __hpux
-    setresuid(0, 0, 0);
-    setresgid(0, 0, 0);
+    if (setresuid(0, 0, 0) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
+    }
+
+    if (setresgid(0, 0, 0) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setresgid(): %s", strerror(errno));
+    }
 # else
-    setuid(PR_ROOT_UID);
-    setgid(PR_ROOT_GID);
+    if (setuid(PR_ROOT_UID) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setuid(): %s", strerror(errno));
+    }
+
+    if (setgid(PR_ROOT_GID) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setgid(): %s", strerror(errno));
+    }
 # endif /* __hpux */
 #endif /* PR_DEVEL_COREDUMP */
 
@@ -1255,11 +1265,21 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
 #ifndef PR_DEVEL_COREDUMP
 # ifdef __hpux
-    setresuid(0, 0, 0);
-    setresgid(0, 0, 0);
+    if (setresuid(0, 0, 0) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
+    }
+
+    if (setresgid(0, 0, 0) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setresgid(): %s", strerror(errno));
+    }
 # else
-    setuid(PR_ROOT_UID);
-    setgid(PR_ROOT_GID);
+    if (setuid(PR_ROOT_UID) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setuid(): %s", strerror(errno));
+    }
+
+    if (setgid(PR_ROOT_GID) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setgid(): %s", strerror(errno));
+    }
 # endif /* __hpux */
 #endif /* PR_DEVEL_COREDUMP */
 
@@ -1503,11 +1523,21 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
 #ifndef PR_DEVEL_COREDUMP
 # ifdef __hpux
-    setresuid(0, 0, 0);
-    setresgid(0, 0, 0);
+    if (setresuid(0, 0, 0) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
+    }
+
+    if (setresgid(0, 0, 0) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setresgid(): %s", strerror(errno));
+    }
 # else
-    setuid(PR_ROOT_UID);
-    setgid(PR_ROOT_GID);
+    if (setuid(PR_ROOT_UID) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setuid(): %s", strerror(errno));
+    }
+
+    if (setgid(PR_ROOT_GID) < 0) {
+      pr_log_pri(PR_LOG_ERR, "unable to setgid(): %s", strerror(errno));
+    }
 # endif /* __hpux */
 #endif /* PR_DEVEL_COREDUMP */
 
