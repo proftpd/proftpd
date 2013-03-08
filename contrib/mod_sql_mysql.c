@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2012 TJ Saunders
+ * Copyright (c) 2004-2013 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.67 2013-03-07 00:54:12 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.68 2013-03-08 00:12:56 castaglia Exp $
  */
 
 /*
@@ -1476,6 +1476,18 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
   make_scrambled_password(scrambled, c_clear, 1, NULL);
 
 #elif defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD)
+  /* Note: use of the -Wimplicit-function-declaration gcc flag may
+   * result in the following build warning being seen:
+   *
+   *  mod_sql_mysql.c: In function 'cmd_checkauth':
+   *  mod_sql_mysql.c:1479:3: warning: implicit declaration of function 'my_make_scrambled_password' [-Wimplicit-function-declaration]
+   *
+   * This happens because the my_make_scrambled_password() function is
+   * not considered part of the public MySQL API, and thus is not declared
+   * in any of the MySQL header files.  But use of this function is required
+   * for implementing the "Backend" SQLAuthType for MySQL.  Thus for this
+   * situation, the above warning is expected and benign (Bug#3908).
+   */
   my_make_scrambled_password(scrambled, c_clear, strlen(c_clear));
 
 #else
