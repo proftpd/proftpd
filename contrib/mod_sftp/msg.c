@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.11 2013-01-22 01:12:26 castaglia Exp $
+ * $Id: msg.c,v 1.12 2013-03-08 18:21:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -432,6 +432,9 @@ uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
     free(data);
 
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+
+    /* Needed to avoid compiler (and static code analysis) complaints. */
+    return 0;
   }
 
   if (data[1] & 0x80) {
@@ -505,6 +508,9 @@ uint32_t sftp_msg_write_ecpoint(unsigned char **buf, uint32_t *buflen,
     BN_CTX_free(bn_ctx);
 
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+
+    /* Needed to avoid compiler (and static code analysis) complaints. */
+    return 0;
   }
 
   len = sftp_msg_write_data(buf, buflen, (const unsigned char *) data, datalen,
