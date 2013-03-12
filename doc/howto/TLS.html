@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.34 2012-12-27 19:15:44 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.35 2013-03-12 01:42:47 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -347,6 +347,27 @@ was rejected.
 
 <p><a name="FAQ"></a>
 <b>Frequently Asked Questions</b><br>
+
+<p><a name="TLSDataTransfer">
+<font color=red>Question</font>: When I enable <code>mod_tls</code>, 
+I can't upload or download files, or list directories.  Why?<br>
+<font color=blue>Answer</font>:  By default, <code>mod_tls</code> requires
+that the same SSL session be used data transfers (see
+<a href="../contrib/mod_tls.html#TLSOptions"><code>TLSOptions</code></a>),
+which includes uploads, downloads, <i>and</i> directory listings.  If your
+data transfers are failing, you might look in your
+<a href="../contrib/mod_tls.html#TLSLog"><code>TLSLog</code></a>, and see
+a log message like this:
+<pre>
+  client did not reuse SSL session, rejecting data connection (see the NoSessionReuseRequired TLSOptions parameter)
+</pre>
+The workaround, then, is to add the TLSOption mentioned in the log message
+to your configuration, <i>i.e.</i>:
+<pre>
+  # Relax the requirement that the SSL session be reused for data transfers
+  TLSOptions NoSessionReuseRequired
+</pre>
+Then restart <code>proftpd</code>, and your data transfers should work.
 
 <p><a name="TLSCertificates">
 <font color=red>Question</font>: How do I generate the certificate files used
@@ -1106,7 +1127,7 @@ you are using the <code>mod_sql</code> module, <i>etc</i>.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2012-12-27 19:15:44 $</i><br>
+Last Updated: <i>$Date: 2013-03-12 01:42:47 $</i><br>
 <hr>
 
 </body>
