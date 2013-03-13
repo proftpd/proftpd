@@ -1,4 +1,4 @@
-<!-- $Id: mod_xfer.html,v 1.9 2013-03-06 17:30:15 castaglia Exp $ -->
+<!-- $Id: mod_xfer.html,v 1.10 2013-03-13 18:08:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
 
 <html>
@@ -111,6 +111,9 @@ See also: <a href="#AllowRetrieveRestart"><code>AllowRetrieveRestart</code></a>,
 The <code>DeleteAbortedStores</code> directive controls whether ProFTPD
 deletes partially uploaded files if the transfer is stopped via the
 FTP <code>ABOR</code> command (as opposed to a connection failure).
+By default, <code>DeleteAbortedStores</code> is <em>off</em>; however when
+<code>HiddenStores</code> is enabled, then <code>DeleteAbortedStores</code>
+is automatically enabled as well.
 
 <p>
 See also: <a href="#HiddenStores"><code>HiddenStores</code></a>
@@ -129,7 +132,8 @@ The <code>HiddenStores</code> directive enables two-step file uploads: files
 are uploaded as ".in.<em>filename</em>." and once the upload is complete,
 renamed to just <em>filename</em>.  This provides a degree of atomicity and
 helps prevent <i>1)</i> incomplete uploads and <i>2)</i> files being used
-while they are still being uploaded.
+while they are still being uploaded.  When <code>HiddenStores</code> is
+enabled, then <a href="#DeleteAbortedStores"><code>DeleteAbortedStores</code></a> is automatically enabled as well.
 
 <p>
 Note that if the temporary file name is already in use (<i>e.g.</i>, a server
@@ -431,7 +435,7 @@ The <code>mod_xfer</code>module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-03-06 17:30:15 $</i><br>
+Last Updated: <i>$Date: 2013-03-13 18:08:28 $</i><br>
 
 <br><hr>
 
