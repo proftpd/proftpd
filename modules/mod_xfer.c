@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.320 2013-02-15 22:50:54 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.321 2013-03-13 18:05:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -943,7 +943,7 @@ static void stor_abort(void) {
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
     delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
-    if (delete_stores != NULL &&
+    if (delete_stores == NULL ||
         *delete_stores == TRUE) {
       /* If a hidden store was aborted, remove only hidden file, not real
        * one.
@@ -957,7 +957,7 @@ static void stor_abort(void) {
 
   } else if (session.xfer.path) {
     delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
-    if (delete_stores != NULL &&
+    if (delete_stores == NULL ||
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
       pr_fsio_unlink(session.xfer.path);
