@@ -27,6 +27,11 @@ my $TESTS = {
     test_class => [qw(bug forking ssh2)],
   },
 
+  ssh2_connect_version_bug3918 => {
+    order => ++$order,
+    test_class => [qw(bug forking ssh2)],
+  },
+
   ssh2_connect_timeout_login => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
@@ -1520,6 +1525,173 @@ sub ssh2_connect_bad_version {
   server_stop($pid_file);
 
   $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub ssh2_connect_version_bug3918 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # First, start the server.
+  server_start($config_file);
+
+  # Give it a second to start up, then send the SIGHUP signal
+  sleep(2);
+  server_restart($pid_file);
+
+  # Give it another second to start up again
+  sleep(2);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      my $proto = getprotobyname('tcp');
+
+      my $sock;
+      unless (socket($sock, PF_INET, SOCK_STREAM, $proto)) {
+        die("Can't create socket: $!");
+      }
+
+      my $in_addr = inet_aton('127.0.0.1');
+      my $addr = sockaddr_in($port, $in_addr);
+
+      unless (connect($sock, $addr)) {
+        die("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      print $sock "SSH-2.0-ProFTPD_mod_sftp_TestSuite\r\n";
+      sleep(1);
+
+      close($sock); 
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $log_file")) {
+      my $segfaulted = 0;
+
+      while (my $line = <$fh>) {
+        if ($line =~ /signal 11/i) {
+          $segfaulted = 1;
+          last;
+        }
+      };
+
+      close($fh);
+
+      $self->assert($segfaulted == 0, test_msg("Saw SIGSEGV unexpectedly"));
+
+    } else {
+      die("Can't read $log_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
 
   if ($ex) {
     test_append_logfile($log_file, $ex);
@@ -32786,28 +32958,6 @@ sub sftp_multi_channel_downloads {
   unlink($log_file);
 }
 
-sub sftp_restart {
-  my $pid_file = shift;
-
-  my $pid;
-  if (open(my $fh, "< $pid_file")) {
-    $pid = <$fh>;
-    chomp($pid);
-    close($fh);
-
-  } else {
-    die("Can't read $pid_file: $!");
-  }
-
-  my $cmd = "kill -HUP $pid";
-
-  if ($ENV{TEST_VERBOSE}) {
-    print STDERR "Restarting server: $cmd\n";
-  }
-
-  my @output = `$cmd`;
-}
-
 sub sftp_log_xferlog_download {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -37580,7 +37730,7 @@ sub sftp_sighup {
 
   # Give it a second to start up, then send the SIGHUP signal
   sleep(2);
-  sftp_restart($pid_file);
+  server_restart($pid_file);
 
   # Give it another second to start up again
   sleep(2);
