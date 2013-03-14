@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.29 2012-12-18 22:03:21 castaglia Exp $
+ * $Id: keys.c,v 1.30 2013-03-14 21:59:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1656,11 +1656,10 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       sftp_rsa_hostkey->agent_path = agent_path;
 
       if (file_path != NULL) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "using '%s' as RSA hostkey", file_path);
+        pr_trace_msg(trace_channel, 4, "using '%s' as RSA hostkey", file_path);
 
       } else if (agent_path != NULL) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        pr_trace_msg(trace_channel, 4,
           "using RSA hostkey from SSH agent at '%s'", agent_path);
       }
 
@@ -1689,11 +1688,10 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       sftp_dsa_hostkey->agent_path = agent_path;
 
       if (file_path != NULL) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "using '%s' as DSA hostkey", file_path);
+        pr_trace_msg(trace_channel, 4, "using '%s' as DSA hostkey", file_path);
 
       } else if (agent_path != NULL) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        pr_trace_msg(trace_channel, 4,
           "using DSA hostkey from SSH agent at '%s'", agent_path);
       }
 
