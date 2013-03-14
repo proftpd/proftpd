@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.73 2012-08-20 18:27:33 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.74 2013-03-14 21:49:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1450,6 +1450,14 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   }
 
   sftp_keys_get_passphrases();
+
+  /* Initialize the interoperability checks here, so that all session
+   * processes share the compiled regexes in memory.
+   */
+  if (sftp_interop_init() < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+      ": error preparing interoperability checks: %s", strerror(errno));
+  }
 }
 
 static void sftp_restart_ev(const void *event_data, void *user_data) {
@@ -1457,13 +1465,8 @@ static void sftp_restart_ev(const void *event_data, void *user_data) {
   /* Clear the host keys. */
   sftp_keys_free();
 
-  /* Re-initialize the interoperability checks.  A restart clears the memory
-   * pool used by the compiled regexes, hence the need to re-compile them.
-   */
-  if (sftp_interop_init() < 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
-      ": error preparing interoperability checks: %s", strerror(errno));
-  }
+  /* Clear the client banner regexes. */
+  sftp_interop_free();
 }
 
 static void sftp_shutdown_ev(const void *event_data, void *user_data) {
@@ -1573,15 +1576,6 @@ static int sftp_init(void) {
   }
 
   pr_log_debug(DEBUG2, MOD_SFTP_VERSION ": using " OPENSSL_VERSION_TEXT);
-
-  /* Initialize the interoperability checks here, so that all session
-   * processes share the compiled regexes in memory.
-   */
-  if (sftp_interop_init() < 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
-      ": error preparing interoperability checks: %s", strerror(errno));
-    return -1;
-  }
 
   sftp_keystore_init();
 
