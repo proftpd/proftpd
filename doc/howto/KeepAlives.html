@@ -1,4 +1,4 @@
-<!-- $Id: KeepAlives.html,v 1.1 2012-10-04 05:17:05 castaglia Exp $ -->
+<!-- $Id: KeepAlives.html,v 1.2 2013-03-15 00:05:39 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/KeepAlives.html,v $ -->
 
 <html>
@@ -46,7 +46,7 @@ Answering this requires three different numeric values: the <i>idle time</i>,
 the number of probes to send (the probe </i>count</i>), and the <i>interval
 time</i> between each probe.  Remember, though, that the
 <code>SO_KEEPALIVE</code> TCP socket option <b>must</b> be enabled on the socket
-first, before the TCP keepalive feature is enabled.
+in order for the TCP keepalive feature to be used.
 
 <p>
 First, let's assume that you have created a TCP connection, and have transferred
@@ -105,7 +105,7 @@ were about to close the TCP connections on either side.
 "This is all very fascinating", you say, "but what does it have to do with
 <code>proftpd</code> and FTP?"  If you have ever had an FTP download (or upload)
 take a <i>very long time</i>, only to have that transfer timed out in the
-middle, then TCP keepalives may prevented the timeout.
+middle, then TCP keepalives may prevent the timeout.
 
 <p>
 Consider what happens for FTP transfers which take a long time (either due to
@@ -382,7 +382,7 @@ and NATs.)
 
 <p>
 <hr>
-<i>$Date: 2012-10-04 05:17:05 $</i><br>
+<i>$Date: 2013-03-15 00:05:39 $</i><br>
 
 </body>
 </html>
