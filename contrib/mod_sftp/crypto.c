@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.27 2012-12-10 23:01:18 castaglia Exp $
+ * $Id: crypto.c,v 1.28 2013-03-15 02:35:52 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -232,7 +232,7 @@ static int cleanup_bf_ctr(EVP_CIPHER_CTX *ctx) {
 }
 
 static int do_bf_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
-    const unsigned char *src, unsigned int len) {
+    const unsigned char *src, size_t len) {
   struct bf_ctr_ex *bce;
   unsigned int n;
   unsigned char buf[BF_BLOCK];
@@ -386,7 +386,7 @@ static int cleanup_des3_ctr(EVP_CIPHER_CTX *ctx) {
 }
 
 static int do_des3_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
-    const unsigned char *src, unsigned int len) {
+    const unsigned char *src, size_t len) {
   struct des3_ctr_ex *dce;
   unsigned int n;
   unsigned char buf[8];
@@ -522,7 +522,7 @@ static int cleanup_aes_ctr(EVP_CIPHER_CTX *ctx) {
 }
 
 static int do_aes_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
-    const unsigned char *src, unsigned int len) {
+    const unsigned char *src, size_t len) {
   struct aes_ctr_ex *ace;
 # if OPENSSL_VERSION_NUMBER <= 0x0090704fL
   unsigned int n;
