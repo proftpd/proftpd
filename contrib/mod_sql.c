@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.236 2013-02-15 22:46:42 castaglia Exp $
+ * $Id: mod_sql.c,v 1.237 2013-03-16 04:45:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,18 +41,18 @@
 #endif
 
 /* default information for tables and fields */
-#define MOD_SQL_DEF_USERTABLE         "users"
-#define MOD_SQL_DEF_USERNAMEFIELD     "userid"
-#define MOD_SQL_DEF_USERUIDFIELD      "uid"
-#define MOD_SQL_DEF_USERGIDFIELD      "gid"
-#define MOD_SQL_DEF_USERPASSWORDFIELD "passwd"
-#define MOD_SQL_DEF_USERSHELLFIELD    "shell"
-#define MOD_SQL_DEF_USERHOMEDIRFIELD  "homedir"
+#define MOD_SQL_DEF_USERTABLE			"users"
+#define MOD_SQL_DEF_USERNAMEFIELD		"userid"
+#define MOD_SQL_DEF_USERUIDFIELD		"uid"
+#define MOD_SQL_DEF_USERGIDFIELD		"gid"
+#define MOD_SQL_DEF_USERPASSWORDFIELD		"passwd"
+#define MOD_SQL_DEF_USERSHELLFIELD		"shell"
+#define MOD_SQL_DEF_USERHOMEDIRFIELD		"homedir"
 
-#define MOD_SQL_DEF_GROUPTABLE        "groups"
-#define MOD_SQL_DEF_GROUPNAMEFIELD    "groupname"
-#define MOD_SQL_DEF_GROUPGIDFIELD     "gid"
-#define MOD_SQL_DEF_GROUPMEMBERSFIELD "members"
+#define MOD_SQL_DEF_GROUPTABLE			"groups"
+#define MOD_SQL_DEF_GROUPNAMEFIELD		"groupname"
+#define MOD_SQL_DEF_GROUPGIDFIELD		"gid"
+#define MOD_SQL_DEF_GROUPMEMBERSFIELD		"members"
 
 /* default minimum ID / default UID / default GID info. 
  * UIDs and GIDs less than MOD_SQL_MIN_USER_UID and MOD_SQL_MIN_USER_GID,
@@ -148,28 +148,18 @@ typedef struct cache_entry {
   void *data;
 } cache_entry_t;
 
-/* this struct holds invariant information for the current session */
+/* This struct holds invariant information for the current session */
 
 static struct {
-  /*
-   * info valid after getpwnam
-   */
-
+  /* Info valid after getpwnam(). */
   char *authuser;               /* current authorized user */
   struct passwd *authpasswd;    /* and their passwd struct */
 
-  /*
-   * generic status information
-   */
-
+  /* Generic status information. */
   int engine;                   /* is mod_sql on? */
   int authmask;                 /* authentication mask.
                                  * see set_sqlauthenticate for info */
-
-  /*
-   * user table and field information
-   */
-
+  /* User table and field information. */
   char *usrtable;               /* user info table name */
   char *usrfield;               /* user name field */
   char *pwdfield;               /* user password field */
@@ -177,22 +167,19 @@ static struct {
   char *gidfield;               /* user GID field */
   char *homedirfield;           /* user homedir field */
   char *shellfield;             /* user login shell field */
-  char *userwhere;              /* users where clause */
+  char *userwhere;              /* user where clause */
 
   char *usercustom;		/* custom users query (by name) */
   char *usercustombyid;		/* custom users query (by UID) */
   char *usercustomuserset;	/* custom query to get 'userset' users */
   char *usercustomusersetfast;	/* custom query to get 'usersetfast' users */
 
-  /*
-   * group table and field information
-   */
-
+  /* Group table and field information. */
   char *grptable;               /* group info table name */
   char *grpfield;               /* group name field */
   char *grpgidfield;            /* group GID field */
   char *grpmembersfield;        /* group members field */
-  char *groupwhere;             /* groups where clause */
+  char *groupwhere;             /* group where clause */
 
   char *groupcustombyname;	/* custom group query (by name) */
   char *groupcustombyid;	/* custom group query (by GID) */
@@ -200,10 +187,7 @@ static struct {
   char *groupcustomgroupset;	/* custom query to get 'groupset' groups */
   char *groupcustomgroupsetfast;/* custom query to get 'groupsetfast' groups */
 
-  /*
-   * other information
-   */
-
+  /* Other information. */
   array_header *auth_list;      /* auth handler list */
   char *defaulthomedir;         /* default homedir if no field specified */
 
@@ -221,10 +205,7 @@ static struct {
   /* Cache negative, as well as positive, lookups */
   unsigned char negative_cache;
 
-  /*
-   * mod_ratio data -- someday this needs to be removed from mod_sql
-   */
-
+  /* mod_ratio data -- someday this needs to be removed from mod_sql. */
   char *sql_fstor;              /* fstor int(11) NOT NULL DEFAULT '0', */
   char *sql_fretr;              /* fretr int(11) NOT NULL DEFAULT '0', */
   char *sql_bstor;              /* bstor int(11) NOT NULL DEFAULT '0', */
@@ -235,13 +216,10 @@ static struct {
   char *sql_brate;              /* brate int(11) NOT NULL DEFAULT '5', */
   char *sql_bcred;              /* bcred int(2) NOT NULL DEFAULT '150000', */
 
-  /*
-   * precomputed strings
-   */
+  /* Precomputed strings. */
   char *usrfields;
   char *grpfields;
-}
-cmap;
+} cmap;
 
 /* For handling the SQLBackend directive */
 struct sql_backend {
@@ -1345,6 +1323,196 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
   return pwd;
 }
 
+static int sql_getuserprimarykey(cmd_rec *cmd, const char *username) {
+  sql_data_t *sd = NULL;
+  modret_t *mr = NULL;
+  char *key_field = NULL, *key_value = NULL;
+  config_rec *c;
+  void *ptr = NULL, *v = NULL;
+ 
+  v = pr_table_get(session.notes, "sql.user-primary-key", NULL); 
+  if (v != NULL) {
+    /* Already have UserPrimaryKey. */
+    return 0;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLUserPrimaryKey", FALSE);
+  if (c == NULL) {
+    return 0;
+  }
+
+  key_field = c->argv[0];
+  if (strncmp(key_field, "custom:/", 8) == 0) {
+    config_rec *custom_c = NULL;
+    char *named_query;
+
+    ptr = key_field + 8;
+    named_query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", ptr, NULL);
+
+    custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+    if (custom_c == NULL) {
+      sql_log(DEBUG_INFO, "error: unable to resolve custom "
+        "SQLNamedQuery name '%s'", (char *) ptr);
+      ptr = NULL;
+    }
+  }
+ 
+  if (ptr == NULL) {
+    char *where;
+
+    where = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", username, "'", NULL);
+
+    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, MOD_SQL_DEF_CONN_NAME,
+      cmap.usrtable, key_field, where, "1"), "sql_select");
+    if (check_response(mr, 0) < 0) {
+      return -1;
+    }
+
+    if (MODRET_HASDATA(mr)) {
+      sd = (sql_data_t *) mr->data;
+    }
+
+  } else {
+    mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME, ptr,
+      username));
+    if (check_response(mr, 0) < 0) {
+      return -1;
+    }
+
+    if (MODRET_HASDATA(mr)) {
+      array_header *ah = (array_header *) mr->data;
+      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+      /* Assume the query only returned 1 row. */
+      sd->fnum = ah->nelts;
+
+      sql_log(DEBUG_INFO,
+        "custom SQLUserPrimaryKey query '%s' returned %d columns for user '%s'",
+        ptr, sd->fnum, username);
+      if (sd->fnum) {
+        sd->rnum = 1;
+        sd->data = (char **) ah->elts;
+
+      } else {
+        sd->rnum = 0;
+        sd->data = NULL;
+      }
+    }
+  }
+
+  /* If we have no data...*/
+  if (sd == NULL ||
+      sd->rnum == 0) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  key_value = sd->data[0];
+  if (pr_table_add(session.notes, "sql.user-primary-key",
+      pstrdup(session.pool, key_value), 0) < 0) {
+    sql_log(DEBUG_INFO,
+      "error stashing 'sql.user-primary-key' note for value '%s': %s",
+      key_value, strerror(errno));
+  }
+
+  return 0;
+}
+
+static int sql_getgroupprimarykey(cmd_rec *cmd, const char *groupname) {
+  sql_data_t *sd = NULL;
+  modret_t *mr = NULL;
+  char *key_field = NULL, *key_value = NULL;
+  config_rec *c;
+  void *ptr = NULL, *v = NULL;
+ 
+  v = pr_table_get(session.notes, "sql.group-primary-key", NULL); 
+  if (v != NULL) {
+    /* Already have GroupPrimaryKey. */
+    return 0;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLGroupPrimaryKey", FALSE);
+  if (c == NULL) {
+    return 0;
+  }
+
+  key_field = c->argv[0];
+  if (strncmp(key_field, "custom:/", 8) == 0) {
+    config_rec *custom_c = NULL;
+    char *named_query;
+
+    ptr = key_field + 8;
+    named_query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", ptr, NULL);
+
+    custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+    if (custom_c == NULL) {
+      sql_log(DEBUG_INFO, "error: unable to resolve custom "
+        "SQLNamedQuery name '%s'", (char *) ptr);
+      ptr = NULL;
+    }
+  }
+
+  if (ptr == NULL) {
+    char *where;
+
+    where = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'", NULL);
+
+    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, MOD_SQL_DEF_CONN_NAME,
+      cmap.grptable, key_field, where, "1"), "sql_select");
+    if (check_response(mr, 0) < 0) {
+      return -1;
+    }
+
+    if (MODRET_HASDATA(mr)) {
+      sd = (sql_data_t *) mr->data;
+    }
+
+  } else {
+    mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME, ptr,
+      groupname));
+    if (check_response(mr, 0) < 0) {
+      return -1;
+    }
+
+    if (MODRET_HASDATA(mr)) {
+      array_header *ah = (array_header *) mr->data;
+      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+
+      /* Assume the query only returned 1 row. */
+      sd->fnum = ah->nelts;
+
+      sql_log(DEBUG_INFO,
+        "custom SQLGroupPrimaryKey query '%s' returned %d columns for "
+        "group '%s'", ptr, sd->fnum, groupname);
+      if (sd->fnum) {
+        sd->rnum = 1;
+        sd->data = (char **) ah->elts;
+
+      } else {
+        sd->rnum = 0;
+        sd->data = NULL;
+      }
+    }
+  }
+
+  /* If we have no data...*/
+  if (sd == NULL ||
+      sd->rnum == 0) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  key_value = sd->data[0];
+  if (pr_table_add(session.notes, "sql.group-primary-key",
+      pstrdup(session.pool, key_value), 0) < 0) {
+    sql_log(DEBUG_INFO,
+      "error stashing 'sql.group-primary-key' note for value '%s': %s",
+      key_value, strerror(errno));
+  }
+
+  return 0;
+}
+
 static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
@@ -1367,9 +1535,10 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     return NULL;
   }
 
-  if (!cmap.homedirfield &&
-      !cmap.defaulthomedir)
+  if (cmap.homedirfield == NULL &&
+      cmap.defaulthomedir) {
     return NULL;
+  }
 
   /* Check to see if the passwd already exists in one of the passwd caches.
    * Give preference to name-based lookups, as opposed to UID-based lookups.
@@ -1402,8 +1571,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
       realname), "sql_escapestring");
-    if (check_response(mr, 0) < 0)
+    if (check_response(mr, 0) < 0) {
       return NULL;
+    }
 
     username = (char *) mr->data;
     usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, "='", username, "'", NULL);
@@ -1425,8 +1595,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
       mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, MOD_SQL_DEF_CONN_NAME,
         cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
-      if (check_response(mr, 0) < 0)
+      if (check_response(mr, 0) < 0) {
         return NULL;
+      }
 
       if (MODRET_HASDATA(mr)) {
         sd = (sql_data_t *) mr->data;
@@ -1436,8 +1607,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
         cmap.usercustom, realname ? realname : "NULL"));
 
-      if (check_response(mr, 0) < 0)
+      if (check_response(mr, 0) < 0) {
         return NULL;
+      }
 
       if (MODRET_HASDATA(mr)) {
         array_header *ah = (array_header *) mr->data;
@@ -1527,7 +1699,6 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       return NULL;
 
     } else {
-
       /* If doing caching of negative lookups, cache this failed lookup.
        * Use the default UID and GID.
        */
@@ -1564,13 +1735,14 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   dir = cmap.defaulthomedir;
   if (sd->data[i]) {
     if (strcmp(sd->data[i], "") == 0 ||
-        strcmp(sd->data[i], "NULL") == 0)
+        strcmp(sd->data[i], "NULL") == 0) {
 
       /* Leave dir pointing to the SQLDefaultHomedir, if any. */
       i++;
 
-    else
+    } else {
       dir = sd->data[i++];
+    }
   }
 
   if (cmap.shellfield) {
@@ -1587,9 +1759,10 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       shell = sd->data[i];
     }
 
-  } else
+  } else {
     shell = NULL;
-  
+  }
+
   if (uid < cmap.minuseruid) {
     sql_log(DEBUG_INFO, "user UID %lu below SQLMinUserUID %lu, using "
       "SQLDefaultUID %lu", (unsigned long) uid, (unsigned long) cmap.minuseruid,
@@ -1902,11 +2075,13 @@ static int sql_getgroups(cmd_rec *cmd) {
   register unsigned int i = 0;
 
   /* Check for NULL values */
-  if (cmd->argv[1])
+  if (cmd->argv[1]) {
     gids = (array_header *) cmd->argv[1];
+  }
 
-  if (cmd->argv[2])
+  if (cmd->argv[2]) {
     groups = (array_header *) cmd->argv[2];
+  }
 
   lpw.pw_uid = -1;
   lpw.pw_name = name;
@@ -1927,15 +2102,17 @@ static int sql_getgroups(cmd_rec *cmd) {
   }
 
   /* Populate the first group ID and name */
-  if (gids)
+  if (gids) {
     *((gid_t *) push_array(gids)) = pw->pw_gid;
+  }
 
   lgr.gr_gid = pw->pw_gid;
   lgr.gr_name = NULL;
 
   if (groups &&
-      (grp = sql_getgroup(cmd, &lgr)) != NULL)
+      (grp = sql_getgroup(cmd, &lgr)) != NULL) {
     *((char **) push_array(groups)) = pstrdup(permanent_pool, grp->gr_name);
+  }
 
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
     name), "sql_escapestring");
@@ -2124,6 +2301,17 @@ MODRET sql_pre_pass(cmd_rec *cmd) {
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< sql_pre_pass");
+  return PR_DECLINED(cmd);
+}
+
+MODRET sql_post_pass(cmd_rec *cmd) {
+  if (cmap.engine == 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  sql_getuserprimarykey(cmd, session.user);
+  sql_getgroupprimarykey(cmd, session.group);
+
   return PR_DECLINED(cmd);
 }
 
@@ -2643,6 +2831,19 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         }
       }
       break;
+
+    case 'g': {
+      argp = arg;
+
+      if (session.group != NULL) {
+        sstrncpy(argp, session.group, sizeof(arg));
+
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      break;
+    }
 
     case 'H':
       argp = arg;
@@ -4553,8 +4754,9 @@ MODRET cmd_getpwnam(cmd_rec *cmd) {
   struct passwd lpw;
 
   if (!SQL_USERS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwnam");
 
@@ -4577,8 +4779,9 @@ MODRET cmd_getpwuid(cmd_rec *cmd) {
   struct passwd lpw;
 
   if (!SQL_USERS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwuid");
 
@@ -4913,13 +5116,13 @@ MODRET cmd_getgroups(cmd_rec *cmd) {
   int res;
 
   if (!SQL_GROUPS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgroups");
 
   res = sql_getgroups(cmd);
-
   if (res < 0) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
     return PR_DECLINED(cmd); 
@@ -5206,6 +5409,11 @@ MODRET set_sqluserinfo(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SQLUserPrimaryKey column-name */
+MODRET set_sqluserprimarykey(cmd_rec *cmd) {
+  return add_virtualstr(cmd->argv[0], cmd);
+}
+
 MODRET set_sqluserwhereclause(cmd_rec *cmd) {
   return add_virtualstr(cmd->argv[0], cmd);
 }
@@ -5286,6 +5494,11 @@ MODRET set_sqlgroupinfo(cmd_rec *cmd) {
   add_config_param_str("SQLGroupMembersField", 1, cmd->argv[4]);
 
   return PR_HANDLED(cmd);
+}
+
+/* usage: SQLGroupPrimaryKey column-name */
+MODRET set_sqlgroupprimarykey(cmd_rec *cmd) {
+  return add_virtualstr(cmd->argv[0], cmd);
 }
 
 MODRET set_sqlgroupwhereclause(cmd_rec *cmd) {
@@ -6776,9 +6989,11 @@ static conftable sql_conftab[] = {
   { "SQLOptions",	set_sqloptions,		NULL },
 
   { "SQLUserInfo", set_sqluserinfo, NULL},
+  { "SQLUserPrimaryKey", set_sqluserprimarykey, NULL },
   { "SQLUserWhereClause", set_sqluserwhereclause, NULL },
 
   { "SQLGroupInfo", set_sqlgroupinfo, NULL },
+  { "SQLGroupPrimaryKey", set_sqlgroupprimarykey, NULL },
   { "SQLGroupWhereClause", set_sqlgroupwhereclause, NULL },
 
   { "SQLMinID", set_sqlminid, NULL },
@@ -6805,6 +7020,7 @@ static conftable sql_conftab[] = {
 
 static cmdtable sql_cmdtab[] = {
   { PRE_CMD,		C_PASS,	G_NONE, sql_pre_pass,	FALSE, 	FALSE },
+  { POST_CMD,		C_PASS,	G_NONE, sql_post_pass,	FALSE, 	FALSE },
   { PRE_CMD,		C_DELE,	G_NONE, sql_pre_dele,	FALSE,	FALSE },
   { POST_CMD,		C_RETR,	G_NONE,	sql_post_retr,	FALSE,	FALSE },
   { POST_CMD,		C_STOR,	G_NONE,	sql_post_stor,	FALSE,	FALSE },

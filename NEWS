@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1512 2013-03-14 21:49:18 castaglia Exp $
+$Id: NEWS,v 1.1513 2013-03-16 04:45:27 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -15,6 +15,8 @@ CVS
 - Bug 3914 - 1.3.5rc2 fails to build on Solaris 10.
 - Bug 3917 - Make DeleteAbortedStores on by default when HiddenStores enabled.
 - Bug 3918 - mod_sftp segfault after SIGHUP when evaluating client banner.
+- Bug 3864 - Support SQL query to lookup/use primary key for logged-in
+  user/group.
 
 1.3.5rc2 - Released 06-Mar-2013
 --------------------------------

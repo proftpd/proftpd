@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.142 2013-01-31 17:38:56 castaglia Exp $
+ * $Id: mod_log.c,v 1.143 2013-03-16 04:45:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,6 +112,7 @@ struct logfile_struc {
 #define META_MICROSECS		40
 #define META_MILLISECS		41
 #define META_ISO8601		42
+#define META_GROUP		43
 
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
@@ -133,6 +134,7 @@ static xaset_t			*log_set = NULL;
    %{FOOBAR}e		- Contents of environment variable FOOBAR
    %F			- Transfer path (filename for client)
    %f			- Filename
+   %g			- Local user's primary group name
    %H                   - Local IP address of server handling session
    %h			- Remote client DNS name
    %I                   - Total number of "raw" bytes read in from network
@@ -356,6 +358,10 @@ static void logformat(char *nickname, char *fmts) {
 
           case 'F':
             add_meta(&outs, META_XFER_PATH, 0);
+            break;
+
+          case 'g':
+            add_meta(&outs, META_GROUP, 0);
             break;
 
           case 'H':
@@ -1214,6 +1220,19 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
     }
+
+    case META_GROUP:
+      argp = arg;
+
+      if (session.group != NULL) {
+        sstrncpy(argp, session.group, sizeof(arg));
+
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      m++;
+      break;
 
     case META_RESPONSE_CODE: {
       char *resp_code = NULL;
