@@ -351,6 +351,26 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  sql_userprimarykey_bug3864 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  sql_userprimarykey_custom_bug3864 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  sql_groupprimarykey_bug3864 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  sql_groupprimarykey_custom_bug3864 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -13159,6 +13179,792 @@ EOS
   $expected = '\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}';
   $self->assert(qr/$expected/, $timestamp,
     test_msg("Expected '$expected', got '$timestamp'"));
+
+  unlink($log_file);
+}
+
+sub get_session_with_primary_key {
+  my $db_file = shift;
+  my $where = shift;
+
+  my $sql = "SELECT name, ip_addr, primary_key FROM sessions";
+  if ($where) {
+    $sql .= " WHERE $where";
+  }
+
+  my $cmd = "sqlite3 $db_file \"$sql\"";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my $res = join('', `$cmd`);
+  chomp($res);
+
+  # The default sqlite3 delimiter is '|'
+  return split(/\|/, $res);
+}
+
+sub sql_userprimarykey_bug3864 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT, 
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+
+CREATE TABLE sessions (
+  name TEXT,
+  ip_addr TEXT,
+  primary_key INTEGER
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  if ($? != 0) {
+    die("'$cmd' failed");
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'plaintext',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+        SQLMinID => 200,
+
+        SQLUserPrimaryKey => 'uid',
+
+        SQLNamedQuery => 'session_start FREEFORM "INSERT INTO sessions (name, ip_addr, primary_key) VALUES (\'%u\', \'%L\', %{note:sql.user-primary-key})"',
+        SQLLog => 'PASS session_start',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  eval {
+    my ($name, $ip_addr, $primary_key) = get_session_with_primary_key($db_file,
+      "name = \'$user\'");
+
+    my $expected;
+
+    $expected = $user;
+    $self->assert($expected eq $name,
+      test_msg("Expected name '$expected', got '$name'"));
+
+    $expected = '127.0.0.1';
+    $self->assert($expected eq $ip_addr,
+      test_msg("Expected IP address '$expected', got '$ip_addr'"));
+
+    $expected = $uid;
+    $self->assert($expected == $primary_key,
+      test_msg("Expected primary key $expected, got $primary_key"));
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_userprimarykey_custom_bug3864 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT, 
+  shell TEXT,
+  primary_key INTEGER
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell, primary_key) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash', $uid);
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+
+CREATE TABLE sessions (
+  name TEXT,
+  ip_addr TEXT,
+  primary_key INTEGER
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  if ($? != 0) {
+    die("'$cmd' failed (exit code $?)");
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => [
+        'SQLAuthTypes plaintext',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $log_file",
+        'SQLMinID 200',
+
+        'SQLNamedQuery get-user-primary-key SELECT "primary_key FROM users WHERE userid = \'%{0}\'"',
+        'SQLUserPrimaryKey custom:/get-user-primary-key',
+
+        'SQLNamedQuery session_start FREEFORM "INSERT INTO sessions (name, ip_addr, primary_key) VALUES (\'%u\', \'%L\', %{note:sql.user-primary-key})"',
+        'SQLLog PASS session_start',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  eval {
+    my ($name, $ip_addr, $primary_key) = get_session_with_primary_key($db_file,
+      "name = \'$user\'");
+
+    my $expected;
+
+    $expected = $user;
+    $self->assert($expected eq $name,
+      test_msg("Expected name '$expected', got '$name'"));
+
+    $expected = '127.0.0.1';
+    $self->assert($expected eq $ip_addr,
+      test_msg("Expected IP address '$expected', got '$ip_addr'"));
+
+    $expected = $uid;
+    $self->assert($expected == $primary_key,
+      test_msg("Expected primary key $expected, got $primary_key"));
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_groupprimarykey_bug3864 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT, 
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+
+CREATE TABLE sessions (
+  name TEXT,
+  ip_addr TEXT,
+  primary_key INTEGER
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  if ($? != 0) {
+    die("'$cmd' failed");
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'plaintext',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+        SQLMinID => 200,
+
+        SQLGroupPrimaryKey => 'gid',
+
+        SQLNamedQuery => 'session_start FREEFORM "INSERT INTO sessions (name, ip_addr, primary_key) VALUES (\'%g\', \'%L\', %{note:sql.group-primary-key})"',
+        SQLLog => 'PASS session_start',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  eval {
+    my ($name, $ip_addr, $primary_key) = get_session_with_primary_key($db_file,
+      "name = \'$group\'");
+
+    my $expected;
+
+    $expected = $group;
+    $self->assert($expected eq $name,
+      test_msg("Expected name '$expected', got '$name'"));
+
+    $expected = '127.0.0.1';
+    $self->assert($expected eq $ip_addr,
+      test_msg("Expected IP address '$expected', got '$ip_addr'"));
+
+    $expected = $uid;
+    $self->assert($expected == $primary_key,
+      test_msg("Expected primary key $expected, got $primary_key"));
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_groupprimarykey_custom_bug3864 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlite.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT, 
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT,
+  primary_key INTEGER
+);
+INSERT INTO groups (groupname, gid, members, primary_key) VALUES ('$group', $gid, '$user', $gid);
+
+CREATE TABLE sessions (
+  name TEXT,
+  ip_addr TEXT,
+  primary_key INTEGER
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  if ($? != 0) {
+    die("'$cmd' failed");
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => [
+        'SQLAuthTypes plaintext',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $log_file",
+        'SQLMinID 200',
+
+        'SQLNamedQuery get-group-primary-key SELECT "primary_key from groups WHERE groupname = \'%{0}\'"',
+        'SQLGroupPrimaryKey custom:/get-group-primary-key',
+
+        'SQLNamedQuery session_start FREEFORM "INSERT INTO sessions (name, ip_addr, primary_key) VALUES (\'%g\', \'%L\', %{note:sql.group-primary-key})"',
+        'SQLLog PASS session_start',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  eval {
+    my ($name, $ip_addr, $primary_key) = get_session_with_primary_key($db_file,
+      "name = \'$group\'");
+
+    my $expected;
+
+    $expected = $group;
+    $self->assert($expected eq $name,
+      test_msg("Expected name '$expected', got '$name'"));
+
+    $expected = '127.0.0.1';
+    $self->assert($expected eq $ip_addr,
+      test_msg("Expected IP address '$expected', got '$ip_addr'"));
+
+    $expected = $uid;
+    $self->assert($expected == $primary_key,
+      test_msg("Expected primary key $expected, got $primary_key"));
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
 
   unlink($log_file);
 }
