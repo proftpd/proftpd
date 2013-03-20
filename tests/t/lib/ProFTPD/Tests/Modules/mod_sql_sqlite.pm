@@ -13277,6 +13277,8 @@ EOS
     die("'$cmd' failed");
   }
 
+   unlink($db_script);
+
   # Make sure that, if we're running as root, the database file has
   # the permissions/privs set for use by proftpd
   if ($< == 0) {
@@ -13467,6 +13469,8 @@ EOS
   if ($? != 0) {
     die("'$cmd' failed (exit code $?)");
   }
+
+  unlink($db_script);
 
   # Make sure that, if we're running as root, the database file has
   # the permissions/privs set for use by proftpd
@@ -13659,6 +13663,8 @@ EOS
     die("'$cmd' failed");
   }
 
+  unlink($db_script);
+
   # Make sure that, if we're running as root, the database file has
   # the permissions/privs set for use by proftpd
   if ($< == 0) {
@@ -13849,6 +13855,8 @@ EOS
   if ($? != 0) {
     die("'$cmd' failed");
   }
+
+  unlink($db_script);
 
   # Make sure that, if we're running as root, the database file has
   # the permissions/privs set for use by proftpd
