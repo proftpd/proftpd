@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.h,v 1.6 2012-03-01 23:10:58 castaglia Exp $
+ * $Id: msg.h,v 1.7 2013-03-28 19:56:13 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -37,6 +37,7 @@ EC_POINT *sftp_msg_read_ecpoint(pool *, unsigned char **, uint32_t *,
   const EC_GROUP *, EC_POINT *);
 #endif /* PR_USE_OPENSSL_ECC */
 uint32_t sftp_msg_read_int(pool *, unsigned char **, uint32_t *);
+uint64_t sftp_msg_read_long(pool *, unsigned char **, uint32_t *);
 BIGNUM *sftp_msg_read_mpint(pool *, unsigned char **, uint32_t *);
 char *sftp_msg_read_string(pool *, unsigned char **, uint32_t *);
 
@@ -49,6 +50,7 @@ uint32_t sftp_msg_write_ecpoint(unsigned char **, uint32_t *, const EC_GROUP *,
   const EC_POINT *);
 #endif /* PR_USE_OPENSSL_ECC */
 uint32_t sftp_msg_write_int(unsigned char **, uint32_t *, uint32_t);
+uint32_t sftp_msg_write_long(unsigned char **, uint32_t *, uint64_t);
 uint32_t sftp_msg_write_mpint(unsigned char **, uint32_t *, const BIGNUM *);
 uint32_t sftp_msg_write_string(unsigned char **, uint32_t *, const char *);
 

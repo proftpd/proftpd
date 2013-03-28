@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.12 2013-03-08 18:21:18 castaglia Exp $
+ * $Id: msg.c,v 1.13 2013-03-28 19:56:13 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -166,6 +166,33 @@ uint32_t sftp_msg_read_int(pool *p, unsigned char **buf, uint32_t *buflen) {
   (*buflen) -= sizeof(uint32_t);
 
   val = ntohl(val);
+  return val;
+}
+
+uint64_t sftp_msg_read_long(pool *p, unsigned char **buf, uint32_t *buflen) {
+  uint64_t val = 0;
+  unsigned char data[8];
+
+  if (*buflen < sizeof(data)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: unable to read long (buflen = %lu)",
+      (unsigned long) *buflen);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  memcpy(data, *buf, sizeof(data));
+  (*buf) += sizeof(data);
+  (*buflen) -= sizeof(data);
+
+  val = (uint64_t) data[0] << 56;
+  val |= (uint64_t) data[1] << 48;
+  val |= (uint64_t) data[2] << 40;
+  val |= (uint64_t) data[3] << 32;
+  val |= (uint64_t) data[4] << 24;
+  val |= (uint64_t) data[5] << 16;
+  val |= (uint64_t) data[6] << 8;
+  val |= (uint64_t) data[7];
+
   return val;
 }
 
@@ -383,6 +410,29 @@ uint32_t sftp_msg_write_int(unsigned char **buf, uint32_t *buflen,
   (*buflen) -= len;
 
   return len;
+}
+
+uint32_t sftp_msg_write_long(unsigned char **buf, uint32_t *buflen,
+    uint64_t val) {
+  unsigned char data[8];
+
+  if (*buflen < sizeof(uint64_t)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: unable to write long (buflen = %lu)",
+      (unsigned long) *buflen);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  data[0] = (unsigned char) (val >> 56) & 0xFF;
+  data[1] = (unsigned char) (val >> 48) & 0xFF;
+  data[2] = (unsigned char) (val >> 40) & 0xFF;
+  data[3] = (unsigned char) (val >> 32) & 0xFF;
+  data[4] = (unsigned char) (val >> 24) & 0xFF;
+  data[5] = (unsigned char) (val >> 16) & 0xFF;
+  data[6] = (unsigned char) (val >> 8) & 0xFF;
+  data[7] = (unsigned char) val & 0xFF;
+
+  return sftp_msg_write_data(buf, buflen, data, sizeof(data), FALSE);
 }
 
 uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
