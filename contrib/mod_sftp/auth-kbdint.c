@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'keyboard-interactive' user authentication
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-kbdint.c,v 1.7 2012-02-15 23:50:51 castaglia Exp $
+ * $Id: auth-kbdint.c,v 1.8 2013-03-28 23:02:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -140,7 +140,7 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   if (res < 0) {
     *send_userauth_fail = TRUE;
-    errno = EPERM;
+    errno = EACCES;
     return 0;
   }
 
