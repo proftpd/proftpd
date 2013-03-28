@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mac.c,v 1.15 2013-03-28 20:29:00 castaglia Exp $
+ * $Id: mac.c,v 1.16 2013-03-28 20:31:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -768,7 +768,7 @@ int sftp_mac_init(void) {
 int sftp_mac_free(void) {
 
   umac_delete(umac_read_ctxs[0]);
-  umac_read_ctx[0] = NULL;
+  umac_read_ctxs[0] = NULL;
 
   umac_delete(umac_read_ctxs[1]);
   umac_read_ctxs[1] = NULL;
