@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.74 2013-03-14 21:49:19 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.75 2013-03-28 18:48:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1421,6 +1421,7 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
     sftp_interop_free();
     sftp_keystore_free();
     sftp_keys_free();
+    sftp_mac_free();
     pr_response_block(FALSE);
     sftp_utf8_free();
 
@@ -1473,6 +1474,7 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   sftp_interop_free();
   sftp_keystore_free();
   sftp_keys_free();
+  sftp_mac_free();
   sftp_utf8_free();
 
   /* Clean up the OpenSSL stuff. */
@@ -1578,6 +1580,7 @@ static int sftp_init(void) {
   pr_log_debug(DEBUG2, MOD_SFTP_VERSION ": using " OPENSSL_VERSION_TEXT);
 
   sftp_keystore_init();
+  sftp_mac_init();
 
   pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);
   pr_event_register(&sftp_module, "mod_ban.ban-host", sftp_ban_host_ev, NULL);

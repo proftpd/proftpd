@@ -21,11 +21,12 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.28 2013-03-15 02:35:52 castaglia Exp $
+ * $Id: crypto.c,v 1.29 2013-03-28 18:48:31 castaglia Exp $
  */
 
 #include "mod_sftp.h"
 #include "crypto.h"
+#include "umac.h"
 
 /* In OpenSSL 0.9.7, all des_ functions were renamed to DES_ to avoid 
  * clashes with older versions of libdes. 
@@ -83,7 +84,6 @@ static struct sftp_cipher ciphers[] = {
   /* The handling of NULL openssl_name and get_type fields is done in
    * sftp_crypto_get_cipher(), as special cases.
    */
-
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "aes256-ctr",	NULL,		0,	NULL,	TRUE, TRUE },
   { "aes192-ctr",	NULL,		0,	NULL,	TRUE, TRUE },
@@ -144,6 +144,9 @@ struct sftp_digest {
 };
 
 static struct sftp_digest digests[] = {
+  /* The handling of NULL openssl_name and get_type fields is done in
+   * sftp_crypto_get_digest(), as special cases.
+   */
 #ifdef HAVE_SHA256_OPENSSL
   { "hmac-sha2-256",	"sha256",		EVP_sha256,	0, TRUE, TRUE },
 #endif /* SHA256 support in OpenSSL */
@@ -155,6 +158,7 @@ static struct sftp_digest digests[] = {
   { "hmac-md5",		"md5",		EVP_md5,	0,	TRUE, FALSE },
   { "hmac-md5-96",	"md5",		EVP_md5,	12,	TRUE, FALSE },
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	TRUE, FALSE },
+  { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
   { "none",		"null",		EVP_md_null,	0,	FALSE, TRUE },
   { NULL, NULL, NULL, 0, FALSE, FALSE }
 };
@@ -643,6 +647,60 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
 }
 #endif /* OpenSSL older than 0.9.7 */
 
+static int update_umac(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  int res;
+
+  if (ctx->md_data == NULL) {
+    struct umac_ctx *umac;
+
+    umac = umac_new((unsigned char *) data);
+    if (umac == NULL) {
+      return 0;
+    }
+
+    ctx->md_data = umac;
+    return 1;
+  }
+
+  res = umac_update(ctx->md_data, (unsigned char *) data, (long) len);
+  return res;
+}
+
+static int final_umac(EVP_MD_CTX *ctx, unsigned char *md) {
+  unsigned char nonce[8];
+  int res;
+
+  res = umac_final(ctx->md_data, md, nonce);
+  return res;
+}
+
+static int delete_umac(EVP_MD_CTX *ctx) {
+  struct umac_ctx *umac;
+
+  umac = ctx->md_data;
+  umac_delete(umac);
+  ctx->md_data = NULL;
+
+  return 1;
+}
+
+static const EVP_MD *get_umac_digest(void) {
+  static EVP_MD umac_digest;
+
+  memset(&umac_digest, 0, sizeof(EVP_MD));
+
+  umac_digest.type = NID_undef;
+  umac_digest.pkey_type = NID_undef;
+  umac_digest.md_size = 8;
+  umac_digest.flags = 0UL;
+  umac_digest.update = update_umac;
+  umac_digest.final = final_umac;
+  umac_digest.cleanup = delete_umac;
+  umac_digest.block_size = 32;
+
+  return &umac_digest;
+}
+
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
     size_t *discard_len) {
   register unsigned int i;
@@ -702,7 +760,15 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
 
   for (i = 0; digests[i].name; i++) {
     if (strcmp(digests[i].name, name) == 0) {
-      const EVP_MD *digest = digests[i].get_type();
+      const EVP_MD *digest = NULL;
+
+      if (strncmp(name, "umac-64@openssh.com", 12) == 0) {
+        digest = get_umac_digest();
+
+      } else {
+        digest = digests[i].get_type();
+      }
+
       if (mac_len) {
         *mac_len = digests[i].mac_len;
       }
@@ -874,14 +940,22 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 #endif /* OPENSSL_FIPS */
 
           if (strncmp(c->argv[i], "none", 5) != 0) {
-            if (EVP_get_digestbyname(digests[j].openssl_name) != NULL) {
+            if (digests[j].openssl_name != NULL &&
+                EVP_get_digestbyname(digests[j].openssl_name) != NULL) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, digests[j].name), NULL);
 
             } else {
-              pr_trace_msg(trace_channel, 3,
-                "unable to use '%s' digest: Unsupported by OpenSSL",
-                digests[j].name);
+              /* The umac-64 digest is a special case. */
+              if (strncmp(digests[j].name, "umac-64@openssh.com", 12) == 0) {
+                res = pstrcat(p, res, *res ? "," : "",
+                  pstrdup(p, digests[j].name), NULL);
+
+              } else {
+                pr_trace_msg(trace_channel, 3,
+                  "unable to use '%s' digest: Unsupported by OpenSSL",
+                  digests[j].name);
+              }
             }
 
           } else {
@@ -912,14 +986,22 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 #endif /* OPENSSL_FIPS */
 
         if (strncmp(digests[i].name, "none", 5) != 0) {
-          if (EVP_get_digestbyname(digests[i].openssl_name) != NULL) {
+          if (digests[i].openssl_name != NULL &&
+              EVP_get_digestbyname(digests[i].openssl_name) != NULL) {
             res = pstrcat(p, res, *res ? "," : "",
               pstrdup(p, digests[i].name), NULL);
 
           } else {
-            pr_trace_msg(trace_channel, 3,
-              "unable to use '%s' digest: Unsupported by OpenSSL",
-              digests[i].name);
+            /* The umac-64 digest is a special case. */
+            if (strncmp(digests[i].name, "umac-64@openssh.com", 12) == 0) {
+              res = pstrcat(p, res, *res ? "," : "",
+                pstrdup(p, digests[i].name), NULL);
+
+            } else {
+              pr_trace_msg(trace_channel, 3,
+                "unable to use '%s' digest: Unsupported by OpenSSL",
+                digests[i].name);
+            }
           }
 
         } else {
