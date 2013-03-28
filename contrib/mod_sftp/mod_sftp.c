@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.75 2013-03-28 18:48:31 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.76 2013-03-28 20:01:00 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -32,6 +32,7 @@
 #include "packet.h"
 #include "interop.h"
 #include "crypto.h"
+#include "mac.h"
 #include "keys.h"
 #include "keystore.h"
 #include "disconnect.h"
