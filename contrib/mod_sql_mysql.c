@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.68 2013-03-08 00:12:56 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.69 2013-03-29 17:19:02 castaglia Exp $
  */
 
 /*
@@ -137,9 +137,20 @@
 
 #include <mysql.h>
 
-/* 
- * timer-handling code adds the need for a couple of forward declarations
+/* The my_make_scrambled_password{,_323} functions are not part of the public
+ * MySQL API and are not declared in any of the MySQL header files. But the
+ * use of these functions are required for implementing the "Backend"
+ * SQLAuthType for MySQL. Thus these functions are declared here (Bug#3908).
  */
+#if defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD)
+void my_make_scrambled_password(char *to, const char *from, size_t fromlen);
+#endif
+
+#if defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD_323)
+void my_make_scrambled_password_323(char *to, const char *from, size_t fromlen);
+#endif
+
+/* Timer-handling code adds the need for a couple of forward declarations. */
 MODRET cmd_close(cmd_rec *cmd);
 module sql_mysql_module;
 
@@ -1472,49 +1483,46 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
   c_clear = cmd->argv[1];
   c_hash = cmd->argv[2];
 
-#if MYSQL_VERSION_ID >= 40100 && MYSQL_VERSION_ID < 40101
-  make_scrambled_password(scrambled, c_clear, 1, NULL);
-
-#elif defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD)
-  /* Note: use of the -Wimplicit-function-declaration gcc flag may
-   * result in the following build warning being seen:
-   *
-   *  mod_sql_mysql.c: In function 'cmd_checkauth':
-   *  mod_sql_mysql.c:1479:3: warning: implicit declaration of function 'my_make_scrambled_password' [-Wimplicit-function-declaration]
-   *
-   * This happens because the my_make_scrambled_password() function is
-   * not considered part of the public MySQL API, and thus is not declared
-   * in any of the MySQL header files.  But use of this function is required
-   * for implementing the "Backend" SQLAuthType for MySQL.  Thus for this
-   * situation, the above warning is expected and benign (Bug#3908).
-   */
+#if defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD)
   my_make_scrambled_password(scrambled, c_clear, strlen(c_clear));
 
-#else
+#elif defined(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD)
+# if MYSQL_VERSION_ID >= 40100 && MYSQL_VERSION_ID < 40101
+  make_scrambled_password(scrambled, c_clear, 1, NULL);
+# else
   make_scrambled_password(scrambled, c_clear);
+# endif
 #endif
 
   success = (strcmp(scrambled, c_hash) == 0);
   if (!success) {
+#if defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD_323) || \
+    defined(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323)
 
-#ifdef HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323
     /* Try to work around MySQL's stupid handling of password length
      * changes in 4.1, and the stupidity and whining of admins who
      * cannot deal with those changes.
      */
-    memset(scrambled, '\0', sizeof(scrambled));
-    make_scrambled_password_323(scrambled, c_clear);
 
     sql_log(DEBUG_FUNC, "%s",
       "checking again using deprecated legacy MySQL password algorithm");
     sql_log(DEBUG_FUNC, "%s",
       "warning: support for this legacy MySQ-3.xL password algorithm will be dropped from MySQL in the future");
+    memset(scrambled, '\0', sizeof(scrambled));
+
+# if defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD_323)
+    my_make_scrambled_password_323(scrambled, c_clear, strlen(c_clear));
+# elif defined(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323)
+    make_scrambled_password_323(scrambled, c_clear);
+# endif
+
     success = (strcmp(scrambled, c_hash) == 0);
-    if (!success)
+    if (!success) {
       sql_log(DEBUG_FUNC, "%s", "password mismatch");
+    }
 #else
     sql_log(DEBUG_FUNC, "%s", "password mismatch");
-#endif /* No MySQL make_scrambled_password_323() function */
+#endif  /* No legacy scrambled password support */
   }
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
