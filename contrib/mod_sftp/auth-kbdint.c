@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-kbdint.c,v 1.8 2013-03-28 23:02:59 castaglia Exp $
+ * $Id: auth-kbdint.c,v 1.9 2013-03-29 16:29:41 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -140,6 +140,12 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   if (res < 0) {
     *send_userauth_fail = TRUE;
+
+    /* We explicitly want to use an errno value other than EPERM here, so
+     * that the calling code allows the connecting client to make other
+     * login attempts, rather than failing this authentication method
+     * after a single failure (Bug#3921).
+     */
     errno = EACCES;
     return 0;
   }
