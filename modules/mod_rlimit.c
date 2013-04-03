@@ -23,7 +23,7 @@
  */
 
 /* Resource limit module
- * $Id: mod_rlimit.c,v 1.3 2013-02-21 19:21:22 castaglia Exp $
+ * $Id: mod_rlimit.c,v 1.4 2013-04-03 16:47:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -721,10 +721,24 @@ static int rlimit_set_memory(int scope) {
 }
 
 static int rlimit_set_nproc(int scope) {
+  const char *proto;
   rlim_t current, max;
   int res, xerrno;
 
   current = max = 0;
+
+  proto = pr_session_get_protocol(0);
+
+  /* If we are handling an SSH2 session, then we need to allow a higher
+   * nproc limit, in order to properly change UIDs (see Bug#3932).  The
+   * way that RLIMIT_NRPOC works is by setting a per-user limit on the
+   * number of processes.  Calling setuid() effectively does a process
+   * giveway (much like chown(2) on a file to a user other than yourself).
+   * Thus to allow that, we need to allow for nproc to be at least one.
+   */
+  if (strncmp(proto, "ssh2", 5) == 0) {
+    current = max = 1;
+  }
 
   PRIVS_ROOT
   res = pr_rlimit_set_nproc(current, max);
