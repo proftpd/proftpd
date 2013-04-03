@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003-2012 The ProFTPD Project team
+ * Copyright (c) 2003-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.30 2012-12-21 21:18:32 castaglia Exp $
+ * $Id: mod_cap.c,v 1.31 2013-04-03 16:48:45 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -337,9 +337,10 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     /* If this is for an SSH2 connection, don't log the error if it is
      * an EPERM.
      */
-    if (strcmp(proto, "ssh2") != 0 ||
+    if (strncmp(proto, "ssh2", 5) != 0 ||
         xerrno != EPERM) {
-      pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s",
+      pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu): %s",
+        (unsigned long) session.uid, (unsigned long) PR_ROOT_UID,
         strerror(xerrno));
     }
 
