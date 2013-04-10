@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.190 2013-03-28 18:48:31 castaglia Exp $
+ * $Id: fxp.c,v 1.191 2013-04-10 05:28:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5349,7 +5349,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   }
 
   if ((fxp_ext_flags & SFTP_FXP_EXT_POSIX_RENAME) &&
-      strncmp(ext_request_name, "posix-rename@openssh.com", 17) == 0) {
+      strncmp(ext_request_name, "posix-rename@openssh.com", 25) == 0) {
     char *src, *dst;
 
     src = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
@@ -5380,7 +5380,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   }
 
   if ((fxp_ext_flags & SFTP_FXP_EXT_STATVFS) &&
-      strncmp(ext_request_name, "statvfs@openssh.com", 12) == 0) {
+      strncmp(ext_request_name, "statvfs@openssh.com", 20) == 0) {
     const char *path;
 
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
@@ -5392,7 +5392,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   }
 
   if ((fxp_ext_flags & SFTP_FXP_EXT_STATVFS) &&
-      strncmp(ext_request_name, "fstatvfs@openssh.com", 13) == 0) {
+      strncmp(ext_request_name, "fstatvfs@openssh.com", 21) == 0) {
     const char *handle, *path;
     struct fxp_handle *fxh;
 
