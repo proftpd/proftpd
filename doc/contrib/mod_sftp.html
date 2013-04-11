@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.71 2013-04-11 04:39:08 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.72 2013-04-11 18:35:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -2003,11 +2003,39 @@ configuration is:
   SFTPCiphers aes256-ctr aes192-ctr aes128-ctr blowfish-ctr arcfour256 arcfour128 3des-ctr
 </pre>
 
+<p><a name="SFTPLocalisedTimes">
+<font color=red>Question</font>: When I use <code>mod_sftp</code> and get
+a directory listing, I notice that the timestamps on the files are
+localised (<i>e.g.</i> are in French).  When I use OpenSSH, the timestamps
+are always in English.  How I get get <code>mod_sftp</code> to behave like
+OpenSSH, and not localise the timestamps?<br>
+<font color=blue>Answer</font>: This happens when your <code>proftpd</code>
+has been built with the <code>--enable-nls</code> configure option.  To
+check, use <code>`proftpd -V'</code>:
+<pre>
+  ...
+  Features:
+    ...
+    + NLS support
+    ...
+</pre>
+This means that <code>proftpd</code> honors any locale-related environment
+variables when it starts up.  The reason you see localised timestamps
+in the directory listings is probably because your environment has something
+like <code>LANG=fr_FR.utf8</code>.
+
+<p>
+To tell <code>proftpd</code> to ignore that environment variable, you need
+to use this at the top of your <code>proftpd.conf</code>:
+<pre>
+  Unsetenv LANG
+</pre>
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-04-11 04:39:08 $</i><br>
+Last Updated: <i>$Date: 2013-04-11 18:35:28 $</i><br>
 
 <br><hr>
 
