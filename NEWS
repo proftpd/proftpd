@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1516 2013-04-03 16:47:26 castaglia Exp $
+$Id: NEWS,v 1.1517 2013-04-11 04:37:35 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -22,6 +22,7 @@ CVS
   connection to close prematurely.
 - Bug 3923 - mod_cap does not revoke root privileges properly for SFTP
   connections.
+- Bug 3926 - Support OpenSSH fsync SFTP extension.
 
 1.3.5rc2 - Released 06-Mar-2013
 --------------------------------

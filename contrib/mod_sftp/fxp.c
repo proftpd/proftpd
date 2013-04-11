@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.191 2013-04-10 05:28:23 castaglia Exp $
+ * $Id: fxp.c,v 1.192 2013-04-11 04:37:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3337,6 +3337,18 @@ static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
 
   /* These are OpenSSH-specific SFTP extensions. */
 
+  if (fxp_ext_flags & SFTP_FXP_EXT_FSYNC) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "fsync@openssh.com";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
+
   if (fxp_ext_flags & SFTP_FXP_EXT_POSIX_RENAME) {
     struct fxp_extpair ext;
 
@@ -4227,6 +4239,58 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     (unsigned long) status_code, reason);
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
+    struct fxp_handle *fxh) {
+  unsigned char *buf, *ptr;
+  char *args;
+  const char *path, *reason;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_packet *resp;
+  cmd_rec *cmd;
+  int res, xerrno;
+
+  path = fxh->fh->fh_path;
+  args = pstrdup(fxp->pool, path);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "FSYNC", args);
+  cmd->cmd_class = CL_MISC;
+  pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  res = fsync(PR_FH_FD(fxh->fh));
+  if (res < 0) {
+    xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error calling fsync(2) on '%s': %s", path, strerror(xerrno));
+
+    errno = xerrno;
+
+  } else {
+    /* No errors. */
+    xerrno = errno = 0;
+  }
+
+  status_code = fxp_errno2status(xerrno, &reason);
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+    "('%s' [%d])", (unsigned long) status_code, reason,
+    xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+
+  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+  pr_cmd_dispatch_phase(cmd, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -5343,6 +5407,65 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     overwrite = sftp_msg_read_bool(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
     res = fxp_handle_ext_copy_file(fxp, src, dst, overwrite);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
+  }
+
+  if ((fxp_ext_flags & SFTP_FXP_EXT_FSYNC) &&
+      strncmp(ext_request_name, "fsync@openssh.com", 18) == 0) {
+    const char *handle;
+    struct fxp_handle *fxh;
+
+    handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    fxh = fxp_handle_get(handle);
+    if (fxh == NULL) {
+      pr_trace_msg(trace_channel, 17,
+        "%s: unable to find handle for name '%s': %s", cmd->argv[0], handle,
+        strerror(errno));
+
+      status_code = SSH2_FX_INVALID_HANDLE;
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, fxp_strerror(status_code));
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+        fxp_strerror(status_code), NULL);
+
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
+    if (fxh->fh == NULL) {
+      errno = EISDIR;
+
+      pr_trace_msg(trace_channel, 17,
+        "%s: handle '%s': %s", cmd->argv[0], handle, strerror(errno));
+
+      status_code = SSH2_FX_INVALID_HANDLE;
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, fxp_strerror(status_code));
+
+      fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+        fxp_strerror(status_code), NULL);
+
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
+    res = fxp_handle_ext_fsync(fxp, fxh);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
     return res;

@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.76 2013-03-28 20:01:00 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.77 2013-04-11 04:37:35 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -956,6 +956,17 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_COPY_FILE;
+          break;
+      }
+
+    } else if (strncasecmp(ext, "fsync", 6) == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_FSYNC;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_FSYNC;
           break;
       }
 
