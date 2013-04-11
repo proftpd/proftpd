@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1517 2013-04-11 04:37:35 castaglia Exp $
+$Id: NEWS,v 1.1518 2013-04-11 18:28:44 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -23,6 +23,8 @@ CVS
 - Bug 3923 - mod_cap does not revoke root privileges properly for SFTP
   connections.
 - Bug 3926 - Support OpenSSH fsync SFTP extension.
+- Bug 3925 - SFTP directory listings are sensitive to locale environment
+  variables.
 
 1.3.5rc2 - Released 06-Mar-2013
 --------------------------------
