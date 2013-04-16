@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.151 2013-02-07 15:44:29 castaglia Exp $
+ * $Id: inet.c,v 1.152 2013-04-16 19:58:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1383,49 +1383,73 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
    * errno will have a value of EBADF; this is an "acceptable" error.  Any
    * other errno value constitutes an unacceptable error.
    */
-  if (pr_inet_get_conn_info(res, fd) < 0 && errno != EBADF)
+  if (pr_inet_get_conn_info(res, fd) < 0 &&
+      errno != EBADF) {
     return NULL;
+  }
 
   if (addr) {
-    if (!res->remote_addr)
+    if (!res->remote_addr) {
       res->remote_addr = pr_netaddr_alloc(res->pool);
+    }
 
     memcpy(res->remote_addr, addr, sizeof(pr_netaddr_t));
   }
 
-  if (resolve && res->remote_addr)
+  if (resolve &&
+      res->remote_addr != NULL) {
     res->remote_name = pr_netaddr_get_dnsstr(res->remote_addr);
+  }
 
-  if (!res->remote_name)
+  if (res->remote_name == NULL) {
     res->remote_name = pr_netaddr_get_ipstr(res->remote_addr);
+    if (res->remote_name == NULL) {
+      /* If we can't even get the IP address as a string, then something
+       * is very wrong, and we should not contine to handle this connection.
+       */
+      return NULL;
+    }
+  }
 
-  if (fd == -1 && c->listen_fd != -1)
+  if (fd == -1 &&
+      c->listen_fd != -1) {
     fd = c->listen_fd;
+  }
 
   if (rfd != -1) {
-    if (fd != rfd)
+    if (fd != rfd) {
       dup2(fd, rfd);
-    else
-      close_fd = FALSE;
 
-  } else
+    } else {
+      close_fd = FALSE;
+    }
+
+  } else {
     rfd = dup(fd);
+  }
 
   if (wfd != -1) {
     if (fd != wfd) {
-      if (wfd == STDOUT_FILENO)
+      if (wfd == STDOUT_FILENO) {
         fflush(stdout);
+      }
+
       dup2(fd, wfd);
 
-    } else
+    } else {
       close_fd = FALSE;
+    }
 
-  } else
+  } else {
     wfd = dup(fd);
+  }
 
   /* Now discard the original socket */
-  if (rfd != -1 && wfd != -1 && close_fd)
-    close(fd);
+  if (rfd != -1 &&
+      wfd != -1 &&
+      close_fd) {
+    (void) close(fd);
+  }
 
   res->rfd = rfd;
   res->wfd = wfd;

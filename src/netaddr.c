@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.91 2013-02-15 22:39:00 castaglia Exp $
+ * $Id: netaddr.c,v 1.92 2013-04-16 19:58:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1435,7 +1435,7 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
 #else
   char buf[INET_ADDRSTRLEN];
 #endif /* PR_USE_IPV6 */
-  int res = 0;
+  int res = 0, xerrno;
   
   if (!na) {
     errno = EINVAL;
@@ -1451,14 +1451,17 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
   memset(buf, '\0', sizeof(buf));
   res = pr_getnameinfo(pr_netaddr_get_sockaddr(na),
     pr_netaddr_get_sockaddr_len(na), buf, sizeof(buf), NULL, 0, NI_NUMERICHOST);
+  xerrno = errno;
 
   if (res != 0) {
     if (res != EAI_SYSTEM) {
-      pr_log_pri(PR_LOG_INFO, "getnameinfo error: %s", pr_gai_strerror(res));
+      pr_log_pri(PR_LOG_WARNING, "getnameinfo error: %s", pr_gai_strerror(res));
+      errno = EIO;
 
     } else {
-      pr_log_pri(PR_LOG_INFO, "getnameinfo system error: [%d] %s",
-        errno, strerror(errno));
+      pr_log_pri(PR_LOG_WARNING, "getnameinfo system error: [%d] %s",
+        xerrno, strerror(xerrno));
+      errno = xerrno;
     }
 
     return NULL;

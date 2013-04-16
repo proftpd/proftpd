@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.65 2013-02-14 19:38:38 castaglia Exp $
+ * $Id: mod_delay.c,v 1.66 2013-04-16 19:58:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -578,11 +578,17 @@ static int delay_table_init(void) {
 
     for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
       unsigned int r;
+      const char *ip_str;
 
       /* Row for USER values */
       r = delay_get_user_rownum(s->sid);
       row = &((struct delay_rec *) delay_tab.dt_data)[r];
-      if (strcmp(pr_netaddr_get_ipstr(s->addr), row->d_addr) != 0) {
+      ip_str = pr_netaddr_get_ipstr(s->addr);
+      if (ip_str == NULL) {
+        continue;
+      }
+
+      if (strcmp(ip_str, row->d_addr) != 0) {
         reset_table = TRUE;
         break;
       }
@@ -595,7 +601,7 @@ static int delay_table_init(void) {
       /* Row for PASS values */
       r = delay_get_pass_rownum(s->sid);
       row = &((struct delay_rec *) delay_tab.dt_data)[r];
-      if (strcmp(pr_netaddr_get_ipstr(s->addr), row->d_addr) != 0) {
+      if (strcmp(ip_str, row->d_addr) != 0) {
         reset_table = TRUE;
         break;
       }
@@ -785,12 +791,18 @@ static void delay_table_reset(void) {
     unsigned int r;
     struct delay_rec *row;
     struct delay_vals_rec *dv;
+    const char *ip_str;
+
+    ip_str = pr_netaddr_get_ipstr(s->addr);
+    if (ip_str == NULL) {
+      continue;
+    }
 
     /* Row for USER values */
     r = delay_get_user_rownum(s->sid);
     row = &((struct delay_rec *) delay_tab.dt_data)[r];
     row->d_sid = s->sid;
-    sstrncpy(row->d_addr, pr_netaddr_get_ipstr(s->addr), sizeof(row->d_addr));
+    sstrncpy(row->d_addr, ip_str, sizeof(row->d_addr));
     row->d_port = s->ServerPort;
     memset(row->d_vals, 0, sizeof(row->d_vals));
 
@@ -817,7 +829,7 @@ static void delay_table_reset(void) {
     r = delay_get_pass_rownum(s->sid);
     row = &((struct delay_rec *) delay_tab.dt_data)[r];
     row->d_sid = s->sid;
-    sstrncpy(row->d_addr, pr_netaddr_get_ipstr(s->addr), sizeof(row->d_addr));
+    sstrncpy(row->d_addr, ip_str, sizeof(row->d_addr));
     row->d_port = s->ServerPort;
     memset(row->d_vals, 0, sizeof(row->d_vals));
 
