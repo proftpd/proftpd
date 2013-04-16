@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.201 2013-02-15 22:50:54 castaglia Exp $
+ * $Id: mod_ls.c,v 1.202 2013-04-16 16:04:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -514,6 +514,17 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
+        /* First see if the symlink itself is hidden e.g. by HideFiles
+         * (see Bug#3924).
+         */
+        if (!ls_perms_full(p, cmd, name, &hidden)) {
+          return 0;
+        }
+
+        if (hidden) {
+          return 0;
+        }
+
         len = pr_fsio_readlink(name, m, sizeof(m) - 1);
         if (len < 0)
           return 0;
@@ -537,6 +548,17 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       }
 
     } else if (S_ISLNK(st.st_mode)) {
+      /* First see if the symlink itself is hidden e.g. by HideFiles
+       * (see Bug#3924).
+       */
+      if (!ls_perms(p, cmd, name, &hidden)) {
+        return 0;
+      }
+
+      if (hidden) {
+        return 0;
+      }
+
       len = pr_fsio_readlink(name, l, sizeof(l) - 1);
       if (len < 0)
         return 0;
