@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2011 The ProFTPD Project team
+ * Copyright (c) 2009-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: wtmp.c,v 1.6 2011-12-21 02:58:21 castaglia Exp $
+ * $Id: wtmp.c,v 1.7 2013-04-23 23:12:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -97,7 +97,7 @@ int log_wtmp(const char *line, const char *name, const char *host,
 #else /* SVR4 */
     utx.ut_syslen = strlen(utx.ut_host)+1;
 
-#  ifdef __sparcv9
+#  if defined(__sparcv9) && !defined(__FreeBSD__)
     time(&t);
     utx.ut_tv.tv_sec = (time32_t)t;
 #  else
