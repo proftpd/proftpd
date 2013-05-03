@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.285 2013-04-16 16:35:53 castaglia Exp $
+ * $Id: dirtree.c,v 1.286 2013-05-03 16:32:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -850,16 +850,31 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
     case OP_HIDE:
       c = find_config(set, CONF_PARAM, "HideUser", FALSE);
       while (c) {
-        unsigned char inverted;
-        uid_t hide_uid;
+        int inverted = FALSE;
+        const char *hide_user = NULL;
+        uid_t hide_uid = -1;
 
         pr_signals_handle();
 
-        hide_uid = *((uid_t *) c->argv[0]);
+        hide_user = c->argv[0];
         inverted = *((unsigned char *) c->argv[1]);
 
-        if (hide_uid == (uid_t) -1) {
+        if (strncmp(hide_user, "~", 2) == 0) {
           hide_uid = session.uid;
+
+        } else {
+          struct passwd *pw;
+
+          pw = pr_auth_getpwnam(p, hide_user);
+          if (pw == NULL) {
+            pr_log_debug(DEBUG1,
+              "HideUser '%s' is not a known/valid user, ignoring", hide_user);
+
+            c = find_config_next(c, c->next, CONF_PARAM, "HideUser", FALSE);
+            continue;
+          }
+
+          hide_uid = pw->pw_uid;
         }
 
         if (file_uid == hide_uid) {
@@ -886,13 +901,33 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
       if (res == TRUE) {
         c = find_config(set, CONF_PARAM, "HideGroup", FALSE);
         while (c) {
-          unsigned char inverted;
-          gid_t hide_gid;
+          int inverted = FALSE;
+          const char *hide_group = NULL;
+          gid_t hide_gid = -1;
 
           pr_signals_handle();
 
-          hide_gid = *((gid_t *) c->argv[0]);
-          inverted = *((unsigned char *) c->argv[1]);
+          hide_group = c->argv[0];
+          inverted = *((int *) c->argv[1]);
+
+          if (strncmp(hide_group, "~", 2) == 0) {
+            hide_gid = session.gid;
+
+          } else {
+            struct group *gr;
+
+            gr = pr_auth_getgrnam(p, hide_group);
+            if (gr == NULL) {
+              pr_log_debug(DEBUG1,
+                "HideGroup '%s' is not a known/valid group, ignoring",
+                hide_group);
+
+              c = find_config_next(c, c->next, CONF_PARAM, "HideUser", FALSE);
+              continue;
+            }
+
+            hide_gid = gr->gr_gid;
+          }
 
           if (hide_gid != (gid_t) -1) {
             if (file_gid == hide_gid) {

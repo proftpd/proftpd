@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.451 2013-04-11 18:28:44 castaglia Exp $
+ * $Id: mod_core.c,v 1.452 2013-05-03 16:32:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2274,38 +2274,21 @@ MODRET set_hidenoaccess(cmd_rec *cmd) {
 MODRET set_hideuser(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *user = NULL;
-  uid_t uid;
-  unsigned char inverted = FALSE;
+  int inverted = FALSE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   user = cmd->argv[1];
-
   if (*user == '!') {
     inverted = TRUE;
     user++;
   }
 
-  if (strncmp(user, "~", 2) != 0) {
-    struct passwd *pw;
-
-    pw = pr_auth_getpwnam(cmd->tmp_pool, user);
-    if (!pw)
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", user,
-        "' is not a valid user", NULL));
-
-    uid = pw->pw_uid;
-
-  } else {
-    uid = (uid_t) -1;
-  }
-
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
-  *((uid_t *) c->argv[0]) = uid;
-  c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[1]) = inverted;
+  c->argv[0] = pstrdup(c->pool, user);
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = inverted;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
@@ -2314,38 +2297,21 @@ MODRET set_hideuser(cmd_rec *cmd) {
 MODRET set_hidegroup(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *group = NULL;
-  gid_t gid;
-  unsigned char inverted = FALSE;
+  int inverted = FALSE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   group = cmd->argv[1];
-
   if (*group == '!') {
     inverted = TRUE;
     group++;
   }
 
-  if (strncmp(group, "~", 2) != 0) {
-    struct group *gr;
-
-    gr = pr_auth_getgrnam(cmd->tmp_pool, group);
-    if (!gr)
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", group,
-        "' is not a valid group", NULL));
-
-    gid = gr->gr_gid;
-
-  } else {
-    gid = (gid_t) -1;
-  }
-
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
-  *((gid_t *) c->argv[0]) = gid;
-  c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[1]) = inverted;
+  c->argv[0] = pstrdup(c->pool, group);
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = inverted;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
