@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2012 TJ Saunders
+ * Copyright (c) 2000-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.54 2012-02-23 22:22:01 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.55 2013-05-06 22:11:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1067,13 +1067,15 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
   if (ctrls_sockfd >= 0) {
     pr_trace_msg(trace_channel, 3, "closing ctrls socket '%s' (fd %d)",
       ctrls_sock_file, ctrls_sockfd);
-    close(ctrls_sockfd);
+    (void) unlink(ctrls_sock_file);
+    (void) close(ctrls_sockfd);
     ctrls_sockfd = -1;
   }
 
   /* Change the path. */
-  if (strcmp(cmd->argv[1], ctrls_sock_file) != 0)
+  if (strcmp(cmd->argv[1], ctrls_sock_file) != 0) {
     ctrls_sock_file = pstrdup(ctrls_pool, cmd->argv[1]);
+  }
 
   return PR_HANDLED(cmd);
 }
