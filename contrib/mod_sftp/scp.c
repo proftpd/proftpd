@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.80 2013-02-27 17:26:55 castaglia Exp $
+ * $Id: scp.c,v 1.81 2013-05-06 16:18:02 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -353,18 +353,14 @@ static int write_confirm(pool *p, uint32_t channel_id, int code,
   if (code == 0) {
     pr_trace_msg(trace_channel, 9, "sending confirmation/error code = %d",
       code);
-
-  } else {
-    pr_trace_msg(trace_channel, 9, "sending confirmation/error code = %d (%s)",
-      code, msg ? msg : "null");
-  }
-
-  if (code == 0) {
     sftp_msg_write_byte(&buf, &buflen, code);
 
   } else {
     char *errstr;
     size_t errlen;
+
+    pr_trace_msg(trace_channel, 9, "sending confirmation/error code = %d (%s)",
+      code, msg ? msg : "null");
 
     errstr = pstrcat(p, msg, "\n", NULL);
     errlen = strlen(errstr);
@@ -436,6 +432,7 @@ static int recv_ctl(uint32_t channel_id, struct scp_path *sp,
   if (sp->ctl_datalen >= SFTP_SCP_MAX_CTL_LEN) {
     write_confirm(sp->ctl_pool, channel_id, 1,
       "max control message size exceeded");
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -527,6 +524,7 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (tmp == NULL ||
       *tmp != ' ') {
     write_confirm(p, channel_id, 1, "mtime secs not delimited");
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -535,6 +533,7 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (tmp == NULL ||
       *tmp != ' ') {
     write_confirm(p, channel_id, 1, "mtime usecs not delimited");
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -543,6 +542,7 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (tmp == NULL ||
       *tmp != ' ') {
     write_confirm(p, channel_id, 1, "atime secs not delimited");
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -551,6 +551,7 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (tmp == NULL ||
       *tmp != '\0') {
     write_confirm(p, channel_id, 1, "atime usecs not delimited");
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -776,6 +777,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   ptr = (char *) msg;
   if (recv_perms(p, channel_id, ptr, &sp->perms) < 0) {
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -785,12 +787,14 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
       "bad control message (undelimited mode)");
     write_confirm(p, channel_id, 1,
       pstrcat(p, sp->path, ": bad control message (undelimited mode)", NULL));
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
   /* Advance past the space delimiter. */
   ptr++;
   if (recv_filesz(p, channel_id, ptr, &sp->filesz) < 0) {
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -801,12 +805,14 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     write_confirm(p, channel_id, 1,
       pstrcat(p, sp->path, ": bad control message (undelimited file size)",
       NULL));
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
   /* Advance past the space delimiter. */
   ptr++;
   if (recv_filename(p, channel_id, ptr, sp) < 0) {
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -835,6 +841,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
             strerror(xerrno));
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
+          sp->wrote_errors = TRUE;
 
           errno = xerrno;
           return 1;
@@ -848,6 +855,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           strerror(xerrno));
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
+        sp->wrote_errors = TRUE;
 
         errno = xerrno;
         return 1;
@@ -860,6 +868,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           sp->best_path, strerror(ENOTDIR));
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": ", strerror(ENOTDIR), NULL));
+        sp->wrote_errors = TRUE;
         return 1;
       }
     }
@@ -932,6 +941,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     write_confirm(p, channel_id, 1,
       pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+    sp->wrote_errors = TRUE;
 
     return 1;
   }
@@ -955,6 +965,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     write_confirm(p, channel_id, 1,
       pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+    sp->wrote_errors = TRUE;
 
     return 1;
   }
@@ -984,6 +995,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     write_confirm(p, channel_id, 1,
       pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
+    sp->wrote_errors = TRUE;
 
     errno = xerrno;
     return 1;
@@ -1040,6 +1052,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": write error: ", strerror(xerrno), NULL));
+        sp->wrote_errors = TRUE;
 
         pr_fsio_close(sp->fh);
         sp->fh = NULL;
@@ -1065,6 +1078,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
           sp->best_path, strerror(xerrno));
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": write error: ", strerror(xerrno), NULL));
+        sp->wrote_errors = TRUE;
 
         pr_fsio_close(sp->fh);
         sp->fh = NULL;
@@ -1166,6 +1180,7 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
       write_confirm(p, channel_id, 1,
         pstrcat(p, parent_sp->filename, ": error setting times: ",
         strerror(xerrno), NULL));
+      parent_sp->wrote_errors = TRUE;
       ok = FALSE;
     }
   }
@@ -1861,6 +1876,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->path, ": ", strerror(xerrno), NULL));
+        sp->wrote_errors = TRUE;
         return 1;
       }
     }
@@ -1894,6 +1910,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
     write_confirm(p, channel_id, 1,
       pstrcat(p, sp->path, ": ", strerror(xerrno), NULL));
+    sp->wrote_errors = TRUE;
     return 1;
   }
 
@@ -1921,6 +1938,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->path, ": ", strerror(EPERM), NULL));
+        sp->wrote_errors = TRUE;
         return 1;
       }
 
@@ -1936,6 +1954,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       write_confirm(p, channel_id, 1,
         pstrcat(p, sp->path, ": ", strerror(EPERM), NULL));
+      sp->wrote_errors = TRUE;
       return 1;
     }
   }
@@ -1955,6 +1974,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       write_confirm(p, channel_id, 1,
         pstrcat(p, sp->path, ": ", strerror(EACCES), NULL));
+      sp->wrote_errors = TRUE;
       return 1;
     }
 
@@ -1978,6 +1998,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       write_confirm(p, channel_id, 1,
         pstrcat(p, sp->path, ": ", strerror(xerrno), NULL));
+      sp->wrote_errors = TRUE;
 
       errno = xerrno;
       return 1;
@@ -2101,10 +2122,10 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       return 1;
     }
 
+    paths = scp_session->paths->elts;
+
     if (scp_session->path_idx < scp_session->paths->nelts) {
       pr_signals_handle();
-
-      paths = scp_session->paths->elts;
 
       res = send_path(pkt->pool, channel_id, paths[scp_session->path_idx]);
       if (res < 0)
@@ -2130,7 +2151,16 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
      *
      * In the case of scp, though, we want the client to close the connection,
      * in order ensure that it has received all of the data (see Bug#3544).
+     *
+     * If we haven't sent data, but instead have sent an error, then we DO
+     * want to return 1 here, since it will be us, not the client, which needs
+     * to close the connection.
+     * close the connection).
      */
+    if (paths[scp_session->path_idx-1]->wrote_errors == TRUE) {
+      return 1;
+    }
+
     return 0;
 
   } else if (scp_opts & SFTP_SCP_OPT_ISDST) {
@@ -2334,15 +2364,19 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
             xerrno = errno;
             pr_trace_msg(trace_channel, 1, "error globbing '%s': Not "
               "enough memory (%s)", reqargv[i], strerror(xerrno));
+            write_confirm(p, channel_id, 1, pstrcat(p, reqargv[i], ": ",
+              strerror(xerrno), NULL));
             errno = xerrno;
-            break;
+            return 0;
 
           case GLOB_NOMATCH:
-            xerrno = errno;
+            xerrno = ENOENT;
             pr_trace_msg(trace_channel, 1, "error globbing '%s': No "
               "matches found (%s)", reqargv[i], strerror(xerrno));
-            errno = xerrno;
-            break;
+            write_confirm(p, channel_id, 1, pstrcat(p, reqargv[i], ": ",
+              strerror(xerrno), NULL));
+            errno = xerrno; 
+            return 0;
         }
 
         pr_fs_globfree(&gl);
