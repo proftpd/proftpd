@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.66 2013-03-01 19:57:43 castaglia Exp $
+ * $Id: mod_ban.c,v 1.67 2013-05-07 04:53:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2114,7 +2114,7 @@ MODRET set_bancache(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
 #ifdef PR_USE_MEMCACHE
-  if (strcmp(cmd->argv[1], "memcache") != 0) {
+  if (strcmp(cmd->argv[1], "memcache") == 0) {
     config_rec *c;
 
     c = add_config_param(cmd->argv[0], 1, NULL);
