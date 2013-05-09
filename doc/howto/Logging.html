@@ -1,4 +1,4 @@
-<!-- $Id: Logging.html,v 1.9 2013-02-04 21:15:51 castaglia Exp $ -->
+<!-- $Id: Logging.html,v 1.10 2013-05-09 04:09:54 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Logging.html,v $ -->
 
 <html>
@@ -338,8 +338,8 @@ for development/testing, and so do not need or want the logging.<br>
 <font color=blue>Answer</font>: To do this, you will need to disable much
 of the builtin, default logging that <code>proftpd</code> does, <i>e.g.</i>:
 <pre>
-  # Direct the normal logging to /dev/null
-  SystemLog /dev/null
+  # Discard the normal logging
+  SystemLog none
 
   # Disable xferlog(5) logging
   TransferLog none
@@ -366,7 +366,7 @@ This approach can work, <b><i>if you also use the <code>AllowLogSymlinks</code> 
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2013-02-04 21:15:51 $</i><br>
+Last Updated: <i>$Date: 2013-05-09 04:09:54 $</i><br>
 <hr>
 
 </body>
