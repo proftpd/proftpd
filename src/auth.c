@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.95 2013-04-23 15:18:19 castaglia Exp $
+ * $Id: auth.c,v 1.96 2013-05-14 16:41:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -545,7 +545,7 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
     }
   }
 
-  uidcache_add(res->pw_uid, name);
+  uidcache_add(res->pw_uid, res->pw_name);
 
   /* Get the (possibly rewritten) home directory. */
   res->pw_dir = pr_auth_get_home(p, res->pw_dir);
