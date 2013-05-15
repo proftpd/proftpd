@@ -374,6 +374,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_site_misc)],
     },
 
+    't/modules/mod_snmp.t' => {
+      order => ++$order,
+      test_class => [qw(mod_snmp)],
+    },
+
     't/modules/mod_sql.t' => {
       order => ++$order,
       test_class => [qw(mod_sql)],
