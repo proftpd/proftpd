@@ -11,6 +11,12 @@ ChangeLog files.
 
   + New Modules
 
+    mod_snmp
+      The mod_snmp module is intended to collect various state information
+      and expose them via SNMP counters and gauges.  Currently only
+      SNMPv1/SNMPv2 are supported.  See doc/contrib/mod_snmp.html for more
+      information.
+
   + New Configuration Directives
 
     SQLUserPrimaryKey, SQLGroupPrimaryKey (Bug#3864)
@@ -357,4 +363,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-04-11 04:39:07 $
+Last Updated: $Date: 2013-05-16 17:07:43 $
