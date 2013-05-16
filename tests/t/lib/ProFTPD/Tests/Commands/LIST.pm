@@ -102,6 +102,11 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  list_symlink_rel_with_double_slash_bug3719 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
   list_showsymlinks_on => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -2605,6 +2610,179 @@ EOL
 
       $client->quote('CWD', '..');
       $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub list_symlink_rel_with_double_slash_bug3719 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $foo_dir = File::Spec->rel2abs("$tmpdir/foo");
+  my $bar_dir = File::Spec->rel2abs("$tmpdir/bar");
+  my $baz_dir = File::Spec->rel2abs("$tmpdir/bar/baz");
+  mkpath([$foo_dir, $bar_dir, $baz_dir]);
+
+  # Change to the 'foo' directory in order to create a relative path in the
+  # symlink we need
+
+  my $cwd = getcwd();
+  unless (chdir("$foo_dir")) {
+    die("Can't chdir to $foo_dir: $!");
+  }
+
+  unless (symlink('../bar//baz', 'baz')) {
+    die("Can't symlink '../bar//baz' to 'baz': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set perms on dirs to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set owner of dirs to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      $client->login($user, $passwd);
+
+      $client->cwd("foo");
+      my $conn = $client->list_raw();
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      my $expected = {
+        '../bar//baz' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+      foreach my $name (keys(%$res)) {
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in LIST data")
+      }
     };
 
     if ($@) {
