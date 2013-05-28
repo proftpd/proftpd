@@ -23,7 +23,7 @@
  */
 
 /* Controls API routines
- * $Id: ctrls.c,v 1.39 2013-02-15 22:39:00 castaglia Exp $
+ * $Id: ctrls.c,v 1.40 2013-05-28 21:02:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2045,7 +2045,7 @@ void init_ctrls(void) {
 
   sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (sockfd < 0) {
-    pr_log_pri(PR_LOG_DEBUG, "unable to create Unix domain socket: %s",
+    pr_log_debug(DEBUG10, "unable to create Unix domain socket: %s",
       strerror(errno));
     return;
   }
@@ -2056,7 +2056,7 @@ void init_ctrls(void) {
   socklen = sizeof(struct sockaddr_un);
 
   if (bind(sockfd, (struct sockaddr *) &sockun, socklen) < 0) {
-    pr_log_debug(DEBUG3, "unable to bind to Unix domain socket at '%s': %s",
+    pr_log_debug(DEBUG10, "unable to bind to Unix domain socket at '%s': %s",
       sockpath, strerror(errno));
     (void) close(sockfd);
     (void) unlink(sockpath);
@@ -2064,8 +2064,7 @@ void init_ctrls(void) {
   }
 
   if (fstat(sockfd, &st) < 0) {
-    pr_log_pri(PR_LOG_DEBUG,
-      "unable to stat Unix domain socket at '%s': %s",
+    pr_log_debug(DEBUG10, "unable to stat Unix domain socket at '%s': %s",
       sockpath, strerror(errno));
     (void) close(sockfd);
     (void) unlink(sockpath);

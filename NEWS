@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1526 2013-05-16 17:07:43 castaglia Exp $
+$Id: NEWS,v 1.1527 2013-05-28 21:02:01 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -34,6 +34,7 @@ CVS
 - Bug 3927 - Default ControlsSocket created despite custom ControlsSocket path.
 - Bug 3937 - Segfault when retrieving SSH public key from LDAP directory.
 - Added new mod_snmp contrib module.
+- Bug 3939 - Disable Controls for "ServerType inetd" servers.
 
 1.3.5rc2 - Released 06-Mar-2013
 --------------------------------
