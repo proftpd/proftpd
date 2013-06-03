@@ -243,14 +243,19 @@ static void pdf_gen_xor(pdf_ctx *pc, UINT8 nonce[8], UINT8 buf[8])
 #if LOW_BIT_MASK != 0
     int ndx = nonce[7] & LOW_BIT_MASK;
 #endif
-    *(UINT32 *)tmp_nonce_lo = ((UINT32 *)nonce)[1];
+    memcpy(tmp_nonce_lo, &(nonce[4]), sizeof(UINT32));
     tmp_nonce_lo[3] &= ~LOW_BIT_MASK; /* zero last bit */
-    
-    if ( (((UINT32 *)tmp_nonce_lo)[0] != ((UINT32 *)pc->nonce)[1]) ||
-         (((UINT32 *)nonce)[0] != ((UINT32 *)pc->nonce)[0]) )
+
+    /* ProFTPD Note: We've changed the original code where, which used explicit
+     * typecasting to treat the nonce[8] as a UINT32, to memcpy(3)/memcmp(3),
+     * to avoid strict aliasing gcc warnings when -O2 or higher is used.
+     */
+
+    if ( (memcmp(tmp_nonce_lo, &(pc->nonce[4]), sizeof(UINT32)) != 0) ||
+         (memcmp(nonce, pc->nonce, sizeof(UINT32)) != 0) )
     {
-        ((UINT32 *)pc->nonce)[0] = ((UINT32 *)nonce)[0];
-        ((UINT32 *)pc->nonce)[1] = ((UINT32 *)tmp_nonce_lo)[0];
+        memmove(pc->nonce, nonce, sizeof(UINT32));
+        memmove(&(pc->nonce[4]), tmp_nonce_lo, sizeof(UINT32));
         aes_encryption(pc->nonce, pc->cache, pc->prf_key);
     }
     
