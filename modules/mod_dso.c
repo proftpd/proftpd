@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004-2012 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2013 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.28 2012-11-19 23:42:47 castaglia Exp $
+ * $Id: mod_dso.c,v 1.29 2013-06-05 16:02:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,9 +70,20 @@ static int dso_load_file(char *path) {
   return 0;
 }
 
+static int name_ends_with(const char *name, size_t name_len, const char *suffix,
+  size_t suffix_len) {
+
+  if (strncmp(name + (name_len - suffix_len), suffix, suffix_len) == 0) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
 static int dso_load_module(char *name) {
   int module_load_errno = 0, res;
-  char *symbol_name, *path, *tmp;
+  char *symbol_name, *path, *ptr;
+  size_t namelen;
   module *m;
   lt_ptr mh = NULL;
   lt_dladvise advise;
@@ -83,17 +94,25 @@ static int dso_load_module(char *name) {
     return -1;
   }
 
-  if (strncmp(name, "mod_", 4) != 0 ||
-      name[strlen(name)-2] != '.' ||
-      name[strlen(name)-1] != 'c') {
+  namelen = strlen(name);
+
+  if (namelen < 5 ||
+      strncmp(name, "mod_", 4) != 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Handle ".c" and ".cpp" extensions. */
+  if (!name_ends_with(name, namelen, ".c", 2) &&
+      !name_ends_with(name, namelen, ".cpp", 4)) {
     errno = EINVAL;
     return -1;
   }
 
   pr_log_debug(DEBUG7, MOD_DSO_VERSION ": loading '%s'", name);
 
-  tmp = strrchr(name, '.');
-  if (tmp == NULL) {
+  ptr = strrchr(name, '.');
+  if (ptr == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -121,7 +140,7 @@ static int dso_load_module(char *name) {
     return -1;
   }
 
-  *tmp = '\0';
+  *ptr = '\0';
 
   /* Load file: $prefix/libexec/<module> */
   path = pdircat(dso_pool, dso_module_path, name, NULL);
@@ -132,7 +151,7 @@ static int dso_load_module(char *name) {
   if (mh == NULL) {
     int xerrno = errno;
 
-    *tmp = '.';
+    *ptr = '.';
 
     /* Remember this errno value, for reporting later if we cannot resolve
      * the symbol from the main executable.
@@ -180,7 +199,7 @@ static int dso_load_module(char *name) {
    *  <module>.<ext> --> <module>_module
    */
 
-  *tmp = '\0';
+  *ptr = '\0';
   symbol_name = pstrcat(dso_pool, name+4, "_module", NULL);
 
   /* Lookup module structure symbol by name. */
@@ -192,7 +211,7 @@ static int dso_load_module(char *name) {
   if (m == NULL) {
     int xerrno = errno;
 
-    *tmp = '.';
+    *ptr = '.';
     pr_log_debug(DEBUG1, MOD_DSO_VERSION
       ": unable to find module symbol '%s' in '%s'", symbol_name,
         mh ? name : "self");
@@ -221,7 +240,7 @@ static int dso_load_module(char *name) {
 
     return -1;
   }
-  *tmp = '.';
+  *ptr = '.';
 
   m->handle = mh;
 
