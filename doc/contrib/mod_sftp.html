@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.73 2013-04-12 14:13:24 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.74 2013-06-06 23:39:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -2033,11 +2033,26 @@ to use this at the top of your <code>proftpd.conf</code>:
   Unsetenv LANG
 </pre>
 
+<p><a name="SFTPNotUnderstood">
+<font color=red>Question</font>: When I use my SFTP client, I see something
+like this when I try to connect to <code>proftpd</code> with
+<code>mod_sftp</code>:
+<pre>
+  500 SSH-2.0-OPENSSH 6.2 not understood
+</pre>
+Why would this happen?<br>
+<font color=blue>Answer</font>: A "500 ... not understood" is an
+<b><i>FTP</i></b> response, not an SFTP response.  This usually happens
+when your SFTP client connects to an FTP virtual host/port (versus an SFTP
+virtual host/port).  So either <i>a)</i> the SFTP client is connecting to
+the wrong port on your server, or <i>b)</i> perhaps "SFTPEngine on" is not
+set in the virtual host for that port.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-04-12 14:13:24 $</i><br>
+Last Updated: <i>$Date: 2013-06-06 23:39:28 $</i><br>
 
 <br><hr>
 
