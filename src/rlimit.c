@@ -23,7 +23,7 @@
  */
 
 /* Resource limits implementation
- * $Id: rlimit.c,v 1.3 2013-02-06 07:34:55 castaglia Exp $
+ * $Id: rlimit.c,v 1.4 2013-06-06 20:26:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,7 +34,8 @@ static int get_rlimit(int resource, rlim_t *current, rlim_t *max) {
 
   if (current == NULL &&
       max == NULL) {
-    return 0;
+    errno = EINVAL;
+    return -1;
   }
 
   res = getrlimit(resource, &rlim);
