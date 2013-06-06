@@ -43,10 +43,8 @@ install-misc:
 	$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644 PROFTPD-MIB.txt $(DESTDIR)$(sysconfdir)/PROFTPD-MIB.txt
 
 clean:
-	$(RM) $(MODULE_NAME).a *.o *.la *.lo
-	$(LIBTOOL) --mode=clean $(RM) "$(MODULE_NAME).o"
-	$(LIBTOOL) --mode=clean $(RM) `echo "$(MODULE_NAME).la" | sed 's/\.la$\/.lo/g'`
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.lo .libs/*.o
 
 dist: clean
 	$(RM) Makefile $(MODULE_NAME).h config.status config.cache config.log
-	-$(RM) -r .libs/ .git/ CVS/ RCS/
+	-$(RM) -r .git/ CVS/ RCS/

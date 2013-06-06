@@ -36,10 +36,7 @@ install:
 	fi
 
 clean:
-	$(RM) $(MODULE_NAME).a *.o *.la *.lo
-	$(RM) -r .libs/
-	$(LIBTOOL) --mode=clean $(RM) "$(MODULE_NAME).o"
-	$(LIBTOOL) --mode=clean $(RM) `echo "$(MODULE_NAME).la" | sed 's/\.la$\/.lo/g'`
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).la *.o *.lo .libs/*.o
 
 dist: clean
 	$(RM) Makefile $(MODULE_NAME).h config.status config.cache config.log
