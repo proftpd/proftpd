@@ -24,6 +24,8 @@ ChangeLog files.
 
     SQLUserPrimaryKey, SQLGroupPrimaryKey (Bug#3864)
 
+    SQLPasswordPBKDF2 (Bug#3943)
+
   + Changed Configuration Directives
 
     DeleteAbortedStores
@@ -369,4 +371,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-05-31 21:44:22 $
+Last Updated: $Date: 2013-06-07 21:57:09 $
