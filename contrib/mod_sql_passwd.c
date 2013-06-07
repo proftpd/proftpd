@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2012 TJ Saunders
+ * Copyright (c) 2009-2013 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,14 +21,14 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.18 2012-07-25 23:45:01 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.19 2013-06-07 21:41:11 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.5"
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -67,6 +67,11 @@ static unsigned long sql_passwd_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
 static unsigned long sql_passwd_opts = 0UL;
 
 static unsigned int sql_passwd_nrounds = 1;
+
+/* For PBKDF2 */
+static const EVP_MD *sql_passwd_pbkdf2_digest = NULL;
+static int sql_passwd_pbkdf2_iter = -1;
+static int sql_passwd_pbkdf2_len = -1;
 
 static const char *trace_channel = "sql_passwd";
 
@@ -310,8 +315,6 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
   /* We need a copy of the ciphertext. */
   copytext = pstrdup(cmd->tmp_pool, ciphertext);
 
-  OpenSSL_add_all_digests();
-
   md = EVP_get_digestbyname(digest);
   if (md == NULL) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
@@ -493,6 +496,64 @@ static modret_t *sql_passwd_sha512(cmd_rec *cmd, const char *plaintext,
   return sql_passwd_auth(cmd, plaintext, ciphertext, "sha512");
 }
 
+/* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
+static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
+  unsigned char *derived_key;
+  const char *encodedtext;
+
+  if (!sql_passwd_engine) {
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  if (sql_passwd_pbkdf2_digest == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": PBKDF2 not configured (see SQLPasswordPBKDF2 directive)");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* PBKDF2 requires a salt; if no salt is configured, it is an error. */
+  if (sql_passwd_salt == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": no salt configured (PBKDF2 requires salt)");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  derived_key = palloc(cmd->tmp_pool, sql_passwd_pbkdf2_len);
+
+  if (PKCS5_PBKDF2_HMAC(plaintext, -1,
+      (const unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
+      sql_passwd_pbkdf2_iter, sql_passwd_pbkdf2_digest, sql_passwd_pbkdf2_len,
+      derived_key) != 1) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": error deriving PBKDF2 key: %s", get_crypto_errors());
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  encodedtext = sql_passwd_encode(cmd->tmp_pool, derived_key,
+    sql_passwd_pbkdf2_len);
+  if (encodedtext == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": unsupported SQLPasswordEncoding configured");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  if (strcmp((char *) encodedtext, ciphertext) == 0) {
+    return PR_HANDLED(cmd);
+
+  } else {
+    pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
+      encodedtext);
+
+    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
+      ciphertext, encodedtext);
+  }
+
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+}
+#endif /* OpenSSL-1.0.0b and earlier */
+
 /* Event handlers
  */
 
@@ -503,6 +564,11 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
     sql_unregister_authtype("sha1");
     sql_unregister_authtype("sha256");
     sql_unregister_authtype("sha512");
+
+    /* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
+    sql_unregister_authtype("pbkdf2");
+#endif /* OpenSSL-1.0.0b and earlier */
 
     pr_event_unregister(&sql_passwd_module, NULL, NULL);
   }
@@ -691,6 +757,73 @@ MODRET set_sqlpasswdoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SQLPasswordPBKDF2 algo iter len */
+/* XXX: Document recommended iter (>= 1000), salt len (>= 8 characters) */
+MODRET set_sqlpasswdpbkdf2(cmd_rec *cmd) {
+/* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
+  config_rec *c;
+  int iter, len;
+  const EVP_MD *md;
+
+  CHECK_ARGS(cmd, 3);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  md = EVP_get_digestbyname(cmd->argv[1]);
+  if (md == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported digest algorithm '",
+      cmd->argv[1], "' configured", NULL));
+  }
+
+  iter = atoi(cmd->argv[2]);
+  if (iter < 1) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient number of rounds (",
+      cmd->argv[2], ")", NULL));
+  }
+
+  len = atoi(cmd->argv[3]);
+  if (len < 1) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient length (",
+      cmd->argv[3], ")", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c->argv[0] = (void *) md;
+  c->argv[1] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = iter;
+  c->argv[2] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[2]) = len;
+
+  return PR_HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system (requires OpenSSL-1.0.0c "
+    "or later)", NULL));
+#endif /* OpenSSL-1.0.0b and earlier */
+}
+
+/* usage: SQLPasswordRounds count */
+MODRET set_sqlpasswdrounds(cmd_rec *cmd) {
+  config_rec *c;
+  int nrounds;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  nrounds = atoi(cmd->argv[1]);
+  if (nrounds < 1) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient number of rounds (",
+      cmd->argv[1], ")", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = nrounds;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SQLPasswordSaltFile path|"none" [flags] */
 MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
   config_rec *c;
@@ -722,27 +855,6 @@ MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
   c->argv[1] = palloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[1]) = flags;
-
-  return PR_HANDLED(cmd);
-}
-
-/* usage: SQLPasswordRounds count */
-MODRET set_sqlpasswdrounds(cmd_rec *cmd) {
-  config_rec *c;
-  int nrounds;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  nrounds = atoi(cmd->argv[1]);
-  if (nrounds < 1) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient number of rounds (",
-      cmd->argv[1], ")", NULL));
-  }
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = nrounds;
 
   return PR_HANDLED(cmd);
 }
@@ -793,6 +905,7 @@ MODRET set_sqlpasswdusersalt(cmd_rec *cmd) {
  */
 
 static int sql_passwd_init(void) {
+  OpenSSL_add_all_digests();
 
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&sql_passwd_module, "core.module-unload",
@@ -835,6 +948,18 @@ static int sql_passwd_init(void) {
       ": registered 'sha512' SQLAuthType handler");
   }
 
+  /* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
+  if (sql_register_authtype("pbkdf2", sql_passwd_pbkdf2) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
+      ": unable to register 'pbkdf2' SQLAuthType handler: %s", strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'pbkdf2' SQLAuthType handler");
+  }
+#endif /* OpenSSL-1.0.0b and earlier */
+
   return 0;
 }
 
@@ -842,13 +967,24 @@ static int sql_passwd_sess_init(void) {
   config_rec *c;
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordEngine", FALSE);
-  if (c) {
+  if (c != NULL) {
     sql_passwd_engine = *((int *) c->argv[0]);
   }
 
+  if (sql_passwd_engine == FALSE) {
+    return 0;
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordEncoding", FALSE);
-  if (c) {
+  if (c != NULL) {
     sql_passwd_encoding = *((unsigned int *) c->argv[0]);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordPBKDF2", FALSE);
+  if (c != NULL) {
+    sql_passwd_pbkdf2_digest = c->argv[0];
+    sql_passwd_pbkdf2_iter = *((int *) c->argv[1]);
+    sql_passwd_pbkdf2_len = *((int *) c->argv[2]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordOptions", FALSE);
@@ -969,8 +1105,9 @@ static conftable sql_passwd_conftab[] = {
   { "SQLPasswordEncoding",	set_sqlpasswdencoding,	NULL },
   { "SQLPasswordEngine",	set_sqlpasswdengine,	NULL },
   { "SQLPasswordOptions",	set_sqlpasswdoptions,	NULL },
-  { "SQLPasswordSaltFile",	set_sqlpasswdsaltfile,	NULL },
+  { "SQLPasswordPBKDF2",	set_sqlpasswdpbkdf2,	NULL },
   { "SQLPasswordRounds",	set_sqlpasswdrounds,	NULL },
+  { "SQLPasswordSaltFile",	set_sqlpasswdsaltfile,	NULL },
   { "SQLPasswordUserSalt",	set_sqlpasswdusersalt,	NULL },
 
   { NULL, NULL, NULL }
