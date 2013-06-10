@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.19 2013-06-07 21:41:11 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.20 2013-06-10 17:12:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -496,12 +496,11 @@ static modret_t *sql_passwd_sha512(cmd_rec *cmd, const char *plaintext,
   return sql_passwd_auth(cmd, plaintext, ciphertext, "sha512");
 }
 
-/* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
-#if OPENSSL_VERSION_NUMBER >= 0x1000003f
 static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
   unsigned char *derived_key;
   const char *encodedtext;
+  int res;
 
   if (!sql_passwd_engine) {
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
@@ -522,10 +521,21 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
 
   derived_key = palloc(cmd->tmp_pool, sql_passwd_pbkdf2_len);
 
-  if (PKCS5_PBKDF2_HMAC(plaintext, -1,
-      (const unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
-      sql_passwd_pbkdf2_iter, sql_passwd_pbkdf2_digest, sql_passwd_pbkdf2_len,
-      derived_key) != 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
+  /* For digests other than SHA1, the necesary OpenSSL support
+   * (via PKCS5_PBKDF2_HMAC) appeared in 1.0.0c.
+   */
+  res = PKCS5_PBKDF2_HMAC(plaintext, -1,
+    (const unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
+    sql_passwd_pbkdf2_iter, sql_passwd_pbkdf2_digest, sql_passwd_pbkdf2_len,
+    derived_key);
+#else
+  res = PKCS5_PBKDF2_HMAC_SHA1(plaintext, -1,
+    (const unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
+    sql_passwd_pbkdf2_iter, sql_passwd_pbkdf2_len, derived_key);
+#endif /* OpenSSL-1.0.0b and earlier */
+
+  if (res != 1) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": error deriving PBKDF2 key: %s", get_crypto_errors());
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
@@ -552,7 +562,6 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
 
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
-#endif /* OpenSSL-1.0.0b and earlier */
 
 /* Event handlers
  */
@@ -564,11 +573,7 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
     sql_unregister_authtype("sha1");
     sql_unregister_authtype("sha256");
     sql_unregister_authtype("sha512");
-
-    /* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
-#if OPENSSL_VERSION_NUMBER >= 0x1000003f
     sql_unregister_authtype("pbkdf2");
-#endif /* OpenSSL-1.0.0b and earlier */
 
     pr_event_unregister(&sql_passwd_module, NULL, NULL);
   }
@@ -758,10 +763,7 @@ MODRET set_sqlpasswdoptions(cmd_rec *cmd) {
 }
 
 /* usage: SQLPasswordPBKDF2 algo iter len */
-/* XXX: Document recommended iter (>= 1000), salt len (>= 8 characters) */
 MODRET set_sqlpasswdpbkdf2(cmd_rec *cmd) {
-/* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
-#if OPENSSL_VERSION_NUMBER >= 0x1000003f
   config_rec *c;
   int iter, len;
   const EVP_MD *md;
@@ -774,6 +776,17 @@ MODRET set_sqlpasswdpbkdf2(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported digest algorithm '",
       cmd->argv[1], "' configured", NULL));
   }
+
+#if OPENSSL_VERSION_NUMBER < 0x1000003f
+  /* The necesary OpenSSL support for non-SHA1 digests for PBKDF2 appeared in
+   * 1.0.0c.
+   */
+  if (EVP_MD_type(md) != EVP_MD_type(EVP_sha1())) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Use of non-SHA1 digests for "
+      "PBKDF2 requires OpenSSL-1.0.0c or later (currently using ",
+      OPENSSL_VERSION_TEXT, ")", NULL));
+  }
+#endif /* OpenSSL-1.0.0b and earlier */
 
   iter = atoi(cmd->argv[2]);
   if (iter < 1) {
@@ -795,12 +808,6 @@ MODRET set_sqlpasswdpbkdf2(cmd_rec *cmd) {
   *((int *) c->argv[2]) = len;
 
   return PR_HANDLED(cmd);
-
-#else
-  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
-    " directive cannot be used on this system (requires OpenSSL-1.0.0c "
-    "or later)", NULL));
-#endif /* OpenSSL-1.0.0b and earlier */
 }
 
 /* usage: SQLPasswordRounds count */
@@ -948,8 +955,6 @@ static int sql_passwd_init(void) {
       ": registered 'sha512' SQLAuthType handler");
   }
 
-  /* The necesary OpenSSL support (PKCS5_PBKDF2_HMAC) appeared in 1.0.0c. */
-#if OPENSSL_VERSION_NUMBER >= 0x1000003f
   if (sql_register_authtype("pbkdf2", sql_passwd_pbkdf2) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
       ": unable to register 'pbkdf2' SQLAuthType handler: %s", strerror(errno));
@@ -958,7 +963,6 @@ static int sql_passwd_init(void) {
     pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
       ": registered 'pbkdf2' SQLAuthType handler");
   }
-#endif /* OpenSSL-1.0.0b and earlier */
 
   return 0;
 }
