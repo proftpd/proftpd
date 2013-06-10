@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1529 2013-06-07 21:41:11 castaglia Exp $
+$Id: NEWS,v 1.1530 2013-06-10 16:05:32 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -38,6 +38,7 @@ CVS
 - Bug 3942 - mod_sftp_sql should support multiple keys concatenated together
   in a single column.
 - Bug 3943 - Support for PBKDF2 passwords in mod_sql_passwd.
+- Bug 3941 - RLimitProcesses causes problems with setuid/setreuid.
 
 1.3.5rc2 - Released 06-Mar-2013
 --------------------------------
