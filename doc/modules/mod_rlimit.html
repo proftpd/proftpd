@@ -1,4 +1,4 @@
-<!-- $Id: mod_rlimit.html,v 1.2 2013-02-21 21:02:45 castaglia Exp $ -->
+<!-- $Id: mod_rlimit.html,v 1.3 2013-06-10 16:06:13 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_rlimit.html,v $ -->
 
 <html>
@@ -43,7 +43,6 @@ ProFTPD source distribution:
   <li><a href="#RLimitCPU">RLimitCPU</a>
   <li><a href="#RLimitMemory">RLimitMemory</a>
   <li><a href="#RLimitOpenFiles">RLimitOpenFiles</a>
-  <li><a href="#RLimitProcesses">RLimitProcesses</a>
 </ul>
 
 <p>
@@ -163,27 +162,6 @@ Example:
 
 <p>
 <hr>
-<h2><a name="RLimitProcesses">RLimitProcesses</a></h2>
-<strong>Syntax:</strong> RLimitProcesses <em>on|off</em>
-<strong>Default:</strong> RLimitProcesses on<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_rlimit<br>
-<strong>Compatibility:</strong> 1.3.5rc2
-
-<p>
-The <code>RLimitProcesses</code> directive is used to determine whether
-<code>mod_rlimit</code> sets a limit on the number of child processes.
-
-<p>
-Example:
-<pre>
-  # Disable mod_rlimit's default limiting of processes.
-  # NOTE: NOT RECOMMENDED
-  RLimitProcesses off
-</pre>
-
-<p>
-<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_rlimit</code> module is compiled into <code>proftpd</code> by
 default.
@@ -192,7 +170,7 @@ default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-02-21 21:02:45 $</i><br>
+Last Updated: <i>$Date: 2013-06-10 16:06:13 $</i><br>
 
 <br><hr>
 
