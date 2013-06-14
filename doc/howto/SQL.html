@@ -1,4 +1,4 @@
-<!-- $Id: SQL.html,v 1.16 2013-05-17 17:16:40 castaglia Exp $ -->
+<!-- $Id: SQL.html,v 1.17 2013-06-14 16:54:50 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
 
 <html>
@@ -372,6 +372,110 @@ present, then <code>mod_sql</code> won't even bother to look for
 <code>SQLNamedConnectInfo</code> directives, since the "default" connection
 must be present in order to use any other named connection.
 
+<p><a name="SQLPrimaryKeys">
+<i>Using SQLUserPrimaryKey and SQLGroupPrimaryKey</i><br>
+What is a primary key in <code>mod_sql</code>, and how can I use it?  To
+answer this question, let's look at a common database layout for a
+<code>proftpd</code> site.  You have a <code>ftp_users</code> table
+containing the user information (<i>i.e.</i> username/password, UID, GID,
+<i>etc</i>).  You have a <code>ftp_sessions</code> logging table that
+records all client sessions, keyed to the user that logged in.  And you have
+another logging table, <code>ftp_transfers</code>, that tracks the files
+that are transferred in and out by clients; the entries in this table, too,
+are keyed to the logged-in user.
+
+<p>
+Good schema design principles suggest that which this schema, the
+<code>ftp_sessions</code> and <code>ftp_transfers</code> tables should have
+foreign key constraints on columns in the <code>ftp_users</code> table, to
+enforce the fact that entries in the <code>ftp_sessions</code> and
+<code>ftp_transfers</code> tables <b>must</b> be related to a row in the
+<code>ftp_users</code> table.  And for efficient database storage, you want
+the foreign key constraint to use a small column.  But there's a problem.
+The obvious choice of primary key for an <code>ftp_user</code> row would
+be the UID, a numeric value.  <b>But</b> you reuse UIDs for your users;
+this means that a single UID does <b>not</b> uniquely identify a user.
+In fact, the only unique identifier you have in <code>ftp_users</code> is
+the actual username, a string.  And some of your usernames are quite large.
+
+<p>
+To demonstrate this more clearly, let's look at the <code>mod_sql</code>
+configuration that would be used to add rows to the <code>ftp_sessions</code>
+table:
+<pre>
+  # Insert a row on successful login (i.e. successful PASS)
+  SQLLog PASS start-session IGNORE_ERRORS
+
+  SQLNamedQuery start-session FREEFORM "INSERT INTO ftp_sessions (userid, session_id, ...) VALUES ('%u', '%{env:UNIQUE_ID}', ...)"
+</pre>
+Instead of <code>userid</code> (which is a <code>VARCHAR(255)</code>), you
+would prefer to use the <code>ftp_users.id</code> column value, which you
+added to your <code>ftp_users</code> table specifically to use as a primary
+key.  How to do you tell <code>mod_sql</code> to use that as the primary key
+for the logged-in user?
+
+<p>
+The
+<a href="../contrib/mod_sql.html#SQLUserPrimaryKey"><code>SQLUserPrimaryKey</code></a> and <a href="../contrib/mod_sql.html#SQLGroupPrimaryKey"><code>SQLGroupPrimaryKey</code></a> directives appeared in proftpd-1.3.5rc3 (see <a href="http://bugs.proftpd.org/show_bug.cgi?id=3864">Bug#3864</a>) for just this reason;
+they configure the columns that <code>mod_sql</code> to retrieve/use as
+primary keys.  When these directives were present, whenever
+<code>mod_sql</code> does a successful lookup of a user <b>by name</b> (or
+of a group <b>by name</b>), <code>mod_sql</code> will then run another query,
+<i>i.e.</i>:
+<pre>
+  SELECT <i>column-name</i> FROM <i>user/group-table</i> WHERE name = <i>user/group-name</i>
+</pre>
+And to support the case where the tables/columns are customised, these new
+directives would of course support custom queries:
+<pre>
+  SQLUserPrimaryKey custom:/<i>named-query</i>
+  SQLGroupPrimaryKey custom:/<i>named-query</i>
+</pre>
+So that you could do:
+<pre>
+  SQLNamedQuery get-user-key SELECT "id FROM ftp_users WHERE userid = '%U'"
+  SQLUserPrimaryKey custom:/get-user-key
+
+  SQLNamedQuery get-group-key SELECT "id FROM ftp_groups WHERE groupname = '%g'"
+  SQLGroupPrimaryKey custom:/get-group-key
+</pre>
+
+<p>
+Now that <code>mod_sql</code> can look up the value for the primary key for
+the user/group, we need to then be able to <i>use</i> that value in other
+queries.  For this, you would use the "notes" <code>SQLLog</code> variable:
+<pre>
+  %{note:sql.user-primary-key}
+  %{note:sql.group-primary-key}
+</pre>
+
+<p>
+Putting this altogether, the above <code>mod_sql</code> configuration for
+adding rows to the <code>ftp_sessions</code> table, using
+<code>ftp_users.id</code> as the primary key, becomes:
+<pre>
+  # Tell mod_sql to use the ftp_users table for user data
+  SQLUserInfo ftp_users ...
+
+  # Use ftp_users.id as the user primary key
+  SQLUserPrimaryKey id
+
+  # Insert a row on successful login (i.e. successful PASS)
+  SQLLog PASS start-session IGNORE_ERRORS
+
+  SQLNamedQuery start-session FREEFORM "INSERT INTO ftp_sessions (userid, session_id, ...) VALUES (%{note:sql.user-primary-key}, '%{env:UNIQUE_ID}', ...)"
+</pre>
+
+<p>
+<font color=red>Question</font>: Why use new configuration directives, rather
+than changing the existing <code>SQLUserInfo</code>/<code>SQLGroupInfo</code>
+directives to include a primary key column?<br>
+<font color=blue>Answer</font>: New directives were added for this functionality
+for two reasons: <i>1)</i> not every site needs/uses primary keys and
+foreign key constraints in their schema, and <i>2)</i> we wanted to make
+sure that existing configurations/schema did not break and behave unexpectedly
+(<i>i.e.</i> to preserve backward compatibility).
+
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 Whenever questions arise about problems using <code>mod_sql</code>, the first
@@ -644,7 +748,7 @@ compiled with SSL support.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2013-05-17 17:16:40 $</i><br>
+Last Updated: <i>$Date: 2013-06-14 16:54:50 $</i><br>
 <hr>
 
 </body>
