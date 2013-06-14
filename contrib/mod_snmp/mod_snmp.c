@@ -1379,7 +1379,8 @@ static int snmp_agent_handle_packet(int sockfd, pr_netaddr_t *agent_addr) {
    * the same as our listening address/port, trying to induce us to talk
    * to ourselves.
    */
-  if (pr_netaddr_cmp(&from_addr, agent_addr) == 0) {
+  if (pr_netaddr_cmp(&from_addr, agent_addr) == 0 &&
+      pr_netaddr_get_port(&from_addr) == pr_netaddr_get_port(agent_addr)) {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
       "rejecting forged UDP packet from %s#%u (appears to be from "
       "SNMPAgent %s#%u)",
@@ -1550,6 +1551,7 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
   int agent_fd;
   pid_t agent_pid;
   char *agent_chroot = NULL;
+  rlim_t curr_nproc, max_nproc;
 
   agent_pid = fork();
   switch (agent_pid) {
@@ -1650,6 +1652,29 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
       "SNMP agent process running with UID %lu, GID %lu, located in '%s'",
       (unsigned long) getuid(), (unsigned long) getgid(), getcwd(NULL, 0));
+  }
+
+  /* Once we have chrooted, and dropped root privs completely, we can now
+   * lower our nproc resource limit, so that we cannot fork any new
+   * processed.  We should not be doing so, and we want to mitigate any
+   * possible exploitation.
+   */
+  if (pr_rlimit_get_nproc(&curr_nproc, NULL) == 0) {
+    max_nproc = curr_nproc;
+ 
+    if (pr_rlimit_set_nproc(curr_nproc, max_nproc) < 0) {
+      (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+        "error setting nproc resource limits to %lu: %s",
+        (unsigned long) max_nproc, strerror(errno));
+
+    } else {
+      (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+        "set nproc resource limits to %lu", (unsigned long) max_nproc);
+    }
+
+  } else {
+    (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+      "error getting nproc limits: %s", strerror(errno));
   }
 
   snmp_agent_loop(agent_fd, agent_addr);
