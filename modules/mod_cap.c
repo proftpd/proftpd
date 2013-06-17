@@ -32,7 +32,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.31 2013-04-03 16:48:45 castaglia Exp $
+ * $Id: mod_cap.c,v 1.32 2013-06-17 21:49:14 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -65,7 +65,6 @@
 static cap_t capabilities = 0;
 static unsigned char have_capabilities = FALSE;
 static unsigned char use_capabilities = TRUE;
-static unsigned int cap_flags = 0;
 
 #define CAP_USE_CHOWN		0x0001
 #define CAP_USE_DAC_OVERRIDE	0x0002
@@ -73,6 +72,9 @@ static unsigned int cap_flags = 0;
 #define CAP_USE_SETUID		0x0008
 #define CAP_USE_AUDIT_WRITE	0x0010
 #define CAP_USE_FOWNER		0x0020
+
+/* CAP_CHOWN and CAP_SETUID are enabled by default. */
+static unsigned int cap_flags = (CAP_USE_CHOWN|CAP_USE_SETUID);
 
 module cap_module;
 
@@ -193,8 +195,8 @@ MODRET set_caps(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  /* CAP_CHOWN is enabled by default. */
-  flags |= CAP_USE_CHOWN;
+  /* CAP_CHOWN and CAP_SETUID are enabled by default. */
+  flags |= (CAP_USE_CHOWN|CAP_USE_SETUID);
 
   for (i = 1; i < cmd->argc; i++) {
     char *cp = cmd->argv[i];
@@ -219,6 +221,10 @@ MODRET set_caps(cmd_rec *cmd) {
     } else if (strcasecmp(cp, "CAP_FOWNER") == 0) {
       if (*cmd->argv[i] == '+')
         flags |= CAP_USE_FOWNER;
+
+    } else if (strcasecmp(cp, "CAP_SETUID") == 0) {
+      if (*cmd->argv[i] == '-')
+        flags &= ~CAP_USE_SETUID;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown capability: '",
@@ -296,7 +302,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   /* Check for which specific capabilities to include/exclude. */
   c = find_config(main_server->conf, CONF_PARAM, "CapabilitiesSet", FALSE);
   if (c != NULL) {
-    cap_flags |= *((unsigned int *) c->argv[0]);
+    cap_flags = *((unsigned int *) c->argv[0]);
 
     if (!(cap_flags & CAP_USE_CHOWN)) {
       pr_log_debug(DEBUG3, MOD_CAP_VERSION
@@ -316,6 +322,11 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     if (cap_flags & CAP_USE_FOWNER) {
       pr_log_debug(DEBUG3, MOD_CAP_VERSION
         ": adding CAP_FOWNER capability");
+    }
+
+    if (!(cap_flags & CAP_USE_SETUID)) {
+      pr_log_debug(DEBUG3, MOD_CAP_VERSION
+        ": removing CAP_SETUID capability");
     }
   }
 
@@ -374,7 +385,8 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     res = lp_add_cap(CAP_DAC_READ_SEARCH, CAP_PERMITTED);
   }
 
-  if (res != -1 && (cap_flags & CAP_USE_SETUID)) {
+  if (res != -1 &&
+      (cap_flags & CAP_USE_SETUID)) {
     res = lp_add_cap(CAP_SETUID, CAP_PERMITTED);
     if (res != -1) {
       res = lp_add_cap(CAP_SETGID, CAP_PERMITTED);
