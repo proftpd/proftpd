@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.237 2013-03-16 04:45:27 castaglia Exp $
+ * $Id: mod_sql.c,v 1.238 2013-06-20 20:23:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2493,7 +2493,8 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
            * determine when to use "failed" versus "success".
            */
           res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
-          if (res == 0) {
+          if (res == 0 &&
+              resp_code != NULL) {
             if (*resp_code != '2' &&
                 *resp_code != '1') {
               char *ptr;
@@ -2557,7 +2558,8 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
            * determine when to use "failed" versus "success".
            */
           res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
-          if (res == 0) {
+          if (res == 0 &&
+              resp_code != NULL) {
             if (*resp_code == '2') {
               if (pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) != 0) {
                 long_tag = pstrdup(cmd->tmp_pool, "success");

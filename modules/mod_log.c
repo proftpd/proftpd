@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.143 2013-03-16 04:45:27 castaglia Exp $
+ * $Id: mod_log.c,v 1.144 2013-06-20 20:23:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1325,7 +1325,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
              * determine when to use "failed" versus "success".
              */
             res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
-            if (res == 0) {
+            if (res == 0 &&
+                resp_code != NULL) {
               if (*resp_code != '2' &&
                   *resp_code != '1') {
                 char *ptr;
@@ -1392,7 +1393,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
              * determine when to use "failed" versus "success".
              */
             res = pr_response_get_last(cmd->tmp_pool, &resp_code, &resp_msg);
-            if (res == 0) {
+            if (res == 0 &&
+                resp_code != NULL) {
               if (*resp_code == '2') {
 
                 if (pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) != 0) {
