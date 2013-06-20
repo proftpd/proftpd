@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.192 2013-04-11 04:37:35 castaglia Exp $
+ * $Id: fxp.c,v 1.193 2013-06-20 20:56:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -9544,13 +9544,16 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
    * in order to get the expected log messages in an ExtendedLog.
    */
 
+  session.xfer.p = make_sub_pool(fxp_pool);
+  memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
+  gettimeofday(&session.xfer.start_time, NULL);
+
+  session.xfer.path = pstrdup(session.xfer.p, old_path);
+
   pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
   pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
-  session.xfer.p = make_sub_pool(fxp_pool);
   session.xfer.path = pstrdup(session.xfer.p, new_path);
-  memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
-  gettimeofday(&session.xfer.start_time, NULL);
 
   pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
   pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
