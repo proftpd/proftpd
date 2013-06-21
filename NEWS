@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1535 2013-06-21 20:24:41 castaglia Exp $
+$Id: NEWS,v 1.1536 2013-06-21 20:59:00 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -17,6 +17,8 @@ CVS
 - Bug 3947 - LogFormat %f variable not resolved properly for SFTP renames.
 - Bug 3950 - LogFormat %d/%D variables not resolved properly for directory
   listings.
+- Bug 3949 - RNFR/RNTO not logged as expected for SFTP EXTENDED
+  posix-rename@openssh.com requests.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------
