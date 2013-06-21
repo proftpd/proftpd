@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.238 2013-06-20 20:23:38 castaglia Exp $
+ * $Id: mod_sql.c,v 1.239 2013-06-21 20:24:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2680,7 +2680,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
       if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
@@ -2688,7 +2691,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
           pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
         char *tmp = strrchr(cmd->arg, '/');
 
-        sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
+        sstrncpy(argp, tmp ? tmp+1 : cmd->arg, sizeof(arg));
 
       } else {
         sstrncpy(argp, pr_fs_getvwd(), sizeof(arg));
@@ -2699,7 +2702,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||

@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.144 2013-06-20 20:23:39 castaglia Exp $
+ * $Id: mod_log.c,v 1.145 2013-06-21 20:24:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -723,7 +723,10 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
       if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
@@ -734,7 +737,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         path = pr_fs_decode_path(p, cmd->arg);
         tmp = strrchr(path, '/');
 
-        sstrncpy(argp, tmp ? tmp : path, sizeof(arg));
+        sstrncpy(argp, tmp ? tmp+1: path, sizeof(arg));
 
       } else {
         sstrncpy(argp, pr_fs_getvwd(), sizeof(arg));
@@ -747,7 +750,10 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
