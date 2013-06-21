@@ -11,6 +11,7 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    LogFormat %s for SFTP transfers (Bug#3948)
     LogFormat %d/%D (Bug#3950)
 
 
@@ -407,4 +408,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-06-21 20:31:21 $
+Last Updated: $Date: 2013-06-21 23:01:19 $
