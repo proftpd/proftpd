@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1536 2013-06-21 20:59:00 castaglia Exp $
+$Id: NEWS,v 1.1537 2013-06-21 23:00:36 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -19,6 +19,7 @@ CVS
   listings.
 - Bug 3949 - RNFR/RNTO not logged as expected for SFTP EXTENDED
   posix-rename@openssh.com requests.
+- Bug 3948 - Support FTP response codes in ExtendedLog for SFTP data transfers.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------

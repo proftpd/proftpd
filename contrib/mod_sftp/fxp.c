@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.194 2013-06-21 20:59:00 castaglia Exp $
+ * $Id: fxp.c,v 1.195 2013-06-21 23:00:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5222,8 +5222,13 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
       if (res < 0 &&
           xerrno != EOF) {
+
+        pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
         post_phase = POST_CMD_ERR;
         log_phase = LOG_CMD_ERR;
+
+      } else {
+        pr_response_add(R_226, "Transfer complete");
       }
 
       /* XXX We don't really care about the success of this dispatch, since
@@ -5231,6 +5236,9 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
        */
       (void) pr_cmd_dispatch_phase(cmd2, post_phase, 0);
       (void) pr_cmd_dispatch_phase(cmd2, log_phase, 0);
+
+      pr_response_clear(&resp_list);
+      pr_response_clear(&resp_err_list);
     }
 
   } else if (fxh->dirh != NULL) {
