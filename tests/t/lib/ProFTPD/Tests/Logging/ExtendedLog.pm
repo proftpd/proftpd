@@ -499,6 +499,11 @@ sub extlog_retr_bug3137 {
     chomp($line);
     close($fh);
 
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $test_file = '/private' . $test_file;
+    }
+
     $self->assert($test_file eq $line,
       test_msg("Expected '$test_file', got '$line'"));
 
@@ -637,6 +642,11 @@ sub extlog_stor_bug3137 {
     my $line = <$fh>;
     chomp($line);
     close($fh);
+
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $test_file = '/private' . $test_file;
+    }
 
     $self->assert($test_file eq $line,
       test_msg("Expected '$test_file', got '$line'"));
@@ -951,6 +961,11 @@ sub extlog_mlsd_var_d_D_f_F_bug3950 {
         $self->assert('sub.d' eq $dir_name,
           test_msg("Expected 'sub.d', got '$dir_name'"));
 
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack
+          $sub_dir = '/private' . $sub_dir;
+        }
+
         $self->assert($sub_dir eq $dir_path,
           test_msg("Expected '$sub_dir', got '$dir_path'"));
 
@@ -1165,6 +1180,11 @@ sub extlog_sftp_mlsd_var_d_D_f_F_bug3950 {
 
         $self->assert('sub.d' eq $dir_name,
           test_msg("Expected 'sub.d', got '$dir_name'"));
+
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack
+          $sub_dir = '/private' . $sub_dir;
+        }
 
         $self->assert($sub_dir eq $dir_path,
           test_msg("Expected '$sub_dir', got '$dir_path'"));
@@ -1643,6 +1663,12 @@ sub extlog_rename_from {
     my $line = <$fh>;
     chomp($line);
 
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $src_file = '/private' . $src_file;
+      $dst_file = '/private' . $dst_file;
+    }
+
     my $expected = "- $src_file";
     $self->assert($expected eq $line,
       test_msg("Expected '$expected', got '$line'"));
@@ -1842,6 +1868,12 @@ sub extlog_sftp_rename_from {
     if (open(my $fh, "< $ext_log")) {
       my $line = <$fh>;
       chomp($line);
+
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack
+        $src_file = '/private' . $src_file;
+        $dst_file = '/private' . $dst_file;
+      }
 
       my $expected = "- $src_file";
       $self->assert($expected eq $line,
@@ -2708,6 +2740,11 @@ sub extlog_dele_bug3469 {
   # too early.  The fix is to use session.notes, which also has that path
   # information.
   if (open(my $fh, "< $ext_log")) {
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $test_file = '/private' . $test_file;
+    }
+
     while (my $line = <$fh>) {
       chomp($line);
 
@@ -2848,6 +2885,11 @@ sub extlog_client_dir_bug3395 {
   # properly written out.  Bug#3395 says that even for QUIT, the %d
   # variable should be valid.
   if (open(my $fh, "< $ext_log")) {
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $sub_dir = '/private' . $sub_dir;
+    }
+
     while (my $line = <$fh>) {
       chomp($line);
 
@@ -6999,6 +7041,11 @@ sub extlog_xfer_timeout_bug3696 {
     chomp($line);
     close($fh);
 
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $test_file = '/private' . $test_file;
+    }
+
     $self->assert($test_file eq $line,
       test_msg("Expected '$test_file', got '$line'"));
 
@@ -7190,6 +7237,11 @@ sub extlog_sftp_xfer_timeout_bug3696 {
     my $line = <$fh>;
     chomp($line);
     close($fh);
+
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $test_file = '/private' . $test_file;
+    }
 
     $self->assert($test_file eq $line,
       test_msg("Expected '$test_file', got '$line'"));
