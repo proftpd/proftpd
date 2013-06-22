@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.16 2013-02-15 22:39:00 castaglia Exp $
+ * $Id: str.c,v 1.17 2013-06-22 04:46:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -277,11 +277,10 @@ char *pstrndup(pool *p, const char *str, size_t n) {
 }
 
 char *pdircat(pool *p, ...) {
-  char *argp, *res;
+  char *argp, *ptr, *res;
   char last;
-
   int count = 0;
-  size_t len = 0;
+  size_t len = 0, res_len = 0;
   va_list ap;
 
   if (p == NULL) {
@@ -297,35 +296,46 @@ char *pdircat(pool *p, ...) {
     /* If the first argument is "", we have to account for a leading /
      * which must be added.
      */
-    if (!count++ && !*res)
+    if (!count++ && !*res) {
       len++;
 
-    else if (last && last != '/' && *res != '/')
+    } else if (last && last != '/' && *res != '/') {
       len++;
 
-    else if (last && last == '/' && *res == '/')
+    } else if (last && last == '/' && *res == '/') {
       len--;
+    }
 
-    len += strlen(res);
-    last = (*res ? res[strlen(res) - 1] : 0);
+    res_len = strlen(res);
+    len += res_len;
+    last = (*res ? res[res_len-1] : 0);
   }
 
   va_end(ap);
-  res = (char *) pcalloc(p, len + 1);
+  ptr = res = (char *) pcalloc(p, len + 1);
 
   va_start(ap, p);
 
-  last = 0;
+  last = res_len = 0;
 
   while ((argp = va_arg(ap, char *)) != NULL) {
-    if (last && last == '/' && *argp == '/')
+    size_t arglen;
+
+    if (last && last == '/' && *argp == '/') {
       argp++;
 
-    else if (last && last != '/' && *argp != '/')
-      sstrcat(res, "/", len + 1);
+    } else if (last && last != '/' && *argp != '/') {
+      sstrcat(ptr, "/", len + 1);
+      ptr += 1;
+      res_len += 1;
+    }
 
-    sstrcat(res, argp, len + 1);
-    last = (*res ? res[strlen(res) - 1] : 0);
+    arglen = strlen(argp);
+    sstrcat(ptr, argp, len + 1);
+    ptr += arglen;
+    res_len += arglen;
+ 
+    last = (*res ? res[res_len-1] : 0);
   }
 
   va_end(ap);
@@ -334,9 +344,8 @@ char *pdircat(pool *p, ...) {
 }
 
 char *pstrcat(pool *p, ...) {
-  char *argp, *res;
-
-  size_t len = 0;
+  char *argp, *ptr, *res;
+  size_t len = 0, res_len = 0;
   va_list ap;
 
   if (p == NULL) {
@@ -346,17 +355,23 @@ char *pstrcat(pool *p, ...) {
 
   va_start(ap, p);
 
-  while ((res = va_arg(ap, char *)) != NULL)
+  while ((res = va_arg(ap, char *)) != NULL) {
     len += strlen(res);
+  }
 
   va_end(ap);
 
-  res = pcalloc(p, len + 1);
+  ptr = res = pcalloc(p, len + 1);
 
   va_start(ap, p);
 
-  while ((argp = va_arg(ap, char *)) != NULL)
-    sstrcat(res, argp, len + 1);
+  while ((argp = va_arg(ap, char *)) != NULL) {
+    size_t arglen;
+
+    arglen = strlen(argp);
+    sstrcat(ptr, argp, len + 1);
+    ptr += arglen;
+  }
 
   va_end(ap);
 
