@@ -63,7 +63,12 @@ int sstrncpy(char *dst, const char *src, size_t n) {
   }
 
 #ifdef HAVE_STRLCPY
-  res = strlcpy(dst, src, n);
+  strlcpy(dst, src, n);
+
+  /* We want the returned length to be the number of bytes copied as
+   * requested by the caller, not the total length of the src string.
+   */
+  res = n;
 
 #else
   if (src && *src) {
