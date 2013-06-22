@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.136 2013-03-08 19:45:28 castaglia Exp $
+ * $Id: fsio.c,v 1.137 2013-06-22 06:21:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1496,33 +1496,40 @@ const char *pr_fs_getvwd(void) {
 
 int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
   /* Make temporary copies so that memory areas can overlap */
-  char *_dir1 = NULL, *_dir2 = NULL;
-  size_t dir1len = 0;
+  char *_dir1 = NULL, *_dir2 = NULL, *ptr = NULL;
+  size_t dir1len = 0, dir2len = 0;
 
-  if (!dir1 || !dir2) {
+  /* The shortest possible path is "/", which requires 2 bytes. */
+
+  if (buf == NULL ||
+      buflen < 2 ||
+      dir1 == NULL ||
+      dir2 == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   /* This is a test to see if we've got reasonable directories to concatenate.
    */
-  if ((strlen(dir1) + strlen(dir2) + 1) >= PR_TUNABLE_PATH_MAX) {
+  dir1len = strlen(dir1);
+  dir2len = strlen(dir2);
+
+  if ((dir1len + dir2len + 1) >= PR_TUNABLE_PATH_MAX) {
     errno = ENAMETOOLONG;
     buf[0] = '\0';  
     return -1;
   }
 
   _dir1 = strdup(dir1);
-  if (!_dir1)
-    return -1;
-
-  _dir2 = strdup(dir2);
-  if (!_dir2) {
-    free(_dir1);
+  if (_dir1 == NULL) {
     return -1;
   }
 
-  dir1len = strlen(_dir1) - 1;
+  _dir2 = strdup(dir2);
+  if (_dir2 == NULL) {
+    free(_dir1);
+    return -1;
+  }
 
   if (*_dir2 == '/') {
     sstrncpy(buf, _dir2, buflen);
@@ -1531,14 +1538,21 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
     return 0;
   }
 
-  sstrncpy(buf, _dir1, buflen);
+  ptr = buf;
+  sstrncpy(ptr, _dir1, buflen);
+  ptr += dir1len;
+  buflen -= dir1len;
 
-  if (buflen && *(_dir1 + dir1len) != '/')
-    sstrcat(buf, "/", buflen);
+  if (buflen > 0 &&
+     *(_dir1 + (dir1len-1)) != '/') {
+    sstrcat(ptr, "/", buflen);
+    ptr += 1;
+    buflen -= 1;
+  }
 
-  sstrcat(buf, _dir2, buflen);
+  sstrcat(ptr, _dir2, buflen);
 
-  if (!*buf) {
+  if (*buf == '\0') {
    *buf++ = '/';
    *buf = '\0';
   }
