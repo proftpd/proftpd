@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.66 2013-04-16 19:58:56 castaglia Exp $
+ * $Id: mod_delay.c,v 1.67 2013-06-23 21:34:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -86,11 +86,14 @@
 /* Define an absolute upper limit on the delay values selected, in usecs.
  *
  * I originally wanted a ceiling of 1 hour, but when converted to usecs, the
- * value exceeded LONG_MAX.  So instead, just use LONG_MAX (which turns out to
- * 35 minutes or so); it's a good enough ceiling, and avoids the compiler
- * warnings about integer overflows.
+ * value exceeded LONG_MAX.  So instead, we use 1800000000 usecs (30 min).
  */
-#define DELAY_MAX_DELAY_USECS		LONG_MAX
+#define DELAY_MAX_DELAY_USECS			1800000000L
+
+/* Define an upper bound on the interval we will use, between time of connect
+ * and time of USER command.  This is currently limited to 60 seconds.
+ */
+#define DELAY_MAX_CONNECT_INTERVAL_USECS	60000000L
 
 #if defined(PR_USE_CTRLS)
 static ctrls_acttab_t delay_acttab[];
@@ -323,9 +326,13 @@ static void delay_delay(long interval) {
    * maximum of half of the given interval.
    */
   rand_usec = ((interval / 2.0) * rand()) / RAND_MAX;
-  interval += rand_usec;
   pr_trace_msg(trace_channel, 8, "additional random delay of %ld usecs added",
     (long int) rand_usec);
+  interval += rand_usec;
+
+  if (interval > DELAY_MAX_DELAY_USECS) {
+    interval = DELAY_MAX_DELAY_USECS;
+  }
 
   tv.tv_sec = interval / 1000000;
   tv.tv_usec = interval % 1000000;
@@ -393,6 +400,12 @@ static void delay_table_add_interval(unsigned int rownum, const char *protocol,
     sizeof(long) * (DELAY_NVALUES - 1));
 
   /* Add the given value to the end. */
+
+  if (interval > DELAY_MAX_DELAY_USECS) {
+    /* Truncate the interval to the maximum allowed value. */
+    interval = DELAY_MAX_DELAY_USECS;
+  }
+
   dv->dv_vals[DELAY_NVALUES-1] = interval;
   if (dv->dv_nvals < DELAY_NVALUES) {
     dv->dv_nvals++;
@@ -1305,6 +1318,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  memset(&tv, 0, sizeof(tv));
   gettimeofday(&tv, NULL);
 
   delay_table_wlock(rownum);
@@ -1407,7 +1421,7 @@ MODRET delay_post_host(cmd_rec *cmd) {
 MODRET delay_post_user(cmd_rec *cmd) {
   struct timeval tv;
   unsigned int rownum;
-  long interval, median;
+  long interval = 0L, median = 0L;
   const char *proto;
   unsigned char *authenticated;
 
@@ -1438,12 +1452,24 @@ MODRET delay_post_user(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  memset(&tv, 0, sizeof(tv));
   gettimeofday(&tv, NULL);
 
   delay_table_wlock(rownum);
 
   interval = (tv.tv_sec - delay_tv.tv_sec) * 1000000 +
     (tv.tv_usec - delay_tv.tv_usec);
+
+  /* There can conceivably be quite a bit of time between connect and USER,
+   * e.g. for TLS handshakes, DNS lookups, user latency, etc.  Thus we put
+   * a bound on this interval at 60 seconds.  For the most part, this will
+   * not affect the selected median value -- expect when the DelayTable
+   * is empty, and this is the only value present.
+   */
+  if (interval > DELAY_MAX_CONNECT_INTERVAL_USECS) {
+    interval = DELAY_MAX_CONNECT_INTERVAL_USECS;
+  }
+ 
   pr_trace_msg(trace_channel, 9,
     "interval between connect and USER command: %ld usecs", interval);
 
