@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.17 2013-06-22 04:46:01 castaglia Exp $
+ * $Id: str.c,v 1.18 2013-06-24 17:15:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -345,7 +345,7 @@ char *pdircat(pool *p, ...) {
 
 char *pstrcat(pool *p, ...) {
   char *argp, *ptr, *res;
-  size_t len = 0, res_len = 0;
+  size_t len = 0;
   va_list ap;
 
   if (p == NULL) {
