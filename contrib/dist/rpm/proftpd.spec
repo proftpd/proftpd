@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.87 2013-06-14 17:41:35 castaglia Exp $
+# $Id: proftpd.spec,v 1.88 2013-06-29 00:37:56 castaglia Exp $
 
 # Module List:
 #
@@ -56,6 +56,12 @@
 
 %global proftpd_cvs_version_main  1.3.5rc3
 %global proftpd_cvs_version_date  20130614
+
+# Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
+# release candidates and stable/maint releases are all available in that form;
+# to use a differently-compressed tarball, specify "srcext" at build time, e.g.
+# rpmbuild -tb --define 'srcext .bz2' proftpd-nnn.tar.bz2
+%{!?srcext:%global srcext .gz}
 
 # Handle optional functionality
 #
@@ -132,11 +138,11 @@ URL:                    http://www.proftpd.org/
 %if %{usecvsversion}
 Version:                %{proftpd_cvs_version_main}
 Release:                0.1.cvs%{proftpd_cvs_version_date}%{?dist}
-Source0:                ftp://ftp.proftpd.org/devel/source/proftpd-cvs-%{proftpd_cvs_version_date}.tar.gz
+Source0:                ftp://ftp.proftpd.org/devel/source/proftpd-cvs-%{proftpd_cvs_version_date}.tar%{srcext}
 %else
 Version:                %{proftpd_version}
 Release:                %{?release_cand_version:0.}1%{?release_cand_version:.%{release_cand_version}}%{?dist}
-Source0:                ftp://ftp.proftpd.org/distrib/source/proftpd-%{version}%{?release_cand_version}.tar.bz2
+Source0:                ftp://ftp.proftpd.org/distrib/source/proftpd-%{version}%{?release_cand_version}.tar%{srcext}
 %endif
 BuildRoot:              %{_tmppath}/%{name}-%{version}-root
 Requires:               pam >= 0.99, /sbin/chkconfig
@@ -492,6 +498,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %doc README.capabilities README.classes README.controls README.facl
 %doc contrib/README.contrib contrib/README.ratio
 %doc doc/* sample-configurations/
+%{_mandir}/man5/proftpd.conf.5*
 %{_mandir}/man5/xferlog.5*
 %{_mandir}/man8/ftpdctl.8*
 %{_mandir}/man8/ftpscrub.8*
@@ -541,6 +548,10 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Fri Jun 28 2013 Paul Howarth <paul@city-fan.org>
+- Support arbitrary tarball compression types using %%{srcext} macro
+- Package proftpd.conf manpage
+
 * Tue Jul 31 2012 Paul Howarth <paul@city-fan.org>
 - Package translations and BR: gettext to make sure we get them
 - Drop %%defattr, redundant since rpm 4.4
