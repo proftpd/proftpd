@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.102 2013-05-08 21:43:07 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.103 2013-06-29 01:20:34 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1960,9 +1960,10 @@ ldap_getconf(void)
     ldap_authbinds = *((int *) ptr);
   }
 
-  /* If ldap_defaultauthscheme is NULL, ldap_check() will assume crypt. */
-  ldap_defaultauthscheme = (char *)get_param_ptr(main_server->conf,
-    "LDAPDefaultAuthScheme", FALSE);
+  ptr = get_param_ptr(main_server->conf, "LDAPDefaultAuthScheme", FALSE);
+  if (ptr) {
+    ldap_defaultauthscheme = (char *) ptr;
+  }
 
   /* Look up any attr redefinitions (LDAPAttr) before using those
    * variables, such as when generating the default search filters.
