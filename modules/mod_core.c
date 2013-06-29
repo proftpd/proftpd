@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.452 2013-05-03 16:32:24 castaglia Exp $
+ * $Id: mod_core.c,v 1.453 2013-06-29 04:13:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3693,7 +3693,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   const char *proto;
 
   if (session.sf_flags & SF_EPSV_ALL) {
-    pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
+    pr_response_add_err(R_500, _("Illegal EPRT command, EPSV ALL in effect"));
     errno = EPERM;
     return PR_ERROR(cmd);
   }
