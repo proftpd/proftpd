@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.57 2012-12-03 23:11:09 castaglia Exp $
+ * $Id: netio.c,v 1.58 2013-06-29 19:56:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -190,6 +190,7 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
       continue;
     }
 
+    errno = nstrm->strm_errno = xerrno;
     break; 
   }
 
@@ -514,7 +515,7 @@ void pr_netio_set_poll_interval(pr_netio_stream_t *nstrm, unsigned int secs) {
 }
 
 int pr_netio_poll(pr_netio_stream_t *nstrm) {
-  int res = 0;
+  int res = 0, xerrno = 0;
 
   /* Sanity checks. */
   if (!nstrm) {
@@ -556,7 +557,8 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
 
     switch (res) {
       case -1:
-        if (errno == EINTR) {
+        xerrno = errno;
+        if (xerrno == EINTR) {
           if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
             nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
             return 1;
@@ -568,13 +570,13 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         }
 
         /* Some other error occured */
-        nstrm->strm_errno = errno;
+        nstrm->strm_errno = xerrno;
 
         /* If this is the control stream, and the error indicates a
          * broken pipe (i.e. the client went away), AND there is a data
          * transfer is progress, abort the transfer.
          */
-        if (errno == EPIPE &&
+        if (xerrno == EPIPE &&
             nstrm->strm_type == PR_NETIO_STRM_CTRL &&
             (session.sf_flags & SF_XFER)) {
           pr_trace_msg(trace_channel, 5,
