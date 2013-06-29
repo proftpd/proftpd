@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.321 2013-03-13 18:05:41 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.322 2013-06-29 20:09:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -724,6 +724,7 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
 static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     long bufsz) {
   long res;
+  int xerrno = 0;
 
 #ifdef HAVE_SENDFILE
   pr_sendfile_t sent_len;
@@ -746,6 +747,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
      * normal data transmission methods.
      */
     res = transmit_normal(buf, bufsz);
+    xerrno = errno;
 
   } else {
     /* There was an error with sendfile(); do NOT attempt to re-send the
@@ -757,6 +759,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
       "falling back to normal data transmission", strerror(errno),
       errno);
     res = transmit_normal(buf, bufsz);
+    xerrno = errno;
 
 # else
     if (session.d != NULL) {
@@ -770,6 +773,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
 
 #else
   res = transmit_normal(buf, bufsz);
+  xerrno = errno;
 #endif /* HAVE_SENDFILE */
 
   if (session.d != NULL) {
@@ -782,6 +786,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     }
   }
 
+  errno = xerrno;
   return res;
 }
 
