@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.152 2013-04-16 19:58:56 castaglia Exp $
+ * $Id: inet.c,v 1.153 2013-06-30 05:13:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -551,6 +551,9 @@ conn_t *pr_inet_create_conn_portrange(pool *p, pr_netaddr_t *bind_addr,
 }
 
 void pr_inet_close(pool *p, conn_t *c) {
+  if (c == NULL) {
+    return;
+  }
 
   /* It is not necessary to close the fds or schedule netio streams for
    * removal, because the creator of the connection (either
