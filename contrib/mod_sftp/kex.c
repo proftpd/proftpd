@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.37 2012-07-12 22:20:26 castaglia Exp $
+ * $Id: kex.c,v 1.38 2013-06-30 19:01:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1603,10 +1603,12 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   server_pref = get_preferred_name(tmp_pool, server_list);
 
   /* Did the client correctly guess at the key exchange algorithm that
-   * we would list first in our server list?
+   * we would list first in our server list, if it says it sent
+   * a guess KEX packet?
    */
 
-  if (*correct_guess == TRUE &&
+  if (kex->first_kex_follows == TRUE &&
+      *correct_guess == TRUE &&
       client_pref != NULL &&
       server_pref != NULL) {
 
