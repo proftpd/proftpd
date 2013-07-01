@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.137 2013-06-22 06:21:45 castaglia Exp $
+ * $Id: fsio.c,v 1.138 2013-07-01 21:57:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2663,7 +2663,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   }
 
   pr_trace_msg(trace_channel, 9,
-    "smkdir: path '%s', mode %04o, UID %lu, GID %lu", path, mode,
+    "smkdir: path '%s', mode %04o, UID %lu, GID %lu", path, (unsigned int) mode,
     (unsigned long) uid, (unsigned long) gid);
 
 #ifdef HAVE_MKDTEMP
