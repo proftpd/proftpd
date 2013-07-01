@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.82 2013-05-06 16:22:21 castaglia Exp $
+ * $Id: scp.c,v 1.83 2013-07-01 17:42:09 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2156,8 +2156,10 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
      * want to return 1 here, since it will be us, not the client, which needs
      * to close the connection.
      */
-    if (paths[scp_session->path_idx-1]->wrote_errors == TRUE) {
-      return 1;
+    if (res == 1) {
+      if (paths[scp_session->path_idx-1]->wrote_errors == TRUE) {
+        return 1;
+      }
     }
 
     return 0;
