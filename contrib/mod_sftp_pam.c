@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.14 2013-02-26 23:12:31 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.15 2013-07-05 17:48:46 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -117,7 +117,7 @@ static const char *trace_channel = "ssh2";
 
 static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     struct pam_response **resps, void *app_data) {
-  register unsigned int i;
+  register unsigned int i = 0, j = 0;
   array_header *list;
   unsigned int recvd_count = 0;
   const char **recvd_responses = NULL;
@@ -261,6 +261,13 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
         pr_trace_msg(trace_channel, 3,
           "received unknown PAM message style (%d), treating it as an error",
           SFTP_PAM_MSG_MEMBER(msgs, i, msg_style));
+        for (j = 0; j < nmsgs; j++) {
+          if (res[i].resp != NULL) {
+            free(res[i].resp);
+            res[i].resp = NULL;
+          }
+        }
+
         free(res);
 
         return PAM_CONV_ERR;

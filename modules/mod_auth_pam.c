@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.28 2013-04-30 16:00:09 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.29 2013-07-05 17:48:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -95,7 +95,7 @@ static const char *trace_channel = "pam";
 
 static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
     struct pam_response **resp, void *appdata_ptr) {
-  register unsigned int i;
+  register unsigned int i = 0, j = 0;
   struct pam_response *response = NULL;
 
   if (num_msg <= 0)
@@ -153,7 +153,13 @@ static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
 
     default:
       /* Must be an error of some sort... */
-      free(response[i].resp);
+      for (j = 0; j < num_msg; j++) {
+        if (response[i].resp != NULL) {
+          free(response[i].resp);
+          response[i].resp = NULL;
+        }
+      }
+
       free(response);
 
       pam_conv_error = 1;
