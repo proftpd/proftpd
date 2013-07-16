@@ -1175,9 +1175,9 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
             if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
               pr_netaddr_t *cert_addr;
               unsigned char *cert_data, ipv6_reqd = FALSE;
-              const char *rep = NULL;
               int res;
 #ifdef PR_USE_IPV6
+              const char *rep = NULL;
               char cert_ipstr[INET6_ADDRSTRLEN + 1] = {'\0'};
 #else
               char cert_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
