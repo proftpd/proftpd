@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.92 2013-04-16 19:58:56 castaglia Exp $
+ * $Id: netaddr.c,v 1.93 2013-07-16 21:35:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1630,6 +1630,7 @@ static int netaddr_get_dnsstr_getaddrinfo(pr_netaddr_t *na, const char *name) {
 }
 #endif /* HAVE_GETADDRINFO and not HAVE_GETHOSTBYNAME2 */
 
+#ifdef HAVE_GETHOSTBYNAME2
 static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
     const char *name) {
   char **checkaddr;
@@ -1638,16 +1639,12 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
   int family = pr_netaddr_get_family(na);
   void *inaddr = pr_netaddr_get_inaddr(na);
     
-#ifdef HAVE_GETHOSTBYNAME2
   if (pr_netaddr_is_v4mappedv6(na) == TRUE) {
     family = AF_INET;
     inaddr = get_v4inaddr(na);
   }
 
   hent = gethostbyname2(name, family);
-#else
-  hent = gethostbyname(name);
-#endif /* HAVE_GETHOSTBYNAME2 */
 
   if (hent != NULL) {
     if (hent->h_name != NULL) {
@@ -1681,7 +1678,7 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
         } 
         break;
 
-#ifdef PR_USE_IPV6
+# ifdef PR_USE_IPV6
       case AF_INET6:
         if (use_ipv6 && family == AF_INET6) {
           for (checkaddr = hent->h_addr_list; *checkaddr; ++checkaddr) {
@@ -1703,7 +1700,7 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
           }
         } 
         break;
-#endif /* PR_USE_IPV6 */
+# endif /* PR_USE_IPV6 */
     }
 
   } else {
@@ -1713,6 +1710,7 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
 
   return (ok ? 0 : -1);
 }
+#endif /* HAVE_GETHOSTBYNAME2 */
 
 /* This differs from pr_netaddr_get_ipstr() in that pr_netaddr_get_ipstr()
  * returns a string of the numeric form of the given network address, whereas
