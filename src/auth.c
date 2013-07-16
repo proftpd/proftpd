@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.96 2013-05-14 16:41:00 castaglia Exp $
+ * $Id: auth.c,v 1.97 2013-07-16 19:06:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1134,6 +1134,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   config_rec *c = NULL, *topc = NULL;
   char *config_user_name, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
+  unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
 
   /* Precendence rules:
    *   1. Search for UserAlias directive.
@@ -1159,8 +1160,9 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
    * config contexts it might be.
    */
 
-  c = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
-  if (c) {
+  c = find_config2(main_server->conf, CONF_PARAM, "UserAlias", TRUE,
+    config_flags);
+  if (c != NULL) {
     do {
       pr_signals_handle();
 
@@ -1170,8 +1172,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
         break;
       }
 
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, "UserAlias",
-      TRUE)) != NULL);
+    } while ((c = find_config_next2(c, c->next, CONF_PARAM, "UserAlias",
+      TRUE, config_flags)) != NULL);
   }
 
   /* This is where things get messy, rapidly. */
@@ -1186,7 +1188,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     if (auth_alias_only) {
       /* If AuthAliasOnly is on, ignore this one and continue. */
       if (*auth_alias_only == TRUE) {
-        c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
+        c = find_config_next2(c, c->next, CONF_PARAM, "UserAlias", TRUE,
+          config_flags);
         continue;
       }
     }
@@ -1198,7 +1201,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     is_alias = FALSE;
 
     find_config_set_top(topc);
-    c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
+    c = find_config_next2(c, c->next, CONF_PARAM, "UserAlias", TRUE,
+      config_flags);
 
     if (c &&
         (strncmp(c->argv[0], "*", 2) == 0 ||

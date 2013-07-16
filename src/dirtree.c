@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.286 2013-05-03 16:32:24 castaglia Exp $
+ * $Id: dirtree.c,v 1.287 2013-07-16 19:06:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2422,13 +2422,16 @@ void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
     char *indent) {
   config_rec *c = NULL;
 
-  if (!s)
+  if (s == NULL) {
     return;
+  }
 
-  if (!indent)
+  if (indent == NULL) {
     indent = "";
+  }
 
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
+    pr_signals_handle();
 
     /* Don't display directives whose name starts with an underscore. */
     if (c->name != NULL &&
@@ -2446,20 +2449,26 @@ void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
 void pr_dirs_dump(void (*dumpf)(const char *, ...), xaset_t *s, char *indent) {
   config_rec *c;
 
-  if (!s)
+  if (s == NULL) {
     return;
+  }
 
-  if (!indent)
+  if (indent == NULL) {
     indent = " ";
+  }
 
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
-    if (c->config_type != CONF_DIR)
+    pr_signals_handle();
+
+    if (c->config_type != CONF_DIR) {
       continue;
+    }
 
     dumpf("%s<Directory %s>", indent, c->name);
 
-    if (c->subset)
+    if (c->subset) {
       pr_dirs_dump(dumpf, c->subset, pstrcat(c->pool, indent, " ", NULL));
+    }
   }
 
   return;
@@ -2897,24 +2906,29 @@ void fixup_dirs(server_rec *s, int flags) {
   return;
 }
 
-config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
-    const char *name, int recurse) {
+config_rec *find_config_next2(config_rec *prev, config_rec *c, int type,
+    const char *name, int recurse, unsigned long flags) {
   config_rec *top = c;
   unsigned int cid = 0;
+  size_t namelen = 0;
 
   /* We do two searches (if recursing) so that we find the "deepest"
    * level first.
    */
 
-  if (!c &&
-      !prev)
+  if (c == NULL &&
+      prev == NULL) {
     return NULL;
+  }
 
-  if (!prev)
+  if (prev == NULL) {
     prev = top;
+  }
 
-  if (name)
+  if (name != NULL) {
     cid = pr_config_get_id(name);
+    namelen = strlen(name);
+  }
 
   if (recurse) {
     do {
@@ -2930,7 +2944,33 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
           for (subc = (config_rec *) c->subset->xas_list;
                subc;
                subc = subc->next) {
-            res = find_config_next(NULL, subc, type, name, recurse + 1);
+            pr_signals_handle();
+
+            if (subc->config_type == CONF_ANON &&
+                (flags & PR_CONFIG_FIND_FL_SKIP_ANON)) {
+              /* Skip <Anonymous> config_rec */
+              continue;
+            }
+
+            if (subc->config_type == CONF_DIR &&
+                (flags & PR_CONFIG_FIND_FL_SKIP_DIR)) {
+              /* Skip <Directory> config_rec */
+              continue;
+            }
+
+            if (subc->config_type == CONF_LIMIT &&
+                (flags & PR_CONFIG_FIND_FL_SKIP_LIMIT)) {
+              /* Skip <Limit> config_rec */
+              continue;
+            }
+
+            if (subc->config_type == CONF_DYNDIR &&
+                (flags & PR_CONFIG_FIND_FL_SKIP_DYNDIR)) {
+              /* Skip .ftpaccess config_rec */
+              continue;
+            }
+
+            res = find_config_next2(NULL, subc, type, name, recurse + 1, flags);
             if (res)
               return res;
           }
@@ -2949,16 +2989,18 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
         if (type == -1 ||
             type == c->config_type) {
 
-          if (!name)
+          if (name == NULL) {
             return c;
+          }
 
           if (cid != 0 &&
               cid == c->config_id) {
             return c;
           }
 
-          if (strcmp(name, c->name) == 0)
+          if (strncmp(name, c->name, namelen + 1) == 0) {
             return c;
+          }
         }
       }
 
@@ -2980,21 +3022,27 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
       if (type == -1 ||
           type == c->config_type) {
 
-        if (!name)
+        if (name == NULL) {
           return c;
+        }
 
         if (cid != 0 &&
             cid == c->config_id) {
           return c;
         }
 
-        if (strcmp(name, c->name) == 0)
+        if (strncmp(name, c->name, namelen + 1) == 0)
           return c;
       }
     }
   }
 
   return NULL;
+}
+
+config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
+    const char *name, int recurse) {
+  return find_config_next2(prev, c, type, name, recurse, 0UL);
 }
 
 void find_config_set_top(config_rec *c) {
@@ -3007,15 +3055,22 @@ void find_config_set_top(config_rec *c) {
   }
 }
 
-config_rec *find_config(xaset_t *set, int type, const char *name, int recurse) {
-  if (!set ||
-      !set->xas_list)
+config_rec *find_config2(xaset_t *set, int type, const char *name,
+  int recurse, unsigned long flags) {
+
+  if (set == NULL ||
+      set->xas_list == NULL) {
     return NULL;
+  }
 
   find_config_set_top((config_rec *) set->xas_list);
 
-  return find_config_next(NULL, (config_rec *) set->xas_list, type, name,
-    recurse);
+  return find_config_next2(NULL, (config_rec *) set->xas_list, type, name,
+    recurse, flags);
+}
+
+config_rec *find_config(xaset_t *set, int type, const char *name, int recurse) {
+  return find_config2(set, type, name, recurse, 0UL);
 }
 
 void *get_param_ptr(xaset_t *set, const char *name, int recurse) {

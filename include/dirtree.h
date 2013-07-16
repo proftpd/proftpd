@@ -25,7 +25,7 @@
  */
 
 /* Configuration structure, server, command and associated prototypes.
- * $Id: dirtree.h,v 1.87 2013-02-15 18:33:14 castaglia Exp $
+ * $Id: dirtree.h,v 1.88 2013-07-16 19:06:13 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -244,10 +244,23 @@ config_rec *add_config_param_str(const char *, int, ...);
 config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
 config_rec *pr_conf_add_server_config_param_str(server_rec *, const char *,
   int, ...);
+
+/* Flags used when searching for specific config_recs in the in-memory
+ * config database, particularly when 'recurse' is TRUE.
+ */
+#define PR_CONFIG_FIND_FL_SKIP_ANON		0x001
+#define PR_CONFIG_FIND_FL_SKIP_DIR		0x002
+#define PR_CONFIG_FIND_FL_SKIP_LIMIT		0x004
+#define PR_CONFIG_FIND_FL_SKIP_DYNDIR		0x008
+
 config_rec *find_config_next(config_rec *, config_rec *, int,
   const char *, int);
+config_rec *find_config_next2(config_rec *, config_rec *, int,
+  const char *, int, unsigned long);
 config_rec *find_config(xaset_t *, int, const char *, int);
+config_rec *find_config2(xaset_t *, int, const char *, int, unsigned long);
 void find_config_set_top(config_rec *);
+
 int remove_config(xaset_t *, const char *, int);
 
 #define PR_CONFIG_FL_INSERT_HEAD	0x001

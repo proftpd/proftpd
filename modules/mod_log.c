@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.145 2013-06-21 20:24:41 castaglia Exp $
+ * $Id: mod_log.c,v 1.146 2013-07-16 19:06:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1706,17 +1706,24 @@ static void find_extendedlogs(void) {
   int logclasses = CL_ALL;
   logformat_t *logfmt;
   logfile_t *extlog = NULL;
+  unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
 
   /* We _do_ actually want the recursion here.  The reason is that we want
    * to find _all_ ExtendedLog directives in the configuration, including
    * those in <Anonymous> sections.  We have the ability to use root privs
    * now, to make sure these files can be opened, but after the user has
    * authenticated (and we know for sure whether they're anonymous or not),
-   * root privs may be permanently revoked.  Yucky...but necessary, I guess.
+   * root privs may be permanently revoked.
+   *
+   * We mitigate the cost of the recursive search (especially for configs
+   * with thousands of <Directory>/<Limit> sections) by specifying the
+   * find_config() flags to skip those sections; we are only interested
+   * in the top-level (CONF_ROOT, CONF_VIRTUAL) and <Anonymous> sections.
    */
 
-  c = find_config(main_server->conf, CONF_PARAM, "ExtendedLog", TRUE);
-  while (c) {
+  c = find_config2(main_server->conf, CONF_PARAM, "ExtendedLog", TRUE,
+    config_flags);
+  while (c != NULL) {
     pr_signals_handle();
 
     logfname = c->argv[0];
@@ -1767,14 +1774,16 @@ static void find_extendedlogs(void) {
     extlog->lf_classes = logclasses;
     extlog->lf_format = logfmt;
     extlog->lf_conf = c->parent;
-    if (!log_set)
+    if (log_set == NULL) {
       log_set = xaset_create(session.pool, NULL);
+    }
 
     xaset_insert(log_set, (xasetmember_t *) extlog);
     logs = (logfile_t *) log_set->xas_list;
 
 loop_extendedlogs:
-    c = find_config_next(c, c->next, CONF_PARAM, "ExtendedLog", TRUE);
+    c = find_config_next2(c, c->next, CONF_PARAM, "ExtendedLog", TRUE,
+      config_flags);
   }
 }
 
