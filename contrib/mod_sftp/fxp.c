@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.196 2013-06-22 04:05:11 castaglia Exp $
+ * $Id: fxp.c,v 1.197 2013-07-16 21:27:13 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4462,7 +4462,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
 
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", src) < 0 ||
       fxp_path_pass_regex_filters(fxp->pool, "RENAME", dst) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -9610,7 +9610,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
 
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", old_path) < 0 ||
       fxp_path_pass_regex_filters(fxp->pool, "RENAME", new_path) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     status_code = fxp_errno2status(xerrno, NULL);
 
