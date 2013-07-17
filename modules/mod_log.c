@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.146 2013-07-16 19:06:13 castaglia Exp $
+ * $Id: mod_log.c,v 1.147 2013-07-17 06:26:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -737,7 +737,20 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         path = pr_fs_decode_path(p, cmd->arg);
         tmp = strrchr(path, '/');
 
-        sstrncpy(argp, tmp ? tmp+1: path, sizeof(arg));
+        if (tmp != NULL) {
+          if (tmp != path) {
+            sstrncpy(argp, tmp + 1, sizeof(arg));
+
+          } else if (*(tmp+1) != '\0') {
+            sstrncpy(argp, tmp + 1, sizeof(arg));
+
+          } else {
+            sstrncpy(argp, path, sizeof(arg));
+          }
+
+        } else {
+          sstrncpy(argp, path, sizeof(arg));
+        }
 
       } else {
         sstrncpy(argp, pr_fs_getvwd(), sizeof(arg));
@@ -833,8 +846,9 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
-                 (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
-                  strcasecmp(cmd->argv[1], "CHMOD") == 0)) {
+                 (strncasecmp(cmd->argv[1], "CHGRP", 6) == 0 ||
+                  strncasecmp(cmd->argv[1], "CHMOD", 6) == 0 ||
+                  strncasecmp(cmd->argv[1], "UTIME", 6) == 0)) {
         register unsigned int i;
         char *tmp = "";
 
@@ -858,6 +872,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           sstrncpy(arg, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
             sizeof(arg));
 
+        } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0) {
+          /* MFMT has, as its filename, the second argument. */
+          sstrncpy(arg, dir_abs_path(p, pr_fs_decode_path(p, cmd->argv[2]),
+            TRUE), sizeof(arg));
+ 
         } else {
           /* All other situations get a "-".  */
           sstrncpy(argp, "-", sizeof(arg));

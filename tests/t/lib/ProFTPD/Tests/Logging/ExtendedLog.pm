@@ -46,6 +46,11 @@ my $TESTS = {
     test_class => [qw(bug forking mod_sftp)],
   },
 
+  extlog_mfmt_var_d_D_f_F => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   extlog_protocol => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -1198,6 +1203,192 @@ sub extlog_sftp_mlsd_var_d_D_f_F_bug3950 {
       } else {
         die("Did not find expected ExtendedLog entries");
       }
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_mfmt_var_d_D_f_F {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%m: %d %D %f %F"',
+    ExtendedLog => "$ext_log WRITE custom",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+
+      my ($resp_code, $resp_msg) = $client->mfmt('20020717210715', 'test.txt');
+
+      my $expected;
+
+      $expected = 213;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Modify=20020717210715; test.txt';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %f variable was
+  # properly written out for MFMT.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        # The %D variable should be empty here, since MFMT is not a directory
+        # specific command.
+        if ($line =~ /^(\S+): (\S+)  (\S+) (\S+)$/) {
+          my $cmd = $1;
+          my $dir_path = $2;
+          my $file_name = $3;
+          my $xfer_path = $4;
+
+          next unless $cmd eq 'MFMT';
+
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack
+            $home_dir = '/private' . $home_dir;
+          }
+
+          $self->assert($home_dir eq $dir_path,
+            test_msg("Expected directory path (%d) '$home_dir', got '$dir_path'"));
+
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack
+            $test_file = '/private' . $test_file;
+          }
+
+          $self->assert($test_file eq $file_name,
+            test_msg("Expected filename (%f) '$test_file', got '$file_name'"));
+
+          $self->assert('-' eq $xfer_path,
+            test_msg("Expected transfer path (%F) '-', got '$xfer_path'"));
+
+          $ok = 1;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($ok, test_msg("Did not find expected ExtendedLog entries"));
 
     } else {
       die("Can't read $ext_log: $!");

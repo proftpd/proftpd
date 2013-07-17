@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.239 2013-06-21 20:24:41 castaglia Exp $
+ * $Id: mod_sql.c,v 1.240 2013-07-17 06:26:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2691,7 +2691,20 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
           pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
         char *tmp = strrchr(cmd->arg, '/');
 
-        sstrncpy(argp, tmp ? tmp+1 : cmd->arg, sizeof(arg));
+        if (tmp != NULL) {
+          if (tmp != cmd->arg) {
+            sstrncpy(argp, tmp + 1, sizeof(arg));
+
+          } else if (*(tmp + 1) != '\0') {
+            sstrncpy(argp, tmp + 1, sizeof(arg));
+
+          } else {
+            sstrncpy(argp, cmd->arg, sizeof(arg));
+          }
+
+        } else {
+          sstrncpy(argp, cmd->arg, sizeof(arg));
+        }
 
       } else {
         sstrncpy(argp, pr_fs_getvwd(), sizeof(arg));
@@ -2782,6 +2795,20 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
           sizeof(arg));
 
+      } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
+                 (strncasecmp(cmd->argv[1], "CHGRP", 6) == 0 ||
+                  strncasecmp(cmd->argv[1], "CHMOD", 6) == 0 ||
+                  strncasecmp(cmd->argv[1], "UTIME", 6) == 0)) {
+        register unsigned int i;
+        char *tmp = "";
+
+        for (i = 3; i <= cmd->argc-1; i++) {
+          tmp = pstrcat(cmd->tmp_pool, tmp, *tmp ? " " : "", cmd->argv[i],
+            NULL);
+        }
+
+        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, tmp, TRUE), sizeof(arg));
+
       } else {
 
         /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
@@ -2794,6 +2821,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
             pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
           sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
+            sizeof(arg));
+
+        } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0) {
+          /* MFMT has, as its filename, the second argument. */
+          sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->argv[2], TRUE),
             sizeof(arg));
 
         } else {
