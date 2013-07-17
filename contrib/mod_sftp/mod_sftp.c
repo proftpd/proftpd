@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.77 2013-04-11 04:37:35 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.78 2013-07-17 20:00:23 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -486,7 +486,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 
   for (i = 2; i < cmd->argc; i++) {
     if (strncmp(cmd->argv[i], "channelWindowSize", 18) == 0) {
-      uint32_t window_size;
+      off_t window_size;
       void *value;
       char *arg, units[3];
       size_t arglen;
@@ -538,14 +538,14 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
         }
       }
 
-      if (pr_str_get_nbytes(arg, units, (off_t *) &window_size) < 0) {
+      if (pr_str_get_nbytes(arg, units, &window_size) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
           "error parsing 'channelWindowSize' value ", cmd->argv[i+1], ": ",
           strerror(errno), NULL));
       }
 
       value = palloc(c->pool, sizeof(uint32_t));
-      *((uint32_t *) value) = window_size;
+      *((uint32_t *) value) = (uint32_t) window_size;
 
       if (pr_table_add(tab, pstrdup(c->pool, "channelWindowSize"), value,
           sizeof(uint32_t)) < 0) {
@@ -557,7 +557,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       i++;
 
     } else if (strncmp(cmd->argv[i], "channelPacketSize", 18) == 0) {
-      uint32_t packet_size;
+      off_t packet_size;
       void *value;
       char *arg, units[3];
       size_t arglen;
@@ -609,7 +609,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
         }
       }
 
-      if (pr_str_get_nbytes(arg, units, (off_t *) &packet_size) < 0) {
+      if (pr_str_get_nbytes(arg, units, &packet_size) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
           "error parsing 'channelPacketSize' value ", cmd->argv[i+1], ": ",
           strerror(errno), NULL));
@@ -622,7 +622,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       }
 
       value = palloc(c->pool, sizeof(uint32_t));
-      *((uint32_t *) value) = packet_size;
+      *((uint32_t *) value) = (uint32_t) packet_size;
 
       if (pr_table_add(tab, pstrdup(c->pool, "channelPacketSize"), value,
           sizeof(uint32_t)) < 0) {
