@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.197 2013-07-16 21:27:13 castaglia Exp $
+ * $Id: fxp.c,v 1.198 2013-07-17 17:15:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -4030,7 +4030,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 
 static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     char *dst, int overwrite) {
-  char *abs_path, *args;
+  char *abs_path, *args, *tmp;
   unsigned char *buf, *ptr;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
@@ -4057,6 +4057,54 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "COPY of '%s' to '%s' blocked by '%s' handler", src, dst, cmd->argv[0]);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  tmp = src;
+  src = dir_best_path(fxp->pool, tmp);
+  if (src == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "COPY request denied: unable to access path '%s'", tmp);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  tmp = dst;
+  dst = dir_best_path(fxp->pool, tmp);
+  if (dst == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "COPY request denied: unable to access path '%s'", tmp);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -4353,7 +4401,35 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
-  src = cmd2->arg;
+  src = dir_best_path(fxp->pool, cmd2->arg);
+  if (src == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "posix-rename request denied: unable to access path '%s'", cmd2->arg);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   pr_table_add(session.notes, "mod_core.rnfr-path",
     pstrdup(session.pool, src), 0);
@@ -4391,7 +4467,40 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
-  dst = cmd3->arg;
+  dst = dir_best_path(fxp->pool, cmd3->arg);
+  if (dst == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "posix-rename request denied: unable to access path '%s'", cmd2->arg);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EACCES));
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   if (!dir_check(fxp->pool, cmd2, G_DIRS, src, NULL) ||
       !dir_check(fxp->pool, cmd3, G_WRITE, dst, NULL)) {
@@ -5662,7 +5771,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
 static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
-  char *attrs_str, *cmd_name, *name;
+  char *attrs_str, *cmd_name, *name, *path;
   const char *reason;
   uint32_t attr_flags, buflen, bufsz, status_code;
   int have_error = FALSE, res;
@@ -5749,17 +5858,41 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  /* The path may have been changed by any PRE_CMD handlers. */
+  path = dir_best_path(fxp->pool, cmd->arg);
+  if (path == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "FSETSTAT request denied: unable to access path '%s'", cmd->arg);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   cmd_name = cmd->argv[0];
 
   pr_cmd_set_name(cmd, "FSETSTAT");
-  if (dir_check(fxp->pool, cmd, G_WRITE, cmd->arg, NULL) > 0) {
+  if (dir_check(fxp->pool, cmd, G_WRITE, path, NULL) > 0) {
     /* Explicitly allowed by <Limit FSETSTAT>. */
     have_error = FALSE;
 
   } else {
     pr_cmd_set_name(cmd, "SETSTAT");
 
-    if (!dir_check(fxp->pool, cmd, G_WRITE, cmd->arg, NULL)) {
+    if (!dir_check(fxp->pool, cmd, G_WRITE, path, NULL)) {
       have_error = TRUE;
     }
   }
@@ -5768,7 +5901,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "FSETSTAT of '%s' blocked by <Limit %s> configuration", cmd->arg,
+      "FSETSTAT of '%s' blocked by <Limit %s> configuration", path,
       cmd->argv[0]);
 
     pr_cmd_set_name(cmd, cmd_name);
@@ -6639,7 +6772,32 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->arg;
+  path = dir_best_path(fxp->pool, cmd->arg);
+  if (path == NULL) {
+    int xerrno = EACCES;
+    const char *reason;
+    uint32_t status_code;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "LSTAT request denied: unable to access path '%s'", cmd->arg);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+       xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "LSTAT");
@@ -7690,7 +7848,54 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->arg;
+  path = dir_best_path(fxp->pool, cmd->arg);
+  if (path == NULL) {
+    int xerrno = EACCES;
+    const char *reason;
+    uint32_t status_code;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "OPENDIR request denied: unable to access path '%s'", cmd->arg);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+       xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (!dir_check(fxp->pool, cmd, G_DIRS, path, NULL)) {
+    uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "OPENDIR of '%s' blocked by <Limit> configuration", path);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_MLSD, path);
   cmd2->cmd_class = CL_DIRS;
@@ -7702,7 +7907,6 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     uint32_t status_code;
 
     /* One of the PRE_CMD phase handlers rejected the command. */
-
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "OPENDIR command for '%s' blocked by '%s' handler", path, cmd2->argv[0]);
 
@@ -8650,7 +8854,32 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->arg;
+  path = dir_best_path(fxp->pool, cmd->arg);
+  if (path == NULL) {
+    int xerrno = EACCES;
+    const char *reason;
+    uint32_t status_code;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "READLINK request denied: unable to access path '%s'", cmd->arg);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+       xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   if (!dir_check(fxp->pool, cmd, G_READ, path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
@@ -9464,7 +9693,32 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  old_path = cmd2->arg;
+  old_path = dir_best_path(fxp->pool, cmd2->arg);
+  if (old_path == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RENAME request denied: unable to access path '%s'", cmd2->arg);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   pr_table_add(session.notes, "mod_core.rnfr-path",
     pstrdup(session.pool, old_path), 0);
@@ -9503,7 +9757,37 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  new_path = cmd3->arg;
+  new_path = dir_best_path(fxp->pool, cmd3->arg);
+  if (new_path == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RENAME request denied: unable to access path '%s'", cmd3->arg);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EACCES));
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   if (!dir_check(fxp->pool, cmd2, G_DIRS, old_path, NULL) ||
       !dir_check(fxp->pool, cmd3, G_WRITE, new_path, NULL)) {
@@ -9799,7 +10083,29 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  path = cmd->arg;
+  /* The path may have been changed by any PRE_CMD handlers. */
+  path = dir_best_path(fxp->pool, cmd->arg);
+  if (path == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "RMDIR request denied: unable to access path '%s'", cmd->arg);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RMD, path);
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) == -1) {
@@ -10043,7 +10349,28 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->arg;
+  path = dir_best_path(fxp->pool, cmd->arg);
+  if (path == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SETSTAT request denied: unable to access path '%s'", cmd->arg);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "SETSTAT");
@@ -10211,7 +10538,32 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = cmd->arg;
+  path = dir_best_path(fxp->pool, cmd->arg);
+  if (path == NULL) {
+    int xerrno = EACCES;
+    const char *reason;
+    uint32_t status_code;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "STAT request denied: unable to access path '%s'", cmd->arg);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+       xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "STAT");
