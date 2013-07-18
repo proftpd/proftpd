@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.138 2013-07-01 21:57:59 castaglia Exp $
+ * $Id: fsio.c,v 1.139 2013-07-18 21:06:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2804,6 +2804,13 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
      * target mode (modulo the configured Umask).
      */
     dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+    if (dir_umask == NULL) {
+      /* If Umask was configured with a single parameter, then DirUmask
+       * would not be present; we still should check for Umask.
+       */
+      dir_umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+    }
+
     if (dir_umask) {
       mask = *dir_umask;
 

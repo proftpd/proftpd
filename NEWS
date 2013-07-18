@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1542 2013-07-17 17:15:59 castaglia Exp $
+$Id: NEWS,v 1.1543 2013-07-18 21:06:02 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -29,6 +29,7 @@ CVS
   sections leads to slow logins.
 - Bug 3959 - mod_sftp does not honor <Directory>/<Limit> sections when symlinks
   are involved.
+- Bug 3958 - Directory creation does not honor single-parameter Umask setting.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------
