@@ -32,7 +32,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.32 2013-06-17 21:49:14 castaglia Exp $
+ * $Id: mod_cap.c,v 1.33 2013-07-19 17:16:07 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -72,6 +72,7 @@ static unsigned char use_capabilities = TRUE;
 #define CAP_USE_SETUID		0x0008
 #define CAP_USE_AUDIT_WRITE	0x0010
 #define CAP_USE_FOWNER		0x0020
+#define CAP_USE_FSETID		0x0040
 
 /* CAP_CHOWN and CAP_SETUID are enabled by default. */
 static unsigned int cap_flags = (CAP_USE_CHOWN|CAP_USE_SETUID);
@@ -222,6 +223,10 @@ MODRET set_caps(cmd_rec *cmd) {
       if (*cmd->argv[i] == '+')
         flags |= CAP_USE_FOWNER;
 
+    } else if (strcasecmp(cp, "CAP_FSETID") == 0) {
+      if (*cmd->argv[i] == '+')
+        flags |= CAP_USE_FSETID;
+
     } else if (strcasecmp(cp, "CAP_SETUID") == 0) {
       if (*cmd->argv[i] == '-')
         flags &= ~CAP_USE_SETUID;
@@ -324,6 +329,11 @@ MODRET cap_post_pass(cmd_rec *cmd) {
         ": adding CAP_FOWNER capability");
     }
 
+    if (cap_flags & CAP_USE_FSETID) {
+      pr_log_debug(DEBUG3, MOD_CAP_VERSION
+        ": adding CAP_FSETID capability");
+    }
+
     if (!(cap_flags & CAP_USE_SETUID)) {
       pr_log_debug(DEBUG3, MOD_CAP_VERSION
         ": removing CAP_SETUID capability");
@@ -404,6 +414,13 @@ MODRET cap_post_pass(cmd_rec *cmd) {
       (cap_flags & CAP_USE_FOWNER)) {
     res = lp_add_cap(CAP_FOWNER, CAP_PERMITTED);
   }
+
+#ifdef CAP_FSETID
+  if (res != -1 &&
+      (cap_flags & CAP_USE_FSETID)) {
+    res = lp_add_cap(CAP_FSETID, CAP_PERMITTED);
+  }
+#endif
 
   if (res != -1)
     res = lp_set_cap();
@@ -490,6 +507,13 @@ MODRET cap_post_pass(cmd_rec *cmd) {
       (cap_flags & CAP_USE_FOWNER)) {
     res = lp_add_cap(CAP_FOWNER, CAP_EFFECTIVE);
   }
+
+#ifdef CAP_FSETID
+  if (res != -1 &&
+      (cap_flags & CAP_USE_FSETID)) {
+    res = lp_add_cap(CAP_FSETID, CAP_EFFECTIVE);
+  }
+#endif
 
   if (res != -1)
     res = lp_set_cap();

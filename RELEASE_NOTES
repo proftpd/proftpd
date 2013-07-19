@@ -11,6 +11,7 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    CapabilitiesSet +CAP_FSETID (Bug#3960)
     LogFormat %s for SFTP transfers (Bug#3948)
     LogFormat %d/%D (Bug#3950)
 
@@ -408,4 +409,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-06-21 23:01:19 $
+Last Updated: $Date: 2013-07-19 17:16:07 $
