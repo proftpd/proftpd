@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.74 2013-06-06 23:39:28 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.75 2013-07-22 21:51:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -2048,11 +2048,29 @@ virtual host/port).  So either <i>a)</i> the SFTP client is connecting to
 the wrong port on your server, or <i>b)</i> perhaps "SFTPEngine on" is not
 set in the virtual host for that port.
 
+<p><a name="SFTPDirectorySGID">
+<font color=red>Question</font>: When I create a directory via SFTP, in
+a directory with the SGID bit set, the created directory does <b>not</b>
+have the SGID bit set as expected.  How do I fix this?<br>
+<font color=blue>Answer</font>: Preserving the SGID bit for a created directory
+usually require root privs; the <code>mod_sftp</code> module automatically
+drops all root privs.  So to get the directory SGID bit functionality,
+you will need to use the following in your <code>mod_sftp</code>
+<code>&lt;VirtualHost&gt;</code> section:
+<pre>
+  RootRevoke off
+</pre>
+In addition, if your <code>proftpd</code> is running on Linux, you may
+need to disable the <a href="../modules/mod_cap.html"><code>mod_cap</code></a>
+module, or configure it to preserve the SGID bit (<i>e.g.</i> via the
+<a href="../modules/mod_cap.html#CapabilitiesSet"><code>CAP_FSETID</code></a>
+capability.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-06-06 23:39:28 $</i><br>
+Last Updated: <i>$Date: 2013-07-22 21:51:00 $</i><br>
 
 <br><hr>
 
