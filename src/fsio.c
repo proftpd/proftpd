@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.139 2013-07-18 21:06:02 castaglia Exp $
+ * $Id: fsio.c,v 1.140 2013-07-25 20:13:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2651,8 +2651,7 @@ int pr_fsio_set_use_mkdtemp(int value) {
  */
 int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     gid_t gid) {
-  int res, parent_suid = FALSE, parent_sgid = FALSE, use_root_privs = TRUE,
-    xerrno = 0;
+  int res, parent_sgid = FALSE, use_root_privs = TRUE, xerrno = 0;
   char *tmpl_path;
   char *dst_dir, *tmpl;
   size_t dst_dirlen, tmpl_len;
@@ -2695,10 +2694,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
         !S_ISLNK(st.st_mode)) {
       errno = EPERM;
       return -1;
-    }
-
-    if (st.st_mode & S_ISUID) {
-      parent_suid = TRUE;
     }
 
     if (st.st_mode & S_ISGID) {
@@ -2820,10 +2815,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
     perms = (mode & ~mask);
 
-    if (parent_suid) {
-      perms |= S_ISUID;
-    }
-
     if (parent_sgid) {
       perms |= S_ISGID;
     }
@@ -2832,11 +2823,27 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
       PRIVS_ROOT
     }
 
+    /* Note: In the future, switch to using lchmod(2) where available,
+     * and fchmodat(2) as a fallback.  Unfortunately, on some Linux
+     * systems, fchmodat(2)'s AT_SYMLINK_NOFOLLOW flag is not supported,
+     * and we would REQUIRE the use of that flag to protect against symlink
+     * attacks.
+     */
     res = chmod(tmpl_path, perms);
     xerrno = errno;
 
     if (use_root_privs) {
       PRIVS_RELINQUISH
+
+      if (res < 0 &&
+          xerrno == EPERM) {
+        /* Try again, this time without root privs.  NFS situations which
+         * squash root privs could cause the above chmod(2) to fail; it
+         * might succeed now that we've dropped root privs (Bug#3962).
+         */
+        res = chmod(tmpl_path, perms);
+        xerrno = errno;
+      }
     }
 
     if (res < 0) {
