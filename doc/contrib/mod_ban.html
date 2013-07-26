@@ -1,4 +1,4 @@
-<!-- $Id: mod_ban.html,v 1.16 2013-07-02 16:54:05 castaglia Exp $ -->
+<!-- $Id: mod_ban.html,v 1.17 2013-07-26 21:53:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ban.html,v $ -->
 
 <html>
@@ -592,11 +592,23 @@ addresses, to be excluded from the effects of <code>mod_ban</code>?<br>
 Note that it is <b>important</b> to have <i>both</i>
 <code>&lt;IfClass&gt;</code> sections in your configuration.
 
+<p><a name="BanRootLogins">
+<font color=red>Question</font>: I would like to ban clients which try to
+login as root.  How would I do this?<br>
+<font color=blue>Answer</font>: You would use the
+<a href="#BanOnEvent"><code>BanOnEvent</code></a> directive, with an
+<em>event name</em> of "mod_auth.root-login", thus:
+<pre>
+  # Ban clients which try to login as root.  This bans clients which
+  # try root logins twice within 10 minutes, banning them for 6 hours.
+  BanOnEvent mod_auth.root-login 2/00:10:00 06:00:00
+</pre>
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-07-02 16:54:05 $</i><br>
+Last Updated: <i>$Date: 2013-07-26 21:53:02 $</i><br>
 
 <br><hr>
 
