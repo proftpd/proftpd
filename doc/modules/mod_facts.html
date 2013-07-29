@@ -1,4 +1,4 @@
-<!-- $Id: mod_facts.html,v 1.12 2012-11-13 22:09:02 castaglia Exp $ -->
+<!-- $Id: mod_facts.html,v 1.13 2013-07-29 16:54:45 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_facts.html,v $ -->
 
 <html>
@@ -169,6 +169,20 @@ This tells the <code>mod_facts</code> module to use the improper
 by FileZilla (and perhaps other FTP clients). By default, the
 <code>mod_facts</code> module uses the better "OS.unix=symlink" syntax.
 
+<p>
+<b>Note</b> that if you are running <code>proftpd-1.3.3</code>, however,
+the <code>FactsOptions</code> directive is not supported.  To get FileZilla
+to display symlinks properly for older proftpd versions, then, you would use:
+<pre>
+  &lt;IfModule mod_facts.c&gt;
+    FactsAdvertise off
+  &lt;/IfModule&gt;
+</pre>
+This tells the <code>mod_facts</code> module to <b>not</b> advertise that it
+supports the newer <code>MLST/MLSD</code> commands.  FileZilla will then fall
+back to using the older directory list commands (<i>i.e.</i> <code>LIST</code>,
+<code>NLST</code>), which should show symlinks properly.
+
 <p><a name="FactsDotfiles">
 <font color=red>Question</font>: How can I hide dotfiles (<i>e.g.</i> ".msg")
 from the <code>MLSD</code> command?<br>
@@ -212,12 +226,12 @@ and <code>MLSD</code> equally.
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-11-13 22:09:02 $</i><br>
+Last Updated: <i>$Date: 2013-07-29 16:54:45 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2007-2012 TJ Saunders<br>
+&copy; Copyright 2007-2013 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
