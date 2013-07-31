@@ -61,7 +61,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.4.5"
+#define MOD_TLS_VERSION		"mod_tls/2.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402 
@@ -405,6 +405,8 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_SESS_CTRL_RENEGOTIATING		0x0200
 #define TLS_SESS_DATA_RENEGOTIATING		0x0400
 #define TLS_SESS_HAVE_CCC			0x0800
+#define TLS_SESS_VERIFY_SERVER			0x1000
+#define TLS_SESS_VERIFY_SERVER_NO_DNS		0x2000
 
 /* mod_tls option flags */
 #define TLS_OPT_NO_CERT_REQUEST				0x0001
@@ -419,6 +421,11 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_USE_IMPLICIT_SSL			0x0200
 #define TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS		0x0400
 #define TLS_OPT_VERIFY_CERT_CN				0x0800
+
+/* mod_tls SSCN modes */
+#define TLS_SSCN_MODE_SERVER				0
+#define TLS_SSCN_MODE_CLIENT				1
+static unsigned int tls_sscn_mode = TLS_SSCN_MODE_SERVER;
 
 /* mod_tls cleanup flags */
 #define TLS_CLEANUP_FL_SESS_INIT	0x0001
@@ -489,7 +496,7 @@ static size_t tls_get_pagesz(void);
 static int tls_get_passphrase(server_rec *, const char *, const char *,
   char *, size_t, int);
 
-static char *tls_get_subj_name(void);
+static char *tls_get_subj_name(SSL *);
 
 static int tls_openlog(void);
 static RSA *tls_rsa_cb(SSL *, int, int);
@@ -1022,262 +1029,333 @@ static const char *get_printable_subjaltname(pool *p, const char *data,
   return res;
 }
 
-static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
+static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
+  int matched = 0;
+  STACK_OF(GENERAL_NAME) *sans;
+
+  sans = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+  if (sans != NULL) {
+    register unsigned int i;
+    int nsans = sk_GENERAL_NAME_num(sans);
+
+    for (i = 0; i < nsans; i++) {
+      GENERAL_NAME *alt_name = sk_GENERAL_NAME_value(sans, i);
+
+      if (alt_name->type == GEN_DNS) {
+        char *dns_san;
+        size_t dns_sanlen;
+
+        dns_san = (char *) ASN1_STRING_data(alt_name->d.ia5);
+        dns_sanlen = strlen(dns_san);
+
+        /* Check for subjectAltName values which contain embedded NULs.
+         * This can cause verification problems (spoofing), e.g. if the
+         * string is "www.goodguy.com\0www.badguy.com"; the use of strcmp()
+         * only checks "www.goodguy.com".
+         */
+
+        if (ASN1_STRING_length(alt_name->d.ia5) != dns_sanlen) {
+          tls_log("%s", "cert dNSName SAN contains embedded NULs, "
+            "rejecting as possible spoof attempt");
+          tls_log("suspicious dNSName SAN value: '%s'",
+            get_printable_subjaltname(p, dns_san,
+              ASN1_STRING_length(alt_name->d.dNSName)));
+
+          GENERAL_NAME_free(alt_name);
+          sk_GENERAL_NAME_free(sans);
+          return 0;
+        }
+
+        if (strncasecmp(dns_name, dns_san, dns_sanlen + 1) == 0) {
+          pr_trace_msg(trace_channel, 8,
+            "found cert dNSName SAN matching '%s'", dns_name);
+          matched = 1;
+
+        } else {
+          pr_trace_msg(trace_channel, 9,
+            "cert dNSName SAN '%s' did not match '%s'", dns_san, dns_name);
+        }
+      }
+
+      GENERAL_NAME_free(alt_name);
+ 
+      if (matched == 1) {
+        break;
+      }
+    }
+
+    sk_GENERAL_NAME_free(sans);
+  }
+
+  return matched;
+}
+
+static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
+  int matched = 0;
+  STACK_OF(GENERAL_NAME) *sans;
+
+  sans = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+  if (sans != NULL) {
+    register unsigned int i;
+    int nsans = sk_GENERAL_NAME_num(sans);
+
+    for (i = 0; i < nsans; i++) {
+      GENERAL_NAME *alt_name = sk_GENERAL_NAME_value(sans, i);
+
+      if (alt_name->type == GEN_IPADD) {
+        unsigned char *san_data = NULL;
+        int have_ipstr = FALSE, san_datalen;
+#ifdef PR_USE_IPV6
+        char san_ipstr[INET6_ADDRSTRLEN + 1] = {'\0'};
+#else
+        char san_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
+#endif /* PR_USE_IPV6 */
+
+        san_data = ASN1_STRING_data(alt_name->d.ip);
+        memset(san_ipstr, '\0', sizeof(san_ipstr));
+
+        san_datalen = ASN1_STRING_length(alt_name->d.ip);
+        if (san_datalen == 4) {
+          /* IPv4 address */
+          snprintf(san_ipstr, sizeof(san_ipstr)-1, "%u.%u.%u.%u",
+            san_data[0], san_data[1], san_data[2], san_data[3]);
+          have_ipstr = TRUE;
+
+#ifdef PR_USE_IPV6
+        } else if (san_datalen == 16) {
+          /* IPv6 address */
+
+          if (pr_inet_ntop(AF_INET6, san_data, san_ipstr,
+              sizeof(san_ipstr)-1) == NULL) {
+            tls_log("unable to convert cert iPAddress SAN value (length %d) "
+              "to IPv6 representation: %s", san_datalen, strerror(errno));
+
+          } else {
+            have_ipstr = TRUE;
+          }
+
+#endif /* PR_USE_IPV6 */
+        } else {
+          pr_trace_msg(trace_channel, 3,
+            "unsupported cert SAN ipAddress length (%d), ignoring",
+            san_datalen);
+          continue;
+        }
+
+        if (have_ipstr) {
+          size_t san_ipstrlen;
+
+          san_ipstrlen = strlen(san_ipstr);
+
+          if (strncmp(ipstr, san_ipstr, san_ipstrlen + 1) == 0) {
+            pr_trace_msg(trace_channel, 8,
+              "found cert iPAddress SAN matching '%s'", ipstr);
+            matched = 1;
+ 
+          } else {
+            if (san_datalen == 16) {
+              /* We need to handle the case where the iPAddress SAN might
+               * have contained an IPv4-mapped IPv6 adress, and we're
+               * comparing against an IPv4 address.
+               */
+              if (san_ipstrlen > 7 &&
+                  strncasecmp(san_ipstr, "::ffff:", 7) == 0) {
+                if (strncmp(ipstr, san_ipstr + 7, san_ipstrlen - 6) == 0) {
+                  pr_trace_msg(trace_channel, 8,
+                    "found cert iPAddress SAN '%s' matching '%s'",
+                    san_ipstr, ipstr);
+                    matched = 1;
+                }
+              }
+
+            } else {
+              pr_trace_msg(trace_channel, 9,
+                "cert iPAddress SAN '%s' did not match '%s'", san_ipstr, ipstr);
+            }
+          }
+        }
+      }
+
+      GENERAL_NAME_free(alt_name);
+ 
+      if (matched == 1) {
+        break;
+      }
+    }
+
+    sk_GENERAL_NAME_free(sans);
+  }
+
+  return matched;
+}
+
+static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
+    int allow_wildcards) {
+  int matched = 0, idx = -1;
+  X509_NAME *subj_name = NULL;
+  X509_NAME_ENTRY *cn_entry = NULL;
+  ASN1_STRING *cn_asn1 = NULL;
+  char *cn_str = NULL;
+  size_t cn_len = 0;
+
+  /* Find the position of the CommonName (CN) field within the Subject of
+   * the cert.
+   */
+  subj_name = X509_get_subject_name(cert);
+  if (subj_name == NULL) {
+    pr_trace_msg(trace_channel, 12,
+      "unable to check certificate CommonName against '%s': "
+      "unable to get Subject", name);
+    return 0;
+  }
+
+  idx = X509_NAME_get_index_by_NID(subj_name, NID_commonName, -1);
+  if (idx < 0) {
+    pr_trace_msg(trace_channel, 12,
+      "unable to check certificate CommonName against '%s': "
+      "no CommoName atribute found", name);
+    return 0;
+  }
+
+  cn_entry = X509_NAME_get_entry(subj_name, idx);
+  if (cn_entry == NULL) {
+    pr_trace_msg(trace_channel, 12,
+      "unable to check certificate CommonName against '%s': "
+      "error obtaining CommoName atribute found: %s", name, tls_get_errors());
+    return 0;
+  }
+
+  /* Convert the CN field to a string, by way of an ASN1 object. */
+  cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry);
+  if (cn_asn1 == NULL) {
+    X509_NAME_ENTRY_free(cn_entry);
+
+    pr_trace_msg(trace_channel, 12,
+      "unable to check certificate CommonName against '%s': "
+      "error converting CommoName atribute to ASN.1: %s", name,
+      tls_get_errors());
+    return 0;
+  }
+
+  cn_str = (char *) ASN1_STRING_data(cn_asn1);
+
+  /* Check for CommonName values which contain embedded NULs.  This can cause
+   * verification problems (spoofing), e.g. if the string is
+   * "www.goodguy.com\0www.badguy.com"; the use of strcmp() only checks
+   * "www.goodguy.com".
+   */
+
+  cn_len = strlen(cn_str);
+
+  if (ASN1_STRING_length(cn_asn1) != cn_len) {
+    X509_NAME_ENTRY_free(cn_entry);
+
+    tls_log("%s", "cert CommonName contains embedded NULs, rejecting as "
+      "possible spoof attempt");
+    tls_log("suspicious CommonName value: '%s'",
+      get_printable_subjaltname(p, (const char *) cn_str,
+        ASN1_STRING_length(cn_asn1)));
+    return 0;
+  }
+
+  /* Yes, this is deliberately a case-insensitive comparison.  Most CNs
+   * contain a hostname (case-insensitive); if they contain an IP address,
+   * the case-insensitivity won't hurt anything.  In fact, it's needed for
+   * e.g. IPv6 addresses.
+   */
+  if (strncasecmp(name, cn_str, cn_len + 1) == 0) {
+    matched = 1;
+  }
+
+  if (matched == 0 &&
+      allow_wildcards) {
+
+    /* XXX Implement wildcard checking. */
+  }
+ 
+  X509_NAME_ENTRY_free(cn_entry);
+  return matched;
+}
+
+static int tls_check_client_cert(SSL *ssl, conn_t *conn) {
   X509 *cert = NULL;
-  unsigned char ok = FALSE, have_cn = FALSE, have_dns_ext = FALSE,
-    have_ipaddr_ext = FALSE;
+  unsigned char have_cn = FALSE, have_dns_ext = FALSE, have_ipaddr_ext = FALSE;
+  int ok = -1;
 
   /* Only perform these more stringent checks if asked to verify clients. */
-  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT))
-    return TRUE;
+  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT)) {
+    return 0;
+  }
 
   /* Only perform these checks is configured to do so. */
   if (!(tls_opts & TLS_OPT_VERIFY_CERT_FQDN) &&
       !(tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) &&
       !(tls_opts & TLS_OPT_VERIFY_CERT_CN)) {
-    return TRUE;
+    return 0;
   }
 
-  /* Note: this should _never_ return NULL in this case. */
   cert = SSL_get_peer_certificate(ssl);
-
-  /* Check the CN (Common Name) if configured. */
-  if (tls_opts & TLS_OPT_VERIFY_CERT_CN) {
-    X509_NAME *sn;
-
-    /* This does NOT increment a reference counter, thus we do NOT want
-     * call X509_NAME_free() on the returned pointer.
+  if (cert == NULL) {
+    /* This can be null in the case where some anonymous (insecure)
+     * cipher suite was used.
      */
-    sn = X509_get_subject_name(cert);
-    if (sn) {
-      STACK_OF(X509_NAME_ENTRY) *sk_name_ents;
-      register unsigned int i;
-      int nents;
+    tls_log("unable to verify '%s': client did not provide certificate",
+      conn->remote_name);
+    return -1;
+  }
 
-      /* XXX I don't like this direct access to the entries member */
-      sk_name_ents = sn->entries;
-      nents = sk_X509_NAME_ENTRY_num(sk_name_ents);
+  /* Check the DNS SANs if configured. */
+  if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
+    int matched;
 
-      for (i = 0; i < nents; i++) {
-        X509_NAME_ENTRY *ent;
-        int nid;
+    matched = tls_cert_match_dns_san(conn->pool, cert, conn->remote_name);
+    if (matched == 0) {
+      tls_log("client cert dNSName SANs do not match remote name '%s'",
+        conn->remote_name);
+      return -1;
 
-        ent = sk_X509_NAME_ENTRY_value(sk_name_ents, i);
-
-        nid = OBJ_obj2nid((ASN1_OBJECT *) X509_NAME_ENTRY_get_object(ent));
-        if (nid == NID_commonName) {
-          const char *ptr;
-          int len;
-
-          have_cn = TRUE;
-
-          /* XXX I don't like these direct accesses to the data and length
-           * members.
-           */
-          ptr = (const char *) ent->value->data;
-          len = ent->value->length;
-
-          /* Check for CommonName values which contain embedded NULs.  This
-           * can cause verification problems (spoofing), e.g. if the string is
-           * "www.goodguy.com\0www.badguy.com"; the use of strcmp() only checks
-           * "www.goodguy.com".
-           */
-
-          if (len != strlen(ptr)) {
-            tls_log("%s", "client cert CommonName contains embedded NULs, "
-              "rejecting as possible spoof attempt");
-            tls_log("suspicious CommonName value: '%s'",
-              get_printable_subjaltname(conn->pool, (const char *) ptr, len));
-
-            X509_NAME_ENTRY_free(ent);
-            return FALSE;
-
-          } else {
-            if (strcmp(ptr, conn->remote_name) != 0) {
-              tls_log("client cert CommonName value '%s' != client FQDN '%s'",
-                ptr, conn->remote_name);
-
-              X509_NAME_ENTRY_free(ent);
-              return FALSE;
-            }
-          }
-
-          tls_log("%s", "client cert CommonName matches client FQDN");
-          ok = TRUE;
-        }
-
-        if (ok)
-          break;
-      }
+    } else {
+      tls_log("client cert dNSName SAN matches remote name '%s'",
+        conn->remote_name);
+      have_dns_ext = TRUE;
+      ok = 1;
     }
   }
 
-  /* Next, check the subjectAltName X509v3 extensions, as is proper, for
-   * the IP address and FQDN.
-   */
-  if ((tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) ||
-      (tls_opts & TLS_OPT_VERIFY_CERT_FQDN)) {
-    STACK_OF(GENERAL_NAME) *sk_alt_names;
+  /* Check the IP SANs, if configured. */
+  if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
+    int matched;
 
-    sk_alt_names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
-    if (sk_alt_names) {
-      register unsigned int i;
-      int nnames = sk_GENERAL_NAME_num(sk_alt_names);
+    matched = tls_cert_match_ip_san(conn->pool, cert,
+      pr_netaddr_get_ipstr(conn->remote_addr));
+    if (matched == 0) {
+      tls_log("client cert iPAddress SANs do not match client IP '%s'",
+        pr_netaddr_get_ipstr(conn->remote_addr));
+      return -1;
 
-      for (i = 0; i < nnames; i++) {
-        GENERAL_NAME *name = sk_GENERAL_NAME_value(sk_alt_names, i);
+    } else {
+      tls_log("client cert iPAddress SAN matches client IP '%s'",
+        pr_netaddr_get_ipstr(conn->remote_addr));
+      have_ipaddr_ext = TRUE;
+      ok = 1;
+    }
+  }
 
-        /* Only interested in the DNS and IP address types right now. */
-        switch (name->type) {
-          case GEN_DNS:
-            if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
-              const char *cert_dns_name = (const char *) name->d.ia5->data;
-              have_dns_ext = TRUE;
+  /* Check the CN (Common Name) if configured. */
+  if (tls_opts & TLS_OPT_VERIFY_CERT_CN) {
+    int matched;
 
-              /* Check for subjectAltName values which contain embedded
-               * NULs.  This can cause verification problems (spoofing),
-               * e.g. if the string is "www.goodguy.com\0www.badguy.com"; the
-               * use of strcmp() only checks "www.goodguy.com".
-               */
+    matched = tls_cert_match_cn(conn->pool, cert, conn->remote_name, TRUE);
+    if (matched == 0) {
+      tls_log("client cert CommonName does not match client FQDN '%s'",
+        conn->remote_name);
+      return -1;
 
-              if ((size_t) name->d.ia5->length != strlen(cert_dns_name)) {
-                tls_log("%s", "client cert dNSName contains embedded NULs, "
-                  "rejecting as possible spoof attempt");
-                tls_log("suspicious dNSName value: '%s'",
-                  get_printable_subjaltname(conn->pool,
-                    (const char *) name->d.ia5->data,
-                    (size_t) name->d.ia5->length));
-
-                GENERAL_NAME_free(name);
-                sk_GENERAL_NAME_free(sk_alt_names);
-                X509_free(cert);
-                return FALSE;
-
-              } else {
-                if (strcmp(cert_dns_name, conn->remote_name) != 0) {
-                  tls_log("client cert dNSName value '%s' != client FQDN '%s'",
-                    cert_dns_name, conn->remote_name);
-
-                  GENERAL_NAME_free(name);
-                  sk_GENERAL_NAME_free(sk_alt_names);
-                  X509_free(cert);
-                  return FALSE;
-                }
-              }
-
-              tls_log("%s", "client cert dNSName matches client FQDN");
-              ok = TRUE;
-              continue;
-            }
-            break;
-
-          case GEN_IPADD:
-            if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
-              pr_netaddr_t *cert_addr;
-              unsigned char *cert_data, ipv6_reqd = FALSE;
-              int res;
-#ifdef PR_USE_IPV6
-              const char *rep = NULL;
-              char cert_ipstr[INET6_ADDRSTRLEN + 1] = {'\0'};
-#else
-              char cert_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
-#endif /* PR_USE_IPV6 */
-
-              cert_data = name->d.ip->data;
-              memset(cert_ipstr, '\0', sizeof(cert_ipstr));
-
-              if (name->d.ip->length == 4) {
-                /* IPv4 address */
-                snprintf(cert_ipstr, sizeof(cert_ipstr)-1, "%d.%d.%d.%d",
-                  cert_data[0], cert_data[1], cert_data[2], cert_data[3]);
-
-#ifdef PR_USE_IPV6
-              } else if (name->d.ip->length == 16) {
-
-                /* Make sure that IPv6 support is enabled, at least for the
-                 * scope of these checks, if necessary.
-                 */
-                if (pr_netaddr_use_ipv6() == FALSE) {
-                  ipv6_reqd = TRUE;
-                }
-
-                rep = pr_inet_ntop(AF_INET6, cert_data, cert_ipstr,
-                  sizeof(cert_ipstr)-1);
-                if (rep == NULL) {
-                  tls_log("unable to convert client cert iPAddress value "
-                    "(length %d) to IPv6 representation: %s",
-                    name->d.ip->length, strerror(errno));
-
-                  GENERAL_NAME_free(name);
-                  sk_GENERAL_NAME_free(sk_alt_names);
-                  X509_free(cert);
-                  return FALSE;
-                }
-#endif /* PR_USE_IPV6 */ 
-
-              } else {
-                /* Malformed IP address SubjectAltName extension. */
-                tls_log("unexpected client cert iPAddress value length (%d)",
-                  name->d.ip->length);
-
-                GENERAL_NAME_free(name);
-                sk_GENERAL_NAME_free(sk_alt_names);
-                X509_free(cert);
-                return FALSE;
-              }
-
-              have_ipaddr_ext = TRUE;
-
-              if (ipv6_reqd) {
-                pr_netaddr_enable_ipv6();
-              }
-
-              cert_addr = pr_netaddr_get_addr(session.pool, cert_ipstr, NULL);
-              if (cert_addr == NULL) {
-                if (ipv6_reqd) {
-                  pr_netaddr_disable_ipv6();
-                }
-
-                tls_log("unable to resolve client cert iPAddress value "
-                  "'%s' to address: %s", cert_ipstr, strerror(errno));
-
-                GENERAL_NAME_free(name);
-                sk_GENERAL_NAME_free(sk_alt_names);
-                X509_free(cert);
-                return FALSE;
-              }
-
-              res = pr_netaddr_cmp(cert_addr, conn->remote_addr);
-
-              if (ipv6_reqd) {
-                pr_netaddr_disable_ipv6();
-              }
-
-              if (res != 0) {
-                tls_log("client cert iPAddress value '%s' != client IP '%s'",
-                  cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr));
-
-                GENERAL_NAME_free(name);
-                sk_GENERAL_NAME_free(sk_alt_names);
-                X509_free(cert);
-                return FALSE;
-              }
-
-              tls_log("client cert iPAddress matches client IP '%s'",
-                pr_netaddr_get_ipstr(conn->remote_addr));
-              ok = TRUE;
-              continue;
-            }
-            break;
-
-          default:
-            break;
-        }
-
-        GENERAL_NAME_free(name);
-      } 
-
-      sk_GENERAL_NAME_free(sk_alt_names);
+    } else {
+      tls_log("client cert CommonName matches client FQDN '%s'",
+        conn->remote_name);
+      have_cn = TRUE;
+      ok = 1;
     }
   }
 
@@ -1288,20 +1366,84 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
 
   if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) &&
       !have_dns_ext) {
-    tls_log("%s", "client cert missing required X509v3 subjectAltName dNSName");
+    tls_log("%s", "client cert missing required X509v3 SubjectAltName dNSName");
   }
 
   if ((tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) &&
       !have_ipaddr_ext) {
-    tls_log("%s", "client cert missing required X509v3 subjectAltName iPAddress");
+    tls_log("%s", "client cert missing required X509v3 SubjectAltName iPAddress");
+  }
+
+  X509_free(cert);
+  return ok;
+}
+
+static int tls_check_server_cert(SSL *ssl, conn_t *conn) {
+  X509 *cert = NULL;
+  int ok = -1;
+  long verify_result;
+
+  /* Only perform these more stringent checks if asked to verify servers. */
+  if (!(tls_flags & TLS_SESS_VERIFY_SERVER) &&
+      !(tls_flags & TLS_SESS_VERIFY_SERVER_NO_DNS)) {
+    return 0;
+  }
+
+  /* Check SSL_get_verify_result */
+  verify_result = SSL_get_verify_result(ssl);
+  if (verify_result != X509_V_OK) {
+    tls_log("unable to verify '%s' server certificate: %s",
+      conn->remote_name, X509_verify_cert_error_string(verify_result));
+    return -1;
+  }
+
+  cert = SSL_get_peer_certificate(ssl);
+  if (cert == NULL) {
+    /* This can be null in the case where some anonymous (insecure)
+     * cipher suite was used.
+     */
+    tls_log("unable to verify '%s': server did not provide certificate",
+      conn->remote_name);
+    return -1;
+  }
+
+  /* XXX If using OpenSSL-1.0.2/1.1.0, we might be able to use: 
+   * X509_match_host() and X509_match_ip()/X509_match_ip_asc().
+   */
+
+  ok = tls_cert_match_ip_san(conn->pool, cert,
+    pr_netaddr_get_ipstr(conn->remote_addr));
+  if (ok == 0) {
+    ok = tls_cert_match_cn(conn->pool, cert,
+      pr_netaddr_get_ipstr(conn->remote_addr), FALSE);
+  }
+
+  if (ok == 0 &&
+      !(tls_opts & TLS_SESS_VERIFY_SERVER_NO_DNS)) {
+    int reverse_dns;
+    const char *remote_name;
+
+    reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
+
+    /* XXX Should clear the Netaddr cache here, but just for our single
+     * name.  Should be an API for that.
+     */
+    pr_netaddr_clear_cache();
+
+    conn->remote_addr->na_have_dnsstr = FALSE;
+    remote_name = pr_netaddr_get_dnsstr(conn->remote_addr);
+    pr_netaddr_set_reverse_dns(reverse_dns);
+
+    ok = tls_cert_match_dns_san(conn->pool, cert, remote_name);
+    if (ok == 0) {
+      ok = tls_cert_match_cn(conn->pool, cert, remote_name, TRUE);
+    }
   }
 
   X509_free(cert);
 
-  if (!ok)
-    return FALSE;
-
-  return TRUE;
+  ok = 0;
+  return ok;
 }
 
 struct tls_pkey_data {
@@ -3372,20 +3514,18 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   if (!on_data) {
     int reused;
 
-    subj = tls_get_subj_name();
+    subj = tls_get_subj_name(ctrl_ssl);
     if (subj)
       tls_log("Client: %s", subj);
 
     if (!(tls_opts & TLS_OPT_NO_CERT_REQUEST)) {
 
-      /* NOTE: should probably use SSL_get_verify_result() as a last
-       * sanity check.
-       */
-
       /* Now we can go on with our post-handshake, application level
        * requirement checks.
        */
-      if (!tls_check_client_cert(ssl, conn)) {
+      if (tls_check_client_cert(ssl, conn) < 0) {
+        tls_end_sess(ssl, PR_NETIO_STRM_CTRL, 0);
+        ctrl_ssl = NULL;
         return -1;
       }
     }
@@ -3540,6 +3680,189 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       logged_data = TRUE;
     }
   }
+
+  return 0;
+}
+
+static int tls_connect(conn_t *conn) {
+  int blocking, res = 0, xerrno = 0;
+  char *subj = NULL;
+  SSL *ssl = NULL;
+  BIO *rbio = NULL, *wbio = NULL;
+
+  if (!ssl_ctx) {
+    tls_log("%s", "unable to start session: null SSL_CTX");
+    return -1;
+  }
+
+  ssl = SSL_new(ssl_ctx);
+  if (ssl == NULL) {
+    tls_log("error: unable to start session: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    return -2;
+  }
+
+  /* We deliberately set SSL_VERIFY_NONE here, so that we get to
+   * determine how to handle the server cert verification result ourselves.
+   */
+  SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL);
+
+  /* This works with either rfd or wfd (I hope). */
+  rbio = BIO_new_socket(conn->rfd, FALSE);
+  wbio = BIO_new_socket(conn->rfd, FALSE);
+  SSL_set_bio(ssl, rbio, wbio);
+
+  /* If configured, set a timer for the handshake. */
+  if (tls_handshake_timeout) {
+    tls_handshake_timer_id = pr_timer_add(tls_handshake_timeout, -1,
+      &tls_module, tls_handshake_timeout_cb, "SSL/TLS handshake");
+  }
+
+  /* Make sure that TCP_NODELAY is enabled for the handshake. */
+  pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+
+  retry:
+
+  blocking = tls_get_block(conn);
+  if (blocking) {
+    /* Put the connection in non-blocking mode for the duration of the
+     * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
+     * without spinning in a tight loop and consuming the CPU).
+     */
+    pr_inet_set_nonblock(conn->pool, conn);
+  }
+
+  pr_signals_handle();
+  res = SSL_connect(ssl);
+  if (res == -1) {
+    xerrno = errno;
+  }
+
+  if (blocking) {
+    /* Return the connection to blocking mode. */
+    pr_inet_set_block(conn->pool, conn);
+  }
+
+  if (res < 1) {
+    const char *msg = "unable to connect using TLS connection";
+    int errcode = SSL_get_error(ssl, res);
+
+    pr_signals_handle();
+
+    if (tls_handshake_timed_out) {
+      tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
+      tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+      return -4;
+    }
+
+    switch (errcode) {
+      case SSL_ERROR_WANT_READ:
+        tls_readmore(conn->rfd);
+        goto retry;
+
+      case SSL_ERROR_WANT_WRITE:
+        tls_writemore(conn->rfd);
+        goto retry;
+
+      case SSL_ERROR_ZERO_RETURN:
+        tls_log("%s: TLS connection closed", msg);
+        break;
+
+      case SSL_ERROR_WANT_X509_LOOKUP:
+        tls_log("%s: needs X509 lookup", msg);
+        break;
+
+      case SSL_ERROR_SYSCALL: {
+        /* Check to see if the OpenSSL error queue has info about this. */
+        int xerrcode = ERR_get_error();
+    
+        if (xerrcode == 0) {
+          /* The OpenSSL error queue doesn't have any more info, so we'll
+           * examine the SSL_connect() return value itself.
+           */
+
+          if (res == 0) {
+            /* EOF */
+            tls_log("%s: received EOF that violates protocol", msg);
+
+          } else if (res == -1) {
+            /* Check errno */
+            tls_log("%s: system call error: [%d] %s", msg, xerrno,
+              strerror(xerrno));
+          }
+
+        } else {
+          tls_log("%s: system call error: %s", msg, tls_get_errors());
+        }
+
+        break;
+      }
+
+      case SSL_ERROR_SSL:
+        tls_log("%s: protocol error: %s", msg, tls_get_errors());
+        break;
+    }
+
+    pr_event_generate("mod_tls.data-handshake-failed", &errcode);
+
+    tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+    return -3;
+  }
+
+  /* Disable TCP_NODELAY, now that the handshake is done. */
+  pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+ 
+  /* Disable the handshake timer. */
+  pr_timer_remove(tls_handshake_timer_id, &tls_module);
+
+  /* Manually update the raw bytes counters with the network IO from the
+   * SSL handshake.
+   */
+  session.total_raw_in += (BIO_number_read(rbio) +
+    BIO_number_read(wbio));
+  session.total_raw_out += (BIO_number_written(rbio) +
+    BIO_number_written(wbio));
+
+  /* Stash the SSL object in the pointers of the correct NetIO streams. */
+  if (conn == session.d) {
+    pr_buffer_t *strm_buf;
+
+    tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
+
+    /* Clear any data from the NetIO stream buffers which may have been read
+     * in before the SSL/TLS handshake occurred (Bug#3624).
+     */
+    strm_buf = tls_data_rd_nstrm->strm_buf;
+    if (strm_buf != NULL) {
+      strm_buf->current = NULL;
+      strm_buf->remaining = strm_buf->buflen;
+    }
+  }
+
+#if OPENSSL_VERSION_NUMBER == 0x009080cfL
+  /* In OpenSSL-0.9.8l, SSL session renegotiations are automatically
+   * disabled.  Thus if the admin explicitly configured support for
+   * client-initiated renegotations via the AllowClientRenegotiations
+   * TLSOption, then we need to do some hackery to enable renegotiations.
+   */
+  if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
+    ssl->s3->flags |= SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+  }
+#endif
+
+  subj = tls_get_subj_name(ssl);
+  if (subj) {
+    tls_log("Server: %s", subj);
+  }
+
+  if (tls_check_server_cert(ssl, conn) < 0) {
+    tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+    return -1;
+  }
+
+  tls_log("%s connection created, using cipher %s (%d bits)",
+    SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+    SSL_get_cipher_bits(ssl, NULL));
 
   return 0;
 }
@@ -3835,8 +4158,8 @@ static size_t tls_get_pagesz(void) {
   return pagesz;
 }
 
-static char *tls_get_subj_name(void) {
-  X509 *cert = SSL_get_peer_certificate(ctrl_ssl);
+static char *tls_get_subj_name(SSL *ssl) {
+  X509 *cert = SSL_get_peer_certificate(ssl);
 
   if (cert) {
     char *name = tls_x509_name_oneline(X509_get_subject_name(cert));
@@ -6296,41 +6619,69 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
     /* Enforce the "data" part of TLSRequired, if configured. */
     if (tls_required_on_data == 1 ||
         (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
-      X509 *ctrl_cert = NULL, *data_cert = NULL;
 
-      tls_log("%s", "starting TLS negotiation on data connection");
-      tls_data_need_init_handshake = TRUE;
-      if (tls_accept(session.d, TRUE) < 0) {
-        tls_log("%s", "unable to open data connection: TLS negotiation failed");
-        session.d->xerrno = EPERM;
-        return -1;
-      }
+      /* XXX How to force 421 response code for failed secure FXP/SSCN? */
 
-      /* Make sure that the certificate used, if any, for this data channel
-       * handshake is the same as that used for the control channel handshake.
-       * This may be too strict of a requirement, though.
+      /* Directory listings (LIST, MLSD, NLST) are ALWAYS handled in server
+       * mode, regardless of SSCN mode.
        */
-      ctrl_cert = SSL_get_peer_certificate(ctrl_ssl);
-      data_cert = SSL_get_peer_certificate((SSL *) nstrm->strm_data);
+      if (session.curr_cmd_id == PR_CMD_LIST_ID ||
+          session.curr_cmd_id == PR_CMD_MLSD_ID ||
+          session.curr_cmd_id == PR_CMD_NLST_ID ||
+          tls_sscn_mode == TLS_SSCN_MODE_SERVER) {
+        X509 *ctrl_cert = NULL, *data_cert = NULL;
 
-      if (ctrl_cert && data_cert) {
-        if (X509_cmp(ctrl_cert, data_cert)) {
-          X509_free(ctrl_cert);
-          X509_free(data_cert);
-
-          /* Properly shutdown the SSL session. */
-          tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
-
-          tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
-            nstrm->strm_data = NULL;
-
-          tls_log("%s", "unable to open data connection: control/data "
-            "certificate mismatch");
-
+        tls_log("%s", "starting TLS negotiation on data connection");
+        tls_data_need_init_handshake = TRUE;
+        if (tls_accept(session.d, TRUE) < 0) {
+          tls_log("%s",
+            "unable to open data connection: TLS negotiation failed");
           session.d->xerrno = EPERM;
           return -1;
         }
-      }
+
+        /* Make sure that the certificate used, if any, for this data channel
+         * handshake is the same as that used for the control channel handshake.
+         * This may be too strict of a requirement, though.
+         */
+        ctrl_cert = SSL_get_peer_certificate(ctrl_ssl);
+        data_cert = SSL_get_peer_certificate((SSL *) nstrm->strm_data);
+
+        if (ctrl_cert != NULL &&
+            data_cert != NULL) {
+          if (X509_cmp(ctrl_cert, data_cert)) {
+            X509_free(ctrl_cert);
+            X509_free(data_cert);
+
+            /* Properly shutdown the SSL session. */
+            tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
+
+            tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
+              nstrm->strm_data = NULL;
+
+            tls_log("%s", "unable to open data connection: control/data "
+              "certificate mismatch");
+
+            session.d->xerrno = EPERM;
+            return -1;
+          }
+
+          if (ctrl_cert)
+            X509_free(ctrl_cert);
+
+          if (data_cert)
+            X509_free(data_cert);
+        }
+
+      } else if (tls_sscn_mode == TLS_SSCN_MODE_CLIENT) {
+        tls_log("%s", "making TLS connection for data connection");
+        if (tls_connect(session.d) < 0) {
+          tls_log("%s",
+            "unable to open data connection: TLS connection failed");
+          session.d->xerrno = EPERM;
+          return -1;
+        }
+     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
       /* Make sure blinding is turned on. (For some reason, this only seems
@@ -6338,12 +6689,6 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
        */
       tls_blinding_on((SSL *) nstrm->strm_data);
 #endif
-
-      if (ctrl_cert)
-        X509_free(ctrl_cert);
-
-      if (data_cert)
-        X509_free(data_cert);
 
       tls_flags |= TLS_SESS_ON_DATA;
     }
@@ -7269,6 +7614,65 @@ MODRET tls_prot(cmd_rec *cmd) {
   } else {
     pr_response_add_err(R_504, _("PROT %s unsupported"), cmd->argv[1]);
     return PR_ERROR(cmd);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
+MODRET tls_sscn(cmd_rec *cmd) {
+
+  if (tls_engine == FALSE ||
+      session.rfc2228_mech == NULL ||
+      strncmp(session.rfc2228_mech, "TLS", 4) != 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argc > 2) {
+    int xerrno = EINVAL;
+
+    tls_log("denying malformed SSCN command: '%s %s'", cmd->argv[0], cmd->arg);
+    pr_response_add_err(R_504, _("%s: %s"), cmd->argv[0], strerror(xerrno));
+
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
+    int xerrno = EPERM;
+
+    pr_log_debug(DEBUG8, "%s denied by <Limit> configuration", cmd->argv[0]);
+    tls_log("%s denied by <Limit> configuration", cmd->argv[0]);
+    pr_response_add_err(R_550, _("%s: %s"), cmd->argv[0], strerror(xerrno));
+
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  if (cmd->argc == 1) {
+    /* Client is querying our SSCN mode. */
+    pr_response_add(R_200, "%s:%s METHOD", cmd->argv[0],
+      tls_sscn_mode == TLS_SSCN_MODE_SERVER ? "SERVER" : "CLIENT");
+
+  } else {
+    /* Parameter MUST be one of: "ON", "OFF. */
+    if (strncmp(cmd->argv[1], "ON", 3) == 0) {
+      tls_sscn_mode = TLS_SSCN_MODE_CLIENT;
+      pr_response_add(R_200, "%s:CLIENT METHOD", cmd->argv[0]);
+
+    } else if (strncmp(cmd->argv[1], "OFF", 4) == 0) {
+      tls_sscn_mode = TLS_SSCN_MODE_SERVER;
+      pr_response_add(R_200, "%s:SERVER METHOD", cmd->argv[0]);
+
+    } else {
+      int xerrno = EINVAL;
+
+      tls_log("denying unsupported SSCN command: '%s %s'", cmd->argv[0],
+        cmd->argv[1]);
+      pr_response_add_err(R_501, _("%s: %s"), cmd->argv[0], strerror(xerrno));
+
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -8206,6 +8610,30 @@ MODRET set_tlsverifyorder(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSVerifyServer on|NoReverseDNS|off */
+MODRET set_tlsverifyserver(cmd_rec *cmd) {
+  int setting = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  setting = get_boolean(cmd, 1);
+  if (setting == -1) {
+    if (strcasecmp(cmd->argv[1], "NoReverseDNS") != 0) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+ 
+    setting = 2;
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = setting;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -8824,14 +9252,38 @@ static int tls_sess_init(void) {
 #endif
 
   tmp = get_param_ptr(main_server->conf, "TLSVerifyClient", FALSE);
-  if (tmp!= NULL &&
+  if (tmp != NULL &&
       *tmp == TRUE) {
-    int *depth = NULL;
     tls_flags |= TLS_SESS_VERIFY_CLIENT;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyServer", FALSE);
+  if (c != NULL) {
+    int setting;
+
+    setting = *((int *) c->argv[0]);
+    switch (setting) {
+      case 2:
+        tls_flags |= TLS_SESS_VERIFY_SERVER_NO_DNS;
+        break;
+
+      case 1:
+        tls_flags |= TLS_SESS_VERIFY_SERVER;
+        break;
+    }
+
+  } else {
+    tls_flags |= TLS_SESS_VERIFY_SERVER;
+  }
+
+  /* If TLSVerifyClient/Server is on, look up the verification depth. */
+  if (tls_flags & (TLS_SESS_VERIFY_CLIENT|TLS_SESS_VERIFY_SERVER|TLS_SESS_VERIFY_SERVER_NO_DNS)) {
+    int *depth = NULL;
 
     depth = get_param_ptr(main_server->conf, "TLSVerifyDepth", FALSE);
-    if (depth != NULL)
+    if (depth != NULL) {
       tls_verify_depth = *depth;
+    }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSRequired", FALSE);
@@ -9042,6 +9494,7 @@ static int tls_sess_init(void) {
   pr_feat_add("CCC");
   pr_feat_add("PBSZ");
   pr_feat_add("PROT");
+  pr_feat_add("SSCN");
 
   /* Add the commands handled by this module to the HELP list. */
   pr_help_add(C_AUTH, _("<sp> base64-data"), TRUE);
@@ -9114,6 +9567,7 @@ static conftable tls_conftab[] = {
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
   { "TLSVerifyDepth",		set_tlsverifydepth,	NULL },
   { "TLSVerifyOrder",		set_tlsverifyorder,	NULL },
+  { "TLSVerifyServer",		set_tlsverifyserver,	NULL },
   { NULL , NULL, NULL}
 };
 
@@ -9123,6 +9577,7 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	C_CCC,	G_NONE,	tls_ccc,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
+  { CMD,	"SSCN",	G_NONE,	tls_sscn,	TRUE,	FALSE,	CL_SEC },
   { POST_CMD,	C_HOST,	G_NONE,	tls_post_host,	FALSE,	FALSE,	CL_SEC },
   { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE,	CL_SEC },
   { 0,	NULL }
