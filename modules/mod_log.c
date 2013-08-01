@@ -25,11 +25,12 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.148 2013-08-01 06:07:27 castaglia Exp $
+ * $Id: mod_log.c,v 1.149 2013-08-01 06:23:46 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
+#include "mod_log.h"
 
 module log_module;
 
@@ -68,60 +69,14 @@ struct logfile_struc {
  */
 #define EXTENDED_LOG_SYSLOG	-4
 
-#define META_START		0xff
-#define META_ARG_END		0xfe
-#define META_ARG		1
-#define META_BYTES_SENT		2
-#define META_FILENAME		3
-#define META_ENV_VAR		4
-#define META_REMOTE_HOST	5
-#define META_REMOTE_IP		6
-#define META_IDENT_USER		7
-#define META_PID		8
-#define META_TIME		9
-#define META_SECONDS		10
-#define META_COMMAND		11
-#define META_LOCAL_NAME		12
-#define META_LOCAL_PORT		13
-#define META_LOCAL_IP		14
-#define META_LOCAL_FQDN		15
-#define META_USER		16
-#define META_ORIGINAL_USER	17
-#define META_RESPONSE_CODE	18
-#define META_CLASS		19
-#define META_ANON_PASS		20
-#define META_METHOD		21
-#define META_XFER_PATH		22
-#define META_DIR_NAME		23
-#define META_DIR_PATH		24
-#define META_CMD_PARAMS		25
-#define META_RESPONSE_STR	26
-#define META_PROTOCOL		27
-#define META_VERSION		28
-#define META_RENAME_FROM	29
-#define META_FILE_MODIFIED	30
-#define META_UID		31
-#define META_GID		32
-#define META_RAW_BYTES_IN	33
-#define META_RAW_BYTES_OUT	34
-#define META_EOS_REASON		35
-#define META_VHOST_IP		36
-#define META_NOTE_VAR		37
-#define META_XFER_STATUS	38
-#define META_XFER_FAILURE	39
-#define META_MICROSECS		40
-#define META_MILLISECS		41
-#define META_ISO8601		42
-#define META_GROUP		43
-
 /* For tracking the size of deleted files. */
 static off_t log_dele_filesz = 0;
 
-static pool			*log_pool;
-static logformat_t		*formats = NULL;
-static xaset_t			*format_set = NULL;
-static logfile_t		*logs = NULL;
-static xaset_t			*log_set = NULL;
+static pool *log_pool = NULL;
+static logformat_t *formats = NULL;
+static xaset_t *format_set = NULL;
+static logfile_t *logs = NULL;
+static xaset_t *log_set = NULL;
 
 /* format string args:
    %A			- Anonymous username (password given)
@@ -177,7 +132,7 @@ static void add_meta(unsigned char **s, unsigned char meta, int args, ...) {
   int arglen;
   char *arg;
 
-  **s = META_START;
+  **s = LOGFMT_META_START;
   (*s) = (*s) + 1;
   **s = meta;
   (*s) = (*s) + 1;
@@ -192,7 +147,7 @@ static void add_meta(unsigned char **s, unsigned char meta, int args, ...) {
 
       memcpy(*s, arg, arglen);
       (*s) = (*s) + arglen;
-      **s = META_ARG_END;
+      **s = LOGFMT_META_ARG_END;
       (*s) = (*s) + 1;
     }
 
@@ -231,61 +186,61 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
         pr_signals_handle();
  
         if (strncmp(tmp, "{file-modified}", 15) == 0) {
-          add_meta(&outs, META_FILE_MODIFIED, 0);
+          add_meta(&outs, LOGFMT_META_FILE_MODIFIED, 0);
           tmp += 15;
           continue;
         }
 
         if (strncmp(tmp, "{gid}", 5) == 0) {
-          add_meta(&outs, META_GID, 0);
+          add_meta(&outs, LOGFMT_META_GID, 0);
           tmp += 5;
           continue;
         }
 
         if (strncasecmp(tmp, "{iso8601}", 9) == 0) {
-          add_meta(&outs, META_ISO8601, 0);
+          add_meta(&outs, LOGFMT_META_ISO8601, 0);
           tmp += 9;
           continue;
         }
 
         if (strncmp(tmp, "{microsecs}", 11) == 0) {
-          add_meta(&outs, META_MICROSECS, 0);
+          add_meta(&outs, LOGFMT_META_MICROSECS, 0);
           tmp += 11;
           continue;
         }
 
         if (strncmp(tmp, "{millisecs}", 11) == 0) {
-          add_meta(&outs, META_MILLISECS, 0);
+          add_meta(&outs, LOGFMT_META_MILLISECS, 0);
           tmp += 11;
           continue;
         }
 
         if (strncmp(tmp, "{protocol}", 10) == 0) {
-          add_meta(&outs, META_PROTOCOL, 0);
+          add_meta(&outs, LOGFMT_META_PROTOCOL, 0);
           tmp += 10;
           continue;
         }
 
         if (strncmp(tmp, "{uid}", 5) == 0) {
-          add_meta(&outs, META_UID, 0);
+          add_meta(&outs, LOGFMT_META_UID, 0);
           tmp += 5;
           continue;
         }
 
         if (strncmp(tmp, "{transfer-failure}", 18) == 0) {
-          add_meta(&outs, META_XFER_FAILURE, 0);
+          add_meta(&outs, LOGFMT_META_XFER_FAILURE, 0);
           tmp += 18;
           continue;
         }
 
         if (strncmp(tmp, "{transfer-status}", 17) == 0) {
-          add_meta(&outs, META_XFER_STATUS, 0);
+          add_meta(&outs, LOGFMT_META_XFER_STATUS, 0);
           tmp += 17;
           continue;
         }
 
         if (strncmp(tmp, "{version}", 9) == 0) {
-          add_meta(&outs, META_VERSION, 0);
+          add_meta(&outs, LOGFMT_META_VERSION, 0);
           tmp += 9;
           continue;
         }
@@ -301,8 +256,8 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
             note = tmp + 6;
             notelen = (ptr - note);
 
-            add_meta(&outs, META_NOTE_VAR, 0);
-            add_meta(&outs, META_ARG, 1, (int) notelen, note);
+            add_meta(&outs, LOGFMT_META_NOTE_VAR, 0);
+            add_meta(&outs, LOGFMT_META_ARG, 1, (int) notelen, note);
 
             /* Advance 6 for the leading '{note:', and one more for the
              * trailing '}' character.
@@ -318,132 +273,132 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
             continue;
 
           case 'a':
-            add_meta(&outs, META_REMOTE_IP, 0);
+            add_meta(&outs, LOGFMT_META_REMOTE_IP, 0);
             break;
 
           case 'A':
-            add_meta(&outs, META_ANON_PASS, 0);
+            add_meta(&outs, LOGFMT_META_ANON_PASS, 0);
             break;
 
           case 'b':
-            add_meta(&outs, META_BYTES_SENT, 0);
+            add_meta(&outs, LOGFMT_META_BYTES_SENT, 0);
             break;
 
           case 'c':
-            add_meta(&outs, META_CLASS, 0);
+            add_meta(&outs, LOGFMT_META_CLASS, 0);
             break;
 
           case 'D':
-            add_meta(&outs, META_DIR_PATH, 0);
+            add_meta(&outs, LOGFMT_META_DIR_PATH, 0);
             break;
 
           case 'd':
-            add_meta(&outs, META_DIR_NAME, 0);
+            add_meta(&outs, LOGFMT_META_DIR_NAME, 0);
             break;
 
           case 'E':
-            add_meta(&outs, META_EOS_REASON, 0);
+            add_meta(&outs, LOGFMT_META_EOS_REASON, 0);
             break;
 
           case 'e':
             if (arg) {
-              add_meta(&outs, META_ENV_VAR, 0);
-              add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
+              add_meta(&outs, LOGFMT_META_ENV_VAR, 0);
+              add_meta(&outs, LOGFMT_META_ARG, 1, (int) strlen(arg), arg);
             }
             break;
 
           case 'f':
-            add_meta(&outs, META_FILENAME, 0);
+            add_meta(&outs, LOGFMT_META_FILENAME, 0);
             break;
 
           case 'F':
-            add_meta(&outs, META_XFER_PATH, 0);
+            add_meta(&outs, LOGFMT_META_XFER_PATH, 0);
             break;
 
           case 'g':
-            add_meta(&outs, META_GROUP, 0);
+            add_meta(&outs, LOGFMT_META_GROUP, 0);
             break;
 
           case 'H':
-            add_meta(&outs, META_VHOST_IP, 0);
+            add_meta(&outs, LOGFMT_META_VHOST_IP, 0);
             break;
 
           case 'h':
-            add_meta(&outs, META_REMOTE_HOST, 0);
+            add_meta(&outs, LOGFMT_META_REMOTE_HOST, 0);
             break;
 
           case 'I':
-            add_meta(&outs, META_RAW_BYTES_IN, 0);
+            add_meta(&outs, LOGFMT_META_RAW_BYTES_IN, 0);
             break;
 
           case 'J':
-            add_meta(&outs, META_CMD_PARAMS, 0);
+            add_meta(&outs, LOGFMT_META_CMD_PARAMS, 0);
             break;
 
           case 'l':
-            add_meta(&outs, META_IDENT_USER, 0);
+            add_meta(&outs, LOGFMT_META_IDENT_USER, 0);
             break;
 
           case 'L':
-            add_meta(&outs, META_LOCAL_IP, 0);
+            add_meta(&outs, LOGFMT_META_LOCAL_IP, 0);
             break;
 
           case 'm':
-            add_meta(&outs, META_METHOD, 0);
+            add_meta(&outs, LOGFMT_META_METHOD, 0);
             break;
 
           case 'O':
-            add_meta(&outs, META_RAW_BYTES_OUT, 0);
+            add_meta(&outs, LOGFMT_META_RAW_BYTES_OUT, 0);
             break;
 
           case 'p':
-            add_meta(&outs, META_LOCAL_PORT, 0);
+            add_meta(&outs, LOGFMT_META_LOCAL_PORT, 0);
             break;
 
           case 'P':
-            add_meta(&outs, META_PID, 0);
+            add_meta(&outs, LOGFMT_META_PID, 0);
             break;
 
           case 'r':
-            add_meta(&outs, META_COMMAND, 0);
+            add_meta(&outs, LOGFMT_META_COMMAND, 0);
             break;
 
           case 's':
-            add_meta(&outs, META_RESPONSE_CODE, 0);
+            add_meta(&outs, LOGFMT_META_RESPONSE_CODE, 0);
             break;
 
           case 'S':
-            add_meta(&outs, META_RESPONSE_STR, 0);
+            add_meta(&outs, LOGFMT_META_RESPONSE_STR, 0);
             break;
 
           case 't':
-            add_meta(&outs, META_TIME, 0);
+            add_meta(&outs, LOGFMT_META_TIME, 0);
             if (arg)
-              add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
+              add_meta(&outs, LOGFMT_META_ARG, 1, (int) strlen(arg), arg);
             break;
 
           case 'T':
-            add_meta(&outs, META_SECONDS, 0);
+            add_meta(&outs, LOGFMT_META_SECONDS, 0);
             break;
 
           case 'u':
-            add_meta(&outs, META_USER, 0);
+            add_meta(&outs, LOGFMT_META_USER, 0);
             break;
 
           case 'U':
-            add_meta(&outs, META_ORIGINAL_USER, 0);
+            add_meta(&outs, LOGFMT_META_ORIGINAL_USER, 0);
             break;
 
           case 'v':
-            add_meta(&outs, META_LOCAL_NAME, 0);
+            add_meta(&outs, LOGFMT_META_LOCAL_NAME, 0);
             break;
 
           case 'V':
-            add_meta(&outs, META_LOCAL_FQDN, 0);
+            add_meta(&outs, LOGFMT_META_LOCAL_FQDN, 0);
             break;
 
           case 'w':
-            add_meta(&outs, META_RENAME_FROM, 0);
+            add_meta(&outs, LOGFMT_META_RENAME_FROM, 0);
             break;
 
           case '%':
@@ -687,10 +642,10 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   m = (*f) + 1;
   switch (*m) {
-    case META_ARG:
+    case LOGFMT_META_ARG:
       m++;
       argp = arg;
-      while (*m != META_ARG_END)
+      while (*m != LOGFMT_META_ARG_END)
         *argp++ = (char) *m++;
 
       *argp = 0;
@@ -698,7 +653,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_ANON_PASS:
+    case LOGFMT_META_ANON_PASS:
       argp = arg;
 
       pass = pr_table_get(session.notes, "mod_auth.anon-passwd", NULL);
@@ -710,7 +665,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_BYTES_SENT:
+    case LOGFMT_META_BYTES_SENT:
       argp = arg;
       if (session.xfer.p) {
         snprintf(argp, sizeof(arg), "%" PR_LU,
@@ -725,14 +680,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_CLASS:
+    case LOGFMT_META_CLASS:
       argp = arg;
       sstrncpy(argp, session.conn_class ? session.conn_class->cls_name : "-",
         sizeof(arg));
       m++;
       break;
 
-    case META_DIR_NAME:
+    case LOGFMT_META_DIR_NAME:
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
@@ -773,7 +728,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_DIR_PATH:
+    case LOGFMT_META_DIR_PATH:
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
@@ -818,7 +773,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_EOS_REASON: {
+    case LOGFMT_META_EOS_REASON: {
       const char *reason_str;
       char *details = NULL;
 
@@ -835,7 +790,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_FILENAME:
+    case LOGFMT_META_FILENAME:
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
@@ -900,7 +855,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_XFER_PATH:
+    case LOGFMT_META_XFER_PATH:
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
@@ -938,12 +893,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_ENV_VAR:
+    case LOGFMT_META_ENV_VAR:
       argp = arg;
       m++;
 
-      if (*m == META_START &&
-          *(m+1) == META_ARG) {
+      if (*m == LOGFMT_META_START &&
+          *(m+1) == LOGFMT_META_ARG) {
         char *key = get_next_meta(p, cmd, &m);
         if (key) {
           char *env = pr_env_get(cmd->tmp_pool, key);
@@ -955,12 +910,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
       break;
 
-    case META_NOTE_VAR:
+    case LOGFMT_META_NOTE_VAR:
       argp = arg;
       m++;
 
-      if (*m == META_START &&
-          *(m+1) == META_ARG) {
+      if (*m == LOGFMT_META_START &&
+          *(m+1) == LOGFMT_META_ARG) {
         char *key = get_next_meta(p, cmd, &m);
         if (key) {
           char *note = NULL;
@@ -980,20 +935,20 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
       break;
 
-    case META_REMOTE_HOST:
+    case LOGFMT_META_REMOTE_HOST:
       argp = arg;
       sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
       m++;
       break;
 
-    case META_REMOTE_IP:
+    case LOGFMT_META_REMOTE_IP:
       argp = arg;
       sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()),
         sizeof(arg));
       m++;
       break;
 
-    case META_RENAME_FROM: {
+    case LOGFMT_META_RENAME_FROM: {
       char *rnfr_path = "-";
 
       argp = arg;
@@ -1012,7 +967,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_IDENT_USER: {
+    case LOGFMT_META_IDENT_USER: {
       char *rfc1413_ident;
 
       argp = arg;
@@ -1026,7 +981,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_METHOD:
+    case LOGFMT_META_METHOD:
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) != 0) {
@@ -1049,33 +1004,33 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_LOCAL_PORT:
+    case LOGFMT_META_LOCAL_PORT:
       argp = arg;
       snprintf(argp, sizeof(arg), "%d", cmd->server->ServerPort);
       m++;
       break;
 
-    case META_LOCAL_IP:
+    case LOGFMT_META_LOCAL_IP:
       argp = arg;
       sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr()),
         sizeof(arg));
       m++;
       break;
 
-    case META_LOCAL_FQDN:
+    case LOGFMT_META_LOCAL_FQDN:
       argp = arg;
       sstrncpy(argp, pr_netaddr_get_dnsstr(pr_netaddr_get_sess_local_addr()),
         sizeof(arg));
       m++;
       break;
 
-    case META_PID:
+    case LOGFMT_META_PID:
       argp = arg;
       snprintf(argp, sizeof(arg), "%u",(unsigned int)getpid());
       m++;
       break;
 
-    case META_MICROSECS: {
+    case LOGFMT_META_MICROSECS: {
       struct timeval now;
 
       argp = arg;
@@ -1086,7 +1041,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_MILLISECS: {
+    case LOGFMT_META_MILLISECS: {
       struct timeval now;
       unsigned long millis;
 
@@ -1102,7 +1057,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_TIME:
+    case LOGFMT_META_TIME:
       {
         char *time_fmt = "[%d/%b/%Y:%H:%M:%S ";
         struct tm t;
@@ -1113,8 +1068,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
         argp = arg;
         m++;
 
-        if (*m == META_START &&
-            *(m+1) == META_ARG) {
+        if (*m == LOGFMT_META_START &&
+            *(m+1) == LOGFMT_META_ARG) {
           time_fmt = get_next_meta(p, cmd, &m);
           internal_fmt = 0;
         }
@@ -1140,7 +1095,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       }
       break;
 
-    case META_ISO8601: {
+    case LOGFMT_META_ISO8601: {
       struct tm *tm;
       struct timeval now;
       unsigned long millis;
@@ -1161,7 +1116,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_SECONDS:
+    case LOGFMT_META_SECONDS:
       argp = arg;
       if (session.xfer.p) {
         /* Make sure that session.xfer.start_time actually has values (which
@@ -1197,7 +1152,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_COMMAND:
+    case LOGFMT_META_COMMAND:
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
@@ -1211,7 +1166,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_CMD_PARAMS:
+    case LOGFMT_META_CMD_PARAMS:
       argp = arg;
       if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
@@ -1224,13 +1179,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_LOCAL_NAME:
+    case LOGFMT_META_LOCAL_NAME:
       argp = arg;
       sstrncpy(argp, cmd->server->ServerName, sizeof(arg));
       m++;
       break;
 
-    case META_USER:
+    case LOGFMT_META_USER:
       argp = arg;
 
       if (session.user != NULL) {
@@ -1243,7 +1198,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_ORIGINAL_USER: {
+    case LOGFMT_META_ORIGINAL_USER: {
       char *login_user;
 
       argp = arg;
@@ -1260,7 +1215,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_GROUP:
+    case LOGFMT_META_GROUP:
       argp = arg;
 
       if (session.group != NULL) {
@@ -1273,7 +1228,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       m++;
       break;
 
-    case META_RESPONSE_CODE: {
+    case LOGFMT_META_RESPONSE_CODE: {
       char *resp_code = NULL;
       int res;
 
@@ -1296,7 +1251,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_RESPONSE_STR: {
+    case LOGFMT_META_RESPONSE_STR: {
       char *resp_msg = NULL;
       int res;
 
@@ -1315,25 +1270,25 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_PROTOCOL:
+    case LOGFMT_META_PROTOCOL:
       argp = arg;
       sstrncpy(argp, pr_session_get_protocol(0), sizeof(arg));
       m++;
       break;
 
-    case META_UID:
+    case LOGFMT_META_UID:
       argp = arg;
       snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_uid);
       m++;
       break;
 
-    case META_GID:
+    case LOGFMT_META_GID:
       argp = arg;
       snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_gid);
       m++;
       break;
 
-    case META_XFER_FAILURE: {
+    case LOGFMT_META_XFER_FAILURE: {
       argp = arg;
 
       /* If the current command is one that incurs a data transfer, then we
@@ -1403,7 +1358,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_XFER_STATUS: {
+    case LOGFMT_META_XFER_STATUS: {
       argp = arg;
 
       /* If the current command is one that incurs a data transfer, then we
@@ -1490,13 +1445,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_VERSION:
+    case LOGFMT_META_VERSION:
       argp = arg;
       sstrncpy(argp, PROFTPD_VERSION_TEXT, sizeof(arg));
       m++;
       break;
 
-    case META_FILE_MODIFIED: {
+    case LOGFMT_META_FILE_MODIFIED: {
       char *modified;
 
       argp = arg;
@@ -1513,19 +1468,19 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-    case META_RAW_BYTES_IN:
+    case LOGFMT_META_RAW_BYTES_IN:
       argp = arg;
       snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_in);
       m++;
       break;
 
-    case META_RAW_BYTES_OUT:
+    case LOGFMT_META_RAW_BYTES_OUT:
       argp = arg;
       snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_out);
       m++;
       break;
 
-    case META_VHOST_IP:
+    case LOGFMT_META_VHOST_IP:
       argp = arg;
       sstrncpy(argp, cmd->server->ServerAddress, sizeof(arg));
       m++;
@@ -1558,7 +1513,7 @@ static void do_log(cmd_rec *cmd, logfile_t *lf) {
   while (*f && size) {
     pr_signals_handle();
 
-    if (*f == META_START) {
+    if (*f == LOGFMT_META_START) {
       s = get_next_meta(cmd->tmp_pool, cmd, &f);
       if (s) {
         size_t tmp;
