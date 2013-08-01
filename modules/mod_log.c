@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.147 2013-07-17 06:26:26 castaglia Exp $
+ * $Id: mod_log.c,v 1.148 2013-08-01 06:07:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -212,7 +212,7 @@ static char *preparse_arg(char **s) {
   return ret;
 }
 
-static void logformat(char *nickname, char *fmts) {
+static void logformat(const char *directive, char *nickname, char *fmts) {
   char *tmp, *arg;
   unsigned char format[4096] = {'\0'}, *outs;
   logformat_t *lf;
@@ -476,6 +476,20 @@ static void logformat(char *nickname, char *fmts) {
 
   xaset_insert_end(format_set, (xasetmember_t *) lf);
   formats = (logformat_t *) format_set->xas_list;
+
+  if (directive != NULL) {
+    config_rec *c;
+
+    /* Store the parsed format in the config tree as well, for use by other
+     * logging-related modules.
+     */
+    c = add_config_param(directive, 2, NULL, NULL);
+    c->argv[0] = pstrdup(c->pool, nickname);
+    c->argv[1] = palloc(c->pool, outs - format);
+
+    tmp = c->argv[1];
+    memcpy(tmp, format, outs - format); 
+  }
 }
 
 /* Syntax: LogFormat nickname "format string" */
@@ -483,7 +497,7 @@ MODRET set_logformat(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  logformat(cmd->argv[1], cmd->argv[2]);
+  logformat(cmd->argv[0], cmd->argv[1], cmd->argv[2]);
   return PR_HANDLED(cmd);
 }
 
@@ -1690,7 +1704,7 @@ static void log_restart_ev(const void *event_data, void *user_data) {
   log_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(log_pool, "mod_log pool");
 
-  logformat("", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
   return;
 }
 
@@ -1712,7 +1726,7 @@ static int log_init(void) {
   pr_pool_tag(log_pool, "mod_log pool");
 
   /* Add the "default" extendedlog format */
-  logformat("", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
 
   pr_event_register(&log_module, "core.postparse", log_postparse_ev, NULL);
   pr_event_register(&log_module, "core.restart", log_restart_ev, NULL);
