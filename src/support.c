@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.119 2013-02-15 22:39:00 castaglia Exp $
+ * $Id: support.c,v 1.120 2013-08-07 16:35:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -652,6 +652,7 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 void pr_getopt_reset(void) {
 #if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
+    defined(FREEBSD10) || \
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
     defined(DARWIN10) || defined(DARWIN11)
   optreset = 1;
