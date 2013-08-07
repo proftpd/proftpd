@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.149 2013-08-01 06:23:46 castaglia Exp $
+ * $Id: mod_log.c,v 1.150 2013-08-07 16:09:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1536,7 +1536,7 @@ static void do_log(cmd_rec *cmd, logfile_t *lf) {
   *bp++ = '\n';
   *bp = '\0';
 
-  logbuflen = strlen(logbuf);
+  logbuflen = (bp - logbuf);
 
   if (lf->lf_fd != EXTENDED_LOG_SYSLOG) {
     pr_log_event_generate(PR_LOG_TYPE_EXTLOG, lf->lf_fd, -1, logbuf, logbuflen);
