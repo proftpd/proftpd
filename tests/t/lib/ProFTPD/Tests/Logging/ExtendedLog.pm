@@ -351,6 +351,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  extlog_dirs_class_var_f_bug3966 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   # XXX Need unit tests for all LogFormat variables
 };
 
@@ -974,7 +979,7 @@ sub extlog_mlsd_var_d_D_f_F_bug3950 {
         $self->assert($sub_dir eq $dir_path,
           test_msg("Expected '$sub_dir', got '$dir_path'"));
 
-        $self->assert('-' eq $file_name,
+        $self->assert($sub_dir eq $file_name,
           test_msg("Expected '-', got '$file_name'"));
 
         $self->assert('-' eq $file_path,
@@ -11560,6 +11565,208 @@ sub extlog_iso8601_ts_bug3889 {
 
   } else {
     die("Can't read $ext_log: $!");
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub extlog_dirs_class_var_f_bug3966 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/extlog.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    LogFormat => 'custom "%m: %f"',
+    ExtendedLog => "$ext_log DIRS custom",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+
+      # Bug#3966 reports that the %f LogFormat variable is not resolved for:
+      #
+      #  CWD/XCWD, PWD/XPWD, CDUP/XCUP, LIST, MDTM, MLSD, MLST, NLST
+      #
+      # So run through all of them, then examine the generated log.
+
+      $client->pwd();
+      $client->xpwd();
+      $client->cwd('test.d');
+      $client->cdup();
+      $client->xcwd('test.d');
+      $client->xcup();
+      $client->mdtm('test.txt');
+      $client->mlst('test.txt');
+      $client->mlsd('test.d');
+      $client->list('test.d');
+      $client->nlst('test.d');
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %f variable was
+  # properly written out for MFMT.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $ok = 1;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /^(\S+): (\S+)$/) {
+          my $cmd = $1;
+          my $file_path = $2;
+
+          # We don't mind if the path ends in a trailing slash; ignore it
+          $file_path =~ s/\/$//;
+
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack
+            $home_dir = '/private' . $home_dir;
+            $test_file = '/private' . $test_file;
+            $test_dir = '/private' . $test_dir;
+          }
+
+          if ($cmd eq 'CWD' || $cmd eq 'XCWD' ||
+              $cmd eq 'LIST' || $cmd eq 'MLSD' || $cmd eq 'NLST') {
+            $self->assert($test_dir eq $file_path,
+              test_msg("Expected file (%f) '$test_dir' for $cmd, got '$file_path'"));
+
+          } elsif ($cmd eq 'PWD' || $cmd eq 'XPWD' ||
+                   $cmd eq 'CDUP' || $cmd eq 'XCUP') {
+            $self->assert($home_dir eq $file_path,
+              test_msg("Expected file (%f) '$home_dir' for $cmd, got '$file_path'"));
+
+          } elsif ($cmd eq 'MDTM' || $cmd eq 'MLST') {
+            $self->assert($test_file eq $file_path,
+              test_msg("Expected file (%f) '$test_file' for $cmd, got '$file_path'"));
+
+          } else {
+            $ok = 0;
+          }
+       
+          if ($ok == 0) {
+            last;
+          }
+
+        } else {
+          $ok = 0;
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($ok, test_msg("Did not find expected ExtendedLog entries"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
   }
 
   if ($ex) {

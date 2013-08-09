@@ -9598,7 +9598,7 @@ EOS
   $self->assert($expected eq $xfer_status,
     test_msg("Expected transfer status '$expected', got '$xfer_status'"));
 
-  $expected = '-';
+  $expected = $home_dir;
   $self->assert($expected eq $xfer_path,
     test_msg("Expected file path '$expected', got '$xfer_path'"));
 
