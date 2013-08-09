@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.453 2013-06-29 04:13:40 castaglia Exp $
+ * $Id: mod_core.c,v 1.454 2013-08-09 21:42:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -6136,7 +6136,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_CDUP, G_DIRS,  core_cdup,	TRUE,	FALSE, CL_DIRS },
   { CMD, C_XCUP, G_DIRS,  core_cdup,	TRUE,	FALSE, CL_DIRS },
   { CMD, C_DELE, G_WRITE, core_dele,	TRUE,	FALSE, CL_WRITE },
-  { CMD, C_MDTM, G_DIRS,  core_mdtm,	TRUE,	FALSE, CL_INFO },
+  { CMD, C_MDTM, G_DIRS,  core_mdtm,	TRUE,	FALSE, CL_INFO|CL_DIRS },
   { CMD, C_RNFR, G_WRITE, core_rnfr,	TRUE,	FALSE, CL_MISC|CL_WRITE },
   { CMD, C_RNTO, G_WRITE, core_rnto,	TRUE,	FALSE, CL_MISC|CL_WRITE },
   { LOG_CMD,     C_RNTO, G_NONE, core_rnto_cleanup, TRUE, FALSE, CL_NONE },

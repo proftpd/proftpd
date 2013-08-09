@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.150 2013-08-07 16:09:01 castaglia Exp $
+ * $Id: mod_log.c,v 1.151 2013-08-09 21:42:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -814,6 +814,33 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
                  session.xfer.path) {
         sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
 
+      } else if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_PWD_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_XPWD_ID) == 0) {
+        sstrncpy(argp, dir_abs_path(p, pr_fs_getcwd(), TRUE), sizeof(arg));
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+                 pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0) {
+
+        /* Note: by this point in the dispatch cycle, the current working
+         * directory has already been changed.  For the CWD/XCWD commands,
+         * this means that dir_abs_path() may return an improper path,
+         * with the target directory being reported twice.  To deal with this,
+         * don't use dir_abs_path(), and use pr_fs_getvwd()/pr_fs_getcwd()
+         * instead.
+         */
+        if (session.chroot_path) {
+          /* Chrooted session. */
+          sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
+            pdircat(p, session.chroot_path, pr_fs_getvwd(), NULL) :
+            session.chroot_path, sizeof(arg));
+
+        } else {
+          /* Non-chrooted session. */
+          sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
+        }
+
       } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
                  (strncasecmp(cmd->argv[1], "CHGRP", 6) == 0 ||
                   strncasecmp(cmd->argv[1], "CHMOD", 6) == 0 ||
@@ -834,7 +861,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
          * should be expanded properly as well.
          */
         if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MDTM_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MLST_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
