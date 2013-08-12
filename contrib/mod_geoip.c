@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.4 2013-01-19 18:20:59 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.5 2013-08-12 20:02:22 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -198,7 +198,7 @@ static int check_geoip_filters(geoip_policy_e policy) {
 
     res = pr_regexp_exec(filter_re, filter_value, 0, NULL, 0, 0, 0);
     pr_trace_msg(trace_channel, 12,
-      "%s filter value %s %s GeoIPAllowFilter pattern '%s'",
+      "%s filter value %s %s GeoIPDenyFilter pattern '%s'",
       filter_name, filter_value, res == 0 ? "matched" : "did not match",
       filter_pattern);
 
