@@ -1,4 +1,4 @@
-<!-- $Id: mod_ifsession.html,v 1.6 2013-06-24 20:01:04 castaglia Exp $ -->
+<!-- $Id: mod_ifsession.html,v 1.7 2013-08-14 21:40:17 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ifsession.html,v $ -->
 
 <html>
@@ -294,10 +294,29 @@ This makes sure that <code>mod_ifsession</code>'s changes will be seen
 properly by other modules.
 
 <p>
+To build <code>mod_ifsession</code> as a DSO module:
+<pre>
+  ./configure --enable-dso --with-shared=mod_ifsession
+</pre>
+Then follow the usual steps:
+<pre>
+  make 
+  make install
+</pre>
+
+<p>
+Alternatively, if your proftpd was compiled with DSO support, you can
+use the <code>prxs</code> tool to build <code>mod_ifsession</code> as a shared
+module:
+<pre>
+  prxs -c -i -d mod_ifsession.c
+</pre>
+
+<p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-06-24 20:01:04 $</i><br>
+Last Updated: <i>$Date: 2013-08-14 21:40:17 $</i><br>
 
 <br><hr>
 
