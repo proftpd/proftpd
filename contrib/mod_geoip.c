@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.5 2013-08-12 20:02:22 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.6 2013-08-14 15:56:08 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -135,7 +135,7 @@ static const char *get_geoip_filter_name(int);
 static const char *get_geoip_filter_value(int);
 
 static int check_geoip_filters(geoip_policy_e policy) {
-  int matched_allow_filter = FALSE, allow_conn = 0;
+  int matched_allow_filter = -1, allow_conn = 0;
 #if PR_USE_REGEX
   config_rec *c;
 
@@ -146,6 +146,10 @@ static int check_geoip_filters(geoip_policy_e policy) {
     const char *filter_name, *filter_pattern, *filter_value;
 
     pr_signals_handle();
+
+    if (matched_allow_filter == -1) {
+      matched_allow_filter = FALSE;
+    }
 
     filter_id = *((int *) c->argv[0]);
     filter_pattern = c->argv[1];
@@ -165,14 +169,15 @@ static int check_geoip_filters(geoip_policy_e policy) {
       filter_name, filter_value, res == 0 ? "matched" : "did not match",
       filter_pattern);
 
-    if (res != 0) {
-      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-        "%s filter value '%s' did not match GeoIPAllowFilter pattern '%s'",
-        filter_name, filter_value, filter_pattern);
-      return -1;
+    if (res == 0) {
+      matched_allow_filter = TRUE;
+      break;
     }
 
-    matched_allow_filter = TRUE;
+    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      "%s filter value '%s' did not match GeoIPAllowFilter pattern '%s'",
+      filter_name, filter_value, filter_pattern);
+
     c = find_config_next(c, c->next, CONF_PARAM, "GeoIPAllowFilter", FALSE);
   }
 
