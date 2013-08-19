@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth.html,v 1.10 2013-01-04 20:32:10 castaglia Exp $ -->
+<!-- $Id: mod_auth.html,v 1.11 2013-08-19 16:28:23 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth.html,v $ -->
 
 <html>
@@ -23,10 +23,13 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#CreateHome">CreateHome</a>
   <li><a href="#DefaultRoot">DefaultRoot</a>
   <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a>
+  <li><a href="#RequireValidShell">RequireValidShell</a>
   <li><a href="#RewriteHome">RewriteHome</a>
+  <li><a href="#RootLogin">RootLogin</a>
   <li><a href="#RootRevoke">RootRevoke</a>
   <li><a href="#TimeoutLogin">TimeoutLogin</a>
   <li><a href="#TimeoutSession">TimeoutSession</a>
+  <li><a href="#UseFtpUsers">UseFtpUsers</a>
   <li><a href="#UserPassword">UserPassword</a>
 </ul>
 
@@ -145,6 +148,23 @@ logged.
 
 <p>
 <hr>
+<h2><a name="RequireValidShell">RequireValidShell</a></h2>
+<strong>Syntax:</strong> RequireValidShell <em>on|off</em><br>
+<strong>Default:</strong> RequireValidShell on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>RequireValidShell</code> directive configures the server, virtual
+host or anonymous login to allow or deny logins which do not have a shell
+listed in <code>/etc/shells</code>.  By default, <code>proftpd</code>
+<b>will not allow a login</b> unless the user's default shell is listed in
+<code>/etc/shells</code>. If <code>/etc/shells</code> cannot be found, all
+default shells are assumed to be valid.
+
+<p>
+<hr>
 <h2><a name="RewriteHome">RewriteHome</a></h2>
 <strong>Syntax:</strong> RewriteHome <em>on|off</em><br>
 <strong>Default:</strong> None<br>
@@ -180,6 +200,36 @@ home directories is "REWRITE_HOME".  Thus would you use:
     RewriteRule (.*) /my/new/prefix$1
  &lt;/IfModule&gt;
 </pre>
+
+<p>
+<hr>
+<h2><a name="RootLogin">RootLogin</a></h2>
+<strong>Syntax:</strong> RootLogin <em>on|off</em><br>
+<strong>Default:</strong> RootLogin off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.1.5 and later
+
+<p>
+Normally, <code>proftpd</code> does <b>not allow</b> root logins under any
+circumstance.  If a client attempts to login as root, using the correct
+password, a special security message is logged:
+<pre>
+  SECURITY VIOLATION: root login attempted. 
+</pre>
+
+When <code>RootLogin on</code> is used, the root user may authenticate just as
+any other user could (assuming no <i>other</i> access control measures deny
+access); however the root login security message is still logged:
+<pre>
+  ROOT FTP login successful.
+</pre>
+Obviously, extreme care should be taken when using this directive.
+
+<p>
+The use of <code>RootLogin</code> in the <code>&lt;Anonymous&gt;</code>
+context is only valid when the <code>User</code>/<code>Group</code> defined
+in the <code>&lt;Anonymous&gt;</code> section is set to 'root'.
 
 <p>
 <hr>
@@ -282,6 +332,27 @@ indefinitely; this is the default.  There is no maxium value for the
 
 <p>
 <hr>
+<h2><a name="UseFtpUsers">UseFtpUsers</a></h2>
+<strong>Syntax:</strong> UseFtpUsers <em>on|off</em><br>
+<strong>Default:</strong> UseFtpUsers on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+Legacy FTP servers generally check a special authorization file (typically
+<code>/etc/ftpusers</code>) when a client attempts to authenticate.
+<b>If</b> the user's name is <i>found</i> in this file, FTP access is
+<i>denied</i>. For compatibility of behavior, <code>proftpd</code> defaults to
+checking this same file during authentication. This behavior can be suppressed
+using the <code>UseFtpUsers</code> directive, <i>e.g.</i>:
+<pre>
+  # Do not check /etc/ftpusers
+  UseFtpUsers off
+</pre>
+
+<p>
+<hr>
 <h2><a name="UserPassword">UserPassword</a></h2>
 <strong>Syntax:</strong> UserPassword <em>user encrypted-password</em><br>
 <strong>Default:</strong> None<br>
@@ -327,7 +398,7 @@ The <code>mod_auth</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-01-04 20:32:10 $</i><br>
+Last Updated: <i>$Date: 2013-08-19 16:28:23 $</i><br>
 
 <br><hr>
 
