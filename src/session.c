@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2012 The ProFTPD Project team
+ * Copyright (c) 2009-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: session.c,v 1.15 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: session.c,v 1.16 2013-08-25 21:16:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -274,7 +274,7 @@ void pr_session_send_banner(server_rec *s, int flags) {
 
       if (strstr(server_ident, "%L") != NULL) {
         server_ident = sreplace(session.pool, server_ident, "%L",
-          pr_netaddr_get_ipstr(session.c->local_addr), NULL);
+          serveraddress, NULL);
       }
 
       if (strstr(server_ident, "%V") != NULL) {
