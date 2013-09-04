@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.241 2013-08-09 21:42:30 castaglia Exp $
+ * $Id: mod_sql.c,v 1.242 2013-09-04 20:32:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -5346,14 +5346,17 @@ MODRET set_sqloptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "noDisconnectOnError") == 0) {
+    if (strcasecmp(cmd->argv[i], "NoDisconnectOnError") == 0) {
       opts |= SQL_OPT_NO_DISCONNECT_ON_ERROR;
 
-    } else if (strcmp(cmd->argv[i], "useNormalizedGroupSchema") == 0) {
+    } else if (strcasecmp(cmd->argv[i], "UseNormalizedGroupSchema") == 0) {
       opts |= SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA;
 
-    } else if (strcmp(cmd->argv[i], "noReconnect") == 0) {
+    } else if (strcasecmp(cmd->argv[i], "NoReconnect") == 0) {
       opts |= SQL_OPT_NO_RECONNECT;
+
+    } else if (strcasecmp(cmd->argv[i], "IgnoreConfigFile") == 0) {
+      opts |= SQL_OPT_IGNORE_CONFIG_FILE;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLOption '",

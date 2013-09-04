@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.70 2013-04-30 16:09:05 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.71 2013-09-04 20:32:25 castaglia Exp $
  */
 
 /*
@@ -482,10 +482,12 @@ MODRET cmd_open(cmd_rec *cmd) {
     pr_session_end(0);
   }
 
-  /* Make sure the MySQL config files are read in.  This will read in
-   * options from group "client" in the MySQL .cnf files.
-   */
-  mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
+  if (!(pr_sql_opts & SQL_OPT_IGNORE_CONFIG_FILE)) {
+    /* Make sure the MySQL config files are read in.  This will read in
+     * options from group "client" in the MySQL .cnf files.
+     */
+    mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
+  }
 
 #if MYSQL_VERSION_ID >= 50013
   /* The MYSQL_OPT_RECONNECT option appeared in MySQL 5.0.13, according to
