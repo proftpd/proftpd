@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.30 2013-08-14 05:18:07 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.31 2013-09-04 20:38:09 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -1098,13 +1098,23 @@ behavior of <code>mod_sql</code>.
 <p>
 Example:
 <pre>
-  SQLOptions noDisconnectOnError
+  SQLOptions NoDisconnectOnError
 </pre>
 
 <p>
 The currently implemented options are:
 <ul>
-  <li><code>noDisconnectOnError</code><br>
+  <li><code>IgnoreConfigfile</code><br>
+    <p>
+    If the database client library in use has its own configuration file
+    (<i>e.g.</i> <code>my.cnf</code> for the MySQL client library), then
+    the <code>mod_sql</code> sub-module will read that file.  There are some
+    cases, however, where access to that config file is restricted.  For
+    such cases, use "IgnoreConfigFile" to tell <code>mod_sql</code> to not
+    attempt to read that client library configuration file.
+
+  <p>
+  <li><code>NoDisconnectOnError</code><br>
     <p>
     By default, <code>mod_sql</code> will automatically disconnect the client
     whenever there is a database error.  If this option is enabled,
@@ -1112,15 +1122,15 @@ The currently implemented options are:
     database errors.
 
   <p>
-  <li><code>noReconnect</code><br>
+  <li><code>NoReconnect</code><br>
     <p>
     If supported by the database client library, <code>mod_sql</code> will
     try to automatically reconnect <i>once</i>, if it determines that the
-    connection to the database server was lost.  Use "noReconnect" to disable
+    connection to the database server was lost.  Use "NoReconnect" to disable
     this auto-reconnection attempt.
 
   <p>
-  <li><code>useNormalizedGroupSchema</code><br>
+  <li><code>UseNormalizedGroupSchema</code><br>
     <p>
     If this option is enabled, then <code>mod_sql</code>, when retrieving all
     of the groups for a user, will use a SQL statement like:
@@ -1457,7 +1467,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-08-14 05:18:07 $</i><br>
+Last Updated: <i>$Date: 2013-09-04 20:38:09 $</i><br>
 
 <br><hr>
 
