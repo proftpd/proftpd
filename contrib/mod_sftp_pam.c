@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.15 2013-07-05 17:48:46 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.16 2013-09-13 03:53:54 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -331,7 +331,7 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
     exit(1);
   }
 
-  memset(sftppam_user, '\0', sizeof(sftppam_user));
+  memset(sftppam_user, '\0', sftppam_userlen);
   sstrncpy(sftppam_user, user, sftppam_userlen);
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPPAMOptions", FALSE);
