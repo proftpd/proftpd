@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1549 2013-09-05 17:13:51 castaglia Exp $
+$Id: NEWS,v 1.1550 2013-09-14 06:53:47 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -39,6 +39,8 @@ CVS
 - Bug 3971 - Support SQLOption for ignoring client library config files when
   needed.
 - Bug 3972 - Authentication error on Cygwin due to bad code.
+- Bug 3973 - mod_sftp can be forced to allocate too much memory for
+  keyboard-interactive authentication.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------

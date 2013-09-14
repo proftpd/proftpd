@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.16 2013-09-13 03:53:54 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.17 2013-09-14 06:53:47 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -197,19 +197,10 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     return PAM_CONV_ERR;
   }
 
-  if (sftp_kbdint_recv_response(sftppam_driver.driver_pool, &recvd_count,
-      &recvd_responses) < 0) {
+  if (sftp_kbdint_recv_response(sftppam_driver.driver_pool, list->nelts,
+      &recvd_count, &recvd_responses) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error receiving keyboard-interactive responses: %s", strerror(errno));
-    return PAM_CONV_ERR;
-  }
-
-  /* Make sure that the count of responses matches the challenge count. */
-  if (recvd_count != list->nelts) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_PAM_VERSION,
-      "sent %d %s, but received %u %s", nmsgs,
-      list->nelts != 1 ? "challenges" : "challenge", recvd_count,
-      recvd_count != 1 ? "responses" : "response");
     return PAM_CONV_ERR;
   }
 
