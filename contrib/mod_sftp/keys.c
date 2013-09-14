@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.30 2013-03-14 21:59:53 castaglia Exp $
+ * $Id: keys.c,v 1.31 2013-09-14 06:47:55 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1384,20 +1384,20 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
       case EVP_PKEY_EC: {
         EC_KEY *client_ec, *file_ec;
 
-        client_ec = EVP_PKEY_get1_EC_KEY(client_pkey);
         file_ec = EVP_PKEY_get1_EC_KEY(file_pkey);
+        client_ec = EVP_PKEY_get1_EC_KEY(client_pkey);
 
-        if (EC_GROUP_cmp(EC_KEY_get0_group(client_ec),
-            EC_KEY_get0_group(file_ec), NULL) != 0) {
+        if (EC_GROUP_cmp(EC_KEY_get0_group(file_ec),
+            EC_KEY_get0_group(client_ec), NULL) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
             "ECC key mismatch: client-sent curve does not "
             "match local ECC curve");
           res = FALSE;
 
         } else {
-          if (EC_POINT_cmp(EC_KEY_get0_group(client_ec),
-              EC_KEY_get0_public_key(client_ec),
-              EC_KEY_get0_public_key(file_ec), NULL) != 0) {
+          if (EC_POINT_cmp(EC_KEY_get0_group(file_ec),
+              EC_KEY_get0_public_key(file_ec),
+              EC_KEY_get0_public_key(client_ec), NULL) != 0) {
             pr_trace_msg(trace_channel, 17, "%s",
               "ECC key mismatch: client-sent public key 'Q' does not "
               "match local ECC public key 'Q'");
