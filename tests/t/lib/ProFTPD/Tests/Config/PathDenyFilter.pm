@@ -460,6 +460,11 @@ sub pathdenyfilter_mkd_allowed {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
+      # Mac OSX hack
+      if ($^O eq 'darwin') {
+        $path = '/private' . $path;
+      }
+
       $expected = "\"$path\" - Directory successfully created";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
