@@ -23,7 +23,7 @@
  */
 
 /* String API tests
- * $Id: str.c,v 1.8 2013-06-22 05:13:33 castaglia Exp $
+ * $Id: str.c,v 1.9 2013-09-15 18:10:34 castaglia Exp $
  */
 
 #include "tests.h"
@@ -609,6 +609,63 @@ START_TEST (get_token_test) {
 }
 END_TEST
 
+START_TEST (get_token2_test) {
+  char *ok, *res, *str;
+  size_t len = 0, ok_len;
+
+  res = pr_str_get_token2(NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = NULL;
+  res = pr_str_get_token2(&str, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null str argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = pstrdup(p, "foo,bar,bazz");
+  res = pr_str_get_token2(&str, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null sep argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_str_get_token2(&str, ",", &len);
+  fail_unless(res != NULL, "Failed to get token from '%s': %s", str,
+    strerror(errno));
+
+  ok = "foo";
+  ok_len = 3;
+  fail_unless(len == ok_len, "Expected len %lu, got %lu",
+    (unsigned long) ok_len, (unsigned long) len);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_token2(&str, ",", &len);
+  fail_unless(res != NULL, "Failed to get token from '%s': %s", str,
+    strerror(errno));
+
+  ok = "bar";
+  ok_len = 3; 
+  fail_unless(len == ok_len, "Expected len %lu, got %lu",
+    (unsigned long) ok_len, (unsigned long) len);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_token2(&str, ",", &len);
+  fail_unless(res != NULL, "Failed to get token from '%s': %s", str,
+    strerror(errno));
+
+  ok = "bazz";
+  ok_len = 4; 
+  fail_unless(len == ok_len, "Expected len %lu, got %lu",
+    (unsigned long) ok_len, (unsigned long) len);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_token2(&str, ",", &len);
+
+  ok_len = 0;
+  fail_unless(len == ok_len, "Expected len %lu, got %lu",
+    (unsigned long) ok_len, (unsigned long) len);
+  fail_unless(res == NULL, "Unexpectedly got token '%s'", res);
+}
+END_TEST
+
 START_TEST (get_word_test) {
   char *ok, *res, *str;
 
@@ -890,6 +947,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, strip_test);
   tcase_add_test(testcase, strip_end_test);
   tcase_add_test(testcase, get_token_test);
+  tcase_add_test(testcase, get_token2_test);
   tcase_add_test(testcase, get_word_test);
   tcase_add_test(testcase, is_boolean_test);
   tcase_add_test(testcase, is_fnmatch_test);

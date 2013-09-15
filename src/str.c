@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.18 2013-06-24 17:15:21 castaglia Exp $
+ * $Id: str.c,v 1.19 2013-09-15 18:10:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -559,27 +559,43 @@ char *pr_str_get_word(char **cp, int flags) {
  * non-separator in the string.  If the src string is empty or NULL, the next
  * token returned is NULL.
  */
-char *pr_str_get_token(char **s, char *sep) {
-  char *res;
+char *pr_str_get_token2(char **src, char *sep, size_t *token_len) {
+  char *token;
+  size_t len = 0;
 
-  if (s == NULL ||
-      *s == NULL ||
-      **s == '\0' ||
+  if (src == NULL ||
+      *src == NULL ||
+      **src == '\0' ||
       sep == NULL) {
+
+    if (token_len != NULL) {
+      *token_len = len;
+    }
+
     errno = EINVAL;
     return NULL;
   }
 
-  res = *s;
+  token = *src;
 
-  while (**s && !strchr(sep, **s)) {
-    (*s)++;
+  while (**src && !strchr(sep, **src)) {
+    (*src)++;
+    len++;
   }
 
-  if (**s)
-    *(*s)++ = '\0';
+  if (**src) {
+    *(*src)++ = '\0';
+  }
 
-  return res;
+  if (token_len != NULL) {
+    *token_len = len;
+  }
+
+  return token;
+}
+
+char *pr_str_get_token(char **src, char *sep) {
+  return pr_str_get_token2(src, sep, NULL);
 }
 
 int pr_str_is_boolean(const char *str) {

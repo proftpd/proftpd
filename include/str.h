@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2012 The ProFTPD Project team
+ * Copyright (c) 2008-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.8 2012-02-24 07:08:02 castaglia Exp $
+ * $Id: str.h,v 1.9 2013-09-15 18:10:33 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -51,6 +51,7 @@ char *pr_str_get_word(char **, int);
 #define PR_STR_FL_PRESERVE_WHITESPACE		0x0002
 
 char *pr_str_get_token(char **, char *);
+char *pr_str_get_token2(char **, char *, size_t *);
 
 /* Returns TRUE if the given string is "on", "yes", "true", or "1"; returns
  * FALSE if the string is "off", "false", "no", or "0".  Otherwise, -1
