@@ -6546,12 +6546,25 @@ static pr_netio_stream_t *tls_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
 
   /* Cache a pointer to this stream. */
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
+    /* Note: We need to make this more generalized, so that mod_tls can be
+     * used to open multiple different read/write control streams.  To do
+     * so, we need a small (e.g. 4) array of pr_netio_stream_t pointers
+     * for both read and write streams, and to iterate through them.  Need
+     * iterate through and set strm_data appropriately in tls_accept(), too. 
+     *
+     * This will needed to support FTPS connections to backend servers from
+     * mod_proxy, for example.
+     */
     if (nstrm->strm_mode == PR_NETIO_IO_RD) {
-      tls_ctrl_rd_nstrm = nstrm;
+      if (tls_ctrl_rd_nstrm == NULL) {
+        tls_ctrl_rd_nstrm = nstrm;
+      }
     }
 
     if (nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_ctrl_wr_nstrm = nstrm;
+      if (tls_ctrl_wr_nstrm == NULL) {
+        tls_ctrl_wr_nstrm = nstrm;
+      }
     }
 
   } else if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
