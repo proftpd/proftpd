@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.322 2013-06-29 20:09:37 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.323 2013-09-15 19:35:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1176,6 +1176,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   mode_t fmode;
   unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
   config_rec *c;
+  int res;
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
@@ -1196,6 +1197,26 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
     errno = xerrno;
     return PR_ERROR(cmd);
+  }
+
+  res = pr_filter_allow_path(CURRENT_CONF, path);
+  switch (res) {
+    case 0:
+      break;
+
+    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+        path);
+      pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+      errno = EPERM;
+      return PR_ERROR(cmd);
+
+    case PR_FILTER_ERR_FAILS_DENY_FILTER:
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+        path);
+      pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+      errno = EPERM;
+      return PR_ERROR(cmd);
   }
 
   if (xfer_check_limit(cmd) < 0) {
@@ -1500,24 +1521,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
     "mod_xfer.store-hidden-path", NULL);
 
   path = session.xfer.path;
-
-  res = pr_filter_allow_path(CURRENT_CONF, path);
-  switch (res) {
-    case 0:
-      break;
-
-    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        path);
-      pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-      return PR_ERROR(cmd);
-
-    case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        path);
-      pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-      return PR_ERROR(cmd);
-  }
 
   /* Make sure the proper current working directory is set in the FSIO
    * layer, so that the proper FS can be used for the open().
