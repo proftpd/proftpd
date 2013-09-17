@@ -1598,7 +1598,7 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
 
       my $resp_msg = $client->last_message();
 
-      my $expected = '550 SSL/TLS required on the data channel';
+      my $expected = '522 SSL/TLS required on the data channel';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -1929,7 +1929,7 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
 
       my $resp_msg = $client->last_message();
 
-      my $expected = '550 SSL/TLS required on the data channel';
+      my $expected = '522 SSL/TLS required on the data channel';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
