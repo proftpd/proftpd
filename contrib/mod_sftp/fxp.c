@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.198 2013-07-17 17:15:59 castaglia Exp $
+ * $Id: fxp.c,v 1.199 2013-09-18 18:15:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5834,7 +5834,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   /* Add a note containing the file handle for logging (Bug#3707). */
   fxp_set_filehandle_note(cmd, fxh);
 
-  cmd->arg = pstrdup(cmd->tmp_pool, (fxh->fh ? fxh->fh->fh_path : fxh->dir));
+  cmd->arg = pstrdup(cmd->pool, (fxh->fh ? fxh->fh->fh_path : fxh->dir));
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
