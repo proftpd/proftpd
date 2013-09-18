@@ -11,6 +11,11 @@ ChangeLog files.
 
   + Fixed mod_sftp/mod_sftp_pam memory allocation (CVE-2013-4359)
 
+  + New Modules
+
+    mod_dnsbl
+
+
   + New Configuration Directives
 
     TLSVerifyServer (Bug#3955)
@@ -417,4 +422,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-09-17 05:04:36 $
+Last Updated: $Date: 2013-09-18 21:18:51 $
