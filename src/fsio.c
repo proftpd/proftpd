@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.140 2013-07-25 20:13:37 castaglia Exp $
+ * $Id: fsio.c,v 1.141 2013-09-18 22:17:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2644,6 +2644,91 @@ int pr_fsio_set_use_mkdtemp(int value) {
   return prev_value;
 }
 
+/* Directory-specific "safe" chmod(2) which attempts to avoid/mitigate
+ * symlink attacks.
+ * 
+ * To do this, we first open a file descriptor on the given path, using
+ * O_NOFOLLOW to avoid symlinks.  If the fd is not to a directory, it's
+ * an error.  Then we use fchmod(2) to set the perms.  There is still a
+ * race condition here, between the time the directory is created and
+ * when we call open(2).  But hopefully the ensuing checks on the fd
+ * (i.e. that it IS a directory) can mitigate that race.
+ *
+ * The fun part is ensuring that the OS/filesystem will give us an fd
+ * on a directory path (using O_RDONLY to avoid getting an EISDIR error),
+ * whilst being able to do a write (effectively) on the fd by changing
+ * its permissions.
+ */
+static int schmod_dir(pool *p, const char *path, mode_t perms) {
+  int flags, fd, res, xerrno = 0;
+  struct stat st;
+
+  /* We're not using the pool at the moment. */
+  (void) p;
+
+  /* Open an fd on the path using O_RDONLY|O_NOFOLLOW, so that we a)
+   * avoid symlinks, and b) get an fd on the (hopefully) directory.
+   */
+  flags = O_RDONLY|O_NOFOLLOW;
+  fd = open(path, flags);
+  xerrno = errno;
+
+  if (fd < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "schmod: unable to open path '%s': %s", path, strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  res = fstat(fd, &st);
+  if (res < 0) {
+    xerrno = errno;
+
+    (void) close(fd);
+
+    pr_trace_msg(trace_channel, 3,
+      "schmod: unable to fstat path '%s': %s", path, strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  /* We expect only directories. */
+  if (!S_ISDIR(st.st_mode)) {
+    xerrno = ENOTDIR;
+
+    (void) close(fd);
+  
+    pr_trace_msg(trace_channel, 3,
+      "schmod: unable to use path '%s': %s", path, strerror(xerrno));
+
+    /* This is such an unexpected (and possibly malicious) situation that
+     * it warrants louder logging.
+     */
+    pr_log_pri(PR_LOG_WARNING,
+      "WARNING: detected non-directory '%s' during directory creation: "
+      "possible symlink attack", path);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  res = fchmod(fd, perms);
+  xerrno = xerrno;
+
+  /* At this point, succeed or fail, we're done with the fd. */
+  (void) close(fd);
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "schmod: unable to set perms %04o on path '%s': %s", perms, path,
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
 /* "safe mkdir" variant of mkdir(2), uses mkdtemp(3), lchown(2), and
  * rename(2) to create a directory which cannot be hijacked by a symlink
  * race (hopefully) before the UserOwner/GroupOwner ownership changes are
@@ -2651,7 +2736,7 @@ int pr_fsio_set_use_mkdtemp(int value) {
  */
 int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     gid_t gid) {
-  int res, parent_sgid = FALSE, use_root_privs = TRUE, xerrno = 0;
+  int res, set_sgid = FALSE, xerrno = 0;
   char *tmpl_path;
   char *dst_dir, *tmpl;
   size_t dst_dirlen, tmpl_len;
@@ -2697,16 +2782,16 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     }
 
     if (st.st_mode & S_ISGID) {
-      parent_sgid = TRUE;
+      set_sgid = TRUE;
     }
 
     /* Allocate enough space for the temporary name: the length of the
      * destination directory, a slash, 9 X's, 3 for the prefix, and 1 for the
      * trailing NUL.
      */
-    tmpl_len = dst_dirlen + 14;
+    tmpl_len = dst_dirlen + 15;
     tmpl = pcalloc(p, tmpl_len);
-    snprintf(tmpl, tmpl_len-1, "%s/dstXXXXXXXXX",
+    snprintf(tmpl, tmpl_len-1, "%s/.dstXXXXXXXXX",
       dst_dirlen > 1 ? dst_dir : "");
 
     /* Use mkdtemp(3) to create the temporary directory (in the same destination
@@ -2735,6 +2820,66 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   tmpl_path = pstrdup(p, path);
 #endif /* HAVE_MKDTEMP */
 
+  if (use_mkdtemp == TRUE) {
+    mode_t mask, *dir_umask, perms;
+
+    /* mkdtemp(3) creates a directory with 0700 perms; we are given the
+     * target mode (modulo the configured Umask).
+     */
+    dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+    if (dir_umask == NULL) {
+      /* If Umask was configured with a single parameter, then DirUmask
+       * would not be present; we still should check for Umask.
+       */
+      dir_umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+    }
+
+    if (dir_umask) {
+      mask = *dir_umask;
+
+    } else {
+      mask = (mode_t) 0022;
+    }
+
+    perms = (mode & ~mask);
+
+    if (set_sgid) {
+      perms |= S_ISGID;
+
+      /* If we're setting the SGID bit, we need to use root privs, in order
+       * to reliably set the SGID bit.  Sigh.
+       */
+      PRIVS_ROOT
+    }
+
+    res = schmod_dir(p, tmpl_path, perms);
+    xerrno = errno;
+
+    if (set_sgid) {
+      PRIVS_RELINQUISH
+
+      if (res < 0 &&
+          xerrno == EPERM) {
+        /* Try again, this time without root privs.  NFS situations which
+         * squash root privs could cause the above chmod(2) to fail; it
+         * might succeed now that we've dropped root privs (Bug#3962).
+         */
+        res = schmod_dir(p, tmpl_path, perms);
+        xerrno = errno;
+      }
+    }
+
+    if (res < 0) {
+      pr_log_pri(PR_LOG_WARNING, "chmod(%s) failed: %s", tmpl_path,
+        strerror(xerrno));
+
+      (void) rmdir(tmpl_path);
+
+      errno = xerrno;
+      return -1;
+    }
+  }
+
   if (uid != (uid_t) -1) {
     PRIVS_ROOT
     res = pr_fsio_lchown(tmpl_path, uid, gid);
@@ -2758,104 +2903,40 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
   } else if (gid != (gid_t) -1) {
     register unsigned int i;
+    int use_root_chown = TRUE;
 
     /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
     for (i = 0; i < session.gids->nelts; i++) {
       gid_t *group_ids = session.gids->elts;
 
       if (group_ids[i] == gid) {
-        use_root_privs = FALSE;
+        use_root_chown = FALSE;
         break;
       }
     }
 
-    if (use_root_privs) {
+    if (use_root_chown) {
       PRIVS_ROOT
     }
 
     res = pr_fsio_lchown(tmpl_path, (uid_t) -1, gid);
     xerrno = errno;
 
-    if (use_root_privs) {
+    if (use_root_chown) {
       PRIVS_RELINQUISH
     }
 
     if (res < 0) {
       pr_log_pri(PR_LOG_WARNING, "%slchown(%s) failed: %s",
-        use_root_privs ? "root " : "", tmpl_path, strerror(xerrno));
+        use_root_chown ? "root " : "", tmpl_path, strerror(xerrno));
 
     } else {
       pr_log_debug(DEBUG2, "%slchown(%s) to GID %lu successful",
-        use_root_privs ? "root " : "", tmpl_path, (unsigned long) gid);
+        use_root_chown ? "root " : "", tmpl_path, (unsigned long) gid);
     }
   }
 
   if (use_mkdtemp == TRUE) {
-    mode_t mask, *dir_umask, perms;
-
-    /* Use chmod(2) to set the permission that we want.
-     *
-     * mkdtemp(3) creates a directory with 0700 perms; we are given the
-     * target mode (modulo the configured Umask).
-     */
-    dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
-    if (dir_umask == NULL) {
-      /* If Umask was configured with a single parameter, then DirUmask
-       * would not be present; we still should check for Umask.
-       */
-      dir_umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
-    }
-
-    if (dir_umask) {
-      mask = *dir_umask;
-
-    } else {
-      mask = (mode_t) 0022;
-    }
-
-    perms = (mode & ~mask);
-
-    if (parent_sgid) {
-      perms |= S_ISGID;
-    }
-
-    if (use_root_privs) {
-      PRIVS_ROOT
-    }
-
-    /* Note: In the future, switch to using lchmod(2) where available,
-     * and fchmodat(2) as a fallback.  Unfortunately, on some Linux
-     * systems, fchmodat(2)'s AT_SYMLINK_NOFOLLOW flag is not supported,
-     * and we would REQUIRE the use of that flag to protect against symlink
-     * attacks.
-     */
-    res = chmod(tmpl_path, perms);
-    xerrno = errno;
-
-    if (use_root_privs) {
-      PRIVS_RELINQUISH
-
-      if (res < 0 &&
-          xerrno == EPERM) {
-        /* Try again, this time without root privs.  NFS situations which
-         * squash root privs could cause the above chmod(2) to fail; it
-         * might succeed now that we've dropped root privs (Bug#3962).
-         */
-        res = chmod(tmpl_path, perms);
-        xerrno = errno;
-      }
-    }
-
-    if (res < 0) {
-      pr_log_pri(PR_LOG_WARNING, "%schmod(%s) failed: %s",
-        use_root_privs ? "root " : "", tmpl_path, strerror(xerrno));
-
-      (void) rmdir(tmpl_path);
-
-      errno = xerrno;
-      return -1;
-    }
-
     /* Use rename(2) to move the temporary directory into place at the
      * target path.
      */
