@@ -161,17 +161,11 @@ AC_TRY_LINK(
 
 INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"
+MODULE_LIBS="$ac_dnsbl_libs"
 
 AC_SUBST(INCLUDES)
 AC_SUBST(LIBDIRS)
+AC_SUBST(MODULE_LIBS)
 
 AC_CONFIG_HEADER(mod_dnsbl.h)
 AC_OUTPUT(Makefile)
-
-dnl It looks like configure does not substitute AC_SUBST values for an
-dnl AC_CONFIG_HEADER file, only for AC_OUTPUT files.  And since we
-dnl specifically need this $Libraries$ line in the header, that does not
-dnl help.  So, do the substitution by hand.
-
-sed -e "s|@DNSBL_LIBS@|$ac_dnsbl_libs|" mod_dnsbl.h > .mod_dnsbl.h.tmp
-mv .mod_dnsbl.h.tmp mod_dnsbl.h

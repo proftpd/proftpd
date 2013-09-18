@@ -14,6 +14,8 @@ MODULE_NAME=mod_dnsbl
 MODULE_OBJS=mod_dnsbl.o
 SHARED_MODULE_OBJS=mod_dnsbl.lo
 
+MODULE_LIBS=@MODULE_LIBS@
+
 # Necessary redefinitions
 INCLUDES=-I. -I../.. -I../../include @INCLUDES@
 CPPFLAGS= $(ADDL_CPPFLAGS) -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
@@ -29,6 +31,7 @@ shared: $(SHARED_MODULE_OBJS)
 	$(LIBTOOL) --mode=link --tag=CC $(CC) -o $(MODULE_NAME).la $(SHARED_MODULE_OBJS) -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(SHARED_MODULE_LIBS) `cat $(MODULE_NAME).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
 static: $(MODULE_OBJS)
+	test -z "$(MODULE_LIBS)" || echo "$(MODULE_LIBS)" >> $(MODULE_LIBS_FILE)
 	$(AR) rc $(MODULE_NAME).a $(MODULE_NAME).o $(MODULE_OBJS)
 	$(RANLIB) $(MODULE_NAME).a
 
