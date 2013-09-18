@@ -38,10 +38,8 @@ install:
 	fi
 
 clean:
-	$(RM) $(MODULE_NAME).a *.o *.la *.lo
-	$(LIBTOOL) --mode=clean $(RM) "$(MODULE_NAME).o"
-	$(LIBTOOL) --mode=clean $(RM) `echo "$(MODULE_NAME).la" | sed 's/\.la$\/.lo/g'`
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.lo .libs/*.o
 
 dist: clean
 	$(RM) Makefile mod_dnsbl.h config.status config.cache config.log
-	-$(RM) -r .libs/ CVS/ RCS/
+	-$(RM) -r .libs/ .git/ CVS/ RCS/
