@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.59 2013-09-19 05:54:32 castaglia Exp $
+ * $Id: netio.c,v 1.60 2013-09-19 06:00:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1413,7 +1413,11 @@ pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner) {
 
   netio = pcalloc(netio_pool, sizeof(pr_netio_t));
   netio->pool = netio_pool;
-  netio->m = owner;
+  netio->owner = owner;
+
+  if (owner != NULL) {
+    netio->owner_name = pstrdup(netio_pool, owner->name);
+  }
 
   /* Set the default NetIO handlers to the core handlers. */
   netio->abort = core_netio_abort_cb;

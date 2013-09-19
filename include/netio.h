@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.15 2013-09-19 05:54:32 castaglia Exp $
+ * $Id: netio.h,v 1.16 2013-09-19 06:00:39 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -137,8 +137,9 @@ typedef struct {
   int (*shutdown)(pr_netio_stream_t *, int);
   int (*write)(pr_netio_stream_t *, char *, size_t);
 
-  /* Registering module */
-  module *m;
+  /* Registering/owning module */
+  module *owner;
+  const char *owner_name;
 
 } pr_netio_t;
 
