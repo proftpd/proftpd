@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.58 2013-06-29 19:56:40 castaglia Exp $
+ * $Id: netio.c,v 1.59 2013-09-19 05:54:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1293,16 +1293,19 @@ int pr_register_netio(pr_netio_t *netio, int strm_types) {
 
     /* Only instantiate the core NetIO objects once, reusing the same pointer.
      */
-    if (!core_ctrl_netio)
-      core_netio = core_ctrl_netio = pr_alloc_netio(permanent_pool);
+    if (core_ctrl_netio == NULL) {
+      core_netio = core_ctrl_netio = pr_alloc_netio2(permanent_pool, NULL);
+    }
 
-    if (!core_data_netio)
+    if (core_data_netio == NULL) {
       core_data_netio = core_netio ? core_netio :
-        (core_netio = pr_alloc_netio(permanent_pool));
+        (core_netio = pr_alloc_netio2(permanent_pool, NULL));
+    }
 
-    if (!core_othr_netio)
+    if (core_othr_netio == NULL) {
       core_othr_netio = core_netio ? core_netio :
-        (core_netio = pr_alloc_netio(permanent_pool));
+        (core_netio = pr_alloc_netio2(permanent_pool, NULL));
+    }
 
     return 0;
   }
@@ -1314,20 +1317,22 @@ int pr_register_netio(pr_netio_t *netio, int strm_types) {
     return -1;
   }
 
-  if (strm_types & PR_NETIO_STRM_CTRL)
+  if (strm_types & PR_NETIO_STRM_CTRL) {
     ctrl_netio = netio;
+  }
 
-  if (strm_types & PR_NETIO_STRM_DATA)
+  if (strm_types & PR_NETIO_STRM_DATA) {
     data_netio = netio;
+  }
 
-  if (strm_types & PR_NETIO_STRM_OTHR)
+  if (strm_types & PR_NETIO_STRM_OTHR) {
     othr_netio = netio;
+  }
 
   return 0;
 }
 
 int pr_unregister_netio(int strm_types) {
-
   if (!strm_types) {
     errno = EINVAL;
     return -1;
@@ -1335,25 +1340,56 @@ int pr_unregister_netio(int strm_types) {
 
   /* NOTE: consider using cleanups here in the future? */
 
-  if (strm_types & PR_NETIO_STRM_CTRL)
+  if (strm_types & PR_NETIO_STRM_CTRL) {
     ctrl_netio = NULL;
+  }
 
-  if (strm_types & PR_NETIO_STRM_DATA)
+  if (strm_types & PR_NETIO_STRM_DATA) {
     data_netio = NULL;
+  }
 
-  if (strm_types & PR_NETIO_STRM_OTHR)
+  if (strm_types & PR_NETIO_STRM_OTHR) {
     othr_netio = NULL;
+  }
 
   return 0;
 }
 
+pr_netio_t *pr_get_netio(int strm_type) {
+  pr_netio_t *netio = NULL;
+
+  if (strm_type == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  switch (strm_type) {
+    case PR_NETIO_STRM_CTRL:
+      netio = ctrl_netio;
+      break;
+
+    case PR_NETIO_STRM_DATA:
+      netio = data_netio;
+      break;
+
+    case PR_NETIO_STRM_OTHR:
+      netio = othr_netio;
+      break;
+
+    default:
+      errno = ENOENT;
+  }
+
+  return netio;
+}
+
 extern pid_t mpid;
 
-pr_netio_t *pr_alloc_netio(pool *parent_pool) {
+pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner) {
   pr_netio_t *netio = NULL;
   pool *netio_pool = NULL;
 
-  if (!parent_pool) {
+  if (parent_pool == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -1377,6 +1413,7 @@ pr_netio_t *pr_alloc_netio(pool *parent_pool) {
 
   netio = pcalloc(netio_pool, sizeof(pr_netio_t));
   netio->pool = netio_pool;
+  netio->m = owner;
 
   /* Set the default NetIO handlers to the core handlers. */
   netio->abort = core_netio_abort_cb;
@@ -1390,6 +1427,10 @@ pr_netio_t *pr_alloc_netio(pool *parent_pool) {
   netio->write = core_netio_write_cb;
 
   return netio;
+}
+
+pr_netio_t *pr_alloc_netio(pool *parent_pool) {
+  return pr_alloc_netio2(parent_pool, NULL);
 }
 
 void init_netio(void) {

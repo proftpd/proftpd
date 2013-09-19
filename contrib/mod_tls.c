@@ -6908,7 +6908,7 @@ static void tls_netio_install_ctrl(void) {
     return;
   }
 
-  tls_ctrl_netio = netio = pr_alloc_netio(permanent_pool);
+  tls_ctrl_netio = netio = pr_alloc_netio2(permanent_pool, &tls_module);
 
   netio->abort = tls_netio_abort_cb;
   netio->close = tls_netio_close_cb;
@@ -6929,8 +6929,8 @@ static void tls_netio_install_ctrl(void) {
 
 static void tls_netio_install_data(void) {
   pr_netio_t *netio = tls_data_netio ? tls_data_netio :
-    (tls_data_netio = pr_alloc_netio(session.pool ? session.pool :
-    permanent_pool));
+    (tls_data_netio = pr_alloc_netio2(session.pool ? session.pool :
+    permanent_pool, &tls_module));
 
   netio->abort = tls_netio_abort_cb;
   netio->close = tls_netio_close_cb;
