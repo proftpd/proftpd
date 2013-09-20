@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.29 2013-02-15 22:46:42 castaglia Exp $
+ * $Id: mod_exec.c,v 1.30 2013-09-20 00:51:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,7 +34,7 @@
 # include <sys/resource.h>
 #endif
 
-#define MOD_EXEC_VERSION	"mod_exec/0.9.11"
+#define MOD_EXEC_VERSION	"mod_exec/0.9.12"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -70,6 +70,10 @@ static time_t exec_timeout = 0;
 					 */
 #define EXEC_FL_RUN_AS_ROOT	0x0080  /* Use root privs when executing
                                          * the command.  USE CAREFULLY!
+                                         */
+#define EXEC_FL_RUN_AS_USER	0x0100  /* Use user privs when executing
+                                         * the command.  Useful for pre-login
+                                         * events.
                                          */
 
 struct exec_event_data {
@@ -448,6 +452,9 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
     /* Child process */
     char **env = NULL, *path = NULL, *ptr = NULL;
     register unsigned int i = 0;
+ 
+    /* Don't forget to update the PID. */
+    session.pid = getpid();
 
     if (!(exec_opts & EXEC_OPT_USE_STDIN)) {
 
@@ -483,8 +490,18 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       PRIVS_RELINQUISH
     }
 
-    if (!(flags & EXEC_FL_RUN_AS_ROOT)) {
+    if (flags & EXEC_FL_RUN_AS_ROOT) {
+      /* We were asked to run using root privs.  Yuck. */
+      PRIVS_ROOT
 
+    } else if (flags & EXEC_FL_RUN_AS_USER) {
+      /* We were asked to run using user privs.  Sigh. */
+      if (geteuid() != session.login_uid) {
+        PRIVS_SETUP(session.login_uid, session.login_gid);
+        PRIVS_REVOKE
+      }
+
+    } else {
       /* Drop all special privileges before exec()'ing the command.  This
        * allows for the user to specify arbitrary input via the given
        * filename without the admin worrying that some arbitrary command
@@ -492,11 +509,6 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
        * of root real user ID.
        */
       PRIVS_REVOKE
-
-    } else {
-
-      /* We were asked to run using root privs.  Yuck. */
-      PRIVS_ROOT
     }
 
     exec_log("preparing to execute '%s' with uid %lu (euid %lu), "
@@ -1524,8 +1536,14 @@ MODRET set_execonevent(cmd_rec *cmd) {
     cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
   }
 
-  if (*cmd->argv[2] != '/')
+  if (cmd->argv[1][strlen(cmd->argv[1])-1] == '~') {
+    flags |= EXEC_FL_RUN_AS_USER;
+    cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
+  }
+
+  if (*cmd->argv[2] != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
+  }
 
   c = pcalloc(exec_pool, sizeof(config_rec));
   c->pool = make_sub_pool(exec_pool);
