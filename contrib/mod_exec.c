@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.30 2013-09-20 00:51:52 castaglia Exp $
+ * $Id: mod_exec.c,v 1.31 2013-09-20 04:01:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -498,8 +498,9 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       /* We were asked to run using user privs.  Sigh. */
       if (geteuid() != session.login_uid) {
         PRIVS_SETUP(session.login_uid, session.login_gid);
-        PRIVS_REVOKE
       }
+
+      PRIVS_REVOKE
 
     } else {
       /* Drop all special privileges before exec()'ing the command.  This
