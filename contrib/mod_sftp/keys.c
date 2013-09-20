@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.31 2013-09-14 06:47:55 castaglia Exp $
+ * $Id: keys.c,v 1.32 2013-09-20 12:49:21 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -257,6 +257,7 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     char *stdin_argv[4];
 
     /* Child process */
+    session.pid = getpid();
 
     /* Note: there is no need to clean up this temporary pool, as we've
      * forked.  If the exec call succeeds, this child process will exit

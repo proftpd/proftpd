@@ -1579,6 +1579,7 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     char *stdin_argv[4];
 
     /* Child process */
+    session.pid = getpid();
 
     /* Note: there is no need to clean up this temporary pool, as we've
      * forked.  If the exec call succeeds, this child process will exit
