@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.7 2013-09-20 00:12:57 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.8 2013-09-20 00:14:42 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -703,7 +703,8 @@ static void get_geoip_data(array_header *geoips, const char *ip_addr) {
         snprintf(lon_str, sizeof(lon_str)-1, "%f", geoip_record->longitude);
         geoip_longitude = pstrdup(session.pool, lon_str);
 
-        if (geoip_record->region[0]) {
+        if (geoip_record->region != NULL &&
+            geoip_record->region[0]) {
           geoip_region_code = pstrdup(session.pool, geoip_record->region);
         }
 
