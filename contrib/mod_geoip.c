@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.6 2013-08-14 15:56:08 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.7 2013-09-20 00:12:57 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -384,6 +384,18 @@ static void get_geoip_tables(array_header *geoips, int filter_flags) {
 
     PRIVS_ROOT
     gi = GeoIP_open(path, flags);
+    if (gi == NULL &&
+        (flags & GEOIP_INDEX_CACHE)) {
+      /* Per Bug#3975, a common cause of this error is the fact that some
+       * of the Maxmind GeoIP Lite database files simply do not have indexes.
+       * So try to open them as standard databases as a fallback.
+       */
+      pr_log_debug(DEBUG8, MOD_GEOIP_VERSION
+        ": unable to open GeoIPTable '%s' using the IndexCache flag "
+        "(database lacks index?), retrying without IndexCache flag", path);
+      flags &= ~GEOIP_INDEX_CACHE;
+      gi = GeoIP_open(path, flags);
+    }
     PRIVS_RELINQUISH
 
     if (gi != NULL) {
@@ -401,8 +413,8 @@ static void get_geoip_tables(array_header *geoips, int filter_flags) {
        * than providing a strerror function.  Grr!
        */
 
-      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-        "unable to open/use GeoIPTable '%s'", path);
+      pr_log_pri(PR_LOG_WARNING, MOD_GEOIP_VERSION
+        ": warning: unable to open/use GeoIPTable '%s'", path);
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "GeoIPTable", FALSE);
@@ -430,8 +442,8 @@ static void get_geoip_tables(array_header *geoips, int filter_flags) {
         GeoIP_database_info(gi), GeoIP_database_edition(gi));
 
     } else {
-      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-        "unable to open/use default GeoIP library database file(s)");
+      pr_log_pri(PR_LOG_WARNING, MOD_GEOIP_VERSION
+        ": warning: unable to open/use default GeoIP library database file(s)");
     }
   }
 }
