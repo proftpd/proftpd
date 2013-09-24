@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.19 2013-09-15 18:10:33 castaglia Exp $
+ * $Id: str.c,v 1.20 2013-09-24 01:21:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -374,6 +374,52 @@ char *pstrcat(pool *p, ...) {
   }
 
   va_end(ap);
+
+  return res;
+}
+
+int pr_strnrstr(const char *s, size_t slen, const char *suffix,
+    size_t suffixlen, int flags) {
+  int res = FALSE;
+
+  if (s == NULL ||
+      suffix == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (slen == 0) {
+    slen = strlen(s);
+  }
+
+  if (suffixlen == 0) {
+    suffixlen = strlen(suffix);
+  }
+
+  if (slen == 0 &&
+      suffixlen == 0) {
+    return TRUE;
+  }
+
+  if (slen == 0 ||
+      suffixlen == 0) {
+    return FALSE;
+  }
+
+  if (suffixlen > slen) {
+    return FALSE;
+  }
+
+  if (flags & PR_STR_FL_IGNORE_CASE) {
+    if (strncasecmp(s + (slen - suffixlen), suffix, suffixlen) == 0) {
+      res = TRUE;
+    }
+
+  } else {
+    if (strncmp(s + (slen - suffixlen), suffix, suffixlen) == 0) {
+      res = TRUE;
+    }
+  }
 
   return res;
 }

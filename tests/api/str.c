@@ -23,7 +23,7 @@
  */
 
 /* String API tests
- * $Id: str.c,v 1.9 2013-09-15 18:10:34 castaglia Exp $
+ * $Id: str.c,v 1.10 2013-09-24 01:21:16 castaglia Exp $
  */
 
 #include "tests.h"
@@ -924,6 +924,54 @@ START_TEST (get_nbytes_test) {
 }
 END_TEST
 
+START_TEST (strnrstr_test) {
+  int res, flags = 0;
+  const char *s = NULL, *suffix = NULL;
+
+  res = pr_strnrstr(NULL, 0, NULL, 0, flags);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_strnrstr(NULL, 0, "", 0, flags);
+  fail_unless(res == -1, "Failed to handle null s");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_strnrstr("", 0, NULL, 0, flags);
+  fail_unless(res == -1, "Failed to handle null suffix");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  s = suffix = "";
+  res = pr_strnrstr(s, 0, suffix, 0, flags);
+  fail_unless(res == TRUE, "Expected true, got false");
+
+  s = "";
+  suffix = "s";
+  res = pr_strnrstr(s, 0, suffix, 0, flags);
+  fail_unless(res == FALSE, "Expected false, got true");
+
+  s = "food";
+  suffix = "ood";
+  res = pr_strnrstr(s, 0, suffix, 0, flags);
+  fail_unless(res == TRUE, "Expected true, got false");
+
+  s = "food";
+  suffix = "ood";
+  res = pr_strnrstr(s, 4, suffix, 3, flags);
+  fail_unless(res == TRUE, "Expected true, got false");
+
+  s = "FOOD";
+  suffix = "ood";
+  res = pr_strnrstr(s, 4, suffix, 3, flags);
+  fail_unless(res == FALSE, "Expected false, got true");
+
+  flags = PR_STR_FL_IGNORE_CASE;
+  s = "FOOD";
+  suffix = "ood";
+  res = pr_strnrstr(s, 4, suffix, 3, flags);
+  fail_unless(res == TRUE, "Expected true, got false");
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -952,6 +1000,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, is_boolean_test);
   tcase_add_test(testcase, is_fnmatch_test);
   tcase_add_test(testcase, get_nbytes_test);
+  tcase_add_test(testcase, strnrstr_test);
 
   suite_add_tcase(suite, testcase);
 

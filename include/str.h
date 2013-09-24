@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.9 2013-09-15 18:10:33 castaglia Exp $
+ * $Id: str.h,v 1.10 2013-09-24 01:21:16 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -40,6 +40,18 @@ char *pstrcat(pool *, ...);
 char *pstrdup(pool *, const char *);
 char *pstrndup(pool *, const char *, size_t);
 
+/* Returns TRUE if the string `s' ends with given `suffix', FALSE if the string
+ * does not end with the given suffix, and -1 if there was an error (errno
+ * will be set appropriately).
+ *
+ * The `flags' value consisted of OR'ing the following:
+ *
+ *  PR_STR_FL_IGNORE_CASE
+ *    Request a case-insensitive comparison
+ */
+int pr_strnrstr(const char *s, size_t slen, const char *suffix,
+  size_t suffixlen, int flags);
+
 /* Newer version of sreplace(), with more control and better error reporting. */
 char *pr_str_replace(pool *, unsigned int, char *, ...);
 char *pr_str_strip(pool *, char *);
@@ -49,6 +61,7 @@ char *pr_str_get_word(char **, int);
 
 #define PR_STR_FL_PRESERVE_COMMENTS		0x0001
 #define PR_STR_FL_PRESERVE_WHITESPACE		0x0002
+#define PR_STR_FL_IGNORE_CASE			0x0004
 
 char *pr_str_get_token(char **, char *);
 char *pr_str_get_token2(char **, char *, size_t *);
