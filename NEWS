@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1555 2013-09-20 00:51:52 castaglia Exp $
+$Id: NEWS,v 1.1556 2013-09-25 04:25:54 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -50,6 +50,7 @@ CVS
   database lookup.
 - Bug 3964 - Support running ExecOnEvent actions with logged-in user's
   permissions.
+- Bug 3979 - mod_sql_odbc compiler warnings on 64-bit systems using unixODBC.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------
