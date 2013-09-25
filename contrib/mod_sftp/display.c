@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.10 2013-01-25 17:11:33 castaglia Exp $
+ * $Id: display.c,v 1.11 2013-09-25 14:58:37 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -32,11 +32,14 @@
 #include "msg.h"
 
 static void format_size_str(char *buf, size_t buflen, off_t size) {
-  char units[] = {'K', 'M', 'G', 'T', 'P'};
+  char units[] = {'', 'K', 'M', 'G', 'T', 'P'};
   register unsigned int i = 0;
 
   /* Determine the appropriate units label to use. */
-  while (size > 1024) {
+  while (size > 1024 &&
+         i < sizeof(units)) {
+    pr_signals_handle();
+
     size /= 1024;
     i++;
   }

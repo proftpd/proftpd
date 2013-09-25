@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.29 2013-02-14 19:22:29 castaglia Exp $
+ * $Id: display.c,v 1.30 2013-09-25 14:58:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,11 +33,14 @@ static const char *first_msg = NULL;
 static const char *prev_msg = NULL;
 
 static void format_size_str(char *buf, size_t buflen, off_t size) {
-  char units[] = {'K', 'M', 'G', 'T', 'P'};
+  char units[] = {'', 'K', 'M', 'G', 'T', 'P'};
   register unsigned int i = 0;
 
   /* Determine the appropriate units label to use. */
-  while (size > 1024) {
+  while (size > 1024 &&
+         i < sizeof(units)) {
+    pr_signals_handle();
+
     size /= 1024;
     i++;
   }
