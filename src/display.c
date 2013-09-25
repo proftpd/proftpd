@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.30 2013-09-25 14:58:38 castaglia Exp $
+ * $Id: display.c,v 1.31 2013-09-25 16:08:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,12 +33,13 @@ static const char *first_msg = NULL;
 static const char *prev_msg = NULL;
 
 static void format_size_str(char *buf, size_t buflen, off_t size) {
-  char units[] = {'', 'K', 'M', 'G', 'T', 'P'};
+  char *units[] = {"", "K", "M", "G", "T", "P"};
+  unsigned int nunits = 6;
   register unsigned int i = 0;
 
   /* Determine the appropriate units label to use. */
   while (size > 1024 &&
-         i < sizeof(units)) {
+         i < nunits) {
     pr_signals_handle();
 
     size /= 1024;
@@ -46,7 +47,7 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
   }
 
   /* Now, prepare the buffer. */
-  snprintf(buf, buflen, "%.3" PR_LU "%cB", (pr_off_t) size, units[i]);
+  snprintf(buf, buflen, "%.3" PR_LU "%sB", (pr_off_t) size, units[i]);
 }
 
 static int display_add_line(pool *p, const char *resp_code,
