@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.141 2013-09-18 22:17:44 castaglia Exp $
+ * $Id: fsio.c,v 1.142 2013-09-25 14:52:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4498,6 +4498,7 @@ off_t pr_fs_getsize(char *path) {
 }
 #endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 
+/* Returns the size in KB via the `fs_size' argument. */
 int pr_fs_getsize2(char *path, off_t *fs_size) {
   return fs_getsize(-1, path, fs_size);
 }
