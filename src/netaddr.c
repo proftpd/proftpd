@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.94 2013-09-27 03:33:40 castaglia Exp $
+ * $Id: netaddr.c,v 1.95 2013-09-27 14:37:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1738,8 +1738,8 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
     }
 
   } else {
-    pr_log_debug(DEBUG1, "notice: unable to resolve '%s': %s", name,
-      hstrerror(h_errno));
+    pr_log_debug(DEBUG1, "notice: unable to resolve '%s' as %s address: %s",
+      name, family != AF_INET ? "IPv6" : "IPv4", hstrerror(h_errno));
   }
 
   return (ok ? 0 : -1);
