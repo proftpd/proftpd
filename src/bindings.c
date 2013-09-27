@@ -23,7 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.48 2013-09-27 03:33:40 castaglia Exp $
+ * $Id: bindings.c,v 1.49 2013-09-27 04:19:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -156,7 +156,8 @@ conn_t *pr_ipbind_get_listening_conn(server_rec *server, pr_netaddr_t *addr,
   lr->pool = p;
   lr->conn = l;
   lr->addr = pr_netaddr_dup(p, addr);
-  if (lr->addr == NULL) {
+  if (lr->addr == NULL &&
+      errno != EINVAL) {
     return NULL;
   }
   lr->port = port;
