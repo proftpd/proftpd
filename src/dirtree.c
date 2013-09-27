@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.287 2013-07-16 19:06:13 castaglia Exp $
+ * $Id: dirtree.c,v 1.288 2013-09-27 03:33:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3400,7 +3400,6 @@ int fixup_servers(xaset_t *list) {
       array_header *addrs = NULL;
 
       s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
-
       s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, &addrs);
      
       if (addrs) {

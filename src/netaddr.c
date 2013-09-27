@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.93 2013-07-16 21:35:14 castaglia Exp $
+ * $Id: netaddr.c,v 1.94 2013-09-27 03:33:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -165,7 +165,15 @@ static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
        * a pool for duplication.
        */
       if (p) {
-        return pr_netaddr_dup(p, res);
+        pr_netaddr_t *dup_res = NULL;
+
+        dup_res = pr_netaddr_dup(p, res);
+        if (dup_res == NULL) {
+          pr_log_debug(DEBUG0, "error duplicating address for name '%s' "
+            "from cache: %s", name, strerror(errno));
+        }
+
+        return dup_res;
       }
 
       return res;
@@ -178,13 +186,16 @@ static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
   return NULL;
 }
 
-static void netaddr_ipcache_set(const char *name, pr_netaddr_t *na) {
+static int netaddr_ipcache_set(const char *name, pr_netaddr_t *na) {
   if (netaddr_iptab) {
     int count = 0;
     void *v = NULL;
 
     /* We store an internal copy of the netaddr_t in the cache. */
     v = pr_netaddr_dup(netaddr_pool, na);
+    if (v == NULL) {
+      return -1;
+    }
 
     count = pr_table_exists(netaddr_iptab, name);
     if (count <= 0) {
@@ -211,7 +222,7 @@ static void netaddr_ipcache_set(const char *name, pr_netaddr_t *na) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /* Provide replacements for needed functions. */
@@ -471,7 +482,10 @@ pr_netaddr_t *pr_netaddr_dup(pool *p, pr_netaddr_t *na) {
 
   dup_na = pr_netaddr_alloc(p);
 
-  pr_netaddr_set_family(dup_na, pr_netaddr_get_family(na));
+  if (pr_netaddr_set_family(dup_na, pr_netaddr_get_family(na)) < 0) {
+    return NULL;
+  }
+
   pr_netaddr_set_sockaddr(dup_na, pr_netaddr_get_sockaddr(na));  
 
   if (na->na_have_ipstr) {
@@ -515,8 +529,15 @@ static pr_netaddr_t *get_addr_by_ip(pool *p, const char *name,
       pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv6 address %s", name,
         pr_netaddr_get_ipstr(na));
 
-      netaddr_ipcache_set(name, na);
-      netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
+      if (netaddr_ipcache_set(name, na) < 0) {
+        pr_trace_msg(trace_channel, 2, "error setting '%s' in cache: %s", name,
+          strerror(errno));
+      }
+
+      if (netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na) < 0) {
+        pr_trace_msg(trace_channel, 2, "error setting '%s' in cache: %s",
+          pr_netaddr_get_ipstr(na), strerror(errno));
+      }
 
       return na;
     }
@@ -542,8 +563,15 @@ static pr_netaddr_t *get_addr_by_ip(pool *p, const char *name,
     pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv4 address %s", name,
       pr_netaddr_get_ipstr(na));
 
-    netaddr_ipcache_set(name, na);
-    netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
+    if (netaddr_ipcache_set(name, na) < 0) {
+      pr_trace_msg(trace_channel, 2, "error setting '%s' in cache: %s", name,
+        strerror(errno));
+    }
+
+    if (netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na) < 0) {
+      pr_trace_msg(trace_channel, 2, "error setting '%s' in cache: %s",
+        pr_netaddr_get_ipstr(na), strerror(errno));
+    }
 
     return na;
   }
@@ -633,8 +661,15 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
       info->ai_family == AF_INET ? "IPv4" : "IPv6",
       pr_netaddr_get_ipstr(na));
 
-    netaddr_ipcache_set(name, na);
-    netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na);
+    if (netaddr_ipcache_set(name, na) < 0) {
+      pr_trace_msg(trace_channel, 2, "error setting '%s' in cache: %s", name,
+        strerror(errno));
+    }
+
+    if (netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na) < 0) {
+      pr_trace_msg(trace_channel, 2, "error setting '%s' in cache: %s",
+        pr_netaddr_get_ipstr(na), strerror(errno));
+    }
 
     pr_freeaddrinfo(info);
   }
@@ -940,8 +975,7 @@ size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      if (use_ipv6)
-        return sizeof(struct in6_addr);
+      return sizeof(struct in6_addr);
 #endif /* PR_USE_IPV6 */
   }
 

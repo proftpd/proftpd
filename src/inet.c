@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.154 2013-08-07 16:35:27 castaglia Exp $
+ * $Id: inet.c,v 1.155 2013-09-27 03:33:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -132,8 +132,12 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
   if (c->local_addr) {
     res->local_addr = pr_netaddr_alloc(res->pool);
 
-    pr_netaddr_set_family(res->local_addr,
-      pr_netaddr_get_family(c->local_addr));
+    if (pr_netaddr_set_family(res->local_addr,
+        pr_netaddr_get_family(c->local_addr)) < 0) {
+      destroy_pool(res->pool);
+      return NULL;
+    }
+
     pr_netaddr_set_sockaddr(res->local_addr,
       pr_netaddr_get_sockaddr(c->local_addr));
   }
@@ -141,14 +145,19 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
   if (c->remote_addr) {
     res->remote_addr = pr_netaddr_alloc(res->pool);
 
-    pr_netaddr_set_family(res->remote_addr,
-      pr_netaddr_get_family(c->remote_addr));
+    if (pr_netaddr_set_family(res->remote_addr,
+        pr_netaddr_get_family(c->remote_addr)) < 0) {
+      destroy_pool(res->pool);
+      return NULL;
+    }
+
     pr_netaddr_set_sockaddr(res->remote_addr,
       pr_netaddr_get_sockaddr(c->remote_addr));
   }
 
-  if (c->remote_name)
+  if (c->remote_name) {
     res->remote_name = pstrdup(res->pool, c->remote_name);
+  }
 
   register_cleanup(res->pool, (void *) res, conn_cleanup_cb, conn_cleanup_cb);
   return res;
@@ -294,7 +303,10 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
     }
 
     memset(&na, 0, sizeof(na));
-    pr_netaddr_set_family(&na, addr_family);
+    if (pr_netaddr_set_family(&na, addr_family) < 0) {
+      destroy_pool(c->pool);
+      return NULL;
+    }
 
     if (bind_addr) {
       pr_netaddr_set_sockaddr(&na, pr_netaddr_get_sockaddr(bind_addr));

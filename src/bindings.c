@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.47 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: bindings.c,v 1.48 2013-09-27 03:33:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,14 +55,16 @@ static void server_cleanup_cb(void *conn) {
  * is stolen from Apache's http_vhost.c
  */
 static unsigned int ipbind_hash_addr(pr_netaddr_t *addr) {
-  size_t offset = pr_netaddr_get_inaddr_len(addr);
+  size_t offset;
+  unsigned int key;
+
+  offset = pr_netaddr_get_inaddr_len(addr);
 
   /* The key is the last four bytes of the IP address.
    * For IPv4, this is the entire address, as always.
    * For IPv6, this is usually part of the MAC address.
    */
-  unsigned int key = *(unsigned *) ((char *) pr_netaddr_get_inaddr(addr) +
-    offset - 4);
+  key = *(unsigned *) ((char *) pr_netaddr_get_inaddr(addr) + offset - 4);
 
   key ^= (key >> 16);
   return ((key >> 8) ^ key) % PR_BINDINGS_TABLE_SIZE;
@@ -154,6 +156,9 @@ conn_t *pr_ipbind_get_listening_conn(server_rec *server, pr_netaddr_t *addr,
   lr->pool = p;
   lr->conn = l;
   lr->addr = pr_netaddr_dup(p, addr);
+  if (lr->addr == NULL) {
+    return NULL;
+  }
   lr->port = port;
   lr->claimed = TRUE;
 
@@ -1119,8 +1124,10 @@ static int init_standalone_bindings(void) {
         pr_inet_set_default_family(NULL, AF_INET6);
 
       } else {
-        pr_inet_set_default_family(NULL,
-          pr_netaddr_get_family(main_server->addr));
+        int default_family;
+
+        default_family = pr_netaddr_get_family(main_server->addr);
+        pr_inet_set_default_family(NULL, default_family);
       }
 #else
       pr_inet_set_default_family(NULL,
