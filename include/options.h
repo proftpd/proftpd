@@ -25,28 +25,11 @@
  */
 
 /* User configurable defaults and tunable parameters.
- * $Id: options.h,v 1.34 2013-02-07 06:37:24 castaglia Exp $
+ * $Id: options.h,v 1.35 2013-09-29 23:26:02 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
 #define PR_OPTIONS_H
-
-/* Define the next option if your libc needs persistant /etc/passwd
- * and /etc/group functions.  Some libcs occasionally close these files
- * which can not be re-opened after a chroot().  Symptoms of this
- * include the inability to see user/group names when doing a 'ls -l' from
- * an anon. ftp login (you see only uid/gid numbers).
- */
-
-/* If we have setpassent(), NEED_PERSISTENT_PASSWD is not enabled
- * by default.  This option controls the DEFAULT value of the
- * PersistentPasswd directive.  You can always override this in
- * the configuration file.
- */
-
-#if ! (defined (HAVE_SETPASSENT) || defined (HAVE__PW_STAYOPEN))
-# define NEED_PERSISTENT_PASSWD
-#endif
 
 /* Tunable parameters */
 

@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.454 2013-02-15 22:39:00 castaglia Exp $
+ * $Id: main.c,v 1.455 2013-09-29 23:26:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,12 +54,6 @@
 
 int (*cmd_auth_chk)(cmd_rec *);
 void (*cmd_handler)(server_rec *, conn_t *);
-
-#ifdef NEED_PERSISTENT_PASSWD
-unsigned char persistent_passwd = TRUE;
-#else
-unsigned char persistent_passwd = FALSE;
-#endif /* NEED_PERSISTENT_PASSWD */
 
 /* From modules/module_glue.c */
 extern module *static_modules[];
@@ -90,9 +84,6 @@ static unsigned char have_dead_child = FALSE;
  * whitespace separating command from path, and 2 for the terminating CRLF.
  */
 #define PR_DEFAULT_CMD_BUFSZ	(PR_TUNABLE_PATH_MAX + 7)
-
-/* From mod_auth_unix.c */
-extern unsigned char persistent_passwd;
 
 /* From response.c */
 extern pr_response_t *resp_list, *resp_err_list;
@@ -2829,9 +2820,12 @@ int main(int argc, char *argv[], char **envp) {
       fflush(stdout);
       break;
 
+    /* Note: This is now unused, and should be deprecated in the next release.
+     * See Bug#3952 for details.
+     */
     case 'p': {
       if (!optarg ||
-          ((persistent_passwd = atoi(optarg)) != 1 && persistent_passwd != 0)) {
+          (atoi(optarg) != 1 && atoi(optarg) != 0)) {
         pr_log_pri(PR_LOG_ERR, "Fatal: -p requires boolean (0|1) argument.");
         exit(1);
       }

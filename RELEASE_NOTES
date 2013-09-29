@@ -27,6 +27,7 @@ ChangeLog files.
     ExecOnEvent ~ (Bug#3964)
     LogFormat %s for SFTP transfers (Bug#3948)
     LogFormat %d/%D (Bug#3950)
+    PersistentPasswd off (Bug#3952)
     SQLOptions IgnoreConfigFile (Bug#3971)
 
 
@@ -423,4 +424,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-09-20 00:51:52 $
+Last Updated: $Date: 2013-09-29 23:26:02 $

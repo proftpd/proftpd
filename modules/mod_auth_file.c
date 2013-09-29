@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.48 2013-02-24 16:42:41 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.49 2013-09-29 23:26:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,8 +45,6 @@
 #ifndef BUFSIZ
 # define BUFSIZ          PR_TUNABLE_BUFFER_SIZE
 #endif /* !BUFSIZ */
-
-extern unsigned char persistent_passwd;
 
 module auth_file_module;
 

@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.56 2013-09-05 17:13:51 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.57 2013-09-29 23:26:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -111,7 +111,7 @@ static const char *trace_channel = "auth";
 static FILE *pwdf = NULL;
 static FILE *grpf = NULL;
 
-extern unsigned char persistent_passwd;
+static int unix_persistent_passwd = FALSE;
 
 #undef PASSWD
 #define PASSWD		pwdfname
@@ -264,7 +264,7 @@ static struct group *p_getgrgid(gid_t gid) {
 }
 
 MODRET pw_setpwent(cmd_rec *cmd) {
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     p_setpwent();
 
   } else {
@@ -275,7 +275,7 @@ MODRET pw_setpwent(cmd_rec *cmd) {
 }
 
 MODRET pw_endpwent(cmd_rec *cmd) {
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     p_endpwent();
 
   } else {
@@ -286,7 +286,7 @@ MODRET pw_endpwent(cmd_rec *cmd) {
 }
 
 MODRET pw_setgrent(cmd_rec *cmd) {
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     p_setgrent();
 
   } else {
@@ -297,7 +297,7 @@ MODRET pw_setgrent(cmd_rec *cmd) {
 }
 
 MODRET pw_endgrent(cmd_rec *cmd) {
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     p_endgrent();
 
   } else {
@@ -310,7 +310,7 @@ MODRET pw_endgrent(cmd_rec *cmd) {
 MODRET pw_getgrent(cmd_rec *cmd) {
   struct group *gr = NULL;
 
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     gr = p_getgrent();
 
   } else {
@@ -323,7 +323,7 @@ MODRET pw_getgrent(cmd_rec *cmd) {
 MODRET pw_getpwent(cmd_rec *cmd) {
   struct passwd *pw = NULL;
 
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     pw = p_getpwent();
 
   } else {
@@ -338,7 +338,7 @@ MODRET pw_getpwuid(cmd_rec *cmd) {
   uid_t uid;
 
   uid = *((uid_t *) cmd->argv[0]);
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     pw = p_getpwuid(uid);
 
   } else {
@@ -353,7 +353,7 @@ MODRET pw_getpwnam(cmd_rec *cmd) {
   const char *name;
 
   name = cmd->argv[0];
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     pw = p_getpwnam(name);
 
   } else {
@@ -452,7 +452,7 @@ MODRET pw_getgrnam(cmd_rec *cmd) {
   const char *name;
 
   name = cmd->argv[0];
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     gr = p_getgrnam(name);
 
   } else {
@@ -467,7 +467,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
   gid_t gid;
 
   gid = *((gid_t *) cmd->argv[0]);
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     gr = p_getgrgid(gid);
 
   } else {
@@ -970,7 +970,7 @@ MODRET pw_uid2name(cmd_rec *cmd) {
 
   uid = *((uid_t *) cmd->argv[0]);
 
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     pw = p_getpwuid(uid);
 
   } else {
@@ -989,7 +989,7 @@ MODRET pw_gid2name(cmd_rec *cmd) {
   gid_t gid;
 
   gid = *((gid_t *) cmd->argv[0]);
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     gr = p_getgrgid(gid);
 
   } else {
@@ -1009,7 +1009,7 @@ MODRET pw_name2uid(cmd_rec *cmd) {
 
   name = cmd->argv[0];
 
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     pw = p_getpwnam(name);
 
   } else {
@@ -1025,7 +1025,7 @@ MODRET pw_name2gid(cmd_rec *cmd) {
 
   name = cmd->argv[0];
 
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     gr = p_getgrnam(name);
 
   } else {
@@ -1054,7 +1054,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   RETSETGRENTTYPE (*my_setgrent)(void) = NULL;
 
   /* Play function pointer games */
-  if (persistent_passwd) {
+  if (unix_persistent_passwd) {
     my_getpwnam = p_getpwnam;
     my_getgrgid = p_getgrgid;
     my_getgrent = p_getgrent;
@@ -1310,15 +1310,20 @@ MODRET set_authunixoptions(cmd_rec *cmd) {
 }
 
 MODRET set_persistentpasswd(cmd_rec *cmd) {
-  int bool = -1;
+  int persistence = -1;
+  config_rec *c;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  persistence = get_boolean(cmd, 1);
+  if (persistence == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
-  persistent_passwd = bool;
+  c = add_config_param(c->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = persistence;
 
   return PR_HANDLED(cmd);
 }
@@ -1353,6 +1358,11 @@ static int auth_unix_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "AuthUnixOptions", FALSE);
   if (c) {
     auth_unix_opts = *((unsigned long *) c->argv[0]);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "PersistentPasswd", FALSE);
+  if (c) {
+    unix_persistent_passwd = *((int *) c->argv[0]);
   }
  
   return 0;
