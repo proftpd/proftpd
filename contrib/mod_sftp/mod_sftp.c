@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.78 2013-07-17 20:00:23 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.79 2013-09-30 00:09:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1118,6 +1118,11 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
         strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha256", 37) != 0 &&
 #endif
         strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha1", 35) != 0 &&
+#ifdef PR_USE_OPENSSL_ECC
+        strncmp(cmd->argv[i], "ecdh-sha2-nistp256", 19) != 0 &&
+        strncmp(cmd->argv[i], "ecdh-sha2-nistp384", 19) != 0 &&
+        strncmp(cmd->argv[i], "ecdh-sha2-nistp521", 19) != 0 &&
+#endif /* PR_USE_OPENSSL_ECC */
         strncmp(cmd->argv[i], "rsa1024-sha1", 13) != 0) {
 
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
