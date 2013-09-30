@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.323 2013-09-15 19:35:32 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.324 2013-09-30 22:01:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1179,7 +1179,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   int res;
 
   if (cmd->argc < 2) {
-    pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     errno = EINVAL;
     return PR_ERROR(cmd);
   }
@@ -1356,7 +1357,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
    */
 
   if (cmd->argc > 2) {
-    pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     return PR_ERROR(cmd);
   }
 
@@ -1862,7 +1864,8 @@ MODRET xfer_rest(cmd_rec *cmd) {
   char *endp = NULL;
 
   if (cmd->argc != 2) {
-    pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     return PR_ERROR(cmd);
   }
 
@@ -1925,7 +1928,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   xfer_logged_sendfile_decline_msg = FALSE;
 
   if (cmd->argc < 2) {
-    pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     errno = EINVAL;
     return PR_ERROR(cmd);
   }
@@ -2210,7 +2214,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
 MODRET xfer_abor(cmd_rec *cmd) {
   if (cmd->argc != 1) {
-    pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     return PR_ERROR(cmd);
   }
 
@@ -2241,7 +2246,8 @@ MODRET xfer_type(cmd_rec *cmd) {
 
   if (cmd->argc < 2 ||
       cmd->argc > 3) {
-    pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     return PR_ERROR(cmd);
   }
 
@@ -2276,7 +2282,8 @@ MODRET xfer_type(cmd_rec *cmd) {
 
 MODRET xfer_stru(cmd_rec *cmd) {
   if (cmd->argc != 2) {
-    pr_response_add_err(R_501, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_501, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     return PR_ERROR(cmd);
   }
 
@@ -2305,13 +2312,13 @@ MODRET xfer_stru(cmd_rec *cmd) {
     case 'P':
       /* RFC-1123 recommends against implementing P. */
       pr_response_add_err(R_504, _("'%s' unsupported structure type"),
-        get_full_cmd(cmd));
+        pr_cmd_get_displayable_str(cmd, NULL));
       return PR_ERROR(cmd);
       break;
 
     default:
       pr_response_add_err(R_501, _("'%s' unrecognized structure type"),
-        get_full_cmd(cmd));
+        pr_cmd_get_displayable_str(cmd, NULL));
       return PR_ERROR(cmd);
       break;
   }
@@ -2319,7 +2326,8 @@ MODRET xfer_stru(cmd_rec *cmd) {
 
 MODRET xfer_mode(cmd_rec *cmd) {
   if (cmd->argc != 2) {
-    pr_response_add_err(R_501, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_501, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     return PR_ERROR(cmd);
   }
 
@@ -2336,12 +2344,12 @@ MODRET xfer_mode(cmd_rec *cmd) {
 
     case 'C':
       pr_response_add_err(R_504, _("'%s' unsupported transfer mode"),
-        get_full_cmd(cmd));
+        pr_cmd_get_displayable_str(cmd, NULL));
       return PR_ERROR(cmd);
   }
 
   pr_response_add_err(R_501, _("'%s' unrecognized transfer mode"),
-    get_full_cmd(cmd));
+    pr_cmd_get_displayable_str(cmd, NULL));
   return PR_ERROR(cmd);
 }
 
@@ -2355,7 +2363,8 @@ MODRET xfer_allo(cmd_rec *cmd) {
    */
   if (cmd->argc != 2 &&
       cmd->argc != 4) {
-    pr_response_add_err(R_504, _("'%s' not understood"), get_full_cmd(cmd));
+    pr_response_add_err(R_504, _("'%s' not understood"),
+      pr_cmd_get_displayable_str(cmd, NULL));
     return PR_ERROR(cmd);
   }
 

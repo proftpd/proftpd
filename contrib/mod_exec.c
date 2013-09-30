@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.31 2013-09-20 04:01:51 castaglia Exp $
+ * $Id: mod_exec.c,v 1.32 2013-09-30 22:01:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1049,7 +1049,8 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
         varstr = sreplace(tmp_pool, varstr, "%r", "PASS (hidden)", NULL);
 
       } else {
-        varstr = sreplace(tmp_pool, varstr, "%r", get_full_cmd(cmd), NULL);
+        varstr = sreplace(tmp_pool, varstr, "%r",
+          pr_cmd_get_displayable_str(cmd, NULL), NULL);
       }
     }
   }

@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.288 2013-09-27 03:33:40 castaglia Exp $
+ * $Id: dirtree.c,v 1.289 2013-09-30 22:01:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3768,26 +3768,7 @@ int get_boolean(cmd_rec *cmd, int av) {
 }
 
 char *get_full_cmd(cmd_rec *cmd) {
-  pool *p = cmd->tmp_pool;
-  char *res = "";
-
-  if (cmd->arg && *cmd->arg)
-    res = pstrcat(p, cmd->argv[0], " ", pr_fs_decode_path(p, cmd->arg), NULL);
-
-  else if (cmd->argc > 1) {
-    register unsigned int i = 0;
-    res = cmd->argv[0];
-
-    for (i = 1; i < cmd->argc; i++)
-      res = pstrcat(p, res, pr_fs_decode_path(p, cmd->argv[i]), " ", NULL);
-
-    while (res[strlen(res)-1] == ' ' && *res)
-      res[strlen(res)-1] = '\0';
-
-  } else
-    res = pstrdup(p, cmd->argv[0]);
-
-  return res;
+  return pr_cmd_get_displayable_str(cmd, NULL);
 }
 
 unsigned int pr_config_get_id(const char *name) {
