@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.57 2013-09-29 23:26:02 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.58 2013-10-01 15:45:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1321,7 +1321,7 @@ MODRET set_persistentpasswd(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
-  c = add_config_param(c->argv[0], 1, NULL);
+  c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = persistence;
 
