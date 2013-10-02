@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: kex.c,v 1.38 2013-06-30 19:01:16 castaglia Exp $
+ * $Id: kex.c,v 1.39 2013-10-02 06:18:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -3571,8 +3571,10 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   if (!kex->use_kexrsa) {
     /* Read the client key exchange mesg. */
     pkt = read_kex_packet(kex_pool, kex,
-      SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, &mesg_type, 2,
-      SFTP_SSH2_MSG_KEX_DH_INIT, SFTP_SSH2_MSG_KEX_DH_GEX_REQUEST);
+      SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, &mesg_type, 3,
+      SFTP_SSH2_MSG_KEX_DH_INIT,
+      SFTP_SSH2_MSG_KEX_DH_GEX_REQUEST,
+      SFTP_SSH2_MSG_KEX_ECDH_INIT);
 
     switch (mesg_type) {
       case SFTP_SSH2_MSG_KEX_DH_INIT:
@@ -3611,7 +3613,11 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
       default:
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+#ifdef PR_USE_OPENSSL_ECC
+          "expecting KEX_DH_INIT, KEX_ECDH_INIT or KEX_DH_GEX_GROUP message, "
+#else
           "expecting KEX_DH_INIT or KEX_DH_GEX_GROUP message, "
+#endif /* PR_USE_OPENSSL_ECC */
           "received %s (%d), disconnecting",
           sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
         destroy_kex(kex);
