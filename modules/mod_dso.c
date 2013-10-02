@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.29 2013-06-05 16:02:42 castaglia Exp $
+ * $Id: mod_dso.c,v 1.30 2013-10-02 13:55:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,16 +70,6 @@ static int dso_load_file(char *path) {
   return 0;
 }
 
-static int name_ends_with(const char *name, size_t name_len, const char *suffix,
-  size_t suffix_len) {
-
-  if (strncmp(name + (name_len - suffix_len), suffix, suffix_len) == 0) {
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
 static int dso_load_module(char *name) {
   int module_load_errno = 0, res;
   char *symbol_name, *path, *ptr;
@@ -103,8 +93,8 @@ static int dso_load_module(char *name) {
   }
 
   /* Handle ".c" and ".cpp" extensions. */
-  if (!name_ends_with(name, namelen, ".c", 2) &&
-      !name_ends_with(name, namelen, ".cpp", 4)) {
+  if (pr_strnrstr(name, namelen, ".c", 2, 0) != TRUE &&
+      pr_strnrstr(name, namelen, ".cpp", 4, 0) != TRUE) {
     errno = EINVAL;
     return -1;
   }
