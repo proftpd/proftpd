@@ -19,7 +19,7 @@ SHARED_MODULE_OBJS=mod_snmp.lo stacktrace.lo asn1.lo smi.lo pdu.lo msg.lo \
 # Necessary redefinitions
 INCLUDES=-I. -I../.. -I../../include @INCLUDES@
 CPPFLAGS= $(ADDL_CPPFLAGS) -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
-LDFLAGS=-L../../lib @LIBDIRS@
+LDFLAGS=-L../../lib @LDFLAGS@
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<

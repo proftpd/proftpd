@@ -170,6 +170,7 @@ INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"
 
 AC_SUBST(INCLUDES)
+AC_SUBST(LDFLAGS)
 AC_SUBST(LIBDIRS)
 
 AC_CONFIG_HEADER(mod_sftp.h)

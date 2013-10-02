@@ -16,7 +16,7 @@ MODULE_LIBS=@MODULE_LIBS@
 
 # Necessary redefinitions
 CPPFLAGS= -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(MODULE_INCLUDES)
-LDFLAGS=-L../../lib
+LDFLAGS=-L../../lib @LDFLAGS@
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<

@@ -1,5 +1,5 @@
 dnl ProFTPD - mod_snmp
-dnl Copyright (c) 2011-2012 TJ Saunders <tj@castaglia.org>
+dnl Copyright (c) 2011-2013 TJ Saunders <tj@castaglia.org>
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -67,10 +67,9 @@ AC_ARG_WITH(libraries,
   ])
 
 INCLUDES="$ac_build_addl_includes"
-LIBDIRS="$ac_build_addl_libdirs"
 
 AC_SUBST(INCLUDES)
-AC_SUBST(LIBDIRS)
+AC_SUBST(LDFLAGS)
 
 AC_CONFIG_HEADER(mod_snmp.h)
 AC_OUTPUT(Makefile)
