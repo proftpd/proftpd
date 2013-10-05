@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.199 2013-09-18 18:15:45 castaglia Exp $
+ * $Id: fxp.c,v 1.200 2013-10-05 04:44:29 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -7271,17 +7271,17 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       uint32_t status_code;
       const char *unsupported_str = "";
 
-      if (desired_access & SSH2_FXF_ACCESS_READ_LOCK) {
+      if (flags & SSH2_FXF_ACCESS_READ_LOCK) {
         unsupported_str = pstrcat(fxp->pool, unsupported_str,
           *unsupported_str ? "|" : "", "ACCESS_READ_LOCK", NULL);
       }
 
-      if (desired_access & SSH2_FXF_ACCESS_WRITE_LOCK) {
+      if (flags & SSH2_FXF_ACCESS_WRITE_LOCK) {
         unsupported_str = pstrcat(fxp->pool, unsupported_str,
           *unsupported_str ? "|" : "", "ACCESS_WRITE_LOCK", NULL);
       }
 
-      if (desired_access & SSH2_FXF_ACCESS_DELETE_LOCK) {
+      if (flags & SSH2_FXF_ACCESS_DELETE_LOCK) {
         unsupported_str = pstrcat(fxp->pool, unsupported_str,
           *unsupported_str ? "|" : "", "ACCESS_DELETE_LOCK", NULL);
       }
