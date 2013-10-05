@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.33 2013-10-01 03:39:22 castaglia Exp $
+ * $Id: mod_exec.c,v 1.34 2013-10-05 19:41:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -600,7 +600,9 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       }
 
       /* Perform any required substitution on the command arguments. */
-      for (i = 3; i < c->argc; i++) {
+      for (i = 3; i < c->argc && c->argv[i] != NULL; i++) {
+        pr_signals_handle();
+
         c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
 
         /* Write the argument to stdin, terminated by a newline. */
@@ -626,8 +628,9 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
           strerror(errno));
       }
 
-      if (!cmd)
+      if (cmd == NULL) {
         destroy_pool(tmp_pool);
+      }
     }
 
     if (exec_opts & EXEC_OPT_USE_STDIN) {
