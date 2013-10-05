@@ -342,78 +342,155 @@ sub config_write {
   my ($user_name, $group_name) = config_get_identity();
 
   # Set a bunch of defaults, unless overridden by the caller
+  my $port;
 
-  unless (defined($config->{Port})) {
-    $config->{Port} = get_high_numbered_port();
-  }
-  my $port = $config->{Port};
-
-  unless (defined($config->{User})) {
-    $config->{User} = $user_name;
-
-    if ($< == 0) {
-      $config->{User} = 'root';
+  if (ref($config) eq 'HASH') {
+    unless (defined($config->{Port})) {
+      my $dynport = get_high_numbered_port();
+      $config->{Port} = $dynport;
     }
-  }
 
-  unless (defined($config->{Group})) {
-    $config->{Group} = $group_name;
-  }
+    $port = $config->{Port};
 
-  unless ($opts->{NoAllowOverride}) {
-    unless (defined($config->{AllowOverride})) {
-      $config->{AllowOverride} = 'off';
+    unless (defined($config->{User})) {
+      $config->{User} = $user_name;
+
+      if ($< == 0) {
+        $config->{User} = 'root';
+      }
     }
-  }
 
-  unless (defined($config->{DefaultAddress})) {
-    $config->{DefaultAddress} = '127.0.0.1';
-  }
-
-  unless (defined($config->{DefaultServer})) {
-    $config->{DefaultServer} = 'on';
-  }
-
-  unless (defined($config->{IdentLookups})) {
-    $config->{IdentLookups} = 'off';
-  }
-
-  unless (defined($config->{RequireValidShell})) {
-    $config->{RequireValidShell} = 'off';
-  }
-
-  unless (defined($config->{ServerType})) {
-    $config->{ServerType} = 'standalone';
-  }
-
-  unless (defined($config->{TimeoutIdle})) {
-    $config->{TimeoutIdle} = '10';
-  }
-
-  unless (defined($config->{TimeoutLinger})) {
-    $config->{TimeoutLinger} = '1';
-  }
-
-  unless (defined($config->{TransferLog})) {
-    $config->{TransferLog} = 'none';
-  }
-
-  unless (defined($config->{UseFtpUsers})) {
-    $config->{UseFtpUsers} = 'off';
-  }
-
-  if (feature_have_feature_enabled('ipv6')) {
-    unless (defined($config->{UseIPv6})) {
-      $config->{UseIPv6} = 'off';
+    unless (defined($config->{Group})) {
+      $config->{Group} = $group_name;
     }
-  }
 
-  unless (defined($config->{UseReverseDNS})) {
-    $config->{UseReverseDNS} = 'off';
-  }
+    unless ($opts->{NoAllowOverride}) {
+      unless (defined($config->{AllowOverride})) {
+        $config->{AllowOverride} = 'off';
+      }
+    }
 
-  unless (defined($config->{WtmpLog})) {
-    $config->{WtmpLog} = 'off';
+    unless (defined($config->{DefaultAddress})) {
+      $config->{DefaultAddress} = '127.0.0.1';
+    }
+
+    unless (defined($config->{DefaultServer})) {
+      $config->{DefaultServer} = 'on';
+    }
+
+    unless (defined($config->{IdentLookups})) {
+      $config->{IdentLookups} = 'off';
+    }
+
+    unless (defined($config->{RequireValidShell})) {
+      $config->{RequireValidShell} = 'off';
+    }
+
+    unless (defined($config->{ServerType})) {
+      $config->{ServerType} = 'standalone';
+    }
+
+    unless (defined($config->{TimeoutIdle})) {
+      $config->{TimeoutIdle} = '10';
+    }
+
+    unless (defined($config->{TimeoutLinger})) {
+      $config->{TimeoutLinger} = '1';
+    }
+
+    unless (defined($config->{TransferLog})) {
+      $config->{TransferLog} = 'none';
+    }
+
+    unless (defined($config->{UseFtpUsers})) {
+      $config->{UseFtpUsers} = 'off';
+    }
+
+    if (feature_have_feature_enabled('ipv6')) {
+      unless (defined($config->{UseIPv6})) {
+        $config->{UseIPv6} = 'off';
+      }
+    }
+
+    unless (defined($config->{UseReverseDNS})) {
+      $config->{UseReverseDNS} = 'off';
+    }
+
+    unless (defined($config->{WtmpLog})) {
+      $config->{WtmpLog} = 'off';
+    }
+
+  } elsif (ref($config) eq 'ARRAY') {
+    unless (grep(/Port /, @$config) > 0) {
+      $port = get_high_numbered_port();
+      push(@$config, "Port $port");
+    }
+
+    unless (grep(/^User /, @$config) > 0) {
+      push(@$config, "User $user_name");
+
+      if ($< == 0) {
+        push(@$config, "User root");
+      }
+    }
+
+    unless (grep(/^Group /, @$config) > 0) {
+      push(@$config, "Group $group_name");
+    }
+
+    unless (grep(/^AlloOverride/, @$config) > 0) {
+      push(@$config, "AllowOverride off");
+    }
+
+    unless (grep(/^DefaultAddress/, @$config) > 0) {
+      push(@$config, "DefaultAddress 127.0.0.1");
+    }
+
+    unless (grep(/^DefaultServer/, @$config) > 0) {
+      push(@$config, "DefaultServer on");
+    }
+
+    unless (grep(/^IdentLookups/, @$config) > 0) {
+      push(@$config, "IdentLookups off");
+    }
+
+    unless (grep(/^RequireValidShell/, @$config) > 0) {
+      push(@$config, "RequireValidShell off");
+    }
+
+    unless (grep(/^ServerType/, @$config) > 0) {
+      push(@$config, "ServerType standalone");
+    }
+
+    unless (grep(/^TimeoutIdle/, @$config) > 0) {
+      push(@$config, "TimeoutIdle 10");
+    }
+
+    unless (grep(/^TimeoutLinger/, @$config) > 0) {
+      push(@$config, "TimeoutLinger 1");
+    }
+
+    unless (grep(/^TransferLog/, @$config) > 0) {
+      push(@$config, "TransferLog none");
+    }
+
+    unless (grep(/UseFtpUsers/, @$config) > 0) {
+      push(@$config, "UseFtpUsers off");
+    }
+
+    if (feature_have_feature_enabled('ipv6')) {
+      unless (grep(/UseIPv6/, @$config) > 0) {
+        push(@$config, "UseIPv6 off");
+      }
+    }
+
+    unless (grep(/UseReverseDNS/, @$config) > 0) {
+      push(@$config, "UseReverseDNS off");
+    }
+
+    unless (grep(/WtmpLog/, @$config) > 0) {
+      push(@$config, "WtmpLog off");
+    }
   }
 
   my $abs_path = File::Spec->rel2abs($path);
@@ -424,146 +501,153 @@ sub config_write {
     print $fh "# Auto-generated proftpd config file\n";
     print $fh "# Written on: $timestamp\n\n";
 
-    while (my ($k, $v) = each(%$config)) {
-      if ($k eq 'IfModules') {
-        my $modules = $v;
+    if (ref($config) eq 'HASH') {
+      while (my ($k, $v) = each(%$config)) {
+        if ($k eq 'IfModules') {
+          my $modules = $v;
 
-        foreach my $mod (keys(%$modules)) {
-          print $fh "<IfModule $mod>\n";
+          foreach my $mod (keys(%$modules)) {
+            print $fh "<IfModule $mod>\n";
 
-          my $section = $modules->{$mod};
+            my $section = $modules->{$mod};
 
-          if (ref($section) eq 'HASH') {
-            while (my ($mod_k, $mod_v) = each(%$section)) {
-              print $fh "  $mod_k $mod_v\n";
-            }
+            if (ref($section) eq 'HASH') {
+              while (my ($mod_k, $mod_v) = each(%$section)) {
+                print $fh "  $mod_k $mod_v\n";
+              }
 
-          } elsif (ref($section) eq 'ARRAY') {
-            foreach my $line (@$section) {
-              print $fh "  $line\n";
-            }
-          }
-
-          print $fh "</IfModule>\n";
-        }
-
-      } elsif ($k eq 'Anonymous') {
-        my $sections = $v;
-
-        foreach my $anon (keys(%$sections)) {
-          print $fh "<Anonymous $anon>\n";
-
-          my $section = $sections->{$anon};
-
-          if (ref($section) eq 'HASH') {
-            while (my ($anon_k, $anon_v) = each(%$section)) {
-              if (ref($anon_v) eq 'HASH' ||
-                  ref($anon_v) eq 'ARRAY') {
-                config_write_subsection($fh, $anon_k, $anon_v, "  ");
-
-              } else {
-                print $fh "  $anon_k $anon_v\n";
+            } elsif (ref($section) eq 'ARRAY') {
+              foreach my $line (@$section) {
+                print $fh "  $line\n";
               }
             }
 
-          } elsif (ref($section) eq 'ARRAY') {
-            foreach my $line (@$section) {
-              print $fh "  $line\n";
-            }
+            print $fh "</IfModule>\n";
           }
 
-          print $fh "</Anonymous>\n";
-        }
+        } elsif ($k eq 'Anonymous') {
+          my $sections = $v;
 
-      } elsif ($k eq 'Directory') {
-        my $sections = $v;
+          foreach my $anon (keys(%$sections)) {
+            print $fh "<Anonymous $anon>\n";
 
-        foreach my $dir (keys(%$sections)) {
-          print $fh "<Directory $dir>\n";
+            my $section = $sections->{$anon};
 
-          my $section = $sections->{$dir};
+            if (ref($section) eq 'HASH') {
+              while (my ($anon_k, $anon_v) = each(%$section)) {
+                if (ref($anon_v) eq 'HASH' ||
+                    ref($anon_v) eq 'ARRAY') {
+                  config_write_subsection($fh, $anon_k, $anon_v, "  ");
 
-          if (ref($section) eq 'HASH') {
-            while (my ($dir_k, $dir_v) = each(%$section)) {
-              if (ref($dir_v) eq 'HASH' ||
-                  ref($dir_v) eq 'ARRAY') {
-                config_write_subsection($fh, $dir_k, $dir_v, "  ");
+                } else {
+                  print $fh "  $anon_k $anon_v\n";
+                }
+              }
 
-              } else {
-                print $fh "  $dir_k $dir_v\n";
+            } elsif (ref($section) eq 'ARRAY') {
+              foreach my $line (@$section) {
+                print $fh "  $line\n";
               }
             }
 
-          } elsif (ref($section) eq 'ARRAY') {
-            foreach my $line (@$section) {
-              print $fh "  $line\n";
-            }
+            print $fh "</Anonymous>\n";
           }
 
-          print $fh "</Directory>\n";
-        }
+        } elsif ($k eq 'Directory') {
+          my $sections = $v;
 
-      } elsif ($k eq 'Limit') {
-        my $sections = $v;
+          foreach my $dir (keys(%$sections)) {
+            print $fh "<Directory $dir>\n";
 
-        foreach my $limits (keys(%$sections)) {
-          print $fh "<Limit $limits>\n";
+            my $section = $sections->{$dir};
 
-          my $section = $sections->{$limits};
+            if (ref($section) eq 'HASH') {
+              while (my ($dir_k, $dir_v) = each(%$section)) {
+                if (ref($dir_v) eq 'HASH' ||
+                    ref($dir_v) eq 'ARRAY') {
+                  config_write_subsection($fh, $dir_k, $dir_v, "  ");
 
-          if (ref($section) eq 'HASH') {
-            while (my ($limit_k, $limit_v) = each(%$section)) {
-              if (ref($limit_v) eq 'HASH' ||
-                  ref($limit_v) eq 'ARRAY') {
-                config_write_subsection($fh, $limit_k, $limit_v, "  ");
+                } else {
+                  print $fh "  $dir_k $dir_v\n";
+                }
+              }
 
-              } else {
-                print $fh "  $limit_k $limit_v\n";
+            } elsif (ref($section) eq 'ARRAY') {
+              foreach my $line (@$section) {
+                print $fh "  $line\n";
               }
             }
 
-          } elsif (ref($section) eq 'ARRAY') {
-            foreach my $line (@$section) {
-              print $fh "  $line\n";
-            }
+            print $fh "</Directory>\n";
           }
 
-          print $fh "</Limit>\n";
-        }
+        } elsif ($k eq 'Limit') {
+          my $sections = $v;
 
-      } elsif ($k eq 'Class') {
-        my $sections = $v;
+          foreach my $limits (keys(%$sections)) {
+            print $fh "<Limit $limits>\n";
 
-        foreach my $class (keys(%$sections)) {
-          print $fh "<Class $class>\n";
+            my $section = $sections->{$limits};
 
-          my $section = $sections->{$class};
+            if (ref($section) eq 'HASH') {
+              while (my ($limit_k, $limit_v) = each(%$section)) {
+                if (ref($limit_v) eq 'HASH' ||
+                    ref($limit_v) eq 'ARRAY') {
+                  config_write_subsection($fh, $limit_k, $limit_v, "  ");
 
-          if (ref($section) eq 'HASH') {
-            while (my ($class_k, $class_v) = each(%$section)) {
-              print $fh "  $class_k $class_v\n";
+                } else {
+                  print $fh "  $limit_k $limit_v\n";
+                }
+              }
+
+            } elsif (ref($section) eq 'ARRAY') {
+              foreach my $line (@$section) {
+                print $fh "  $line\n";
+              }
             }
 
-          } elsif (ref($section) eq 'ARRAY') {
-            foreach my $line (@$section) {
-              print $fh "  $line\n";
-            }
+            print $fh "</Limit>\n";
           }
 
-          print $fh "</Class>\n";
-        }
+        } elsif ($k eq 'Class') {
+          my $sections = $v;
 
-      } elsif ($k eq 'Global') {
-        print $fh "<Global>\n";
+          foreach my $class (keys(%$sections)) {
+            print $fh "<Class $class>\n";
 
-        foreach my $name (keys(%$v)) {
-          print $fh "  $name $v->{$name}\n";
-        }
+            my $section = $sections->{$class};
 
-        print $fh "</Global>\n";
+            if (ref($section) eq 'HASH') {
+              while (my ($class_k, $class_v) = each(%$section)) {
+                print $fh "  $class_k $class_v\n";
+              }
+
+            } elsif (ref($section) eq 'ARRAY') {
+              foreach my $line (@$section) {
+                print $fh "  $line\n";
+              }
+            }
+
+            print $fh "</Class>\n";
+          }
+
+        } elsif ($k eq 'Global') {
+          print $fh "<Global>\n";
+
+          foreach my $name (keys(%$v)) {
+            print $fh "  $name $v->{$name}\n";
+          }
+
+          print $fh "</Global>\n";
  
-      } else {
-        print $fh "$k $v\n";
+        } else {
+          print $fh "$k $v\n";
+        }
+      }
+
+    } elsif (ref($config) eq 'ARRAY') {
+      foreach my $line (@$config) {
+        print $fh "$line\n";
       }
     }
 
