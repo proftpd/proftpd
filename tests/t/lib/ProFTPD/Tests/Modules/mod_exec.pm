@@ -1577,7 +1577,7 @@ EOS
         ExecEngine => 'on',
         ExecLog => $log_file,
         ExecTimeout => 1,
-        ExecOnConnect => "$script 1 2 3 addr=%a",
+        ExecBeforeCommand => "PASS $script 1 2 3 addr=%a user=%U",
         ExecOptions => 'logStdout useStdin',
       },
 
@@ -1605,6 +1605,8 @@ EOS
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->quit();
     };
 
     if ($@) {
@@ -1634,31 +1636,6 @@ EOS
     unlink($log_file);
 
     die($ex);
-  }
-
-  if (open(my $fh, "< $log_file")) {
-    my $line;
-    while ($line = <$fh>) {
-      unless ($line =~ /stdout from '$script'/) {
-        next;
-      }
-
-      chomp($line);
-      last;
-    }
-
-    close($fh);
-
-    $line =~ /stdout from '$script': '(.*?)'/;
-    my $stdout = $1;
-
-    my $expected = 'addr=127.0.0.1';
-
-    $self->assert($expected eq $stdout,
-      test_msg("Expected '$expected', got '$stdout'"));
-
-  } else {
-    die("Can't read $log_file: $!");
   }
 
   unlink($log_file);
