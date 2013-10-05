@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.142 2013-09-25 14:52:14 castaglia Exp $
+ * $Id: fsio.c,v 1.143 2013-10-05 20:05:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2659,7 +2659,7 @@ int pr_fsio_set_use_mkdtemp(int value) {
  * whilst being able to do a write (effectively) on the fd by changing
  * its permissions.
  */
-static int schmod_dir(pool *p, const char *path, mode_t perms) {
+static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
   int flags, fd, res, xerrno = 0;
   struct stat st;
 
@@ -2712,8 +2712,16 @@ static int schmod_dir(pool *p, const char *path, mode_t perms) {
     return -1;
   }
 
+  if (use_root) {
+    PRIVS_ROOT
+  }
+
   res = fchmod(fd, perms);
   xerrno = xerrno;
+
+  if (use_root) {
+    PRIVS_RELINQUISH
+  }
 
   /* At this point, succeed or fail, we're done with the fd. */
   (void) close(fd);
@@ -2845,26 +2853,22 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
     if (set_sgid) {
       perms |= S_ISGID;
-
-      /* If we're setting the SGID bit, we need to use root privs, in order
-       * to reliably set the SGID bit.  Sigh.
-       */
-      PRIVS_ROOT
     }
 
-    res = schmod_dir(p, tmpl_path, perms);
+    /* If we're setting the SGID bit, we need to use root privs, in order
+     * to reliably set the SGID bit.  Sigh.
+     */
+    res = schmod_dir(p, tmpl_path, perms, set_sgid);
     xerrno = errno;
 
     if (set_sgid) {
-      PRIVS_RELINQUISH
-
       if (res < 0 &&
           xerrno == EPERM) {
         /* Try again, this time without root privs.  NFS situations which
          * squash root privs could cause the above chmod(2) to fail; it
          * might succeed now that we've dropped root privs (Bug#3962).
          */
-        res = schmod_dir(p, tmpl_path, perms);
+        res = schmod_dir(p, tmpl_path, perms, FALSE);
         xerrno = errno;
       }
     }
