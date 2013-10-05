@@ -160,6 +160,7 @@ if (scalar(@ARGV) > 0) {
     t/config/rootrevoke.t
     t/config/serveradmin.t
     t/config/serverident.t
+    t/config/setenv.t
     t/config/showsymlinks.t
     t/config/socketoptions.t
     t/config/storeuniqueprefix.t
