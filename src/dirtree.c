@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.289 2013-09-30 22:01:47 castaglia Exp $
+ * $Id: dirtree.c,v 1.290 2013-10-06 06:35:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1167,6 +1167,7 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
 
   c = find_config(set, CONF_PARAM, name, FALSE);
   while (c) {
+    int matched = 0;
     pr_regex_t *pre = (pr_regex_t *) c->argv[0];
 
     pr_signals_handle();
@@ -1174,8 +1175,12 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
     pr_trace_msg("filter", 8,
       "comparing %s argument '%s' against %s pattern '%s'", cmd->argv[0],
       cmd->arg, name, pr_regexp_get_pattern(pre));
-    res = pr_regexp_exec(pre, cmd->arg, 0, NULL, 0, 0, 0);
-    if (res == 0) {
+    matched = pr_regexp_exec(pre, cmd->arg, 0, NULL, 0, 0, 0);
+    pr_trace_msg("filter", 8,
+      "comparing %s argument '%s' against %s pattern '%s' returned %d",
+      cmd->argv[0], cmd->arg, name, pr_regexp_get_pattern(pre), matched);
+
+    if (matched == 0) {
       res = TRUE;
       break;
     }
