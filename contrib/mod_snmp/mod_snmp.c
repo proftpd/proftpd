@@ -1556,7 +1556,7 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
   agent_pid = fork();
   switch (agent_pid) {
     case -1:
-      pr_log_pri(PR_LOG_ERR, MOD_SNMP_VERSION ": unable to fork: %s",
+      pr_log_pri(PR_LOG_ALERT, MOD_SNMP_VERSION ": unable to fork: %s",
         strerror(errno));
       return 0;
 
