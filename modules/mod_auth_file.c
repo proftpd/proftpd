@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.49 2013-09-29 23:26:02 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.50 2013-10-06 22:35:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -509,7 +509,7 @@ static struct group *af_getgrent(void) {
 
     buf = malloc(BUFSIZ);
     if (buf == NULL) {
-      pr_log_pri(PR_LOG_CRIT, "%s", "Out of memory!");
+      pr_log_pri(PR_LOG_ALERT, "%s", "Out of memory!");
       _exit(1);
     }
     grp = NULL;

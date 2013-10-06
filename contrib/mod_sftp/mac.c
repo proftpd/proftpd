@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mac.c,v 1.16 2013-03-28 20:31:53 castaglia Exp $
+ * $Id: mac.c,v 1.17 2013-10-06 22:35:40 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -378,7 +378,7 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
 
   key = malloc(key_sz);
   if (key == NULL) {
-    pr_log_pri(PR_LOG_CRIT, MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     _exit(1);
   }
 
