@@ -1569,8 +1569,12 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
 
   pid = fork();
   if (pid < 0) {
-    pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": error: unable to fork: %s",
-      strerror(errno));
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_ALERT, MOD_TLS_VERSION ": error: unable to fork: %s",
+      strerror(xerrno));
+
+    errno = xerrno;
     status = -1;
 
   } else if (pid == 0) {

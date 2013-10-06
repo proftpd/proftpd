@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.455 2013-09-29 23:26:03 castaglia Exp $
+ * $Id: main.c,v 1.456 2013-10-06 23:03:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1045,8 +1045,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
      */
 
     if (pipe(semfds) == -1) {
-      pr_log_pri(PR_LOG_ERR, "pipe(): %s", strerror(errno));
-      close(fd);
+      pr_log_pri(PR_LOG_ALERT, "pipe(2) failed: %s", strerror(errno));
+      (void) close(fd);
       return;
     }
 
@@ -1060,7 +1060,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     /* Make sure we set the close-on-exec flag for the parent's read side
      * of the pipe.
      */
-    fcntl(semfds[0], F_SETFD, FD_CLOEXEC);
+    (void) fcntl(semfds[0], F_SETFD, FD_CLOEXEC);
 
     /* We block SIGCHLD to prevent a race condition if the child
      * dies before we can record it's pid.  Also block SIGTERM to
@@ -1078,10 +1078,12 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
         "unable to block signal set: %s", strerror(errno));
     }
 
-    switch ((pid = fork())) {
+    pid = fork();
+    xerrno = errno;
+
+    switch (pid) {
 
     case 0: /* child */
-
       /* No longer the master process. */
       is_master = FALSE;
       if (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
@@ -1099,7 +1101,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
           "unable to unblock signal set: %s", strerror(errno));
       }
 
-      pr_log_pri(PR_LOG_ERR, "fork(): %s", strerror(errno));
+      pr_log_pri(PR_LOG_ALERT, "unable to fork(): %s", strerror(xerrno));
 
       /* The parent doesn't need the socket open. */
       (void) close(fd);
@@ -1110,10 +1112,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
     default: /* parent */
       /* The parent doesn't need the socket open */
-      close(fd);
+      (void) close(fd);
 
       child_add(pid, semfds[0]);
-      close(semfds[1]);
+      (void) close(semfds[1]);
 
       /* Unblock the signals now as sig_child() will catch
        * an "immediate" death and remove the pid from the children list
@@ -1200,8 +1202,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     STDIN_FILENO, STDOUT_FILENO, FALSE);
 
   /* Capture errno here, if necessary. */
-  if (!conn)
+  if (conn == NULL) {
     xerrno = errno;
+  }
 
   /* Now do the permanent syslog open
    */
@@ -2238,7 +2241,7 @@ static void daemonize(void) {
    */
   switch (fork()) {
     case -1:
-      perror("fork");
+      perror("fork(2) error");
       exit(1);
 
     case 0:

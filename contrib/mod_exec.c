@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.34 2013-10-05 19:41:16 castaglia Exp $
+ * $Id: mod_exec.c,v 1.35 2013-10-06 23:03:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -445,7 +445,13 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
   pid = fork();
   if (pid < 0) {
-    exec_log("error: unable to fork: %s", strerror(errno));
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_ALERT, MOD_EXEC_VERSION ": error: unable to fork: %s",
+      strerror(xerrno));
+    exec_log("error: unable to fork: %s", strerror(xerrno));
+
+    errno = xerrno;
     status = -1;
 
   } else if (pid == 0) {
