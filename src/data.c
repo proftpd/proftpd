@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.147 2013-10-06 22:47:33 castaglia Exp $
+ * $Id: data.c,v 1.148 2013-10-06 22:53:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -172,7 +172,7 @@ static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
   if ((res = (bufsize - tmplen - lfcount)) <= 0) {
     char *copybuf = malloc(tmplen);
     if (copybuf == NULL) {
-      pr_log_pri(PR_LOG_ALERT, "fatal: memory exhausted");
+      pr_log_pri(PR_LOG_ALERT, "Out of memory!");
       exit(1);
     }
 
