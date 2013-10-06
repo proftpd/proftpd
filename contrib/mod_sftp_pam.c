@@ -26,7 +26,7 @@
  * This is mod_sftp_pam, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_sftp_pam.c,v 1.18 2013-10-06 22:35:40 castaglia Exp $
+ * $Id: mod_sftp_pam.c,v 1.19 2013-10-06 23:45:59 castaglia Exp $
  * $Libraries: -lpam $
  */
 
@@ -206,7 +206,8 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
 
   res = calloc(nmsgs, sizeof(struct pam_response));
   if (res == NULL) {
-    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_PAM_VERSION ": Out of memory!");
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+      MOD_SFTP_PAM_VERSION ": Out of memory!");
     return PAM_BUF_ERR;
   }
 
@@ -318,7 +319,8 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
 
   sftppam_user = malloc(sftppam_userlen);
   if (sftppam_user == NULL) {
-    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_PAM_VERSION ": Out of memory!");
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+      MOD_SFTP_PAM_VERSION ": Out of memory!");
     exit(1);
   }
 

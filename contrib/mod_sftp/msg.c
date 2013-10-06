@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: msg.c,v 1.14 2013-10-06 22:35:40 castaglia Exp $
+ * $Id: msg.c,v 1.15 2013-10-06 23:45:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -466,7 +466,8 @@ uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
 
   data = malloc(datalen);
   if (data == NULL) {
-    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+      MOD_SFTP_VERSION ": Out of memory!");
     _exit(1);
   }
 
@@ -545,7 +546,8 @@ uint32_t sftp_msg_write_ecpoint(unsigned char **buf, uint32_t *buflen,
 
   data = malloc(datalen);
   if (data == NULL) {
-    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+      MOD_SFTP_VERSION ": Out of memory!");
     _exit(1);
   }
 

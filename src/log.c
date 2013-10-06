@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.116 2013-02-25 20:27:29 castaglia Exp $
+ * $Id: log.c,v 1.117 2013-10-06 23:45:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,6 +55,27 @@ static int fd_set_block(int fd) {
   return res;
 }
 #endif /* PR_USE_NONBLOCKING_LOG_OPEN */
+
+int pr_log_level_exhausted_rsrc(int rsrc_id, int rsrc_errno) {
+  int log_level;
+
+  /* Default "resource exhausted" level. */
+  log_level = PR_LOG_ERR;
+
+  switch (rsrc_id) {
+    case PR_LOG_RSRC_MEM:
+      log_level = PR_LOG_ALERT;
+      break;
+
+    case PR_LOG_RSRC_FD:
+      if (rsrc_errno == EMFILE) {
+        log_level = PR_LOG_ALERT;
+      }
+      break;
+  }
+
+  return log_level;
+}
 
 int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   int res;

@@ -23,7 +23,7 @@
  */
 
 /* Environment management
- * $Id: env.c,v 1.9 2013-10-06 22:53:28 castaglia Exp $
+ * $Id: env.c,v 1.10 2013-10-06 23:45:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -71,13 +71,15 @@ int pr_env_set(pool *p, const char *key, const char *value) {
 # ifdef PR_USE_DEVEL
   k = strdup(key);
   if (k == NULL) {
-    pr_log_pri(PR_LOG_ALERT, "Out of memory!");
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+      "Out of memory!");
     exit(1);
   }
 
   v = strdup(value);
   if (v == NULL) {
-    pr_log_pri(PR_LOG_ALERT, "Out of memory!");
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+      "Out of memory!");
     exit(1);
   }
 
@@ -93,7 +95,8 @@ int pr_env_set(pool *p, const char *key, const char *value) {
 # ifdef PR_USE_DEVEL
   str = strdup(str);
   if (str == NULL) {
-    pr_log_pri(PR_LOG_ALERT, "Out of memory!");
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+      "Out of memory!");
     exit(1);
   }
 # endif /* PR_USE_DEVEL */

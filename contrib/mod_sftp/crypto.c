@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.30 2013-10-06 22:47:32 castaglia Exp $
+ * $Id: crypto.c,v 1.31 2013-10-06 23:45:59 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -193,7 +193,8 @@ static int init_bf_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     /* Allocate our data structure. */
     bce = calloc(1, sizeof(struct bf_ctr_ex));
     if (bce == NULL) {
-      pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
+      pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+        MOD_SFTP_VERSION ": Out of memory!");
       _exit(1);
     }
 
@@ -342,7 +343,8 @@ static int init_des3_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     /* Allocate our data structure. */
     dce = calloc(1, sizeof(struct des3_ctr_ex));
     if (dce == NULL) {
-      pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
+      pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+        MOD_SFTP_VERSION ": Out of memory!");
       _exit(1);
     }
 
@@ -483,7 +485,8 @@ static int init_aes_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     /* Allocate our data structure. */
     ace = calloc(1, sizeof(struct aes_ctr_ex));
     if (ace == NULL) {
-      pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
+      pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
+        MOD_SFTP_VERSION ": Out of memory!");
       _exit(1);
     }
 

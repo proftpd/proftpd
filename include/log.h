@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.35 2013-02-24 16:46:42 castaglia Exp $
+ * $Id: log.h,v 1.36 2013-10-06 23:45:59 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -128,6 +128,14 @@ int pr_log_writefile(int, const char *, const char *, ...)
  * but still want to use the core facilities for writing to the log fd.
  */
 int pr_log_vwritefile(int, const char *, const char *, va_list ap);
+
+/* This function returns the preferred log level to use for the given
+ * error and resource.  E.g. for exhausted memory, the ALERT level might be
+ * returned.
+ */
+int pr_log_level_exhausted_rsrc(int rsrc_id, int rsrc_errno);
+#define PR_LOG_RSRC_MEM		1
+#define PR_LOG_RSRC_FD		2
 
 /* syslog-based logging functions.  Note that the open/close functions are
  * not part of the public API; use the pr_log_pri() function to log via
