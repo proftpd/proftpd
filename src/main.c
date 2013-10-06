@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.456 2013-10-06 23:03:18 castaglia Exp $
+ * $Id: main.c,v 1.457 2013-10-06 23:56:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1101,7 +1101,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
           "unable to unblock signal set: %s", strerror(errno));
       }
 
-      pr_log_pri(PR_LOG_ALERT, "unable to fork(): %s", strerror(xerrno));
+      pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_PROC, xerrno),
+        "unable to fork(): %s", strerror(xerrno));
 
       /* The parent doesn't need the socket open. */
       (void) close(fd);

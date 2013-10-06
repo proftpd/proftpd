@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.36 2013-10-06 23:45:59 castaglia Exp $
+ * $Id: log.h,v 1.37 2013-10-06 23:56:24 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -136,6 +136,7 @@ int pr_log_vwritefile(int, const char *, const char *, va_list ap);
 int pr_log_level_exhausted_rsrc(int rsrc_id, int rsrc_errno);
 #define PR_LOG_RSRC_MEM		1
 #define PR_LOG_RSRC_FD		2
+#define PR_LOG_RSRC_PROC	3
 
 /* syslog-based logging functions.  Note that the open/close functions are
  * not part of the public API; use the pr_log_pri() function to log via

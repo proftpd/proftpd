@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.34 2013-10-06 23:45:59 castaglia Exp $
+ * $Id: keys.c,v 1.35 2013-10-06 23:56:24 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -249,8 +249,8 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   if (pid < 0) {
     int xerrno = errno;
 
-    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": error: unable to fork: %s",
-      strerror(xerrno));
+    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_PROC, xerrno),
+      MOD_SFTP_VERSION ": error: unable to fork: %s", strerror(xerrno));
 
     errno = xerrno;
     status = -1;

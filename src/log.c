@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.117 2013-10-06 23:45:59 castaglia Exp $
+ * $Id: log.c,v 1.118 2013-10-06 23:56:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,6 +64,7 @@ int pr_log_level_exhausted_rsrc(int rsrc_id, int rsrc_errno) {
 
   switch (rsrc_id) {
     case PR_LOG_RSRC_MEM:
+    case PR_LOG_RSRC_PROC:
       log_level = PR_LOG_ALERT;
       break;
 
