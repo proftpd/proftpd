@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.49 2013-02-14 19:29:15 castaglia Exp $
+ * $Id: auth.c,v 1.50 2013-10-07 01:35:38 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -285,14 +285,14 @@ static int setup_env(pool *p, char *user) {
       if (*((int *) c->argv[0]) == FALSE) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "root login attempted, denied by RootLogin configuration");
-        pr_log_auth(PR_LOG_CRIT, "SECURITY VIOLATION: Root login attempted.");
+        pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted.");
         return -1;
       }
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "root login attempted, denied by RootLogin configuration");
-      pr_log_auth(PR_LOG_CRIT, "SECURITY VIOLATION: Root login attempted.");
+      pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted.");
       return -1;
     }
   }

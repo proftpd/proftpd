@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.311 2013-03-08 00:00:57 castaglia Exp $
+ * $Id: mod_auth.c,v 1.312 2013-10-07 01:35:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -895,7 +895,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
         "RootLogin", FALSE)) == NULL || *root_allow != TRUE) {
       if (pass)
         pr_memscrub(pass, strlen(pass));
-      pr_log_auth(PR_LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
+      pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted.");
       return 0;
     }
   }
