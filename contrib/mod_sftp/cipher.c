@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.15 2013-10-06 23:45:59 castaglia Exp $
+ * $Id: cipher.c,v 1.16 2013-10-07 01:29:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -177,8 +177,7 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 
   iv = malloc(iv_sz);
   if (iv == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     _exit(1);
   }
 
@@ -238,8 +237,7 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
 
   key = malloc(key_sz);
   if (key == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     _exit(1);
   }
 
@@ -286,15 +284,13 @@ static int set_cipher_discarded(struct sftp_cipher *cipher,
 
   garbage_in = malloc(cipher->discard_len);
   if (garbage_in == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     _exit(1);
   }
 
   garbage_out = malloc(cipher->discard_len);
   if (garbage_out == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     free(garbage_in);
     _exit(1);
   }

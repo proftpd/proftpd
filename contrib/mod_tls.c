@@ -1571,7 +1571,7 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   if (pid < 0) {
     int xerrno = errno;
 
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_PROC, xerrno),
+    pr_log_pri(PR_LOG_ALERT,
       MOD_TLS_VERSION ": error: unable to fork: %s", strerror(xerrno));
 
     errno = xerrno;
@@ -4135,8 +4135,7 @@ static char *tls_get_page(size_t sz, void **ptr) {
 
   d = calloc(1, sz + (pagesz-1));
   if (d == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_TLS_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_TLS_VERSION ": Out of memory!");
     pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
   }
 
@@ -8868,8 +8867,7 @@ static void tls_get_passphrases(void) {
 
       k->rsa_pkey = tls_get_page(PEM_BUFSIZE, &k->rsa_pkey_ptr);
       if (k->rsa_pkey == NULL) {
-        pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-          MOD_TLS_VERSION ": Out of memory!");
+        pr_log_pri(PR_LOG_ALERT, MOD_TLS_VERSION ": Out of memory!");
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
@@ -8892,8 +8890,7 @@ static void tls_get_passphrases(void) {
 
       k->dsa_pkey = tls_get_page(PEM_BUFSIZE, &k->dsa_pkey_ptr);
       if (k->dsa_pkey == NULL) {
-        pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-          MOD_TLS_VERSION ": Out of memory!");
+        pr_log_pri(PR_LOG_ALERT, MOD_TLS_VERSION ": Out of memory!");
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
@@ -8917,8 +8914,7 @@ static void tls_get_passphrases(void) {
 
       k->pkcs12_passwd = tls_get_page(PEM_BUFSIZE, &k->pkcs12_passwd_ptr);
       if (k->pkcs12_passwd == NULL) {
-        pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-          MOD_TLS_VERSION ": Out of memory!");
+        pr_log_pri(PR_LOG_ALERT, MOD_TLS_VERSION ": Out of memory!");
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 

@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.16 2013-10-06 23:45:59 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.17 2013-10-07 01:29:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -241,8 +241,7 @@ static int shaper_msg_recv(void) {
 
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
   if (msg == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SHAPER_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SHAPER_VERSION ": Out of memory!");
     pr_session_disconnect(&shaper_module, PR_SESS_DISCONNECT_NOMEM, NULL);
   }
 
@@ -293,8 +292,7 @@ static int shaper_msg_send(pid_t dst_pid, unsigned int prio,
 
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
   if (msg == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SHAPER_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SHAPER_VERSION ": Out of memory!");
     pr_session_disconnect(&shaper_module, PR_SESS_DISCONNECT_NOMEM, NULL);
   }
 
@@ -391,8 +389,7 @@ static void shaper_msg_clear(pid_t dst_pid) {
 
   msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
   if (msg == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SHAPER_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SHAPER_VERSION ": Out of memory!");
     pr_session_disconnect(&shaper_module, PR_SESS_DISCONNECT_NOMEM, NULL);
   }
 

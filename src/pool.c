@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.70 2013-10-06 23:45:59 castaglia Exp $
+ * $Id: pool.c,v 1.71 2013-10-07 01:29:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -103,8 +103,7 @@ static void *null_alloc(size_t size) {
   }
 
   if (ret == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      "Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, "Out of memory!");
 #ifdef PR_USE_DEVEL
     if (debug_flags & PR_POOL_DEBUG_FL_OOM_DUMP_POOLS) {
       pr_pool_debug_memory(oom_printf);

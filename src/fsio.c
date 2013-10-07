@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.145 2013-10-06 23:45:59 castaglia Exp $
+ * $Id: fsio.c,v 1.146 2013-10-07 01:29:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -761,8 +761,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   bufsz = src_st.st_blksize;
   buf = malloc(bufsz);
   if (buf == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      "Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, "Out of memory!");
     exit(1);
   }
 
@@ -888,8 +887,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
       acls = malloc(sizeof(aclent_t) * nents);
       if (!acls) { 
-        pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-          "Out of memory!");
+        pr_log_pri(PR_LOG_ALERT, "Out of memory!");
         exit(1);
       }
 

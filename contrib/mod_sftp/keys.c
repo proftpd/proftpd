@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.35 2013-10-06 23:56:24 castaglia Exp $
+ * $Id: keys.c,v 1.36 2013-10-07 01:29:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -249,7 +249,7 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   if (pid < 0) {
     int xerrno = errno;
 
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_PROC, xerrno),
+    pr_log_pri(PR_LOG_ALERT,
       MOD_SFTP_VERSION ": error: unable to fork: %s", strerror(xerrno));
 
     errno = xerrno;
@@ -483,8 +483,7 @@ static char *get_page(size_t sz, void **ptr) {
 
   d = malloc(sz + (pagesz-1));
   if (d == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     exit(1);
   }
 
@@ -615,8 +614,7 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
 
   k->host_pkey = get_page(PEM_BUFSIZE, &k->host_pkey_ptr);
   if (k->host_pkey == NULL) {
-    pr_log_pri(pr_log_level_exhausted_rsrc(PR_LOG_RSRC_MEM, 0),
-      MOD_SFTP_VERSION ": Out of memory!");
+    pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     exit(1);
   }
 
