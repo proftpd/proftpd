@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.58 2013-10-01 15:45:43 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.59 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -139,13 +139,13 @@ static void auth_unix_exit_ev(const void *, void *);
 static int auth_unix_sess_init(void);
 
 static void p_setpwent(void) {
-  if (pwdf)
+  if (pwdf) {
     rewind(pwdf);
 
-  else {
+  } else {
     pwdf = fopen(PASSWD, "r");
     if (pwdf == NULL) {
-      pr_log_pri(PR_LOG_ERR, "Unable to open password file %s for reading: %s",
+      pr_log_pri(PR_LOG_ERR, "unable to open password file %s for reading: %s",
         PASSWD, strerror(errno));
     }
   }
@@ -159,13 +159,13 @@ static void p_endpwent(void) {
 }
 
 static RETSETGRENTTYPE p_setgrent(void) {
-  if (grpf)
+  if (grpf) {
     rewind(grpf);
 
-  else {
+  } else {
     grpf = fopen(GROUP, "r");
     if (grpf == NULL) {
-      pr_log_pri(PR_LOG_ERR, "Unable to open group file %s for reading: %s",
+      pr_log_pri(PR_LOG_ERR, "unable to open group file %s for reading: %s",
         GROUP, strerror(errno));
     }
   }
@@ -1123,7 +1123,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
     memset(group_ids, 0, sizeof(group_ids));
     if (getgrouplist(pw->pw_name, pw->pw_gid, group_ids, &ngroups) < 0) {
-      pr_log_pri(PR_LOG_ERR, "getgrouplist error: %s", strerror(errno));
+      pr_log_pri(PR_LOG_WARNING, "getgrouplist error: %s", strerror(errno));
       return PR_DECLINED(cmd);
     }
 
@@ -1153,7 +1153,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
     grouplist = getgrset(pw->pw_name);
     if (grouplist == NULL) {
-      pr_log_pri(PR_LOG_ERR, "getgrset error: %s", strerror(errno));
+      pr_log_pri(PR_LOG_WARNING, "getgrset error: %s", strerror(errno));
       return PR_DECLINED(cmd);
     }
 

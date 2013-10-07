@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.79 2013-09-30 00:09:08 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.80 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1587,7 +1587,7 @@ static int sftp_init(void) {
     }
 
     if (unexpected_version_mismatch == TRUE) {
-      pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
         ": compiled using OpenSSL version '%s' headers, but linked to "
         "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
         SSLeay_version(SSLEAY_VERSION));

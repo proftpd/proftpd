@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.290 2013-10-06 06:35:42 castaglia Exp $
+ * $Id: dirtree.c,v 1.291 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1233,8 +1233,8 @@ static int check_ip_negative(const config_rec *c) {
         /* -1 signifies a NONE match, which isn't valid for negative
          * conditions.
          */
-        pr_log_pri(PR_LOG_ERR, "ooops, it looks like !NONE was used in an ACL "
-          "somehow.");
+        pr_log_pri(PR_LOG_NOTICE,
+          "ooops, it looks like !NONE was used in an ACL somehow");
         return FALSE;
 
       default:
@@ -3298,7 +3298,7 @@ int parse_config_path(pool *p, const char *path) {
       *tmp++ = '\0';
 
       if (pr_str_is_fnmatch(dup_path)) {
-        pr_log_pri(PR_LOG_ERR, "error: wildcard patterns not allowed in "
+        pr_log_pri(PR_LOG_WARNING, "error: wildcard patterns not allowed in "
           "configuration directory name '%s'", dup_path);
         errno = EINVAL;
         return -1;
@@ -3308,15 +3308,16 @@ int parse_config_path(pool *p, const char *path) {
       pr_fsio_lstat(dup_path, &st);
 
       if (S_ISLNK(st.st_mode) || !S_ISDIR(st.st_mode)) {
-        pr_log_pri(PR_LOG_ERR, "error: cannot read configuration path '%s'",
+        pr_log_pri(PR_LOG_WARNING,
+          "error: cannot read configuration path '%s': Not a directory",
           dup_path);
         errno = EINVAL;
         return -1;
       }
 
       if (!pr_str_is_fnmatch(tmp)) {
-        pr_log_pri(PR_LOG_ERR, "error: wildcard pattern required for file '%s'",
-          tmp);
+        pr_log_pri(PR_LOG_WARNING,
+          "error: wildcard pattern required for file '%s'", tmp);
         errno = EINVAL;
         return -1;
       }
@@ -3326,8 +3327,8 @@ int parse_config_path(pool *p, const char *path) {
       dup_path);
 
     dirh = pr_fsio_opendir(dup_path);
-    if (!dirh) {
-      pr_log_pri(PR_LOG_ERR,
+    if (dirh == NULL) {
+      pr_log_pri(PR_LOG_WARNING,
         "error: unable to open configuration directory '%s': %s", dup_path,
         strerror(errno));
       errno = EINVAL;
@@ -3370,7 +3371,7 @@ int parse_config_path(pool *p, const char *path) {
         PRIVS_RELINQUISH
 
         if (res < 0) {
-          pr_log_pri(PR_LOG_ERR,
+          pr_log_pri(PR_LOG_WARNING,
             "error: unable to open parse file '%s': %s", file,
             strerror(xerrno));
         }

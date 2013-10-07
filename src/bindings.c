@@ -23,7 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.49 2013-09-27 04:19:12 castaglia Exp $
+ * $Id: bindings.c,v 1.50 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1055,7 +1055,8 @@ static int init_inetd_bindings(void) {
   if (pr_inet_get_conn_info(main_server->listen, STDIN_FILENO) == -1) {
     int xerrno = errno;
 
-    pr_log_pri(PR_LOG_ERR, "fatal: %s", strerror(xerrno));
+    pr_log_pri(PR_LOG_WARNING, "fatal: unable to get connection info: %s",
+      strerror(xerrno));
 
     if (xerrno == ENOTSOCK) {
       pr_log_pri(PR_LOG_ERR, "(Running from command line? "

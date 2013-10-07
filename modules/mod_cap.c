@@ -32,7 +32,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.33 2013-07-19 17:16:07 castaglia Exp $
+ * $Id: mod_cap.c,v 1.34 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -360,7 +360,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
      */
     if (strncmp(proto, "ssh2", 5) != 0 ||
         xerrno != EPERM) {
-      pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu): %s",
+      pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu) failed: %s",
         (unsigned long) session.uid, (unsigned long) PR_ROOT_UID,
         strerror(xerrno));
     }
@@ -430,8 +430,8 @@ MODRET cap_post_pass(cmd_rec *cmd) {
    * we've set.
    */
   if (prctl(PR_SET_KEEPCAPS, 1) < 0) {
-    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": prctl(PR_SET_KEEPCAPS): %s",
-      strerror(errno));
+    pr_log_pri(PR_LOG_ERR,
+      MOD_CAP_VERSION ": prctl(PR_SET_KEEPCAPS) failed: %s", strerror(errno));
   }
 #endif /* PR_SET_KEEPCAPS */
 
@@ -451,7 +451,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   }
 
   if (setreuid(dst_uid, session.uid) == -1) {
-    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu): %s",
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu) failed: %s",
       (unsigned long) dst_uid, (unsigned long) session.uid, strerror(errno));
     lp_free_cap();
     pr_signals_unblock();

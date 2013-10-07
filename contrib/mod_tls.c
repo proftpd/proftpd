@@ -4241,7 +4241,7 @@ static void tls_fatal_error(long error, int lineno) {
   }
 
   tls_log("%s", "unexpected OpenSSL error, disconnecting");
-  pr_log_pri(PR_LOG_ERR, "%s", MOD_TLS_VERSION
+  pr_log_pri(PR_LOG_WARNING, "%s", MOD_TLS_VERSION
     ": unexpected OpenSSL error, disconnecting");
 
   pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
@@ -9056,7 +9056,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
     if ((*opts & TLS_OPT_ALLOW_PER_USER) &&
         toplevel_auth_requires_ssl == TRUE &&
         other_auth_requires_ssl == TRUE) {
-      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": Server %s: cannot enforce "
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": Server %s: cannot enforce "
         "both 'TLSRequired auth' and 'TLSOptions AllowPerUser' at the "
         "same time", s->ServerName);
       pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
@@ -9112,7 +9112,7 @@ static int tls_init(void) {
     }
 
     if (unexpected_version_mismatch == TRUE) {
-      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
         ": compiled using OpenSSL version '%s' headers, but linked to "
         "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
         SSLeay_version(SSLEAY_VERSION));

@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.458 2013-10-07 01:29:05 castaglia Exp $
+ * $Id: main.c,v 1.459 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -921,16 +921,17 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     PRIVS_ROOT
     if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
       PRIVS_RELINQUISH
-      pr_log_pri(PR_LOG_ERR,
-        "Fatal: unable to read configuration file '%s': %s",
-        config_filename, strerror(errno));
+      pr_log_pri(PR_LOG_WARNING,
+        "fatal: unable to read configuration file '%s': %s", config_filename,
+        strerror(errno));
       pr_session_end(0);
     }
     PRIVS_RELINQUISH
 
     if (pr_parser_cleanup() < 0) {
-      pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s': "
-       "unclosed configuration section", config_filename);
+      pr_log_pri(PR_LOG_WARNING,
+        "fatal: error processing configuration file '%s': "
+        "unclosed configuration section", config_filename);
       pr_session_end(0);
     }
 
@@ -945,8 +946,8 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     endgrent();
 
     if (fixup_servers(server_list) < 0) {
-      pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
-        config_filename);
+      pr_log_pri(PR_LOG_WARNING,
+        "fatal: error processing configuration file '%s'", config_filename);
       pr_session_end(0);
     }
 
@@ -1216,8 +1217,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
-  if (!conn) {
-    pr_log_pri(PR_LOG_ERR, "Fatal: unable to open incoming connection: %s",
+  if (conn == NULL) {
+    pr_log_pri(PR_LOG_ERR, "fatal: unable to open incoming connection: %s",
       strerror(xerrno));
     exit(1);
   }
@@ -1486,11 +1487,12 @@ static void daemon_loop(void) {
       time_t now = time(NULL);
 
       if (difftime(deny, now) < 0.0) {
-        pr_log_pri(PR_LOG_ERR, PR_SHUTMSG_PATH
-          " present: all incoming connections will be refused.");
+        pr_log_pri(PR_LOG_WARNING, PR_SHUTMSG_PATH
+          " present: all incoming connections will be refused");
 
       } else {
-        pr_log_pri(PR_LOG_ERR, PR_SHUTMSG_PATH " present: incoming connections "
+        pr_log_pri(PR_LOG_NOTICE,
+          PR_SHUTMSG_PATH " present: incoming connections "
           "will be denied starting %s", CHOP(ctime(&deny)));
       }
     }
@@ -1536,8 +1538,8 @@ static void daemon_loop(void) {
       time(&this_error);
 
       if ((this_error - last_error) <= 5 && err_count++ > 10) {
-        pr_log_pri(PR_LOG_ERR, "Fatal: select() failing repeatedly, shutting "
-          "down.");
+        pr_log_pri(PR_LOG_ERR, "fatal: select(2) failing repeatedly, shutting "
+          "down");
         exit(1);
 
       } else if ((this_error - last_error) > 5) {
@@ -1545,7 +1547,7 @@ static void daemon_loop(void) {
         err_count = 0;
       }
 
-      pr_log_pri(PR_LOG_NOTICE, "select() failed in daemon_loop(): %s",
+      pr_log_pri(PR_LOG_WARNING, "select(2) failed in daemon_loop(): %s",
         strerror(xerrno));
     }
 
@@ -1823,7 +1825,8 @@ static char *prepare_core(void) {
     (unsigned long) getpid());
 
   if (mkdir(dir, 0700) < 0) {
-    pr_log_pri(PR_LOG_ERR, "unable to create '%s': %s", dir, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "unable to create directory '%s' for "
+      "coredump: %s", dir, strerror(errno));
 
   } else {
     chdir(dir);
@@ -1989,7 +1992,7 @@ static void handle_xcpu(void) {
 }
 
 static void handle_terminate_other(void) {
-  pr_log_pri(PR_LOG_ERR, "ProFTPD terminating (signal %d)", term_signo);
+  pr_log_pri(PR_LOG_WARNING, "ProFTPD terminating (signal %d)", term_signo);
   finish_terminate();
 }
 
@@ -2749,7 +2752,7 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'D':
       if (!optarg) {
-        pr_log_pri(PR_LOG_ERR, "Fatal: -D requires definition argument");
+        pr_log_pri(PR_LOG_WARNING, "fatal: -D requires definition parameter");
         exit(1);
       }
 
@@ -2778,7 +2781,7 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'd':
       if (!optarg) {
-        pr_log_pri(PR_LOG_ERR, "Fatal: -d requires debugging level argument.");
+        pr_log_pri(PR_LOG_WARNING, "fatal: -d requires debug level parameter");
         exit(1);
       }
       pr_log_setdebuglevel(atoi(optarg));
@@ -2786,8 +2789,8 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'c':
       if (!optarg) {
-        pr_log_pri(PR_LOG_ERR,
-          "Fatal: -c requires configuration path argument.");
+        pr_log_pri(PR_LOG_WARNING,
+          "fatal: -c requires configuration path parameter");
         exit(1);
       }
 
@@ -2804,14 +2807,13 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'S':
       if (!optarg) {
-        pr_log_pri(PR_LOG_ERR,
-          "Fatal: -S requires IP address parameter.");
+        pr_log_pri(PR_LOG_WARNING, "fatal: -S requires IP address parameter");
         exit(1);
       }
 
       if (pr_netaddr_set_localaddr_str(optarg) < 0) {
-        pr_log_pri(PR_LOG_ERR,
-          "Fatal: unable to use '%s' as server address: %s", optarg,
+        pr_log_pri(PR_LOG_WARNING,
+          "fatal: unable to use '%s' as server address: %s", optarg,
           strerror(errno));
         exit(1);
       }
@@ -2829,7 +2831,8 @@ int main(int argc, char *argv[], char **envp) {
     case 'p': {
       if (!optarg ||
           (atoi(optarg) != 1 && atoi(optarg) != 0)) {
-        pr_log_pri(PR_LOG_ERR, "Fatal: -p requires boolean (0|1) argument.");
+        pr_log_pri(PR_LOG_WARNING,
+          "fatal: -p requires Boolean (0|1) parameter");
         exit(1);
       }
 
@@ -2857,7 +2860,7 @@ int main(int argc, char *argv[], char **envp) {
       break;
 
     case '?':
-      pr_log_pri(PR_LOG_ERR, "unknown option: %c", (char)optopt);
+      pr_log_pri(PR_LOG_WARNING, "unknown option: %c", (char) optopt);
       show_usage(1);
       break;
     }
@@ -2865,7 +2868,7 @@ int main(int argc, char *argv[], char **envp) {
 
   /* If we have any leftover parameters, it's an error. */
   if (argv[optind]) {
-    pr_log_pri(PR_LOG_ERR, "unknown parameter: '%s'", argv[optind]);
+    pr_log_pri(PR_LOG_WARNING, "fatal: unknown parameter: '%s'", argv[optind]);
     exit(1);
   }
 
@@ -2930,7 +2933,7 @@ int main(int argc, char *argv[], char **envp) {
    * that the given configuration path is valid.
    */
   if (pr_fs_valid_path(config_filename) < 0) {
-    pr_log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path");
+    pr_log_pri(PR_LOG_WARNING, "fatal: -c requires an absolute path");
     exit(1);
   }
 
@@ -2939,20 +2942,22 @@ int main(int argc, char *argv[], char **envp) {
   pr_event_generate("core.preparse", NULL);
 
   if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
-    pr_log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
-      config_filename, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING,
+      "fatal: unable to read configuration file '%s': %s", config_filename,
+      strerror(errno));
     exit(1);
   }
 
   if (pr_parser_cleanup() < 0) {
-    pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s': "
-       "unclosed configuration section", config_filename);
+    pr_log_pri(PR_LOG_WARNING,
+      "fatal: error processing configuration file '%s': "
+      "unclosed configuration section", config_filename);
     exit(1);
   }
 
   if (fixup_servers(server_list) < 0) {
-    pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
-      config_filename);
+    pr_log_pri(PR_LOG_WARNING,
+      "fatal: error processing configuration file '%s'", config_filename);
     exit(1);
   }
 
@@ -3000,7 +3005,7 @@ int main(int argc, char *argv[], char **envp) {
     }
 
     if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0) {
-      pr_log_pri(PR_LOG_ERR, "unable to set daemon groups: %s",
+      pr_log_pri(PR_LOG_WARNING, "unable to set daemon groups: %s",
         strerror(errno));
     }
   }
@@ -3026,13 +3031,13 @@ int main(int argc, char *argv[], char **envp) {
    */
 
   if (geteuid() != daemon_uid) {
-    pr_log_pri(PR_LOG_ERR, "unable to set uid to %lu, current uid: %lu",
+    pr_log_pri(PR_LOG_ERR, "unable to set UID to %lu, current UID: %lu",
       (unsigned long) daemon_uid, (unsigned long) geteuid());
     exit(1);
   }
 
   if (getegid() != daemon_gid) {
-    pr_log_pri(PR_LOG_ERR, "unable to set gid to %lu, current gid: %lu",
+    pr_log_pri(PR_LOG_ERR, "unable to set GID to %lu, current GID: %lu",
       (unsigned long) daemon_gid, (unsigned long) getegid());
     exit(1);
   }

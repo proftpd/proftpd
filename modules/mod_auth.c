@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.312 2013-10-07 01:35:38 castaglia Exp $
+ * $Id: mod_auth.c,v 1.313 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -755,7 +755,7 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
         if (res < 0) {
           xerrno = errno;
 
-          pr_log_pri(PR_LOG_ERR, "error: unable to check %s: %s", path,
+          pr_log_pri(PR_LOG_WARNING, "error: unable to check %s: %s", path,
             strerror(xerrno));
 
           errno = xerrno;
@@ -763,7 +763,7 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
         }
 
         if (S_ISLNK(st.st_mode)) {
-          pr_log_pri(PR_LOG_ERR,
+          pr_log_pri(PR_LOG_WARNING,
             "error: DefaultRoot %s is a symlink (denied by AllowChrootSymlinks "
             "config)", path);
           errno = EPERM;
@@ -1139,7 +1139,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     PRIVS_ROOT
     res = set_groups(p, pw->pw_gid, session.gids);
     if (res < 0) {
-      pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+      pr_log_pri(PR_LOG_WARNING, "error: unable to set groups: %s",
         strerror(errno));
     }
 
@@ -1209,15 +1209,15 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
         if (res < 0) {
           int xerrno = errno;
 
-          pr_log_pri(PR_LOG_ERR, "error: unable to check %s: %s", chroot_path,
-            strerror(xerrno));
+          pr_log_pri(PR_LOG_WARNING, "error: unable to check %s: %s",
+            chroot_path, strerror(xerrno));
 
           errno = xerrno;
           chroot_path = NULL;
 
         } else {
           if (S_ISLNK(st.st_mode)) {
-            pr_log_pri(PR_LOG_ERR,
+            pr_log_pri(PR_LOG_WARNING,
               "error: <Anonymous %s> is a symlink (denied by "
               "AllowChrootSymlinks config)", chroot_path);
             errno = EPERM;
@@ -1294,8 +1294,9 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
       PRIVS_RELINQUISH
 
-      pr_log_pri(PR_LOG_ERR, "changing from %s back to daemon uid/gid: %s",
-            session.user, strerror(errno));
+      pr_log_pri(PR_LOG_WARNING,
+        "switching IDs from user %s back to daemon uid/gid failed: %s",
+        session.user, strerror(errno));
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_BY_APPLICATION,
         NULL);
     }
@@ -1310,7 +1311,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     }
 
     if (!session.chroot_path) {
-      pr_log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.",
+      pr_log_pri(PR_LOG_NOTICE, "%s: Directory %s is not accessible.",
         session.user, c->name);
       pr_response_add_err(R_530, _("Unable to set anonymous privileges."));
       goto auth_failure;
@@ -1475,7 +1476,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   /* Now check to see if the user has an applicable DefaultRoot */
   if (c == NULL) {
     if (get_default_root(session.pool, allow_chroot_symlinks, &defroot) < 0) {
-      pr_log_pri(PR_LOG_ERR,
+      pr_log_pri(PR_LOG_NOTICE,
         "error: unable to determine DefaultRoot directory");
       pr_response_send(R_530, _("Login incorrect."));
       pr_session_end(0);
@@ -1485,7 +1486,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
     if (defroot != NULL) {
       if (pr_auth_chroot(defroot) == -1) {
-        pr_log_pri(PR_LOG_ERR, "error: unable to set DefaultRoot directory");
+        pr_log_pri(PR_LOG_NOTICE, "error: unable to set DefaultRoot directory");
         pr_response_send(R_530, _("Login incorrect."));
         pr_session_end(0);
       }
@@ -1510,7 +1511,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   if (c &&
       pr_auth_chroot(session.chroot_path) == -1) {
-    pr_log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
+    pr_log_pri(PR_LOG_NOTICE, "error: unable to set anonymous privileges");
     pr_response_send(R_530, _("Login incorrect."));
     pr_session_end(0);
   }
@@ -1558,7 +1559,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   /* If the home directory is NULL or "", reject the login. */
   if (pw->pw_dir == NULL ||
       strncmp(pw->pw_dir, "", 1) == 0) {
-    pr_log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
+    pr_log_pri(PR_LOG_WARNING, "error: user %s home directory is NULL or \"\"",
       session.user);
     pr_response_send(R_530, _("Login incorrect."));
     pr_session_end(0);
@@ -1594,7 +1595,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
         (session.chroot_path ? session.chroot_path : defroot));
 
       if (pr_fsio_chdir_canon("/", !showsymlinks) == -1) {
-        pr_log_pri(PR_LOG_ERR, "%s chdir(\"/\"): %s", session.user,
+        pr_log_pri(PR_LOG_NOTICE, "%s chdir(\"/\") failed: %s", session.user,
           strerror(errno));
         pr_response_send(R_530, _("Login incorrect."));
         pr_session_end(0);
@@ -1609,7 +1610,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
         "directory %s", session.cwd, strerror(errno), pw->pw_dir);
 
       if (pr_fsio_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
-        pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
+        pr_log_pri(PR_LOG_NOTICE, "%s chdir(\"%s\") failed: %s", session.user,
           session.cwd, strerror(errno));
         pr_response_send(R_530, _("Login incorrect."));
         pr_session_end(0);
@@ -1620,8 +1621,8 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
       /* Unable to switch to user's real home directory, which is not
        * allowed.
        */
-      pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
-        strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, "%s chdir(\"%s\") failed: %s", session.user,
+        session.cwd, strerror(errno));
       pr_response_send(R_530, _("Login incorrect."));
       pr_session_end(0);
     }

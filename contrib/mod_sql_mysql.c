@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.71 2013-09-04 20:32:25 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.72 2013-10-07 05:51:29 castaglia Exp $
  */
 
 /*
@@ -274,9 +274,10 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
   if (!cmd || 
       !cmd->tmp_pool) {
     pr_log_pri(PR_LOG_ERR, MOD_SQL_MYSQL_VERSION
-      ": '%s' was passed an invalid cmd_rec. Shutting down.", msg);
-    sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
+      ": '%s' was passed an invalid cmd_rec (internal bug); shutting down",
       msg);
+    sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec (internal bug); "
+      "shutting down", msg);
     pr_session_end(0);
   }    
 
@@ -475,10 +476,10 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* Make sure we have a new conn struct */
   conn->mysql = mysql_init(NULL);
   if (conn->mysql == NULL) {
-    pr_log_pri(PR_LOG_ERR, MOD_SQL_MYSQL_VERSION
-      ": failed to allocate memory for MYSQL structure.  Shutting down.");
-    sql_log(DEBUG_WARN, "%s", "failed to allocate memory for MYSQL structure. "
-      "Shutting down.");
+    pr_log_pri(PR_LOG_ALERT, MOD_SQL_MYSQL_VERSION
+      ": failed to allocate memory for MYSQL structure; shutting down");
+    sql_log(DEBUG_WARN, "%s", "failed to allocate memory for MYSQL structure; "
+      "shutting down");
     pr_session_end(0);
   }
 

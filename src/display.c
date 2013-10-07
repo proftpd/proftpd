@@ -23,7 +23,7 @@
  */
 
 /* Display of files
- * $Id: display.c,v 1.31 2013-09-25 16:08:50 castaglia Exp $
+ * $Id: display.c,v 1.32 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -350,7 +350,8 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
         val = pr_var_get(key);
         if (val == NULL) {
           pr_trace_msg("var", 4,
-            "no value set for name '%s', using \"(none)\"", key);
+            "no value set for name '%s' [%s], using \"(none)\"", key,
+            strerror(errno));
           val = "(none)";
         }
       }

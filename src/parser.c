@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.38 2013-02-20 06:53:52 castaglia Exp $
+ * $Id: parser.c,v 1.39 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -427,7 +427,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
           if (MODRET_ISERROR(mr)) {
 
             if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
-              pr_log_pri(PR_LOG_ERR, "Fatal: %s on line %u of '%s'",
+              pr_log_pri(PR_LOG_WARNING, "fatal: %s on line %u of '%s'",
                 MODRET_ERRMSG(mr), cs->cs_lineno, report_path);
               exit(1);
 
@@ -452,7 +452,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
       if (!found) {
 
         if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
-          pr_log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive "
+          pr_log_pri(PR_LOG_WARNING, "fatal: unknown configuration directive "
             "'%s' on line %u of '%s'", cmd->argv[0], cs->cs_lineno,
             report_path);
           exit(1);

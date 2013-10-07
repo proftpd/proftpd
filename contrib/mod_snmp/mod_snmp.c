@@ -200,7 +200,7 @@ static int snmp_check_ip_negative(const config_rec *c,
         /* -1 signifies a NONE match, which isn't valid for negative
          * conditions.
          */
-        pr_log_pri(PR_LOG_ERR, MOD_SNMP_VERSION
+        pr_log_pri(PR_LOG_NOTICE, MOD_SNMP_VERSION
           ": ooops, it looks like !NONE was used in an ACL somehow");
         return FALSE;
 

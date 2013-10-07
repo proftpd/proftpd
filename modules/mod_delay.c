@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.67 2013-06-23 21:34:03 castaglia Exp $
+ * $Id: mod_delay.c,v 1.68 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -572,7 +572,7 @@ static int delay_table_init(void) {
 
     delay_tab.dt_data = NULL;
 
-    pr_log_pri(PR_LOG_ERR, MOD_DELAY_VERSION
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": error mapping DelayTable '%s' into memory: %s", delay_tab.dt_path,
       strerror(xerrno));
     pr_trace_msg(trace_channel, 1,

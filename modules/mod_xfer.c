@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.324 2013-09-30 22:01:47 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.325 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -707,7 +707,7 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
         break;
 
     default:
-      pr_log_pri(PR_LOG_ERR, "error using sendfile(): [%d] %s", errno,
+      pr_log_pri(PR_LOG_WARNING, "error using sendfile(): [%d] %s", errno,
         strerror(errno));
       return -1;
     }
@@ -1390,7 +1390,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
   tmpfd = mkstemp(filename);
   if (tmpfd < 0) {
-    pr_log_pri(PR_LOG_ERR, "error: unable to use mkstemp(): %s",
+    pr_log_pri(PR_LOG_WARNING, "error: unable to use mkstemp(): %s",
       strerror(errno));
 
     /* If we can't guarantee a unique filename, refuse the command. */
@@ -1481,7 +1481,7 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
   if (pr_fsio_chmod(cmd->arg, mode) < 0) {
 
     /* Not much to do but log the error. */
-    pr_log_pri(PR_LOG_ERR, "error: unable to chmod '%s': %s", cmd->arg,
+    pr_log_pri(PR_LOG_NOTICE, "error: unable to chmod '%s': %s", cmd->arg,
       strerror(errno));
   }
 

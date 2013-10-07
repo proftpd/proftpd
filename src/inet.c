@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.155 2013-09-27 03:33:40 castaglia Exp $
+ * $Id: inet.c,v 1.156 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -279,8 +279,9 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
       /* On failure, destroy the connection and return NULL. */
       if (reporting) {
-        pr_log_pri(PR_LOG_ERR, "socket() failed in connection initialization: "
-          "%s", strerror(inet_errno));
+        pr_log_pri(PR_LOG_WARNING,
+          "socket() failed in connection initialization: %s",
+          strerror(inet_errno));
       }
 
       destroy_pool(c->pool);
@@ -554,7 +555,7 @@ conn_t *pr_inet_create_conn_portrange(pool *p, pr_netaddr_t *bind_addr,
 
       if (!c &&
           inet_errno != EADDRINUSE) {
-        pr_log_pri(PR_LOG_ERR, "error initializing connection: %s",
+        pr_log_pri(PR_LOG_WARNING, "error initializing connection: %s",
           strerror(inet_errno));
         pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
       }

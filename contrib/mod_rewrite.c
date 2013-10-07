@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.72 2013-02-15 22:46:42 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.73 2013-10-07 05:51:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2041,7 +2041,7 @@ static void rewrite_closelog(void) {
     return;
 
   if (close(rewrite_logfd) < 0) {
-    pr_log_pri(PR_LOG_ERR, MOD_REWRITE_VERSION
+    pr_log_pri(PR_LOG_ALERT, MOD_REWRITE_VERSION
       ": error closing RewriteLog '%s': %s", rewrite_logfile, strerror(errno));
     return;
   }

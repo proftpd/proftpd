@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2011 The ProFTPD Project team
+ * Copyright (c) 2004-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.14 2011-05-23 21:11:56 castaglia Exp $
+ * $Id: mod_facl.c,v 1.15 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1091,8 +1091,8 @@ static int facl_init(void) {
 #if defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
   fs = pr_register_fs(permanent_pool, "facl", "/");
   if (!fs) {
-    pr_log_pri(PR_LOG_ERR, MOD_FACL_VERSION ": error registering 'facl' FS: %s",
-      strerror(errno));
+    pr_log_pri(PR_LOG_WARNING,
+      MOD_FACL_VERSION ": error registering 'facl' FS: %s", strerror(errno));
     return -1;
   }
   pr_log_debug(DEBUG6, MOD_FACL_VERSION ": registered 'facl' FS");

@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.97 2013-07-16 19:06:13 castaglia Exp $
+ * $Id: auth.c,v 1.98 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -423,12 +423,12 @@ struct passwd *pr_auth_getpwent(pool *p) {
 
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: UID of -1 not allowed");
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -459,7 +459,7 @@ struct group *pr_auth_getgrent(pool *p) {
 
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -493,12 +493,12 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
 
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: UID of -1 not allowed");
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -581,12 +581,12 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
 
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: UID of -1 not allowed");
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -621,7 +621,7 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
 
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -658,7 +658,7 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
 
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
-    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -1385,7 +1385,7 @@ int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
 }
 
 int pr_auth_chroot(const char *path) {
-  int res;
+  int res, xerrno = 0;
   time_t now;
 
 #if defined(HAVE_SETENV) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
@@ -1418,11 +1418,14 @@ int pr_auth_chroot(const char *path) {
 
   PRIVS_ROOT
   res = pr_fsio_chroot(path);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (res < 0) {
     pr_log_pri(PR_LOG_ERR, "chroot to '%s' failed for user '%s': %s", path,
-      session.user, strerror(errno));
+      session.user, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 

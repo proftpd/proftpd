@@ -25,7 +25,7 @@
  */
 
 /* Resource allocation code
- * $Id: pool.c,v 1.71 2013-10-07 01:29:05 castaglia Exp $
+ * $Id: pool.c,v 1.72 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -151,8 +151,8 @@ static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk,
       continue;
     }
 
-    pr_log_pri(PR_LOG_ERR, "Fatal: DEBUG: Attempt to free already free block "
-     "in pool '%s'", pool_tag ? pool_tag : "<unnamed>");
+    pr_log_pri(PR_LOG_WARNING, "fatal: DEBUG: Attempt to free already free "
+     "block in pool '%s'", pool_tag ? pool_tag : "<unnamed>");
     exit(1);
   }
 #endif /* PR_USE_DEVEL */

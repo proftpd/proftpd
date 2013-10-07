@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.54 2011-10-06 15:56:46 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.55 2013-10-07 05:51:29 castaglia Exp $
  * $Libraries: -lm -lpq $
  */
 
@@ -172,11 +172,13 @@ static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn)
  *  shutdown.
  */
 static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
-  if ((!cmd) || (!cmd->tmp_pool)) {
+  if (cmd == NULL ||
+      cmd->tmp_pool == NULL) {
     pr_log_pri(PR_LOG_ERR, MOD_SQL_POSTGRES_VERSION
-      ": '%s' was passed an invalid cmd_rec. Shutting down.", msg);
-    sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
+      ": '%s' was passed an invalid cmd_rec (internal bug); shutting down",
       msg);
+    sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec (internal bug); "
+      "shutting down", msg);
     pr_session_end(0);
   }    
 

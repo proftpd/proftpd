@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_memcache -- a module for managing memcache data
  *
- * Copyright (c) 2010-2012 The ProFTPD Project
+ * Copyright (c) 2010-2013 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.19 2012-10-02 19:49:32 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.20 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -366,7 +366,7 @@ static int mcache_init(void) {
 
   version = memcached_lib_version();
   if (strcmp(version, LIBMEMCACHED_VERSION_STRING) != 0) {
-    pr_log_pri(PR_LOG_ERR, MOD_MEMCACHE_VERSION
+    pr_log_pri(PR_LOG_WARNING, MOD_MEMCACHE_VERSION
       ": compiled using libmemcached-%s headers, but linked to "
       "libmemcached-%s library", LIBMEMCACHED_VERSION_STRING, version);
 

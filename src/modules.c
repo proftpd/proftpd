@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  */
 
 /* Module handling routines
- * $Id: modules.c,v 1.63 2012-04-15 18:04:15 castaglia Exp $
+ * $Id: modules.c,v 1.64 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,7 +112,7 @@ int modules_session_init(void) {
     if (m && m->sess_init) {
       curr_module = m;
       if (m->sess_init() < 0) {
-        pr_log_pri(PR_LOG_ERR, "mod_%s.c: error initializing session: %s",
+        pr_log_pri(PR_LOG_WARNING, "mod_%s.c: error initializing session: %s",
           m->name, strerror(errno));
         return -1;
       }
@@ -443,7 +443,7 @@ int modules_init(void) {
     module *m = static_modules[i];
 
     if (pr_module_load(m) < 0) {
-      pr_log_pri(PR_LOG_ERR, "Fatal: unable to load module 'mod_%s.c': %s",
+      pr_log_pri(PR_LOG_WARNING, "fatal: unable to load module 'mod_%s.c': %s",
         m->name, strerror(errno));
       exit(1);
     }

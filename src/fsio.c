@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.146 2013-10-07 01:29:05 castaglia Exp $
+ * $Id: fsio.c,v 1.147 2013-10-07 05:51:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1300,7 +1300,8 @@ pr_fs_match_t *pr_create_fs_match(pool *p, const char *name,
     pr_regexp_error(res, regexp, regerr, sizeof(regerr));
     pr_regexp_free(regexp);
 
-    pr_log_pri(PR_LOG_ERR, "unable to compile regex '%s': %s", pattern, regerr);
+    pr_log_pri(PR_LOG_WARNING, "unable to compile regex '%s': %s", pattern,
+      regerr);
 
     /* Destroy the just allocated pr_fs_match_t */
     destroy_pool(fsm->fsm_pool);
@@ -4640,7 +4641,7 @@ int init_fs(void) {
     /* Do not insert this fs into the FS map.  This will allow other
      * modules to insert filesystems at "/", if they want.
      */
-    pr_log_pri(PR_LOG_ERR, "error: unable to initialize default fs");
+    pr_log_pri(PR_LOG_WARNING, "error: unable to initialize default FS");
     exit(1);
   }
 
