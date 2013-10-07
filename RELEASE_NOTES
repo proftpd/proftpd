@@ -19,6 +19,7 @@ ChangeLog files.
 
   + New Configuration Directives
 
+    LDAPLog (Bug#3888)
     TLSVerifyServer (Bug#3955)
 
 
@@ -425,4 +426,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-10-02 13:47:53 $
+Last Updated: $Date: 2013-10-07 04:54:14 $
