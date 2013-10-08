@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2012 The ProFTPD Project team
+ * Copyright (c) 2004-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Children management code
- * $Id: child.c,v 1.8 2012-05-22 05:25:36 castaglia Exp $
+ * $Id: child.c,v 1.9 2013-10-08 07:01:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -129,7 +129,7 @@ void child_update(void) {
 
     if (ch->ch_dead) {
       if (ch->ch_pipefd != -1) {
-        close(ch->ch_pipefd);
+        (void) close(ch->ch_pipefd);
       }
 
       xaset_remove(child_list, (xasetmember_t *) ch);
@@ -141,6 +141,7 @@ void child_update(void) {
   if (child_list->xas_list == NULL) {
     destroy_pool(child_list->pool);
     child_list = NULL;
+    child_listlen = 0;
   }
 
   return;
