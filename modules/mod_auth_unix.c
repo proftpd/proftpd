@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.59 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.60 2013-10-09 05:11:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1123,7 +1123,11 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
     memset(group_ids, 0, sizeof(group_ids));
     if (getgrouplist(pw->pw_name, pw->pw_gid, group_ids, &ngroups) < 0) {
-      pr_log_pri(PR_LOG_WARNING, "getgrouplist error: %s", strerror(errno));
+      int xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING, "getgrouplist error: %s", strerror(xerrno));
+
+      errno = xerrno;
       return PR_DECLINED(cmd);
     }
 
@@ -1153,7 +1157,11 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
     grouplist = getgrset(pw->pw_name);
     if (grouplist == NULL) {
-      pr_log_pri(PR_LOG_WARNING, "getgrset error: %s", strerror(errno));
+      int xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING, "getgrset error: %s", strerror(xerrno));
+
+      errno = xerrno;
       return PR_DECLINED(cmd);
     }
 
