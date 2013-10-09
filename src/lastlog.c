@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2012 The ProFTPD Project team
+ * Copyright (c) 2006-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Lastlog code
- * $Id: lastlog.c,v 1.3 2012-02-17 22:43:37 castaglia Exp $
+ * $Id: lastlog.c,v 1.4 2013-10-09 05:22:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -95,9 +95,13 @@ int log_lastlog(uid_t uid, const char *user_name, const char *tty,
 
   res = write(fd, &ll, sizeof(ll));
   if (res != sizeof(ll)) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "error updating lastlog: %s",
-      strerror(errno));
+      strerror(xerrno));
     (void) close(fd);
+
+    errno = xerrno;
     return -1;
   }
 
