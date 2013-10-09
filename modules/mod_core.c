@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.454 2013-08-09 21:42:31 castaglia Exp $
+ * $Id: mod_core.c,v 1.455 2013-10-09 05:07:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -351,15 +351,17 @@ MODRET add_include(cmd_rec *cmd) {
   }
 
   if (parse_config_path(cmd->tmp_pool, cmd->argv[1]) == -1) {
-    if (errno != EINVAL) {
+    int xerrno = errno;
+
+    if (xerrno != EINVAL) {
       pr_log_pri(PR_LOG_WARNING, "warning: unable to include '%s': %s",
-        cmd->argv[1], strerror(errno));
+        cmd->argv[1], strerror(xerrno));
 
     } else {
       PRIVS_RELINQUISH
 
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '", cmd->argv[1],
-        "': ", strerror(errno), NULL));
+        "': ", strerror(xerrno), NULL));
     }
   }
   PRIVS_RELINQUISH
@@ -2468,8 +2470,9 @@ MODRET end_class(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_CLASS);
 
-  if (pr_class_close() < 0)
+  if (pr_class_close() < 0) {
     pr_log_pri(PR_LOG_WARNING, "warning: empty <Class> definition");
+  }
 
   return PR_HANDLED(cmd);
 }
