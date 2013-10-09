@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: wtmp.c,v 1.7 2013-04-23 23:12:47 castaglia Exp $
+ * $Id: wtmp.c,v 1.8 2013-10-09 05:16:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -67,7 +67,12 @@ int log_wtmp(const char *line, const char *name, const char *host,
 
   if (fdx < 0 &&
       (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
-    pr_log_pri(PR_LOG_WARNING, "wtmpx %s: %s", WTMPX_FILE, strerror(errno));
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, "failed to open wtmpx %s: %s", WTMPX_FILE,
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -131,7 +136,12 @@ int log_wtmp(const char *line, const char *name, const char *host,
 
   if (fd < 0 &&
       (fd = open(WTMP_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
-    pr_log_pri(PR_LOG_WARNING, "wtmp %s: %s", WTMP_FILE, strerror(errno));
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, "failed to open wtmp %s: %s", WTMP_FILE,
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
