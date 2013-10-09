@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.325 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.326 2013-10-09 05:34:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -674,11 +674,14 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
   *sent_len = pr_data_sendfile(PR_FH_FD(retr_fh), data_offset, send_len);
 
   if (*sent_len == -1) {
-    switch (errno) {
+    int xerrno = errno;
+
+    switch (xerrno) {
       case EAGAIN:
       case EINTR:
         if (XFER_ABORTED) {
           pr_log_pri(PR_LOG_NOTICE, "sendfile transmission aborted");
+          errno = xerrno;
           return -1;
         }
 
@@ -707,8 +710,9 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
         break;
 
     default:
-      pr_log_pri(PR_LOG_WARNING, "error using sendfile(): [%d] %s", errno,
-        strerror(errno));
+      pr_log_pri(PR_LOG_WARNING, "error using sendfile(): [%d] %s", xerrno,
+        strerror(xerrno));
+      errno = xerrno;
       return -1;
     }
   }
@@ -1390,12 +1394,16 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
   tmpfd = mkstemp(filename);
   if (tmpfd < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "error: unable to use mkstemp(): %s",
-      strerror(errno));
+      strerror(xerrno));
 
     /* If we can't guarantee a unique filename, refuse the command. */
     pr_response_add_err(R_450, _("%s: unable to generate unique filename"),
       cmd->argv[0]);
+
+    errno = xerrno;
     return PR_ERROR(cmd);
 
   } else {
@@ -1831,6 +1839,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (session.xfer.path &&
         session.xfer.path_hidden) {
       if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
+        int xerrno = errno;
 
         /* This should only fail on a race condition with a chmod/chown
          * or if STOR_APPEND is on and the permissions are squirrely.
@@ -1838,12 +1847,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
          * problems to worry about and this failure should be fairly rare.
          */
         pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s.",
-          session.xfer.path_hidden, session.xfer.path, strerror(errno));
+          session.xfer.path_hidden, session.xfer.path, strerror(xerrno));
 
         pr_response_add_err(R_550, _("%s: Rename of hidden file %s failed: %s"),
-          session.xfer.path, session.xfer.path_hidden, strerror(errno));
+          session.xfer.path, session.xfer.path_hidden, strerror(xerrno));
 
         pr_fsio_unlink(session.xfer.path_hidden);
+
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
     }
