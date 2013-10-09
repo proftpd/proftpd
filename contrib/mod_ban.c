@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.67 2013-05-07 04:53:58 castaglia Exp $
+ * $Id: mod_ban.c,v 1.68 2013-10-09 06:27:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2806,7 +2806,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
 
   /* Make sure the BanTable exists. */
   if (ban_table == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
+    pr_log_pri(PR_LOG_WARNING, MOD_BAN_VERSION
       ": missing required BanTable configuration");
     pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
   }
@@ -2817,7 +2817,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   PRIVS_RELINQUISH
 
   if (ban_tabfh == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
+    pr_log_pri(PR_LOG_WARNING, MOD_BAN_VERSION
       ": unable to open BanTable '%s': %s", ban_table, strerror(xerrno));
     pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
   }
@@ -2825,7 +2825,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   if (pr_fsio_fstat(ban_tabfh, &st) < 0) {
     xerrno = errno;
 
-    pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
+    pr_log_pri(PR_LOG_WARNING, MOD_BAN_VERSION
       ": unable to stat BanTable '%s': %s", ban_table, strerror(xerrno));
     pr_fsio_close(ban_tabfh);
     ban_tabfh = NULL;
@@ -2835,12 +2835,11 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   if (S_ISDIR(st.st_mode)) {
     xerrno = EISDIR;
 
-    pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
+    pr_log_pri(PR_LOG_WARNING, MOD_BAN_VERSION
       ": unable to use BanTable '%s': %s", ban_table, strerror(xerrno));
     pr_fsio_close(ban_tabfh);
     ban_tabfh = NULL;
     pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
-
   }
 
   if (ban_tabfh->fh_fd <= STDERR_FILENO) {
@@ -2862,7 +2861,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   lists = ban_get_shm(ban_tabfh);
   if (lists == NULL &&
       errno != EEXIST) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
+    pr_log_pri(PR_LOG_WARNING, MOD_BAN_VERSION
       ": unable to get shared memory for BanTable '%s': %s", ban_table,
       strerror(errno));
     pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
