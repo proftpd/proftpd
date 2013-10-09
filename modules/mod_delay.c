@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.68 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_delay.c,v 1.69 2013-10-09 05:30:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -432,8 +432,10 @@ static int delay_table_init(void) {
    *  number of vhosts * 2 * row size
    */
 
-  for (s = (server_rec *) server_list->xas_list; s; s = s->next)
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
     nservers++;
+  }
+
   tab_size = nservers * 2 * sizeof(struct delay_rec);
 
   PRIVS_ROOT
@@ -501,13 +503,17 @@ static int delay_table_init(void) {
         continue;
 
       } else {
+        int xerrno = errno;
+
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
           ": unable to obtain write lock on DelayTable '%s': %s",
-          fh->fh_path, strerror(errno));
+          fh->fh_path, strerror(xerrno));
         pr_trace_msg(trace_channel, 1,
           "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
-          strerror(errno));
+          strerror(xerrno));
         pr_fsio_close(fh);
+
+        errno = xerrno;
         return -1;
       } 
     } 
@@ -642,13 +648,17 @@ static int delay_table_init(void) {
         continue;
 
       } else {
+        int xerrno = errno;
+
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
           ": unable to obtain write lock on DelayTable '%s': %s",
-          fh->fh_path, strerror(errno));
+          fh->fh_path, strerror(xerrno));
         pr_trace_msg(trace_channel, 1,
           "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
-          strerror(errno));
+          strerror(xerrno));
         pr_fsio_close(fh);
+
+        errno = xerrno;
         return -1;
       }
     }
