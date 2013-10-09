@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.11 2013-09-19 05:54:32 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.12 2013-10-09 06:31:38 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -921,11 +921,12 @@ static int deflate_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "DeflateLog", FALSE);
   if (c &&
       strcasecmp(c->argv[0], "none") != 0) {
-    int res;
+    int res, xerrno = 0;
 
     pr_signals_block();
     PRIVS_ROOT
     res = pr_log_openfile(c->argv[0], &deflate_logfd, PR_LOG_SYSTEM_MODE);
+    xerrno = errno;
     PRIVS_RELINQUISH
     pr_signals_unblock();
 
@@ -933,17 +934,17 @@ static int deflate_sess_init(void) {
       case -1:
         pr_log_pri(PR_LOG_NOTICE, MOD_DEFLATE_VERSION
           ": notice: unable to open DeflateLog '%s': %s",
-          (char *) c->argv[0], strerror(errno));
+          (char *) c->argv[0], strerror(xerrno));
         break;
 
       case PR_LOG_WRITABLE_DIR:
-        pr_log_pri(PR_LOG_NOTICE, MOD_DEFLATE_VERSION
+        pr_log_pri(PR_LOG_WARNING, MOD_DEFLATE_VERSION
           ": notice: unable to use DeflateLog '%s': parent directory is "
-            "world-writeable", (char *) c->argv[0]);
+            "world-writable", (char *) c->argv[0]);
         break;
 
       case PR_LOG_SYMLINK:
-        pr_log_pri(PR_LOG_NOTICE, MOD_DEFLATE_VERSION
+        pr_log_pri(PR_LOG_WARNING, MOD_DEFLATE_VERSION
           ": notice: unable to use DeflateLog '%s': cannot log to a symlink",
           (char *) c->argv[0]);
         break;
