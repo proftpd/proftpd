@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.313 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_auth.c,v 1.314 2013-10-09 05:25:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1095,8 +1095,9 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     if (auth_code < 0)
       goto auth_failure;
 
-    if (pw->pw_uid == PR_ROOT_UID)
-      pr_log_auth(PR_LOG_WARNING, "ROOT FTP login successful.");
+    if (pw->pw_uid == PR_ROOT_UID) {
+      pr_log_auth(PR_LOG_WARNING, "ROOT FTP login successful");
+    }
 
   } else if (c && (!anon_require_passwd || *anon_require_passwd == FALSE)) {
     session.hide_password = FALSE;
@@ -1771,8 +1772,10 @@ static int auth_scan_scoreboard(void) {
   *((unsigned int *) v) = cur;
 
   if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
-    pr_log_pri(PR_LOG_WARNING,
-      "warning: error stashing '%s': %s", key, strerror(errno));
+    if (errno != EEXIST) {
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: error stashing '%s': %s", key, strerror(errno));
+    }
   }
 
   if (session.conn_class != NULL) {
@@ -1782,8 +1785,10 @@ static int auth_scan_scoreboard(void) {
     *((unsigned int *) v) = ccur;
 
     if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
-      pr_log_pri(PR_LOG_WARNING,
-        "warning: error stashing '%s': %s", key, strerror(errno));
+      if (errno != EEXIST) {
+        pr_log_pri(PR_LOG_WARNING,
+          "warning: error stashing '%s': %s", key, strerror(errno));
+      }
     }
   }
 
@@ -1946,8 +1951,10 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
   *((unsigned int *) v) = cur;
 
   if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
-    pr_log_pri(PR_LOG_WARNING,
-      "warning: error stashing '%s': %s", key, strerror(errno));
+    if (errno != EEXIST) {
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: error stashing '%s': %s", key, strerror(errno));
+    }
   }
 
   if (session.conn_class != NULL) {
@@ -1957,8 +1964,10 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
     *((unsigned int *) v) = ccur;
 
     if (pr_table_add(session.notes, key, v, sizeof(unsigned int)) < 0) {
-      pr_log_pri(PR_LOG_WARNING,
-        "warning: error stashing '%s': %s", key, strerror(errno));
+      if (errno != EEXIST) {
+        pr_log_pri(PR_LOG_WARNING,
+          "warning: error stashing '%s': %s", key, strerror(errno));
+      }
     }
   }
 
