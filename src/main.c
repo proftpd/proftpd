@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.459 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: main.c,v 1.460 2013-10-09 05:28:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -920,10 +920,12 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
 
     PRIVS_ROOT
     if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
+      int xerrno = errno;
+
       PRIVS_RELINQUISH
       pr_log_pri(PR_LOG_WARNING,
         "fatal: unable to read configuration file '%s': %s", config_filename,
-        strerror(errno));
+        strerror(xerrno));
       pr_session_end(0);
     }
     PRIVS_RELINQUISH
