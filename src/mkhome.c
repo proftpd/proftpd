@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.22 2013-02-27 22:50:04 castaglia Exp $
+ * $Id: mkhome.c,v 1.23 2013-10-09 05:21:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,8 +42,12 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
 
   if (res == -1 &&
       errno != ENOENT) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "error checking '%s': %s", dir,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -58,17 +62,25 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
   prev_mask = umask(0);
 
   if (pr_fsio_mkdir(dir, mode) < 0) {
+    int xerrno = errno;
+
     umask(prev_mask);
     pr_log_pri(PR_LOG_WARNING, "error creating '%s': %s", dir,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
   umask(prev_mask);
 
   if (pr_fsio_chown(dir, uid, gid) < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "error setting ownership of '%s': %s", dir,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -142,8 +154,12 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
 
   len = pr_fsio_readlink(src_path, link_path, PR_TUNABLE_BUFFER_SIZE-1);
   if (len < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "CreateHome: error reading link '%s': %s",
-      src_path, strerror(errno));
+      src_path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
   link_path[len] = '\0';
@@ -156,8 +172,12 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
   }
 
   if (pr_fsio_symlink(link_path, dst_path) < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "CreateHome: error symlinking '%s' to '%s': %s",
-      link_path, dst_path, strerror(errno));
+      link_path, dst_path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -181,8 +201,12 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
   dh = opendir(src_dir);
   if (dh == NULL) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING, "CreateHome: error copying '%s' skel files: %s",
-      src_dir, strerror(errno));
+      src_dir, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -219,11 +243,13 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
       /* Make sure to prevent S{U,G}ID permissions on target files. */
 
-      if (dst_mode & S_ISUID)
+      if (dst_mode & S_ISUID) {
         dst_mode &= ~S_ISUID;
+      }
 
-      if (dst_mode & S_ISGID)
+      if (dst_mode & S_ISGID) {
         dst_mode &= ~S_ISGID;
+      }
 
       (void) pr_fs_copy_file(src_path, dst_path);
 
@@ -243,7 +269,6 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
     /* Is this path a symlink? */
     } else if (S_ISLNK(st.st_mode)) {
-
       copy_symlink(p, src_dir, src_path, dst_dir, dst_path, uid, gid);
       continue;
 
@@ -300,7 +325,11 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
 
   if (res < 0 &&
       errno != EEXIST) {
+    int xerrno = errno;
+
     PRIVS_RELINQUISH
+
+    errno = xerrno;
     return -1;
   }
 
