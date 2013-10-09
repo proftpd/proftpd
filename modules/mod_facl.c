@@ -23,7 +23,7 @@
  */
 
 /* POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.15 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_facl.c,v 1.16 2013-10-09 05:03:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1090,9 +1090,13 @@ static int facl_init(void) {
 
 #if defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
   fs = pr_register_fs(permanent_pool, "facl", "/");
-  if (!fs) {
+  if (fs == NULL) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_WARNING,
-      MOD_FACL_VERSION ": error registering 'facl' FS: %s", strerror(errno));
+      MOD_FACL_VERSION ": error registering 'facl' FS: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
   pr_log_debug(DEBUG6, MOD_FACL_VERSION ": registered 'facl' FS");
