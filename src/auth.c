@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.99 2013-10-11 21:50:13 castaglia Exp $
+ * $Id: auth.c,v 1.100 2013-10-11 21:51:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1106,7 +1106,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 
       pr_log_debug(DEBUG10, "retrieved group %s: %s",
         (*group_ids)->nelts == 1 ? "ID" : "IDs",
-        *strgids ? strgids : "(None)");
+        *strgids ? strgids : "(None; corrupted group file?)");
     }
 
     if (group_names) {
@@ -1121,7 +1121,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
  
       pr_log_debug(DEBUG10, "retrieved group %s: %s",
         (*group_names)->nelts == 1 ? "name" : "names",
-        *strgroups ? strgroups : "(None)");
+        *strgroups ? strgroups : "(None; corrupted group file?)");
     }
   }
 
