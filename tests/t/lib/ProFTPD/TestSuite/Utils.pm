@@ -184,6 +184,9 @@ sub auth_user_write {
   croak("Missing home directory argument") unless $home;
   my $shell = shift;
   croak("Missing shell argument") unless $shell;
+  my $gecos = shift;
+  $gecos = '' unless defined($gecos);
+
   my $existed = -f $user_file;
   my $prev_mode;
 
@@ -200,9 +203,10 @@ sub auth_user_write {
   }
 
   if (open(my $fh, ">> $user_file")) {
-    print $fh join(':', ($user_name, $passwd, $user_id, $group_id, '', $home,
-      $shell)), "\n";
+    my $pw_entry = join(':', ($user_name, $passwd, $user_id, $group_id,
+      $gecos, $home, $shell));
 
+    print $fh "$pw_entry\n";
     unless (close($fh)) {
       croak("Can't write $user_file: $!");
     }

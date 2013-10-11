@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.98 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: auth.c,v 1.99 2013-10-11 21:50:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1100,11 +1100,13 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
         snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) gids[i]);
         buf[sizeof(buf)-1] = '\0';
 
+        pr_signals_handle();
         strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);
       }
 
       pr_log_debug(DEBUG10, "retrieved group %s: %s",
-        (*group_ids)->nelts == 1 ? "ID" : "IDs", strgids);
+        (*group_ids)->nelts == 1 ? "ID" : "IDs",
+        *strgids ? strgids : "(None)");
     }
 
     if (group_names) {
@@ -1112,11 +1114,14 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
       char *strgroups = ""; 
       char **groups = (*group_names)->elts;
 
-      for (i = 0; i < (*group_names)->nelts; i++)
+      for (i = 0; i < (*group_names)->nelts; i++) {
+        pr_signals_handle();
         strgroups = pstrcat(p, strgroups, i != 0 ? ", " : "", groups[i], NULL);
-    
+      }
+ 
       pr_log_debug(DEBUG10, "retrieved group %s: %s",
-        (*group_names)->nelts == 1 ? "name" : "names", strgroups);
+        (*group_names)->nelts == 1 ? "name" : "names",
+        *strgroups ? strgroups : "(None)");
     }
   }
 
