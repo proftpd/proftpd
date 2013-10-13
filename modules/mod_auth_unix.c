@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.60 2013-10-09 05:11:00 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.61 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -840,7 +840,7 @@ MODRET pw_check(cmd_rec *cmd) {
   /* Use Tru64's C2 SIA subsystem for authenticating this user. */
   user = cmd->argv[1];
 
-  pr_log_auth(PR_LOG_NOTICE, "using SIA for user '%s'", user);
+  pr_log_auth(PR_LOG_INFO, "using SIA for user '%s'", user);
 
   info[0] = "ProFTPD";
   info[1] = NULL;
@@ -942,7 +942,7 @@ MODRET pw_check(cmd_rec *cmd) {
 
   crypted_text = (char *) crypt(pw, cpw);
   if (crypted_text == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "error error crypt(3): %s", strerror(errno));
+    pr_log_pri(PR_LOG_NOTICE, "crypt(3) failed: %s", strerror(errno));
     return PR_DECLINED(cmd);
   }
 

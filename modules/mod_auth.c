@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.314 2013-10-09 05:25:26 castaglia Exp $
+ * $Id: mod_auth.c,v 1.315 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -79,7 +79,6 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
   pr_log_pri(PR_LOG_NOTICE, "%s", "Login timeout exceeded, disconnected");
   pr_event_generate("core.timeout-login", NULL);
 
-  pr_log_pri(PR_LOG_NOTICE, "%s", "Session timed out, disconnected");
   pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_TIMEOUT,
     "TimeoutLogin");
 
@@ -247,9 +246,13 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
 
   if (cpw) {
     if (pr_auth_getpwnam(p, u) == NULL) {
-      if (errno == ENOENT)
-        pr_log_pri(PR_LOG_NOTICE, "no such user '%s'", u);
+      int xerrno = errno;
 
+      if (xerrno == ENOENT) {
+        pr_log_pri(PR_LOG_NOTICE, "no such user '%s'", u);
+      }
+
+      errno = xerrno;
       return PR_AUTH_NOPWD;
     }
 
@@ -313,7 +316,7 @@ MODRET auth_log_pass(cmd_rec *cmd) {
   /* Only log, to the syslog, that the login has succeeded here, where we
    * know that the login has definitely succeeded.
    */
-  pr_log_auth(PR_LOG_NOTICE, "%s %s: Login successful.",
+  pr_log_auth(PR_LOG_INFO, "%s %s: Login successful.",
     (session.anon_config != NULL) ? "ANON" : C_USER, session.user);
 
   if (cmd->arg != NULL) {
@@ -793,8 +796,8 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
         (void) pr_fs_interpolate(dir, interp_dir, sizeof(interp_dir)-1); 
 
         pr_log_pri(PR_LOG_NOTICE,
-          "notice: unable to use '%s' [resolved to '%s']: %s", dir, interp_dir,
-          strerror(xerrno));
+          "notice: unable to use DefaultRoot '%s' [resolved to '%s']: %s",
+          dir, interp_dir, strerror(xerrno));
 
         errno = xerrno;
       }
@@ -893,9 +896,11 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
      */
     if ((root_allow = get_param_ptr(c ? c->subset : main_server->conf,
         "RootLogin", FALSE)) == NULL || *root_allow != TRUE) {
-      if (pass)
+      if (pass) {
         pr_memscrub(pass, strlen(pass));
-      pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted.");
+      }
+
+      pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted");
       return 0;
     }
   }
@@ -980,7 +985,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
     if (!login_check_limits(c->subset, FALSE, TRUE, &i) || (!aclp && !i) ){
       pr_log_auth(PR_LOG_NOTICE, "ANON %s (Login failed): Limit access denies "
-        "login.", origuser);
+        "login", origuser);
       goto auth_failure;
     }
   }
@@ -1014,7 +1019,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
       if (auth_using_alias &&
           *auth_using_alias == TRUE) {
         user_name = origuser;
-        pr_log_auth(PR_LOG_NOTICE,
+        pr_log_auth(PR_LOG_INFO,
           "ANON AUTH: User %s, authenticating using alias %s", user,
           user_name);
       }
@@ -1069,21 +1074,21 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
       case PR_AUTH_NOPWD:
         pr_log_auth(PR_LOG_NOTICE,
-          "USER %s (Login failed): No such user found.", user);
+          "USER %s (Login failed): No such user found", user);
         goto auth_failure;
 
       case PR_AUTH_BADPWD:
         pr_log_auth(PR_LOG_NOTICE,
-          "USER %s (Login failed): Incorrect password.", origuser);
+          "USER %s (Login failed): Incorrect password", origuser);
         goto auth_failure;
 
       case PR_AUTH_AGEPWD:
-        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Password expired.",
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Password expired",
           user);
         goto auth_failure;
 
       case PR_AUTH_DISABLEDPWD:
-        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Account disabled.",
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Account disabled",
           user);
         goto auth_failure;
 
@@ -1312,7 +1317,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     }
 
     if (!session.chroot_path) {
-      pr_log_pri(PR_LOG_NOTICE, "%s: Directory %s is not accessible.",
+      pr_log_pri(PR_LOG_NOTICE, "%s: Directory %s is not accessible",
         session.user, c->name);
       pr_response_add_err(R_530, _("Unable to set anonymous privileges."));
       goto auth_failure;
@@ -1374,7 +1379,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   if (!login_check_limits((c ? c->subset : main_server->conf), FALSE, TRUE,
       &i)) {
-    pr_log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
+    pr_log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login",
       (c != NULL) ? "ANON" : C_USER, origuser);
     goto auth_failure;
   }
@@ -2005,8 +2010,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
       pr_log_auth(PR_LOG_NOTICE,
-        "Connection refused (max clients %u per class %s).", *max,
-        session.conn_class->cls_name);
+        "Connection refused (MaxClientsPerClass %s %u)",
+        session.conn_class->cls_name, *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxClientsPerClass");
     }
@@ -2034,7 +2039,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
       pr_log_auth(PR_LOG_NOTICE,
-        "Connection refused (max clients per host %u).", *max);
+        "Connection refused (MaxClientsPerHost %u)", *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxClientsPerHost");
     }
@@ -2061,7 +2066,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
       pr_log_auth(PR_LOG_NOTICE,
-        "Connection refused (max clients per user %u).", *max);
+        "Connection refused (MaxClientsPerUser %u)", *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxClientsPerUser");
     }
@@ -2086,7 +2091,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-      pr_log_auth(PR_LOG_NOTICE, "Connection refused (max clients %u).", *max);
+      pr_log_auth(PR_LOG_NOTICE, "Connection refused (MaxClients %u)", *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxClients");
     }
@@ -2111,7 +2116,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-      pr_log_auth(PR_LOG_NOTICE, "Connection refused (max hosts per host %u).",
+      pr_log_auth(PR_LOG_NOTICE, "Connection refused (MaxHostsPerHost %u)",
         *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxHostsPerUser");
@@ -2135,7 +2140,7 @@ MODRET auth_pre_user(cmd_rec *cmd) {
   /* Check for a user name that exceeds PR_TUNABLE_LOGIN_MAX. */
   if (strlen(cmd->arg) > PR_TUNABLE_LOGIN_MAX) {
     pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): "
-      "maximum login length exceeded", cmd->arg);
+      "maximum USER length exceeded", cmd->arg);
     pr_response_add_err(R_501, _("Login incorrect."));
     return PR_ERROR(cmd);
   }
@@ -2195,7 +2200,7 @@ MODRET auth_user(cmd_rec *cmd) {
       (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
       (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
-      pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
+      pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias",
         origuser);
 
       if (denymsg) {
@@ -2223,7 +2228,7 @@ MODRET auth_user(cmd_rec *cmd) {
         (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
         (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
-        pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
+        pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login",
           origuser);
 
         if (denymsg) {
@@ -2244,7 +2249,7 @@ MODRET auth_user(cmd_rec *cmd) {
       (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
       pr_log_auth(PR_LOG_NOTICE,
-        "USER %s: Limit access denies login.", origuser);
+        "USER %s: Limit access denies login", origuser);
 
       if (denymsg) {
         pr_response_send(R_530, "%s", denymsg);

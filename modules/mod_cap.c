@@ -32,7 +32,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.34 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_cap.c,v 1.35 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -526,7 +526,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     lp_debug();
 
   } else {
-    pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION ": attempt to configure "
+    pr_log_pri(PR_LOG_WARNING, MOD_CAP_VERSION ": attempt to configure "
       "capabilities failed, reverting to normal operation");
   }
 

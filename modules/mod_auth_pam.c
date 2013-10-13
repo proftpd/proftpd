@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.29 2013-07-05 17:48:46 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.30 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -437,8 +437,8 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s", cmd->argv[0],
-      pam_strerror(pamh, pam_error));
+    pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
+      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, pam_error));
     goto done;
   }
 
@@ -453,8 +453,8 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s", cmd->argv[0],
-      pam_strerror(pamh, pam_error));
+    pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
+      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, pam_error));
     goto done;
   }
 
@@ -484,8 +484,8 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s", cmd->argv[0],
-      pam_strerror(pamh, pam_error));
+    pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
+      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, pam_error));
     goto done;
   }
 
@@ -594,9 +594,13 @@ MODRET set_authpamoptions(cmd_rec *cmd) {
 
 static int auth_pam_sess_init(void) {
   if (pr_auth_add_auth_only_module("mod_auth_pam.c") < 0) {
+    int xerrno = errno;
+
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
       ": unable to add 'mod_auth_pam.c' as an auth-only module: %s",
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 

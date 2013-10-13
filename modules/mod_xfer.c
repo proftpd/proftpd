@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.326 2013-10-09 05:34:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.327 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -680,7 +680,8 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
       case EAGAIN:
       case EINTR:
         if (XFER_ABORTED) {
-          pr_log_pri(PR_LOG_NOTICE, "sendfile transmission aborted");
+          pr_log_pri(PR_LOG_NOTICE, "sendfile transmission aborted: %s",
+            strerror(xerrno));
           errno = xerrno;
           return -1;
         }
@@ -1489,8 +1490,8 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
   if (pr_fsio_chmod(cmd->arg, mode) < 0) {
 
     /* Not much to do but log the error. */
-    pr_log_pri(PR_LOG_NOTICE, "error: unable to chmod '%s': %s", cmd->arg,
-      strerror(errno));
+    pr_log_pri(PR_LOG_NOTICE, "error: unable to chmod '%s' to %04o: %s",
+      cmd->arg, mode, strerror(errno));
   }
 
   return PR_DECLINED(cmd);

@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.153 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_log.c,v 1.154 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2054,11 +2054,11 @@ static int log_sess_init(void) {
             }
 
           } else if (res == PR_LOG_WRITABLE_DIR) {
-            pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
-              "containing directory is world writable", lf->lf_filename);
+            pr_log_pri(PR_LOG_WARNING, "unable to open ExtendedLog '%s': "
+              "parent directory is world-writable", lf->lf_filename);
 
           } else if (res == PR_LOG_SYMLINK) {
-            pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+            pr_log_pri(PR_LOG_WARNING, "unable to open ExtendedLog '%s': "
               "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
           }
         }

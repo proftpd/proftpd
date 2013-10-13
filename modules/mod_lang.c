@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_lang.c,v 1.40 2013-01-07 17:43:42 castaglia Exp $
+ * $Id: mod_lang.c,v 1.41 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -178,12 +178,12 @@ static int lang_set_lang(pool *p, const char *lang) {
 
   if (setlocale(LC_MESSAGES, lang) == NULL) {
     if (errno == ENOENT) {
-      pr_log_pri(PR_LOG_NOTICE, "unknown/unsupported language '%s', ignoring",
-        lang);
+      pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+        ": unknown/unsupported language '%s', ignoring", lang);
 
     } else {
-      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_MESSAGES to '%s': %s",
-        lang, strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+        ": unable to set LC_MESSAGES to '%s': %s", lang, strerror(errno));
       return -1;
     }
 
@@ -195,20 +195,20 @@ static int lang_set_lang(pool *p, const char *lang) {
 
     /* Set LC_COLLATE for strcoll(3), for sorted directory listings. */
     if (setlocale(LC_COLLATE, curr_lang) == NULL) {
-      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_COLLATE to '%s': %s",
-        curr_lang, strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+        ": unable to set LC_COLLATE to '%s': %s", curr_lang, strerror(errno));
     }
 
     /* Set LC_CTYPE for conversion, case-sensitive comparisons, and regexes. */
     if (setlocale(LC_CTYPE, curr_lang) == NULL) {
-      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_CTYPE to '%s': %s",
-        curr_lang, strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+        ": unable to set LC_CTYPE to '%s': %s", curr_lang, strerror(errno));
     }
 
     /* Set LC_MONETARY, for handling e.g the Euro symbol. */
     if (setlocale(LC_MONETARY, curr_lang) == NULL) {
-      pr_log_pri(PR_LOG_NOTICE, "unable to set LC_MONETARY to '%s': %s",
-        curr_lang, strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+        ": unable to set LC_MONETARY to '%s': %s", curr_lang, strerror(errno));
     }
   }
 

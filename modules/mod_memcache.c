@@ -23,7 +23,7 @@
  * source distribution.
  *
  * $Libraries: -lmemcached -lmemcachedutil$
- * $Id: mod_memcache.c,v 1.20 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_memcache.c,v 1.21 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -401,11 +401,12 @@ static int mcache_sess_init(void) {
 
     path = c->argv[0];
     if (strcasecmp(path, "none") != 0) {
-      int res;
+      int res, xerrno;
 
       pr_signals_block();
       PRIVS_ROOT
       res = pr_log_openfile(path, &memcache_logfd, PR_LOG_SYSTEM_MODE);
+      xerrno = errno;
       PRIVS_RELINQUISH
       pr_signals_unblock();
 
@@ -416,15 +417,15 @@ static int mcache_sess_init(void) {
         case -1:
           pr_log_pri(PR_LOG_NOTICE, MOD_MEMCACHE_VERSION
             ": notice: unable to open MemcacheLog '%s': %s", path,
-            strerror(errno));
+            strerror(xerrno));
 
         case PR_LOG_WRITABLE_DIR:
-          pr_log_pri(PR_LOG_NOTICE, MOD_MEMCACHE_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_MEMCACHE_VERSION
             ": notice: unable to use MemcacheLog '%s': parent directory is "
-              "world-writeable", path);
+              "world-writable", path);
 
         case PR_LOG_SYMLINK:
-          pr_log_pri(PR_LOG_NOTICE, MOD_MEMCACHE_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_MEMCACHE_VERSION
             ": notice: unable to use MemcacheLog '%s': cannot log to a symlink",
             path);
       }

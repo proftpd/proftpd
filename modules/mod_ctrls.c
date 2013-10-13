@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.56 2013-05-28 21:02:02 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.57 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -103,7 +103,7 @@ static int ctrls_closelog(void) {
 }
 
 static int ctrls_openlog(void) {
-  int logfd, res = 0;
+  int logfd, res = 0, xerrno = 0;
 
   /* Sanity check */
   if (ctrls_logname == NULL)
@@ -111,6 +111,7 @@ static int ctrls_openlog(void) {
 
   PRIVS_ROOT
   res = pr_log_openfile(ctrls_logname, &logfd, PR_LOG_SYSTEM_MODE);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (res == 0) {
@@ -120,15 +121,15 @@ static int ctrls_openlog(void) {
     if (res == -1) {
       pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
         ": unable to open ControlsLog '%s': %s", ctrls_logname,
-        strerror(errno));
+        strerror(xerrno));
 
     } else if (res == PR_LOG_WRITABLE_DIR) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_CTRLS_VERSION
         ": unable to open ControlsLog '%s': "
-        "containing directory is world writable", ctrls_logname);
+        "parent directory is world-writable", ctrls_logname);
 
     } else if (res == PR_LOG_SYMLINK) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_CTRLS_VERSION
         ": unable to open ControlsLog '%s': %s is a symbolic link",
         ctrls_logname, ctrls_logname);
     }
@@ -463,7 +464,7 @@ static int ctrls_listen(const char *sock_file, int flags) {
       int xerrno = errno;
 
       pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
-        ": error duplicating ctrls socket: %s", strerror(errno));
+        ": error duplicating ctrls socket: %s", strerror(xerrno));
       (void) close(sockfd);
 
       errno = xerrno;
