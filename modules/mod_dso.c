@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.32 2013-10-13 23:05:05 castaglia Exp $
+ * $Id: mod_dso.c,v 1.33 2013-10-13 23:46:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -632,7 +632,7 @@ MODRET set_modulepath(cmd_rec *cmd) {
     CONF_ERROR(cmd, "must be an absolute path");
   }
 
-  /* Make sure that the configured path is not world-writeable. */
+  /* Make sure that the configured path is not world-writable. */
   res = pr_fsio_stat(cmd->argv[1], &st);
   if (res < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error checking '",
