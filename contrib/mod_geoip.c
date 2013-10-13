@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.8 2013-09-20 00:14:42 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.9 2013-10-13 16:48:07 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -1234,12 +1234,12 @@ static int geoip_sess_init(void) {
             strerror(xerrno));
 
         } else if (res == PR_LOG_WRITABLE_DIR) {
-          pr_log_pri(PR_LOG_NOTICE, MOD_GEOIP_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_GEOIP_VERSION
             ": notice: unable to open GeoIPLog '%s': parent directory is "
             "world-writable", path);
 
         } else if (res == PR_LOG_SYMLINK) {
-          pr_log_pri(PR_LOG_NOTICE, MOD_GEOIP_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_GEOIP_VERSION
             ": notice: unable to open GeoIPLog '%s': cannot log to a symlink",
             path);
         }

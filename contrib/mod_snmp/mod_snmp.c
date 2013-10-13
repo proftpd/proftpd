@@ -508,12 +508,12 @@ static int snmp_openlog(void) {
             strerror(xerrno));
 
         } else if (res == PR_LOG_WRITABLE_DIR) {
-          pr_log_pri(PR_LOG_NOTICE, MOD_SNMP_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_SNMP_VERSION
             ": notice: unable to open SNMPLog '%s': parent directory is "
             "world-writable", snmp_logname);
 
         } else if (res == PR_LOG_SYMLINK) {
-          pr_log_pri(PR_LOG_NOTICE, MOD_SNMP_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_SNMP_VERSION
             ": notice: unable to open SNMPLog '%s': cannot log to a symlink",
             snmp_logname);
         }

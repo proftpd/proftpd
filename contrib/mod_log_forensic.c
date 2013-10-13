@@ -909,17 +909,17 @@ static int forensic_sess_init(void) {
         strerror(xerrno));
 
     } else if (res == PR_LOG_WRITABLE_DIR) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_LOG_FORENSIC_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_LOG_FORENSIC_VERSION
         ": notice: unable to open ForensicLogFile '%s': parent directory is "
         "world-writable", path);
 
     } else if (res == PR_LOG_SYMLINK) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_LOG_FORENSIC_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_LOG_FORENSIC_VERSION
         ": notice: unable to open ForensicLogFile '%s': "
         "cannot log to a symlink", path);
     }
 
-    pr_log_debug(DEBUG1, MOD_LOG_FORENSIC_VERSION
+    pr_log_debug(DEBUG0, MOD_LOG_FORENSIC_VERSION
       ": unable to ForensicLogFile '%s', disabling module", path);
     forensic_engine = FALSE;
     return 0;

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.36 2013-10-07 01:29:04 castaglia Exp $
+ * $Id: keys.c,v 1.37 2013-10-13 16:48:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2886,7 +2886,7 @@ void sftp_keys_get_passphrases(void) {
 
         errstr = sftp_crypto_get_errors();
 
-        pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+        pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
           ": error reading passphrase for SFTPHostKey '%s': %s",
           (const char *) c->argv[0], errstr ? errstr : strerror(xerrno));
 

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.243 2013-09-30 22:01:46 castaglia Exp $
+ * $Id: mod_sql.c,v 1.244 2013-10-13 16:48:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -6041,7 +6041,7 @@ int sql_log(int level, const char *fmt, ...) {
 }
 
 static int sql_openlog(void) {
-  int res = 0;
+  int res = 0, xerrno = 0;
 
   /* Sanity checks */
   sql_logfile = get_param_ptr(main_server->conf, "SQLLogFile", FALSE);
@@ -6056,9 +6056,11 @@ static int sql_openlog(void) {
   pr_signals_block();
   PRIVS_ROOT
   res = pr_log_openfile(sql_logfile, &sql_logfd, PR_LOG_SYSTEM_MODE);
+  xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
+  errno = xerrno;
   return res;
 }
 
@@ -6464,11 +6466,11 @@ static int sql_sess_init(void) {
         strerror(errno));
 
     } else if (res == PR_LOG_WRITABLE_DIR) {
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
+      pr_log_pri(PR_LOG_WARNING, "notice: unable to open SQLLogFile: "
           "parent directory is world-writable");
 
     } else if (res == PR_LOG_SYMLINK) {
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
+      pr_log_pri(PR_LOG_WARNING, "notice: unable to open SQLLogFile: "
           "cannot log to a symbolic link");
     }
   }

@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.80 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.81 2013-10-13 16:48:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1649,13 +1649,14 @@ static int sftp_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPLog", FALSE);
   if (c) {
-    int res;
+    int res, xerrno;
 
     sftp_logname = c->argv[0];
 
     pr_signals_block();
     PRIVS_ROOT
     res = pr_log_openfile(sftp_logname, &sftp_logfd, PR_LOG_SYSTEM_MODE);
+    xerrno = errno;
     PRIVS_RELINQUISH
     pr_signals_unblock();
 
@@ -1663,15 +1664,15 @@ static int sftp_sess_init(void) {
       if (res == -1) {
         pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
           ": notice: unable to open SFTPLog '%s': %s", sftp_logname,
-          strerror(errno));
+          strerror(xerrno));
 
       } else if (res == PR_LOG_WRITABLE_DIR) {
-        pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+        pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
           ": notice: unable to open SFTPLog '%s': parent directory is "
           "world-writable", sftp_logname);
 
       } else if (res == PR_LOG_SYMLINK) {
-        pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+        pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
           ": notice: unable to open SFTPLog '%s': cannot log to a symlink",
           sftp_logname);
       }

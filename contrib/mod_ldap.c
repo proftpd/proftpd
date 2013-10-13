@@ -22,7 +22,7 @@
  * source code for OpenSSL in the source distribution.
  *
  * -----DO NOT EDIT BELOW THIS LINE-----
- * $Id: mod_ldap.c,v 1.105 2013-10-07 04:54:14 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.106 2013-10-13 16:48:07 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1466,7 +1466,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
     if (res != LDAP_SUCCESS) {
       if (res != LDAP_INVALID_CREDENTIALS) {
         (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-          "unable to check login: bind as %s failed", ldap_authbind_dn,
+          "unable to check login: bind as %s failed: %s", ldap_authbind_dn,
           ldap_err2string(res));
       }
 
@@ -2068,12 +2068,12 @@ static int ldap_sess_init(void) {
             strerror(xerrno));
 
         } else if (res == PR_LOG_WRITABLE_DIR) {
-          pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_LDAP_VERSION
             ": notice: unable to open LDAPPLog '%s': parent directory is "
             "world-writable", path);
 
         } else if (res == PR_LOG_SYMLINK) {
-          pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION
+          pr_log_pri(PR_LOG_WARNING, MOD_LDAP_VERSION
             ": notice: unable to open LDAPLog '%s': cannot log to a symlink",
             path);
         }

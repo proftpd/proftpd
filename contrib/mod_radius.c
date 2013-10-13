@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.70 2013-02-15 22:46:42 castaglia Exp $
+ * $Id: mod_radius.c,v 1.71 2013-10-13 16:48:07 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.2"
@@ -1830,7 +1830,7 @@ static int radius_log(const char *fmt, ...) {
 }
 
 static int radius_openlog(void) {
-  int res = 0;
+  int res = 0, xerrno = 0;
 
   /* Sanity checks */
   radius_logname = (char *) get_param_ptr(main_server->conf, "RadiusLog",
@@ -1846,9 +1846,11 @@ static int radius_openlog(void) {
   pr_signals_block();
   PRIVS_ROOT
   res = pr_log_openfile(radius_logname, &radius_logfd, PR_LOG_SYSTEM_MODE);
+  xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
+  errno = xerrno;
   return res;
 }
 
@@ -3443,25 +3445,28 @@ static int radius_sess_init(void) {
 
   res = radius_openlog();
   if (res < 0) {
-    if (res == -1)
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: %s",
-        strerror(errno));
+    if (res == -1) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_RADIUS_VERSION
+        ": notice: unable to open RadiusLog: %s", strerror(errno));
 
-    else if (res == PR_LOG_WRITABLE_DIR)
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
-          "parent directory is world writeable");
+    } else if (res == PR_LOG_WRITABLE_DIR) {
+      pr_log_pri(PR_LOG_WARNING, MOD_RADIUS_VERSION
+        ": notice: unable to open RadiusLog: parent directory is "
+        "world-writable");
 
-    else if (res == PR_LOG_SYMLINK)
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
-          "cannot log to a symbolic link");
+    } else if (res == PR_LOG_SYMLINK) {
+      pr_log_pri(PR_LOG_WARNING, MOD_RADIUS_VERSION
+        ": notice: unable to open RadiusLog: cannot log to a symbolic link");
+    }
   }
 
   /* Is RadiusEngine on? */
   radius_engine = FALSE;
   c = find_config(main_server->conf, CONF_PARAM, "RadiusEngine", FALSE);
   if (c) {
-    if (*((int *) c->argv[0]) == TRUE)
+    if (*((int *) c->argv[0]) == TRUE) {
       radius_engine = TRUE;
+    }
   }
 
   if (!radius_engine) {

@@ -26,7 +26,7 @@
  * This is mod_dnsbl, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dnsbl.c,v 1.1 2013-09-18 21:18:02 castaglia Exp $
+ * $Id: mod_dnsbl.c,v 1.2 2013-10-13 16:48:08 castaglia Exp $
  */
 
 #include "mod_dnsbl.h"
@@ -286,27 +286,28 @@ static int dnsbl_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "DNSBLLog", FALSE);
   if (c &&
       strcasecmp(c->argv[0], "none") != 0) {
-    int res;
+    int res, xerrno = 0;
 
     PRIVS_ROOT
     res = pr_log_openfile(c->argv[0], &dnsbl_logfd, 0600);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
     switch (res) {
       case -1:
         pr_log_pri(PR_LOG_NOTICE, MOD_DNSBL_VERSION
           ": notice: unable to open DNSBLLog '%s': %s", (char *) c->argv[0],
-          strerror(errno));
+          strerror(xerrno));
         break;
 
       case PR_LOG_WRITABLE_DIR:
-        pr_log_pri(PR_LOG_NOTICE, MOD_DNSBL_VERSION
+        pr_log_pri(PR_LOG_WARNING, MOD_DNSBL_VERSION
           ": notice: unable to use DNSBLLog '%s': parent directory is "
             "world-writable", (char *) c->argv[0]);
         break;
 
       case PR_LOG_SYMLINK:
-        pr_log_pri(PR_LOG_NOTICE, MOD_DNSBL_VERSION
+        pr_log_pri(PR_LOG_WARNING, MOD_DNSBL_VERSION
           ": notice: unable to use DNSBLLog '%s': cannot log to a symlink",
           (char *) c->argv[0]);
         break;

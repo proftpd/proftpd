@@ -6985,7 +6985,7 @@ int tls_log(const char *fmt, ...) {
 }
 
 static int tls_openlog(void) {
-  int res = 0;
+  int res = 0, xerrno;
 
   /* Sanity checks */
   tls_logname = get_param_ptr(main_server->conf, "TLSLog", FALSE);
@@ -7000,9 +7000,11 @@ static int tls_openlog(void) {
   pr_signals_block();
   PRIVS_ROOT
   res = pr_log_openfile(tls_logname, &tls_logfd, PR_LOG_SYSTEM_MODE);
+  xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
+  errno = xerrno;
   return res;
 }
 
@@ -8705,7 +8707,7 @@ static void tls_shutdown_ev(const void *event_data, void *user_data) {
 
     res = RAND_write_file(tls_rand_file);
     if (res < 0) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
         ": error writing PRNG seed data to '%s': %s", tls_rand_file,
         tls_get_errors());
 
@@ -9312,8 +9314,9 @@ static int tls_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake", FALSE);
-  if (c)
+  if (c) {
     tls_handshake_timeout = *((unsigned int *) c->argv[0]);
+  }
 
   /* Open the TLSLog, if configured */
   res = tls_openlog();
@@ -9323,11 +9326,11 @@ static int tls_sess_init(void) {
         ": notice: unable to open TLSLog: %s", strerror(errno));
 
     } else if (res == PR_LOG_WRITABLE_DIR) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-        ": notice: unable to open TLSLog: parent directory is world writable");
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
+        ": notice: unable to open TLSLog: parent directory is world-writable");
 
     } else if (res == PR_LOG_SYMLINK) {
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
         ": notice: unable to open TLSLog: cannot log to a symbolic link");
     }
   }

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.51 2013-10-07 05:51:29 castaglia Exp $
+ * $Id: auth.c,v 1.52 2013-10-13 16:48:08 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -173,7 +173,8 @@ static char *get_default_root(pool *p) {
         (void) pr_fs_interpolate(path, interp_path, sizeof(interp_path) - 1);
 
         pr_log_pri(PR_LOG_NOTICE,
-          "notice: unable to use %s (resolved to '%s'): %s", path, interp_path,
+          "notice: unable to use DefaultRoot %s (resolved to '%s'): %s",
+            path, interp_path,
           strerror(xerrno));
       }
     }
@@ -581,7 +582,7 @@ static int setup_env(pool *p, char *user) {
   session.proc_prefix = pstrdup(session.pool, session.c->remote_name);
   session.sf_flags = 0;
 
-  pr_log_auth(PR_LOG_NOTICE, "USER %s: Login successful", user);
+  pr_log_auth(PR_LOG_INFO, "USER %s: Login successful", user);
 
   if (pw->pw_uid == PR_ROOT_UID) {
     pr_log_auth(PR_LOG_WARNING, "ROOT SFTP login successful");
