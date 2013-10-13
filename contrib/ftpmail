@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
 #
-#  $Id: ftpmail,v 1.7 2013-02-27 05:35:23 castaglia Exp $
+#  $Id: ftpmail,v 1.8 2013-10-13 22:34:14 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -234,6 +234,9 @@ sub get_auth_info {
       if ($line =~ /^(\s+)?(\S+)(\s+)?=(\s+)?(.*)$/) {
         my $key = $2;
         my $val = $5;
+
+        # Trim off comments after the value, if any
+        $val =~ s/(\s*#.*)?$//;
 
         # Ignore any keys other than 'user' and 'password'.
 
