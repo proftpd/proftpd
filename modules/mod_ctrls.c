@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.57 2013-10-13 17:34:01 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.58 2013-10-13 23:05:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -721,9 +721,10 @@ static int ctrls_timer_cb(CALLBACK_FRAME) {
   if (first) {
     /* Change the ownership on the socket to that configured by the admin */
     PRIVS_ROOT
-    if (chown(ctrls_sock_file, ctrls_sock_uid, ctrls_sock_gid) < 0)
-      pr_log_pri(PR_LOG_INFO, "mod_ctrls: unable to chown local socket: %s",
-        strerror(errno));
+    if (chown(ctrls_sock_file, ctrls_sock_uid, ctrls_sock_gid) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+        ": unable to chown local socket: %s", strerror(errno));
+    }
     PRIVS_RELINQUISH
 
     first = FALSE;
@@ -1259,10 +1260,11 @@ static int ctrls_init(void) {
     pr_ctrls_init_acl(ctrls_acttab[i].act_acl);
 
     if (pr_ctrls_register(&ctrls_module, ctrls_acttab[i].act_action,
-        ctrls_acttab[i].act_desc, ctrls_acttab[i].act_cb) < 0)
-      pr_log_pri(PR_LOG_INFO, MOD_CTRLS_VERSION
+        ctrls_acttab[i].act_desc, ctrls_acttab[i].act_cb) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
         ": error registering '%s' control: %s",
         ctrls_acttab[i].act_action, strerror(errno));
+    }
   }
 
   /* Make certain the socket ACL is initialized. */

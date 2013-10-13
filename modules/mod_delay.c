@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.69 2013-10-09 05:30:32 castaglia Exp $
+ * $Id: mod_delay.c,v 1.70 2013-10-13 23:05:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1694,7 +1694,7 @@ static int delay_init(void) {
 #if defined(PR_USE_CTRLS)
   if (pr_ctrls_register(&delay_module, "delay", "tune mod_delay settings",
       delay_handle_delay) < 0) {
-    pr_log_pri(PR_LOG_INFO, MOD_DELAY_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_DELAY_VERSION
       ": error registering 'delay' control: %s", strerror(errno));
 
   } else {

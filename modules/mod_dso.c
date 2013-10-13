@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.31 2013-10-13 17:34:01 castaglia Exp $
+ * $Id: mod_dso.c,v 1.32 2013-10-13 23:05:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -704,7 +704,7 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
     if (!is_static) {
       pr_log_debug(DEBUG7, MOD_DSO_VERSION ": unloading 'mod_%s.c'", mi->name);
       if (dso_unload_module(mi) < 0) {
-        pr_log_pri(PR_LOG_INFO, MOD_DSO_VERSION
+        pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
           ": error unloading 'mod_%s.c': %s", mi->name, strerror(errno));
       }
     }
@@ -763,10 +763,11 @@ static int dso_init(void) {
     pr_ctrls_init_acl(dso_acttab[i].act_acl);
 
     if (pr_ctrls_register(&dso_module, dso_acttab[i].act_action,
-        dso_acttab[i].act_desc, dso_acttab[i].act_cb) < 0)
-      pr_log_pri(PR_LOG_INFO, MOD_DSO_VERSION
+        dso_acttab[i].act_desc, dso_acttab[i].act_cb) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION
         ": error registering '%s' control: %s", dso_acttab[i].act_action,
         strerror(errno));
+    }
   }
 #endif /* PR_USE_CTRLS */
 

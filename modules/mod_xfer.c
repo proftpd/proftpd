@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.327 2013-10-13 17:34:01 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.328 2013-10-13 23:05:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1693,7 +1693,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (have_limit &&
       nbytes_max_store == 0) {
 
-    pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " %s) reached: "
+    pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
       nbytes_max_store != 1 ? "bytes" : "byte", path);
 
@@ -1734,7 +1734,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (have_limit &&
         (nbytes_stored + st.st_size > nbytes_max_store)) {
 
-      pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
+      pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
         "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, path);
 
       /* Abort the transfer. */
@@ -2131,7 +2131,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (have_limit &&
       ((nbytes_max_retrieve == 0) || (st.st_size > nbytes_max_retrieve))) {
 
-    pr_log_pri(PR_LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " %s) reached: "
+    pr_log_pri(PR_LOG_NOTICE, "MaxRetrieveFileSize (%" PR_LU " %s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_retrieve,
       nbytes_max_retrieve != 1 ? "bytes" : "byte", dir);
 
@@ -2491,11 +2491,11 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
    * (e.g. network/firewall rules).
    */
   if (session.sf_flags & SF_PASSIVE) {
-    pr_log_pri(PR_LOG_INFO,
+    pr_log_pri(PR_LOG_NOTICE,
       "Passive data transfer failed, possibly due to network issues");
-    pr_log_pri(PR_LOG_INFO,
+    pr_log_pri(PR_LOG_NOTICE,
       "Check your PassivePorts and MasqueradeAddress settings,");
-    pr_log_pri(PR_LOG_INFO,
+    pr_log_pri(PR_LOG_NOTICE,
        "and any router, NAT, and firewall rules in the network path.");
   }
 
