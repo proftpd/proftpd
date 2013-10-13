@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.460 2013-10-09 05:28:22 castaglia Exp $
+ * $Id: main.c,v 1.461 2013-10-13 18:06:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1349,7 +1349,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * within the <Limit> section.
    */
   if (!login_check_limits(main_server->conf, TRUE, FALSE, &i)) {
-    pr_log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied.",
+    pr_log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied",
       session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr));
     exit(0);

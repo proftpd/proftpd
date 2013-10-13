@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.291 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: dirtree.c,v 1.292 2013-10-13 18:06:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3508,7 +3508,7 @@ int fixup_servers(xaset_t *list) {
    * it's possible to have all vhosts (even the default) rejected.
    */
   if (list->xas_list == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "error: no valid servers configured");
+    pr_log_pri(PR_LOG_WARNING, "error: no valid servers configured");
     return -1;
   }
 

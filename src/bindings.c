@@ -23,7 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.50 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: bindings.c,v 1.51 2013-10-13 18:06:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,7 +240,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
 
     addr = pr_netaddr_get_addr(serv->pool, c->argv[0], NULL);
     if (addr == NULL) {
-      pr_log_pri(PR_LOG_NOTICE,
+      pr_log_pri(PR_LOG_WARNING,
        "notice: unable to determine IP address of '%s'", (char *) c->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "_bind_", FALSE);
       continue;
@@ -428,7 +428,7 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr,
         ipbind->ib_port == port) {
 
       /* An ipbind already exists for this IP address */
-      pr_log_pri(PR_LOG_NOTICE, "notice: '%s' (%s:%u) already bound to '%s'",
+      pr_log_pri(PR_LOG_WARNING, "notice: '%s' (%s:%u) already bound to '%s'",
         server->ServerName, pr_netaddr_get_ipstr(addr), port,
         ipbind->ib_server->ServerName);
 
