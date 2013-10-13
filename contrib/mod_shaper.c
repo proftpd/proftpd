@@ -26,7 +26,7 @@
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_shaper.c,v 1.17 2013-10-07 01:29:04 castaglia Exp $
+ * $Id: mod_shaper.c,v 1.18 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2360,11 +2360,11 @@ static int shaper_init(void) {
   shaper_tab.nsessions = 0;
 
   if (pr_ctrls_register(&shaper_module, "shaper", "tune mod_shaper settings",
-      shaper_handle_shaper) < 0)
-    pr_log_pri(PR_LOG_INFO, MOD_SHAPER_VERSION
+      shaper_handle_shaper) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_SHAPER_VERSION
       ": error registering 'shaper' control: %s", strerror(errno));
 
-  else {
+  } else {
     register unsigned int i;
 
     for (i = 0; shaper_acttab[i].act_action; i++) {

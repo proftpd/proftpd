@@ -26,7 +26,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * --- DO NOT DELETE BELOW THIS LINE ----
- * $Id: mod_geoip.c,v 1.9 2013-10-13 16:48:07 castaglia Exp $
+ * $Id: mod_geoip.c,v 1.10 2013-10-13 22:51:36 castaglia Exp $
  * $Libraries: -lGeoIP$
  */
 
@@ -1132,7 +1132,7 @@ MODRET geoip_post_pass(cmd_rec *cmd) {
     (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
       "connection from %s denied due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
-    pr_log_pri(PR_LOG_INFO, MOD_GEOIP_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_GEOIP_VERSION
       ": Connection denied to %s due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
 
@@ -1291,7 +1291,7 @@ static int geoip_sess_init(void) {
     (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
       "connection from %s denied due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
-    pr_log_pri(PR_LOG_INFO, MOD_GEOIP_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_GEOIP_VERSION
       ": Connection denied to %s due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
 

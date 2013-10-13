@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.200 2013-10-05 04:44:29 castaglia Exp $
+ * $Id: fxp.c,v 1.201 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -11198,7 +11198,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
         int xerno = EIO;
 #endif
 
-        pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " %s) reached: "
+        pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
           "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
           nbytes_max_store != 1 ? "bytes" : "byte", fxh->fh->fh_path);
 

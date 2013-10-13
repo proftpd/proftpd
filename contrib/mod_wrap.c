@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.27 2013-02-14 21:48:34 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.28 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.4"
@@ -142,8 +142,8 @@ static int wrap_is_usable_file(char *filename) {
   if (fh == NULL) {
     int xerrno = errno;
 
-    pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
-      strerror(xerrno));
+    pr_log_pri(PR_LOG_NOTICE, MOD_WRAP_VERSION ": failed to read \"%s\": %s",
+      filename, strerror(xerrno));
 
     errno = xerrno;
     return FALSE;
@@ -152,8 +152,8 @@ static int wrap_is_usable_file(char *filename) {
   if (pr_fsio_fstat(fh, &st) < 0) {
     int xerrno = errno;
 
-    pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
-      strerror(xerrno));
+    pr_log_pri(PR_LOG_NOTICE, MOD_WRAP_VERSION ": failed to stat \"%s\": %s",
+      filename, strerror(xerrno));
 
     pr_fsio_close(fh);
     errno = xerrno;
@@ -163,8 +163,8 @@ static int wrap_is_usable_file(char *filename) {
   if (S_ISDIR(st.st_mode)) {
     int xerrno = EISDIR;
 
-    pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
-      strerror(xerrno));
+    pr_log_pri(PR_LOG_NOTICE, MOD_WRAP_VERSION ": unable to use \"%s\": %s",
+      filename, strerror(xerrno));
 
     pr_fsio_close(fh);
     errno = xerrno;

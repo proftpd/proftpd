@@ -26,7 +26,7 @@
  * This is mod_dynmasq, contrib software for proftpd 1.2.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dynmasq.c,v 1.10 2013-10-09 06:33:27 castaglia Exp $
+ * $Id: mod_dynmasq.c,v 1.11 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -278,7 +278,7 @@ static int dynmasq_init(void) {
 #ifdef PR_USE_CTRLS
   if (pr_ctrls_register(&dynmasq_module, "dynmasq", "mod_dynmasq controls",
       dynmasq_handle_dynmasq) < 0) {
-    pr_log_pri(PR_LOG_INFO, MOD_DYNMASQ_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_DYNMASQ_VERSION
       ": error registering 'dynmasq' control: %s", strerror(errno));
 
   } else {

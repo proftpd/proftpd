@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.83 2013-07-01 17:42:09 castaglia Exp $
+ * $Id: scp.c,v 1.84 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1041,7 +1041,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
         int xerno = EIO;
 #endif
 
-        pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " %s) reached: "
+        pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
           "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
           nbytes_max_store != 1 ? "bytes" : "byte", sp->fh->fh_path);
 

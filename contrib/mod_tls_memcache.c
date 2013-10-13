@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_memcache.c,v 1.4 2013-01-28 01:20:22 castaglia Exp $
+ *  $Id: mod_tls_memcache.c,v 1.5 2013-10-13 22:51:36 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -791,7 +791,7 @@ static int tls_mcache_status(tls_sess_cache_t *cache,
         ptr = entry->sess_data;
         sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen); 
         if (sess == NULL) {
-          pr_log_pri(PR_LOG_INFO, MOD_TLS_MEMCACHE_VERSION
+          pr_log_pri(PR_LOG_NOTICE, MOD_TLS_MEMCACHE_VERSION
             ": error retrieving session from cache: %s",
             tls_mcache_get_crypto_errors());
           continue;

@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.13 2013-02-14 21:48:34 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.14 2013-10-13 22:51:36 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -1427,7 +1427,7 @@ static int shmcache_status(tls_sess_cache_t *cache,
         ptr = entry->sess_data;
         sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen); 
         if (sess == NULL) {
-          pr_log_pri(PR_LOG_INFO, MOD_TLS_SHMCACHE_VERSION
+          pr_log_pri(PR_LOG_NOTICE, MOD_TLS_SHMCACHE_VERSION
             ": error retrieving session from cache: %s",
             shmcache_get_crypto_errors());
           continue;

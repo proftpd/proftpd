@@ -6927,9 +6927,10 @@ static void tls_netio_install_ctrl(void) {
 
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
 
-  if (pr_register_netio(netio, PR_NETIO_STRM_CTRL) < 0)
-    pr_log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
+  if (pr_register_netio(netio, PR_NETIO_STRM_CTRL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": error registering netio: %s",
       strerror(errno));
+  }
 }
 
 static void tls_netio_install_data(void) {
@@ -6949,9 +6950,10 @@ static void tls_netio_install_data(void) {
 
   pr_unregister_netio(PR_NETIO_STRM_DATA);
 
-  if (pr_register_netio(netio, PR_NETIO_STRM_DATA) < 0)
-    pr_log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
+  if (pr_register_netio(netio, PR_NETIO_STRM_DATA) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": error registering netio: %s",
       strerror(errno));
+  }
 }
 
 /* Logging functions
@@ -9145,7 +9147,7 @@ static int tls_init(void) {
 #ifdef PR_USE_CTRLS
   if (pr_ctrls_register(&tls_module, "tls", "query/tune mod_tls settings",
       tls_handle_tls) < 0) {
-    pr_log_pri(PR_LOG_INFO, MOD_TLS_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
       ": error registering 'tls' control: %s", strerror(errno));
 
   } else {

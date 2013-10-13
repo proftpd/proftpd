@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.68 2013-10-09 06:27:29 castaglia Exp $
+ * $Id: mod_ban.c,v 1.69 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2077,7 +2077,7 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
   /* Check banned user list */
   if (ban_list_exists(cmd->tmp_pool, BAN_TYPE_USER, main_server->sid, user,
       &rule_mesg) == 0) {
-    pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
       ": Login denied: user '%s' banned", user);
     ban_send_mesg(cmd->tmp_pool, user, rule_mesg);
     return PR_ERROR_MSG(cmd, R_530, _("Login incorrect."));
@@ -3015,7 +3015,7 @@ static int ban_init(void) {
 
     if (pr_ctrls_register(&ban_module, ban_acttab[i].act_action,
         ban_acttab[i].act_desc, ban_acttab[i].act_cb) < 0)
-     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
+     pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
         ": error registering '%s' control: %s",
         ban_acttab[i].act_action, strerror(errno));
   }
@@ -3094,7 +3094,7 @@ static int ban_sess_init(void) {
       &rule_mesg) == 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "login from host '%s' denied due to host ban", remote_ip);
-    pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
       ": Login denied: host '%s' banned", remote_ip);
 
     ban_send_mesg(tmp_pool, "(none)", rule_mesg);
@@ -3111,7 +3111,7 @@ static int ban_sess_init(void) {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "login from class '%s' denied due to class ban",
         session.conn_class->cls_name);
-      pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
+      pr_log_pri(PR_LOG_NOTICE, MOD_BAN_VERSION
         ": Login denied: class '%s' banned", session.conn_class->cls_name);
 
       ban_send_mesg(tmp_pool, "(none)", rule_mesg); 
