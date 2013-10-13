@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.147 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: fsio.c,v 1.148 2013-10-13 23:14:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1033,7 +1033,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
          * mounted is not the same as the one already present.
          */
         if (strcmp(fsi->fs_name, fs->fs_name) == 0) {
-          pr_log_pri(PR_LOG_DEBUG,
+          pr_log_pri(PR_LOG_NOTICE,
             "error: duplicate fs paths not allowed: '%s'", cleaned_path);
           errno = EEXIST;
           return FALSE;
