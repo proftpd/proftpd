@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.455 2013-10-09 05:07:48 castaglia Exp $
+ * $Id: mod_core.c,v 1.456 2013-10-13 23:44:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1773,7 +1773,7 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
         case PR_LOG_WRITABLE_DIR:
           pr_signals_unblock();
           CONF_ERROR(cmd,
-            "you are attempting to log to a world writeable directory");
+            "you are attempting to log to a world-writable directory");
           break;
 
         case PR_LOG_SYMLINK:
