@@ -11,6 +11,8 @@ ChangeLog files.
 
   + Fixed mod_sftp/mod_sftp_pam memory allocation (CVE-2013-4359)
   + Fixed handling of LDFLAGS settings for module builds
+  + Changed log levels on many log messages, in order to have more consistently
+    applied log levels when logging.
 
   + New Modules
 
@@ -426,4 +428,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-10-07 04:54:14 $
+Last Updated: $Date: 2013-10-14 15:41:43 $
