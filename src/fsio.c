@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.148 2013-10-13 23:14:35 castaglia Exp $
+ * $Id: fsio.c,v 1.149 2013-10-15 04:49:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2728,11 +2728,26 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
   (void) close(fd);
 
   if (res < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "schmod: unable to set perms %04o on path '%s': %s", perms, path,
-      strerror(xerrno));
-    errno = xerrno;
-    return -1;
+    /* Note: Some filesystem implementations, particularly via FUSE,
+     * may not actually implement ownership/permissions (e.g. FAT-based
+     * filesystems).  In such cases, chmod(2) et al will return ENOSYS
+     * (see Bug#3986).
+     *
+     * Should this fail the entire operation?  I'm of two minds about this.
+     * On the one hand, such filesystem behavior can undermine wider site
+     * security policies; on the other, prohibiting a MKD/MKDIR operation
+     * on such filesystems, deliberately used by the site admin, is not
+     * useful/friendly behavior.
+     *
+     * Maybe this exception for ENOSYS here should be made configurable?
+     */
+    if (xerrno != ENOSYS) {
+      pr_trace_msg(trace_channel, 3,
+        "schmod: unable to set perms %04o on path '%s': %s", perms, path,
+        strerror(xerrno));
+      errno = xerrno;
+      return -1;
+    }
   }
 
   return 0;
