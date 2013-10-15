@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.149 2013-10-15 04:49:51 castaglia Exp $
+ * $Id: fsio.c,v 1.150 2013-10-15 17:34:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2748,6 +2748,10 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
       errno = xerrno;
       return -1;
     }
+
+    pr_log_debug(DEBUG0, "mkdir: unable to set perms %04o on "
+      "path '%s': %s (chmod(2) not supported by underlying filesystem?)",
+      perms, path, strerror(xerrno));
   }
 
   return 0;
