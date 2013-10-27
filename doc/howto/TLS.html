@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.36 2013-03-12 01:45:23 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.37 2013-10-27 23:02:03 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -1130,9 +1130,25 @@ an <i>error unrelated to SSL/TLS</i> on your server.  Check the proftpd
 <a href="../contrib/mod_sql.html#SQLLogFile"><code>SQLLogFile</code></a> if
 you are using the <code>mod_sql</code> module, <i>etc</i>.
 
+<p><a name="TLSShmcacheVsMemcache">
+<font color=red>Question</font>: What is the difference between the
+<code>mod_tls_shmcache</code> and <code>mod_tls_memcache</code> modules?<br>
+<font color=blue>Answer</font>: Both of these modules are used to support
+session caching/resumption in <code>mod_tls</code>.  The difference between
+these modules is in where the SSL session data is cached/stored.
+
+<p>
+The <a href="../contrib/mod_tls_shmcache.html"><code>mod_tls_shmcache</code></a> module stores SSL session data in a SysV shared memory ("shm") segment,
+which can be accessed by the different proftpd processes <b>on the same
+machine</b>.  The <a href="../contrib/mod_tls_memcache.html"><code>mod_tls_memcache</code></a> module stores SSL session data in a memcached server (configured
+using the <a href="../modules/mod_memcache.html"><code>mod_memcache</code></a>
+module); this allows different proftpd processes <b>on different machines</b>
+to access/reuse the cached session data; this can be quite useful when operating
+a pool of <code>proftpd</code> servers <i>e.g.</i> behind a load balancer.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2013-03-12 01:45:23 $</i><br>
+Last Updated: <i>$Date: 2013-10-27 23:02:03 $</i><br>
 <hr>
 
 </body>
