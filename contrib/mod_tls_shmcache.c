@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.14 2013-10-13 22:51:36 castaglia Exp $
+ *  $Id: mod_tls_shmcache.c,v 1.15 2013-11-05 21:37:16 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -1563,14 +1563,12 @@ static int tls_shmcache_init(void) {
   shmcache.remove = shmcache_remove;
   shmcache.status = shmcache_status;
 
-#ifdef SSL_SESS_CACHE_NO_INTERNAL
+#ifdef SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
   /* Take a chance, and inform OpenSSL that it does not need to use its own
-   * internal session caching; using the external session cache (i.e. us)
+   * internal session cache lookups; using the external session cache (i.e. us)
    * will be enough.
-   *
-   * Using NO_INTERNAL is equivalent to NO_INTERNAL_LOOKUP|NO_INTERNAL_STORE.
    */
-  shmcache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL;
+  shmcache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
 #endif
 
   /* Register ourselves with mod_tls. */

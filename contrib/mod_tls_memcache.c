@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_memcache.c,v 1.5 2013-10-13 22:51:36 castaglia Exp $
+ *  $Id: mod_tls_memcache.c,v 1.6 2013-11-05 21:37:16 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -894,14 +894,12 @@ static int tls_mcache_init(void) {
   tls_mcache.remove = tls_mcache_remove;
   tls_mcache.status = tls_mcache_status;
 
-#ifdef SSL_SESS_CACHE_NO_INTERNAL
+#ifdef SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
   /* Take a chance, and inform OpenSSL that it does not need to use its own
-   * internal session caching; using the external session cache (i.e. us)
+   * internal session cache lookups; using the external session cache (i.e. us)
    * will be enough.
-   *
-   * Using NO_INTERNAL is equivalent to NO_INTERNAL_LOOKUP|NO_INTERNAL_STORE.
    */
-  tls_mcache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL;
+  tls_mcache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
 #endif
 
 #ifdef PR_USE_MEMCACHE
