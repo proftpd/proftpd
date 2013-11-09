@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.151 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: data.c,v 1.152 2013-11-09 23:20:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -324,7 +324,7 @@ static int data_pasv_open(char *reason, off_t size) {
   /* Check for error conditions. */
   if (c && c->mode == CM_ERROR) {
     pr_log_pri(PR_LOG_ERR, "error: unable to accept an incoming data "
-      "connection (%s)", strerror(c->xerrno));
+      "connection: %s", strerror(c->xerrno));
   }
 
   pr_response_add_err(R_425, _("Unable to build data connection: %s"),
