@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.54 2013-02-20 17:26:59 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.55 2013-11-09 18:41:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1024,17 +1024,17 @@ static void ifsess_postparse_ev(const void *event_data, void *user_data) {
 
   switch (ifsess_ctx) {
     case IFSESS_CLASS_NUMBER:
-      pr_log_pri(PR_LOG_ERR,
+      pr_log_pri(PR_LOG_WARNING,
         "error: unclosed <IfClass> context in config file");
       break;
 
     case IFSESS_GROUP_NUMBER:
-      pr_log_pri(PR_LOG_ERR,
+      pr_log_pri(PR_LOG_WARNING,
         "error: unclosed <IfGroup> context in config file");
       break;
 
     case IFSESS_USER_NUMBER:
-      pr_log_pri(PR_LOG_ERR,
+      pr_log_pri(PR_LOG_WARNING,
         "error: unclosed <IfUser> context in config file");
       break;
   }
