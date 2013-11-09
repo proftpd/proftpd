@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.41 2013-10-09 05:01:53 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.42 2013-11-09 23:14:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -57,6 +57,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TraceOptions">TraceOptions</a>
   <li><a href="#TransferLog">TransferLog</a>
   <li><a href="#Umask">Umask</a>
+  <li><a href="#UserOwner">UserOwner</a>
   <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a>
 </ul>
 
@@ -1475,6 +1476,30 @@ umasks in greater detail.
 
 <p>
 <hr>
+<h2><a name="UserOwner">UserOwner</a></h2>
+<strong>Syntax:</strong> UserOwner <em>user-name</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Anonymous&gt;, &lt;Directory&gt;<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2pre11 and later
+
+<p>
+The <code>UserOwner</code> directive is used to specify the <em>user-name</em>
+which will own all created files and directories within the
+<code>&lt;Anonymous&gt;</code> or <code>&lt;Directory&gt;</code> section
+contain the <code>UserOwner</code> directive; the default behavior is that
+all created files/directories will be owned by the logged-in user, of course.
+
+<p>
+When the <code>UserOwner</code> directive  is used, the
+<code>GroupOwner</code> directive is <b>not</b> restricted to groups to which
+the logged-in user belongs.
+
+<p>
+See also: <a href="#GroupOwner"><code>GroupOwner</code></a>
+
+<p>
+<hr>
 <h2><a name="VirtualHost">&lt;VirtualHost&gt;</a></h2>
 <strong>Syntax:</strong> &lt;VirtualHost <em>ip-address|dns-name [ip-address|dns-name ...]</em>&gt;<br>
 <strong>Default:</strong> None<br>
@@ -1568,7 +1593,7 @@ The <code>mod_core</code> module is <b>always</b> installed.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-10-09 05:01:53 $</i><br>
+Last Updated: <i>$Date: 2013-11-09 23:14:30 $</i><br>
 
 <br><hr>
 
