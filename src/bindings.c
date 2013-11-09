@@ -23,7 +23,7 @@
  */
 
 /* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.51 2013-10-13 18:06:57 castaglia Exp $
+ * $Id: bindings.c,v 1.52 2013-11-09 23:34:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -207,7 +207,7 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
          */
         if (listener->mode == CM_ERROR) {
           pr_log_pri(PR_LOG_ERR, "error: unable to accept an incoming "
-            "connection (%s)", strerror(listener->xerrno));
+            "connection: %s", strerror(listener->xerrno));
           listener->xerrno = 0;
           listener->mode = CM_LISTEN;
           return NULL;
