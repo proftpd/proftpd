@@ -35,6 +35,10 @@ ChangeLog files.
     SQLOptions IgnoreConfigFile (Bug#3971)
 
 
+  + New Documentation
+    LogLevels, LogMessages
+
+
 1.3.5rc3
 ---------
 
@@ -428,4 +432,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-10-14 15:41:43 $
+Last Updated: $Date: 2013-11-10 02:34:15 $
