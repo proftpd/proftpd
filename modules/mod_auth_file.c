@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.53 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.54 2013-11-10 01:27:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -602,7 +602,8 @@ static int af_setgrent(void) {
       if (af_group_file->af_file == NULL) {
         int xerrno = errno;
 
-        pr_log_pri(PR_LOG_WARNING, "error: unable to open group file '%s': %s",
+        pr_log_pri(PR_LOG_WARNING,
+          "error: unable to open AuthGroupFile file '%s': %s",
           af_group_file->af_path, strerror(xerrno));
 
         errno = xerrno;
@@ -819,7 +820,8 @@ static int af_setpwent(void) {
       if (af_user_file->af_file == NULL) {
         int xerrno = errno;
 
-        pr_log_pri(PR_LOG_WARNING, "error: unable to open passwd file '%s': %s",
+        pr_log_pri(PR_LOG_WARNING,
+          "error: unable to open AuthUserFile file '%s': %s",
           af_user_file->af_path, strerror(xerrno));
         errno = xerrno;
         return -1;
