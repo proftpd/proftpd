@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.101 2013-10-13 23:09:08 castaglia Exp $
+ * $Id: auth.c,v 1.102 2013-11-10 01:56:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1410,7 +1410,7 @@ int pr_auth_chroot(const char *path) {
   }
 #endif
 
-  pr_log_pri(PR_LOG_DEBUG, "Preparing to chroot to directory '%s'", path);
+  pr_log_debug(DEBUG1, "Preparing to chroot to directory '%s'", path);
 
   /* Prepare for chroots and the ensuing timezone chicanery by calling
    * our pr_localtime() routine now, which will cause libc (via localtime(2))
