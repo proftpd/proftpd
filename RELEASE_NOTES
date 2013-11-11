@@ -30,7 +30,7 @@ ChangeLog files.
     CapabilitiesSet +CAP_FSETID (Bug#3960)
     ExecOnEvent ~ (Bug#3964)
     LogFormat %s for SFTP transfers (Bug#3948)
-    LogFormat %d/%D (Bug#3950)
+    LogFormat %d/%D (Bug#3950), %{basename} (Bug#3987)
     PersistentPasswd off (Bug#3952)
     SQLOptions IgnoreConfigFile (Bug#3971)
 
@@ -432,4 +432,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-11-10 02:34:15 $
+Last Updated: $Date: 2013-11-11 01:34:03 $

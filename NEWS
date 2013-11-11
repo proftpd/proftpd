@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1563 2013-11-05 21:37:16 castaglia Exp $
+$Id: NEWS,v 1.1564 2013-11-11 01:34:03 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -60,6 +60,7 @@ CVS
   e.g. FAT/ExFAT.
 - Bug 3991 - SSL session caching modules use incorrect OpenSSL cache mode flags,
   breaking session caching.
+- Bug 3987 - LogFormat variable for just the filename.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------

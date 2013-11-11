@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_log.h,v 1.1 2013-08-01 06:23:46 castaglia Exp $
+ * $Id: mod_log.h,v 1.2 2013-11-11 01:34:04 castaglia Exp $
  */
 
 #ifndef MOD_LOG_H
@@ -74,5 +74,6 @@
 #define LOGFMT_META_MILLISECS		41
 #define LOGFMT_META_ISO8601		42
 #define LOGFMT_META_GROUP		43
+#define LOGFMT_META_BASENAME		44
 
 #endif /* MOD_LOG_H */

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.244 2013-10-13 16:48:07 castaglia Exp $
+ * $Id: mod_sql.c,v 1.245 2013-11-11 01:34:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2460,6 +2460,101 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     strftime(time_str, sizeof(time_str), fmt, time_info);
 
     long_tag = pstrdup(cmd->tmp_pool, time_str);
+  }
+
+  if (long_tag == NULL &&
+      strncmp(tag, "basename", 9) == 0) {
+    const char *path = NULL;
+
+    if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
+      path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+
+    } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
+      path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
+
+    } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+               pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+      path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
+
+    } else if (session.xfer.p &&
+               session.xfer.path) {
+      path = session.xfer.path;
+
+    } else if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
+               pr_cmd_cmp(cmd, PR_CMD_PWD_ID) == 0 ||
+               pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
+               pr_cmd_cmp(cmd, PR_CMD_XPWD_ID) == 0) {
+      path = pr_fs_getcwd();
+
+    } else if (pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
+               pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0) {
+
+      if (session.chroot_path) {
+        /* Chrooted session. */
+        path = strcmp(pr_fs_getvwd(), "/") ? pr_fs_getvwd() :
+          session.chroot_path;
+
+      } else {
+        /* Non-chrooted session. */
+        path = pr_fs_getcwd();
+      }
+
+    } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
+               (strncasecmp(cmd->argv[1], "CHGRP", 6) == 0 ||
+                strncasecmp(cmd->argv[1], "CHMOD", 6) == 0 ||
+                strncasecmp(cmd->argv[1], "UTIME", 6) == 0)) {
+      register unsigned int i;
+      char *tmp = "";
+
+      for (i = 3; i <= cmd->argc-1; i++) {
+        tmp = pstrcat(cmd->tmp_pool, tmp, *tmp ? " " : "",
+          pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+      }
+
+      path = tmp;
+
+    } else {
+      /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
+       * filenames that are not stored in the session.xfer structure; these
+       * should be expanded properly as well.
+       */
+      if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MDTM_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_MLST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
+          pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
+        path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+
+      } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0) {
+        /* MFMT has, as its filename, the second argument. */
+        path = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
+      }
+    }
+
+    if (path != NULL) {
+      char *ptr = NULL;
+
+      ptr = strrchr(path, '/');
+      if (ptr != NULL) {
+        if (ptr != path) {
+          long_tag = pstrdup(cmd->tmp_pool, ptr + 1);
+
+        } else if (*(ptr+1) != '\0') {
+          long_tag = pstrdup(cmd->tmp_pool, ptr + 1);
+
+        } else {
+          long_tag = pstrdup(cmd->tmp_pool, path);
+        }
+
+      } else {
+        long_tag = pstrdup(cmd->tmp_pool, path);
+      }
+    }
   }
 
   if (long_tag == NULL &&
