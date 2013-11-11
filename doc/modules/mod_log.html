@@ -1,4 +1,4 @@
-<!-- $Id: mod_log.html,v 1.15 2013-06-21 20:31:22 castaglia Exp $ -->
+<!-- $Id: mod_log.html,v 1.16 2013-11-11 01:37:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_log.html,v $ -->
 
 <html>
@@ -224,6 +224,11 @@ indicated when logging.
   <tr>
     <td>&nbsp;<code>%A</code>&nbsp;</td>
     <td>Anonymous login password, or "UNKNOWN" for regular logins</td>
+  </tr>
+
+  <tr>
+    <td>&nbsp;<code>%{basename}</code>&nbsp;</td>
+    <td>Last component of path, <i>i.e.</i> just the file or directory name.</td>
   </tr>
 
   <tr>
@@ -491,7 +496,7 @@ The <code>mod_log</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-06-21 20:31:22 $</i><br>
+Last Updated: <i>$Date: 2013-11-11 01:37:15 $</i><br>
 
 <br><hr>
 
