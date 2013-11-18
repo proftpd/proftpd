@@ -39,8 +39,10 @@ our @RUNNING = qw(
 
 our @TEST = qw(
   test_append_logfile
+  test_cleanup
   test_get_logfile
   test_msg
+  test_setup
 );
 
 our @TESTSUITE = qw(
@@ -1074,10 +1076,26 @@ sub test_append_logfile {
   }
 }
 
+sub test_cleanup {
+  my $log_file = shift;
+  my $ex = shift;
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    croak($ex);
+  }
+
+  unlink($log_file);
+}
+
 sub test_get_logfile {
   # Returns the testcase-specific logfile name to use
+  my $depth = shift;
+  $depth = 1 unless defined($depth);
 
-  my ($pkg, $filename, $lineno, $func) = (caller(1))[0, 1, 2, 3];
+  my ($pkg, $filename, $lineno, $func) = (caller($depth))[0, 1, 2, 3];
 
   # We use the function name as the basis for the testcase-specific log
   # file name.  We ignore the first two parts (which are always 'ProFTPD' and
@@ -1095,6 +1113,69 @@ sub test_msg {
   my ($pkg, $file, $lineno) = caller();
 
   return "$msg (at $file:$lineno)";
+}
+
+sub test_setup {
+  my $tmpdir = shift;
+  croak("Missing temporary directory argument") unless $tmpdir;
+  my $name = shift;
+  croak("Missing test name argument") unless $name;
+  my $user = shift;
+  $user = 'proftpd' unless defined($user);
+  my $passwd = shift;
+  $passwd = 'test' unless defined($passwd);
+  my $group = shift;
+  $group = 'ftpd' unless defined($group);
+  my $uid = shift;
+  $uid = 500 unless defined($uid);
+  my $gid = shift;
+  $gid = 500 unless defined($gid);
+
+  my $config_file = "$tmpdir/$name.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/$name.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/$name.scoreboard");
+  my $log_file = test_get_logfile(2);
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/$name.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/$name.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      croak("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      croak("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $setup = {
+    auth_user_file => $auth_user_file,
+    auth_group_file => $auth_group_file,
+    config_file => $config_file,
+    gid => $gid,
+    group => $group,
+    home_dir => $home_dir,
+    log_file => $log_file,
+    passwd => $passwd,
+    pid_file => $pid_file,
+    scoreboard_file => $scoreboard_file,
+    uid => $uid,
+    user => $user,
+  };
+
+  return $setup;
 }
 
 sub testsuite_empty_test {

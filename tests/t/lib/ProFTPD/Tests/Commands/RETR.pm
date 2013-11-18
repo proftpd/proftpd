@@ -89,47 +89,17 @@ sub list_tests {
 sub retr_ok_raw_active {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -138,7 +108,8 @@ sub retr_ok_raw_active {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -156,7 +127,7 @@ sub retr_ok_raw_active {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw($test_file);
       unless ($conn) {
@@ -183,7 +154,7 @@ sub retr_ok_raw_active {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -193,64 +164,27 @@ sub retr_ok_raw_active {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_ok_raw_passive {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $test_file = File::Spec->rel2abs($config_file);
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -259,7 +193,8 @@ sub retr_ok_raw_passive {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -281,8 +216,7 @@ sub retr_ok_raw_passive {
       sleep(1);
 
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw($test_file);
       unless ($conn) {
@@ -309,7 +243,7 @@ sub retr_ok_raw_passive {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -319,54 +253,17 @@ sub retr_ok_raw_passive {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_ok_file {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/foo");
   if (open(my $fh, "> $test_file")) {
@@ -381,12 +278,12 @@ sub retr_ok_file {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -395,7 +292,8 @@ sub retr_ok_file {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -413,8 +311,7 @@ sub retr_ok_file {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw($test_file);
       unless ($conn) {
@@ -440,7 +337,7 @@ sub retr_ok_file {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -450,62 +347,25 @@ sub retr_ok_file {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_fails_not_reg {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -514,7 +374,8 @@ sub retr_fails_not_reg {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -532,15 +393,11 @@ sub retr_fails_not_reg {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      $client->login($user, $passwd);
-
-      my ($resp_code, $resp_msg);
-
-      my $conn = $client->retr_raw($home_dir);
-
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $conn = $client->retr_raw($setup->{home_dir});
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       if ($conn) {
         die("RETR succeeded unexpectedly ($resp_code $resp_msg)");
@@ -550,11 +407,11 @@ sub retr_fails_not_reg {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$home_dir: Not a regular file";
+      $expected = "$setup->{home_dir}: Not a regular file";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -565,7 +422,7 @@ sub retr_fails_not_reg {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -575,34 +432,22 @@ sub retr_fails_not_reg {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_fails_login_required {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -611,7 +456,8 @@ sub retr_fails_login_required {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -634,21 +480,20 @@ sub retr_fails_login_required {
       eval { ($resp_code, $resp_msg) = $client->retr() };
       unless ($@) {
         die("RETR succeeded unexpectedly ($resp_code $resp_msg)");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
       $expected = 530;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -659,7 +504,7 @@ sub retr_fails_login_required {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -669,62 +514,25 @@ sub retr_fails_login_required {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_fails_no_path {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -733,7 +541,8 @@ sub retr_fails_no_path {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -751,15 +560,12 @@ sub retr_fails_no_path {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
-
-      my ($resp_code, $resp_msg);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw();
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       if ($conn) {
         die("RETR succeeded unexpectedly ($resp_code $resp_msg)");
@@ -769,11 +575,11 @@ sub retr_fails_no_path {
 
       $expected = 500;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "'RETR' not understood";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -783,7 +589,7 @@ sub retr_fails_no_path {
     print $wfh "done\n";
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -793,62 +599,25 @@ sub retr_fails_no_path {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_fails_enoent {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -857,7 +626,8 @@ sub retr_fails_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -875,32 +645,30 @@ sub retr_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      $client->login($user, $passwd);
-
-      my ($resp_code, $resp_msg);
       $client->port();
 
       my $test_file = 'foo/bar/baz';
 
+      my ($resp_code, $resp_msg);
       eval { ($resp_code, $resp_msg) = $client->retr($test_file) };
       unless ($@) {
         die("RETR succeeded unexpectedly ($resp_code $resp_msg)");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -911,7 +679,7 @@ sub retr_fails_enoent {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -921,62 +689,25 @@ sub retr_fails_enoent {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_fails_enoent_glob {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -985,7 +716,8 @@ sub retr_fails_enoent_glob {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1003,8 +735,7 @@ sub retr_fails_enoent_glob {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->port();
 
       my $test_glob = '*foo';
@@ -1013,21 +744,20 @@ sub retr_fails_enoent_glob {
       eval { ($resp_code, $resp_msg) = $client->retr($test_glob) };
       unless ($@) {
         die("RETR succeeded unexpectedly ($resp_code $resp_msg)");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "*foo: No such file or directory";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -1038,7 +768,7 @@ sub retr_fails_enoent_glob {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1048,38 +778,17 @@ sub retr_fails_enoent_glob {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_fails_eperm {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
   mkpath($sub_dir);
@@ -1092,29 +801,13 @@ sub retr_fails_eperm {
     die("Can't open $test_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1123,7 +816,8 @@ sub retr_fails_eperm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1141,8 +835,7 @@ sub retr_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->port();
 
       chmod(0660, $sub_dir);
@@ -1151,21 +844,20 @@ sub retr_fails_eperm {
       eval { ($resp_code, $resp_msg) = $client->retr($test_file) };
       unless ($@) {
         die("RETR succeeded unexpectedly ($resp_code $resp_msg)");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
       my $expected;
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: Permission denied";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -1176,7 +868,7 @@ sub retr_fails_eperm {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1186,57 +878,26 @@ sub retr_fails_eperm {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_ok_dir_with_spaces {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/sub dir");
   mkpath($sub_dir);
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
 
   my $test_file = File::Spec->rel2abs("$sub_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1251,12 +912,12 @@ sub retr_ok_dir_with_spaces {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1265,7 +926,8 @@ sub retr_ok_dir_with_spaces {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1283,8 +945,7 @@ sub retr_ok_dir_with_spaces {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw('sub dir/test.txt');
       unless ($conn) {
@@ -1311,7 +972,7 @@ sub retr_ok_dir_with_spaces {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1321,54 +982,17 @@ sub retr_ok_dir_with_spaces {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_leading_whitespace {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/ test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1384,12 +1008,12 @@ sub retr_leading_whitespace {
   my $test_sz = (stat($test_file))[7];
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1398,7 +1022,8 @@ sub retr_leading_whitespace {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1416,8 +1041,7 @@ sub retr_leading_whitespace {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw(' test.txt');
       unless ($conn) {
@@ -1438,7 +1062,7 @@ sub retr_leading_whitespace {
       my $buflen = length($buf);
       my $expected = $test_sz;
       $self->assert($expected == $buflen,
-        test_msg("Expected $expected, got $buflen"));
+        test_msg("Expected download byte count $expected, got $buflen"));
     };
 
     if ($@) {
@@ -1449,7 +1073,7 @@ sub retr_leading_whitespace {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1459,54 +1083,17 @@ sub retr_leading_whitespace {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub retr_bug3496 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/largfile");
   if (open(my $fh, "> $test_file")) {
@@ -1525,14 +1112,14 @@ sub retr_bug3496 {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     MaxInstances => 1,
 
     IfModules => {
@@ -1542,7 +1129,8 @@ sub retr_bug3496 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1564,7 +1152,7 @@ sub retr_bug3496 {
       sleep(1);
 
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw($test_file);
       unless ($conn) {
@@ -1576,7 +1164,7 @@ sub retr_bug3496 {
       $client->{ftp}->close();
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-      $client2->login($user, $passwd);
+      $client2->login($setup->{user}, $setup->{passwd});
     };
 
     if ($@) {
@@ -1587,7 +1175,7 @@ sub retr_bug3496 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1597,18 +1185,11 @@ sub retr_bug3496 {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;
