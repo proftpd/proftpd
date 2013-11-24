@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.c,v 1.20 2013-09-24 01:21:16 castaglia Exp $
+ * $Id: str.c,v 1.21 2013-11-24 00:45:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -472,6 +472,141 @@ char *pr_str_strip_end(char *s, char *ch) {
   }
 
   return s;
+}
+
+/* NOTE: Update mod_ban's ban_parse_timestr() to use this function. */
+int pr_str_get_duration(const char *str, int *duration) {
+  unsigned int hours, mins, secs;
+  int flags = PR_STR_FL_IGNORE_CASE, has_suffix = FALSE;
+  size_t len;
+  char *ptr = NULL;
+
+  if (str == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (sscanf(str, "%2u:%2u:%2u", &hours, &mins, &secs) == 3) {
+    if (hours > INT_MAX ||
+        mins > INT_MAX ||
+        secs > INT_MAX) {
+      errno = ERANGE;
+      return -1;
+    }
+
+    if (duration != NULL) {
+      *duration = (hours * 60 * 60) + (mins * 60) + secs;
+    }
+
+    return 0;
+  }
+
+  len = strlen(str);
+  if (len == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Handle the "single component" formats:
+   *
+   * If ends with "S", "s", or "sec": parse secs
+   * If ends with "M", "m", or "min": parse minutes
+   * If ends with "H", "h", or "hr": parse hours
+   *
+   * Otherwise, try to parse as just a number of seconds.
+   */
+
+  has_suffix = pr_strnrstr(str, len, "s", 1, flags);
+  if (has_suffix == FALSE) {
+    has_suffix = pr_strnrstr(str, len, "sec", 3, flags);
+  }
+  if (has_suffix == TRUE) {
+    /* Parse seconds */
+
+    if (sscanf(str, "%u", &secs) == 1) {
+      if (secs > INT_MAX) {
+        errno = ERANGE;
+        return -1;
+      }
+
+      if (duration != NULL) {
+        *duration = secs;
+      }
+
+      return 0;
+    }
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  has_suffix = pr_strnrstr(str, len, "m", 1, flags);
+  if (has_suffix == FALSE) {
+    has_suffix = pr_strnrstr(str, len, "min", 3, flags);
+  }
+  if (has_suffix == TRUE) {
+    /* Parse minutes */
+
+    if (sscanf(str, "%u", &mins) == 1) {
+      if (mins > INT_MAX) {
+        errno = ERANGE;
+        return -1;
+      }
+
+      if (duration != NULL) {
+        *duration = (mins * 60);
+      }
+  
+      return 0;
+    }
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  has_suffix = pr_strnrstr(str, len, "h", 1, flags);
+  if (has_suffix == FALSE) {
+    has_suffix = pr_strnrstr(str, len, "hr", 2, flags);
+  }
+  if (has_suffix == TRUE) {
+    /* Parse hours */
+
+    if (sscanf(str, "%u", &hours) == 1) {
+      if (hours > INT_MAX) {
+        errno = ERANGE;
+        return -1;
+      }
+
+      if (duration != NULL) {
+        *duration = (hours * 60 * 60);
+      }
+ 
+      return 0;
+    }
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Use strtol(3) here, check for trailing garbage, etc. */
+  secs = (int) strtol(str, &ptr, 10);
+  if (ptr && *ptr) {
+    /* Not a bare number, but a string with non-numeric characters. */
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (secs < 0 ||
+      secs > INT_MAX) {
+    errno = ERANGE;
+    return -1;
+  }
+
+  if (duration != NULL) {
+    *duration = secs;
+  }
+
+  return 0;
 }
 
 int pr_str_get_nbytes(const char *str, const char *units, off_t *nbytes) {

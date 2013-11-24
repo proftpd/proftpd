@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.315 2013-10-13 17:34:01 castaglia Exp $
+ * $Id: mod_auth.c,v 1.316 2013-11-24 00:45:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,7 +46,7 @@ static int logged_in = 0;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
 static pr_fh_t *displaylogin_fh = NULL;
-static unsigned int TimeoutSession = 0;
+static int TimeoutSession = 0;
 
 static int auth_scan_scoreboard(void);
 static int auth_count_scoreboard(cmd_rec *, char *);
@@ -89,7 +89,7 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
 static int auth_session_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-session", NULL);
   pr_response_send_async(R_421,
-    _("Session Timeout (%u seconds): closing control connection"),
+    _("Session Timeout (%d seconds): closing control connection"),
     TimeoutSession);
 
   pr_log_pri(PR_LOG_NOTICE, "%s", "FTP session timed out, disconnected");
@@ -426,7 +426,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
             /* Set the context precedence. */
             ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-            TimeoutSession = *((unsigned int *) c->argv[0]);
+            TimeoutSession = *((int *) c->argv[0]);
 
             have_group_timeout = have_class_timeout = have_all_timeout = FALSE;
             have_user_timeout = TRUE;
@@ -441,7 +441,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
             /* Set the context precedence. */
             ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-            TimeoutSession = *((unsigned int *) c->argv[0]);
+            TimeoutSession = *((int *) c->argv[0]);
 
             have_user_timeout = have_class_timeout = have_all_timeout = FALSE;
             have_group_timeout = TRUE;
@@ -457,7 +457,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
             /* Set the context precedence. */
             ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-            TimeoutSession = *((unsigned int *) c->argv[0]);
+            TimeoutSession = *((int *) c->argv[0]);
 
             have_user_timeout = have_group_timeout = have_all_timeout = FALSE;
             have_class_timeout = TRUE;
@@ -472,7 +472,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         /* Set the context precedence. */
         ctxt_precedence = *((unsigned int *) c->argv[1]);
 
-        TimeoutSession = *((unsigned int *) c->argv[0]);
+        TimeoutSession = *((int *) c->argv[0]);
 
         have_user_timeout = have_group_timeout = have_class_timeout = FALSE;
         have_all_timeout = TRUE;
@@ -490,7 +490,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
   if (have_user_timeout || have_group_timeout ||
       have_class_timeout || have_all_timeout) {
-    pr_log_debug(DEBUG4, "setting TimeoutSession of %u seconds for current %s",
+    pr_log_debug(DEBUG4, "setting TimeoutSession of %d seconds for current %s",
       TimeoutSession,
       have_user_timeout ? "user" : have_group_timeout ? "group" :
       have_class_timeout ? "class" : "all");
@@ -3263,16 +3263,15 @@ MODRET set_rootrevoke(cmd_rec *cmd) {
 
 MODRET set_timeoutlogin(cmd_rec *cmd) {
   int timeout = -1;
-  char *endp = NULL;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  timeout = (int) strtol(cmd->argv[1], &endp, 10);
-
-  if ((endp && *endp) || timeout < 0 || timeout > 65535)
-    CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
+  if (pr_str_get_duration(cmd->argv[1], &timeout) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
@@ -3282,7 +3281,7 @@ MODRET set_timeoutlogin(cmd_rec *cmd) {
 }
 
 MODRET set_timeoutsession(cmd_rec *cmd) {
-  int seconds = 0, precedence = 0;
+  int timeout = 0, precedence = 0;
   config_rec *c = NULL;
 
   int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
@@ -3310,12 +3309,12 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
     precedence = 3;
   }
 
-  seconds = atoi(cmd->argv[1]);
-  if (seconds < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "seconds must be greater than or equal to 0", NULL));
+  if (pr_str_get_duration(cmd->argv[1], &timeout) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+  }
 
-  } else if (seconds == 0) {
+  if (timeout == 0) {
     /* do nothing */
     return PR_HANDLED(cmd);
   }
@@ -3335,8 +3334,8 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
 
   if (cmd->argc-1 == 1) {
     c = add_config_param(cmd->argv[0], 2, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-    *((unsigned int *) c->argv[0]) = seconds;
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = timeout;
     c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
     *((unsigned int *) c->argv[1]) = precedence;
 
@@ -3362,8 +3361,8 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
     argv = (char **) c->argv;
 
     /* Copy in the seconds. */
-    *argv = pcalloc(c->pool, sizeof(unsigned int));
-    *((unsigned int *) *argv++) = seconds;
+    *argv = pcalloc(c->pool, sizeof(int));
+    *((int *) *argv++) = timeout;
 
     /* Copy in the precedence. */
     *argv = pcalloc(c->pool, sizeof(unsigned int));

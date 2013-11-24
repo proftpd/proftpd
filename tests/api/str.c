@@ -23,7 +23,7 @@
  */
 
 /* String API tests
- * $Id: str.c,v 1.10 2013-09-24 01:21:16 castaglia Exp $
+ * $Id: str.c,v 1.11 2013-11-24 00:45:30 castaglia Exp $
  */
 
 #include "tests.h"
@@ -924,6 +924,205 @@ START_TEST (get_nbytes_test) {
 }
 END_TEST
 
+START_TEST (get_duration_test) {
+  char *str;
+  int duration, expected;
+  int res;
+
+  res = pr_str_get_duration(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted string '%s'", str);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "-1:-1:-1";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted string '%s'", str);
+  fail_unless(errno == ERANGE, "Failed to set errno to ERANGE");
+
+  str = "a:b:c";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted string '%s'", str);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "111:222:333";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted string '%s'", str);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  /* Test well-formatted hh::mm::ss strings. */
+
+  str = "00:00:00";
+  expected = 0;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "01:02:03";
+  expected = 3723;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "99:99:99";
+  expected = 362439;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  /* Test bad suffixes: -1h, -1hr, 9999foo, etc */
+
+  str = "-1h";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted suffix string '%s'", str);
+  fail_unless(errno == ERANGE, "Failed to set errno to ERANGE");
+
+  str = "-1hr";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted suffix string '%s'", str);
+  fail_unless(errno == ERANGE, "Failed to set errno to ERANGE");
+
+  str = "99foo";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted suffix string '%s'", str);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  str = "foo";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted suffix string '%s'", str);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  /* Test good suffices: "H"/"h"/"hr", "M"/"m"/"min", "S"/"s"/"sec" */
+
+  str = "76H";
+  expected = 273600;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "76h";
+  expected = 273600;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "76Hr";
+  expected = 273600;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "888M";
+  expected = 53280;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "888m";
+  expected = 53280;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "888MiN";
+  expected = 53280;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "999S";
+  expected = 999;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "999s";
+  expected = 999;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "999sEc";
+  expected = 999;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "0h";
+  expected = 0;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "0M";
+  expected = 0;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "0sec";
+  expected = 0;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "17";
+  expected = 17;
+  res = pr_str_get_duration(str, &duration);
+  fail_unless(res == 0,
+    "Failed to parse well-formed time string '%s': %s", str, strerror(errno));
+  fail_unless(duration == expected,
+    "Expected duration %d secs, got %d", expected, duration);
+
+  str = "-1";
+  res = pr_str_get_duration(str, NULL);
+  fail_unless(res == -1,
+    "Failed to handle badly formatted suffix string '%s'", str);
+  fail_unless(errno == ERANGE, "Failed to set errno to ERANGE");
+}
+END_TEST
+
 START_TEST (strnrstr_test) {
   int res, flags = 0;
   const char *s = NULL, *suffix = NULL;
@@ -1000,6 +1199,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, is_boolean_test);
   tcase_add_test(testcase, is_fnmatch_test);
   tcase_add_test(testcase, get_nbytes_test);
+  tcase_add_test(testcase, get_duration_test);
   tcase_add_test(testcase, strnrstr_test);
 
   suite_add_tcase(suite, testcase);

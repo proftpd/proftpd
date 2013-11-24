@@ -22,7 +22,7 @@
  * source code for OpenSSL in the source distribution.
  *
  * -----DO NOT EDIT BELOW THIS LINE-----
- * $Id: mod_ldap.c,v 1.106 2013-10-13 16:48:07 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.107 2013-11-24 00:45:28 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1749,9 +1749,9 @@ MODRET set_ldapquerytimeout(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  timeout = atoi(cmd->argv[1]);
-  if (timeout <= 0) {
-    CONF_ERROR(cmd, "LDAPQueryTimeout: timeout must be greater than zero");
+  if (pr_str_get_duration(cmd->argv[1], &timeout) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);

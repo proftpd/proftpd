@@ -23,7 +23,7 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.10 2013-09-24 01:21:16 castaglia Exp $
+ * $Id: str.h,v 1.11 2013-11-24 00:45:29 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -58,6 +58,14 @@ char *pr_str_strip(pool *, char *);
 char *pr_str_strip_end(char *, char *);
 int pr_str_get_nbytes(const char *, const char *, off_t *);
 char *pr_str_get_word(char **, int);
+
+/* Parses a "time string" into its duration, in seconds.  Returns the number
+ * of seconds obtained via the `duration' pointer, or -1 (with errno) if
+ * there was a problem parsing the provided string.
+ *
+ * A "time string" is formatted as "hh:mm:ss".
+ */
+int pr_str_get_duration(const char *str, int *duration);
 
 #define PR_STR_FL_PRESERVE_COMMENTS		0x0001
 #define PR_STR_FL_PRESERVE_WHITESPACE		0x0002

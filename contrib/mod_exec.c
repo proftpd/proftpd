@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.37 2013-10-07 01:29:04 castaglia Exp $
+ * $Id: mod_exec.c,v 1.38 2013-11-24 00:45:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,7 +60,7 @@ static unsigned int exec_opts = 0U;
 #define EXEC_OPT_SEND_STDOUT	0x0004
 #define EXEC_OPT_USE_STDIN	0x0008
 
-static time_t exec_timeout = 0;
+static int exec_timeout = 0;
 
 /* Flags for exec_ssystem() */
 #define EXEC_FL_CLEAR_GROUPS	0x0010	/* Clear supplemental groups */
@@ -1684,21 +1684,20 @@ MODRET set_execoptions(cmd_rec *cmd) {
 
 /* usage: ExecTimeout <seconds> */
 MODRET set_exectimeout(cmd_rec *cmd) {
-  long timeout = 0;
-  char *endp = NULL;
+  int timeout = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  timeout = strtol(cmd->argv[1], &endp, 10);
-
-  if ((endp && *endp) || timeout < 0 || timeout > 65535)
-    CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
+  if (pr_str_get_duration(cmd->argv[1], &timeout) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(time_t));
-  *((time_t *) c->argv[0]) = (time_t) timeout;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = timeout;
 
   return PR_HANDLED(cmd);
 }
@@ -1872,7 +1871,7 @@ static int exec_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecTimeout", FALSE);
   if (c) {
-    exec_timeout = *((time_t *) c->argv[0]);
+    exec_timeout = *((int *) c->argv[0]);
   }
 
   exec_closelog();

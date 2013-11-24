@@ -8503,15 +8503,14 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
 MODRET set_tlstimeouthandshake(cmd_rec *cmd) {
   int timeout = -1;
   config_rec *c = NULL;
-  char *tmp = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  timeout = (int) strtol(cmd->argv[1], &tmp, 10);
-
-  if ((tmp && *tmp) || timeout < 0 || timeout > 65535)
-    CONF_ERROR(cmd, "timeout value must be between 0 and 65535");
+  if (pr_str_get_duration(cmd->argv[1], &timeout) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
