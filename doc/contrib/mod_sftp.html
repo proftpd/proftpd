@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.76 2013-12-05 00:48:02 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.77 2013-12-05 00:53:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -847,6 +847,17 @@ The currently implemented options are:
     If you need more FTP-like functionality for any reason and wish to
     have <code>mod_sftp</code> silently ignore any permissions sent by the
     SCP client, use this option.
+
+  <p>
+  <li><code>IgnoreSCPUploadTimes</code><br>
+    <p>
+    Use this option to have <code>mod_sftp</code> silently ignore any
+    timestamps sent by SCP clients as part of the upload.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.5rc4</code>.
+  </li>
 
   <p>
   <li><code>IgnoreSFTPSetOwners</code><br>
@@ -2070,7 +2081,7 @@ capability.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-12-05 00:48:02 $</i><br>
+Last Updated: <i>$Date: 2013-12-05 00:53:22 $</i><br>
 
 <br><hr>
 
