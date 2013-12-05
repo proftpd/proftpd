@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.75 2013-07-22 21:51:00 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.76 2013-12-05 00:48:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -839,6 +839,16 @@ For example:
 <p>
 The currently implemented options are:
 <ul>
+  <li><code>IgnoreSCPUploadPerms</code><br>
+    <p>
+    When an SCP client uploads a file, the desired permissions on the file
+    are sent to the server as part of the upload.  (This is different from
+    FTP, which does <b>not</b> include the file permissions in an upload.)
+    If you need more FTP-like functionality for any reason and wish to
+    have <code>mod_sftp</code> silently ignore any permissions sent by the
+    SCP client, use this option.
+
+  <p>
   <li><code>IgnoreSFTPSetOwners</code><br>
     <p>
     Use this option to have <code>mod_sftp</code> silently ignore any
@@ -886,16 +896,6 @@ The currently implemented options are:
     permissions in an upload.) If you need more FTP-like functionality for any
     reason and wish to have <code>mod_sftp</code> silently ignore any
     permissions sent by the SFTP client, use this option.
-
-  <p>
-  <li><code>IgnoreSCPUploadPerms</code><br>
-    <p>
-    When an SCP client uploads a file, the desired permissions on the file
-    are sent to the server as part of the upload.  (This is different from
-    FTP, which does <b>not</b> include the file permissions in an upload.)
-    If you need more FTP-like functionality for any reason and wish to
-    have <code>mod_sftp</code> silently ignore any permissions sent by the
-    SCP client, use this option.
 
   <p>
   <li><code>MatchKeySubject</code><br>
@@ -2070,7 +2070,7 @@ capability.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-07-22 21:51:00 $</i><br>
+Last Updated: <i>$Date: 2013-12-05 00:48:02 $</i><br>
 
 <br><hr>
 
