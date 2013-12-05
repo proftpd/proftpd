@@ -27,14 +27,18 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.58 2013-10-13 23:05:04 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.59 2013-12-05 00:11:01 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_VERSION "mod_ctrls/0.9.5"
+#define MOD_CTRLS_VERSION	"mod_ctrls/0.9.5"
+
+#ifndef PR_USE_CTRLS
+# error "Controls support required (use --enable-ctrls)"
+#endif
 
 /* Master daemon in standalone mode? (from src/main.c) */
 extern unsigned char is_master;
