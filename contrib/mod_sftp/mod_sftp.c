@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.81 2013-10-13 16:48:08 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.82 2013-12-05 00:50:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1206,6 +1206,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strncmp(cmd->argv[i], "IgnoreSCPUploadPerms", 20) == 0) {
       opts |= SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS;
+
+    } else if (strncmp(cmd->argv[i], "IgnoreSCPUploadTimes", 20) == 0) {
+      opts |= SFTP_OPT_IGNORE_SCP_UPLOAD_TIMES;
 
     } else if (strncmp(cmd->argv[i], "OldProtocolCompat", 18) == 0) {
       opts |= SFTP_OPT_OLD_PROTO_COMPAT;

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.84 2013-10-13 22:51:36 castaglia Exp $
+ * $Id: scp.c,v 1.85 2013-12-05 00:50:16 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1168,20 +1168,29 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
     pr_trace_msg(trace_channel, 9, "setting times on directory '%s'",
       parent_sp->filename);
 
-    if (pr_fsio_utimes(parent_sp->filename, parent_sp->times) < 0) {
-      int xerrno = errno;
+    /* If the SFTPOption for ignoring times for SCP uploads is set, then
+     * skip the utimes on the upload file.
+     */
+    if (!(sftp_opts & SFTP_OPT_IGNORE_SCP_UPLOAD_TIMES)) {
+      if (pr_fsio_utimes(parent_sp->filename, parent_sp->times) < 0) {
+        int xerrno = errno;
 
-      pr_trace_msg(trace_channel, 2,
-        "error setting atime %lu, mtime %lu on '%s': %s",
-        (unsigned long) sp->times[0].tv_sec,
-        (unsigned long) sp->times[1].tv_sec, parent_sp->filename,
-        strerror(xerrno));
+        pr_trace_msg(trace_channel, 2,
+          "error setting atime %lu, mtime %lu on '%s': %s",
+          (unsigned long) sp->times[0].tv_sec,
+          (unsigned long) sp->times[1].tv_sec, parent_sp->filename,
+          strerror(xerrno));
 
-      write_confirm(p, channel_id, 1,
-        pstrcat(p, parent_sp->filename, ": error setting times: ",
-        strerror(xerrno), NULL));
-      parent_sp->wrote_errors = TRUE;
-      ok = FALSE;
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, parent_sp->filename, ": error setting times: ",
+          strerror(xerrno), NULL));
+        parent_sp->wrote_errors = TRUE;
+        ok = FALSE;
+      }
+
+    } else {
+      pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSCPUploadTimes' "
+        "configured, ignoring times sent by client");
     }
   }
 
@@ -1446,18 +1455,27 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (sp->recvd_timeinfo) {
     pr_trace_msg(trace_channel, 9, "setting times on file '%s'", sp->filename);
 
-    if (pr_fsio_utimes(sp->filename, sp->times) < 0) {
-      int xerrno = errno;
+    /* If the SFTPOption for ignoring times for SCP uploads is set, then
+     * skip the utimes on the upload file.
+     */
+    if (!(sftp_opts & SFTP_OPT_IGNORE_SCP_UPLOAD_TIMES)) {
+      if (pr_fsio_utimes(sp->filename, sp->times) < 0) {
+        int xerrno = errno;
 
-      pr_trace_msg(trace_channel, 2,
-        "error setting atime %lu, mtime %lu on '%s': %s",
-        (unsigned long) sp->times[0].tv_sec,
-        (unsigned long) sp->times[1].tv_sec, sp->best_path, strerror(xerrno));
-      write_confirm(p, channel_id, 1,
-        pstrcat(p, sp->filename, ": error setting times: ", strerror(xerrno),
-        NULL));
+        pr_trace_msg(trace_channel, 2,
+          "error setting atime %lu, mtime %lu on '%s': %s",
+          (unsigned long) sp->times[0].tv_sec,
+          (unsigned long) sp->times[1].tv_sec, sp->best_path, strerror(xerrno));
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->filename, ": error setting times: ", strerror(xerrno),
+          NULL));
 
-      sp->wrote_errors = TRUE;
+        sp->wrote_errors = TRUE;
+      }
+
+    } else {
+      pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSCPUploadTimes' "
+        "configured, ignoring times sent by client");
     }
   }
 

@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_sftp.h.in,v 1.28 2013-09-14 06:53:47 castaglia Exp $
+ * $Id: mod_sftp.h.in,v 1.29 2013-12-05 00:50:16 castaglia Exp $
  */
 
 #ifndef MOD_SFTP_H
@@ -103,6 +103,7 @@
 #define SFTP_OPT_IGNORE_SFTP_SET_PERMS		0x0020
 #define SFTP_OPT_IGNORE_SFTP_SET_TIMES		0x0040
 #define SFTP_OPT_IGNORE_SFTP_SET_OWNERS		0x0080
+#define SFTP_OPT_IGNORE_SCP_UPLOAD_TIMES	0x0100
 
 /* mod_sftp service flags */
 #define SFTP_SERVICE_FL_SFTP		0x0001

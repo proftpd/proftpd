@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1565 2013-11-24 00:45:28 castaglia Exp $
+$Id: NEWS,v 1.1566 2013-12-05 00:50:15 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -62,6 +62,7 @@ CVS
   breaking session caching.
 - Bug 3987 - LogFormat variable for just the filename.
 - Bug 3965 - Timeout directives have inconsistent maximum values.
+- Bug 3998 - Support IgnoreSCPUploadTimes SFTPOption.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------

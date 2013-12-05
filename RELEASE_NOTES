@@ -32,6 +32,7 @@ ChangeLog files.
     LogFormat %s for SFTP transfers (Bug#3948)
     LogFormat %d/%D (Bug#3950), %{basename} (Bug#3987)
     PersistentPasswd off (Bug#3952)
+    SFTPOptions IgnoreSCPUploadTimes (Bug#3998)
     SQLOptions IgnoreConfigFile (Bug#3971)
 
 
@@ -432,4 +433,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-11-11 01:34:03 $
+Last Updated: $Date: 2013-12-05 00:50:15 $
