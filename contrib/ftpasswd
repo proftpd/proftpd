@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.19 2013-12-08 16:15:04 castaglia Exp $
+#  $Id: ftpasswd,v 1.20 2013-12-08 16:44:37 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -40,7 +40,7 @@ my $shell_file = "/etc/shells";
 my $default_cracklib_dict = "/usr/lib/cracklib_dict";
 my $cracklib_dict;
 my $output_file;
-my $version = "1.2.0";
+my $version = "1.3.0";
 
 my @data;
 
@@ -59,6 +59,7 @@ GetOptions(\%opts,
   'hash',
   'h|help',
   'home=s',
+  'l|lock',
   'md5',
   'm|member=s@',
   'name=s',
@@ -70,6 +71,7 @@ GetOptions(\%opts,
   'shell=s',
   'stdin',
   'uid=n',
+  'u|unlock',
   'use-cracklib:s',
   'version',
 );
@@ -128,6 +130,46 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
     handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
       gecos => $gecos, home => $home, shell => $shell,
       delete_user => $opts{'delete-user'});
+
+    close_output_file();
+
+    # done
+    exit 0;
+  }
+
+  # check for and handle the --lock option.
+  if (defined($opts{'l'})) {
+    open_output_file();
+
+    my ($pass, $uid, $gid, $gecos, $home, $shell) = find_passwd_entry(name =>
+      $opts{'name'});
+
+    my $new_passwd = $pass;
+    $new_passwd = '!' . $new_passwd;
+
+    handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
+      gecos => $gecos, home => $home, shell => $shell,
+      new_passwd => $new_passwd);
+
+    close_output_file();
+
+    # done
+    exit 0;
+  }
+
+  # check for and handle the --unlock option.
+  if (defined($opts{'u'})) {
+    open_output_file();
+
+    my ($pass, $uid, $gid, $gecos, $home, $shell) = find_passwd_entry(name =>
+      $opts{'name'});
+
+    my $new_passwd = $pass;
+    $new_passwd =~ s/^!//;
+
+    handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
+      gecos => $gecos, home => $home, shell => $shell,
+      new_passwd => $new_passwd);
 
     close_output_file();
 
@@ -698,6 +740,7 @@ sub handle_passwd_entry {
   my $home = $args{'home'};
   my $shell = $args{'shell'};
   my $delete_user = $args{'delete_user'};
+  my $new_passwd = $args{'new_passwd'};
 
   # Trim any trailing slashes in $home.
   $home =~ s/(.*)\/$/$1/ if ($home =~ /\/$/);
@@ -732,12 +775,18 @@ sub handle_passwd_entry {
   }
 
   my $passwd;
-  unless ($delete_user) {
-    # check the requested shell against the list in /etc/shells
-    check_shell(shell => $shell);
 
-    # prompt the user for the password
-    $passwd = get_passwd(name => $name);
+  if (!$delete_user) {
+    if (!$new_passwd) {
+      # check the requested shell against the list in /etc/shells
+      check_shell(shell => $shell);
+
+      # prompt the user for the password
+      $passwd = get_passwd(name => $name);
+
+    } else {
+      $passwd = $new_passwd;
+    }
   }
 
   # remove the entry to be updated
@@ -858,6 +907,11 @@ usage: $program [--help] [--hash|--group|--passwd]
     --des       Use the DES algorithm for encrypting passwords.  The default
                 is the MD5 algorithm.
 
+    -l          Lock the password of the named account.  This option disables a
+    --lock      password by changing it to a value which matches no possible
+                encrypted value (it adds a '!' at the beginning of the
+                password). 
+
     --md5       Use the MD5 algorithm for encrypting passwords.  This is the
                 default.
 
@@ -868,6 +922,10 @@ usage: $program [--help] [--hash|--group|--passwd]
     --shell     Shell for the user (required).  Recommended: /bin/false
 
     --uid       Numerical user ID (required)
+
+    -u          Unlock the password of the named account.  This option
+    --unlock    re-enables a password by changing the password back to its
+                previous value (to the value before using the -l option).
 
     --change-password
 

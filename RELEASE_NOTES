@@ -36,6 +36,11 @@ ChangeLog files.
     SQLOptions IgnoreConfigFile (Bug#3971)
 
 
+  + Changed Utilities
+
+    ftpasswd --lock, --unlock (Bug#3994), concurent modifications (Bug#3995)
+
+
   + New Documentation
     LogLevels, LogMessages
 
@@ -433,4 +438,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-12-05 00:50:15 $
+Last Updated: $Date: 2013-12-08 16:44:37 $
