@@ -1,4 +1,4 @@
-<!-- $Id: ftpasswd.html,v 1.2 2012-12-14 00:16:27 castaglia Exp $ -->
+<!-- $Id: ftpasswd.html,v 1.3 2013-12-08 17:06:12 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/ftpasswd.html,v $ -->
 
 <html>
@@ -218,6 +218,11 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
  
                 Remove the entry for the given user name from the file.
 
+    -l          Lock the password of the named account.  This option disables a
+    --lock      password by changing it to a value which matches no possible
+                encrypted value (it adds a '!' at the beginning of the
+                password).
+
     --not-previous-password
 
                 Double-checks the given password against the previous password
@@ -240,6 +245,10 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
                 Read the password directly from standard in rather than
                 prompting for it.  This is useful for writing scripts that
                 automate use of ftpasswd.
+
+    -u          Unlock the password of the named account.  This option
+    --unlock    re-enables a password by changing the password back to its
+                previous value (to the value before using the -l option).
 
     --use-cracklib
                 Causes ftpasswd to use Alec Muffet's cracklib routines in
@@ -347,7 +356,7 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2012-12-14 00:16:27 $</i><br>
+Last Updated: <i>$Date: 2013-12-08 17:06:12 $</i><br>
 
 <br><hr>
 

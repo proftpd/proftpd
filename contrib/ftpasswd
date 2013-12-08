@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.20 2013-12-08 16:44:37 castaglia Exp $
+#  $Id: ftpasswd,v 1.21 2013-12-08 17:06:12 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -907,11 +907,6 @@ usage: $program [--help] [--hash|--group|--passwd]
     --des       Use the DES algorithm for encrypting passwords.  The default
                 is the MD5 algorithm.
 
-    -l          Lock the password of the named account.  This option disables a
-    --lock      password by changing it to a value which matches no possible
-                encrypted value (it adds a '!' at the beginning of the
-                password). 
-
     --md5       Use the MD5 algorithm for encrypting passwords.  This is the
                 default.
 
@@ -922,10 +917,6 @@ usage: $program [--help] [--hash|--group|--passwd]
     --shell     Shell for the user (required).  Recommended: /bin/false
 
     --uid       Numerical user ID (required)
-
-    -u          Unlock the password of the named account.  This option
-    --unlock    re-enables a password by changing the password back to its
-                previous value (to the value before using the -l option).
 
     --change-password
 
@@ -939,6 +930,11 @@ usage: $program [--help] [--hash|--group|--passwd]
     --delete-user
  
                 Remove the entry for the given user name from the file.
+
+    -l          Lock the password of the named account.  This option disables a
+    --lock      password by changing it to a value which matches no possible
+                encrypted value (it adds a '!' at the beginning of the
+                password).
 
     --not-previous-password
 
@@ -962,6 +958,10 @@ usage: $program [--help] [--hash|--group|--passwd]
                 Read the password directly from standard in rather than
                 prompting for it.  This is useful for writing scripts that
                 automate use of $program.
+
+    -u          Unlock the password of the named account.  This option
+    --unlock    re-enables a password by changing the password back to its
+                previous value (to the value before using the -l option).
 
     --use-cracklib
 
