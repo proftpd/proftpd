@@ -21,11 +21,12 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.18 2013-04-23 23:25:20 castaglia Exp $
+#  $Id: ftpasswd,v 1.19 2013-12-08 16:15:04 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
 
+use Fcntl qw(:flock);
 use File::Basename qw(basename);
 use Getopt::Long;
 
@@ -279,20 +280,33 @@ sub check_shell {
 sub close_output_file {
   my %args = @_;
 
-  open(OUTPUT, "> $output_file") or
-    die "$program: unable to open $output_file: $!\n";
+  if (open(my $fh, "> $output_file")) {
+    if (flock($fh, LOCK_EX|LOCK_NB)) {
+      # flush the data to the file
+      foreach my $line (@data) {
+        print $fh "$line\n";
+      }
 
-  # flush the data to the file
-  foreach my $line (@data) {
-    print OUTPUT "$line\n";
+      # set the permissions appropriately, ie 0440, before closing the file
+      unless (chmod(0440, $output_file)) {
+        flock($fh, LOCK_UN);
+        die("$program: unable to set permissions on $output_file: $!");
+      }
+
+      flock($fh, LOCK_UN);
+
+      unless (close($fh)) {
+        die("$program: unable to close $output_file: $!\n");
+      }
+
+    } else {
+      close($fh);
+      die("$program: unable to write $output_file: Locked (in use) by another process\n");
+    }
+
+  } else {
+    die("$program: unable to open $output_file: $!\n");
   }
-
-  # set the permissions appropriately, ie 0440, before closing the file
-  unless (chmod(0440, $output_file)) {
-    die("$program: unable to set permissions on $output_file: $!");
-  }
-
-  close(OUTPUT) or die "$program: unable to close $output_file: $!\n";
 }
 
 # ----------------------------------------------------------------------------
@@ -769,10 +783,21 @@ sub open_output_file {
       die "$program: unable to set permissions on $output_file to 0644: $!\n";
     }
 
-    open(INPUT, "< $output_file") or
-      die "$program: unable to open $output_file: $!\n";
-    chomp(@data = <INPUT>);
-    close(INPUT);
+    if (open(my $fh, "< $output_file")) {
+      if (flock($fh, LOCK_SH|LOCK_NB)) {
+        chomp(@data = <$fh>);
+        flock($fh, LOCK_UN);
+        close($fh);
+
+      } else {
+        close($fh);
+        die("$program: unable to read $output_file: Locked (in use) by another process\n");
+      }
+
+
+    } else {
+      die("$program: unable to open $output_file: $!\n");
+    }
   }
 
   # if the --force option was given, just zero out any data that might have
