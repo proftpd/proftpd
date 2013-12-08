@@ -8,6 +8,7 @@ use File::Path qw(mkpath rmtree);
 use File::Spec;
 use IO::Handle;
 
+use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
 
 $| = 1;
@@ -16,6 +17,11 @@ my $order = 0;
 
 my $TESTS = {
   ftpasswd_append_user_bug3867 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  ftpasswd_lock_unlock_bug3994 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -156,6 +162,139 @@ ftpasswd: unable to open /home/astocker/proftpd.passwd: Permission denied
   }
 
   unlink($log_file);
+}
+
+sub ftpasswd_lock_unlock_bug3994 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'contrib');
+
+  my $ftpasswd = get_ftpasswd_bin();
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  $self->handle_sigchld();
+
+  # Lock the account
+  my $cmd = "$ftpasswd --passwd --file=$setup->{auth_user_file} --name=$setup->{user} --lock >> $setup->{log_file} 2>&1";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing ftpasswd: $cmd\n";
+  }
+
+  `$cmd`;
+
+  # Fork child
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Try to login; should fail
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Login incorrect.';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Unlock the account
+  $cmd = "$ftpasswd --passwd --file=$setup->{auth_user_file} --name=$setup->{user} --unlock >> $setup->{log_file} 2>&1";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing ftpasswd: $cmd\n";
+  }
+
+  `$cmd`;
+
+  # Fork child
+  defined($pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;
