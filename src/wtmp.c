@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: wtmp.c,v 1.8 2013-10-09 05:16:11 castaglia Exp $
+ * $Id: wtmp.c,v 1.9 2013-12-09 18:58:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -74,6 +74,16 @@ int log_wtmp(const char *line, const char *name, const char *host,
 
     errno = xerrno;
     return -1;
+  }
+
+  if (fdx <= STDERR_FILENO) {
+    int new_fd;
+
+    new_fd = pr_fs_get_usable_fd(fdx);
+    if (new_fd >= 0) {
+      (void) close(fdx);
+      fdx = new_fd;
+    }
   }
 
   /* Unfortunately, utmp string fields are terminated by '\0' if they are
@@ -143,6 +153,16 @@ int log_wtmp(const char *line, const char *name, const char *host,
 
     errno = xerrno;
     return -1;
+  }
+
+  if (fd <= STDERR_FILENO) {
+    int new_fd;
+
+    new_fd = pr_fs_get_usable_fd(fd);
+    if (new_fd >= 0) {
+      (void) close(fd);
+      fd = new_fd;
+    }
   }
 
   if (fstat(fd, &buf) == 0) {

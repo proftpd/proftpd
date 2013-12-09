@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.85 2013-01-21 06:43:31 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.86 2013-12-09 18:58:30 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -4299,6 +4299,7 @@ static int quotatab_sess_init(void) {
             fd, strerror(errno));
 
         } else {
+          (void) close(quota_lockfd);
           quota_lockfd = fd;
         }
 

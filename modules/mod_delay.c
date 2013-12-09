@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.70 2013-10-13 23:05:05 castaglia Exp $
+ * $Id: mod_delay.c,v 1.71 2013-12-09 18:58:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -451,6 +451,29 @@ static int delay_table_init(void) {
       delay_tab.dt_path, strerror(xerrno));
     errno = xerrno;
     return -1;
+  }
+
+  /* Find a usable fd for the just-opened DelayTable fd. */
+  if (fh->fh_fd <= STDERR_FILENO) {
+    int res;
+
+    res = pr_fs_get_usable_fd(fh->fh_fd);
+    if (res < 0) {
+      pr_log_debug(DEBUG0, MOD_DELAY_VERSION
+        ": warning: unable to find good fd for DelayTable %d: %s",
+        fh->fh_fd, strerror(errno));
+
+    } else {
+      (void) close(fh->fh_fd);
+      fh->fh_fd = res;
+    }
+  }
+
+  /* Set the close-on-exec flag, for safety. */
+  if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+      ": unable to set CLO_EXEC on DelayTable fd %d: %s", fh->fh_fd,
+      strerror(errno));
   }
 
   if (pr_fsio_fstat(fh, &st) < 0) {
@@ -1299,15 +1322,8 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   unsigned int rownum;
   long interval, median;
   const char *proto;
-  unsigned char *authenticated;
 
-  if (!delay_engine)
-    return PR_DECLINED(cmd);
-
-  /* Has the client already authenticated? */
-  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
-  if (authenticated != NULL &&
-      *authenticated == TRUE) {
+  if (delay_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -1750,6 +1766,29 @@ static int delay_sess_init(void) {
       delay_tab.dt_path, strerror(xerrno));
     delay_engine = FALSE;
     return 0;
+  }
+
+  /* Find a usable fd for the just-opened DelayTable fd. */
+  if (fh->fh_fd <= STDERR_FILENO) {
+    int res;
+
+    res = pr_fs_get_usable_fd(fh->fh_fd);
+    if (res < 0) {
+      pr_log_debug(DEBUG0, MOD_DELAY_VERSION
+        ": warning: unable to find good fd for DelayTable %d: %s",
+        fh->fh_fd, strerror(errno));
+
+    } else {
+      (void) close(fh->fh_fd);
+      fh->fh_fd = res;
+    }
+  }
+
+  /* Set the close-on-exec flag, for safety. */
+  if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+      ": unable to set CLO_EXEC on DelayTable fd %d: %s", fh->fh_fd,
+      strerror(errno));
   }
 
   delay_tab.dt_fd = fh->fh_fd;

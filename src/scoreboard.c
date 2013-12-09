@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.79 2013-02-03 01:04:18 castaglia Exp $
+ * $Id: scoreboard.c,v 1.80 2013-12-09 18:58:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -624,6 +624,7 @@ int pr_open_scoreboard(int flags) {
         "ScoreboardFile fd %d: %s", scoreboard_fd, strerror(errno));
 
     } else {
+      (void) close(scoreboard_fd);
       scoreboard_fd = res;
     }
   }
@@ -680,7 +681,7 @@ int pr_open_scoreboard(int flags) {
           "ScoreboardMutex fd %d: %s", scoreboard_mutex_fd, strerror(errno));
 
       } else {
-        close(scoreboard_mutex_fd);
+        (void) close(scoreboard_mutex_fd);
         scoreboard_mutex_fd = res;
       }
     }
