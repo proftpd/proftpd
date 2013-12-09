@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.86 2013-12-09 18:58:30 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.87 2013-12-09 19:16:13 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -4290,22 +4290,12 @@ static int quotatab_sess_init(void) {
 
     } else {
       /* Make sure that this fd is not one of the main three. */
-      if (fd <= STDERR_FILENO) {
-        int res;
-
-        res = pr_fs_get_usable_fd(fd);
-        if (res < 0) {
-          quotatab_log("warning: unable to find usable fd for lockfd %d: %s",
-            fd, strerror(errno));
-
-        } else {
-          (void) close(quota_lockfd);
-          quota_lockfd = fd;
-        }
-
-      } else {
-        quota_lockfd = fd;
+      if (pr_fs_get_usable_fd2(&fd) < 0) {
+        quotatab_log("warning: unable to find usable fd for lockfd %d: %s", fd,
+          strerror(errno));
       }
+
+      quota_lockfd = fd;
     }
   }
 

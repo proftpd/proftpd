@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.150 2013-10-15 17:34:02 castaglia Exp $
+ * $Id: fsio.c,v 1.151 2013-12-09 19:16:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4305,6 +4305,33 @@ int pr_fs_get_usable_fd(int fd) {
   }
 
   return fdi;
+}
+
+int pr_fs_get_usable_fd2(int *fd) {
+  int new_fd = -1, res = 0;
+
+  if (fd == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (*fd > STDERR_FILENO) {
+    /* No need to obtain a different fd; the given one is already not one
+     * of the big three.
+     */
+    return 0;
+  }
+
+  new_fd = pr_fs_get_usable_fd(*fd);
+  if (new_fd >= 0) {
+    (void) close(*fd);
+    *fd = new_fd;
+
+  } else {
+    res = -1;
+  }
+
+  return res;
 }
 
 /* Simple multiplication and division doesn't work with very large

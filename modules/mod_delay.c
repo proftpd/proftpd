@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.71 2013-12-09 18:58:30 castaglia Exp $
+ * $Id: mod_delay.c,v 1.72 2013-12-09 19:16:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -454,19 +454,10 @@ static int delay_table_init(void) {
   }
 
   /* Find a usable fd for the just-opened DelayTable fd. */
-  if (fh->fh_fd <= STDERR_FILENO) {
-    int res;
-
-    res = pr_fs_get_usable_fd(fh->fh_fd);
-    if (res < 0) {
-      pr_log_debug(DEBUG0, MOD_DELAY_VERSION
-        ": warning: unable to find good fd for DelayTable %d: %s",
-        fh->fh_fd, strerror(errno));
-
-    } else {
-      (void) close(fh->fh_fd);
-      fh->fh_fd = res;
-    }
+  if (pr_fs_get_usable_fd2(&(fh->fh_fd)) < 0) {
+    pr_log_debug(DEBUG0, MOD_DELAY_VERSION
+      ": warning: unable to find good fd for DelayTable %d: %s",
+      fh->fh_fd, strerror(errno));
   }
 
   /* Set the close-on-exec flag, for safety. */
@@ -526,7 +517,7 @@ static int delay_table_init(void) {
         continue;
 
       } else {
-        int xerrno = errno;
+        xerrno = errno;
 
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
           ": unable to obtain write lock on DelayTable '%s': %s",
@@ -671,7 +662,7 @@ static int delay_table_init(void) {
         continue;
 
       } else {
-        int xerrno = errno;
+        xerrno = errno;
 
         pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
           ": unable to obtain write lock on DelayTable '%s': %s",
@@ -1769,19 +1760,10 @@ static int delay_sess_init(void) {
   }
 
   /* Find a usable fd for the just-opened DelayTable fd. */
-  if (fh->fh_fd <= STDERR_FILENO) {
-    int res;
-
-    res = pr_fs_get_usable_fd(fh->fh_fd);
-    if (res < 0) {
-      pr_log_debug(DEBUG0, MOD_DELAY_VERSION
-        ": warning: unable to find good fd for DelayTable %d: %s",
-        fh->fh_fd, strerror(errno));
-
-    } else {
-      (void) close(fh->fh_fd);
-      fh->fh_fd = res;
-    }
+  if (pr_fs_get_usable_fd2(&(fh->fh_fd)) < 0) {
+    pr_log_debug(DEBUG0, MOD_DELAY_VERSION
+      ": warning: unable to find good fd for DelayTable %d: %s",
+      fh->fh_fd, strerror(errno));
   }
 
   /* Set the close-on-exec flag, for safety. */

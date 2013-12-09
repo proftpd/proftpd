@@ -853,11 +853,7 @@ int snmp_db_open(pool *p, int db_id) {
   }
 
   /* Make sure the fd isn't one of the big three. */
-  res = pr_fs_get_usable_fd(db_fd);
-  if (res >= 0) {
-    (void) close(db_fd);
-    db_fd = res;
-  }
+  (void) pr_fs_get_usable_fd2(&db_fd);
 
   pr_trace_msg(trace_channel, 19, "opened fd %d for SNMPTable '%s'", db_fd,
     db_path);

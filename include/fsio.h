@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.34 2013-01-25 17:11:33 castaglia Exp $
+ * $Id: fsio.h,v 1.35 2013-12-09 19:16:13 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -329,6 +329,12 @@ void pr_resolve_fs_map(void);
  * until the new fd is not one of the big three.
  */
 int pr_fs_get_usable_fd(int);
+
+/* Similar to pr_fs_get_usable_fd(), except that it automatically closes the
+ * old (given) fd if a usable fd was found.  Returns -1 (with errno set) if
+ * a usable fd could not be found.
+ */
+int pr_fs_get_usable_fd2(int *);
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
   defined(HAVE_SYS_VFS_H)
