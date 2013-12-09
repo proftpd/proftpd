@@ -56,12 +56,17 @@
 # include <openssl/engine.h>
 # include <openssl/ocsp.h>
 #endif
+#ifdef PR_USE_OPENSSL_ECC
+# include <openssl/ec.h>
+# include <openssl/ecdh.h>
+#endif /* PR_USE_OPENSSL_ECC */
+
 
 #ifdef HAVE_MLOCK
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.5"
+#define MOD_TLS_VERSION		"mod_tls/2.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402 
@@ -337,6 +342,11 @@ typedef struct tls_pkey_obj {
   char *dsa_pkey;
   void *dsa_pkey_ptr;
 
+#ifdef PR_USE_OPENSSL_ECC
+  char *ec_pkey;
+  void *ec_pkey_ptr;
+#endif /* PR_USE_OPENSSL_ECC */
+
   /* Used for stashing the password for a PKCS12 file, which should
    * contain a certificate.  Any passphrase for the private key for that
    * certificate should be in one of the above RSA/DSA buffers.
@@ -352,6 +362,7 @@ typedef struct tls_pkey_obj {
 
 #define TLS_PKEY_USE_RSA		0x0100
 #define TLS_PKEY_USE_DSA		0x0200
+#define TLS_PKEY_USE_EC			0x0400
 
 static tls_pkey_t *tls_pkey_list = NULL;
 static unsigned int tls_npkeys = 0;
@@ -373,6 +384,7 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_FL_RSA_KEY	0x0001
 #define TLS_PASSPHRASE_FL_DSA_KEY	0x0002
 #define TLS_PASSPHRASE_FL_PKCS12_PASSWD	0x0004
+#define TLS_PASSPHRASE_FL_EC_KEY	0x0008
 
 #define TLS_PROTO_SSL_V3		0x0001
 #define TLS_PROTO_TLS_V1		0x0002
@@ -436,6 +448,7 @@ static unsigned int tls_sscn_mode = TLS_SSCN_MODE_SERVER;
 static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
 static char *tls_dhparam_file = NULL;
+static char *tls_ec_cert_file = NULL, *tls_ec_key_file = NULL;
 static char *tls_dsa_cert_file = NULL, *tls_dsa_key_file = NULL;
 static char *tls_pkcs12_file = NULL;
 static char *tls_rsa_cert_file = NULL, *tls_rsa_key_file = NULL;
@@ -1613,6 +1626,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     } else if (flags & TLS_PASSPHRASE_FL_DSA_KEY) {
       stdin_argv[2] = pstrdup(tmp_pool, "DSA");
 
+    } else if (flags & TLS_PASSPHRASE_FL_EC_KEY) {
+      stdin_argv[2] = pstrdup(tmp_pool, "EC");
+
     } else if (flags & TLS_PASSPHRASE_FL_PKCS12_PASSWD) {
       stdin_argv[2] = pstrdup(tmp_pool, "PKCS12");
     }
@@ -2153,18 +2169,29 @@ static tls_pkey_t *tls_lookup_pkey(void) {
        */
       PRIVS_ROOT
       if (k->rsa_pkey) {
-        if (mlock(k->rsa_pkey, k->pkeysz) < 0)
+        if (mlock(k->rsa_pkey, k->pkeysz) < 0) {
           tls_log("error locking passphrase into memory: %s", strerror(errno));
+        }
       }
 
       if (k->dsa_pkey) {
-        if (mlock(k->dsa_pkey, k->pkeysz) < 0)
+        if (mlock(k->dsa_pkey, k->pkeysz) < 0) {
           tls_log("error locking passphrase into memory: %s", strerror(errno));
+        }
       }
 
+# ifdef PR_USE_OPENSSL_ECC
+      if (k->ec_pkey) {
+        if (mlock(k->ec_pkey, k->pkeysz) < 0) {
+          tls_log("error locking passphrase into memory: %s", strerror(errno));
+        }
+      }
+# endif /* PR_USE_OPENSSL_ECC */
+
       if (k->pkcs12_passwd) {
-        if (mlock(k->pkcs12_passwd, k->pkeysz) < 0)
+        if (mlock(k->pkcs12_passwd, k->pkeysz) < 0) {
           tls_log("error locking password into memory: %s", strerror(errno));
+        }
       }
       PRIVS_RELINQUISH
 #endif /* HAVE_MLOCK */
@@ -2185,6 +2212,14 @@ static tls_pkey_t *tls_lookup_pkey(void) {
       free(k->dsa_pkey_ptr);
       k->dsa_pkey = k->dsa_pkey_ptr = NULL;
     }
+
+# ifdef PR_USE_OPENSSL_ECC
+    if (k->ec_pkey) {
+      pr_memscrub(k->ec_pkey, k->pkeysz);
+      free(k->ec_pkey_ptr);
+      k->ec_pkey = k->ec_pkey_ptr = NULL;
+    }
+# endif /* PR_USE_OPENSSL_ECC */
 
     if (k->pkcs12_passwd) {
       pr_memscrub(k->pkcs12_passwd, k->pkeysz);
@@ -2216,6 +2251,14 @@ static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
     return strlen(buf);
   }
 
+#ifdef PR_USE_OPENSSL_ECC
+  if ((k->flags & TLS_PKEY_USE_EC) && k->ec_pkey) {
+    sstrncpy(buf, k->ec_pkey, buflen);
+    buf[buflen - 1] = '\0';
+    return strlen(buf);
+  }
+#endif /* PR_USE_OPENSSL_ECC */
+
   return 0;
 }
 
@@ -2244,6 +2287,14 @@ static void tls_scrub_pkeys(void) {
       free(k->dsa_pkey_ptr);
       k->dsa_pkey = k->dsa_pkey_ptr = NULL;
     }
+
+#ifdef PR_USE_OPENSSL_ECC
+    if (k->ec_pkey) {
+      pr_memscrub(k->ec_pkey, k->pkeysz);
+      free(k->ec_pkey_ptr);
+      k->ec_pkey = k->ec_pkey_ptr = NULL;
+    }
+#endif /* PR_USE_OPENSSL_ECC */
 
     if (k->pkcs12_passwd) {
       pr_memscrub(k->pkcs12_passwd, k->pkeysz);
@@ -2388,6 +2439,29 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
   return dh;
 }
 
+#ifdef PR_USE_OPENSSL_ECC
+static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylength) {
+  static EC_KEY *ecdh = NULL;
+  static int init = 0;
+
+  /* XXX Uses 256-bit key for now. TODO: support other sizes. */
+
+  if (init == 0) {
+    ecdh = EC_KEY_new();
+
+    if (ecdh != NULL) {
+      /* ecdh->group = EC_GROUP_new_by_nid(NID_secp160r2); */
+      EC_KEY_set_group(ecdh,
+        EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
+    }
+
+    init = 1;
+  }
+
+  return ecdh;
+}
+#endif /* PR_USE_OPENSSL_ECC */
+
 /* Post 0.9.7a, RSA blinding is turned on by default, so there is no need to
  * do this manually.
  */
@@ -2406,11 +2480,13 @@ static void tls_blinding_on(SSL *ssl) {
     rsa = EVP_PKEY_get1_RSA(pkey);
 
   if (rsa) {
-    if (RSA_blinding_on(rsa, NULL) != 1)
+    if (RSA_blinding_on(rsa, NULL) != 1) {
       tls_log("error setting RSA blinding: %s",
         ERR_error_string(ERR_get_error(), NULL));
-    else
+
+    } else {
       tls_log("set RSA blinding on");
+    }
 
     /* Now, "free" the RSA pointer, to properly decrement the reference
      * counter.
@@ -2635,6 +2711,9 @@ static int tls_init_ctx(void) {
   }
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
+#ifdef PR_USE_OPENSSL_ECC
+  SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+#endif /* PR_USE_OPENSSL_ECC */
 
   if (tls_seed_prng() < 0) {
     pr_log_debug(DEBUG1, MOD_TLS_VERSION ": unable to properly seed PRNG");
@@ -2646,7 +2725,7 @@ static int tls_init_ctx(void) {
 static int tls_init_server(void) {
   config_rec *c = NULL;
   char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
-  X509 *server_dsa_cert = NULL, *server_rsa_cert = NULL;
+  X509 *server_ec_cert = NULL, *server_dsa_cert = NULL, *server_rsa_cert = NULL;
   int verify_mode = SSL_VERIFY_PEER;
   unsigned int tls_protocol = TLS_PROTO_DEFAULT;
 
@@ -2702,10 +2781,7 @@ static int tls_init_server(void) {
     PRIVS_RELINQUISH
 
   } else {
-
-    /* Default to using locations set in the OpenSSL config file.
-     */
-
+    /* Default to using locations set in the OpenSSL config file. */
     pr_trace_msg(trace_channel, 9,
       "using default OpenSSL verification locations (see $SSL_CERT_DIR "
       "environment variable)");
@@ -2831,23 +2907,31 @@ static int tls_init_server(void) {
   /* Assume that, if no separate key files are configured, the keys are
    * in the same file as the corresponding certificate.
    */
-  if (!tls_rsa_key_file)
-     tls_rsa_key_file = tls_rsa_cert_file;
+  if (tls_rsa_key_file == NULL) {
+    tls_rsa_key_file = tls_rsa_cert_file;
+  }
 
-  if (!tls_dsa_key_file)
-     tls_dsa_key_file = tls_dsa_cert_file;
+  if (tls_dsa_key_file == NULL) {
+    tls_dsa_key_file = tls_dsa_cert_file;
+  }
+
+  if (tls_ec_key_file == NULL) {
+    tls_ec_key_file = tls_ec_cert_file;
+  }
 
   PRIVS_ROOT
-  if (tls_rsa_cert_file) {
+  if (tls_rsa_cert_file != NULL) {
     FILE *fh = NULL;
-    int res;
+    int res, xerrno;
     X509 *cert = NULL;
 
     fh = fopen(tls_rsa_cert_file, "r");
+    xerrno = errno;
     if (fh == NULL) {
       PRIVS_RELINQUISH
       tls_log("error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
-        strerror(errno));
+        strerror(xerrno));
+      errno = xerrno;
       return -1;
     }
 
@@ -2880,12 +2964,12 @@ static int tls_init_server(void) {
     server_rsa_cert = cert;
   }
 
-  if (tls_rsa_key_file) {
+  if (tls_rsa_key_file != NULL) {
     int res;
 
     if (tls_pkey) {
       tls_pkey->flags |= TLS_PKEY_USE_RSA;
-      tls_pkey->flags &= ~TLS_PKEY_USE_DSA;
+      tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
     }
 
     res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_rsa_key_file,
@@ -2909,16 +2993,18 @@ static int tls_init_server(void) {
     }
   }
 
-  if (tls_dsa_cert_file) {
+  if (tls_dsa_cert_file != NULL) {
     FILE *fh = NULL;
-    int res;
+    int res, xerrno;
     X509 *cert = NULL;
 
     fh = fopen(tls_dsa_cert_file, "r");
+    xerrno = errno;
     if (fh == NULL) {
       PRIVS_RELINQUISH
       tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
-        strerror(errno));
+        strerror(xerrno));
+      errno = xerrno;
       return -1;
     }
 
@@ -2950,12 +3036,12 @@ static int tls_init_server(void) {
     server_dsa_cert = cert;
   }
 
-  if (tls_dsa_key_file) {
+  if (tls_dsa_key_file != NULL) {
     int res;
 
     if (tls_pkey) {
       tls_pkey->flags |= TLS_PKEY_USE_DSA;
-      tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
+      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
     }
 
     res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_dsa_key_file,
@@ -2979,7 +3065,81 @@ static int tls_init_server(void) {
     }
   }
 
-  if (tls_pkcs12_file) {
+#ifdef PR_USE_OPENSSL_ECC
+  if (tls_ec_cert_file != NULL) {
+    FILE *fh = NULL;
+    int res, xerrno;
+    X509 *cert = NULL;
+
+    fh = fopen(tls_ec_cert_file, "r");
+    xerrno = errno;
+    if (fh == NULL) {
+      PRIVS_RELINQUISH
+      tls_log("error reading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
+        strerror(xerrno));
+      errno = xerrno;
+      return -1;
+    }
+
+    cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
+      ssl_ctx->default_passwd_callback_userdata);
+    if (cert == NULL) {
+      PRIVS_RELINQUISH
+      tls_log("error reading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
+        tls_get_errors());
+      fclose(fh);
+      return -1;
+    }
+
+    fclose(fh);
+
+    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+     * can safely call X509_free() on it.  However, we need to keep that
+     * pointer around until after the handling of a cert chain file.
+     */
+    res = SSL_CTX_use_certificate(ssl_ctx, cert);
+    if (res <= 0) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
+        tls_get_errors());
+      return -1;
+    }
+
+    server_ec_cert = cert;
+  }
+
+  if (tls_ec_key_file != NULL) {
+    int res;
+
+    if (tls_pkey) {
+      tls_pkey->flags |= TLS_PKEY_USE_EC;
+      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
+    }
+
+    res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_ec_key_file,
+      X509_FILETYPE_PEM);
+
+    if (res <= 0) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading TLSECCertificateKeyFile '%s': %s",
+        tls_ec_key_file, tls_get_errors());
+      return -1;
+    }
+
+    res = SSL_CTX_check_private_key(ssl_ctx);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error checking key from TLSECCertificateKeyFile '%s': %s",
+        tls_ec_key_file, tls_get_errors());
+      return -1;
+    }
+  }
+#endif /* PR_USE_OPENSSL_ECC */
+
+  if (tls_pkcs12_file != NULL) {
     int res;
     FILE *fp;
     X509 *cert = NULL;
@@ -3061,13 +3221,20 @@ static int tls_init_server(void) {
       switch (EVP_PKEY_type(pkey->type)) {
         case EVP_PKEY_RSA:
           tls_pkey->flags |= TLS_PKEY_USE_RSA;
-          tls_pkey->flags &= ~TLS_PKEY_USE_DSA;
+          tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
           break;
 
         case EVP_PKEY_DSA:
           tls_pkey->flags |= TLS_PKEY_USE_DSA;
-          tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
+          tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
           break;
+
+#ifdef PR_USE_OPENSSL_ECC
+        case EVP_PKEY_EC:
+          tls_pkey->flags |= TLS_PKEY_USE_EC;
+          tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
+          break;
+#endif /* PR_USE_OPENSSL_ECC */
       }
     }
 
@@ -3120,6 +3287,12 @@ static int tls_init_server(void) {
         case EVP_PKEY_DSA:
           server_dsa_cert = cert;
           break;
+
+#ifdef PR_USE_OPENSSL_ECC
+        case EVP_PKEY_EC:
+          server_ec_cert = cert;
+          break;
+#endif /* PR_USE_OPENSSL_ECC */
       }
     }
 
@@ -3142,12 +3315,15 @@ static int tls_init_server(void) {
    */
   if (tls_rsa_cert_file == NULL &&
       tls_dsa_cert_file == NULL &&
+      tls_ec_cert_file == NULL &&
       tls_pkcs12_file == NULL) {
-    tls_log("no TLSRSACertificateFile, TLSDSACertificateFile, or TLSPKCS12File "
-      "configured; unable to handle SSL/TLS connections");
+    tls_log("no TLSRSACertificateFile, TLSDSACertificateFile, "
+      "TLSECCertificateFile, or TLSPKCS12File configured; "
+      "unable to handle SSL/TLS connections");
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-      ": no TLSRSACertificateFile, TLSDSACertificateFile, or TLSPKCS12File "
-      "configured; unable to handle SSL/TLS connections");
+      ": no TLSRSACertificateFile, TLSDSACertificateFile, "
+      "TLSECCertificateFile or TLSPKCS12File configured; "
+      "unable to handle SSL/TLS connections");
   }
 
   /* Handle a CertificateChainFile.  We need to do this here, after the
@@ -3231,6 +3407,13 @@ static int tls_init_server(void) {
     server_dsa_cert = NULL;
   }
 
+#ifdef PR_USE_OPENSSL_ECC
+  if (server_ec_cert != NULL) {
+    X509_free(server_ec_cert);
+    server_ec_cert = NULL;
+  }
+#endif /* PR_USE_OPENSSL_ECC */
+
   /* Set up the CRL. */
   if (tls_crl_file || tls_crl_path) {
     tls_crl_store = X509_STORE_new();
@@ -3294,7 +3477,6 @@ static int tls_init_server(void) {
         -1, &tls_module, tls_ctrl_renegotiate_cb, "SSL/TLS renegotiation");
     }
   }
-
 #endif
 
   return 0;
@@ -7955,6 +8137,66 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSECCertificateFile file */
+MODRET set_tlseccertfile(cmd_rec *cmd) {
+#ifdef PR_USE_OPENSSL_ECC
+  int res;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
+  }
+
+  if (*cmd->argv[1] != '/') {
+    CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does have EC support", NULL));
+#endif /* PR_USE_OPENSSL_ ECC */
+}
+
+/* usage: TLSECCertificateKeyFile file */
+MODRET set_tlseckeyfile(cmd_rec *cmd) {
+#ifdef PR_USE_OPENSSL_ECC
+  int res;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  PRIVS_ROOT
+  res = file_exists(cmd->argv[1]);
+  PRIVS_RELINQUISH
+
+  if (!res) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
+  }
+
+  if (*cmd->argv[1] != '/') {
+    CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does have EC support", NULL));
+#endif /* PR_USE_OPENSSL_ ECC */
+}
+
 /* usage: TLSEngine on|off */
 MODRET set_tlsengine(cmd_rec *cmd) {
   int bool = -1;
@@ -8835,7 +9077,7 @@ static void tls_get_passphrases(void) {
   char buf[256];
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
-    config_rec *rsa = NULL, *dsa = NULL, *pkcs12 = NULL;
+    config_rec *rsa = NULL, *dsa = NULL, *ec = NULL, *pkcs12 = NULL;
     tls_pkey_t *k = NULL;
 
     /* Find any TLS*CertificateKeyFile directives.  If they aren't present,
@@ -8851,10 +9093,16 @@ static void tls_get_passphrases(void) {
       dsa = find_config(s->conf, CONF_PARAM, "TLSDSACertificateFile", FALSE);
     }
 
+    ec = find_config(s->conf, CONF_PARAM, "TLSECCertificateKeyFile", FALSE);
+    if (ec == NULL) {
+      ec = find_config(s->conf, CONF_PARAM, "TLSECCertificateFile", FALSE);
+    }
+
     pkcs12 = find_config(s->conf, CONF_PARAM, "TLSPKCS12File", FALSE);
 
     if (rsa == NULL &&
         dsa == NULL &&
+        ec == NULL &&
         pkcs12 == NULL) {
       continue;
     }
@@ -8908,6 +9156,31 @@ static void tls_get_passphrases(void) {
           NULL);
       }
     }
+
+#ifdef PR_USE_OPENSSL_ECC
+    if (ec != NULL) {
+      snprintf(buf, sizeof(buf)-1, "EC key for the %s#%d (%s) server: ",
+        pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[sizeof(buf)-1] = '\0';
+
+      k->ec_pkey = tls_get_page(PEM_BUFSIZE, &k->ec_pkey_ptr);
+      if (k->ec_pkey == NULL) {
+        pr_log_pri(PR_LOG_ALERT, MOD_TLS_VERSION ": Out of memory!");
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
+      }
+
+      if (tls_get_passphrase(s, ec->argv[0], buf, k->ec_pkey,
+          k->pkeysz, TLS_PASSPHRASE_FL_EC_KEY) < 0) {
+        pr_log_debug(DEBUG0, MOD_TLS_VERSION
+          ": error reading EC passphrase: %s", tls_get_errors());
+
+        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
+          "EC certificate key '%s', exiting", (char *) dsa->argv[0]);
+        pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+          NULL);
+      }
+    }
+#endif /* PR_USE_OPENSSL_ECC */
 
     if (pkcs12) {
       snprintf(buf, sizeof(buf)-1,
@@ -9237,6 +9510,11 @@ static int tls_sess_init(void) {
     FALSE);
   tls_dsa_key_file = get_param_ptr(main_server->conf,
     "TLSDSACertificateKeyFile", FALSE);
+
+  tls_ec_cert_file = get_param_ptr(main_server->conf, "TLSECCertificateFile",
+    FALSE);
+  tls_ec_key_file = get_param_ptr(main_server->conf,
+    "TLSECCertificateKeyFile", FALSE);
 
   tls_pkcs12_file = get_param_ptr(main_server->conf, "TLSPKCS12File", FALSE);
 
@@ -9570,6 +9848,8 @@ static conftable tls_conftab[] = {
   { "TLSDHParamFile",		set_tlsdhparamfile,	NULL },
   { "TLSDSACertificateFile",	set_tlsdsacertfile,	NULL },
   { "TLSDSACertificateKeyFile",	set_tlsdsakeyfile,	NULL },
+  { "TLSECCertificateFile",	set_tlseccertfile,	NULL },
+  { "TLSECCertificateKeyFile",	set_tlseckeyfile,	NULL },
   { "TLSEngine",		set_tlsengine,		NULL },
   { "TLSLog",			set_tlslog,		NULL },
   { "TLSMasqueradeAddress",	set_tlsmasqaddr,	NULL },
