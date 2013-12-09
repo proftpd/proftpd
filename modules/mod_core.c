@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.457 2013-11-24 00:45:29 castaglia Exp $
+ * $Id: mod_core.c,v 1.458 2013-12-09 07:14:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -994,7 +994,7 @@ MODRET set_timeoutidle(cmd_rec *cmd) {
 }
 
 MODRET set_timeoutlinger(cmd_rec *cmd) {
-  long timeout = -1;
+  int timeout = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
@@ -1006,8 +1006,8 @@ MODRET set_timeoutlinger(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(long));
-  *((long *) c->argv[0]) = timeout;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = timeout;
 
   return PR_HANDLED(cmd);
 }
@@ -5787,9 +5787,13 @@ static int core_sess_init(void) {
 
   /* Check for a server-specific TimeoutLinger */
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutLinger", FALSE);
-  if (c != NULL)
-    pr_data_set_linger(*((long *) c->argv[0]));
-  
+  if (c != NULL) {
+    long timeout;
+
+    timeout = (long) *((int *) c->argv[0]);
+    pr_data_set_linger(timeout);
+  }
+ 
   /* Check for a configured DebugLevel. */
   debug_level = get_param_ptr(main_server->conf, "DebugLevel", FALSE);
   if (debug_level != NULL)
