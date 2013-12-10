@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.21 2013-12-08 17:06:12 castaglia Exp $
+#  $Id: ftpasswd,v 1.22 2013-12-10 17:26:30 castaglia Exp $
 # ---------------------------------------------------------------------------
 
 use strict;
@@ -145,7 +145,11 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
       $opts{'name'});
 
     my $new_passwd = $pass;
-    $new_passwd = '!' . $new_passwd;
+
+    # If this password is already "locked", leave it alone
+    if ($new_passwd !~ /^!/) {
+      $new_passwd = '!' . $new_passwd;
+    }
 
     handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
       gecos => $gecos, home => $home, shell => $shell,
@@ -165,7 +169,7 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
       $opts{'name'});
 
     my $new_passwd = $pass;
-    $new_passwd =~ s/^!//;
+    $new_passwd =~ s/^!+//;
 
     handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
       gecos => $gecos, home => $home, shell => $shell,
