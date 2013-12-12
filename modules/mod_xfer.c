@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.330 2013-11-24 00:45:29 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.331 2013-12-12 05:40:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -61,6 +61,10 @@ static off_t use_sendfile_len = 0;
 static float use_sendfile_pct = -1.0;
 
 static int xfer_check_limit(cmd_rec *);
+
+/* TransferOptions */
+#define PR_XFER_OPT_HANDLE_ALLO		0x0001
+static unsigned long xfer_opts = PR_XFER_OPT_HANDLE_ALLO;
 
 /* Transfer priority */
 static int xfer_prio_config = 0;
@@ -2387,16 +2391,17 @@ MODRET xfer_allo(cmd_rec *cmd) {
 #endif /* !HAVE_STRTOULL */
 
   if (tmp && *tmp) {
-    pr_response_add_err(R_504, _("%s: invalid ALLO argument"), cmd->arg);
+    pr_response_add_err(R_504, _("%s: Invalid ALLO argument"), cmd->arg);
     return PR_ERROR(cmd);
   }
 
-  if (requested_sz > 0) {
+  if (xfer_opts & PR_XFER_OPT_HANDLE_ALLO) {
     const char *path;
     off_t avail_sz;
     int res;
 
     path = pr_fs_getcwd();
+
     res = pr_fs_getsize2((char *) path, &avail_sz);
     if (res < 0) {
       /* If we can't check the filesystem stats for any reason, let the request
@@ -2405,6 +2410,7 @@ MODRET xfer_allo(cmd_rec *cmd) {
       pr_log_debug(DEBUG7,
         "error getting available size for filesystem containing '%s': %s",
         path, strerror(errno));
+      pr_response_add(R_202, _("No storage allocation necessary"));
 
     } else {
       if (requested_sz > avail_sz) {
@@ -2414,10 +2420,14 @@ MODRET xfer_allo(cmd_rec *cmd) {
         pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(ENOSPC));
         return PR_ERROR(cmd);
       }
+
+      pr_response_add(R_200, _("%s command successful"), cmd->argv[0]);
     }
+
+  } else {
+    pr_response_add(R_202, _("No storage allocation necessary"));
   }
 
-  pr_response_add(R_200, _("%s command successful"), cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -2566,6 +2576,13 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
   if (c) {
     xfer_prio_flags = *((unsigned long *) c->argv[0]);
     xfer_prio_config = *((int *) c->argv[1]);
+  }
+
+  /* If we are chrooted, then skip actually processing the ALLO command
+   * (Bug#3996).
+   */
+  if (session.chroot_path != NULL) {
+    xfer_opts &= ~PR_XFER_OPT_HANDLE_ALLO;
   }
 
   return PR_DECLINED(cmd);
