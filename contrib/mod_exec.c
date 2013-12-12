@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.38 2013-11-24 00:45:28 castaglia Exp $
+ * $Id: mod_exec.c,v 1.39 2013-12-12 06:11:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1540,7 +1540,7 @@ MODRET set_execonevent(cmd_rec *cmd) {
   if (cmd->argc-1 < 2)
     CONF_ERROR(cmd, "wrong number of parameters");
 
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (cmd->argv[1][strlen(cmd->argv[1])-1] == '*') {
     flags |= EXEC_FL_RUN_AS_ROOT;
@@ -1556,8 +1556,8 @@ MODRET set_execonevent(cmd_rec *cmd) {
     CONF_ERROR(cmd, "path to program must be a full path");
   }
 
-  c = pcalloc(exec_pool, sizeof(config_rec));
-  c->pool = make_sub_pool(exec_pool);
+  c = pcalloc(cmd->server->pool, sizeof(config_rec));
+  c->pool = make_sub_pool(cmd->server->pool);
   pr_pool_tag(c->pool, cmd->argv[0]);
   c->argc = cmd->argc + 1;
   c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1));
@@ -1566,8 +1566,9 @@ MODRET set_execonevent(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   c->argv[1] = NULL;
 
-  for (i = 2; i < cmd->argc; i++)
+  for (i = 2; i < cmd->argc; i++) {
     c->argv[i] = pstrdup(c->pool, cmd->argv[i]);
+  }
 
   eed = pcalloc(c->pool, sizeof(struct exec_event_data));
   eed->flags = flags;
@@ -1581,9 +1582,10 @@ MODRET set_execonevent(cmd_rec *cmd) {
   } else if (strncasecmp(eed->event, "MaxInstances", 13) == 0) {
      pr_event_register(&exec_module, "core.max-instances", exec_any_ev, eed);
 
-  } else
+  } else {
     /* Assume that the sysadmin knows the name of the event to use. */
     pr_event_register(&exec_module, eed->event, exec_any_ev, eed);
+  }
 
   return PR_HANDLED(cmd);
 }

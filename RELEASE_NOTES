@@ -29,7 +29,9 @@ ChangeLog files.
   + Changed Configuration Directives
 
     CapabilitiesSet +CAP_FSETID (Bug#3960)
-    ExecOnEvent ~ (Bug#3964)
+    ExecOnEvent
+      ~ (Bug#3964)
+      per-<VirtualHost>/<Global> (Bug#3876)
     LogFormat %s for SFTP transfers (Bug#3948)
     LogFormat %d/%D (Bug#3950), %{basename} (Bug#3987)
     PersistentPasswd off (Bug#3952)
@@ -439,4 +441,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2013-12-09 21:38:21 $
+Last Updated: $Date: 2013-12-12 06:11:27 $
