@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.37 2013-10-13 16:48:08 castaglia Exp $
+ * $Id: keys.c,v 1.38 2013-12-12 00:38:45 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2681,12 +2681,34 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   if (strncmp(sig_type, "ssh-rsa", 8) == 0) {
     RSA *rsa;
     int ok;
+    unsigned int modulus_len;
 
     rsa = EVP_PKEY_get1_RSA(pkey);
+    modulus_len = RSA_size(rsa);
 
     sig_len = sftp_msg_read_int(p, &signature, &signaturelen);
     sig = (unsigned char *) sftp_msg_read_data(p, &signature, &signaturelen,
       sig_len);
+
+    /* If the signature provided by the client is less than the expected
+     * key length, the verification will fail.  In such cases, we need to
+     * pad the provided signature with trailing zeros (Bug#3992).
+     */
+    if (sig_len < modulus_len) {
+      unsigned int padding_len;
+      unsigned char *padded_sig;
+
+      padding_len = modulus_len - sig_len;
+      padded_sig = pcalloc(p, modulus_len);
+     
+      pr_trace_msg(trace_channel, 12, "padding client-sent "
+        "RSA signature (%lu) bytes with %u bytes of zeroed data",
+        (unsigned long) sig_len, padding_len);
+      memmove(padded_sig + padding_len, sig, sig_len);
+
+      sig = padded_sig;
+      sig_len = (uint32_t) modulus_len;
+    }
 
     EVP_DigestInit(&ctx, EVP_sha1());
     EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
