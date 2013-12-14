@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.82 2013-12-05 00:50:16 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.83 2013-12-14 16:51:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -71,7 +71,7 @@ static int sftp_get_client_version(conn_t *conn) {
   char buf[256];
 
   /* Read client version.  This looks ugly, reading one byte at a time.
-   * It is necesary, though.  The banner sent by the client is not of any
+   * It is necessary, though.  The banner sent by the client is not of any
    * guaranteed length.  The client might also send the next SSH packet in
    * the exchange, such that both messages are in the socket buffer.  If
    * we read too much of the banner, we'll read into the KEXINIT, for example,
