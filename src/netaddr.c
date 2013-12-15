@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.95 2013-09-27 14:37:51 castaglia Exp $
+ * $Id: netaddr.c,v 1.96 2013-12-15 03:59:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2217,12 +2217,14 @@ const char *pr_netaddr_get_sess_remote_name(void) {
 }
 
 void pr_netaddr_set_sess_addrs(void) {
+  memset(&sess_local_addr, 0, sizeof(sess_local_addr));
   pr_netaddr_set_family(&sess_local_addr,
     pr_netaddr_get_family(session.c->local_addr));
   pr_netaddr_set_sockaddr(&sess_local_addr,
     pr_netaddr_get_sockaddr(session.c->local_addr));
   have_sess_local_addr = TRUE;
 
+  memset(&sess_remote_addr, 0, sizeof(sess_remote_addr));
   pr_netaddr_set_family(&sess_remote_addr,
     pr_netaddr_get_family(session.c->remote_addr));
   pr_netaddr_set_sockaddr(&sess_remote_addr,
