@@ -1055,6 +1055,9 @@ sub test_append_logfile {
   }
 
   my ($pkg, $filename, $lineno, $func) = (caller(1))[0, 1, 2, 3];
+  if ($func =~ /test_cleanup/) {
+    ($pkg, $filename, $lineno, $func) = (caller(2))[0, 1, 2, 3];
+  }
 
   print $outfh "-----BEGIN $func-----\n";
 
