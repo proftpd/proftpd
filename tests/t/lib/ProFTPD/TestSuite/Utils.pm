@@ -1079,6 +1079,8 @@ sub test_append_logfile {
 sub test_cleanup {
   my $log_file = shift;
   my $ex = shift;
+  my $keep_logfile = shift;
+  $keep_logfile = 0 unless $keep_logfile;
 
   if ($ex) {
     test_append_logfile($log_file, $ex);
@@ -1087,7 +1089,7 @@ sub test_cleanup {
     croak($ex);
   }
 
-  unlink($log_file);
+  unlink($log_file) unless $keep_logfile;
 }
 
 sub test_get_logfile {
