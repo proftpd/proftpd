@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.201 2013-10-13 22:51:36 castaglia Exp $
+ * $Id: fxp.c,v 1.202 2013-12-16 05:24:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -8478,6 +8478,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "READDIR", name);
   cmd->cmd_class = CL_DIRS;
+  cmd->group = G_DIRS;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "READDIR", NULL, NULL);
@@ -8546,26 +8547,30 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   path_list = make_array(fxp->pool, 5, sizeof(struct fxp_dirent *));
 
   cmd_name = cmd->argv[0];
-  pr_cmd_set_name(cmd, "READDIR");
 
-  if (dir_check(fxp->pool, cmd, G_DIRS, (char *) fxh->dir, NULL) > 0) {
+  /* If blocked by <Limit LIST>/<Limit NLST>, return EOF immediately. */
+  pr_cmd_set_name(cmd, C_LIST);
+  res = dir_check(fxp->pool, cmd, cmd->group, (char *) fxh->dir, NULL);
+  if (res == 0) {
+    have_error = TRUE;
+  }
+
+  if (!have_error) {
+    pr_cmd_set_name(cmd, C_NLST);
+    res = dir_check(fxp->pool, cmd, cmd->group, (char *) fxh->dir, NULL);
+    if (res == 0) {
+      have_error = TRUE;
+    }
+  }
+
+  pr_cmd_set_name(cmd, "READDIR");
+  res = dir_check(fxp->pool, cmd, cmd->group, (char *) fxh->dir, NULL);
+  if (res == 2) {
     /* Explicitly allowed by <Limit READDIR> configuration. */
     have_error = FALSE;
 
-  } else {
-    /* If blocked by <Limit LIST>/<Limit NLST>, return EOF immediately. */
-
-    pr_cmd_set_name(cmd, C_LIST);
-    if (!dir_check(fxp->pool, cmd, G_DIRS, (char *) fxh->dir, NULL)) {
-      have_error = TRUE;
-    }
-
-    if (!have_error) {
-      pr_cmd_set_name(cmd, C_NLST);
-      if (!dir_check(fxp->pool, cmd, G_DIRS, (char *) fxh->dir, NULL)) {
-        have_error = TRUE;
-      }
-    }
+  } else if (res == 0) {
+    have_error = TRUE;
   }
 
   if (have_error) {
