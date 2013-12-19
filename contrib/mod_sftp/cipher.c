@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.16 2013-10-07 01:29:04 castaglia Exp $
+ * $Id: cipher.c,v 1.17 2013-12-19 16:32:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -69,6 +69,9 @@ static size_t cipher_blockszs[2] = {
   SFTP_CIPHER_DEFAULT_BLOCK_SZ,
   SFTP_CIPHER_DEFAULT_BLOCK_SZ,
 };
+
+/* Buffer size for reading/writing keys */
+#define SFTP_CIPHER_BUFSZ			1536
 
 static unsigned int read_cipher_idx = 0;
 static unsigned int write_cipher_idx = 0;
@@ -370,7 +373,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    */
   EVP_CIPHER_CTX_init(cipher_ctx);
 
-  bufsz = buflen = 1024;
+  bufsz = buflen = SFTP_CIPHER_BUFSZ;
   ptr = buf = sftp_msg_getbuf(p, bufsz);
 
   /* Need to use SSH2-style format of K for the IV and key. */
@@ -532,7 +535,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    */
   EVP_CIPHER_CTX_init(cipher_ctx);
 
-  bufsz = buflen = 1024;
+  bufsz = buflen = SFTP_CIPHER_BUFSZ;
   ptr = buf = sftp_msg_getbuf(p, bufsz);
 
   /* Need to use SSH2-style format of K for the IV and key. */

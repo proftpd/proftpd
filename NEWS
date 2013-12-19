@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1573 2013-12-12 06:11:27 castaglia Exp $
+$Id: NEWS,v 1.1574 2013-12-19 16:32:32 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -71,6 +71,7 @@ CVS
 - Bug 3992 - RSA signature issue when connecting using PuTTY/WinSCP.
 - Bug 3996 - Handling ALLO command can result in wrong response when chrooted.
 - Bug 3876 - ExecOnEvent should be configurable per <VirtualHost>/<Global>.
+- Bug 4001 - mod_sftp fails key exchange for 8192-bit DH group.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------
