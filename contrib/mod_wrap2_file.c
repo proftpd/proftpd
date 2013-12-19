@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_wrap2_file.c,v 1.13 2013-06-15 00:32:52 castaglia Exp $
+ * $Id: mod_wrap2_file.c,v 1.14 2013-12-19 23:19:50 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -247,6 +247,7 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
 
     if (path) {
       srcinfo = path;
+      wrap2_log("resolved tilde: path now '%s'", srcinfo);
     }
   }
 
@@ -261,6 +262,7 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
       interp_path = sreplace(tab_pool, srcinfo, "%U", orig_user, NULL);
       if (interp_path != NULL) {
         srcinfo = interp_path;
+        wrap2_log("resolved %%U: path now '%s'", srcinfo);
       }
     }
   }
