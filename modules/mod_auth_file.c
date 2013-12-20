@@ -23,10 +23,11 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.56 2013-12-20 17:52:43 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.57 2013-12-20 18:05:34 castaglia Exp $
  */
 
 #include "conf.h"
+#include "privs.h"
 
 /* AIX has some rather stupid function prototype inconsistencies between
  * their crypt.h and stdlib.h's setkey() declarations.
@@ -598,9 +599,14 @@ static int af_setgrent(void) {
       return 0;
 
     } else {
+      int xerrno;
+
+      PRIVS_ROOT
       af_group_file->af_file = fopen(af_group_file->af_path, "r");
+      xerrno = errno;
+      PRIVS_RELINQUISH
+
       if (af_group_file->af_file == NULL) {
-        int xerrno = errno;
         struct stat st;
 
         if (pr_fsio_stat(af_group_file->af_path, &st) == 0) {
@@ -828,9 +834,14 @@ static int af_setpwent(void) {
       return 0;
 
     } else {
+      int xerrno;
+
+      PRIVS_ROOT
       af_user_file->af_file = fopen(af_user_file->af_path, "r");
+      xerrno = errno;
+      PRIVS_RELINQUISH
+
       if (af_user_file->af_file == NULL) {
-        int xerrno = errno;
         struct stat st;
 
         if (pr_fsio_stat(af_user_file->af_path, &st) == 0) {
