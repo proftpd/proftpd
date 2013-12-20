@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.55 2013-12-20 17:39:51 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.56 2013-12-20 17:52:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -605,7 +605,7 @@ static int af_setgrent(void) {
 
         if (pr_fsio_stat(af_group_file->af_path, &st) == 0) {
           pr_log_pri(PR_LOG_WARNING,
-            "error: unable to open AuthGroupFile file '%s' (owned by "
+            "error: unable to open AuthGroupFile file '%s' (file owned by "
             "UID %lu, GID %lu, perms %04o, accessed by UID %lu, GID %lu): %s",
             af_group_file->af_path, (unsigned long) st.st_uid,
             (unsigned long) st.st_gid, st.st_mode & ~S_IFMT,
@@ -835,7 +835,7 @@ static int af_setpwent(void) {
 
         if (pr_fsio_stat(af_user_file->af_path, &st) == 0) {
           pr_log_pri(PR_LOG_WARNING,
-            "error: unable to open AuthUserFile file '%s' (owned by "
+            "error: unable to open AuthUserFile file '%s' (file owned by "
             "UID %lu, GID %lu, perms %04o, accessed by UID %lu, GID %lu): %s",
             af_user_file->af_path, (unsigned long) st.st_uid,
             (unsigned long) st.st_gid, st.st_mode & ~S_IFMT,
