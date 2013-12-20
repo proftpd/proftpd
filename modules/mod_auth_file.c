@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.54 2013-11-10 01:27:06 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.55 2013-12-20 17:39:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -123,8 +123,8 @@ static int af_check_parent_dir(pool *p, const char *name, const char *path) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
-      ": unable to use %s from world-writable directory '%s': %s",
-      name, dir_path, strerror(xerrno));
+      ": unable to use %s from world-writable directory '%s' (perms %04o): %s",
+      name, dir_path, st.st_mode & ~S_IFMT, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -200,8 +200,8 @@ static int af_check_file(pool *p, const char *name, const char *path) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
-      ": unable to use world-readable %s '%s': %s",
-      name, orig_path, strerror(xerrno));
+      ": unable to use world-readable %s '%s' (perms %04o): %s",
+      name, orig_path, st.st_mode & ~S_IFMT, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -211,8 +211,8 @@ static int af_check_file(pool *p, const char *name, const char *path) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
-      ": unable to use world-writable %s '%s': %s",
-      name, orig_path, strerror(xerrno));
+      ": unable to use world-writable %s '%s' (perms %04o): %s",
+      name, orig_path, st.st_mode & ~S_IFMT, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -601,10 +601,22 @@ static int af_setgrent(void) {
       af_group_file->af_file = fopen(af_group_file->af_path, "r");
       if (af_group_file->af_file == NULL) {
         int xerrno = errno;
+        struct stat st;
 
-        pr_log_pri(PR_LOG_WARNING,
-          "error: unable to open AuthGroupFile file '%s': %s",
-          af_group_file->af_path, strerror(xerrno));
+        if (pr_fsio_stat(af_group_file->af_path, &st) == 0) {
+          pr_log_pri(PR_LOG_WARNING,
+            "error: unable to open AuthGroupFile file '%s' (owned by "
+            "UID %lu, GID %lu, perms %04o, accessed by UID %lu, GID %lu): %s",
+            af_group_file->af_path, (unsigned long) st.st_uid,
+            (unsigned long) st.st_gid, st.st_mode & ~S_IFMT,
+            (unsigned long) geteuid(), (unsigned long) getegid(),
+            strerror(xerrno));
+
+        } else {
+          pr_log_pri(PR_LOG_WARNING,
+            "error: unable to open AuthGroupFile file '%s': %s",
+            af_group_file->af_path, strerror(xerrno));
+        }
 
         errno = xerrno;
         return -1;
@@ -819,10 +831,23 @@ static int af_setpwent(void) {
       af_user_file->af_file = fopen(af_user_file->af_path, "r");
       if (af_user_file->af_file == NULL) {
         int xerrno = errno;
+        struct stat st;
 
-        pr_log_pri(PR_LOG_WARNING,
-          "error: unable to open AuthUserFile file '%s': %s",
-          af_user_file->af_path, strerror(xerrno));
+        if (pr_fsio_stat(af_user_file->af_path, &st) == 0) {
+          pr_log_pri(PR_LOG_WARNING,
+            "error: unable to open AuthUserFile file '%s' (owned by "
+            "UID %lu, GID %lu, perms %04o, accessed by UID %lu, GID %lu): %s",
+            af_user_file->af_path, (unsigned long) st.st_uid,
+            (unsigned long) st.st_gid, st.st_mode & ~S_IFMT,
+            (unsigned long) geteuid(), (unsigned long) getegid(),
+            strerror(xerrno));
+
+        } else {
+          pr_log_pri(PR_LOG_WARNING,
+            "error: unable to open AuthUserFile file '%s': %s",
+            af_user_file->af_path, strerror(xerrno));
+        }
+
         errno = xerrno;
         return -1;
       }
