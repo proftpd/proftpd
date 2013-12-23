@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.97 2013-12-23 07:22:47 castaglia Exp $
+ * $Id: netaddr.c,v 1.98 2013-12-23 17:53:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -874,12 +874,12 @@ pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
    * valid network address in the specified address family.  Usually,
    * this means that name is actually a DNS name, not an IP address
    * string.  So we treat it as a DNS name, and use getaddrinfo(3) to
-   * resolve that name to its IP address(es) -- unless the ADDRS_ONLY flag
+   * resolve that name to its IP address(es) -- unless the EXCL_DNS flag
    * has been used, indicating that the caller does not want us resolving
    * DNS names.
    */
 
-  if (!(flags & PR_NETADDR_GET_ADDR_FL_ADDRS_ONLY)) {
+  if (!(flags & PR_NETADDR_GET_ADDR_FL_EXCL_DNS)) {
     na = get_addr_by_name(p, name, addrs);
     if (na != NULL) {
       return na;

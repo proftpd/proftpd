@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.11 2013-12-23 07:22:47 castaglia Exp $
+ * $Id: netaddr.c,v 1.12 2013-12-23 17:53:42 castaglia Exp $
  */
 
 #include "tests.h"
@@ -155,7 +155,7 @@ START_TEST (netaddr_get_addr2_test) {
   fail_if(res == NULL,
     "Expected to resolve name '%s' to an address via INCL_DEVICE", name);
 
-  flags = PR_NETADDR_GET_ADDR_FL_ADDRS_ONLY;
+  flags = PR_NETADDR_GET_ADDR_FL_EXCL_DNS;
   name = "localhost";
   res = pr_netaddr_get_addr2(p, name, NULL, flags);
   fail_unless(res == NULL, "Resolved name '%s' to IP address unexpectedly",
