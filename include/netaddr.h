@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2012 The ProFTPD Project team
+ * Copyright (c) 2003-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.34 2012-09-12 01:15:13 castaglia Exp $
+ * $Id: netaddr.h,v 1.35 2013-12-23 07:22:47 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -236,6 +236,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *, const char *, array_header **);
 pr_netaddr_t *pr_netaddr_get_addr2(pool *, const char *, array_header **,
   unsigned int);
 #define PR_NETADDR_GET_ADDR_FL_INCL_DEVICE	0x001
+#define PR_NETADDR_GET_ADDR_FL_ADDRS_ONLY	0x002
 
 /* Compare the two given pr_netaddr_ts.  In order for the comparison to
  * be accurate, the pr_netaddr_ts must be of the same family (AF_INET or

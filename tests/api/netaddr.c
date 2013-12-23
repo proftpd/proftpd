@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2012 The ProFTPD Project team
+ * Copyright (c) 2008-2013 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.10 2013-01-05 03:36:39 castaglia Exp $
+ * $Id: netaddr.c,v 1.11 2013-12-23 07:22:47 castaglia Exp $
  */
 
 #include "tests.h"
@@ -75,6 +75,7 @@ START_TEST (netaddr_dup_test) {
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
   addr = pr_netaddr_alloc(p);
+  pr_netaddr_set_family(addr, AF_INET);
   
   res = pr_netaddr_dup(NULL, addr);
   fail_unless(res == NULL, "Failed to handle null pool");
@@ -139,6 +140,27 @@ START_TEST (netaddr_get_addr_test) {
     strerror(errno));
   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
     AF_INET, res->na_family);
+}
+END_TEST
+
+START_TEST (netaddr_get_addr2_test) {
+  pr_netaddr_t *res;
+  const char *name;
+  array_header *addrs = NULL;
+  int flags;
+
+  flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
+  name = "lo0";
+  res = pr_netaddr_get_addr2(p, name, NULL, flags);
+  fail_if(res == NULL,
+    "Expected to resolve name '%s' to an address via INCL_DEVICE", name);
+
+  flags = PR_NETADDR_GET_ADDR_FL_ADDRS_ONLY;
+  name = "localhost";
+  res = pr_netaddr_get_addr2(p, name, NULL, flags);
+  fail_unless(res == NULL, "Resolved name '%s' to IP address unexpectedly",
+    name);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT");
 }
 END_TEST
 
@@ -415,7 +437,8 @@ START_TEST (netaddr_get_dnsstr_ipv6_test) {
               strcmp(res, "localhost6") == 0 ||
               strcmp(res, "localhost6.localdomain") == 0 ||
               strcmp(res, "ip6-localhost") == 0 ||
-              strcmp(res, "ip6-loopback") == 0,
+              strcmp(res, "ip6-loopback") == 0 ||
+              strcmp(res, ip) == 0,
     "Expected '%s', got '%s'", "localhost, localhost.localdomain et al", res);
 }
 END_TEST
@@ -697,6 +720,7 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_dup_test);
   tcase_add_test(testcase, netaddr_clear_test);
   tcase_add_test(testcase, netaddr_get_addr_test);
+  tcase_add_test(testcase, netaddr_get_addr2_test);
   tcase_add_test(testcase, netaddr_get_family_test);
   tcase_add_test(testcase, netaddr_set_family_test);
   tcase_add_test(testcase, netaddr_cmp_test);
