@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.85 2013-12-05 00:50:16 castaglia Exp $
+ * $Id: scp.c,v 1.86 2013-12-27 23:38:14 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1151,17 +1151,26 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   parent_sp = sp->parent_dir;
 
-  pr_trace_msg(trace_channel, 9, "setting perms %04o on directory '%s'",
-    (unsigned int) parent_sp->perms, parent_sp->path);
-  if (pr_fsio_chmod(parent_sp->path, parent_sp->perms) < 0) {
-    int xerrno = errno;
+  /* If the SFTPOption for ignoring perms for SCP uploads is set, then
+   * skip the chmod on the upload file.
+   */
+  if (!(sftp_opts & SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS)) {
+    pr_trace_msg(trace_channel, 9, "setting perms %04o on directory '%s'",
+      (unsigned int) parent_sp->perms, parent_sp->path);
+    if (pr_fsio_chmod(parent_sp->path, parent_sp->perms) < 0) {
+      int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 2, "error setting mode %04o on '%s': %s",
-      (unsigned int) parent_sp->perms, parent_sp->path, strerror(xerrno));
-    write_confirm(p, channel_id, 1,
-      pstrcat(p, parent_sp->path, ": error setting mode: ", strerror(xerrno),
-      NULL));
-    ok = FALSE;
+      pr_trace_msg(trace_channel, 2, "error setting mode %04o on '%s': %s",
+        (unsigned int) parent_sp->perms, parent_sp->path, strerror(xerrno));
+      write_confirm(p, channel_id, 1,
+        pstrcat(p, parent_sp->path, ": error setting mode: ", strerror(xerrno),
+        NULL));
+      ok = FALSE;
+    }
+
+  } else {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSCPUploadPerms' "
+      "configured, ignoring perms sent by client");
   }
 
   if (parent_sp->recvd_timeinfo) {
