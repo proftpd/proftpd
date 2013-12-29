@@ -25,7 +25,7 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.316 2013-11-24 00:45:29 castaglia Exp $
+ * $Id: mod_auth.c,v 1.317 2013-12-29 20:17:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,14 +53,27 @@ static int auth_count_scoreboard(cmd_rec *, char *);
 
 /* auth_cmd_chk_cb() is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
+ *
+ * Note: Once this function returns true (i.e. client has authenticated),
+ * it will ALWAYS return true.  At least until REIN is implemented.  Thus
+ * we have a flag for such a situation, to save on redundant lookups for
+ * the "authenticated" record.
  */
-static int auth_cmd_chk_cb(cmd_rec *cmd) {
-  unsigned char *authenticated = get_param_ptr(cmd->server->conf,
-    "authenticated", FALSE);
+static int auth_have_authenticated = FALSE;
 
-  if (!authenticated || *authenticated == FALSE) {
-    pr_response_send(R_530, _("Please login with USER and PASS"));
-    return FALSE;
+static int auth_cmd_chk_cb(cmd_rec *cmd) {
+  if (auth_have_authenticated == FALSE) {
+    unsigned char *authd;
+
+    authd = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+
+    if (authd == NULL ||
+        *authd == FALSE) {
+      pr_response_send(R_530, _("Please login with USER and PASS"));
+      return FALSE;
+    }
+
+    auth_have_authenticated = TRUE;
   }
 
   return TRUE;
