@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.c,v 1.39 2013-10-07 05:51:30 castaglia Exp $
+ * $Id: parser.c,v 1.40 2013-12-30 06:38:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,10 +65,10 @@ static struct config_src *parser_sources = NULL;
  */
 
 static void add_config_ctxt(config_rec *c) {
-  if (!*parser_curr_config)
+  if (!*parser_curr_config) {
     *parser_curr_config = c;
 
-  else {
+  } else {
     parser_curr_config = (config_rec **) push_array(parser_confstack);
     *parser_curr_config = c;
   }
@@ -84,10 +84,10 @@ static struct config_src *add_config_source(pr_fh_t *fh) {
   cs->cs_fh = fh;
   cs->cs_lineno = 0;
 
-  if (!parser_sources)
+  if (!parser_sources) {
     parser_sources = cs;
 
-  else {
+  } else {
     cs->cs_next = parser_sources;
     parser_sources = cs;
   }
