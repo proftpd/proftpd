@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.151 2013-12-09 19:16:13 castaglia Exp $
+ * $Id: fsio.c,v 1.152 2013-12-30 06:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -561,20 +561,24 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
 
       /* Determine which function to use, stat() or lstat(). */
       if (op == FSIO_FILE_STAT) {
-        while (fs && fs->fs_next && !fs->stat)
+        while (fs && fs->fs_next && !fs->stat) {
           fs = fs->fs_next;
+        }
 
         mystat = fs->stat;
 
       } else {
-        while (fs && fs->fs_next && !fs->lstat)
+        while (fs && fs->fs_next && !fs->lstat) {
           fs = fs->fs_next;
+        }
 
         mystat = fs->lstat;
       }
 
-      if (mystat(fs, path, &sbuf) == -1 || !S_ISLNK(sbuf.st_mode))
+      if (mystat(fs, path, &sbuf) == -1 ||
+          !S_ISLNK(sbuf.st_mode)) {
         return fs;
+      }
 
     } else {
 
@@ -591,8 +595,9 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
       if (i != -1) {
         linkbuf[i] = '\0';
         if (strchr(linkbuf, '/') == NULL) {
-          if (i + 3 > PR_TUNABLE_PATH_MAX)
+          if (i + 3 > PR_TUNABLE_PATH_MAX) {
             i = PR_TUNABLE_PATH_MAX - 3;
+          }
 
           memmove(&linkbuf[2], linkbuf, i + 1);
 
@@ -621,17 +626,20 @@ static pr_fs_t *lookup_file_canon_fs(const char *path, char **deref, int op) {
   if (pr_fs_resolve_partial(path, workpath, sizeof(workpath)-1,
       FSIO_FILE_OPEN) == -1) {
     if (*path == '/' || *path == '~') {
-      if (pr_fs_interpolate(path, workpath, sizeof(workpath)-1) != -1)
+      if (pr_fs_interpolate(path, workpath, sizeof(workpath)-1) != -1) {
         sstrncpy(workpath, path, sizeof(workpath));
+      }
 
     } else {
-      if (pr_fs_dircat(workpath, sizeof(workpath), cwd, path) < 0)
+      if (pr_fs_dircat(workpath, sizeof(workpath), cwd, path) < 0) {
         return NULL;
+      }
     }
   }
 
-  if (deref)
+  if (deref) {
     *deref = workpath;
+  }
 
   return lookup_file_fs(workpath, deref, op);
 }
@@ -1528,7 +1536,11 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
 
   _dir2 = strdup(dir2);
   if (_dir2 == NULL) {
+    int xerrno = errno;
+
     free(_dir1);
+
+    errno = xerrno;
     return -1;
   }
 
@@ -2261,8 +2273,9 @@ int pr_fs_valid_path(const char *path) {
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
 
-      if (strncmp(fsi->fs_path, path, strlen(fsi->fs_path)) == 0)
+      if (strncmp(fsi->fs_path, path, strlen(fsi->fs_path)) == 0) {
         return 0;
+      }
     }
   }
 
