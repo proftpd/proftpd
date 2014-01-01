@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.152 2013-12-30 06:38:16 castaglia Exp $
+ * $Id: fsio.c,v 1.153 2014-01-01 08:04:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4112,12 +4112,14 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
   int toread = 0;
   pr_buffer_t *pbuf = NULL;
 
-  if (!buf || !fh || size <= 0) {
+  if (buf == NULL ||
+      fh  == NULL ||
+      size <= 0) {
     errno = EINVAL;
     return NULL;
   }
 
-  if (!fh->fh_buf) {
+  if (fh->fh_buf == NULL) {
     size_t bufsz;
 
     /* Conscientious callers who want the optimal IO on the file should
@@ -4136,27 +4138,29 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
   while (size) {
     pr_signals_handle();
 
-    if (!pbuf->current ||
+    if (pbuf->current == NULL ||
         pbuf->remaining == pbuf->buflen) { /* empty buffer */
 
-      toread = pr_fsio_read(fh, pbuf->buf,
-        size < pbuf->buflen ? size : pbuf->buflen);
-
+      toread = pr_fsio_read(fh, pbuf->buf, pbuf->buflen);
       if (toread <= 0) {
         if (bp != buf) {
           *bp = '\0';
           return buf;
+        }
 
-        } else
-          return NULL;
+        return NULL;
       }
 
       pbuf->remaining = pbuf->buflen - toread;
       pbuf->current = pbuf->buf;
 
-    } else
+    } else {
       toread = pbuf->buflen - pbuf->remaining;
+    }
 
+    /* TODO: Improve the efficiency of this copy by using a strnchr(3)
+     * scan to find the next LF, and then a memmove(2) to do the copy.
+     */
     while (size &&
            toread > 0 &&
            *pbuf->current != '\n' &&
@@ -4178,8 +4182,9 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
       break;
     }
 
-    if (!toread)
+    if (!toread) {
       pbuf->current = NULL;
+    }
   }
 
   *bp = '\0';
