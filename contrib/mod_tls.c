@@ -6768,7 +6768,7 @@ static pr_netio_stream_t *tls_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
      *  It is quite reasonable for the server to insist that the data
      *  connection uses a TLS cached session.  This might be a cache of a
      *  previous data connection or of the control connection.  If this is
-     *  the reason for the the refusal to allow the data transfer then the
+     *  the reason for the refusal to allow the data transfer then the
      *  '522' reply should indicate this.
      * 
      * and, from 10.4:
