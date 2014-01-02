@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project
+ * Copyright (c) 2001-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.16 2013-09-19 06:00:39 castaglia Exp $
+ * $Id: netio.h,v 1.17 2014-01-02 04:51:44 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -116,6 +116,9 @@ typedef struct {
 
   /* errno, if applicable. */
   int strm_errno;
+
+  /* Private data for passing/retaining among modules. */
+  pr_table_t *notes;
 
 } pr_netio_stream_t;
 

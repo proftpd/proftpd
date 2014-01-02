@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.61 2014-01-02 02:55:42 castaglia Exp $
+ * $Id: netio.c,v 1.62 2014-01-02 04:51:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -97,6 +97,11 @@ static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   nstrm->strm_buf = NULL;
   nstrm->strm_data = NULL;
   nstrm->strm_errno = 0;
+
+  /* This table will not contain that many entries, so a low number
+   * of chains should suffice.
+   */
+  nstrm->notes = pr_table_nalloc(nstrm->strm_pool, 0, 4);
 
   return nstrm;
 }
@@ -209,8 +214,9 @@ static int core_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
 static pr_netio_stream_t *core_netio_reopen_cb(pr_netio_stream_t *nstrm, int fd,
     int mode) {
 
-  if (nstrm->strm_fd != -1)
+  if (nstrm->strm_fd != -1) {
     close(nstrm->strm_fd);
+  }
 
   nstrm->strm_fd = fd;
   nstrm->strm_mode = mode;
@@ -458,20 +464,47 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
     case PR_NETIO_STRM_CTRL:
       nstrm->strm_type = PR_NETIO_STRM_CTRL;
       nstrm->strm_mode = mode;
-      return ctrl_netio ? (ctrl_netio->open)(nstrm, fd, mode) :
-        (default_ctrl_netio->open)(nstrm, fd, mode);
+
+      if (ctrl_netio != NULL) {
+        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+          ctrl_netio, sizeof(pr_netio_t *));
+        return (ctrl_netio->open)(nstrm, fd, mode);
+
+      } else {
+        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+          default_ctrl_netio, sizeof(pr_netio_t *));
+        return (default_ctrl_netio->open)(nstrm, fd, mode);
+      }
 
     case PR_NETIO_STRM_DATA:
       nstrm->strm_type = PR_NETIO_STRM_DATA;
       nstrm->strm_mode = mode;
-      return data_netio ? (data_netio->open)(nstrm, fd, mode) :
-        (default_data_netio->open)(nstrm, fd, mode);
+
+      if (data_netio != NULL) {
+        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+          data_netio, sizeof(pr_netio_t *));
+        return (data_netio->open)(nstrm, fd, mode);
+
+      } else {
+        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+          default_data_netio, sizeof(pr_netio_t *));
+        return (default_data_netio->open)(nstrm, fd, mode);
+      }
 
     case PR_NETIO_STRM_OTHR:
       nstrm->strm_type = PR_NETIO_STRM_OTHR;
       nstrm->strm_mode = mode;
-      return othr_netio ? (othr_netio->open)(nstrm, fd, mode) :
-        (default_othr_netio->open)(nstrm, fd, mode);
+
+      if (othr_netio != NULL) {
+        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+          othr_netio, sizeof(pr_netio_t *));
+        return (othr_netio->open)(nstrm, fd, mode);
+
+      } else {
+        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+          default_othr_netio, sizeof(pr_netio_t *));
+        return (default_othr_netio->open)(nstrm, fd, mode);
+      }
   }
 
   destroy_pool(nstrm->strm_pool);
