@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.13 2014-01-03 05:01:50 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.14 2014-01-03 07:19:01 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -85,6 +85,7 @@ static Byte *deflate_rbuf = NULL;
 static size_t deflate_rbuflen = 0;
 static size_t deflate_rbufsz = 0;
 
+#define DEFLATE_NETIO_NOTE	"mod_deflate.z_stream"
 static int deflate_zerrno = 0;
 
 static const char *trace_channel = "deflate";
@@ -138,7 +139,7 @@ static int deflate_netio_close_cb(pr_netio_stream_t *nstrm) {
   if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
     z_stream *zstrm;
 
-    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
+    zstrm = pr_table_get(nstrm->notes, DEFLATE_NETIO_NOTE, NULL);
     if (zstrm == NULL) {
       return 0;
     }
@@ -193,7 +194,7 @@ static int deflate_netio_close_cb(pr_netio_stream_t *nstrm) {
 
   res = close(nstrm->strm_fd);
   nstrm->strm_fd = -1;
-  pr_table_remove(nstrm->notes, "mod_deflate.z_stream", NULL);
+  pr_table_remove(nstrm->notes, DEFLATE_NETIO_NOTE, NULL);
 
   return res;
 }
@@ -219,10 +220,10 @@ static pr_netio_stream_t *deflate_netio_open_cb(pr_netio_stream_t *nstrm,
     zstrm->avail_out = 0;
 
     if (pr_table_add(nstrm->notes,
-        pstrdup(nstrm->strm_pool, "mod_deflate.z_stream"), zstrm,
+        pstrdup(nstrm->strm_pool, DEFLATE_NETIO_NOTE), zstrm,
         sizeof(z_stream *)) < 0) {
       (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
-        "error stashing 'mod_deflate.z_stream' note: %s", strerror(errno));
+        "error stashing '%s' note: %s", DEFLATE_NETIO_NOTE, strerror(errno));
       errno = EPERM;
       return NULL;
     }
@@ -306,7 +307,7 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t copylen = 0;
     z_stream *zstrm;
 
-    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
+    zstrm = pr_table_get(nstrm->notes, DEFLATE_NETIO_NOTE, NULL);
     if (zstrm == NULL) {
       pr_trace_msg(trace_channel, 2,
         "no zstream found in stream data for reading");
@@ -522,7 +523,7 @@ static int deflate_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
     int res = 0;
     z_stream *zstrm;
 
-    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
+    zstrm = pr_table_get(nstrm->notes, DEFLATE_NETIO_NOTE, NULL);
     if (zstrm == NULL) {
       return 0;
     }
@@ -611,7 +612,7 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t datalen, offset = 0;
     z_stream *zstrm;
 
-    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
+    zstrm = pr_table_get(nstrm->notes, DEFLATE_NETIO_NOTE, NULL);
     if (zstrm == NULL) {
       pr_trace_msg(trace_channel, 2,
         "no zstream found in stream data for writing");
