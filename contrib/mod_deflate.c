@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_deflate -- a module for supporting on-the-fly compression
  *
- * Copyright (c) 2004-2013 TJ Saunders
+ * Copyright (c) 2004-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.12 2013-10-09 06:31:38 castaglia Exp $
+ * $Id: mod_deflate.c,v 1.13 2014-01-03 05:01:50 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -34,11 +34,11 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_DEFLATE_VERSION		"mod_deflate/0.5.6"
+#define MOD_DEFLATE_VERSION		"mod_deflate/0.5.7"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030201
-# error "ProFTPD 1.3.2rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030504
+# error "ProFTPD 1.3.5rc4 or later required"
 #endif
 
 module deflate_module;
@@ -138,7 +138,7 @@ static int deflate_netio_close_cb(pr_netio_stream_t *nstrm) {
   if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
     z_stream *zstrm;
 
-    zstrm = nstrm->strm_data;
+    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
     if (zstrm == NULL) {
       return 0;
     }
@@ -193,7 +193,7 @@ static int deflate_netio_close_cb(pr_netio_stream_t *nstrm) {
 
   res = close(nstrm->strm_fd);
   nstrm->strm_fd = -1;
-  nstrm->strm_data = NULL;
+  pr_table_remove(nstrm->notes, "mod_deflate.z_stream", NULL);
 
   return res;
 }
@@ -218,7 +218,14 @@ static pr_netio_stream_t *deflate_netio_open_cb(pr_netio_stream_t *nstrm,
     zstrm->avail_in = 0;
     zstrm->avail_out = 0;
 
-    nstrm->strm_data = zstrm;
+    if (pr_table_add(nstrm->notes,
+        pstrdup(nstrm->strm_pool, "mod_deflate.z_stream"), zstrm,
+        sizeof(z_stream *)) < 0) {
+      (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
+        "error stashing 'mod_deflate.z_stream' note: %s", strerror(errno));
+      errno = EPERM;
+      return NULL;
+    }
 
     memset(deflate_zbuf_ptr, '\0', deflate_zbufsz);
     deflate_zbuf = deflate_zbuf_ptr;
@@ -299,7 +306,7 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t copylen = 0;
     z_stream *zstrm;
 
-    zstrm = nstrm->strm_data;
+    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
     if (zstrm == NULL) {
       pr_trace_msg(trace_channel, 2,
         "no zstream found in stream data for reading");
@@ -515,7 +522,7 @@ static int deflate_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
     int res = 0;
     z_stream *zstrm;
 
-    zstrm = nstrm->strm_data;
+    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
     if (zstrm == NULL) {
       return 0;
     }
@@ -604,7 +611,7 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t datalen, offset = 0;
     z_stream *zstrm;
 
-    zstrm = nstrm->strm_data;
+    zstrm = pr_table_get(nstrm->notes, "mod_deflate.z_stream", NULL);
     if (zstrm == NULL) {
       pr_trace_msg(trace_channel, 2,
         "no zstream found in stream data for writing");
