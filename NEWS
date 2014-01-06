@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1576 2013-12-27 23:38:14 castaglia Exp $
+$Id: NEWS,v 1.1577 2014-01-06 18:37:43 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -76,6 +76,8 @@ CVS
   A 3072-bit DH group was also added.
 - Bug 4004 - IgnoreSCPUploadPerms SFTPOption not honored properly for SCP
   directory upload.
+- Bug 4006 - RADIUS "service-type" attribute encoded with wrong length on
+  64-bit system.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------

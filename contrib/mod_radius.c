@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2013 TJ Saunders
+ * Copyright (c) 2001-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.71 2013-10-13 16:48:07 castaglia Exp $
+ * $Id: mod_radius.c,v 1.72 2014-01-06 18:37:44 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9.2"
@@ -2828,7 +2828,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *auth_server = NULL;
   unsigned char recvd_response = FALSE;
-  unsigned long service;
+  unsigned int service;
   char *user;
 
   /* Check to see whether RADIUS authentication should even be done. */
@@ -2865,10 +2865,10 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
       radius_have_group_info == TRUE ||
       radius_have_quota_info == TRUE ||
       radius_have_other_info == TRUE) {
-    service = htonl(RADIUS_SVC_LOGIN);
+    service = (unsigned int) htonl(RADIUS_SVC_LOGIN);
 
   } else {
-    service = htonl(RADIUS_SVC_AUTHENTICATE_ONLY);
+    service = (unsigned int) htonl(RADIUS_SVC_AUTHENTICATE_ONLY);
   }
 
   /* Loop through the list of servers, trying each one until the packet is
