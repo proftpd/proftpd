@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.62 2014-01-02 04:51:44 castaglia Exp $
+ * $Id: netio.c,v 1.63 2014-01-06 06:57:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,9 +106,14 @@ static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   return nstrm;
 }
 
-static pr_buffer_t *netio_buffer_alloc(pr_netio_stream_t *nstrm) {
+pr_buffer_t *pr_netio_buffer_alloc(pr_netio_stream_t *nstrm) {
   size_t bufsz;
   pr_buffer_t *pbuf = NULL;
+
+  if (nstrm == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   pbuf = pcalloc(nstrm->strm_pool, sizeof(pr_buffer_t));
 
@@ -1090,7 +1095,7 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
     pbuf = nstrm->strm_buf;
 
   } else {
-    pbuf = netio_buffer_alloc(nstrm);
+    pbuf = pr_netio_buffer_alloc(nstrm);
   }
 
   while (buflen) {
@@ -1162,7 +1167,9 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
   int toread, handle_iac = TRUE, saw_newline = FALSE;
   pr_buffer_t *pbuf = NULL;
 
-  if (buflen == 0) {
+  if (buflen == 0 ||
+      in_nstrm == NULL ||
+      out_nstrm == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -1173,15 +1180,18 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
 
   buflen--;
 
-  if (in_nstrm->strm_buf)
+  if (in_nstrm->strm_buf) {
     pbuf = in_nstrm->strm_buf;
-  else
-    pbuf = netio_buffer_alloc(in_nstrm);
 
-  while (buflen) {
+  } else {
+    pbuf = pr_netio_buffer_alloc(in_nstrm);
+  }
+
+  while (buflen > 0) {
+    pr_signals_handle();
 
     /* Is the buffer empty? */
-    if (!pbuf->current ||
+    if (pbuf->current == NULL ||
         pbuf->remaining == pbuf->buflen) {
 
       toread = pr_netio_read(in_nstrm, pbuf->buf,
@@ -1191,10 +1201,9 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
         if (bp != buf) {
           *bp = '\0';
           return buf;
-
-        } else {
-          return NULL;
         }
+
+        return NULL;
       }
 
       pbuf->remaining = pbuf->buflen - toread;
@@ -1209,7 +1218,12 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
 
     toread = pbuf->buflen - pbuf->remaining;
 
-    while (buflen && toread > 0 && *pbuf->current != '\n' && toread--) {
+    while (buflen > 0 &&
+           toread > 0 &&
+           *pbuf->current != '\n' &&
+           toread--) {
+      pr_signals_handle();
+
       cp = *pbuf->current++;
       pbuf->remaining++;
 
@@ -1296,7 +1310,9 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       buflen--;
     }
 
-    if (buflen && toread && *pbuf->current == '\n') {
+    if (buflen > 0 &&
+        toread > 0 &&
+        *pbuf->current == '\n') {
       buflen--;
       toread--;
       *bp++ = *pbuf->current++;
@@ -1306,8 +1322,12 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       break;
     }
 
-    if (!toread)
+    if (toread == 0) {
+      /* No more input?  Set pbuf->current to null, so that at the top of
+       * the loop, we read more.
+       */
       pbuf->current = NULL;
+    }
   }
 
   if (!saw_newline) {
