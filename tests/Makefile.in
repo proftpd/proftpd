@@ -32,7 +32,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/modules.o \
   $(top_srcdir)/src/cmd.o \
   $(top_srcdir)/src/response.o \
-  $(top_srcdir)/src/fsio.o
+  $(top_srcdir)/src/fsio.o \
+  $(top_srcdir)/src/netio.o
 
 TEST_API_LIBS=-lcheck
 
@@ -59,6 +60,7 @@ TEST_API_OBJS=\
   api/cmd.o \
   api/response.o \
   api/fsio.o \
+  api/netio.o \
   api/stubs.o \
   api/tests.o
 
