@@ -4286,7 +4286,9 @@ sub tls_rest_2gb_last_byte {
 
       my $rest_len = $test_len - 1;
 
-      unless ($client->quot('REST', $rest_len)) {
+      # Note: The duplicated arguments here are to work around a bug in
+      # Net::FTPSSL, version 0.21, in the quot() function.
+      unless ($client->quot('REST', $rest_len, $rest_len)) {
         die("Can't REST $rest_len: " . $client->last_message());
       }
 
@@ -4489,7 +4491,9 @@ sub tls_rest_4gb_last_byte {
 
       my $rest_len = $test_len - 1;
 
-      unless ($client->quot('REST', $rest_len)) {
+      # Note: The duplicated arguments here are to work around a bug in
+      # Net::FTPSSL, version 0.21, in the quot() function.
+      unless ($client->quot('REST', $rest_len, $rest_len)) {
         die("Can't REST $rest_len: " . $client->last_message());
       }
 
@@ -4592,6 +4596,8 @@ sub tls_stor_empty_file {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'netio:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -4608,7 +4614,7 @@ sub tls_stor_empty_file {
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
-        TLSOptions => 'NoSessionReuseRequired',
+        TLSOptions => 'EnableDiags NoSessionReuseRequired',
       },
     },
   };
@@ -9597,7 +9603,9 @@ sub tls_sscn_bad_arg_bug3955 {
         die("Can't login: " . $client->last_message());
       }
 
-      my $resp_code = $client->quot('SSCN', 'true');
+      # Note: The duplicated arguments here are to work around a bug in
+      # Net::FTPSSL, version 0.21, in the quot() function.
+      my $resp_code = $client->quot('SSCN', 'true', 'true');
       if ($resp_code == 2) {
         die("SSCN succeeded unexpectedly");
       }
@@ -9741,7 +9749,9 @@ sub tls_sscn_toggle_bug3955 {
         die("Can't login: " . $client->last_message());
       }
 
-      my $resp_code = $client->quot('SSCN', 'ON');
+      # Note: The duplicated arguments here are to work around a bug in
+      # Net::FTPSSL, version 0.21, in the quot() function.
+      my $resp_code = $client->quot('SSCN', 'ON', 'ON');
       unless ($resp_code == 2) {
         die("SSCN failed: " . $client->last_message());
       }
@@ -9763,7 +9773,9 @@ sub tls_sscn_toggle_bug3955 {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      $resp_code = $client->quot('SSCN', 'OFF');
+      # Note: The duplicated arguments here are to work around a bug in
+      # Net::FTPSSL, version 0.21, in the quot() function.
+      $resp_code = $client->quot('SSCN', 'OFF', 'OFF');
       unless ($resp_code == 2) {
         die("SSCN failed: " . $client->last_message());
       }
@@ -9924,7 +9936,9 @@ sub tls_config_limit_sscn_bug3955 {
         die("Can't login: " . $client->last_message());
       }
 
-      my $resp_code = $client->quot('SSCN', 'ON');
+      # Note: The duplicated arguments here are to work around a bug in
+      # Net::FTPSSL, version 0.21, in the quot() function.
+      my $resp_code = $client->quot('SSCN', 'ON', 'ON');
       if ($resp_code == 2) {
         die("SSCN succeeded unexpectedly");
       }
