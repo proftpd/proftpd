@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.83 2013-12-14 16:51:19 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.84 2014-01-13 18:23:25 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -753,8 +753,8 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i++;
 
-#ifdef PR_USE_NLS
     } else if (strncmp(cmd->argv[i], "sftpUTF8ProtocolVersion", 24) == 0) {
+#ifdef PR_USE_NLS
       char *ptr = NULL;
       void *value;
       long protocol_version;
@@ -784,8 +784,9 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 
       /* Don't forget to advance i past the value. */
       i++;
+#else
+      CONF_ERROR(cmd, "'sftpUTF8ProtocolVersion' requires NLS support (--enable-nls)");
 #endif /* PR_USE_NLS */
-
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPClientMatch key: '",
         cmd->argv[i], "'", NULL));
