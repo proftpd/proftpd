@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.77 2013-12-05 00:53:22 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.78 2014-01-13 18:40:20 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -445,6 +445,10 @@ The currently supported SSH2/SFTP keys which can be tuned via
 </pre>
     then <code>mod_sftp</code> will try to use UTF8 for all SFTP protocol
     versions, all clients.
+
+    <p>
+    <b>Note</b>: the <code>sftpUTF8ProtocolVersion</code> key <b>requires</b>
+    NLS support (<i>i.e.</i> the <code>--enable-nls</code> configure option).
   </li>
 </ul>
 
@@ -2044,6 +2048,17 @@ to use this at the top of your <code>proftpd.conf</code>:
   Unsetenv LANG
 </pre>
 
+<p><a name="SFTPVersion6">
+<font color=red>Question</font>: My SFTP client wants to use SFTP protocol
+version 6, but <code>mod_sftp</code> only accepts protocol version 3.  These
+docs say that protocol versions 1-6 are supported.  Is this a bug?<br>
+<font color=blue>Answer</font>:  The most likely cause of this behavior is that
+your <code>proftpd</code> installation was not compiled with the
+<code>--enable-nls</code> configure option.  The <code>--enable-nls</code>
+configure option is required to enable NLS support, which includes support
+for UTF8.  SFTP protocol versions 4-6 require UTF8 support, which is why
+the <code>--enable-nls</code> configure option is needed.
+
 <p><a name="SFTPNotUnderstood">
 <font color=red>Question</font>: When I use my SFTP client, I see something
 like this when I try to connect to <code>proftpd</code> with
@@ -2081,12 +2096,12 @@ capability.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-12-05 00:53:22 $</i><br>
+Last Updated: <i>$Date: 2014-01-13 18:40:20 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2008-2013 TJ Saunders<br>
+&copy; Copyright 2008-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
