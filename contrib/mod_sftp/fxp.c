@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: fxp.c,v 1.202 2013-12-16 05:24:51 castaglia Exp $
+ * $Id: fxp.c,v 1.203 2014-01-17 06:11:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -5151,7 +5151,11 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "CLOSE", name);
-  cmd->cmd_class = CL_READ|CL_WRITE;
+
+  /* Set the command class to MISC for now; we'll change it later to
+   * READ or WRITE once we know which it is.
+   */
+  cmd->cmd_class = CL_MISC;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "CLOSE", NULL, NULL);
@@ -5231,13 +5235,16 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
     /* Set session.curr_cmd appropriately here, for any FSIO callbacks. */ 
     if (fxh->fh_flags & O_APPEND) {
+      cmd->cmd_class = CL_WRITE;
       session.curr_cmd = C_APPE;
 
     } else if ((fxh->fh_flags & O_WRONLY) ||
                (fxh->fh_flags & O_RDWR)) {
+      cmd->cmd_class = CL_WRITE;
       session.curr_cmd = C_STOR;
 
     } else if (fxh->fh_flags == O_RDONLY) {
+      cmd->cmd_class = CL_READ;
       session.curr_cmd = C_RETR;
     }
 
