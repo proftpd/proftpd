@@ -15712,7 +15712,7 @@ fi
 if test x$prefix = xNONE ; then
   prefix=/usr/local
   bindir=/usr/local/bin
-  datadir=/usr/locale/share
+  datadir=/usr/local/share
   libexecdir=/usr/local/libexec
   sbindir=/usr/local/sbin
 fi
