@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2013 The ProFTPD Project team
+dnl Copyright (c) 2001-2014 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -128,7 +128,7 @@ fi
 if test x$prefix = xNONE ; then
   prefix=/usr/local
   bindir=/usr/local/bin
-  datadir=/usr/locale/share
+  datadir=/usr/local/share
   libexecdir=/usr/local/libexec
   sbindir=/usr/local/sbin
 fi
