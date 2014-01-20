@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2013 The ProFTPD Project team
+ * Copyright (c) 2008-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* FSIO API tests
- * $Id: fsio.c,v 1.2 2013-06-22 06:20:18 castaglia Exp $
+ * $Id: fsio.c,v 1.3 2014-01-20 19:36:27 castaglia Exp $
  */
 
 #include "tests.h"
@@ -64,6 +64,51 @@ START_TEST (fs_clean_path_test) {
   expected = "/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
+
+  res[sizeof(res)-1] = '\0';
+  path = "test.txt";
+  pr_fs_clean_path(path, res, sizeof(res)-1);
+
+  expected = "/test.txt";
+  fail_unless(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", path, res);
+}
+END_TEST
+
+START_TEST (fs_clean_path2_test) {
+  char res[PR_TUNABLE_PATH_MAX+1], *path, *expected;
+
+  res[sizeof(res)-1] = '\0';
+  path = "test.txt";
+  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  fail_unless(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
+    path, res);
+
+  res[sizeof(res)-1] = '\0';
+  path = "/./test.txt";
+  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+
+  expected = "/test.txt";
+  fail_unless(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", expected, res);
+
+  res[sizeof(res)-1] = '\0';
+  path = "test.d///test.txt";
+  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+
+  expected = "test.d/test.txt";
+  fail_unless(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", expected, res);
+
+  res[sizeof(res)-1] = '\0';
+  path = "/test.d///test.txt";
+  pr_fs_clean_path2(path, res, sizeof(res)-1,
+    PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+
+  expected = "/test.d/test.txt";
+  fail_unless(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", expected, res);
+
 }
 END_TEST
 
@@ -141,6 +186,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, fs_clean_path_test);
+  tcase_add_test(testcase, fs_clean_path2_test);
   tcase_add_test(testcase, fs_dircat_test);
 
   suite_add_tcase(suite, testcase);

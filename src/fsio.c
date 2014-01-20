@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project
+ * Copyright (c) 2001-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.153 2014-01-01 08:04:28 castaglia Exp $
+ * $Id: fsio.c,v 1.154 2014-01-20 19:36:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1722,8 +1722,8 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
   pr_fs_t *fs = NULL;
   int len = 0, fini = 1, link_cnt = 0;
-  ino_t last_inode = 0;
-  dev_t last_device = 0;
+  ino_t prev_inode = 0;
+  dev_t prev_device = 0;
   struct stat sbuf;
 
   if (!path) {
@@ -1835,16 +1835,16 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         char linkpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
         /* Detect an obvious recursive symlink */
-        if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode &&
-            sbuf.st_dev && (dev_t) sbuf.st_dev == last_device) {
+        if (sbuf.st_ino && (ino_t) sbuf.st_ino == prev_inode &&
+            sbuf.st_dev && (dev_t) sbuf.st_dev == prev_device) {
           errno = ELOOP;
           return -1;
         }
 
-        last_inode = (ino_t) sbuf.st_ino;
-        last_device = (dev_t) sbuf.st_dev;
+        prev_inode = (ino_t) sbuf.st_ino;
+        prev_device = (dev_t) sbuf.st_dev;
 
-        if (++link_cnt > 32) {
+        if (++link_cnt > PR_FSIO_MAX_LINK_COUNT) {
           errno = ELOOP;
           return -1;
         }
@@ -1915,8 +1915,8 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
   pr_fs_t *fs = NULL;
 
   int len = 0, fini = 1, link_cnt = 0;
-  ino_t last_inode = 0;
-  dev_t last_device = 0;
+  ino_t prev_inode = 0;
+  dev_t prev_device = 0;
   struct stat sbuf;
 
   if (!path) {
@@ -2001,16 +2001,16 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         char linkpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
         /* Detect an obvious recursive symlink */
-        if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode &&
-            sbuf.st_dev && (dev_t) sbuf.st_dev == last_device) {
+        if (sbuf.st_ino && (ino_t) sbuf.st_ino == prev_inode &&
+            sbuf.st_dev && (dev_t) sbuf.st_dev == prev_device) {
           errno = ELOOP;
           return -1;
         }
 
-        last_inode = (ino_t) sbuf.st_ino;
-        last_device = (dev_t) sbuf.st_dev;
+        prev_inode = (ino_t) sbuf.st_ino;
+        prev_device = (dev_t) sbuf.st_dev;
 
-        if (++link_cnt > 32) {
+        if (++link_cnt > PR_FSIO_MAX_LINK_COUNT) {
           errno = ELOOP;
           return -1;
         }
@@ -2072,22 +2072,33 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
   return 0;
 }
 
-void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
+int pr_fs_clean_path2(const char *path, char *buf, size_t buflen, int flags) {
   char workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   char curpath[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
   char namebuf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
-  char *where = NULL, *ptr = NULL, *last = NULL;
-  int fini = 1;
+  int fini = 1, have_abs_path = FALSE;
 
-  if (!path)
-    return;
+  if (path == NULL ||
+      buf == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (buflen == 0) {
+    return 0;
+  }
 
   sstrncpy(curpath, path, sizeof(curpath));
 
+  if (*curpath == '/') {
+    have_abs_path = TRUE;
+  }
+
   /* main loop */
   while (fini--) {
-    where = curpath;
+    char *where = NULL, *ptr = NULL, *last = NULL;
 
+    where = curpath;
     while (*where != '\0') {
       pr_signals_handle();
 
@@ -2108,8 +2119,12 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
         ptr = last = workpath;
 
         while (*ptr) {
-          if (*ptr == '/')
+          pr_signals_handle();
+
+          if (*ptr == '/') {
             last = ptr;
+          }
+
           ptr++;
         }
 
@@ -2123,34 +2138,46 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
         ptr = last = workpath;
 
         while (*ptr) {
-          if (*ptr == '/')
+          pr_signals_handle();
+
+          if (*ptr == '/') {
             last = ptr;
+          }
           ptr++;
         }
+
         *last = '\0';
         continue;
       }
-      ptr = strchr(where, '/');
 
-      if (!ptr) {
+      ptr = strchr(where, '/');
+      if (ptr == NULL) {
         size_t wherelen = strlen(where);
 
         ptr = where;
-        if (wherelen >= 1)
+        if (wherelen >= 1) {
           ptr += (wherelen - 1);
+        }
 
-      } else
+      } else {
         *ptr = '\0';
+      }
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
 
       if (*namebuf) {
         for (last = namebuf; *last; last++);
-        if (*--last != '/')
+        if (*--last != '/') {
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
+        }
 
-      } else
-        sstrcat(namebuf, "/", sizeof(namebuf)-1);
+      } else {
+        if (have_abs_path ||
+            (flags & PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH)) {
+          sstrcat(namebuf, "/", sizeof(namebuf)-1);
+          have_abs_path = FALSE;
+        }
+      }
 
       sstrcat(namebuf, where, sizeof(namebuf)-1);
       namebuf[sizeof(namebuf)-1] = '\0';
@@ -2161,10 +2188,16 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
     }
   }
 
-  if (!workpath[0])
+  if (!workpath[0]) {
     sstrncpy(workpath, "/", sizeof(workpath));
+  }
 
   sstrncpy(buf, workpath, buflen);
+  return 0;
+}
+
+void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
+  pr_fs_clean_path2(path, buf, buflen, PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
 }
 
 int pr_fs_use_encoding(int bool) {

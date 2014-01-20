@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.206 2013-10-07 01:29:05 castaglia Exp $
+ * $Id: mod_ls.c,v 1.207 2014-01-20 19:36:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2776,46 +2776,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
     }
   }
 
-  /* Clean the path. */
-  if (*target != '/') {
-    size_t cwdlen = strlen(pr_fs_getcwd());
-
-    pr_fs_clean_path(pdircat(cmd->tmp_pool, pr_fs_getcwd(), target, NULL),
-      buf, sizeof(buf));
-
-    target = buf;
-
-    /* If the given target was not an absolute path, advance past the
-     * current working directory prefix in the cleaned up target path.
-     */
-    target += cwdlen;
-
-    /* If the length of the current working directory (cwdlen) is one,
-     * it means that the current working directory is the root ('/'),
-     * and so we don't want to advance past that into the file name
-     * portion of the path.
-     */
-    if (cwdlen > 1)
-      target += 1;
-
-  } else {
-    pr_fs_clean_path(target, buf, sizeof(buf));
-    target = buf;
-  }
-
-  /* Remove any trailing separators. */
-  targetlen = strlen(target);
-  while (targetlen >= 1 &&
-         target[targetlen-1] == '/') {
-
-    if (strcmp(target, "/") == 0) {
-      break;
-    }
-
-    target[targetlen-1] = '\0';
-    targetlen = strlen(target);
-  }
-
   /* If the target is a glob, get the listing of files/dirs to send. */
   if (use_globbing &&
       pr_str_is_fnmatch(target)) {
@@ -2923,11 +2883,35 @@ MODRET ls_nlst(cmd_rec *cmd) {
     }
 
   } else {
-
     /* A single target. If it's a directory, list the contents; if it's a
      * file, just list the file.
      */
     struct stat st;
+    
+    if (!is_dotdir(target)) {
+      /* Clean the path. */
+      if (*target != '/') {
+        pr_fs_clean_path2(target, buf, sizeof(buf), 0);
+
+      } else {
+        pr_fs_clean_path(target, buf, sizeof(buf));
+      }
+
+      target = buf;
+
+    } else {
+      /* Remove any trailing separators. */
+      targetlen = strlen(target);
+      while (targetlen >= 1 &&
+             target[targetlen-1] == '/') {
+        if (strncmp(target, "/", 2) == 0) {
+          break;
+        }
+
+        target[targetlen-1] = '\0';
+        targetlen = strlen(target);
+      }
+    }
 
     if (!ls_perms_full(cmd->tmp_pool, cmd, target, &hidden)) {
       int xerrno = errno;

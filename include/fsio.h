@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project
+ * Copyright (c) 2001-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,7 @@
  */
 
 /* ProFTPD virtual/modular filesystem support.
- *
- * $Id: fsio.h,v 1.35 2013-12-09 19:16:13 castaglia Exp $
+ * $Id: fsio.h,v 1.36 2014-01-20 19:36:27 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -189,6 +188,9 @@ struct fh_rec {
   size_t fh_iosz;
 };
 
+/* Maximum symlink count, for loop detection. */
+#define PR_FSIO_MAX_LINK_COUNT		32
+
 /* Macros for that code that needs to get into the internals of pr_fs_t.
  * (These will help keep the internals as opaque as possible).
  */
@@ -319,7 +321,11 @@ char *pr_fs_encode_path(pool *, const char *);
 int pr_fs_use_encoding(int);
 int pr_fs_valid_path(const char *);
 void pr_fs_virtual_path(const char *, char *, size_t);
+
 void pr_fs_clean_path(const char *, char *, size_t);
+int pr_fs_clean_path2(const char *, char *, size_t, int);
+#define PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH	0x001
+
 int pr_fs_glob(const char *, int, int (*errfunc)(const char *, int), glob_t *);
 void pr_fs_globfree(glob_t *);
 void pr_resolve_fs_map(void);
