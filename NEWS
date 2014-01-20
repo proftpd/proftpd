@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1578 2014-01-20 19:36:27 castaglia Exp $
+$Id: NEWS,v 1.1579 2014-01-20 20:49:04 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -80,6 +80,8 @@ CVS
   64-bit system.
 - Bug 4011 - NLST ../ shows current directory contents rather than parent
   directory.
+- Bug 4013 - SCP upload of shorter file does not completely overwrite existing
+  file of same name.
 
 1.3.5rc3 - Released 14-Jun-2013
 --------------------------------

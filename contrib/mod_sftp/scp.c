@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: scp.c,v 1.86 2013-12-27 23:38:14 castaglia Exp $
+ * $Id: scp.c,v 1.87 2014-01-20 20:49:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -977,7 +977,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
    */
 
   sp->fh = pr_fsio_open(hiddenstore_path ? hiddenstore_path : sp->best_path,
-    O_WRONLY|O_CREAT|O_NONBLOCK);
+    O_WRONLY|O_CREAT|O_NONBLOCK|O_TRUNC);
   if (sp->fh == NULL) {
     int xerrno = errno;
 
