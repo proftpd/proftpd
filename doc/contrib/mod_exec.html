@@ -1,4 +1,4 @@
-<!-- $Id: mod_exec.html,v 1.9 2013-08-14 21:40:17 castaglia Exp $ -->
+<!-- $Id: mod_exec.html,v 1.10 2014-01-21 22:39:11 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_exec.html,v $ -->
 
 <html>
@@ -307,9 +307,9 @@ See Also:
 <p>
 <hr>
 <h2><a name="ExecOnEvent">ExecOnEvent</a></h2>
-<strong>Syntax:</strong> ExecOnEvent <em>event[*] path [arg1 arg2 ...]</em><br>
+<strong>Syntax:</strong> ExecOnEvent <em>event[*|~] path [arg1 arg2 ...]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> &quot;server config&quot; <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_exec<br>
 <strong>Compatibility:</strong> 1.2.10rc1 and later
 
@@ -318,11 +318,20 @@ The <code>ExecOnEvent</code> directive is used to execute the program or
 script at <i>path</i> when the given <em>event</em> occurs.  The program will
 be executed with the privileges of the server (set via the <code>User</code>
 and <code>Group</code> directives in the <code>proftpd.conf</code>file),
-unless the <em>event</em> name is followed by a &quot;*&quot;, in which case
-the program will be executed with root privileges.  <b>Note</b>: this
-feature should be used <b>very carefully</b>.  It allows scripts to
-modify things like firewall rules, but should be used <b>only</b> for
-such sensitive tasks.
+unless the <em>event</em> name is followed either by a &quot;*&quot; <em>or</em>
+a &quot;~&quot; character.
+
+<p>
+If the <em>event</em> name is followed by a &quot;*&quot;, the program will be
+executed with root privileges.  <b>Note</b>: this feature should be used
+<b>very carefully</b>.  It allows scripts to modify things like firewall
+rules, but should be used <b>only</b> for such sensitive tasks.
+
+<p>
+If, on the other hand, the <em>eevent</em> name is followed by a &quot;~&quot;,
+the program will be executed with the privileges of the logged-in user.
+<b>Note</b>: support for this feature first appeared in
+<code>proftpd-1.3.5rc4</code>.
 
 <p>
 Any number of arbitrary arguments may be configured to pass to the script.
@@ -613,12 +622,12 @@ the <code>%U/%u</code> variables.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-08-14 21:40:17 $</i><br>
+Last Updated: <i>$Date: 2014-01-21 22:39:11 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2013 TJ Saunders<br>
+&copy; Copyright 2000-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
