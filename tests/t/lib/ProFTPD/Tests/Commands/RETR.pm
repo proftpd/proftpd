@@ -76,6 +76,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  retr_2nd_transfer_terminates_1st_transfer_bug4010 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -1165,6 +1170,116 @@ sub retr_bug3496 {
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client2->login($setup->{user}, $setup->{passwd});
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub retr_2nd_transfer_terminates_1st_transfer_bug4010 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($setup->{user}, $setup->{passwd});
+
+      my $conn1 = $client1->retr_raw($test_file);
+      unless ($conn1) {
+        die("Failed to RETR: " . $client1->response_code() . " " .
+          $client1->response_msg());
+      }
+
+      my ($buf1, $tmpbuf);
+      $conn1->read($tmpbuf, 1, 30);
+      $buf1 .= $tmpbuf;
+
+      # Now, log in a second time with same user/passwd, do a directory
+      # listing, then close the client.
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client2->login($setup->{user}, $setup->{passwd});
+
+      my $conn2 = $client2->list_raw('foo.bar.baz');
+      unless ($conn2) {
+        die("Failed to LIST: " . $client2->response_code() . " " .
+          $client2->response_msg());
+      }
+
+      my $buf2;
+      $conn2->read($buf2, 8192, 30);
+      eval { $conn2->close() };
+
+      my $resp_code = $client2->response_code();
+      my $resp_msg = $client2->response_msg();
+
+      my $expected = 450;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+ 
+      $conn1->read($tmpbuf, 8192, 30);
+      $buf1 .= $tmpbuf;
+
+      eval { $conn1->close() };
+
+      $resp_code = $client1->response_code();
+      $resp_msg = $client1->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
