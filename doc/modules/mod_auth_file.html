@@ -1,4 +1,4 @@
-<!-- $Id: mod_auth_file.html,v 1.5 2013-03-06 17:26:48 castaglia Exp $ -->
+<!-- $Id: mod_auth_file.html,v 1.6 2014-01-22 04:18:09 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth_file.html,v $ -->
 
 <html>
@@ -161,8 +161,16 @@ enhanced versions of <code>crypt(3)</code>, some do not.  The
 
 <p><a name="AuthFilePermissions">
 <font color=red>Question</font>: Why does <code>mod_auth_file</code> refuse
-to use an <code>AuthUserFile</code> (or <code>AuthGroupFile</code> that is
-world-writable?<br>
+to use an <code>AuthUserFile</code> (or <code>AuthGroupFile</code>) that is
+world-readable/writable?  I see messages like the following logged:
+<pre>
+  mod_auth_file/1.0: unable to use world-readable AuthUserFile '/etc/proftpd/ftpd.passwd'
+</pre>
+or:
+<pre>
+  mod_auth_file/1.0: unable to use world-writable AuthUserFile '/etc/proftpd/ftpd.passwd'
+</pre>
+<br>
 <font color=blue>Answer</font>:  If an <code>AuthUserFile</code> or
 <code>AuthGroupFile</code> is world-writable, then <b>any user on the system
 can edit that file</b>.  They can create new users, or change the entries
@@ -170,6 +178,13 @@ for existing users such that those users have different privileges, perhaps
 even root privileges.  In short, having <code>AuthUserFile<code> or
 <code>AuthGroupFile</code> with world-writable permissions is an unsafe
 configuration, and now <code>mod_auth_file</code> prevents this.
+
+<p>
+If the <code>AuthUserFile</code> is world-readable, then <b>any user on the
+system can read that file</b>, including the hashed password.  This can allow
+for offline dictionary/cracking attempts against those hashes.  This is also an
+unsafe configuration, and thus <code>mod_auth_file</code> does not allow
+world-readable <code>AuthUserFiles</code>.
 
 <p>
 Similarly, <code>mod_auth_file</code> will refuse to use an
@@ -183,12 +198,12 @@ unsafe configuration against which <code>mod_auth_file</code> now guards.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-03-06 17:26:48 $</i><br>
+Last Updated: <i>$Date: 2014-01-22 04:18:09 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2002-2013<br>
+&copy; Copyright 2002-2014<br>
  All Rights Reserved<br>
 </i></b></font>
 
