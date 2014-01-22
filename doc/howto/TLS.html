@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.37 2013-10-27 23:02:03 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.38 2014-01-22 17:51:53 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -43,9 +43,13 @@ Example <a href="../contrib/mod_tls.html"><code>mod_tls</code></a> configuration
     <font color=green># Are clients required to use FTP over TLS when talking to this server?</font>
     TLSRequired off
 
-    <font color=green># Server's certificate</font>
-    TLSRSACertificateFile /etc/ftpd/server.cert.pem
-    TLSRSACertificateKeyFile /etc/ftpd/server.key.pem
+    <font color=green># Server's RSA certificate</font>
+    TLSRSACertificateFile /etc/ftpd/server-rsa.cert.pem
+    TLSRSACertificateKeyFile /etc/ftpd/server-rsa.key.pem
+
+    <font color=green># Server's EC certificate</font>
+    TLSECCertificateFile /etc/ftpd/server-ec.cert.pem
+    TLSECCertificateKeyFile /etc/ftpd/server-ec.key.pem
 
     <font color=green># CA the server trusts</font>
     TLSCACertificateFile /etc/ftpd/root.cert.pem
@@ -423,10 +427,14 @@ reports that Debian's <code>ftp-ssl</code> client has a few bugs; using Peter
 Runestig's <code>ftp-tls</code> is known to work.
 
 <p>
-Note, though, that there are known issues with some FTPS clients:
-<pre>
-  <a href="http://www.runestig.com/osp.html#NOTE1">http://www.runestig.com/osp.html#NOTE1</a>
-</pre>
+Note, though, that there are known issues with some older versions of FTPS
+clients, most notably SmartFTP and CuteFTP Pro.  These clients had the following
+behavior: <a href="http://www.faqs.org/rfcs/rfc2246.html">RFC 2246</a> states
+that, if a client receives a <code>CertificateRequest</code>, and the client
+has no certificate, it "should send a certificate message containing no
+certificates" (Section 7.4.6).  Instead, after negotiating to use TLS version 1,
+these clients choke and break the connection (which is actually SSL version 2
+behavior).  The <code>NoCertRequest</code> <a href="../contrib/mod_tls.html#TLSOptions"><code>TLSOption</code></a> is designed for use for such clients.
 
 <p><a name="TLSImplicit">
 <font color=red>Question</font>: How come <code>mod_tls</code> does not support
@@ -541,7 +549,7 @@ transfers?<br>
 omits site-to-site transfers.  A TLS session is established between the client
 and the server on the control channel and, to save on the expensive overhead of
 TLS handshake, that session is reused for encrypting traffic on the data
-channel.  In a site-to-site transfer, the client opens <i>two</i> control
+channel.  In a site-to-site (FXP) transfer, the client opens <i>two</i> control
 channels, one with each server, and then arranges for those servers to open a
 data channel between themselves.  However, since the servers have not
 established a TLS session between themselves, that opening of the data channel
@@ -553,8 +561,13 @@ connections (<i>e.g.</i> <code>TLSRequired</code> is either <em>on</em> or
 <em>data</em>), of if the client tells the server that the client will be
 using TLS on the data connections (<i>e.g.</i> when it sends the
 <code>AUTH</code> command with an argument of <code>TLS-P</code>).  Without
-these conditions, site-to-site transfers can occur normally, albeit unencrypted.
-Encrypted site-to-site transfers are not supported.
+these conditions, site-to-site (FXP) transfers can occur normally, albeit
+unencrypted.
+
+<p>
+<b>Note</b> that as of <code>proftpd-1.3.5rc4</code>, encrypted site-to-site
+(FXP) transfers are supported via the <code>SSCN</code> FTP command.  The
+<a href="../contrib/mod_tls.html#TLSVerifyServer"><code>TLSVerifyServer</code></a> directive is also needed for secure FXP transfers.
 
 <p><a name="TLSv2">
 <font color=red>Question</font>: How come <code>mod_tls</code> does not support
@@ -615,6 +628,7 @@ the <code>CCC</code> command by clients, the following must appear in your
 </pre>
 See the <a href="../contrib/mod_tls.html#TLSRequired"><code>TLSRequired</code></a> description for more details.
 
+<!-- Note: I am not sure the following advice is relevant or even good anymore
 <p><a name="TLSSlow">
 <font color=red>Question</font>: Sometimes my encrypted transfers are slow.
 Is there a way to speed them up?<br>
@@ -624,6 +638,7 @@ of the <code>configure</code> script) to 8192 increases transfer speeds, most
 notably on very high speed networks.  Increasing the buffer size does not
 appear to affect normal FTP transfers (in fact, it may benefit them as well,
 depending on the client).
+-->
 
 <p><a name="TLSDataProtection">
 <font color=red>Question</font>: I can login using FTPS, but I cannot see
@@ -970,8 +985,7 @@ you will see the following when <code>proftpd</code> starts up:
 <p>
 For additional reading on OpenSSL and FIPS, see:
 <pre>
-  <a href="http://www.openssl.org/docs/fips/SecurityPolicy-1.1.1.pdf">http://www.openssl.org/docs/fips/SecurityPolicy-1.1.1.pdf</a>
-  <a href="http://www.openssl.org/docs/fips/UserGuide-1.1.1.pdf">http://www.openssl.org/docs/fips/UserGuide-1.1.1.pdf</a>
+  <a href="http://www.openssl.org/docs/fips/fipsnotes.html">http://www.openssl.org/docs/fips/fipsnotes.html</a>
 </pre>
 
 <p><a name="TLSVersionWarning">
@@ -1146,9 +1160,38 @@ module); this allows different proftpd processes <b>on different machines</b>
 to access/reuse the cached session data; this can be quite useful when operating
 a pool of <code>proftpd</code> servers <i>e.g.</i> behind a load balancer.
 
+<p><a name="TLSKeyNoCert">
+<font color=red>Question</font>: When I try to connect using FTPS to my
+<code>proftpd</code> server, the SSL/TLS connection fails, and I see the
+following errors in the TLSLog:
+<pre>
+  Jul 23 01:15:46 mod_tls/2.4.3[10481]: using default OpenSSL verification locations (see $SSL_CERT_DIR environment variable)
+  Jul 23 01:15:46 mod_tls/2.4.3[10481]: error checking key from 
+    TLSRSACertificateKeyFile '/usr/local/etc/proftpd/ssl/proftpd.key.pem':
+    <b>(1) error:140A80B1:SSL routines:SSL_CTX_check_private_key:no certificate assigned</b>
+  Jul 23 01:15:46 mod_tls/2.4.3[10481]: error initializing OpenSSL context for this session
+  Jul 23 01:15:46 mod_tls/2.4.3[10481]: TLS/TLS-C requested, starting TLS handshake
+  Jul 23 01:15:47 mod_tls/2.4.3[10481]: unable to accept TLS connection: protocol error:
+    (1) error:1408A0C1:SSL routines:SSL3_GET_CLIENT_HELLO:no shared cipher
+  Jul 23 01:15:47 mod_tls/2.4.3[10481]: TLS/TLS-C negotiation failed on control channel
+</pre>
+What does this mean?<br>
+<font color=blue>Answer</font>: This error means that, somehow, you have
+configured a key for a certificate, but don't have the matching certificate
+configured.  For example, if you configured <code>mod_tls</code> like so:
+<pre>
+  #TLSRSACertificateFile /usr/local/etc/proftpd/ssl/server.cert.pem
+  TLSRSACertificateKeyFile /usr/local/etc/proftpd/ssl/proftpd.key.pem
+</pre>
+then you would see the above error.
+
+<p>
+This could also happen if, for some reason, the certificate and key in the
+configured files were not properly matched up.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2013-10-27 23:02:03 $</i><br>
+Last Updated: <i>$Date: 2014-01-22 17:51:53 $</i><br>
 <hr>
 
 </body>
