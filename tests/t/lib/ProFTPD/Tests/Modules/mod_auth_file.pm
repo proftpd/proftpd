@@ -1568,16 +1568,15 @@ sub auth_group_file_world_readable_bug3892 {
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   eval { server_start($config_file, $pid_file) };
-  unless ($@) {
-    server_stop($pid_file);
-
-    my $ex = "Server started up unexpectedly with world-readable AuthGroupFile";
+  if ($@) {
+    my $ex = $@;
     test_append_logfile($log_file, $ex);
     unlink($log_file);
 
     die($ex);
   }
 
+  server_stop($pid_file);
   unlink($log_file);
 }
 
