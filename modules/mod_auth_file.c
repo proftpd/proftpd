@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002-2013 The ProFTPD Project team
+ * Copyright (c) 2002-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.57 2013-12-20 18:05:34 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.58 2014-01-22 06:39:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -95,6 +95,8 @@ static const char *trace_channel = "authfile";
 
 /* Support routines.  Move the passwd/group functions out of lib/ into here. */
 
+#define PR_AUTH_FILE_FL_ALLOW_WORLD_READABLE		0x001
+
 static int af_check_parent_dir(pool *p, const char *name, const char *path) {
   struct stat st;
   int res;
@@ -134,7 +136,8 @@ static int af_check_parent_dir(pool *p, const char *name, const char *path) {
   return 0;
 }
 
-static int af_check_file(pool *p, const char *name, const char *path) {
+static int af_check_file(pool *p, const char *name, const char *path,
+    int flags) {
   struct stat st;
   int res;
   const char *orig_path;
@@ -194,10 +197,9 @@ static int af_check_file(pool *p, const char *name, const char *path) {
     return -1;
   }
 
-  /* World-readable/writable files are insecure, and are thus not
-   * usable/trusted.
-   */
-  if (st.st_mode & S_IROTH) {
+  /* World-readable files MAY be insecure, and are thus not usable/trusted. */
+  if ((st.st_mode & S_IROTH) &&
+       !(flags & PR_AUTH_FILE_FL_ALLOW_WORLD_READABLE)) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
@@ -208,6 +210,7 @@ static int af_check_file(pool *p, const char *name, const char *path) {
     return -1;
   }
 
+  /* World-writable files are insecure, and are thus not usable/trusted. */
   if (st.st_mode & S_IWOTH) {
     int xerrno = EPERM;
 
@@ -1205,6 +1208,7 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
 MODRET set_authgroupfile(cmd_rec *cmd) {
   config_rec *c = NULL;
   authfile_file_t *file = NULL;
+  int flags = 0;
 
 #ifdef PR_USE_REGEX
   if (cmd->argc-1 < 1 ||
@@ -1224,8 +1228,12 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
       cmd->argv[1], "'.", NULL));
   }
 
-  /* Make sure the configured file has the correct permissions. */
-  if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1]) < 0) {
+  /* Make sure the configured file has the correct permissions.  Note that
+   * AuthGroupFiles, unlike AuthUserFiles, do not contain any sensitive
+   * information, and can thus be world-readable.
+   */
+  flags = PR_AUTH_FILE_FL_ALLOW_WORLD_READABLE;
+  if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1], flags) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "unable to use ", cmd->argv[1], ": ", strerror(errno), NULL));
   }
@@ -1347,6 +1355,7 @@ MODRET authfile_post_host(cmd_rec *cmd) {
 MODRET set_authuserfile(cmd_rec *cmd) {
   config_rec *c = NULL;
   authfile_file_t *file = NULL;
+  int flags = 0;
 
 #ifdef PR_USE_REGEX
   if (cmd->argc-1 < 1 ||
@@ -1366,8 +1375,12 @@ MODRET set_authuserfile(cmd_rec *cmd) {
       cmd->argv[1], "'.", NULL));
   }
 
-  /* Make sure the configured file has the correct permissions. */
-  if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1]) < 0) {
+  /* Make sure the configured file has the correct permissions.  Note that
+   * AuthUserFiles, unlike AuthGroupFiles, DO contain any sensitive
+   * information, and thus CANNOT be world-readable.
+   */
+  flags = 0;
+  if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1], flags) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "unable to use ", cmd->argv[1], ": ", strerror(errno), NULL));
   }
