@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2013 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2014 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -7683,7 +7683,7 @@ MODRET tls_post_pass(cmd_rec *cmd) {
        */
       if ((tls_required_on_ctrl == 1 ||
            tls_required_on_auth == 1) &&
-          (!tls_flags & TLS_SESS_ON_CTRL)) {
+          (!(tls_flags & TLS_SESS_ON_CTRL))) {
         tls_log("SSL/TLS required but absent on control channel, "
           "disconnecting");
         pr_response_send(R_530, "%s", _("Login incorrect."));
