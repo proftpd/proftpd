@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.458 2013-12-09 07:14:26 castaglia Exp $
+ * $Id: mod_core.c,v 1.459 2014-01-25 16:34:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1995,18 +1995,43 @@ MODRET set_allowforeignaddress(cmd_rec *cmd) {
 }
 
 MODRET set_commandbuffersize(cmd_rec *cmd) {
-  int size = 0;
+  size_t size = 0;
+  off_t nbytes = 0;
   config_rec *c = NULL;
+  const char *units = NULL;
 
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc < 2 || cmd->argc > 3) {
+    CONF_ERROR(cmd, "wrong number of parameters")
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  /* NOTE: need to add checks for maximum possible sizes, negative sizes. */
-  size = atoi(cmd->argv[1]);
+  if (cmd->argc == 3) {
+    units = cmd->argv[2];
+  }
+
+  if (pr_str_get_nbytes(cmd->argv[1], units, &nbytes) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse: ",
+      cmd->argv[1], " ", units, ": ", strerror(errno), NULL));
+  }
+
+  if (nbytes > PR_TUNABLE_CMD_BUFFER_SIZE) {
+    char max[1024];
+
+    snprintf(max, sizeof(max)-1, "%lu", (unsigned long)
+      PR_TUNABLE_CMD_BUFFER_SIZE);
+    max[sizeof(max)-1] = '\0';
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "size ", cmd->argv[1], units,
+      "exceeds max size ", max, NULL));
+  }
+
+  /* Possible truncation here, but only for an absurdly large size. */
+  size = (size_t) nbytes;
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = size;
+  c->argv[0] = pcalloc(c->pool, sizeof(size_t));
+  *((size_t *) c->argv[0]) = size;
 
   return PR_HANDLED(cmd);
 }

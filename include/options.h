@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* User configurable defaults and tunable parameters.
- * $Id: options.h,v 1.35 2013-09-29 23:26:02 castaglia Exp $
+ * $Id: options.h,v 1.36 2014-01-25 16:34:09 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -91,6 +91,13 @@
  */
 #ifndef PR_TUNABLE_XFER_BUFFER_SIZE
 # define PR_TUNABLE_XFER_BUFFER_SIZE	PR_TUNABLE_BUFFER_SIZE
+#endif
+
+/* Maximum FTP command size.  For details on this size of 512KB, see
+ * the Bug#4014 discussion.
+ */
+#ifndef PR_TUNABLE_CMD_BUFFER_SIZE
+# define PR_TUNABLE_CMD_BUFFER_SIZE	(512 * 1024)
 #endif
 
 /* Maximum path length.  GNU HURD (and some others) do not define

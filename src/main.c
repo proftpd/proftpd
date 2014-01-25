@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* House initialization and main program loop
- * $Id: main.c,v 1.461 2013-10-13 18:06:57 castaglia Exp $
+ * $Id: main.c,v 1.462 2014-01-25 16:34:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -458,42 +458,21 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   return success;
 }
 
-/* Returns the appropriate maximum buffer length to use for FTP commands
- * from the client, taking the CommandBufferSize directive into account.
+/* Returns the appropriate maximum buffer size to use for FTP commands
+ * from the client.
  */
-static long get_max_cmd_len(size_t buflen) {
-  long res;
-  int *bufsz = NULL;
-  size_t default_cmd_bufsz;
+static size_t get_max_cmd_sz(void) {
+  size_t res;
+  size_t *bufsz = NULL;
 
-  /* It's possible for the admin to select a PR_TUNABLE_BUFFER_SIZE which
-   * is smaller than PR_DEFAULT_CMD_BUFSZ.  We need to handle such cases
-   * properly.
-   */
-  default_cmd_bufsz = PR_DEFAULT_CMD_BUFSZ;
-  if (default_cmd_bufsz > buflen) {
-    default_cmd_bufsz = buflen;
-  }
- 
   bufsz = get_param_ptr(main_server->conf, "CommandBufferSize", FALSE);
   if (bufsz == NULL) {
-    res = default_cmd_bufsz;
-
-  } else if (*bufsz <= 0) {
-    pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) given, "
-      "using default buffer size (%lu) instead", *bufsz,
-      (unsigned long) default_cmd_bufsz);
-    res = default_cmd_bufsz;
-
-  } else if (*bufsz + 1 > buflen) {
-    pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) given, "
-      "using default buffer size (%lu) instead", *bufsz,
-      (unsigned long) default_cmd_bufsz);
-    res = default_cmd_bufsz;
+    res = PR_DEFAULT_CMD_BUFSZ;
 
   } else {
-    pr_log_debug(DEBUG1, "setting CommandBufferSize to %d", *bufsz);
-    res = (long) *bufsz;
+    pr_log_debug(DEBUG1, "setting CommandBufferSize to %lu",
+      (unsigned long) *bufsz);
+    res = *bufsz;
   }
 
   return res;
@@ -501,21 +480,29 @@ static long get_max_cmd_len(size_t buflen) {
 
 int pr_cmd_read(cmd_rec **res) {
   static long cmd_bufsz = -1;
-  char buf[PR_DEFAULT_CMD_BUFSZ+1] = {'\0'};
+  static char *cmd_buf = NULL;
   char *cp;
-  size_t buflen;
+  size_t cmd_buflen;
 
   if (res == NULL) {
     errno = EINVAL;
     return -1;
   }
 
+  if (cmd_bufsz == -1) {
+    cmd_bufsz = get_max_cmd_sz();
+  }
+
+  if (cmd_buf == NULL) {
+    cmd_buf = pcalloc(session.pool, cmd_bufsz + 1);
+  }
+
   while (TRUE) {
     pr_signals_handle();
 
-    memset(buf, '\0', sizeof(buf));
+    memset(cmd_buf, '\0', cmd_bufsz);
 
-    if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
+    if (pr_netio_telnet_gets(cmd_buf, cmd_bufsz, session.c->instrm,
         session.c->outstrm) == NULL) {
 
       if (errno == E2BIG) {
@@ -536,9 +523,6 @@ int pr_cmd_read(cmd_rec **res) {
     break;
   }
 
-  if (cmd_bufsz == -1)
-    cmd_bufsz = get_max_cmd_len(sizeof(buf));
-
   /* This strlen(3) is guaranteed to terminate; the last byte of buf is
    * always NUL, since pr_netio_telnet_gets() is told that the buf size is
    * one byte less than it really is.
@@ -546,26 +530,28 @@ int pr_cmd_read(cmd_rec **res) {
    * If the strlen(3) says that the length is less than the cmd_bufsz, then
    * there is no need to truncate the buffer by inserting a NUL.
    */
-  buflen = strlen(buf);
-  if (buflen > (cmd_bufsz - 1)) {
+  cmd_buflen = strlen(cmd_buf);
+  if (cmd_buflen > cmd_bufsz) {
     pr_log_debug(DEBUG0, "truncating incoming command length (%lu bytes) to "
       "CommandBufferSize %lu; use the CommandBufferSize directive to increase "
-      "the allowed command length", (unsigned long) buflen,
+      "the allowed command length", (unsigned long) cmd_buflen,
       (unsigned long) cmd_bufsz);
-    buf[cmd_bufsz - 1] = '\0';
+    cmd_buf[cmd_bufsz-1] = '\0';
   }
 
-  if (buflen &&
-      (buf[buflen-1] == '\n' || buf[buflen-1] == '\r')) {
-    buf[buflen-1] = '\0';
-    buflen--;
+  if (cmd_buflen &&
+      (cmd_buf[cmd_buflen-1] == '\n' || cmd_buf[cmd_buflen-1] == '\r')) {
+    cmd_buf[cmd_buflen-1] = '\0';
+    cmd_buflen--;
 
-    if (buflen &&
-        (buf[buflen-1] == '\n' || buf[buflen-1] =='\r'))
-      buf[buflen-1] = '\0';
+    if (cmd_buflen &&
+        (cmd_buf[cmd_buflen-1] == '\n' || cmd_buf[cmd_buflen-1] =='\r')) {
+      cmd_buf[cmd_buflen-1] = '\0';
+      cmd_buflen--;
+    }
   }
 
-  cp = buf;
+  cp = cmd_buf;
   if (*cp == '\r')
     cp++;
 
@@ -579,11 +565,11 @@ int pr_cmd_read(cmd_rec **res) {
      * command handlers themselves, via cmd->arg.  This small hack
      * reduces the burden on SITE module developers, however.
      */
-    if (strncasecmp(cp, C_SITE, 4) == 0)
+    if (strncasecmp(cp, C_SITE, 4) == 0) {
       flags |= PR_STR_FL_PRESERVE_WHITESPACE;
+    }
 
     cmd = make_ftp_cmd(session.pool, cp, flags);
-
     if (cmd) {
       *res = cmd;
     } 
