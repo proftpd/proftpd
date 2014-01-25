@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.459 2014-01-25 16:34:09 castaglia Exp $
+ * $Id: mod_core.c,v 1.460 2014-01-25 16:39:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2012,7 +2012,7 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
 
   if (pr_str_get_nbytes(cmd->argv[1], units, &nbytes) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse: ",
-      cmd->argv[1], " ", units, ": ", strerror(errno), NULL));
+      cmd->argv[1], " ", units ? units : "", ": ", strerror(errno), NULL));
   }
 
   if (nbytes > PR_TUNABLE_CMD_BUFFER_SIZE) {
@@ -2022,8 +2022,8 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
       PR_TUNABLE_CMD_BUFFER_SIZE);
     max[sizeof(max)-1] = '\0';
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "size ", cmd->argv[1], units,
-      "exceeds max size ", max, NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "size ", cmd->argv[1],
+      units ? units : "", "exceeds max size ", max, NULL));
   }
 
   /* Possible truncation here, but only for an absurdly large size. */
