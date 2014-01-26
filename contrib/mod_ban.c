@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2013 TJ Saunders
+ * Copyright (c) 2004-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.69 2013-10-13 22:51:36 castaglia Exp $
+ * $Id: mod_ban.c,v 1.70 2014-01-26 17:50:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2215,7 +2215,7 @@ MODRET set_banengine(cmd_rec *cmd) {
     /* If ban_engine has not been initialized yet, and this is the
      * "server config" section, we can do it here.  And even if the
      * previously initialized value is 0 ("BanEngine off"), if the
-     * current value is 1 ("BanEngine on"), use it.  This can haappen,
+     * current value is 1 ("BanEngine on"), use it.  This can happen,
      * for example, when there are multiple BanEngine directives in the
      * config, in <IfClass> sections, for whitelisting.
      */
