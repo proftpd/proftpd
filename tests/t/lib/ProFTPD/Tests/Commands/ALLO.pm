@@ -263,7 +263,7 @@ sub allo_anon_bug3996 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $user, $group) = config_write($config_file, $config);
 
   if (open(my $fh, ">> $config_file")) {
     print $fh <<EOC;
