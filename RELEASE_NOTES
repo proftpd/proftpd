@@ -120,7 +120,10 @@ ChangeLog files.
     a catalog of the most common log messages and what they mean.  See
     doc/howto/LogLevels.html and doc/howto/LogMessages.html, respsectively.
 
+    A new howto for the mod_radius module, including some example FreeRADIUS
+    configurations, has been added; see doc/howto/Radius.html.
 
+ 
 1.3.5rc3
 ---------
 
@@ -514,4 +517,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2014-01-21 22:44:31 $
+Last Updated: $Date: 2014-01-27 01:28:21 $
