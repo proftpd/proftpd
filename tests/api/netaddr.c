@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2013 The ProFTPD Project team
+ * Copyright (c) 2008-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetAddr API tests
- * $Id: netaddr.c,v 1.12 2013-12-23 17:53:42 castaglia Exp $
+ * $Id: netaddr.c,v 1.13 2014-01-27 18:31:35 castaglia Exp $
  */
 
 #include "tests.h"
@@ -146,12 +146,17 @@ END_TEST
 START_TEST (netaddr_get_addr2_test) {
   pr_netaddr_t *res;
   const char *name;
-  array_header *addrs = NULL;
   int flags;
 
   flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
   name = "lo0";
   res = pr_netaddr_get_addr2(p, name, NULL, flags);
+  if (res == NULL) {
+    /* Fallback to using a device name of "lo". */
+    name = "lo";
+    res = pr_netaddr_get_addr2(p, name, NULL, flags);
+  }
+
   fail_if(res == NULL,
     "Expected to resolve name '%s' to an address via INCL_DEVICE", name);
 
