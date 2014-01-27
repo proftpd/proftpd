@@ -33,7 +33,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/cmd.o \
   $(top_srcdir)/src/response.o \
   $(top_srcdir)/src/fsio.o \
-  $(top_srcdir)/src/netio.o
+  $(top_srcdir)/src/netio.o \
+  $(top_srcdir)/src/encode.o
 
 TEST_API_LIBS=-lcheck
 

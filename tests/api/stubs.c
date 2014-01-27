@@ -73,30 +73,6 @@ int pr_ctrls_unregister(module *m, const char *action) {
   return 0;
 }
 
-char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
-  if (in == NULL) {
-    return NULL;
-  }
-
-  if (outlen != NULL) {
-    *outlen = inlen;
-  }
-
-  return (char *) in;
-}
-
-char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
-  if (in == NULL) {
-    return NULL;
-  }
-
-  if (outlen != NULL) {
-    *outlen = inlen;
-  }
-
-  return (char *) in;
-}
-
 void pr_log_debug(int level, const char *fmt, ...) {
   if (getenv("TEST_VERBOSE") != NULL) {
     va_list msg;
