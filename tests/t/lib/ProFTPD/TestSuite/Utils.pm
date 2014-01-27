@@ -1143,11 +1143,7 @@ sub test_setup {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/$name.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/$name.group");
 
-  my $user = 'proftpd';
-  my $passwd = 'test';
   my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
