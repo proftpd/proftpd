@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.19 2013-08-14 05:22:09 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.20 2014-01-27 22:08:41 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -572,26 +572,34 @@ Note that the values for the various byte variables honor any
 <h2><a name="Installation">Installation</a></h2>
 Follow the usual steps for using third-party modules in proftpd: 
 <pre>
-  ./configure --with-modules=<i>quotatab-modules</i>
+  ./configure --with-modules=<i>mod_quotatab:...</i>
   make
   make install
 </pre>
-where <i>quotatab-modules</i> will depend on the types of quota tables
-you wish to support.
+where the list of modules, including <code>mod_quotatab</code>, will depend on
+the types of quota tables you wish to support.
 
 <p>
-For file-based quota tables, include the <code>mod_quotatab_file</code>
+For using file-based quota tables, include the <code>mod_quotatab_file</code>
 submodule, <i>e.g.</i>:
 <pre>
-  mod_quotatab:mod_quotatab_file
+  --with-modules=mod_quotatab:mod_quotatab_file
+</pre>
+or:
+<pre>
+  --enable-dso --with-shared=mod_quotatab:mod_quotatab_file
 </pre>
 
 <p>
-For LDAP-based quota limit tables, include <code>mod_quotatab_ldap</code>
+For using LDAP-based quota limit tables, include <code>mod_quotatab_ldap</code>
 in addition to either <code>mod_quotatab_file</code> or
 <code>mod_quotatab_sql</code>:
 <pre>
-  mod_quotatab:mod_quotatab_file:mod_quotatab_ldap
+  --with-modules=mod_quotatab:mod_quotatab_file:mod_quotatab_ldap
+</pre>
+or:
+<pre>
+  --enable-dso --with-shared=mod_quotatab:mod_quotatab_file:mod_quotatab_ldap
 </pre>
 Note that file- or SQL-based tally tables are needed since
 <code>mod_quotatab_ldap</code> cannot handle tally tables, only limit tables.
@@ -599,14 +607,22 @@ Note that file- or SQL-based tally tables are needed since
 <code>mod_ldap</code> module.
 
 <p>
-For SQL-based quota tables, include the <code>mod_quotatab_sql</code>
+For using SQL-based quota tables, include the <code>mod_quotatab_sql</code>
 submodule, <i>e.g.</i>:
 <pre>
-  mod_quotatab:mod_quotatab_sql
+  --with-modules=mod_quotatab:mod_quotatab_sql
 </pre>
-And, if you wish to support file- and SQL-based quota tables:
+or:
 <pre>
-  mod_quotatab:mod_quotatab_file:mod_quotatab_sql
+  --enable-dso --with-shared=mod_quotatab:mod_quotatab_sql
+</pre>
+And, if you wish to support file- <b>and</b> SQL-based quota tables:
+<pre>
+  --with-modules=mod_quotatab:mod_quotatab_file:mod_quotatab_sql
+</pre>
+or:
+<pre>
+  --enable-dso --with-shared=mod_quotatab:mod_quotatab_file:mod_quotatab_sql
 </pre>
 Note that SQL tables require that a correct installation of
 <code>mod_sql</code> (and any of its backend modules) also be used.
@@ -617,12 +633,12 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-08-14 05:22:09 $</i><br>
+Last Updated: <i>$Date: 2014-01-27 22:08:41 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2013 TJ Saunders<br>
+&copy; Copyright 2000-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
