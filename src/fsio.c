@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.154 2014-01-20 19:36:27 castaglia Exp $
+ * $Id: fsio.c,v 1.155 2014-01-27 18:25:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2212,6 +2212,12 @@ char *pr_fs_decode_path(pool *p, const char *path) {
   size_t outlen;
   char *res;
 
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (!use_encoding) {
     return (char *) path;
   }
@@ -2254,6 +2260,12 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 #ifdef PR_USE_NLS
   size_t outlen;
   char *res;
+
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   if (!use_encoding) {
     return (char *) path;

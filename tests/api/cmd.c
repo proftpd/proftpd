@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2011-2013 The ProFTPD Project team
+ * Copyright (c) 2011-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Command API tests
- * $Id: cmd.c,v 1.3 2013-09-30 22:01:47 castaglia Exp $
+ * $Id: cmd.c,v 1.4 2014-01-27 18:25:15 castaglia Exp $
  */
 
 #include "tests.h"
@@ -372,6 +372,7 @@ START_TEST (cmd_get_displayable_str_test) {
   fail_if(res == NULL, "Expected string, got null");
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   cmd->argc = 0;
   res = pr_cmd_get_displayable_str(cmd, NULL);
 
@@ -383,6 +384,7 @@ START_TEST (cmd_get_displayable_str_test) {
    */
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   pr_cmd_clear_cache(cmd);
   res = pr_cmd_get_displayable_str(cmd, NULL);
 
@@ -390,6 +392,7 @@ START_TEST (cmd_get_displayable_str_test) {
   fail_if(res == NULL, "Expected string, got null");
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   cmd = pr_cmd_alloc(p, 1, "bar");
   cmd->arg = NULL;
   res = pr_cmd_get_displayable_str(cmd, NULL);
@@ -398,6 +401,7 @@ START_TEST (cmd_get_displayable_str_test) {
   fail_if(res == NULL, "Expected string, got null");
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   cmd = pr_cmd_alloc(p, 1, "baz");
   cmd->argv[0] = NULL;
   cmd->arg = pstrdup(p, "baz");
@@ -411,6 +415,7 @@ START_TEST (cmd_get_displayable_str_test) {
   fail_if(res == NULL, "Expected string, got null");
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   cmd = pr_cmd_alloc(p, 3, "foo", "bar", "baz");
   cmd->arg = NULL;
   res = pr_cmd_get_displayable_str(cmd, NULL);
@@ -426,6 +431,7 @@ START_TEST (cmd_get_displayable_str_test) {
   /* Make sure we can handle cases where cmd_rec->argv has been tampered
    * with.
    */
+  mark_point();
   cmd = pr_cmd_alloc(p, 3, "foo", "bar", "baz");
   cmd->argv[0] = NULL;
   res = pr_cmd_get_displayable_str(cmd, NULL);
