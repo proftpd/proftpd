@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: keys.c,v 1.38 2013-12-12 00:38:45 castaglia Exp $
+ * $Id: keys.c,v 1.39 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1628,12 +1628,14 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       if (rsa) {
         if (RSA_blinding_on(rsa, NULL) != 1) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error enabling RSA blinding for key '%s': %s", path,
+            "error enabling RSA blinding for key '%s': %s",
+            file_path ? file_path : agent_path,
             sftp_crypto_get_errors());
 
         } else {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "RSA blinding enabled for key '%s'", path);
+            "RSA blinding enabled for key '%s'",
+            file_path ? file_path : agent_path);
         }
 
         RSA_free(rsa);

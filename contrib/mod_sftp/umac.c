@@ -20,7 +20,7 @@
  * Comments should be directed to Ted Krovetz (tdk@acm.org)
  *                                                                   
  * ---------------------------------------------------------------------- */
- 
+
  /* ////////////////////// IMPORTANT NOTES /////////////////////////////////
   *
   * 1) This version does not work properly on messages larger than 16MB
@@ -67,6 +67,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h>
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L 
 
 /* ---------------------------------------------------------------------- */
 /* --- Primitive Data Types ---                                           */
@@ -1269,6 +1271,66 @@ int umac_update(struct umac_ctx *ctx, unsigned char *input, long len)
     return (1);
 }
 
+#else
+
+struct umac_ctx {
+    void *free_ptr;          /* Address to free this struct via          */
+} umac_ctx;
+
+int umac_reset(struct umac_ctx *ctx)
+/* Reset the hash function to begin a new authentication.        */
+{
+    return (0);
+}
+
+/* ---------------------------------------------------------------------- */
+
+int umac_delete(struct umac_ctx *ctx)
+/* Deallocate the ctx structure */
+{
+    return (0);
+}
+
+/* ---------------------------------------------------------------------- */
+
+size_t umac_ctx_size(void) {
+  return sizeof(struct umac_ctx);
+}
+
+struct umac_ctx *umac_alloc(void) {
+    return (NULL);
+}
+
+void umac_init(struct umac_ctx *ctx, unsigned char key[]) {
+}
+
+struct umac_ctx *umac_new(unsigned char key[])
+/* Dynamically allocate a umac_ctx struct, initialize variables, 
+ * generate subkeys from key. Align to 16-byte boundary.
+ */
+{
+    return (NULL);
+}
+
+/* ---------------------------------------------------------------------- */
+
+int umac_final(struct umac_ctx *ctx, unsigned char tag[], unsigned char nonce[8])
+{
+    return (0);
+}
+
+/* ---------------------------------------------------------------------- */
+
+int umac_update(struct umac_ctx *ctx, unsigned char *input, long len)
+/* Given len bytes of data, we parse it into L1_KEY_LEN chunks and   */
+/* hash each one, calling the PDF on the hashed output whenever the hash- */
+/* output buffer is full.                                                 */
+{
+    return (0);
+}
+
+#endif /* OpenSSL-0.9.7 or later */
+
 /* ---------------------------------------------------------------------- */
 
 #if 0
@@ -1289,3 +1351,4 @@ int umac(struct umac_ctx *ctx, unsigned char *input,
 /* ----- End UMAC Section ----------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
+

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: crypto.c,v 1.32 2013-10-07 01:29:04 castaglia Exp $
+ * $Id: crypto.c,v 1.33 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -158,7 +158,9 @@ static struct sftp_digest digests[] = {
   { "hmac-md5",		"md5",		EVP_md5,	0,	TRUE, FALSE },
   { "hmac-md5-96",	"md5",		EVP_md5,	12,	TRUE, FALSE },
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	TRUE, FALSE },
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
+#endif /* OpenSSL-0.9.7 or later */
   { "none",		"null",		EVP_md_null,	0,	FALSE, TRUE },
   { NULL, NULL, NULL, 0, FALSE, FALSE }
 };
@@ -313,6 +315,8 @@ static const EVP_CIPHER *get_bf_ctr_cipher(void) {
   return &bf_ctr_cipher;
 }
 
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+
 /* 3DES CTR mode implementation */
 
 struct des3_ctr_ex {
@@ -462,8 +466,6 @@ static const EVP_CIPHER *get_des3_ctr_cipher(void) {
 
   return &des3_ctr_cipher;
 }
-
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
 
 /* AES CTR mode implementation */
 struct aes_ctr_ex {
@@ -645,7 +647,6 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
 
   return &aes_ctr_cipher;
 }
-#endif /* OpenSSL older than 0.9.7 */
 
 static int update_umac(EVP_MD_CTX *ctx, const void *data, size_t len) {
   int res;
@@ -700,6 +701,7 @@ static const EVP_MD *get_umac_digest(void) {
 
   return &umac_digest;
 }
+#endif /* OpenSSL older than 0.9.7 */
 
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
     size_t *discard_len) {
@@ -712,10 +714,10 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
       if (strncmp(name, "blowfish-ctr", 13) == 0) {
         cipher = get_bf_ctr_cipher();
 
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
       } else if (strncmp(name, "3des-ctr", 9) == 0) {
         cipher = get_des3_ctr_cipher();
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
       } else if (strncmp(name, "aes256-ctr", 11) == 0) {
         cipher = get_aes_ctr_cipher(32);
 
@@ -762,8 +764,12 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
     if (strcmp(digests[i].name, name) == 0) {
       const EVP_MD *digest = NULL;
 
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
       if (strncmp(name, "umac-64@openssh.com", 12) == 0) {
         digest = get_umac_digest();
+#else
+      if (FALSE) {
+#endif /* OpenSSL older than 0.9.7 */
 
       } else {
         digest = digests[i].get_type();
