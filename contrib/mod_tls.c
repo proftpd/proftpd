@@ -1044,6 +1044,7 @@ static const char *get_printable_subjaltname(pool *p, const char *data,
 
 static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
   int matched = 0;
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
   STACK_OF(GENERAL_NAME) *sans;
 
   sans = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
@@ -1099,6 +1100,7 @@ static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
 
     sk_GENERAL_NAME_free(sans);
   }
+#endif /* OpenSSL-0.9.7 or later */
 
   return matched;
 }
