@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.88 2013-06-29 00:37:56 castaglia Exp $
+# $Id: proftpd.spec,v 1.89 2014-01-28 17:40:46 castaglia Exp $
 
 # Module List:
 #
@@ -50,12 +50,12 @@
 #
 # NOTE: rpmbuild is really bloody stupid, and CANNOT handle a leading '#'
 # character followed by a '%' character.  
-%global release_cand_version      rc3
+%global release_cand_version      rc4
 
 %global usecvsversion             0%{?_with_cvs:1}
 
-%global proftpd_cvs_version_main  1.3.5rc3
-%global proftpd_cvs_version_date  20130614
+%global proftpd_cvs_version_main  1.3.5rc4
+%global proftpd_cvs_version_date  20140128
 
 # Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
 # release candidates and stable/maint releases are all available in that form;
