@@ -1795,7 +1795,7 @@ sub extlog_rename_from {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
-    LogFormat => 'custom "%w %f"',
+    LogFormat => 'custom "%m: %w %f"',
     ExtendedLog => "$ext_log WRITE custom",
 
     IfModules => {
@@ -1832,11 +1832,11 @@ sub extlog_rename_from {
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Rename successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
@@ -1869,20 +1869,28 @@ sub extlog_rename_from {
     my $line = <$fh>;
     chomp($line);
 
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "logged: $line\n";
+    }
+
     if ($^O eq 'darwin') {
       # MacOSX-specific hack
       $src_file = '/private' . $src_file;
       $dst_file = '/private' . $dst_file;
     }
 
-    my $expected = "- $src_file";
+    my $expected = "RNFR: - $src_file";
     $self->assert($expected eq $line,
       test_msg("Expected '$expected', got '$line'"));
 
     $line = <$fh>;
     chomp($line);
 
-    $expected = "$src_file $dst_file";
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "logged: $line\n";
+    }
+
+    $expected = "RNTO: $src_file $dst_file";
     $self->assert($expected eq $line,
       test_msg("Expected '$expected', got '$line'"));
 
