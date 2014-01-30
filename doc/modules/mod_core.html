@@ -1,4 +1,4 @@
-<!-- $Id: mod_core.html,v 1.42 2013-11-09 23:14:30 castaglia Exp $ -->
+<!-- $Id: mod_core.html,v 1.43 2014-01-30 16:50:10 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
 
 <html>
@@ -46,6 +46,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#ScoreboardMutex">ScoreboardMutex</a>
   <li><a href="#ServerIdent">ServerIdent</a>
   <li><a href="#ServerType">ServerType</a>
+  <li><a href="#SocketBindTight">SocketBindTight</a>
   <li><a href="#SocketOptions">SocketOptions</a>
   <li><a href="#SyslogFacility">SyslogFacility</a>
   <li><a href="#SyslogLevel">SyslogLevel</a>
@@ -1003,6 +1004,82 @@ dedicated to processing all requests from the newly connected client.
 
 <p>
 <hr>
+<h2><a name="SocketBindTight">SocketBindTight</a></h2>
+<strong>Syntax:</strong> SocketBindTight <em>on|off</em><br>
+<strong>Default:</strong> <em>off</em><br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0pl6 and later
+
+<p>
+The <code>SocketBindTight</code> directive controls how <code>proftpd</code>
+creates and binds its initial TCP listening sockets in "ServerType standalone"
+mode (see <a href="#ServerType"><code>ServerType</code></a>).  This directive
+has no effect upon servers running with "ServerType inetd", because
+the TCP listening sockets in that mode are not needed or created by
+<code>proftpd</code>.
+
+<p>
+When <code>SocketBindTight</code> is set to <em>off</em> (the default), a
+single TCP listening socket is created for each port that the server must
+listen on, regardless of the number of IP addresses being used by
+<code>&lt;VirtualHost&gt;</code> configurations.  This has the benefit of
+requiring a relatively small number of file descriptors (one for each socket)
+for the master daemon process, even if a large number of virtual servers are
+configured.  Each of these listening sockets is bound to the "wildcard"
+address, meaning that on all IP addresses on that port (<i>e.g.</i> "*:21").
+
+<p>
+When <code>SocketBindTight</code> is set to <em>on</em>, a TCP listening socket
+is created and bound to <i>a specific IP address</i> for the main "server
+config" server and all configured virtual servers.  This allows for situations
+where an administrator may wish to have a particular port be used by both
+<code>proftpd</code> (on one IP address) and another daemon (on a different IP
+address).  The drawback is that considerably more file descriptors will be
+required <b>if a large number</b> of virtual servers must be supported.
+
+<p>
+Here's an example.  Two servers have been configured (one "server config" and
+one <code>&lt;VirtualHost&gt;</code>), with the IP addresses 10.0.0.1 and
+10.0.0.2, respectively.  The 10.0.0.1 server runs on port 21, while 10.0.0.2
+runs on port 2001.
+
+<p>
+If we use:
+<pre>
+  SocketBindTight off
+</pre>
+then <code>proftpd</code> creates two sockets, both bound to <b>all</b>
+available addresses; one socket listens on port 21 (<i>i.e.</i> "*:21"), the
+other on port 2001 (<i>i.e.</i> "*.2001").  Since each socket is bound to all
+available addresses, no other daemon or process will be allowed to bind to
+ports 21 or 2001.
+
+<p>
+On the other hand, if we use:
+<pre>
+  SocketBindTight on
+</pre>
+then <code>proftpd</code> again creates two sockets.  However one is bound to
+10.0.0.1, port 21 (<i>i.e.</i> "10.0.0.1:21") and the other is bound to
+10.0.0.2, port 2001 (<i>i.e.</i> "10.0.0.2:2001").  Thus these sockets are
+<em>"tightly"</em> bound to the IP addresses.  This means that port 21 can be
+reused on any address <i>other</i> than 10.0.0.1, and similarly for port 2001
+and 10.0.0.2.
+
+<p>
+One side effect of setting <code>SocketBindTight</code> to <em>on</em> is that
+connections to non-bound addresses will result in a "connection refused"
+message rather than the more common:
+<pre>
+  500 Sorry, no server available to handle request on <i>a.b.c.d.</i>
+</pre>
+due to the fact that no TCP listening socket has been bound to the particular
+address/port pair.  This may or may not be aesthetically desirable, depending
+on your circumstances.
+
+<p>
+<hr>
 <h2><a name="SocketOptions">SocketOptions</a></h2>
 <strong>Syntax:</strong> SocketOptions <em>[maxseg <i>byte-count</i>] [rcvbuf <i>byte-count</i>] [sndbuf <i>byte-count</i>] [keepalive "on"|"off"|spec]</em><br>
 <strong>Default:</strong> None<br>
@@ -1589,16 +1666,38 @@ See also: <a href="#DefaultAddress"><code>DefaultAddress</code></a>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_core</code> module is <b>always</b> installed.
 
+<p><a name="FAQ">
+<hr>
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="ListenOnOneAddressOnly">
+<font color=red>Question</font>: How do I configure <code>proftpd</code> to
+only listen to connections on one address, <i>e.g.</i> 127.0.0.1?  If I use
+the following in my <code>proftpd.conf</code>:
+<pre>
+  DefaultAddress localhost
+</pre>
+I am still able to connect to <code>proftpd</code> from another machine.<br>
+<font color=blue>Answer</font>: The solution is to use the
+<a href="#SocketBindTight"><code>SocketBindTight</code></a>, like this:
+<pre>
+  DefaultAddress localhost
+  SocketBindTight on
+</pre>
+The <code>SocketBindTight</code> directive tells <code>proftpd</code> to
+listen <b>only</b> on that 'localhost' IP address, rather than on all
+addresses.
+
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-11-09 23:14:30 $</i><br>
+Last Updated: <i>$Date: 2014-01-30 16:50:10 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2013 The ProFTPD Project<br>
+&copy; Copyright 2000-2014 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
