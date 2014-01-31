@@ -23,7 +23,7 @@
  */
 
 /* Resource limit module
- * $Id: mod_rlimit.c,v 1.7 2014-01-31 16:52:33 castaglia Exp $
+ * $Id: mod_rlimit.c,v 1.8 2014-01-31 17:29:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -512,6 +512,22 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 #endif
 }
 
+MODRET rlimit_post_pass(cmd_rec *cmd) {
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "RLimitChroot", FALSE);
+  if (c != NULL) {
+    int guard_chroot;
+
+    guard_chroot = *((int *) c->argv[0]);
+    if (guard_chroot == FALSE) {
+      pr_fsio_guard_chroot(FALSE);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 static int rlimit_set_core(int scope) {
   rlim_t current, max;
   int res, xerrno;
@@ -791,6 +807,11 @@ static conftable rlimit_conftab[] = {
   { NULL, NULL, NULL }
 };
 
+static cmdtable rlimit_cmdtab[] = {
+  { POST_CMD,	C_PASS,	G_NONE,	rlimit_post_pass, FALSE, FALSE,	CL_AUTH },
+  { 0, NULL }
+};
+
 module rlimit_module = {
   NULL, NULL,
 
@@ -804,7 +825,7 @@ module rlimit_module = {
   rlimit_conftab,
 
   /* Module command handler table */
-  NULL,
+  rlimit_cmdtab,
 
   /* Module authentication handler table */
   NULL,
