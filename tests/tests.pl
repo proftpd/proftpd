@@ -154,6 +154,7 @@ if (scalar(@ARGV) > 0) {
     t/config/protocols.t
     t/config/requirevalidshell.t
     t/config/rewritehome.t
+    t/config/rlimitchroot.t
     t/config/rlimitcpu.t
     t/config/rlimitmemory.t
     t/config/rlimitopenfiles.t
