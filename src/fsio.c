@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.156 2014-01-31 16:52:34 castaglia Exp $
+ * $Id: fsio.c,v 1.157 2014-01-31 17:06:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -110,7 +110,7 @@ static int use_encoding = TRUE;
 
 /* Guard against attacks like "Roaring Beast" when we are chrooted.  See:
  *
- *  http://auscert.org.au/15286
+ *  https://auscert.org.au/15286
  *  https://auscert.org.au/15526
  *
  * Currently, we guard the /etc and /lib directories.
