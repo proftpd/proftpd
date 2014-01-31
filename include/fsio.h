@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular filesystem support.
- * $Id: fsio.h,v 1.36 2014-01-20 19:36:27 castaglia Exp $
+ * $Id: fsio.h,v 1.37 2014-01-31 16:52:33 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -276,6 +276,12 @@ int pr_fsio_faccess(pr_fh_t *, int, uid_t, gid_t, array_header *);
 int pr_fsio_utimes(const char *, struct timeval *);
 int pr_fsio_futimes(pr_fh_t *, struct timeval *);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
+
+/* Set a flag determining whether we guard against write operations in
+ * certain sensitive directories while we are chrooted, e.g. "Roaring Beast"
+ * style attacks.
+ */
+int pr_fsio_guard_chroot(int);
 
 /* Set a flag determining whether to use mkdtemp(3) (if available) or not.
  * Returns the previously-set value.

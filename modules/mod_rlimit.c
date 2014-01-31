@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2013 The ProFTPD Project team
+ * Copyright (c) 2013-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,13 @@
  */
 
 /* Resource limit module
- * $Id: mod_rlimit.c,v 1.6 2013-06-10 16:05:32 castaglia Exp $
+ * $Id: mod_rlimit.c,v 1.7 2014-01-31 16:52:33 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
+
+#define MOD_RLIMIT_VERSION		"mod_rlimit/1.0"
 
 module rlimit_module;
 
@@ -92,6 +94,26 @@ static int get_num_bytes(const char *nbytes_str, rlim_t *nbytes) {
    */
   errno = EINVAL;
   return -1;
+}
+
+/* usage: RLimitChroot on|off */
+MODRET set_rlimitchroot(cmd_rec *cmd) {
+  config_rec *c;
+  int use_guard = 0;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  use_guard = get_boolean(cmd, 1);
+  if (use_guard == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = use_guard;
+
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RLimitCPU ["daemon"|"session"] soft-limit [hard-limit] */
@@ -698,6 +720,22 @@ static int rlimit_set_memory(int scope) {
 
 /* Event listeners */
 
+static void rlimit_chroot_ev(const void *event_data, void *user_data) {
+  const char *path;
+  size_t path_len;
+
+  /* If we are chrooted, AND the chroot path is anything other than "/",
+   * then set the FSIO API flag to guard certain sensitive directories.
+   */
+
+  path = event_data;
+  path_len = strlen(path);
+
+  if (path_len > 1) {
+    pr_fsio_guard_chroot(TRUE);
+  }
+}
+
 static void rlimit_postparse_ev(const void *event_data, void *user_data) {
   /* Since we're the parent process, we do not want to set the process
    * resource limits; we would prevent future session processes.
@@ -718,9 +756,25 @@ static int rlimit_init(void) {
 }
 
 static int rlimit_sess_init(void) {
+  config_rec *c;
+  int guard_chroot = TRUE;
+
   rlimit_set_cpu(SESSION_SCOPE);
   rlimit_set_memory(SESSION_SCOPE);
   rlimit_set_files(SESSION_SCOPE);
+
+  c = find_config(main_server->conf, CONF_PARAM, "RLimitChroot", FALSE);
+  if (c != NULL) {
+    guard_chroot = *((int *) c->argv[0]);
+  }
+
+  if (guard_chroot) {
+    /* Register an event listener for the 'core.chroot' event, so that we
+     * can set the switch (if necessary) for guarding against attacks like
+     * "Roaring Beast" when we are chrooted.
+     */
+    pr_event_register(&rlimit_module, "core.chroot", rlimit_chroot_ev, NULL);
+  }
 
   return 0;
 }
@@ -729,6 +783,7 @@ static int rlimit_sess_init(void) {
  */
 
 static conftable rlimit_conftab[] = {
+  { "RLimitChroot",		set_rlimitchroot,		NULL },
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
@@ -758,5 +813,8 @@ module rlimit_module = {
   rlimit_init,
 
   /* Session initialization function */
-  rlimit_sess_init
+  rlimit_sess_init,
+
+  /* Module version */
+  MOD_RLIMIT_VERSION
 };

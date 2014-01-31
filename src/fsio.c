@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.155 2014-01-27 18:25:15 castaglia Exp $
+ * $Id: fsio.c,v 1.156 2014-01-31 16:52:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,6 +96,8 @@ static unsigned char chk_fs_map = FALSE;
 static char vwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 
+static int guard_chroot = FALSE;
+
 /* Runtime enabling/disabling of mkdtemp(3) use. */
 #ifdef HAVE_MKDTEMP
 static int use_mkdtemp = TRUE;
@@ -105,6 +107,53 @@ static int use_mkdtemp = FALSE;
 
 /* Runtime enabling/disabling of encoding of paths. */
 static int use_encoding = TRUE;
+
+/* Guard against attacks like "Roaring Beast" when we are chrooted.  See:
+ *
+ *  http://auscert.org.au/15286
+ *  https://auscert.org.au/15526
+ *
+ * Currently, we guard the /etc and /lib directories.
+ */
+static int chroot_allow_path(const char *path) {
+  size_t path_len;
+  int res = 0;
+
+  /* Note: we expect to get (and DO get) the absolute path here.  Should that
+   * ever not be the case, this check will not work.
+   */
+
+  path_len = strlen(path);
+  if (path_len < 4) {
+    /* Path is not long enough to include one of the guarded directories. */
+    return 0;
+  }
+
+  if (path_len == 4) {
+    if (strcmp(path, "/etc") == 0 ||
+        strcmp(path, "/lib") == 0) {
+      res = -1;
+    }
+
+  } else {
+    if (strncmp(path, "/etc/", 5) == 0 ||
+        strncmp(path, "/lib/", 5) == 0) {
+      res = -1;
+    }
+  }
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 1, "rejecting path '%s' within chroot '%s'",
+      path, session.chroot_path);
+    pr_log_debug(DEBUG2,
+      "WARNING: attempt to use sensitive path '%s' within chroot '%s', "
+      "rejecting", path, session.chroot_path);
+
+    errno = EACCES;
+  }
+
+  return res;
+}
 
 /* The following static functions are simply wrappers for system functions
  */
@@ -122,14 +171,40 @@ static int sys_lstat(pr_fs_t *fs, const char *path, struct stat *sbuf) {
 }
 
 static int sys_rename(pr_fs_t *fs, const char *rnfm, const char *rnto) {
-  return rename(rnfm, rnto);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(rnfm);
+    if (res < 0) {
+      return -1;
+    }
+
+    res = chroot_allow_path(rnto);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = rename(rnfm, rnto);
+  return res;
 }
 
 static int sys_unlink(pr_fs_t *fs, const char *path) {
-  return unlink(path);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = unlink(path);
+  return res;
 }
 
 static int sys_open(pr_fh_t *fh, const char *path, int flags) {
+  int res;
 
 #ifdef O_BINARY
   /* On Cygwin systems, we need the open(2) equivalent of fopen(3)'s "b"
@@ -138,11 +213,32 @@ static int sys_open(pr_fh_t *fh, const char *path, int flags) {
   flags |= O_BINARY;
 #endif
 
-  return open(path, flags, PR_OPEN_MODE);
+  if (guard_chroot) {
+    /* If we are creating (or truncating) a file, then we need to check. */
+    if (flags & (O_APPEND|O_CREAT|O_TRUNC)) {
+      res = chroot_allow_path(path);
+      if (res < 0) {
+        return -1;
+      }
+    }
+  }
+
+  res = open(path, flags, PR_OPEN_MODE);
+  return res;
 }
 
 static int sys_creat(pr_fh_t *fh, const char *path, mode_t mode) {
-  return creat(path, mode);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = creat(path, mode);
+  return res;
 }
 
 static int sys_close(pr_fh_t *fh, int fd) {
@@ -162,11 +258,31 @@ static off_t sys_lseek(pr_fh_t *fh, int fd, off_t offset, int whence) {
 }
 
 static int sys_link(pr_fs_t *fs, const char *path1, const char *path2) {
-  return link(path1, path2);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path2);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = link(path1, path2);
+  return res;
 }
 
 static int sys_symlink(pr_fs_t *fs, const char *path1, const char *path2) {
-  return symlink(path1, path2);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path2);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = symlink(path1, path2);
+  return res;
 }
 
 static int sys_readlink(pr_fs_t *fs, const char *path, char *buf,
@@ -179,11 +295,31 @@ static int sys_ftruncate(pr_fh_t *fh, int fd, off_t len) {
 }
 
 static int sys_truncate(pr_fs_t *fs, const char *path, off_t len) {
-  return truncate(path, len);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = truncate(path, len);
+  return res;
 }
 
 static int sys_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
-  return chmod(path, mode);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = chmod(path, mode);
+  return res;
 }
 
 static int sys_fchmod(pr_fh_t *fh, int fd, mode_t mode) {
@@ -191,7 +327,17 @@ static int sys_fchmod(pr_fh_t *fh, int fd, mode_t mode) {
 }
 
 static int sys_chown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
-  return chown(path, uid, gid);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = chown(path, uid, gid);
+  return res;
 }
 
 static int sys_fchown(pr_fh_t *fh, int fd, uid_t uid, gid_t gid) {
@@ -199,7 +345,17 @@ static int sys_fchown(pr_fh_t *fh, int fd, uid_t uid, gid_t gid) {
 }
 
 static int sys_lchown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
-  return lchown(path, uid, gid);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = lchown(path, uid, gid);
+  return res;
 }
 
 /* We provide our own equivalent of access(2) here, rather than using
@@ -284,7 +440,17 @@ static int sys_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 }
 
 static int sys_utimes(pr_fs_t *fs, const char *path, struct timeval *tvs) {
-  return utimes(path, tvs);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = utimes(path, tvs);
+  return res;
 }
 
 static int sys_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
@@ -336,11 +502,31 @@ static struct dirent *sys_readdir(pr_fs_t *fs, void *dir) {
 }
 
 static int sys_mkdir(pr_fs_t *fs, const char *path, mode_t mode) {
-  return mkdir(path, mode);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = mkdir(path, mode);
+  return res;
 }
 
 static int sys_rmdir(pr_fs_t *fs, const char *path) {
-  return rmdir(path);
+  int res;
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = rmdir(path);
+  return res;
 }
 
 static int fs_cmp(const void *a, const void *b) {
@@ -2691,6 +2877,15 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   return res;
 }
 
+int pr_fsio_guard_chroot(int guard) {
+  int prev;
+
+  prev = guard_chroot;
+  guard_chroot = guard;
+
+  return prev;
+}
+
 int pr_fsio_set_use_mkdtemp(int value) {
   int prev_value;
 
@@ -2835,6 +3030,13 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   pr_trace_msg(trace_channel, 9,
     "smkdir: path '%s', mode %04o, UID %lu, GID %lu", path, (unsigned int) mode,
     (unsigned long) uid, (unsigned long) gid);
+
+  if (guard_chroot) {
+    res = chroot_allow_path(path);
+    if (res < 0) {
+      return -1;
+    }
+  }
 
 #ifdef HAVE_MKDTEMP
   if (use_mkdtemp == TRUE) {
