@@ -69,8 +69,8 @@
 #define MOD_TLS_VERSION		"mod_tls/2.6"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030402 
-# error "ProFTPD 1.3.4rc2 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030504 
+# error "ProFTPD 1.3.5rc4 or later required"
 #endif
 
 extern session_t session;
@@ -478,6 +478,8 @@ static int tls_renegotiate_timeout = 30;
 static unsigned char tls_renegotiate_required = TRUE;
 #endif
 
+#define TLS_NETIO_NOTE		"mod_tls.SSL"
+
 static pr_netio_t *tls_ctrl_netio = NULL;
 static pr_netio_stream_t *tls_ctrl_rd_nstrm = NULL;
 static pr_netio_stream_t *tls_ctrl_wr_nstrm = NULL;
@@ -603,8 +605,9 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
               "aborting connection");
 
             tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
-            tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
-              ctrl_ssl = NULL;
+            pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+            pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+            ctrl_ssl = NULL;
 
             pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
               "TLSOption AllowClientRenegotiations");
@@ -638,8 +641,9 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
               "aborting connection");
 
             tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
-            tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
-              ctrl_ssl = NULL;
+            pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+            pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+            ctrl_ssl = NULL;
 
             pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
               "TLSOption AllowClientRenegotiations");
@@ -2322,23 +2326,27 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
       tls_log("%s", "requested TLS renegotiation timed out on control channel");
       tls_log("%s", "shutting down control channel TLS session");
       tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
-      tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
-        ctrl_ssl = NULL;
+      pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+      pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+      ctrl_ssl = NULL;
     }
   }
 
   if ((tls_flags & TLS_SESS_ON_DATA) &&
       (tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
+    SSL *ssl;
 
-    if (!SSL_renegotiate_pending((SSL *) tls_data_wr_nstrm->strm_data)) {
+    ssl = pr_table_get(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+    if (!SSL_renegotiate_pending(ssl)) {
       tls_log("%s", "data channel TLS session renegotiated");
       tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
 
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
       tls_log("%s", "shutting down data channel TLS session");
-      tls_end_sess((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA, 0);
-      tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
+      tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+      pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+      pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
     }
   }
 
@@ -3644,7 +3652,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     pr_buffer_t *strm_buf;
 
     ctrl_ssl = ssl;
-    tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data = (void *) ssl;
+
+    pr_table_add(tls_ctrl_rd_nstrm->notes,
+      pstrdup(tls_ctrl_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+      ssl, sizeof(SSL *));
+    pr_table_add(tls_ctrl_wr_nstrm->notes,
+      pstrdup(tls_ctrl_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+      ssl, sizeof(SSL *));
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080dfL
     if (SSL_get_secure_renegotiation_support(ssl) == 1) {
@@ -3676,7 +3690,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   } else if (conn == session.d) {
     pr_buffer_t *strm_buf;
 
-    tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
+    pr_table_add(tls_data_rd_nstrm->notes,
+      pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+      ssl, sizeof(SSL *));
+    pr_table_add(tls_data_wr_nstrm->notes,
+      pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+      ssl, sizeof(SSL *));
 
     /* Clear any data from the NetIO stream buffers which may have been read
      * in before the SSL/TLS handshake occurred (Bug#3624).
@@ -3764,7 +3783,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         tls_log("client did not reuse SSL session, rejecting data connection "
           "(see the NoSessionReuseRequired TLSOptions parameter)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
-        tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
+        pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+        pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
         return -1;
 
       } else {
@@ -3802,7 +3822,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
               "rejecting data connection (see the NoSessionReuseRequired "
               "TLSOptions parameter)");
             tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
-            tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
+            pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+            pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
             return -1;
 
           } else {
@@ -3845,7 +3866,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
           tls_log("BUG: unable to determine whether client reused SSL session: SSL_get_session() for control connection return NULL");
           tls_log("rejecting data connection (see TLSOption NoSessionReuseRequired)");
           tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
-          tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
+          pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+          pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
           return -1;
         }
 
@@ -3854,7 +3876,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         tls_log("BUG: unable to determine whether client reused SSL session: SSL_get_session() for control connection return NULL");
         tls_log("rejecting data connection (see TLSOption NoSessionReuseRequired)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
-        tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
+        pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+        pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
         return -1;
       }
     }
@@ -4016,7 +4039,12 @@ static int tls_connect(conn_t *conn) {
   if (conn == session.d) {
     pr_buffer_t *strm_buf;
 
-    tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
+    pr_table_add(tls_data_rd_nstrm->notes,
+      pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+      ssl, sizeof(SSL *));
+    pr_table_add(tls_data_wr_nstrm->notes,
+      pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+      ssl, sizeof(SSL *));
 
     /* Clear any data from the NetIO stream buffers which may have been read
      * in before the SSL/TLS handshake occurred (Bug#3624).
@@ -6700,23 +6728,23 @@ static void tls_netio_abort_cb(pr_netio_stream_t *nstrm) {
 
 static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
   int res = 0;
+  SSL *ssl = NULL;
 
-  if (nstrm->strm_data) {
-
+  ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+  if (ssl != NULL) {
     if (nstrm->strm_type == PR_NETIO_STRM_CTRL &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
-      tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
-        nstrm->strm_data = NULL;
+      tls_end_sess(ssl, nstrm->strm_type, 0);
+      pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+      pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
       tls_ctrl_netio = NULL;
       tls_flags &= ~TLS_SESS_ON_CTRL;
     }
 
     if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
-      tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
-        nstrm->strm_data = NULL;
+      pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+      pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
       tls_data_netio = NULL;
       tls_flags &= ~TLS_SESS_ON_DATA;
     }
@@ -6821,6 +6849,9 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
     /* Enforce the "data" part of TLSRequired, if configured. */
     if (tls_required_on_data == 1 ||
         (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+      SSL *ssl = NULL;
+
+      ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
 
       /* XXX How to force 421 response code for failed secure FXP/SSCN? */
 
@@ -6847,7 +6878,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
          * This may be too strict of a requirement, though.
          */
         ctrl_cert = SSL_get_peer_certificate(ctrl_ssl);
-        data_cert = SSL_get_peer_certificate((SSL *) nstrm->strm_data);
+        data_cert = SSL_get_peer_certificate(ssl);
 
         if (ctrl_cert != NULL &&
             data_cert != NULL) {
@@ -6856,10 +6887,9 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
             X509_free(data_cert);
 
             /* Properly shutdown the SSL session. */
-            tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, 0);
-
-            tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
-              nstrm->strm_data = NULL;
+            tls_end_sess(ssl, nstrm->strm_type, 0);
+            pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+            pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
 
             tls_log("%s", "unable to open data connection: control/data "
               "certificate mismatch");
@@ -6868,11 +6898,13 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
             return -1;
           }
 
-          if (ctrl_cert)
+          if (ctrl_cert) {
             X509_free(ctrl_cert);
+          }
 
-          if (data_cert)
+          if (data_cert) {
             X509_free(data_cert);
+          }
         }
 
       } else if (tls_sscn_mode == TLS_SSCN_MODE_CLIENT) {
@@ -6889,7 +6921,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
       /* Make sure blinding is turned on. (For some reason, this only seems
        * to be allowed on SSL objects, not on SSL_CTX objects.  Bummer).
        */
-      tls_blinding_on((SSL *) nstrm->strm_data);
+      tls_blinding_on(ssl);
 #endif
 
       tls_flags |= TLS_SESS_ON_DATA;
@@ -6901,15 +6933,14 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 
 static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
+  SSL *ssl;
 
-  if (nstrm->strm_data) {
-    SSL *ssl;
+  ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+  if (ssl != NULL) {
     BIO *rbio, *wbio;
     int bread = 0, bwritten = 0;
     ssize_t res = 0;
     unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
-
-    ssl = nstrm->strm_data;
 
     rbio = SSL_get_rbio(ssl);
     rbio_rbytes = BIO_number_read(rbio);
@@ -6948,8 +6979,9 @@ static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
 static pr_netio_stream_t *tls_netio_reopen_cb(pr_netio_stream_t *nstrm, int fd,
     int mode) {
 
-  if (nstrm->strm_fd != -1)
+  if (nstrm->strm_fd != -1) {
     close(nstrm->strm_fd);
+  }
 
   nstrm->strm_fd = fd;
   nstrm->strm_mode = mode;
@@ -6972,8 +7004,8 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
          nstrm->strm_type == PR_NETIO_STRM_DATA)) {
       SSL *ssl;
 
-      ssl = nstrm->strm_data;
-      if (ssl) {
+      ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+      if (ssl != NULL) {
         BIO *rbio, *wbio;
         int bread = 0, bwritten = 0;
         unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
@@ -7015,15 +7047,14 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
 
 static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
+  SSL *ssl;
 
-  if (nstrm->strm_data) {
-    SSL *ssl;
+  ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+  if (ssl != NULL) {
     BIO *rbio, *wbio;
     int bread = 0, bwritten = 0;
     ssize_t res = 0;
     unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
-
-    ssl = nstrm->strm_data;
 
     rbio = SSL_get_rbio(ssl);
     rbio_rbytes = BIO_number_read(rbio);
@@ -7577,7 +7608,9 @@ MODRET tls_ccc(cmd_rec *cmd) {
    */
 
   tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, TLS_SHUTDOWN_BIDIRECTIONAL);
-  ctrl_ssl = tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data = NULL;
+  pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+  pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+  ctrl_ssl = NULL;
 
   /* Remove our NetIO for the control channel. */
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
@@ -9068,10 +9101,10 @@ static void tls_timeout_ev(const void *event_data, void *user_data) {
      * if there is one.
      */ 
     tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
-    tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
-      ctrl_ssl = NULL;
+    pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+    pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+    ctrl_ssl = NULL;
   }
-
 }
 
 static void tls_get_passphrases(void) {
