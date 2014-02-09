@@ -5713,11 +5713,16 @@ sub rewrite_bug4017 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg) = $client->stat("/foo.d/\\bar.d/\\baz.d");
+      my ($resp_code, $resp_msg) = $client->stat('/foo.d/\bar.d/\baz.d');
 
       my $expected;
 
       $expected = 211;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      ($resp_code, $resp_msg) = $client->stat('/foo.d\bar.d/\baz.d');
+
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
