@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004-2013 TJ Saunders
+ * Copyright (c) 2004-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.72 2013-12-09 19:16:13 castaglia Exp $
+ * $Id: mod_delay.c,v 1.73 2014-02-09 20:42:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1313,8 +1313,16 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   unsigned int rownum;
   long interval, median;
   const char *proto;
+  unsigned char *authenticated;
 
   if (delay_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Has the client already authenticated? */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated != NULL &&
+      *authenticated == TRUE) {
     return PR_DECLINED(cmd);
   }
 
@@ -1442,8 +1450,9 @@ MODRET delay_post_user(cmd_rec *cmd) {
   const char *proto;
   unsigned char *authenticated;
 
-  if (!delay_engine)
+  if (delay_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
 
   /* Has the client already authenticated? */
   authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
