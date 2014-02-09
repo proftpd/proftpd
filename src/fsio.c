@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.157 2014-01-31 17:06:30 castaglia Exp $
+ * $Id: fsio.c,v 1.158 2014-02-09 19:34:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3060,6 +3060,16 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
     res = lstat(dst_dir, &st);
     if (res < 0) {
+      xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING,
+        "smkdir: unable to lstat(2) parent directory '%s': %s", dst_dir,
+        strerror(xerrno));
+      pr_trace_msg(trace_channel, 1,
+        "smkdir: unable to lstat(2) parent directory '%s': %s", dst_dir,
+        strerror(xerrno));
+
+      errno = xerrno;
       return -1;
     }
 
@@ -3087,12 +3097,29 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
      */
     tmpl_path = mkdtemp(tmpl);
     if (tmpl_path == NULL) {
+      xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING,
+        "smkdir: mkdtemp(3) failed to create directory using '%s': %s", tmpl,
+        strerror(xerrno));
+      pr_trace_msg(trace_channel, 1,
+        "smkdir: mkdtemp(3) failed to create directory using '%s': %s", tmpl,
+        strerror(xerrno));
+
+      errno = xerrno;
       return -1;
     }
 
   } else {
     res = pr_fsio_mkdir(path, mode);
     if (res < 0) {
+      xerrno = errno;
+
+      pr_trace_msg(trace_channel, 1,
+        "mkdir(2) fail to create directory '%s' with perms %04o: %s", path,
+        mode, strerror(xerrno));
+
+      errno = xerrno;
       return -1;
     }
 
@@ -3102,6 +3129,13 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
   res = pr_fsio_mkdir(path, mode);
   if (res < 0) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 1,
+      "mkdir(2) fail to create directory '%s' with perms %04o: %s", path,
+      mode, strerror(xerrno));
+        
+    errno = xerrno;
     return -1;
   }
 
