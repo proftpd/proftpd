@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2012 The ProFTPD Project team
+ * Copyright (c) 2010-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Symbol table hashes
- * $Id: stash.c,v 1.11 2012-04-24 23:27:39 castaglia Exp $
+ * $Id: stash.c,v 1.12 2014-02-11 15:17:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -700,7 +700,6 @@ void pr_stash_dump(void (*dumpf)(const char *, ...)) {
           break;
       }
 
-#if 0
       if (sym->sym_module != NULL) {
         dumpf(" + %s symbol: %s (mod_%s.c)", type, sym->sym_name,
           sym->sym_module->name);
@@ -708,7 +707,6 @@ void pr_stash_dump(void (*dumpf)(const char *, ...)) {
       } else {
         dumpf(" + %s symbol: %s (core)", type, sym->sym_name);
       }
-#endif
     }
   }
 
