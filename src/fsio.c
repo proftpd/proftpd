@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.158 2014-02-09 19:34:04 castaglia Exp $
+ * $Id: fsio.c,v 1.159 2014-02-11 15:17:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3262,11 +3262,22 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     if (res < 0) {
       xerrno = errno;
 
-      pr_log_pri(PR_LOG_WARNING, "renaming '%s' to '%s' failed: %s", tmpl_path,
+      pr_log_pri(PR_LOG_INFO, "renaming '%s' to '%s' failed: %s", tmpl_path,
         path, strerror(xerrno));
 
       (void) rmdir(tmpl_path);
 
+#ifdef ENOTEMPTY
+      if (xerrno == ENOTEMPTY) {
+        /* If the rename(2) failed with "Directory not empty" (ENOTEMPTY),
+         * then change the errno to "File exists" (EEXIST), so that the
+         * error reported to the client is more indicative of the actual
+         * cause.
+         */
+        xerrno = EEXIST;
+      }
+#endif /* ENOTEMPTY */
+ 
       errno = xerrno;
       return -1;
     }
