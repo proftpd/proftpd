@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.246 2014-02-15 05:22:51 castaglia Exp $
+ * $Id: mod_sql.c,v 1.247 2014-02-15 08:31:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -6893,7 +6893,7 @@ static int sql_sess_init(void) {
 
   if (cmap.auth_list == NULL &&
       cmap.authmask != 0 &&
-      (engine != SQL_ENGINE_FL_LOG)) {
+      (engine > 0 && engine != SQL_ENGINE_FL_LOG)) {
     sql_log(DEBUG_INFO, "%s", "error: no SQLAuthTypes configured");
   }
 
