@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2013 TJ Saunders
+ * Copyright (c) 2004-2014 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.245 2013-11-11 01:34:03 castaglia Exp $
+ * $Id: mod_sql.c,v 1.246 2014-02-15 05:22:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2243,8 +2243,9 @@ static int sql_getgroups(cmd_rec *cmd) {
 MODRET sql_pre_dele(cmd_rec *cmd) {
   char *path;
 
-  if (cmap.engine == 0)
+  if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
+  }
 
   sql_dele_filesz = 0;
 
@@ -2272,8 +2273,9 @@ MODRET sql_pre_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *user = NULL;
 
-  if (cmap.engine == 0)
+  if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_pre_pass");
 
@@ -2288,14 +2290,14 @@ MODRET sql_pre_pass(cmd_rec *cmd) {
 
     c = find_config(anon_config ? anon_config->subset : main_server->conf,
       CONF_PARAM, "SQLEngine", FALSE);
-    if (c) {
+    if (c != NULL) {
       cmap.engine = *((int *) c->argv[0]);
     }
 
   } else {
     /* Just assume the vhost config. */
     c = find_config(main_server->conf, CONF_PARAM, "SQLEngine", FALSE);
-    if (c) {
+    if (c != NULL) {
       cmap.engine = *((int *) c->argv[0]);
     }
   }
@@ -2316,8 +2318,9 @@ MODRET sql_post_pass(cmd_rec *cmd) {
 }
 
 MODRET sql_post_stor(cmd_rec *cmd) {
-  if (cmap.engine == 0)
+  if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_post_stor");
 
@@ -2329,8 +2332,9 @@ MODRET sql_post_stor(cmd_rec *cmd) {
 }
 
 MODRET sql_post_retr(cmd_rec *cmd) {
-  if (cmap.engine == 0)
+  if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_post_retr");
 
@@ -4386,11 +4390,13 @@ MODRET sql_lookup(cmd_rec *cmd) {
   sql_data_t *sd = NULL;
   array_header *ah = NULL;
 
-  if (cmap.engine == 0)
+  if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
+  }
 
-  if (cmd->argc < 1)
+  if (cmd->argc < 1) {
     return PR_ERROR(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_lookup");
 
@@ -4436,11 +4442,13 @@ MODRET sql_change(cmd_rec *cmd) {
   char *type = NULL;
   modret_t *mr = NULL;
 
-  if (cmap.engine == 0)
+  if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
+  }
 
-  if (cmd->argc < 1)
+  if (cmd->argc < 1) {
     return PR_ERROR(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_change");
 
@@ -6205,20 +6213,22 @@ MODRET set_sqlengine(cmd_rec *cmd) {
   engine = get_boolean(cmd, 1);
   if (engine == -1) {
     /* The parameter is not a boolean; check for "auth" or "log". */
-    if (strcasecmp(cmd->argv[1], "auth") == 0)
+    if (strcasecmp(cmd->argv[1], "auth") == 0) {
       engine = SQL_ENGINE_FL_AUTH;
 
-    else if (strcasecmp(cmd->argv[1], "log") == 0)
+    } else if (strcasecmp(cmd->argv[1], "log") == 0) {
       engine = SQL_ENGINE_FL_LOG;
 
-    else
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLEngine parameter '",
         cmd->argv[1], "'", NULL));
+    }
 
   } else {
-    if (engine == 1)
+    if (engine == 1) {
       /* Convert an "on" into a auth|log combination. */
       engine = SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG;
+    }
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -6440,8 +6450,9 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
   cmd_rec *cmd;
   modret_t *mr;
 
-  if (cmap.engine == 0)
+  if (cmap.engine == 0) {
     return;
+  }
 
   /* handle EXIT queries */
   c = find_config(main_server->conf, CONF_PARAM, "SQLLog_EXIT", FALSE);
@@ -6546,7 +6557,7 @@ static int sql_sess_init(void) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
-  int res = 0;
+  int engine = 0, res = 0;
   char *fieldset = NULL;
   pool *tmp_pool = NULL;
 
@@ -6583,6 +6594,11 @@ static int sql_sess_init(void) {
 
     destroy_pool(tmp_pool);
     return -1;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLEngine", FALSE);
+  if (c != NULL) {
+    engine = *((int *) c->argv[0]);
   }
  
   /* Get our backend info and toss it up */
@@ -6876,7 +6892,8 @@ static int sql_sess_init(void) {
   cmap.auth_list = ptr;
 
   if (cmap.auth_list == NULL &&
-      cmap.authmask != 0) {
+      cmap.authmask != 0 &&
+      (engine != SQL_ENGINE_FL_LOG)) {
     sql_log(DEBUG_INFO, "%s", "error: no SQLAuthTypes configured");
   }
 
