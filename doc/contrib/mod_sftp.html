@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.79 2014-02-18 19:28:28 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.80 2014-02-19 22:53:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -1448,6 +1448,23 @@ For these clients, use this configuration to disable the optimization:
 </pre>
 
 <p>
+<i>Cipher Implementations</i><br>
+Some SFTP clients (most notably the SecureBlackBox libraries) do not implement
+the <code>blowfish-ctr</code> cipher correctly.  If your site needs to
+support such clients, then you will need to use the
+<a href="#SFTPCiphers"><code>SFTPCiphers</code></a> directive to configure
+a list of ciphers which does <b>not</b> include <code>blowfish-ctr</code>.
+Clients with this bug will show up in the <code>SFTPLog</code> with this
+log message:
+<pre>
+  client sent buggy/malicious packet payload length, ignoring
+</pre>
+<b>However</b>, this log message can also be caused by other factors.  It
+is the combination of this error message, <b>and</b> the negotation of
+the <code>blowfish-ctr</code> cipher, that indicates the use of these
+buggy clients.
+
+<p>
 <b>FIPS Compliance</b><br>
 FIPS stands for "Federal Information Processing Standard", and refers to
 a series of information processing standards issued and used by the US
@@ -2096,7 +2113,7 @@ capability.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-02-18 19:28:28 $</i><br>
+Last Updated: <i>$Date: 2014-02-19 22:53:28 $</i><br>
 
 <br><hr>
 
