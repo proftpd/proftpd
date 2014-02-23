@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.70 2014-01-26 17:50:28 castaglia Exp $
+ * $Id: mod_ban.c,v 1.71 2014-02-23 17:10:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -126,6 +126,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_MAX_CMD_RATE		13
 #define BAN_EV_TYPE_UNHANDLED_CMD		14
 #define BAN_EV_TYPE_TLS_HANDSHAKE		15
+#define BAN_EV_TYPE_ROOT_LOGIN			16
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
@@ -210,6 +211,7 @@ static void ban_maxcmdrate_ev(const void *, void *);
 static void ban_maxconnperhost_ev(const void *, void *);
 static void ban_maxhostsperuser_ev(const void *, void *);
 static void ban_maxloginattempts_ev(const void *, void *);
+static void ban_rootlogin_ev(const void *, void *);
 static void ban_timeoutidle_ev(const void *, void *);
 static void ban_timeoutlogin_ev(const void *, void *);
 static void ban_timeoutnoxfer_ev(const void *, void *);
@@ -1164,6 +1166,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
 
     case BAN_EV_TYPE_TLS_HANDSHAKE:
       return "TLSHandshake";
+
+    case BAN_EV_TYPE_ROOT_LOGIN:
+      return "RootLogin";
   }
 
   return NULL;
@@ -1548,6 +1553,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           case BAN_EV_TYPE_MAX_CMD_RATE:
           case BAN_EV_TYPE_UNHANDLED_CMD:
           case BAN_EV_TYPE_TLS_HANDSHAKE:
+          case BAN_EV_TYPE_ROOT_LOGIN:
             if (!have_banner) {
               pr_ctrls_add_response(ctrl, "Ban Events:");
               have_banner = TRUE;
@@ -2271,9 +2277,10 @@ MODRET set_banonevent(cmd_rec *cmd) {
   bee = pcalloc(ban_pool, sizeof(struct ban_event_entry));
 
   tmp = strchr(cmd->argv[2], '/');
-  if (!tmp)
+  if (tmp == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted freq parameter: '",
       cmd->argv[2], "'", NULL));
+  }
 
   /* The frequency string is formatted as "N/hh:mm:ss", where N is the count
    * to be reached within the given time interval.
@@ -2282,25 +2289,32 @@ MODRET set_banonevent(cmd_rec *cmd) {
   *tmp = '\0';
 
   n = atoi(cmd->argv[2]);
-  if (n < 1)
+  if (n < 1) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "freq occurrences must be greater than 0", NULL));
+  }
   bee->bee_count_max = n;
 
   bee->bee_window = ban_parse_timestr(tmp+1);
-  if (bee->bee_window == (time_t) -1)
+  if (bee->bee_window == (time_t) -1) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "badly formatted freq parameter: '", cmd->argv[2], "'", NULL));
-  if (bee->bee_window == 0)
+  }
+
+  if (bee->bee_window == 0) {
     CONF_ERROR(cmd, "freq parameter cannot be '00:00:00'");
+  }
 
   /* The duration is the next parameter. */
   bee->bee_expires = ban_parse_timestr(cmd->argv[3]);
-  if (bee->bee_expires == (time_t) -1)
+  if (bee->bee_expires == (time_t) -1) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "badly formatted duration parameter: '", cmd->argv[2], "'", NULL));
-  if (bee->bee_expires == 0)
+  }
+
+  if (bee->bee_expires == 0) {
     CONF_ERROR(cmd, "duration parameter cannot be '00:00:00'");
+  }
 
   /* If present, the next parameter is a custom ban message. */
   if (cmd->argc == 5) {
@@ -2359,6 +2373,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
     bee->bee_type = BAN_EV_TYPE_MAX_LOGIN_ATTEMPTS;
     pr_event_register(&ban_module, "mod_auth.max-login-attempts",
       ban_maxloginattempts_ev, bee);
+
+  } else if (strcasecmp(cmd->argv[1], "RootLogin") == 0) {
+    bee->bee_type = BAN_EV_TYPE_ROOT_LOGIN;
+    pr_event_register(&ban_module, "mod_auth.root-login",
+      ban_rootlogin_ev, bee);
 
   } else if (strcasecmp(cmd->argv[1], "TimeoutIdle") == 0) {
     bee->bee_type = BAN_EV_TYPE_TIMEOUT_IDLE;
@@ -2930,6 +2949,18 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   }
 
   return;
+}
+
+static void ban_rootlogin_ev(const void *event_data, void *user_data) {
+  const char *ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ban_handle_event(BAN_EV_TYPE_ROOT_LOGIN, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_timeoutidle_ev(const void *event_data, void *user_data) {

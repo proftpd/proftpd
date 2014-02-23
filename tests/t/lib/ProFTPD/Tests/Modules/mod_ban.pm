@@ -71,6 +71,11 @@ my $TESTS = {
     test_class => [qw(forking mod_tls)],
   },
 
+  ban_on_event_rootlogin => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
 };
 
 sub new {
@@ -1948,6 +1953,187 @@ sub ban_on_event_tlshandshake {
       my $expected = 'connect attempt failed';
       $self->assert(qr/$expected/, $errstr,
         test_msg("Expected error message '$expected', got '$errstr'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub ban_on_event_rootlogin {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/ban.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/ban.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ban.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ban.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ban.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $root_user = 'root';
+  my $root_passwd = 'root';
+  my $root_group = 'ftpd';
+  my $root_home_dir = File::Spec->rel2abs($tmpdir);
+  my $root_uid = 0;
+  my $root_gid = 0;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  auth_user_write($auth_user_file, $root_user, $root_passwd, $root_uid,
+    $root_gid, $root_home_dir, '/bin/bash');
+  auth_group_write($auth_group_file, $root_group, $root_gid, $root_user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'event:10',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+    RootLogin => 'off',
+
+    IfModules => {
+      'mod_ban.c' => {
+        BanEngine => 'on',
+        BanLog => $log_file,
+
+        # This says to ban a client which requests a root login more than twice
+        # in the last 1 minute will be banned for 5 secs
+        BanOnEvent => 'RootLogin 2/00:01:00 00:00:05',
+
+        BanTable => $ban_tab,
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give server time to start up
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client->login($root_user, $root_passwd) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected;
+
+      $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Login incorrect.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+      $client->quit();
+
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->user($root_user);
+      eval { $client->pass($root_passwd) };
+      unless ($@) {
+        die("PASS succeeded unexpectedly");
+      }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 000;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      # Now try again with the correct info; we should be banned.  Note
+      # that we have to create a separate connection for this.
+      eval { $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port,
+        undef, 0) };
+      unless ($@) {
+        die("Connect succeeded unexpectedly");
+      }
+
+      my $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
+
+      $expected = "";
+      $self->assert($expected eq $conn_ex,
+        test_msg("Expected '$expected', got '$conn_ex'"));
     };
 
     if ($@) {
