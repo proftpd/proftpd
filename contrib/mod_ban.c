@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.71 2014-02-23 17:10:32 castaglia Exp $
+ * $Id: mod_ban.c,v 1.72 2014-02-23 18:07:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -127,6 +127,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_UNHANDLED_CMD		14
 #define BAN_EV_TYPE_TLS_HANDSHAKE		15
 #define BAN_EV_TYPE_ROOT_LOGIN			16
+#define BAN_EV_TYPE_USER_DEFINED		17
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
@@ -217,6 +218,7 @@ static void ban_timeoutlogin_ev(const void *, void *);
 static void ban_timeoutnoxfer_ev(const void *, void *);
 static void ban_tlshandshake_ev(const void *, void *);
 static void ban_unhandledcmd_ev(const void *, void *);
+static void ban_userdefined_ev(const void *, void *);
 
 static void ban_handle_event(unsigned int, int, const char *,
   struct ban_event_entry *);
@@ -1169,6 +1171,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
 
     case BAN_EV_TYPE_ROOT_LOGIN:
       return "RootLogin";
+
+    case BAN_EV_TYPE_USER_DEFINED:
+      return "[user-defined]";
   }
 
   return NULL;
@@ -1554,6 +1559,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           case BAN_EV_TYPE_UNHANDLED_CMD:
           case BAN_EV_TYPE_TLS_HANDSHAKE:
           case BAN_EV_TYPE_ROOT_LOGIN:
+          case BAN_EV_TYPE_USER_DEFINED:
             if (!have_banner) {
               pr_ctrls_add_response(ctrl, "Ban Events:");
               have_banner = TRUE;
@@ -2405,8 +2411,8 @@ MODRET set_banonevent(cmd_rec *cmd) {
       ban_unhandledcmd_ev, bee);
 
   } else {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown ", cmd->argv[0], " name: '",
-      cmd->argv[1], "'", NULL));
+    bee->bee_type = BAN_EV_TYPE_USER_DEFINED;
+    pr_event_register(&ban_module, cmd->argv[1], ban_userdefined_ev, bee);
   }
 
   return PR_HANDLED(cmd);
@@ -3025,6 +3031,18 @@ static void ban_unhandledcmd_ev(const void *event_data, void *user_data) {
     return;
   
   ban_handle_event(BAN_EV_TYPE_UNHANDLED_CMD, BAN_TYPE_HOST, ipstr, tmpl);
+}
+
+static void ban_userdefined_ev(const void *event_data, void *user_data) {
+  const char *ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ban_handle_event(BAN_EV_TYPE_USER_DEFINED, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 /* Initialization routines
