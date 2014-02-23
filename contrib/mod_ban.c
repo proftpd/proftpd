@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.72 2014-02-23 18:07:13 castaglia Exp $
+ * $Id: mod_ban.c,v 1.73 2014-02-23 18:29:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1173,7 +1173,7 @@ static const char *ban_event_entry_typestr(unsigned int type) {
       return "RootLogin";
 
     case BAN_EV_TYPE_USER_DEFINED:
-      return "[user-defined]";
+      return "(user-defined)";
   }
 
   return NULL;
