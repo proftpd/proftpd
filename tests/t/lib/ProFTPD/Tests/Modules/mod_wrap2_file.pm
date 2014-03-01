@@ -136,6 +136,11 @@ my $TESTS = {
     test_class => [qw(bug forking mod_sftp mod_wrap2)],
   },
 
+  wrap2_file_user_table_reverse_dns_bug3938 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -4491,6 +4496,197 @@ sub wrap2_sftp_extlog_user_bug3727 {
     die($ex);
   }
 
+
+  unlink($log_file);
+}
+
+sub wrap2_file_user_table_reverse_dns_bug3938 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/wrap2.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+
+  my $fh;
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
+  if (open($fh, "> $allow_file")) {
+    unless (close($fh)) {
+      die("Can't write $allow_file: $!");
+    }
+
+  } else {
+    die("Can't open $allow_file: $!");
+  }
+
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
+  if (open($fh, "> $deny_file")) {
+    print $fh "ALL: 127.0.0.1\n";
+
+    unless (close($fh)) {
+      die("Can't write $deny_file: $!");
+    }
+
+  } else {
+    die("Can't open $deny_file: $!");
+  }
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'dns:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_wrap2.c' => {
+        WrapEngine => 'on',
+        WrapUserTables => "!other file:$allow_file file:$deny_file",
+        WrapLog => $log_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client->login($user, $passwd) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected;
+
+      $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Access denied";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  eval {
+    if (open(my $fh, "< $log_file")) {
+      my $ok = 1;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /via reverse DNS/) {
+          $ok = 0;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Saw unexpected 'via reverse DNS' log message in TraceLog"));
+
+    } else {
+      die("Can't read $log_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
 
   unlink($log_file);
 }
