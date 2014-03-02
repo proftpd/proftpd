@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: cipher.c,v 1.17 2013-12-19 16:32:32 castaglia Exp $
+ * $Id: cipher.c,v 1.18 2014-03-02 06:07:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -159,10 +159,17 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 
   EVP_MD_CTX ctx;
   unsigned char *iv = NULL;
-  size_t cipher_iv_len, iv_sz;
+  size_t cipher_iv_len = 0, iv_sz = 0;
   uint32_t iv_len = 0;
 
-  /* Some ciphers do not use IVs; handle this case. */
+  if (strncmp(cipher->algo, "none", 5) == 0) {
+    cipher->iv = iv;
+    cipher->iv_len = iv_len;
+
+    return 0;
+  }
+
+   /* Some ciphers do not use IVs; handle this case. */
   cipher_iv_len = EVP_CIPHER_iv_length(cipher->cipher);
   if (cipher_iv_len != 0) {
     iv_sz = sftp_crypto_get_size(cipher_iv_len, EVP_MD_size(hash));
@@ -174,7 +181,7 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
   if (iv_sz == 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unable to determine IV length for cipher '%s'", cipher->algo);
-    errno = EINVAL;
+     errno = EINVAL;
     return -1;
   }
 
@@ -224,8 +231,15 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
 
   EVP_MD_CTX ctx;
   unsigned char *key = NULL;
-  size_t key_sz;
+  size_t key_sz = 0;
   uint32_t key_len = 0;
+
+  if (strncmp(cipher->algo, "none", 5) == 0) {
+    cipher->key = key;
+    cipher->key_len = key_len;
+
+    return 0;
+  }
 
   key_sz = sftp_crypto_get_size(cipher->key_len > 0 ?
       cipher->key_len : EVP_CIPHER_key_length(cipher->cipher),
@@ -327,7 +341,8 @@ void sftp_cipher_set_block_size(size_t blocksz) {
 }
 
 const char *sftp_cipher_get_read_algo(void) {
-  if (read_ciphers[read_cipher_idx].key) {
+  if (read_ciphers[read_cipher_idx].key != NULL ||
+      strncmp(read_ciphers[read_cipher_idx].algo, "none", 5) == 0) {
     return read_ciphers[read_cipher_idx].algo;
   }
 
@@ -489,7 +504,8 @@ int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
 }
 
 const char *sftp_cipher_get_write_algo(void) {
-  if (write_ciphers[write_cipher_idx].key) {
+  if (write_ciphers[write_cipher_idx].key != NULL ||
+      strncmp(write_ciphers[write_cipher_idx].algo, "none", 5) == 0) {
     return write_ciphers[write_cipher_idx].algo;
   }
 
