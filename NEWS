@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1587 2014-03-02 06:07:43 castaglia Exp $
+$Id: NEWS,v 1.1588 2014-03-02 16:49:20 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -17,6 +17,8 @@ CVS
 - Bug 4029 - TLSOptions EnableDiags logs "unknown version (771)" for
   TLS 1.1/1.2 connections.
 - Bug 3938 - mod_wrap2 uses reverse DNS regardless "UseReverseDNS off".
+- Bug 4032 - Restarting proftpd with mod_sftp fails due to permissions on
+  SFTPHostKey file.
 - Bug 4033 - mod_sftp fails to create SSH2 session using 'none' cipher.
 
 1.3.5rc4 - Released 28-Jan-2014

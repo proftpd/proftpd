@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.84 2014-01-13 18:23:25 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.85 2014-03-02 16:49:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1058,13 +1058,20 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (strncmp(cmd->argv[1], "agent:", 6) != 0) {
+    int res, xerrno;
+
     if (*cmd->argv[1] != '/') {
       CONF_ERROR(cmd, "must be an absolute path");
     }
 
-    if (stat(cmd->argv[1], &st) < 0) {
+    PRIVS_ROOT
+    res = stat(cmd->argv[1], &st);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to check '", cmd->argv[1],
-        "': ", strerror(errno), NULL));
+        "': ", strerror(xerrno), NULL));
     }
 
     if ((st.st_mode & S_IRWXG) ||
