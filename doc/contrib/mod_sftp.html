@@ -1,4 +1,4 @@
-<!-- $Id: mod_sftp.html,v 1.80 2014-02-19 22:53:28 castaglia Exp $ -->
+<!-- $Id: mod_sftp.html,v 1.81 2014-03-02 22:11:49 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
 
 <html>
@@ -843,6 +843,21 @@ For example:
 <p>
 The currently implemented options are:
 <ul>
+  <li><code>AllowInsecureLogin</code><br>
+    <p>
+    By default, <code>mod_sftp</code> will <b>not</b> allow password or
+    keyboard-interactive authentication <b>if</b> either the 'none' cipher
+    <b>or</b> MAC/digest is selected.  (These must be explicitly allowed via
+    <code>SFTPCiphers</code> and <code>SFTPDigests</code> as well.)  However,
+    some sites may deliberately wish to allow such logins, as for <i>e.g.</i>
+    performance testing.  To allow such logins/sessions, then, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.5</code>.
+  </li>
+
+  <p>
   <li><code>IgnoreSCPUploadPerms</code><br>
     <p>
     When an SCP client uploads a file, the desired permissions on the file
@@ -851,6 +866,7 @@ The currently implemented options are:
     If you need more FTP-like functionality for any reason and wish to
     have <code>mod_sftp</code> silently ignore any permissions sent by the
     SCP client, use this option.
+  </li>
 
   <p>
   <li><code>IgnoreSCPUploadTimes</code><br>
@@ -2107,13 +2123,13 @@ In addition, if your <code>proftpd</code> is running on Linux, you may
 need to disable the <a href="../modules/mod_cap.html"><code>mod_cap</code></a>
 module, or configure it to preserve the SGID bit (<i>e.g.</i> via the
 <a href="../modules/mod_cap.html#CapabilitiesSet"><code>CAP_FSETID</code></a>
-capability.
+capability).
 
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-02-19 22:53:28 $</i><br>
+Last Updated: <i>$Date: 2014-03-02 22:11:49 $</i><br>
 
 <br><hr>
 
