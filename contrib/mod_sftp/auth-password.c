@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'password' user authentication
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-password.c,v 1.9 2012-07-10 00:52:20 castaglia Exp $
+ * $Id: auth-password.c,v 1.10 2014-03-02 22:05:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -45,13 +45,22 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   if (strncmp(cipher_algo, "none", 5) == 0 ||
       strncmp(mac_algo, "none", 5) == 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "cipher algorithm '%s' or MAC algorithm '%s' unacceptable for "
-      "password authentication, denying password authentication request",
-      cipher_algo, mac_algo);
-    *send_userauth_fail = TRUE;
-    errno = EPERM;
-    return 0;
+
+    if (sftp_opts & SFTP_OPT_ALLOW_INSECURE_LOGIN) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "WARNING: cipher algorithm '%s' or MAC algorithm '%s' INSECURE for "
+        "password authentication (SFTPOption AllowInsecureLogin in effect)",
+        cipher_algo, mac_algo);
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "cipher algorithm '%s' or MAC algorithm '%s' unacceptable for "
+        "password authentication, denying password authentication request",
+        cipher_algo, mac_algo);
+      *send_userauth_fail = TRUE;
+      errno = EPERM;
+      return 0;
+    }
   }
 
   /* XXX We currently don't do anything with this. */

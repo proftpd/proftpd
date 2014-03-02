@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'keyboard-interactive' user authentication
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth-kbdint.c,v 1.9 2013-03-29 16:29:41 castaglia Exp $
+ * $Id: auth-kbdint.c,v 1.10 2014-03-02 22:05:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -91,14 +91,22 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
    */
   if (strncmp(cipher_algo, "none", 5) == 0 ||
       strncmp(mac_algo, "none", 5) == 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "cipher algorithm '%s' or MAC algorithm '%s' unacceptable for "
-      "keyboard-interactive authentication, denying authentication request",
-      cipher_algo, mac_algo);
 
-    *send_userauth_fail = TRUE;
-    errno = EPERM;
-    return 0;
+    if (sftp_opts & SFTP_OPT_ALLOW_INSECURE_LOGIN) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "WARNING: cipher algorithm '%s' or MAC algorithm '%s' INSECURE for "
+        "keyboard-interactive authentication "
+        "(SFTPOption AllowInsecureLogin in effect)", cipher_algo, mac_algo);
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "cipher algorithm '%s' or MAC algorithm '%s' unacceptable for "
+        "keyboard-interactive authentication, denying authentication request",
+        cipher_algo, mac_algo);
+      *send_userauth_fail = TRUE;
+      errno = EPERM;
+      return 0;
+    }
   }
 
   /* XXX Read off the deprecated language string. */

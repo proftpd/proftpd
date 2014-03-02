@@ -24,7 +24,7 @@
  * DO NOT EDIT BELOW THIS LINE
  * $Archive: mod_sftp.a $
  * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.85 2014-03-02 16:49:20 castaglia Exp $
+ * $Id: mod_sftp.c,v 1.86 2014-03-02 22:05:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1231,6 +1231,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strncmp(cmd->argv[i], "MatchKeySubject", 16) == 0) {
       opts |= SFTP_OPT_MATCH_KEY_SUBJECT;
+
+    } else if (strcmp(cmd->argv[1], "AllowInsecureLogin") == 0) {
+      opts |= SFTP_OPT_ALLOW_INSECURE_LOGIN;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
