@@ -5687,6 +5687,7 @@ sub ssh2_cipher_c2s_none {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers none",
       ],
     },
   };
@@ -5723,7 +5724,7 @@ sub ssh2_cipher_c2s_none {
       }
 
       my $cipher_used = $ssh2->method('crypt_cs');
-      $self->assert($cipher ne $cipher_used,
+      $self->assert($cipher eq $cipher_used,
         test_msg("Expected '$cipher', got '$cipher_used'"));
 
       $ssh2->disconnect();
@@ -6756,6 +6757,7 @@ sub ssh2_cipher_s2c_none {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers none",
       ],
     },
   };
@@ -6792,7 +6794,7 @@ sub ssh2_cipher_s2c_none {
       }
 
       my $cipher_used = $ssh2->method('crypt_sc');
-      $self->assert($cipher ne $cipher_used,
+      $self->assert($cipher eq $cipher_used,
         test_msg("Expected '$cipher', got '$cipher_used'"));
 
       $ssh2->disconnect();
@@ -7554,6 +7556,7 @@ sub ssh2_mac_c2s_none {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests none",
       ],
     },
   };
@@ -7590,7 +7593,7 @@ sub ssh2_mac_c2s_none {
       }
 
       my $mac_used = $ssh2->method('mac_cs');
-      $self->assert($mac ne $mac_used,
+      $self->assert($mac eq $mac_used,
         test_msg("Expected '$mac', got '$mac_used'"));
 
       $ssh2->disconnect();
@@ -8352,6 +8355,7 @@ sub ssh2_mac_s2c_none {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests none",
       ],
     },
   };
@@ -8388,7 +8392,7 @@ sub ssh2_mac_s2c_none {
       }
 
       my $mac_used = $ssh2->method('mac_sc');
-      $self->assert($mac ne $mac_used,
+      $self->assert($mac eq $mac_used,
         test_msg("Expected '$mac', got '$mac_used'"));
 
       $ssh2->disconnect();
