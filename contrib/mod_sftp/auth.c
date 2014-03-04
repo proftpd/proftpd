@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: auth.c,v 1.52 2013-10-13 16:48:08 castaglia Exp $
+ * $Id: auth.c,v 1.53 2014-03-04 07:54:12 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1254,9 +1254,10 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       if (send_userauth_failure(errno != EPERM ? NULL : method) < 0) {
         return -1;
       }
+
+      incr_auth_attempts(user);
     }
 
-    incr_auth_attempts(user);
     return res;
   }
 
