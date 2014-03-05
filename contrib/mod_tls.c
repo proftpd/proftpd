@@ -4908,8 +4908,7 @@ static int tls_seed_prng(void) {
    */
   if (RAND_load_file(tls_rand_file, 1024) != 1024) {
 #endif
-
-    time_t now;
+    struct timeval tv;
     pid_t pid;
  
 #if OPENSSL_VERSION_NUMBER >= 0x00905100L
@@ -4921,8 +4920,9 @@ static int tls_seed_prng(void) {
 #endif
  
     /* No random file found, create new seed. */
-    now = time(NULL);
-    RAND_seed(&now, sizeof(time_t));
+    gettimeofday(&tv, NULL);
+    RAND_seed(&(tv.tv_sec), sizeof(tv.tv_sec));
+    RAND_seed(&(tv.tv_usec), sizeof(tv.tv_usec));
 
     pid = getpid();
     RAND_seed(&pid, sizeof(pid_t));
