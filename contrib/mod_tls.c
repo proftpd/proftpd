@@ -390,7 +390,7 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1		0x0002
 #define TLS_PROTO_TLS_V1_1		0x0004
 #define TLS_PROTO_TLS_V1_2		0x0008
-#define TLS_PROTO_DEFAULT		TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1
+#define TLS_PROTO_DEFAULT		(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1)
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
 static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
@@ -2751,6 +2751,32 @@ static int tls_init_ctx(void) {
   return 0;
 }
 
+static const char *tls_get_proto_str(pool *p, unsigned int protos) {
+  char *proto_str = "";
+
+  if (protos & TLS_PROTO_SSL_V3) {
+    proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
+      "SSLv3", NULL);
+  }
+
+  if (protos & TLS_PROTO_TLS_V1) {
+    proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
+      "TLSv1", NULL);
+  }
+
+  if (protos & TLS_PROTO_TLS_V1_1) {
+    proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
+      "TLSv1.1", NULL);
+  }
+
+  if (protos & TLS_PROTO_TLS_V1_2) {
+    proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
+      "TLSv1.2", NULL);
+  }
+
+  return proto_str;
+}
+
 static int tls_init_server(void) {
   config_rec *c = NULL;
   char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
@@ -2763,8 +2789,7 @@ static int tls_init_server(void) {
     tls_protocol = *((unsigned int *) c->argv[0]);
   }
 
-  if ((tls_protocol & TLS_PROTO_SSL_V3) &&
-      (tls_protocol & TLS_PROTO_TLS_V1)) {
+  if (tls_protocol == TLS_PROTO_DEFAULT) {
     /* This is the default, so there is no need to do anything. */
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3, TLSv1, TLSv1.1, TLSv1.2 protocols");
@@ -2772,25 +2797,74 @@ static int tls_init_server(void) {
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3, TLSv1 protocols");
 #endif /* OpenSSL-1.0.1 or later */
 
-  } else if (tls_protocol & TLS_PROTO_SSL_V3) {
+  } else if (tls_protocol == TLS_PROTO_SSL_V3) {
     SSL_CTX_set_ssl_version(ssl_ctx, SSLv3_server_method());
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3 protocol only");
 
-  } else if (tls_protocol & TLS_PROTO_TLS_V1) {
+  } else if (tls_protocol == TLS_PROTO_TLS_V1) {
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_server_method());
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1 protocol only");
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-  } else if (tls_protocol & TLS_PROTO_TLS_V1_1) {
+  } else if (tls_protocol == TLS_PROTO_TLS_V1_1) {
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_1_server_method());
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1.1 protocol only");
 
-  } else if (tls_protocol & TLS_PROTO_TLS_V1_2) {
+  } else if (tls_protocol == TLS_PROTO_TLS_V1_2) {
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_2_server_method());
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1.2 protocol only");
 
 #endif /* OpenSSL-1.0.1 or later */
+
+  } else {
+    int disable_proto = (SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+
+#ifdef SSL_OP_NO_TLSv1_1
+    disable_proto |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
+    disable_proto |= SSL_OP_NO_TLSv1_2;
+#endif
+
+    /* For any other value of tls_protocol, it will be a combination of
+     * protocol versions.  Thus we MUST use SSLv23_server_method(), and then
+     * try to use SSL_CTX_set_options() to restrict/disable the protocol
+     * versions which are NOT requested.
+     */
+
+    if (tls_protocol & TLS_PROTO_SSL_V3) {
+      /* Clear the "no SSLv3" option. */
+      disable_proto &= ~SSL_OP_NO_SSLv3;
+    }
+
+    if (tls_protocol & TLS_PROTO_TLS_V1) {
+      /* Clear the "no TLSv1" option. */
+      disable_proto &= ~SSL_OP_NO_TLSv1;
+    }
+
+    if (tls_protocol & TLS_PROTO_TLS_V1_1) {
+#ifdef SSL_OP_NO_TLSv1_1
+      /* Clear the "no TLSv1.1" option. */
+      disable_proto &= ~SSL_OP_NO_TLSv1_1;
+#endif
+    }
+
+    if (tls_protocol & TLS_PROTO_TLS_V1_2) {
+#ifdef SSL_OP_NO_TLSv1_2
+      /* Clear the "no TLSv1.2" option. */
+      disable_proto &= ~SSL_OP_NO_TLSv1_2;
+#endif
+    }
+
+    /* Per the comments in <ssl/ssl.h>, SSL_CTX_set_options() uses |= on
+     * the previous value.  This means we can easily OR in our new option
+     * values with any previously set values.
+     */
+    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s protocols only",
+      tls_get_proto_str(main_server->pool, tls_protocol));
+    SSL_CTX_set_options(ssl_ctx, disable_proto);
   }
+
 
   tls_ca_cert = get_param_ptr(main_server->conf, "TLSCACertificateFile", FALSE);
   tls_ca_path = get_param_ptr(main_server->conf, "TLSCACertificatePath", FALSE);
@@ -2817,7 +2891,7 @@ static int tls_init_server(void) {
 
     if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
       tls_log("error setting default verification locations: %s",
-          tls_get_errors());
+        tls_get_errors());
     }
   }
 
