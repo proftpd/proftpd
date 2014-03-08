@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.331 2013-12-12 05:40:42 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.332 2014-03-08 17:44:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3302,30 +3302,21 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
 
   if (session.sf_flags & SF_XFER) {
     cmd_rec *cmd;
-    char *path = NULL;
 
     if (session.xfer.direction == PR_NETIO_IO_RD) {
        /* An upload is occurring... */
-      if (stor_fh != NULL) {
-        path = stor_fh->fh_path;
-      }
-
       pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
       stor_abort();
 
     } else {
       /* A download is occurring... */
-      if (retr_fh != NULL) {
-        path = retr_fh->fh_path;
-      }
-
       pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
       retr_abort();
     }
 
     pr_data_abort(0, FALSE);
 
-    cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, path);
+    cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
