@@ -765,7 +765,6 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
     case TLS1_2_VERSION:
       version_str = "TLSv1.2";
       break;
-    }
 #endif
 
     default:
@@ -775,8 +774,8 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 
   if (version == SSL3_VERSION ||
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-      version == TLS_1_1_VERSION ||
-      version == TLS_1_2_VERSION ||
+      version == TLS1_1_VERSION ||
+      version == TLS1_2_VERSION ||
 #endif
       version == TLS1_VERSION) {
 
