@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.333 2014-04-28 17:05:51 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.334 2014-04-28 17:11:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2397,12 +2397,12 @@ MODRET xfer_allo(cmd_rec *cmd) {
 
   if (xfer_opts & PR_XFER_OPT_HANDLE_ALLO) {
     const char *path;
-    off_t avail_sz;
+    off_t avail_kb;
     int res;
 
     path = pr_fs_getcwd();
 
-    res = pr_fs_getsize2((char *) path, &avail_sz);
+    res = pr_fs_getsize2((char *) path, &avail_kb);
     if (res < 0) {
       /* If we can't check the filesystem stats for any reason, let the request
        * proceed anyway.
@@ -2413,14 +2413,17 @@ MODRET xfer_allo(cmd_rec *cmd) {
       pr_response_add(R_202, _("No storage allocation necessary"));
 
     } else {
+      off_t requested_kb;
 
       /* The requested size is in bytes; the size returned from
        * pr_fs_getsize2() is in KB.
        */
-      if (requested_sz > (avail_sz * 1024)) {
-        pr_log_debug(DEBUG5, "%s requested %" PR_LU " bytes, only %" PR_LU
-          " bytes available on '%s'", cmd->argv[0], (pr_off_t) requested_sz,
-          (pr_off_t) (avail_sz * 1024), path);
+      requested_kb = requested_sz / 1024;
+
+      if (requested_kb > avail_kb) {
+        pr_log_debug(DEBUG5, "%s requested %" PR_LU " KB, only %" PR_LU
+          " KB available on '%s'", cmd->argv[0], (pr_off_t) requested_kb,
+          (pr_off_t) avail_kb, path);
         pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(ENOSPC));
         return PR_ERROR(cmd);
       }
