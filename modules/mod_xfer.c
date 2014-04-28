@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.332 2014-03-08 17:44:38 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.333 2014-04-28 17:05:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2413,10 +2413,14 @@ MODRET xfer_allo(cmd_rec *cmd) {
       pr_response_add(R_202, _("No storage allocation necessary"));
 
     } else {
-      if (requested_sz > avail_sz) {
+
+      /* The requested size is in bytes; the size returned from
+       * pr_fs_getsize2() is in KB.
+       */
+      if (requested_sz > (avail_sz * 1024)) {
         pr_log_debug(DEBUG5, "%s requested %" PR_LU " bytes, only %" PR_LU
           " bytes available on '%s'", cmd->argv[0], (pr_off_t) requested_sz,
-          (pr_off_t) avail_sz, path);
+          (pr_off_t) (avail_sz * 1024), path);
         pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(ENOSPC));
         return PR_ERROR(cmd);
       }
