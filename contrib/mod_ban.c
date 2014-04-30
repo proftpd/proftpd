@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.74 2014-04-30 15:56:58 castaglia Exp $
+ * $Id: mod_ban.c,v 1.75 2014-04-30 17:33:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,6 +70,14 @@
 # define BAN_EVENT_LIST_MAXSZ	512
 #endif
 
+/* This "headroom" is for cases where many concurrent processes are
+ * incrementing the index, possibly past the MAXSZs above.  We thus allocate
+ * some headroom for them, to mitigate/avoid array out-of-bounds faults.
+ */
+#ifndef BAN_LIST_HEADROOMSZ
+# define BAN_LIST_HEADROOMSZ	10
+#endif
+
 /* From src/main.c */
 extern pid_t mpid;
 extern xaset_t *server_list;
@@ -94,7 +102,7 @@ struct ban_entry {
 #define BAN_TYPE_USER		3
 
 struct ban_list {
-  struct ban_entry bl_entries[BAN_LIST_MAXSZ];
+  struct ban_entry bl_entries[BAN_LIST_MAXSZ + BAN_LIST_HEADROOMSZ];
   unsigned int bl_listlen;
   unsigned int bl_next_slot;
 };
@@ -130,7 +138,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_USER_DEFINED		17
 
 struct ban_event_list {
-  struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ];
+  struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ + BAN_LIST_HEADROOMSZ];
   unsigned int bel_listlen;
   unsigned int bel_next_slot;
 };
