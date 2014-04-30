@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.73 2014-02-23 18:29:42 castaglia Exp $
+ * $Id: mod_ban.c,v 1.74 2014-04-30 15:56:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.6.1"
+#define MOD_BAN_VERSION			"mod_ban/0.6.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -807,7 +807,7 @@ static int ban_list_add(pool *p, unsigned int type, unsigned int sid,
 
     pr_signals_handle();
 
-    if (ban_lists->bans.bl_next_slot == BAN_LIST_MAXSZ)
+    if (ban_lists->bans.bl_next_slot >= BAN_LIST_MAXSZ)
       ban_lists->bans.bl_next_slot = 0;
 
     be = &(ban_lists->bans.bl_entries[ban_lists->bans.bl_next_slot]);
@@ -1198,7 +1198,7 @@ static int ban_event_list_add(unsigned int type, unsigned int sid,
 
     pr_signals_handle();
 
-    if (ban_lists->events.bel_next_slot == BAN_EVENT_LIST_MAXSZ)
+    if (ban_lists->events.bel_next_slot >= BAN_EVENT_LIST_MAXSZ)
       ban_lists->events.bel_next_slot = 0;
 
     bee = &(ban_lists->events.bel_entries[ban_lists->events.bel_next_slot]);
