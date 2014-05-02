@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
  *
- * Copyright (c) 2002-2013 TJ Saunders
+ * Copyright (c) 2002-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_exec.c,v 1.39 2013-12-12 06:11:27 castaglia Exp $
+ * $Id: mod_exec.c,v 1.40 2014-05-02 21:13:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -488,6 +488,13 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
     sigaction(SIGINT, &sa_intr, NULL);
     sigaction(SIGQUIT, &sa_quit, NULL);
     sigprocmask(SIG_SETMASK, &set_save, NULL);
+
+    /* Per Bug#4049, when running the command as the user, do NOT clear
+     * the supplemental groups.
+     */
+    if (flags & EXEC_FL_RUN_AS_USER) {
+      flags &= ~EXEC_FL_CLEAR_GROUPS;
+    }
 
     /* If requested, clear the supplemental group membership of the process. */
     if (flags & EXEC_FL_CLEAR_GROUPS) {
