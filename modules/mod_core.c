@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.460 2014-01-25 16:39:58 castaglia Exp $
+ * $Id: mod_core.c,v 1.461 2014-05-03 22:18:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3243,6 +3243,8 @@ MODRET core_pre_any(cmd_rec *cmd) {
    *  NOOP
    *  QUIT
    *  STAT
+   *
+   *  and RFC 2228 commands.
    */
   rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
   if (rnfr_path != NULL) {
@@ -3251,11 +3253,29 @@ MODRET core_pre_any(cmd_rec *cmd) {
         pr_cmd_cmp(cmd, PR_CMD_NOOP_ID) != 0 &&
         pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) != 0 &&
         pr_cmd_cmp(cmd, PR_CMD_STAT_ID) != 0) {
-      pr_log_debug(DEBUG3,
-        "RNFR followed immediately by %s rather than RNTO, rejecting command",
-        cmd->argv[0]);
-      pr_response_add_err(R_501, _("Bad sequence of commands"));
-      return PR_ERROR(cmd);
+      int reject_cmd = TRUE;
+
+      /* Perform additional checks if an RFC 2228 auth mechanism (TLS, GSSAPI)
+       * has been negotiated/used.
+       */
+      if (session.rfc2228_mech != NULL) {
+        if (pr_cmd_cmp(cmd, PR_CMD_CCC_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_CONF_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_ENC_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_MIC_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_PBSZ_ID) == 0 ||
+            pr_cmd_cmp(cmd, PR_CMD_PROT_ID) == 0) {
+          reject_cmd = FALSE;
+        }
+      }
+
+      if (reject_cmd) {
+        pr_log_debug(DEBUG3,
+          "RNFR followed immediately by %s rather than RNTO, rejecting command",
+          cmd->argv[0]);
+        pr_response_add_err(R_501, _("Bad sequence of commands"));
+        return PR_ERROR(cmd);
+      }
     }
   }
 
