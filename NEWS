@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.1595 2014-05-04 19:26:26 castaglia Exp $
+$Id: NEWS,v 1.1596 2014-05-04 23:11:30 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -29,6 +29,7 @@ CVS
   as logged-in user.
 - Bug 4042 - MIC command between RNFR and RNTO should not be rejected.
 - Bug 4044 - mod_facl prevents a normal SIGHUP reload.
+- Bug 4052 - Enhance SQLPasswordPBKDF2 to support per-user query for settings.
 
 1.3.5rc4 - Released 28-Jan-2014
 --------------------------------

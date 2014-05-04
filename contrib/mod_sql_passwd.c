@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2013 TJ Saunders
+ * Copyright (c) 2009-2014 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,14 +21,14 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.20 2013-06-10 17:12:39 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.21 2014-05-04 23:11:30 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.6"
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -72,6 +72,10 @@ static unsigned int sql_passwd_nrounds = 1;
 static const EVP_MD *sql_passwd_pbkdf2_digest = NULL;
 static int sql_passwd_pbkdf2_iter = -1;
 static int sql_passwd_pbkdf2_len = -1;
+#define SQL_PASSWD_ERR_PBKDF2_UNKNOWN_DIGEST		-1
+#define SQL_PASSWD_ERR_PBKDF2_UNSUPPORTED_DIGEST	-2
+#define SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS		-3
+#define SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH		-4
 
 static const char *trace_channel = "sql_passwd";
 
@@ -162,6 +166,36 @@ static const char *get_crypto_errors(void) {
     BIO_free(bio);
 
   return str;
+}
+
+static int get_pbkdf2_config(char *algo, const EVP_MD **md,
+    char *iter_str, int *iter, char *len_str, int *len) {
+
+  *md = EVP_get_digestbyname(algo);
+  if (md == NULL) {
+    return SQL_PASSWD_ERR_PBKDF2_UNKNOWN_DIGEST;
+  }
+
+#if OPENSSL_VERSION_NUMBER < 0x1000003f
+  /* The necesary OpenSSL support for non-SHA1 digests for PBKDF2 appeared in
+   * 1.0.0c.
+   */
+  if (EVP_MD_type(*md) != EVP_MD_type(EVP_sha1())) {
+    return SQL_PASSWD_ERR_PBKDF2_UNSUPPORTED_DIGEST;
+  }
+#endif /* OpenSSL-1.0.0b and earlier */
+
+  *iter = atoi(iter_str);
+  if (*iter < 1) {
+    return SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS;
+  }
+
+  *len = atoi(len_str);
+  if (*len < 1) {
+    return SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH;
+  }
+
+  return 0;
 }
 
 static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
@@ -591,8 +625,107 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordRounds", FALSE);
-  if (c) {
+  if (c != NULL) {
     sql_passwd_nrounds = *((unsigned int *) c->argv[0]);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordPBKDF2", FALSE);
+  if (c != NULL) {
+    if (c->argc == 3) {
+      sql_passwd_pbkdf2_digest = c->argv[0];
+      sql_passwd_pbkdf2_iter = *((int *) c->argv[1]);
+      sql_passwd_pbkdf2_len = *((int *) c->argv[2]);
+
+    } else {
+      char *key;
+      char *named_query, *ptr, *user;
+      cmdtable *sql_cmdtab;
+      cmd_rec *sql_cmd;
+      modret_t *sql_res;
+      array_header *sql_data;
+
+      key = c->argv[0];
+
+      ptr = key + 5; 
+      named_query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", ptr, NULL);
+
+      c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (c == NULL) {
+        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+          ": unable to resolve SQLNamedQuery '%s'", ptr);
+        return PR_DECLINED(cmd);
+      }
+
+      sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+      if (sql_cmdtab == NULL) {
+        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+          ": unable to find SQL hook symbol 'sql_lookup'");
+        return PR_DECLINED(cmd);
+      }
+
+      user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+
+      sql_cmd = sql_passwd_cmd_create(cmd->tmp_pool, 3, "sql_lookup", ptr,
+        sql_passwd_get_str(cmd->tmp_pool, user));
+
+      /* Call the handler. */
+      sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+      if (sql_res == NULL ||
+          MODRET_ISERROR(sql_res)) {
+        pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+          ": error processing SQLNamedQuery '%s'", ptr);
+        return PR_DECLINED(cmd);
+      }
+
+      sql_data = (array_header *) sql_res->data;
+
+      if (sql_data->nelts != 3) {
+        pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+          ": SQLNamedQuery '%s' returned wrong number of columns (%d)", ptr,
+          sql_data->nelts);
+
+      } else {
+        char **values;
+        int iter, len, res;
+        const EVP_MD *md;
+
+        values = sql_data->elts;
+
+        res = get_pbkdf2_config(values[0], &md, values[1], &iter,
+          values[2], &len);
+        switch (res) {
+          case SQL_PASSWD_ERR_PBKDF2_UNKNOWN_DIGEST:
+            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+              ": SQLNamedQuery '%s' returned unknown PKBDF2 digest: %s",
+              ptr, values[0]);
+            break;
+
+          case SQL_PASSWD_ERR_PBKDF2_UNSUPPORTED_DIGEST:
+            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+              ": SQLNamedQuery '%s' returned unsupported PKBDF2 digest: %s",
+              ptr, values[0]);
+            break;
+
+          case SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS:
+            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+              ": SQLNamedQuery '%s' returned insufficient number of rounds: %s",
+              ptr, values[1]);
+            break;
+
+          case SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH:
+            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+              ": SQLNamedQuery '%s' returned insufficient length: %s", ptr,
+              values[2]);
+            break;
+
+          case 0:
+            sql_passwd_pbkdf2_digest = md;
+            sql_passwd_pbkdf2_iter = iter;
+            sql_passwd_pbkdf2_len = len;
+            break;
+        }
+      }
+    }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordUserSalt", FALSE);
@@ -617,7 +750,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       modret_t *sql_res;
       array_header *sql_data;
 
-      ptr = key + 5; 
+      ptr = key + 5;
       named_query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", ptr, NULL);
 
       c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
@@ -660,7 +793,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       values = sql_data->elts;
       sql_passwd_salt = pstrdup(session.pool, values[0]);
       sql_passwd_salt_len = strlen(values[0]);
-      
+
     } else {
       return PR_DECLINED(cmd);
     }
@@ -762,50 +895,63 @@ MODRET set_sqlpasswdoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SQLPasswordPBKDF2 algo iter len */
+/* usage: SQLPasswordPBKDF2 "sql:/"named-query|algo iter len */
 MODRET set_sqlpasswdpbkdf2(cmd_rec *cmd) {
   config_rec *c;
-  int iter, len;
-  const EVP_MD *md;
 
-  CHECK_ARGS(cmd, 3);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  md = EVP_get_digestbyname(cmd->argv[1]);
-  if (md == NULL) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported digest algorithm '",
-      cmd->argv[1], "' configured", NULL));
-  }
+  if (cmd->argc == 4) {
+    int iter, len, res;
+    const EVP_MD *md;
 
-#if OPENSSL_VERSION_NUMBER < 0x1000003f
-  /* The necesary OpenSSL support for non-SHA1 digests for PBKDF2 appeared in
-   * 1.0.0c.
-   */
-  if (EVP_MD_type(md) != EVP_MD_type(EVP_sha1())) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Use of non-SHA1 digests for "
-      "PBKDF2 requires OpenSSL-1.0.0c or later (currently using ",
-      OPENSSL_VERSION_TEXT, ")", NULL));
-  }
-#endif /* OpenSSL-1.0.0b and earlier */
+    res = get_pbkdf2_config(cmd->argv[1], &md, cmd->argv[2], &iter,
+      cmd->argv[3], &len);
+    switch (res) {
+      case SQL_PASSWD_ERR_PBKDF2_UNKNOWN_DIGEST:
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported digest algorithm '",
+          cmd->argv[1], "' configured", NULL));
+        break;
 
-  iter = atoi(cmd->argv[2]);
-  if (iter < 1) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient number of rounds (",
-      cmd->argv[2], ")", NULL));
-  }
+      case SQL_PASSWD_ERR_PBKDF2_UNSUPPORTED_DIGEST:
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "Use of non-SHA1 digests for PBKDF2, such as ", cmd->argv[1],
+          ", requires OpenSSL-1.0.0c or later (currently using ",
+          OPENSSL_VERSION_TEXT, ")", NULL));
+        break;
 
-  len = atoi(cmd->argv[3]);
-  if (len < 1) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient length (",
-      cmd->argv[3], ")", NULL));
-  }
+      case SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS:
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "insufficient number of rounds (", cmd->argv[2], ")", NULL));
+        break;
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
-  c->argv[0] = (void *) md;
-  c->argv[1] = palloc(c->pool, sizeof(int));
-  *((int *) c->argv[1]) = iter;
-  c->argv[2] = palloc(c->pool, sizeof(int));
-  *((int *) c->argv[2]) = len;
+      case SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH:
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient length (",
+          cmd->argv[3], ")", NULL));
+        break;
+
+      case 0:
+        break;
+    }
+
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = (void *) md;
+    c->argv[1] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[1]) = iter;
+    c->argv[2] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[2]) = len;
+
+  } else if (cmd->argc == 2) {
+    if (strncasecmp(cmd->argv[1], "sql:/", 5) != 0) {
+      CONF_ERROR(cmd, "badly formatted parameter");
+    }
+
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+
+  } else {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -982,13 +1128,6 @@ static int sql_passwd_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordEncoding", FALSE);
   if (c != NULL) {
     sql_passwd_encoding = *((unsigned int *) c->argv[0]);
-  }
-
-  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordPBKDF2", FALSE);
-  if (c != NULL) {
-    sql_passwd_pbkdf2_digest = c->argv[0];
-    sql_passwd_pbkdf2_iter = *((int *) c->argv[1]);
-    sql_passwd_pbkdf2_len = *((int *) c->argv[2]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordOptions", FALSE);
