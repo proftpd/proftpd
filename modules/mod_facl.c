@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2013 The ProFTPD Project team
+ * Copyright (c) 2004-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.16 2013-10-09 05:03:38 castaglia Exp $
+ * $Id: mod_facl.c,v 1.17 2014-05-04 19:26:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1072,7 +1072,10 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 static void facl_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_facl.c", (const char *) event_data) == 0) {
     pr_event_unregister(&facl_module, NULL, NULL);
-    pr_unregister_fs("facl");
+    if (pr_unregister_fs("/") < 0) {
+      pr_log_debug(DEBUG0, MOD_FACL_VERSION
+        ": error unregistering 'facl' FS: %s", strerror(errno));
+    }
   }
 }
 #endif /* !PR_SHARED_MODULE */
