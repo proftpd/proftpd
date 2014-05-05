@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_passwd.c,v 1.21 2014-05-04 23:11:30 castaglia Exp $
+ * $Id: mod_sql_passwd.c,v 1.22 2014-05-05 16:15:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -651,14 +651,14 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
 
       c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
       if (c == NULL) {
-        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+        sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
           ": unable to resolve SQLNamedQuery '%s'", ptr);
         return PR_DECLINED(cmd);
       }
 
       sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
       if (sql_cmdtab == NULL) {
-        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+        sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
           ": unable to find SQL hook symbol 'sql_lookup'");
         return PR_DECLINED(cmd);
       }
@@ -672,7 +672,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
       if (sql_res == NULL ||
           MODRET_ISERROR(sql_res)) {
-        pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+        sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
           ": error processing SQLNamedQuery '%s'", ptr);
         return PR_DECLINED(cmd);
       }
@@ -680,7 +680,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       sql_data = (array_header *) sql_res->data;
 
       if (sql_data->nelts != 3) {
-        pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+        sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
           ": SQLNamedQuery '%s' returned wrong number of columns (%d)", ptr,
           sql_data->nelts);
 
@@ -695,25 +695,25 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
           values[2], &len);
         switch (res) {
           case SQL_PASSWD_ERR_PBKDF2_UNKNOWN_DIGEST:
-            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+            sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
               ": SQLNamedQuery '%s' returned unknown PKBDF2 digest: %s",
               ptr, values[0]);
             break;
 
           case SQL_PASSWD_ERR_PBKDF2_UNSUPPORTED_DIGEST:
-            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+            sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
               ": SQLNamedQuery '%s' returned unsupported PKBDF2 digest: %s",
               ptr, values[0]);
             break;
 
           case SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS:
-            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+            sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
               ": SQLNamedQuery '%s' returned insufficient number of rounds: %s",
               ptr, values[1]);
             break;
 
           case SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH:
-            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+            sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
               ": SQLNamedQuery '%s' returned insufficient length: %s", ptr,
               values[2]);
             break;
