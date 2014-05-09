@@ -9,13 +9,55 @@ ChangeLog files.
 1.3.5
 ---------
 
-  + Added checks when chrooted to mitigate/prevent attacks such as the
-    "Roaring Beast" attack.
-
+  + TLS 1.1/1.2 configuration now works properly.
 
   + New Configuration Directives
 
-    RLimitChroot (Bug#4018)
+    RLimitChroot
+      When proftpd chroots a session (e.g. via DefaultRoot or <Anonymous>),
+      certain attacks become possible, such as the "Roaring Beast" attack:
+
+        http://auscert.org.au/15286
+        https://auscert.org.au/15526
+
+      To help mitigate these attacks, proftpd now rejects any attempt to do
+      a write of any kind to paths under /etc and /lib, when the session is
+      chrooted to a path other than "/".
+
+      If these restrictions cause problems for any sites, this guard can be
+      disabled via the new RLimitChroot directive, e.g.:
+
+        RLimitChroot off
+
+      See doc/modules/mod_rlimit.html#RLimitChroot for more information.
+
+
+  + Changed Configuration Directives
+
+    SFTPOptions AllowInsecureLogin
+      Some SFTP clients may wish to use the 'none' cipher, and/or 'none' digest,
+      for testing purposes.  For example, disabling the cipher and digest can
+      be used for testing the raw transfer speed over SFTP.
+
+      mod_sftp, by default, will not allow connections which attempt to use the
+      'none' cipher or 'none' digest, even if these are explicitly enabled via
+      the SFTPCiphers and SFTPDigests directive, as use of these algorithms
+      disables the security protections on the transferred data (such as
+      username/password).
+
+      Thus to explicitly allow usage for these insecure algorithms, use:
+
+        SFTPOptions AllowInsecureLogin
+
+      See doc/contrib/mod_sftp.html#SFTPOptions for details.
+
+    SQLPasswordPBKDF2 sql://
+      The mod_sql_passwd module now supports retrieval of PBKDF2 parameters,
+      such as algorithm, iteration count, and output length, on a per-user
+      basis, via a SQLNamedQuery, in addition to staticly configured
+      parameters.
+
+      See doc/contrib/mod_sql_passwd.html#SQLPasswordPBKDF2 for details.
 
 
 1.3.5rc4
@@ -529,4 +571,4 @@ ChangeLog files.
     and cmdtable.class renamed to cmdtable.cmd_class.  See Bug#3079 for
     details.
 
-Last Updated: $Date: 2014-01-31 16:52:33 $
+Last Updated: $Date: 2014-05-09 14:52:12 $
