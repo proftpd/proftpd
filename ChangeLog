@@ -1,3 +1,445 @@
+2014-05-15 08:53  castaglia
+
+	* contrib/dist/rpm/proftpd.spec, include/version.h:
+	  Preparing files for release.
+
+2014-05-15 08:51  castaglia
+
+	* locale/files.txt:
+	  Updated list of files for localization.
+
+2014-05-09 07:52  castaglia
+
+	* RELEASE_NOTES:
+	  Fleshing out release notes for upcoming release.
+
+2014-05-05 09:15  castaglia
+
+	* contrib/mod_sql_passwd.c:
+	  Use sql_log() instead of pr_log_debug(), so that the logging is
+	  consistently done in the module.  There may still be a few
+	  outliers.
+
+2014-05-04 16:15  castaglia
+
+	* doc/contrib/mod_sql_passwd.html:
+	  Updated SQLPasswordPBKDF2 docs in light of Bug#4052.
+
+2014-05-04 16:11  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sql_passwd.pm:
+	  Added regression test for Bug#4052.
+
+2014-05-04 16:11  castaglia
+
+	* NEWS, contrib/mod_sql_passwd.c:
+	  Bug#4052 - Enhance SQLPasswordPBKDF2 to support per-user query
+	  for settings.
+
+2014-05-04 12:49  castaglia
+
+	* doc/contrib/mod_site_misc.html:
+	  Emphasize that both acces and mod times are set by SITE UTIME.
+
+2014-05-04 12:27  castaglia
+
+	* NEWS, modules/mod_facl.c:
+	  Backport of fix for Bug#4044 to 1.3.4 branch.
+
+2014-05-04 12:26  castaglia
+
+	* NEWS, modules/mod_facl.c:
+	  Bug#4044 - mod_facl prevents a normal SIGHUP reload.
+
+2014-05-03 15:19  castaglia
+
+	* NEWS, modules/mod_core.c:
+	  Backport of fix for Bug#4042 to 1.3.4 branch.
+
+2014-05-03 15:18  castaglia
+
+	* NEWS, modules/mod_core.c:
+	  Bug#4042 - MIC command between RNFR and RNTO should not be
+	  rejected.
+
+2014-05-02 14:13  castaglia
+
+	* NEWS, contrib/mod_exec.c:
+	  Bug#4049 - mod_exec should include supplemental groups when
+	  running commands as logged-in user.
+
+2014-04-30 10:33  castaglia
+
+	* contrib/mod_ban.c:
+	  As a follow-on to the fix for Bug#4048, add some "headroom" to
+	  the SHM segment, to allow for multiple racing/competing processes
+	  incrementing indices.
+
+2014-04-30 08:58  castaglia
+
+	* NEWS, contrib/mod_ban.c:
+	  Backport of fix for Bug#4048 to 1.3.4 branch.
+
+2014-04-30 08:56  castaglia
+
+	* NEWS, contrib/mod_ban.c:
+	  Bug#4048 - Race condition in mod_ban can lead to segfault of all
+	  new connections.
+
+2014-04-28 10:12  castaglia
+
+	* modules/mod_xfer.c:
+	  Backporting tweaks from Bug#4046 in trunk to 1.3.4 branch.
+
+2014-04-28 10:11  castaglia
+
+	* modules/mod_xfer.c:
+	  Slightly better fix for Bug#4046; less chance of overflowing the
+	  off_t datatype on filesystems with lots of free space.
+
+2014-04-28 10:06  castaglia
+
+	* NEWS, modules/mod_xfer.c:
+	  Backport of fix for Bug#4046 to 1.3.4 branch.
+
+2014-04-28 10:05  castaglia
+
+	* NEWS, modules/mod_xfer.c:
+	  Bug#4046 - ALLO command failed because of bad size check.
+
+2014-03-26 11:22  castaglia
+
+	* doc/howto/TLS.html:
+	  Typo.
+
+2014-03-19 08:35  castaglia
+
+	* contrib/mod_tls.c:
+	  Bug#4039 - Fix compile error in mod_tls, when built using newer
+	  OpenSSL versions.  This is a regression caused by Bug#4029.
+
+2014-03-13 11:06  castaglia
+
+	* doc/howto/Chroot.html:
+	  Fix broken link, per Bug#4038.
+
+2014-03-08 09:46  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Config/DeleteAbortedStores.pm:
+	  Adding some regression tests for the DeleteAbortedStores
+	  directive, for when timeouts kick in and kill the session.
+
+2014-03-08 09:44  castaglia
+
+	* modules/mod_xfer.c:
+	  If a session dies in the middle of a data transfer, make sure
+	  that the path in the fake cmd_rec is correct.  It was empty,
+	  which led to some misleading logging.
+
+2014-03-08 08:58  castaglia
+
+	* NEWS, contrib/mod_tls.c:
+	  Bug#4024 - TLS 1.1/1.2 configurable, but not properly
+	  implemented.
+
+2014-03-05 09:43  castaglia
+
+	* contrib/mod_tls.c:
+	  When seeing OpenSSL's PRNG manually, use gettimeofday(2) rather
+	  than time(3).
+
+2014-03-05 09:43  castaglia
+
+	* contrib/mod_tls.c:
+	  When seeding OpenSSL's PRNG manually, use gettimeofday(2) instead
+	  of time(3).
+
+2014-03-03 23:56  castaglia
+
+	* NEWS, contrib/mod_sftp/auth.c:
+	  Backport of fix for Bug#4034 to 1.3.4 branch.
+
+2014-03-03 23:54  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm:
+	  Adding regression tests for Bug#4034.
+
+2014-03-03 23:54  castaglia
+
+	* NEWS, contrib/mod_sftp/auth.c:
+	  Bug#4034 - SSH publickey authentication fails with
+	  "MaxLoginAttempts 1".
+
+2014-03-02 21:40  castaglia
+
+	* doc/contrib/mod_sftp.html:
+	  Add mod_sftp FAQ about pointing an SSH client (*not* SFTP or SCP)
+	  at mod_sftp, and why that connection would fail.
+
+2014-03-02 14:11  castaglia
+
+	* doc/contrib/mod_sftp.html:
+	  Document the AllowInsecureLogin SFTPOption.
+
+2014-03-02 14:05  castaglia
+
+	* contrib/mod_sftp/: auth-kbdint.c, auth-password.c, mod_sftp.c,
+	  mod_sftp.h.in:
+	  Add a new SFTPOption, called 'AllowInsecureLogin'.  This is
+	  needed for sites which wish to use/allow SSH2 logins that use the
+	  'none' cipher or digest (hopefully just for performance testing).
+
+2014-03-02 08:55  castaglia
+
+	* NEWS, contrib/mod_sftp/mod_sftp.c:
+	  Backport of fix for Bug#4032 to 1.3.4 branch.
+
+2014-03-02 08:49  castaglia
+
+	* NEWS, contrib/mod_sftp/mod_sftp.c:
+	  Bug#4032 - Restarting proftpd with mod_sftp fails due to
+	  permissions on SFTPHostKey file.
+
+2014-03-01 22:09  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm:
+	  Fix the mod_sftp regression tests which SHOULD have caught
+	  Bug#4033.
+
+2014-03-01 22:07  castaglia
+
+	* NEWS, contrib/mod_sftp/cipher.c:
+	  Bug#4033 - mod_sftp fails to create SSH2 session using 'none'
+	  cipher.
+
+2014-03-01 09:34  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_wrap2_file.pm:
+	  Added regression test for Bug#3938.
+
+2014-03-01 09:34  castaglia
+
+	* NEWS, contrib/mod_wrap2/mod_wrap2.c:
+	  Bug#3938 - mod_wrap2 uses reverse DNS regardless "UseReverseDNS
+	  off".
+
+2014-02-28 10:11  castaglia
+
+	* tests/: tests.pl, t/config/passiveports.t,
+	  t/lib/ProFTPD/Tests/Config/PassivePorts.pm:
+	  Added regression tests for the PassivePorts directive in various
+	  configuration contexts, i.e. "server config", <Global>, and
+	  <VirtualHost>.
+
+2014-02-28 07:18  castaglia
+
+	* NEWS, contrib/mod_tls.c:
+	  Bug#4029 - TLSOptions EnableDiags logs "unknown version (771)"
+	  for TLS 1.1/1.2 connections.
+
+2014-02-23 10:29  castaglia
+
+	* contrib/mod_ban.c:
+	  Minor name/string change; no functional change.
+
+2014-02-23 10:07  castaglia
+
+	* contrib/mod_ban.c, tests/t/lib/ProFTPD/Tests/Modules/mod_ban.pm:
+	  Allow for custom, user-specified event names in the BanOnEvent
+	  directive.  This will make it easier to support rules for events
+	  other than the ones that are specially handled, and ease the need
+	  to add special handling in the future.
+
+2014-02-23 09:11  castaglia
+
+	* doc/contrib/mod_ban.html:
+	  Added support for RootLogin bans.
+
+2014-02-23 09:10  castaglia
+
+	* contrib/mod_ban.c, tests/t/lib/ProFTPD/Tests/Modules/mod_ban.pm:
+	  Make it possible to ban clients which attempt to login as root.
+
+2014-02-20 22:06  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sftp.pm:
+	  Adding reproduction recipe/regression test for Bug#4026.
+
+2014-02-19 14:53  castaglia
+
+	* doc/contrib/mod_sftp.html:
+	  Add "Cipher Implementations" section to "Known Client Issues",
+	  noting that SBB clients don't handle the blowfish-ctr cipher.
+
+2014-02-18 11:28  castaglia
+
+	* doc/contrib/mod_sftp.html:
+	  Fix typo/misnamed cipher in list.
+
+2014-02-15 10:54  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sql_sqlite.pm:
+	  Adding regression test for Bug#4025.
+
+2014-02-15 10:53  castaglia
+
+	* NEWS, contrib/mod_ifsession.c:
+	  Bug#4025 - <IfClass> sections do not work for multiple SQLLog
+	  directives.
+
+2014-02-15 00:31  castaglia
+
+	* contrib/mod_sql.c:
+	  If SQLEngine is not configured, then DO emit the "no SQLAuthTypes
+	  configured" log message if necessary.  Previous commit would not
+	  have handled the case where SQLEngine was not explicitly set.
+
+2014-02-14 21:22  castaglia
+
+	* contrib/mod_sql.c:
+	  If "SQLEngine log" is configured, then do NOT log a message
+	  saying "error: no SQLAuthTypes configured".  Stylistic nits
+	  addressed while there.
+
+2014-02-11 07:21  castaglia
+
+	* NEWS, src/fsio.c:
+	  Backport of fix for Bug#4022 to 1.3.4 branch.
+
+2014-02-11 07:17  castaglia
+
+	* NEWS, src/fsio.c:
+	  Bug#4022 - "Directory not empty" error when creating directory is
+	  misleading.
+
+2014-02-11 07:17  castaglia
+
+	* src/stash.c:
+	  Fix minor compiler warning when --enable-devel is used.
+
+2014-02-09 12:42  castaglia
+
+	* modules/mod_delay.c:
+	  The regression tests caught a small regression in mod_delay,
+	  where the fix for Bug#3622 was reverted partly by the fixes for
+	  Bug#3970.
+
+2014-02-09 11:41  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Commands/MKD.pm:
+	  Another MKD test, making sure that using a preceding CWD doesn't
+	  gum up the works.  Also makes for a nice testbed for
+	  pr_fsio_smkdir() issues.
+
+2014-02-09 11:34  castaglia
+
+	* src/fsio.c:
+	  Add more logging of error conditions in the pr_fsio_smkdir()
+	  function, for better diagnosing some reported MKD errors.
+
+2014-02-09 10:42  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_rewrite.pm:
+	  Yet another data point/reproduction recipe for Bug#4017.
+
+2014-02-08 08:45  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Config/SocketOptions.pm:
+	  Add basic test for SocketOption keepalive.
+
+2014-02-04 16:17  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_rewrite.pm:
+	  Additional regression/reproduction recipe for Bug#4017, this time
+	  using PCRE regexes.
+
+2014-02-03 11:31  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_rewrite.pm:
+	  Regression test/reproduction recipe for Bug#4017.
+
+2014-02-01 13:43  castaglia
+
+	* contrib/mod_tls.c:
+	  Update mod_tls to start using the pr_netio_t notes table for
+	  stashing/retrieving its SSL objects, rather than the strm_data
+	  void pointer.  The table is more flexible, and allows for other
+	  code to use the keys as needed.
+
+2014-01-31 09:29  castaglia
+
+	* modules/mod_rlimit.c,
+	  tests/t/lib/ProFTPD/Tests/Config/RLimitChroot.pm:
+	  Allow for per-user (via <IfUser>) setting of the RLimitChroot
+	  directive.
+
+2014-01-31 09:08  castaglia
+
+	* doc/modules/mod_rlimit.html:
+	  Add description for new RLimitChroot directive to mod_rlimit
+	  docs.
+
+2014-01-31 09:06  castaglia
+
+	* src/fsio.c:
+	  Match URLs for "Roaring Beast" reports.
+
+2014-01-31 08:53  castaglia
+
+	* tests/: tests.pl, t/config/rlimitchroot.t,
+	  t/lib/ProFTPD/Tests/Config/RLimitChroot.pm:
+	  Adding regression tests for the new RLimitChroot directive.
+
+2014-01-31 08:52  castaglia
+
+	* NEWS, RELEASE_NOTES, include/fsio.h, modules/mod_rlimit.c,
+	  src/fsio.c:
+	  Bug#4018 - Implement checks for sensitive directories when
+	  chrooted.
+
+2014-01-30 08:50  castaglia
+
+	* doc/modules/mod_core.html:
+	  Add description of SocketBindTight directive to mod_core docs,
+	  and include FAQ about using it.
+
+2014-01-29 11:50  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_sftp/rewrite.pm:
+	  Adding regression/reproduction recipe for Bug#4017.
+
+2014-01-28 20:32  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Logging/ExtendedLog.pm:
+	  Fix broken (only on MacOSX) test.
+
+2014-01-28 19:49  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Logging/ExtendedLog.pm:
+	  Minor tweaks while investigating Bug#3638.
+
+2014-01-28 18:16  castaglia
+
+	* tests/t/lib/ProFTPD/Tests/Modules/mod_tls.pm:
+	  Updated mod_tls tests to work around bug in Net-FTPSSL version
+	  0.21's quot() implementation.
+
+2014-01-28 16:07  castaglia
+
+	* contrib/mod_sftp/crypto.c:
+	  Make sure that mod_sftp can compile when using an older OpenSSL
+	  version.  Tested against openssl-0.9.6b.
+
+2014-01-28 10:08  castaglia
+
+	* include/version.h:
+	  Updating version for CVS.
+
+2014-01-28 09:42  castaglia
+
+	* ChangeLog:
+	  Updated ChangeLog.
+
 2014-01-28 09:40  castaglia
 
 	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h:
@@ -45521,7 +45963,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c:
-	  Missing $Id: ChangeLog,v 1.153 2014-01-28 17:42:07 castaglia Exp $ keyword.
+	  Missing $Id: ChangeLog,v 1.154 2014-05-15 16:20:23 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -46700,7 +47142,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	  mod_sql_postgres.c:
-	  Adding $Id: ChangeLog,v 1.153 2014-01-28 17:42:07 castaglia Exp $ tags to the mod_sql files.
+	  Adding $Id: ChangeLog,v 1.154 2014-05-15 16:20:23 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -47219,12 +47661,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	  include/timers.h:
-	  Adding more $Id: ChangeLog,v 1.153 2014-01-28 17:42:07 castaglia Exp $ keywords.
+	  Adding more $Id: ChangeLog,v 1.154 2014-05-15 16:20:23 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c:
-	  Added $Id: ChangeLog,v 1.153 2014-01-28 17:42:07 castaglia Exp $ keyword.
+	  Added $Id: ChangeLog,v 1.154 2014-05-15 16:20:23 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
