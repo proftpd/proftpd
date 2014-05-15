@@ -2,6 +2,7 @@
 ../contrib/mod_copy.c
 ../contrib/mod_ctrls_admin.c
 ../contrib/mod_deflate.c
+../contrib/mod_dnsbl/mod_dnsbl.c
 ../contrib/mod_dynmasq.c
 ../contrib/mod_exec.c
 ../contrib/mod_geoip.c
@@ -153,6 +154,7 @@
 ../include/memcache.h
 ../include/mkhome.h
 ../include/mod_ctrls.h
+../include/mod_log.h
 ../include/modules.h
 ../include/netacl.h
 ../include/netaddr.h
