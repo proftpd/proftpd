@@ -18,7 +18,9 @@ Make.rules
 Make.modules
 modules/module_glue.c
 src/prxs
+src/*.[0-9]
 stamp-h
+utils/*.[0-9]
 *.a
 *.la
 *.o
