@@ -4,5 +4,13 @@ compiler:
   - clang
 install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y check libgeoip-dev libldap2-dev libpam-dev libsasl2-dev libssl-dev libsqlite3-dev sqlite3
-script: ./configure --enable-ctrls --enable-dso --enable-facl --enable-tests --with-modules=mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_shmcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_geoip:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_ifsession && make && make check-api
+  - sudo apt-get install -y check
+  - sudo apt-get install -y gettext
+  - sudo apt-get install -y libgeoip-dev
+  - sudo apt-get install -y libldap2-dev libsasl2-dev
+  - sudo apt-get install -y libmysqlclient-dev
+  - sudo apt-get install -y libpam-dev
+  - sudo apt-get install -y libpq-dev
+  - sudo apt-get install -y libssl-dev
+  - sudo apt-get install -y libsqlite3-dev sqlite3
+script: ./configure --enable-ctrls --enable-dso --enable-facl --enable-nls --enable-tests --with-modules=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_shmcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_ifsession && make && make check-api
