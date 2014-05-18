@@ -417,7 +417,7 @@ void log_discard(void) {
 }
 
 static void log_write(int priority, int f, char *s, int discard) {
-  unsigned int *max_priority = NULL;
+  unsigned int max_priority = 0, *ptr = NULL;
   char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
   memset(serverinfo, '\0', sizeof(serverinfo));
@@ -497,13 +497,16 @@ static void log_write(int priority, int f, char *s, int discard) {
     }
   }
 
-  max_priority = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
-  if (max_priority == NULL) {
+  ptr = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
+  if (ptr != NULL) {
+    max_priority = *ptr;
+
+  } else {
     /* Default SyslogLevel */
     max_priority = PR_LOG_NOTICE;
   }
 
-  if (priority > *max_priority) {
+  if (priority > max_priority) {
     /* Only return now if we don't have any log listeners. */
     if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) <= 0 &&
         pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) <= 0) {
@@ -563,8 +566,7 @@ static void log_write(int priority, int f, char *s, int discard) {
       return;
     }
 
-    if (max_priority != NULL &&
-        priority > *max_priority) {
+    if (priority > max_priority) {
       return;
     }
 
