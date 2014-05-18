@@ -38,4 +38,4 @@ script:
 
 notifications:
   email:
-    - proftpd-committers@proftpd.org
+    - proftp-committers@lists.sourceforge.net
