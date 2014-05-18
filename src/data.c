@@ -369,6 +369,16 @@ static int data_active_open(char *reason, off_t size) {
   }
 
   session.d = pr_inet_create_conn(session.pool, -1, bind_addr, bind_port, TRUE);
+  if (session.d == NULL) {
+    int xerrno = errno;
+
+    pr_response_add_err(R_425, _("Unable to build data connection: %s"),
+      strerror(xerrno));
+    session.d = NULL;
+
+    errno = xerrno;
+    return -1;
+  }
 
   /* Default remote address to which to connect for an active transfer,
    * if the client has not specified a different address via PORT/EPRT,
