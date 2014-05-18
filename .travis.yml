@@ -26,13 +26,15 @@ install:
   - sudo apt-get install -y libssl-dev
   # for mod_sql_sqlite
   - sudo apt-get install -y libsqlite3-dev sqlite3
+  # for PCRE support
+  - sudo apt-get install -y libpcre3-dev
   # for static code analysis
   - sudo apt-get install -y cppcheck rats
 
 script:
-  - find . -type f -name "*.[ch]" -print | xargs cppcheck --enable=error,warning,performance,portability
+  - find . -type f -name "*.[ch]" -print | xargs cppcheck --enable=warning,performance,portability
   - find . -type f -name "*.[ch]" -print | xargs rats --language=c
-  - ./configure --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-tests --with-modules=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_ifsession
+  - ./configure --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-modules=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_ifsession
   - make
   - make check-api
 
