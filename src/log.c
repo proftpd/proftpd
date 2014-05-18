@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -498,9 +498,12 @@ static void log_write(int priority, int f, char *s, int discard) {
   }
 
   max_priority = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
-  if (max_priority != NULL &&
-      priority > *max_priority) {
+  if (max_priority == NULL) {
+    /* Default SyslogLevel */
+    max_priority = PR_LOG_NOTICE;
+  }
 
+  if (priority > *max_priority) {
     /* Only return now if we don't have any log listeners. */
     if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) <= 0 &&
         pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) <= 0) {
