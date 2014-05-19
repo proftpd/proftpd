@@ -168,7 +168,11 @@ static struct sftp_digest digests[] = {
 static const char *trace_channel = "ssh2";
 
 static void ctr_incr(unsigned char *ctr, size_t len) {
-  register unsigned int i;
+  register int i;
+
+  if (len == 0) {
+    return;
+  }
 
   for (i = len - 1; i >= 0; i--) {
     /* If we haven't overflowed, we're done. */

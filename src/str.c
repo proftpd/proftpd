@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2013 The ProFTPD Project team
+ * Copyright (c) 2008-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -476,7 +476,7 @@ char *pr_str_strip_end(char *s, char *ch) {
 
 /* NOTE: Update mod_ban's ban_parse_timestr() to use this function. */
 int pr_str_get_duration(const char *str, int *duration) {
-  unsigned int hours, mins, secs;
+  int hours, mins, secs;
   int flags = PR_STR_FL_IGNORE_CASE, has_suffix = FALSE;
   size_t len;
   char *ptr = NULL;
@@ -486,10 +486,10 @@ int pr_str_get_duration(const char *str, int *duration) {
     return -1;
   }
 
-  if (sscanf(str, "%2u:%2u:%2u", &hours, &mins, &secs) == 3) {
-    if (hours > INT_MAX ||
-        mins > INT_MAX ||
-        secs > INT_MAX) {
+  if (sscanf(str, "%2d:%2d:%2d", &hours, &mins, &secs) == 3) {
+    if (hours < 0 || hours > INT_MAX ||
+        mins < 0 || mins > INT_MAX ||
+        secs < 0 || secs > INT_MAX) {
       errno = ERANGE;
       return -1;
     }
@@ -523,8 +523,8 @@ int pr_str_get_duration(const char *str, int *duration) {
   if (has_suffix == TRUE) {
     /* Parse seconds */
 
-    if (sscanf(str, "%u", &secs) == 1) {
-      if (secs > INT_MAX) {
+    if (sscanf(str, "%d", &secs) == 1) {
+      if (secs < 0 || secs > INT_MAX) {
         errno = ERANGE;
         return -1;
       }
@@ -547,8 +547,8 @@ int pr_str_get_duration(const char *str, int *duration) {
   if (has_suffix == TRUE) {
     /* Parse minutes */
 
-    if (sscanf(str, "%u", &mins) == 1) {
-      if (mins > INT_MAX) {
+    if (sscanf(str, "%d", &mins) == 1) {
+      if (mins < 0 || mins > INT_MAX) {
         errno = ERANGE;
         return -1;
       }
@@ -571,8 +571,8 @@ int pr_str_get_duration(const char *str, int *duration) {
   if (has_suffix == TRUE) {
     /* Parse hours */
 
-    if (sscanf(str, "%u", &hours) == 1) {
-      if (hours > INT_MAX) {
+    if (sscanf(str, "%d", &hours) == 1) {
+      if (hours < 0 || hours > INT_MAX) {
         errno = ERANGE;
         return -1;
       }
@@ -596,8 +596,7 @@ int pr_str_get_duration(const char *str, int *duration) {
     return -1;
   }
 
-  if (secs < 0 ||
-      secs > INT_MAX) {
+  if (secs < 0 || secs > INT_MAX) {
     errno = ERANGE;
     return -1;
   }
