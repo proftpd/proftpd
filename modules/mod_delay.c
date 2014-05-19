@@ -182,11 +182,13 @@ static long delay_select_k(unsigned long k, array_header *values) {
       p = elts[l+1];
 
       while (TRUE) {
+        pr_signals_handle();
+
         do i++;
           while (i < nelts && elts[i] < p);
 
         do j--;
-          while (j >= 0 && elts[j] > p);
+          while (elts[j] > p);
 
         if (j < i)
           break;

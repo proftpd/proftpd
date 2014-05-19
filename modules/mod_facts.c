@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2013 The ProFTPD Project
+ * Copyright (c) 2007-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -639,7 +639,7 @@ static void facts_mlst_feat_remove(void) {
 
 static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
   char c, *ptr;
-  unsigned int year, month, day, hour, min, sec;
+  int year, month, day, hour, min, sec;
   struct timeval tvs[2];
   int res;
 
