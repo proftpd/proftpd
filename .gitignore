@@ -20,6 +20,8 @@ modules/module_glue.c
 src/prxs
 src/*.[0-9]
 stamp-h
+tests/api-tests
+tests/api-tests.log
 utils/*.[0-9]
 *.a
 *.la
