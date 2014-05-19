@@ -1222,11 +1222,6 @@ static void radius_process_quota_info(config_rec *c) {
     unsigned long res;
 
     res = strtoul(param, &endp, 10);
-    if (res < 0) {
-      radius_log("illegal RadiusQuotaInfo files in value: negative number");
-      have_illegal_value = TRUE;
-    }
-
     if (endp && *endp) {
       radius_log("illegal RadiusQuotaInfo files in value: '%s' not a number",
         param);
@@ -1246,11 +1241,6 @@ static void radius_process_quota_info(config_rec *c) {
     unsigned long res;
 
     res = strtoul(param, &endp, 10);
-    if (res < 0) {
-      radius_log("illegal RadiusQuotaInfo files out value: negative number");
-      have_illegal_value = TRUE;
-    }
-    
     if (endp && *endp) {
       radius_log("illegal RadiusQuotaInfo files out value: '%s' not a number",
         param);
@@ -1270,11 +1260,6 @@ static void radius_process_quota_info(config_rec *c) {
     unsigned long res;
 
     res = strtoul(param, &endp, 10);
-    if (res < 0) {
-      radius_log("illegal RadiusQuotaInfo files xfer value: negative number");
-      have_illegal_value = TRUE;
-    }
-    
     if (endp && *endp) {
       radius_log("illegal RadiusQuotaInfo files xfer value: '%s' not a number",
         param);
@@ -3258,80 +3243,78 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[2])) {
     if (strcasecmp(cmd->argv[2], "hard") != 0 &&
-        strcasecmp(cmd->argv[2], "soft") != 0)
+        strcasecmp(cmd->argv[2], "soft") != 0) {
       CONF_ERROR(cmd, "invalid limit type value");
+    }
   }
 
   if (!radius_have_var(cmd->argv[3])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
-    if (strtod(cmd->argv[3], &endp) < 0)
+    if (strtod(cmd->argv[3], &endp) < 0) {
       CONF_ERROR(cmd, "negative bytes value not allowed");
+    }
 
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[4])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
-    if (strtod(cmd->argv[4], &endp) < 0)
+    if (strtod(cmd->argv[4], &endp) < 0) {
       CONF_ERROR(cmd, "negative bytes value not allowed");
+    }
 
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[5])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
-    if (strtod(cmd->argv[5], &endp) < 0)
+    if (strtod(cmd->argv[5], &endp) < 0) {
       CONF_ERROR(cmd, "negative bytes value not allowed");
+    }
 
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[6])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[6], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative files value not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[6], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[7])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[7], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative files value not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[7], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[8])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[8], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative files value not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[8], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
+    }
   }
 
   add_config_param_str(cmd->argv[0], 8, cmd->argv[1], cmd->argv[2],
@@ -3357,47 +3340,39 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[1])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[1], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative UID not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[1], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid UID parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[2])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[2], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative GID not allowed");
-
+    (void) strtoul(cmd->argv[2], &endp, 10);
     if (endp && *endp)
       CONF_ERROR(cmd, "invalid GID parameter: not a number");
   } 
 
   if (!radius_have_var(cmd->argv[3])) {
-
     /* Make sure the path is absolute, at least. */
-    if (*(cmd->argv[3]) != '/')
+    if (*(cmd->argv[3]) != '/') {
       CONF_ERROR(cmd, "home relative path not allowed");
+    }
   }
 
   if (!radius_have_var(cmd->argv[4])) {
-
     /* Make sure the path is absolute, at least. */
-    if (*(cmd->argv[4]) != '/')
+    if (*(cmd->argv[4]) != '/') {
       CONF_ERROR(cmd, "shell relative path not allowed");
+    }
   }
 
   add_config_param_str(cmd->argv[0], 4, cmd->argv[1], cmd->argv[2],
     cmd->argv[3], cmd->argv[4]);
-
   return PR_HANDLED(cmd);
 }
 
