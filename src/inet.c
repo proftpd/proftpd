@@ -488,17 +488,10 @@ conn_t *pr_inet_create_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
   conn_t *c = NULL;
 
   c = init_conn(p, fd, bind_addr, port, retry_bind, TRUE);
-
-  if (!is_master) {
-    /* This code is somewhat of a kludge, because error handling should
-     * NOT occur in inet.c, it should be handled by the caller.
-     */
-    if (c == NULL) {
-      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
-    }
+  if (c == NULL) {
+    errno = inet_errno;
   }
 
-  errno = inet_errno;
   return c;
 }
 

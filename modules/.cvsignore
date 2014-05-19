@@ -1,8 +1,0 @@
-Makefile
-mod_ratio.c
-module_glue.c
-*.o
-*~
-.libs
-*.la
-*.lo

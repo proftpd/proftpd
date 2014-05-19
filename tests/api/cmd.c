@@ -359,7 +359,6 @@ END_TEST
 START_TEST (cmd_get_displayable_str_test) {
   char *ok, *res = NULL;
   cmd_rec *cmd = NULL;
-  size_t len = 0;
 
   res = pr_cmd_get_displayable_str(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null cmd_rec");
