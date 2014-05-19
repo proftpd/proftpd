@@ -2971,7 +2971,7 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
   }
 
   res = fchmod(fd, perms);
-  xerrno = xerrno;
+  xerrno = errno;
 
   if (use_root) {
     PRIVS_RELINQUISH
