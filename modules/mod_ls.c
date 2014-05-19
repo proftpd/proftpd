@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -759,7 +759,17 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         }
 
         if (opt_STAT) {
-          pr_response_add(R_211, "%s%s", nameline, suffix);
+          /* Per RFC 959, the proper response code for a STAT on a file is
+           * 211 for system status, 212 for a directory, and 213 for a file.
+           * If we are here, it means we use either 212 or 213.
+           */ 
+          char *resp_code = R_213;
+
+          if (S_ISDIR(st.st_mode)) {
+            resp_code = R_212;
+          }
+
+          pr_response_add(resp_code, "%s%s", nameline, suffix);
 
         } else {
           addfile(cmd, nameline, suffix, sort_time, st.st_size);
@@ -2458,17 +2468,15 @@ MODRET ls_err_nlst(cmd_rec *cmd) {
 }
 
 MODRET ls_stat(cmd_rec *cmd) {
+  struct stat st;
   int res;
-  char *arg = cmd->arg;
+  char *arg = cmd->arg, *resp_code = NULL;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
 
   if (cmd->argc == 1) {
-
-    /* In this case, the client is requesting the current session
-     * status.
-     */
+    /* In this case, the client is requesting the current session status. */
 
     if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
       pr_response_add_err(R_500, "%s: %s", cmd->argv[0], strerror(EPERM));
@@ -2533,8 +2541,9 @@ MODRET ls_stat(cmd_rec *cmd) {
   }
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     list_show_symlinks = *tmp;
+  }
 
   list_strict_opts = FALSE;
   list_ndepth.max = list_nfiles.max = list_ndirs.max = 0;
@@ -2571,8 +2580,9 @@ MODRET ls_stat(cmd_rec *cmd) {
      * layer deeper.  For the checks to work, the maxdepth of 2 needs to
      * handled internally as a maxdepth of 3.
      */
-    if (list_ndepth.max)
+    if (list_ndepth.max) {
       list_ndepth.max += 1;
+    }
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
@@ -2606,17 +2616,37 @@ MODRET ls_stat(cmd_rec *cmd) {
   }
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     list_times_gmt = *tmp;
+  }
 
   opt_C = opt_d = opt_F = opt_R = 0;
   opt_a = opt_l = opt_STAT = 1;
 
-  pr_response_add(R_211, _("Status of %s:"), arg && *arg ?
+  pr_fs_clear_cache();
+  res = pr_fsio_stat(arg && *arg ? arg : ".", &st);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_response_add_err(R_450, "%s: %s", arg && *arg ? arg : ".",
+      strerror(xerrno));
+
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    resp_code = R_212;
+
+  } else {
+    resp_code = R_213;
+  }
+
+  pr_response_add(resp_code, _("Status of %s:"), arg && *arg ?
     pr_fs_encode_path(cmd->tmp_pool, arg) :
     pr_fs_encode_path(cmd->tmp_pool, "."));
   res = dolist(cmd, arg && *arg ? arg : ".", FALSE);
-  pr_response_add(R_211, _("End of status"));
+  pr_response_add(resp_code, _("End of status"));
   return (res == -1 ? PR_ERROR(cmd) : PR_HANDLED(cmd));
 }
 
