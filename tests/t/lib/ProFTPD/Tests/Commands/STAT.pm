@@ -130,7 +130,7 @@ sub stat_file {
 
       my $expected;
 
-      $expected = 213;
+      $expected = 211;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -251,7 +251,7 @@ sub stat_dir {
 
       my $expected;
 
-      $expected = 212;
+      $expected = 211;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -606,7 +606,7 @@ sub stat_listoptions_bug3295 {
 
       my $expected;
 
-      $expected = 213;
+      $expected = 211;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
