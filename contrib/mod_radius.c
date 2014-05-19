@@ -338,30 +338,40 @@ static char *radius_argsep(char **arg) {
 /* Check a "$(attribute-id:default)" string for validity. */
 static unsigned char radius_have_var(char *var) {
   int id = 0;
-  char *tmp = NULL;
+  char *ptr = NULL;
+  size_t varlen;
+
+  varlen = strlen(var);
 
   /* Must be at least six characters. */
-  if (strlen(var) < 7)
+  if (varlen < 7) {
     return FALSE;
+  }
 
   /* Must start with '$(', and end with ')'. */
-  if (!RADIUS_IS_VAR(var))
+  if (!RADIUS_IS_VAR(var)) {
     return FALSE;
+  }
 
   /* Must have a ':'. */
-  if ((tmp = strchr(var, ':')) == NULL)
+  ptr = strchr(var, ':');
+  if (ptr == NULL) {
     return FALSE;
+  }
 
   /* ':' must be between '(' and ')'. */
-  if (tmp < (var + 3) || tmp > &var[strlen(var)-2])
+  if (ptr < (var + 3) ||
+      ptr > &var[varlen-2]) {
     return FALSE;
+  }
 
   /* Parse out the component int/string. */
   radius_parse_var(var, &id, NULL);
 
   /* Int must be greater than zero. */
-  if (id < 1)
+  if (id < 1) {
     return FALSE;
+  }
 
   return TRUE;
 }
@@ -371,7 +381,7 @@ static unsigned char radius_have_var(char *var) {
  */
 static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
   pool *tmp_pool = make_sub_pool(radius_pool);
-  char *var_cpy = pstrdup(tmp_pool, var), *tmp = NULL;
+  char *var_cpy = pstrdup(tmp_pool, var), *ptr = NULL;
   size_t var_cpylen;
 
   var_cpylen = strlen(var_cpy);
@@ -386,15 +396,16 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
   var_cpy += 2;
 
   /* Find the delimiting ':' */
-  tmp = strchr(var_cpy, ':');
+  ptr = strchr(var_cpy, ':');
 
-  *tmp++ = '\0';
+  *ptr++ = '\0';
 
-  if (attr_id)
+  if (attr_id) {
     *attr_id = atoi(var_cpy);
+  }
 
   if (attr_default) {
-    tmp = strchr(var, ':');
+    ptr = strchr(var, ':');
 
     /* Note: this works because the calling of this function by
      * radius_have_var(), which occurs during the parsing process, uses
@@ -403,7 +414,7 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
      */
     var[strlen(var)-1] = '\0';
 
-    *attr_default = ++tmp;
+    *attr_default = ++ptr;
   }
 
   /* Clean up. */
@@ -1211,11 +1222,6 @@ static void radius_process_quota_info(config_rec *c) {
     unsigned long res;
 
     res = strtoul(param, &endp, 10);
-    if (res < 0) {
-      radius_log("illegal RadiusQuotaInfo files in value: negative number");
-      have_illegal_value = TRUE;
-    }
-
     if (endp && *endp) {
       radius_log("illegal RadiusQuotaInfo files in value: '%s' not a number",
         param);
@@ -1235,11 +1241,6 @@ static void radius_process_quota_info(config_rec *c) {
     unsigned long res;
 
     res = strtoul(param, &endp, 10);
-    if (res < 0) {
-      radius_log("illegal RadiusQuotaInfo files out value: negative number");
-      have_illegal_value = TRUE;
-    }
-    
     if (endp && *endp) {
       radius_log("illegal RadiusQuotaInfo files out value: '%s' not a number",
         param);
@@ -1259,11 +1260,6 @@ static void radius_process_quota_info(config_rec *c) {
     unsigned long res;
 
     res = strtoul(param, &endp, 10);
-    if (res < 0) {
-      radius_log("illegal RadiusQuotaInfo files xfer value: negative number");
-      have_illegal_value = TRUE;
-    }
-    
     if (endp && *endp) {
       radius_log("illegal RadiusQuotaInfo files xfer value: '%s' not a number",
         param);
@@ -2276,8 +2272,9 @@ static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
     return NULL;
   }
 
-  if ((recvlen = recvfrom(sockfd, (char *) recvbuf, RADIUS_PACKET_LEN,
-      0, &radius_remote_sock, &sockaddrlen)) < 0) {
+  recvlen = recvfrom(sockfd, (char *) recvbuf, RADIUS_PACKET_LEN, 0,
+    &radius_remote_sock, &sockaddrlen);
+  if (recvlen < 0) {
     radius_log("error reading packet: %s", strerror(errno));
     return NULL;
   }
@@ -2296,6 +2293,7 @@ static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
 
 static int radius_send_packet(int sockfd, radius_packet_t *packet,
     radius_server_t *server) {
+  int res;
   struct sockaddr_in *radius_sockaddr_in =
     (struct sockaddr_in *) &radius_remote_sock;
 
@@ -2305,8 +2303,9 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
   radius_sockaddr_in->sin_addr.s_addr = pr_netaddr_get_addrno(server->addr);
   radius_sockaddr_in->sin_port = htons(server->port);
 
-  if (sendto(sockfd, (char *) packet, ntohs(packet->length), 0, 
-      &radius_remote_sock, sizeof(struct sockaddr_in)) < 0) {
+  res = sendto(sockfd, (char *) packet, ntohs(packet->length), 0,
+    &radius_remote_sock, sizeof(struct sockaddr_in));
+  if (res < 0) {
     radius_log("error: unable to send packet: %s", strerror(errno));
     return -1;
   }
@@ -2318,7 +2317,6 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
   return 0;
 }
 
-
 static unsigned char radius_start_accting(void) {
   int sockfd = -1, acct_status = 0, acct_authentic = 0;
   radius_packet_t *request = NULL, *response = NULL;
@@ -2326,8 +2324,9 @@ static unsigned char radius_start_accting(void) {
   unsigned char recvd_response = FALSE, *authenticated = NULL;
 
   /* Check to see if RADIUS accounting should be done. */
-  if (!radius_engine || !radius_acct_server)
+  if (!radius_engine || !radius_acct_server) {
     return TRUE;
+  }
 
   /* Only do accounting for authenticated users. */
   authenticated = get_param_ptr(main_server->conf, "authenticated", FALSE);
@@ -2393,7 +2392,8 @@ static unsigned char radius_start_accting(void) {
 
     /* Receive the response. */
     radius_log("receiving acct response packet");
-    if ((response = radius_recv_packet(sockfd, acct_server->timeout)) == NULL) {
+    response = radius_recv_packet(sockfd, acct_server->timeout);
+    if (response == NULL) {
       radius_log("packet receive failed");
       acct_server = acct_server->next;
       continue;
@@ -2428,8 +2428,9 @@ static unsigned char radius_start_accting(void) {
         return FALSE;
     }
 
-  } else
+  } else {
     radius_log("error: no acct servers responded");
+  }
 
   /* Default return value. */
   return FALSE;
@@ -2444,12 +2445,12 @@ static unsigned char radius_stop_accting(void) {
   off_t radius_session_bytes_out = 0;
 
   /* Check to see if RADIUS accounting should be done. */
-  if (!radius_engine || !radius_acct_server)
+  if (!radius_engine || !radius_acct_server) {
     return TRUE;
+  }
 
   /* Only do accounting for authenticated users. */
   authenticated = get_param_ptr(main_server->conf, "authenticated", FALSE);
-
   if (!authenticated || *authenticated == FALSE)
     return TRUE;
 
@@ -2487,8 +2488,10 @@ static unsigned char radius_stop_accting(void) {
     /* Use the ID of the last accounting packet sent, plus one.  Be sure
      * to handle the datatype overflow case.
      */
-    if ((request->id = radius_last_acct_pkt_id + 1) == 0)
+    request->id = radius_last_acct_pkt_id + 1;
+    if (request->id == 0) {
       request->id = 1;
+    }
 
     /* Add accounting attributes. */
     acct_status = htonl(RADIUS_ACCT_STATUS_STOP);
@@ -2527,7 +2530,8 @@ static unsigned char radius_stop_accting(void) {
 
     /* Receive the response. */
     radius_log("receiving acct response packet");
-    if ((response = radius_recv_packet(sockfd, acct_server->timeout)) == NULL) {
+    response = radius_recv_packet(sockfd, acct_server->timeout);
+    if (response == NULL) {
       radius_log("packet receive failed");
       return FALSE;
     }
@@ -2610,8 +2614,9 @@ static int radius_verify_packet(radius_packet_t *req_packet,
   MD5_Init(&ctx);
   MD5_Update(&ctx, (unsigned char *) resp_packet, ntohs(resp_packet->length));
 
-  if (*secret)
+  if (*secret) {
     MD5_Update(&ctx, secret, strlen((const char *) secret));
+  }
 
   /* Set the calculated digest. */
   MD5_Final(calculated, &ctx);
@@ -2636,10 +2641,10 @@ MODRET radius_auth(cmd_rec *cmd) {
   if (radius_auth_ok) {
     session.auth_mech = "mod_radius.c";
     return PR_HANDLED(cmd);
-  }
 
-  else if (radius_auth_reject)
+  } else if (radius_auth_reject) {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
   /* Default return value. */
   return PR_DECLINED(cmd);
@@ -2699,7 +2704,7 @@ MODRET radius_getgroups(cmd_rec *cmd) {
       gids = (array_header *) cmd->argv[1];
 
       if (radius_have_user_info) {
-         *((gid_t *) push_array(gids)) = radius_passwd.pw_gid;
+        *((gid_t *) push_array(gids)) = radius_passwd.pw_gid;
       }
 
       for (i = 0; i < radius_addl_group_count; i++) {
@@ -2833,8 +2838,9 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
 
   /* Check to see whether RADIUS authentication should even be done. */
   if (!radius_engine ||
-      !radius_auth_server)
+      !radius_auth_server) {
     return PR_DECLINED(cmd);
+  }
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (!user) {
@@ -2902,7 +2908,8 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
 
     /* Receive the response. */
     radius_log("receiving auth response packet");
-    if ((response = radius_recv_packet(sockfd, auth_server->timeout)) == NULL) {
+    response = radius_recv_packet(sockfd, auth_server->timeout);
+    if (response == NULL) {
       radius_log("packet receive failed");
       auth_server = auth_server->next;
       continue;
@@ -2968,8 +2975,9 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
 MODRET radius_post_pass(cmd_rec *cmd) {
 
   /* Check to see if RADIUS accounting should be done. */
-  if (!radius_engine || !radius_acct_server)
+  if (!radius_engine || !radius_acct_server) {
     return PR_DECLINED(cmd);
+  }
 
   /* Fill in the username in the faked user info, if need be. */
   if (radius_have_user_info) {
@@ -3032,9 +3040,14 @@ MODRET set_radiusacctserver(cmd_rec *cmd) {
     cmd->argv[2]);
 
   if (cmd->argc-1 == 3) {
-    if ((radius_server->timeout = atoi(cmd->argv[3])) < 0) {
-      CONF_ERROR(cmd, "timeout must be greater than or equal to zero");
+    int timeout = -1;
+
+    if (pr_str_get_duration(cmd->argv[3], &timeout) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+        cmd->argv[1], "': ", strerror(errno), NULL));
     }
+
+    radius_server->timeout = timeout;
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3082,9 +3095,14 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
     cmd->argv[2]);
 
   if (cmd->argc-1 == 3) {
-    if ((radius_server->timeout = atoi(cmd->argv[3])) < 0) {
-      CONF_ERROR(cmd, "timeout must be greater than or equal to zero");
-    }
+    int timeout = -1;
+
+    if (pr_str_get_duration(cmd->argv[3], &timeout) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+        cmd->argv[1], "': ", strerror(errno), NULL));
+    } 
+    
+    radius_server->timeout = timeout;
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3096,19 +3114,20 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
 
 /* usage: RadiusEngine on|off */
 MODRET set_radiusengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }
@@ -3224,80 +3243,78 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[2])) {
     if (strcasecmp(cmd->argv[2], "hard") != 0 &&
-        strcasecmp(cmd->argv[2], "soft") != 0)
+        strcasecmp(cmd->argv[2], "soft") != 0) {
       CONF_ERROR(cmd, "invalid limit type value");
+    }
   }
 
   if (!radius_have_var(cmd->argv[3])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
-    if (strtod(cmd->argv[3], &endp) < 0)
+    if (strtod(cmd->argv[3], &endp) < 0) {
       CONF_ERROR(cmd, "negative bytes value not allowed");
+    }
 
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[4])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
-    if (strtod(cmd->argv[4], &endp) < 0)
+    if (strtod(cmd->argv[4], &endp) < 0) {
       CONF_ERROR(cmd, "negative bytes value not allowed");
+    }
 
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[5])) {
     char *endp = NULL;
 
     /* Make sure it's a number, at least. */
-    if (strtod(cmd->argv[5], &endp) < 0)
+    if (strtod(cmd->argv[5], &endp) < 0) {
       CONF_ERROR(cmd, "negative bytes value not allowed");
+    }
 
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[6])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[6], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative files value not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[6], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[7])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[7], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative files value not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[7], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[8])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[8], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative files value not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[8], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid files parameter: not a number");
+    }
   }
 
   add_config_param_str(cmd->argv[0], 8, cmd->argv[1], cmd->argv[2],
@@ -3323,47 +3340,39 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
 
   if (!radius_have_var(cmd->argv[1])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[1], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative UID not allowed");
-
-    if (endp && *endp)
+    (void) strtoul(cmd->argv[1], &endp, 10);
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid UID parameter: not a number");
+    }
   }
 
   if (!radius_have_var(cmd->argv[2])) {
     char *endp = NULL;
-    unsigned long res;
 
     /* Make sure it's a number, at least. */
-    res = strtoul(cmd->argv[2], &endp, 10);
-    if (res < 0)
-      CONF_ERROR(cmd, "negative GID not allowed");
-
+    (void) strtoul(cmd->argv[2], &endp, 10);
     if (endp && *endp)
       CONF_ERROR(cmd, "invalid GID parameter: not a number");
   } 
 
   if (!radius_have_var(cmd->argv[3])) {
-
     /* Make sure the path is absolute, at least. */
-    if (*(cmd->argv[3]) != '/')
+    if (*(cmd->argv[3]) != '/') {
       CONF_ERROR(cmd, "home relative path not allowed");
+    }
   }
 
   if (!radius_have_var(cmd->argv[4])) {
-
     /* Make sure the path is absolute, at least. */
-    if (*(cmd->argv[4]) != '/')
+    if (*(cmd->argv[4]) != '/') {
       CONF_ERROR(cmd, "shell relative path not allowed");
+    }
   }
 
   add_config_param_str(cmd->argv[0], 4, cmd->argv[1], cmd->argv[2],
     cmd->argv[3], cmd->argv[4]);
-
   return PR_HANDLED(cmd);
 }
 
