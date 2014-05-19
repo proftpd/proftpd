@@ -1,6 +1,0 @@
-check
-api-tests
-api-tests.log
-*.o
-*~
-.libs

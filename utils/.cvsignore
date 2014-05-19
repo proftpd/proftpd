@@ -1,9 +1,0 @@
-Makefile
-ftptop
-*.o
-*~
-ftpcount.1
-ftpscrub.8
-ftpshut.8
-ftptop.1
-ftpwho.1

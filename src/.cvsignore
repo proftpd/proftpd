@@ -1,8 +1,0 @@
-Makefile
-*.o
-*~
-prxs
-ftpdctl.8
-proftpd.8
-proftpd.conf.5
-xferlog.5
