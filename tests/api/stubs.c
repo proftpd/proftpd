@@ -73,6 +73,10 @@ int pr_ctrls_unregister(module *m, const char *action) {
   return 0;
 }
 
+struct tm *pr_localtime(pool *p, const time_t *t) {
+  return localtime(t);
+}
+
 void pr_log_debug(int level, const char *fmt, ...) {
   if (getenv("TEST_VERBOSE") != NULL) {
     va_list msg;
@@ -85,6 +89,16 @@ void pr_log_debug(int level, const char *fmt, ...) {
 
     fprintf(stderr, "\n");
   }
+}
+
+int pr_log_event_generate(unsigned int log_type, int log_fd, int log_level,
+    const char *log_msg, size_t log_msglen) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_log_event_listening(unsigned int log_type) {
+  return FALSE;
 }
 
 void pr_log_pri(int prio, const char *fmt, ...) {
@@ -101,6 +115,11 @@ void pr_log_pri(int prio, const char *fmt, ...) {
   }
 }
 
+int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
+  *log_fd = STDERR_FILENO;
+  return 0;
+}
+
 void pr_signals_handle(void) {
 }
 
@@ -108,27 +127,6 @@ void pr_signals_block(void) {
 }
 
 void pr_signals_unblock(void) {
-}
-
-int pr_trace_get_level(const char *channel) {
-  return 0;
-}
-
-int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    va_list msg;
-
-    fprintf(stderr, "TRACE: <%s:%d>: ", channel, level);
-
-    va_start(msg, fmt);
-    vfprintf(stderr, fmt, msg);
-    va_end(msg);
-
-    fprintf(stderr, "\n");
-  }
-
-  return 0;
 }
 
 void run_schedule(void) {

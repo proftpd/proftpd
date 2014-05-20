@@ -53,6 +53,7 @@ static struct testsuite_info suites[] = {
   { "response",		tests_get_response_suite },
   { "fsio",		tests_get_fsio_suite },
   { "netio",		tests_get_netio_suite },
+  { "trace",		tests_get_trace_suite },
 
   { NULL, NULL }
 };
@@ -126,6 +127,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "netio") == 0) {
     return tests_get_netio_suite();
+
+  } else if (strcmp(suite, "trace") == 0) {
+    return tests_get_trace_suite();
   }
 
   return NULL;
@@ -170,6 +174,9 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+
+  /* Configure the Trace API to write to stderr. */
+  pr_trace_use_stderr(TRUE);
 
   requested = getenv("PR_TEST_NOFORK");
   if (requested) {

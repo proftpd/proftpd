@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2013 The ProFTPD Project team
+ * Copyright (c) 2006-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -259,6 +259,11 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
   }
 
   /* Check for a value range. */
+  if (*str == '-') {
+    errno = EINVAL;
+    return -1;
+  }
+
   ptr = strchr(str, '-');
   if (ptr == NULL) {
     /* Just a single value. */
@@ -311,6 +316,11 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
   }
 
   if (high < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (high < low) {
     errno = EINVAL;
     return -1;
   }
