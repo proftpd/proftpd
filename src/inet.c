@@ -74,10 +74,15 @@ int pr_inet_set_default_family(pool *p, int family) {
 
 /* Find a service and return its port number. */
 int pr_inet_getservport(pool *p, const char *serv, const char *proto) {
-  struct servent *servent = getservbyname(serv, proto);
+  struct servent *servent;
+
+  servent = getservbyname(serv, proto);
+  if (servent == NULL) {
+    return -1;
+  }
 
   /* getservbyname returns the port in network byte order. */
-  return (servent ? ntohs(servent->s_port) : -1);
+  return ntohs(servent->s_port);
 }
 
 static void conn_cleanup_cb(void *cv) {

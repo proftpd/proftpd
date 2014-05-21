@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2007-2011 The ProFTPD Project team
+ * Copyright (c) 2007-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,9 @@
 #define PR_PIDFILE_H
 
 /* For internal use only. */
+const char *pr_pidfile_get(void);
+int pr_pidfile_set(const char *path);
 int pr_pidfile_remove(void);
-void pr_pidfile_write(void);
+int pr_pidfile_write(void);
 
 #endif /* PR_PIDFILE_H */

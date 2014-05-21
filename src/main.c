@@ -2384,7 +2384,12 @@ static void standalone_main(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
-  pr_pidfile_write();
+  if (pr_pidfile_write() < 0) {
+    fprintf(stderr, "error opening PidFile '%s': %s\n", pr_pidfile_get(),
+      strerror(errno));
+    exit(1);
+  }
+
   daemon_loop();
 }
 

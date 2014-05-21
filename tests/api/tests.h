@@ -62,6 +62,8 @@ Suite *tests_get_response_suite(void);
 Suite *tests_get_fsio_suite(void);
 Suite *tests_get_netio_suite(void);
 Suite *tests_get_trace_suite(void);
+Suite *tests_get_parser_suite(void);
+Suite *tests_get_pidfile_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.

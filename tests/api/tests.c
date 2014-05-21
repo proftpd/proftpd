@@ -54,6 +54,8 @@ static struct testsuite_info suites[] = {
   { "fsio",		tests_get_fsio_suite },
   { "netio",		tests_get_netio_suite },
   { "trace",		tests_get_trace_suite },
+  { "parser",		tests_get_parser_suite },
+  { "pidfile",		tests_get_pidfile_suite },
 
   { NULL, NULL }
 };
@@ -130,6 +132,12 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "trace") == 0) {
     return tests_get_trace_suite();
+
+  } else if (strcmp(suite, "parser") == 0) {
+    return tests_get_parser_suite();
+
+  } else if (strcmp(suite, "pidfile") == 0) {
+    return tests_get_pidfile_suite();
   }
 
   return NULL;

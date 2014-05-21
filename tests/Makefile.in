@@ -35,7 +35,9 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/fsio.o \
   $(top_srcdir)/src/netio.o \
   $(top_srcdir)/src/encode.o \
-  $(top_srcdir)/src/trace.o
+  $(top_srcdir)/src/trace.o \
+  $(top_srcdir)/src/parser.o \
+  $(top_srcdir)/src/pidfile.o
 
 TEST_API_LIBS=-lcheck
 
@@ -64,6 +66,8 @@ TEST_API_OBJS=\
   api/fsio.o \
   api/netio.o \
   api/trace.o \
+  api/parser.o \
+  api/pidfile.o \
   api/stubs.o \
   api/tests.o
 

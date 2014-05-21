@@ -749,7 +749,11 @@ MODRET set_pidfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  if (pr_pidfile_set(cmd->argv[1]) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to set PidFile '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+  }
+
   return PR_HANDLED(cmd);
 }
 
