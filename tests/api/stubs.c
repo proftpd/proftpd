@@ -34,6 +34,7 @@ server_rec *main_server = NULL;
 pid_t mpid = 1;
 module *static_modules[] = { NULL };
 module *loaded_modules = NULL;
+xaset_t *server_list = NULL;
 
 char *dir_realpath(pool *p, const char *path) {
   return NULL;
@@ -71,6 +72,11 @@ int pr_config_get_server_xfer_bufsz(int direction) {
 
 int pr_ctrls_unregister(module *m, const char *action) {
   return 0;
+}
+
+int pr_inet_getservport(pool *p, const char *serv, const char *proto) {
+  errno = ENOSYS;
+  return -1;
 }
 
 struct tm *pr_localtime(pool *p, const time_t *t) {
