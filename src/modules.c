@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -125,11 +125,13 @@ int modules_session_init(void) {
 
 unsigned char command_exists(char *name) {
   int idx = -1;
-  cmdtable *cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, &idx);
+  unsigned int hash = 0;
+  cmdtable *cmdtab;
 
+  cmdtab = pr_stash_get_symbol2(PR_SYM_CMD, name, NULL, &idx, &hash);
   while (cmdtab && cmdtab->cmd_type != CMD) {
     pr_signals_handle();
-    cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, cmdtab, &idx);
+    cmdtab = pr_stash_get_symbol2(PR_SYM_CMD, name, cmdtab, &idx, &hash);
   }
 
   return (cmdtab ? TRUE : FALSE);

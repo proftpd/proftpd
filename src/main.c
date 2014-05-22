@@ -233,11 +233,13 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 
 static int get_command_class(const char *name) {
   int idx = -1;
-  cmdtable *c = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, &idx);
+  unsigned int hash = 0;
+  cmdtable *c;
 
+  c = pr_stash_get_symbol2(PR_SYM_CMD, name, NULL, &idx, &hash);
   while (c && c->cmd_type != CMD) {
     pr_signals_handle();
-    c = pr_stash_get_symbol(PR_SYM_CMD, name, c, &idx);
+    c = pr_stash_get_symbol2(PR_SYM_CMD, name, c, &idx, &hash);
   }
 
   /* By default, every command has a class of CL_ALL.  This insures that
@@ -253,8 +255,10 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   int success = 0, xerrno = 0;
   int send_error = 0;
   static int match_index_cache = -1;
+  static unsigned int match_hash_cache = 0;
   static char *last_match = NULL;
-  int *index_cache;
+  int *index_cache = NULL;
+  unsigned int *hash_cache = NULL;
 
   send_error = (cmd_type == PRE_CMD || cmd_type == CMD ||
     cmd_type == POST_CMD_ERR);
@@ -262,6 +266,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   if (!match) {
     match = cmd->argv[0];
     index_cache = &cmd->stash_index;
+    hash_cache = &cmd->stash_hash;
 
   } else {
     if (last_match != match) {
@@ -270,9 +275,10 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     }
 
     index_cache = &match_index_cache;
+    hash_cache = &match_hash_cache;
   }
 
-  c = pr_stash_get_symbol(PR_SYM_CMD, match, NULL, index_cache);
+  c = pr_stash_get_symbol2(PR_SYM_CMD, match, NULL, index_cache, hash_cache);
 
   while (c && !success) {
     size_t cmdargstrlen = 0;
@@ -421,7 +427,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     }
 
     if (!success) {
-      c = pr_stash_get_symbol(PR_SYM_CMD, match, c, index_cache);
+      c = pr_stash_get_symbol2(PR_SYM_CMD, match, c, index_cache, hash_cache);
     }
   }
 
@@ -775,6 +781,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
   cmd->pool = subpool;
   cmd->tmp_pool = NULL;
   cmd->stash_index = -1;
+  cmd->stash_hash = 0;
 
   tarr = make_array(cmd->pool, 2, sizeof(char *));
 

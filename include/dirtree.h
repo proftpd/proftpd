@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -121,8 +121,12 @@ typedef struct cmd_struc {
   char **argv;
   char *group;			/* Command grouping */
 
-  int  cmd_class;		/* The command class */
-  int  stash_index;		/* hack to speed up symbol hashing in modules.c */
+  int cmd_class;		/* The command class */
+
+  /* These are used to speed up symbol hashing/lookups in stash.c. */
+  int stash_index;
+  unsigned int stash_hash;
+
   pr_table_t *notes;		/* Private data for passing/retaining between handlers */
 
   int cmd_id;			/* Index into commands list, for faster comparisons */

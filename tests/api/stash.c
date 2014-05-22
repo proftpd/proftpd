@@ -54,37 +54,37 @@ START_TEST (stash_add_symbol_test) {
   
   res = pr_stash_add_symbol(0, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
-    errno);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
 
   res = pr_stash_add_symbol(0, "Foo");
   fail_unless(res == -1, "Failed to handle bad type");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&conftab, 0, sizeof(conftab));
   res = pr_stash_add_symbol(PR_SYM_CONF, &conftab);
   fail_unless(res == -1, "Failed to handle null conf name");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM (got %d)",
-    errno);
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&cmdtab, 0, sizeof(cmdtab));
   res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab);
   fail_unless(res == -1, "Failed to handle null cmd name");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM (got %d)",
-    errno);
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&authtab, 0, sizeof(authtab));
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == -1, "Failed to handle null auth name");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM (got %d)",
-    errno);
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&hooktab, 0, sizeof(hooktab));
   res = pr_stash_add_symbol(PR_SYM_HOOK, &hooktab);
   fail_unless(res == -1, "Failed to handle null hook name");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM (got %d)",
-    errno);
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&conftab, 0, sizeof(conftab));
   conftab.directive = pstrdup(p, "Foo");
@@ -117,33 +117,33 @@ START_TEST (stash_get_symbol_test) {
 
   sym = pr_stash_get_symbol(0, NULL, NULL, NULL);
   fail_unless(sym == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
-    errno);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
 
   sym = pr_stash_get_symbol(0, "foo", NULL, NULL);
   fail_unless(sym == NULL, "Failed to handle bad type argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
-    errno);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
 
   sym = pr_stash_get_symbol(PR_SYM_CONF, "foo", NULL, NULL);
   fail_unless(sym == NULL, "Failed to handle nonexistent CONF symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 
   sym = pr_stash_get_symbol(PR_SYM_CMD, "foo", NULL, NULL);
   fail_unless(sym == NULL, "Failed to handle nonexistent CMD symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 
   sym = pr_stash_get_symbol(PR_SYM_AUTH, "foo", NULL, NULL);
   fail_unless(sym == NULL, "Failed to handle nonexistent AUTH symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 
   sym = pr_stash_get_symbol(PR_SYM_HOOK, "foo", NULL, NULL);
   fail_unless(sym == NULL, "Failed to handle nonexistent HOOK symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&conftab, 0, sizeof(conftab));
   conftab.directive = pstrdup(p, "foo");
@@ -156,8 +156,8 @@ START_TEST (stash_get_symbol_test) {
 
   sym = pr_stash_get_symbol(PR_SYM_CONF, "foo", sym, NULL);
   fail_unless(sym == NULL, "Unexpectedly found CONF symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&cmdtab, 0, sizeof(cmdtab));
   cmdtab.command = pstrdup(p, "foo");
@@ -170,8 +170,8 @@ START_TEST (stash_get_symbol_test) {
 
   sym = pr_stash_get_symbol(PR_SYM_CMD, "foo", sym, NULL);
   fail_unless(sym == NULL, "Unexpectedly found CMD symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = pstrdup(p, "foo");
@@ -184,8 +184,8 @@ START_TEST (stash_get_symbol_test) {
 
   sym = pr_stash_get_symbol(PR_SYM_AUTH, "foo", sym, NULL);
   fail_unless(sym == NULL, "Unexpectedly found AUTH symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 
   memset(&hooktab, 0, sizeof(hooktab));
   hooktab.command = pstrdup(p, "foo");
@@ -198,8 +198,103 @@ START_TEST (stash_get_symbol_test) {
 
   sym = pr_stash_get_symbol(PR_SYM_HOOK, "foo", sym, NULL);
   fail_unless(sym == NULL, "Unexpectedly found HOOK symbol");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT (got %d)",
-    errno);
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+}
+END_TEST
+
+START_TEST (stash_get_symbol2_test) {
+  int res;
+  void *sym;
+  conftable conftab;
+  cmdtable cmdtab, hooktab;
+  authtable authtab;
+
+  sym = pr_stash_get_symbol2(0, NULL, NULL, NULL, NULL);
+  fail_unless(sym == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  sym = pr_stash_get_symbol2(0, "foo", NULL, NULL, NULL);
+  fail_unless(sym == NULL, "Failed to handle bad type argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_CONF, "foo", NULL, NULL, NULL);
+  fail_unless(sym == NULL, "Failed to handle nonexistent CONF symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_CMD, "foo", NULL, NULL, NULL);
+  fail_unless(sym == NULL, "Failed to handle nonexistent CMD symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_AUTH, "foo", NULL, NULL, NULL);
+  fail_unless(sym == NULL, "Failed to handle nonexistent AUTH symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_HOOK, "foo", NULL, NULL, NULL);
+  fail_unless(sym == NULL, "Failed to handle nonexistent HOOK symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  memset(&conftab, 0, sizeof(conftab));
+  conftab.directive = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_CONF, &conftab);
+  fail_unless(res == 0, "Failed to add CONF symbol: %s", strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_CONF, "foo", NULL, NULL, NULL);
+  fail_unless(sym != NULL, "Failed to get CONF symbol: %s", strerror(errno));
+  fail_unless(sym == &conftab, "Expected %p, got %p", &conftab, sym);
+
+  sym = pr_stash_get_symbol2(PR_SYM_CONF, "foo", sym, NULL, NULL);
+  fail_unless(sym == NULL, "Unexpectedly found CONF symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  memset(&cmdtab, 0, sizeof(cmdtab));
+  cmdtab.command = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_CMD, "foo", NULL, NULL, NULL);
+  fail_unless(sym != NULL, "Failed to get CMD symbol: %s", strerror(errno));
+  fail_unless(sym == &cmdtab, "Expected %p, got %p", &cmdtab, sym);
+
+  sym = pr_stash_get_symbol2(PR_SYM_CMD, "foo", sym, NULL, NULL);
+  fail_unless(sym == NULL, "Unexpectedly found CMD symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add AUTH symbol: %s", strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_AUTH, "foo", NULL, NULL, NULL);
+  fail_unless(sym != NULL, "Failed to get AUTH symbol: %s", strerror(errno));
+  fail_unless(sym == &authtab, "Expected %p, got %p", &authtab, sym);
+
+  sym = pr_stash_get_symbol2(PR_SYM_AUTH, "foo", sym, NULL, NULL);
+  fail_unless(sym == NULL, "Unexpectedly found AUTH symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  memset(&hooktab, 0, sizeof(hooktab));
+  hooktab.command = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_HOOK, &hooktab);
+  fail_unless(res == 0, "Failed to add HOOK symbol: %s", strerror(errno));
+
+  sym = pr_stash_get_symbol2(PR_SYM_HOOK, "foo", NULL, NULL, NULL);
+  fail_unless(sym != NULL, "Failed to get HOOK symbol: %s", strerror(errno));
+  fail_unless(sym == &hooktab, "Expected %p, got %p", &hooktab, sym);
+
+  sym = pr_stash_get_symbol2(PR_SYM_HOOK, "foo", sym, NULL, NULL);
+  fail_unless(sym == NULL, "Unexpectedly found HOOK symbol");
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
 }
 END_TEST
 
@@ -211,13 +306,13 @@ START_TEST (stash_remove_symbol_test) {
 
   res = pr_stash_remove_symbol(0, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
-    errno);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
 
   res = pr_stash_remove_symbol(0, "foo", NULL);
   fail_unless(res == -1, "Failed to handle bad symbol type");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
-    errno);
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
 
   res = pr_stash_remove_symbol(PR_SYM_CONF, "foo", NULL);
   fail_unless(res == 0, "Expected %d, got %d", 0, res);
@@ -279,6 +374,7 @@ Suite *tests_get_stash_suite(void) {
 
   tcase_add_test(testcase, stash_add_symbol_test);
   tcase_add_test(testcase, stash_get_symbol_test);
+  tcase_add_test(testcase, stash_get2_symbol_test);
   tcase_add_test(testcase, stash_remove_symbol_test);
 
   suite_add_tcase(suite, testcase);

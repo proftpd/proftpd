@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2012 The ProFTPD Project team
+ * Copyright (c) 2009-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -128,6 +128,7 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   cmd = pcalloc(newpool, sizeof(cmd_rec));
   cmd->argc = argc;
   cmd->stash_index = -1;
+  cmd->stash_hash = 0;
   cmd->pool = newpool;
   cmd->tmp_pool = make_sub_pool(cmd->pool);
   pr_pool_tag(cmd->tmp_pool, "cmd_rec tmp pool");

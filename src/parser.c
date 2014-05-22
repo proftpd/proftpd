@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2013 The ProFTPD Project team
+ * Copyright (c) 2004-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -408,8 +408,8 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
       cmd->server = *parser_curr_server;
       cmd->config = *parser_curr_config;
 
-      conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], NULL,
-        &cmd->stash_index);
+      conftab = pr_stash_get_symbol2(PR_SYM_CONF, cmd->argv[0], NULL,
+        &cmd->stash_index, &cmd->stash_hash);
 
       while (conftab) {
         modret_t *mr;
@@ -442,8 +442,8 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
           found = TRUE;
         }
 
-        conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], conftab,
-          &cmd->stash_index);
+        conftab = pr_stash_get_symbol2(PR_SYM_CONF, cmd->argv[0], conftab,
+          &cmd->stash_index, &cmd->stash_hash);
       }
 
       if (cmd->tmp_pool)
@@ -503,6 +503,7 @@ cmd_rec *pr_parser_parse_line(pool *p) {
     cmd = pcalloc(sub_pool, sizeof(cmd_rec));
     cmd->pool = sub_pool;
     cmd->stash_index = -1;
+    cmd->stash_hash = 0;
 
     /* Add each word to the array */
     arr = make_array(cmd->pool, 4, sizeof(char **));

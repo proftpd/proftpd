@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2012 The ProFTPD Project team
+ * Copyright (c) 2010-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,6 +38,8 @@ typedef enum {
 
 int pr_stash_add_symbol(pr_stash_type_t, void *);
 void *pr_stash_get_symbol(pr_stash_type_t, const char *, void *, int *);
+void *pr_stash_get_symbol2(pr_stash_type_t, const char *, void *, int *,
+  unsigned int *);
 int pr_stash_remove_symbol(pr_stash_type_t, const char *, module *);
 
 void pr_stash_dump(void (*)(const char *, ...));
