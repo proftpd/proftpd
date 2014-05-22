@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_sql -- a mod_quotatab sub-module for managing quota
  *                              data via SQL-based tables
  *
- * Copyright (c) 2002-2013 TJ Saunders
+ * Copyright (c) 2002-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ static char *sqltab_get_name(pool *p, char *name) {
   modret_t *res;
 
   /* Find the cmdtable for the sql_escapestr command. */
-  cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_escapestr", NULL, NULL);
+  cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_escapestr", NULL, NULL, NULL);
   if (cmdtab == NULL) {
     quotatab_log("error: unable to find SQL hook symbol 'sql_escapestr'");
     return name;
@@ -176,7 +176,8 @@ static int sqltab_create(quota_table_t *sqltab, void *ptr) {
     tally_files_in, tally_files_out, tally_files_xfer);
 
   /* Find the cmdtable for the sql_change command. */
-  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_change", NULL, NULL);
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_change", NULL, NULL,
+    NULL);
   if (sql_cmdtab == NULL) {
     quotatab_log("error: unable to find SQL hook symbol 'sql_change'");
     destroy_pool(tmp_pool);
@@ -219,7 +220,8 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, void *ptr,
   }
 
   /* Find the cmdtable for the sql_lookup command. */
-  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
   if (sql_cmdtab == NULL) {
     quotatab_log("error: unable to find SQL hook symbol 'sql_lookup'");
     destroy_pool(tmp_pool);
@@ -526,7 +528,8 @@ static int sqltab_write(quota_table_t *sqltab, void *ptr) {
     sqltab_get_name(tmp_pool, tally->name), tally_quota_type);
 
   /* Find the cmdtable for the sql_change command. */
-  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_change", NULL, NULL);
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_change", NULL, NULL,
+    NULL);
   if (sql_cmdtab == NULL) {
     quotatab_log("error: unable to find SQL hook symbol 'sql_change'");
     destroy_pool(tmp_pool);

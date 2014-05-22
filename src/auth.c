@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -239,6 +239,7 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
 
   c->argc = argc;
   c->stash_index = -1;
+  c->stash_hash = 0;
 
   if (argc) {
     register unsigned int i;
@@ -267,8 +268,8 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match, module **m) {
   authtable *start_tab = NULL, *iter_tab = NULL;
   modret_t *mr = NULL;
 
-  start_tab = pr_stash_get_symbol(PR_SYM_AUTH, match, NULL,
-    &cmd->stash_index);
+  start_tab = pr_stash_get_symbol2(PR_SYM_AUTH, match, NULL,
+    &cmd->stash_index, &cmd->stash_hash);
   if (start_tab == NULL) {
     int xerrno = errno;
 
@@ -320,8 +321,8 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match, module **m) {
     }
 
   next:
-    iter_tab = pr_stash_get_symbol(PR_SYM_AUTH, match, iter_tab,
-      &cmd->stash_index);
+    iter_tab = pr_stash_get_symbol2(PR_SYM_AUTH, match, iter_tab,
+      &cmd->stash_index, &cmd->stash_hash);
 
     if (iter_tab == start_tab) {
       /* We have looped back to the start.  Break out now and do not loop

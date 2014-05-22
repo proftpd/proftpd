@@ -112,7 +112,7 @@ static char *sql_passwd_get_str(pool *p, char *str) {
     return str;
 
   /* Find the cmdtable for the sql_escapestr command. */
-  cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_escapestr", NULL, NULL);
+  cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_escapestr", NULL, NULL, NULL);
   if (cmdtab == NULL) {
     pr_log_debug(DEBUG2, MOD_SQL_PASSWD_VERSION
       ": unable to find SQL hook symbol 'sql_escapestr'");
@@ -656,7 +656,8 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
         return PR_DECLINED(cmd);
       }
 
-      sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+      sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+        NULL);
       if (sql_cmdtab == NULL) {
         sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
           ": unable to find SQL hook symbol 'sql_lookup'");
@@ -760,7 +761,8 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
         return PR_DECLINED(cmd);
       }
 
-      sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+      sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+        NULL);
       if (sql_cmdtab == NULL) {
         pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
           ": unable to find SQL hook symbol 'sql_lookup'");

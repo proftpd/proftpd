@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sftp_sql -- SQL backend module for retrieving authorized keys
  *
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -411,7 +411,7 @@ static char *sqlstore_get_str(pool *p, char *str) {
     return str;
 
   /* Find the cmdtable for the sql_escapestr command. */
-  cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_escapestr", NULL, NULL);
+  cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_escapestr", NULL, NULL, NULL);
   if (cmdtab == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
       "unable to find SQL hook symbol 'sql_escapestr'");
@@ -517,7 +517,8 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
   store_data = store->keystore_data;
 
   /* Find the cmdtable for the sql_lookup command. */
-  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
   if (sql_cmdtab == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
       "unable to find SQL hook symbol 'sql_lookup'");
@@ -609,7 +610,8 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
   store_data = store->keystore_data;
 
   /* Find the cmdtable for the sql_lookup command. */
-  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
   if (sql_cmdtab == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
       "unable to find SQL hook symbol 'sql_lookup'");

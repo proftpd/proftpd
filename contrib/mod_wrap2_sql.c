@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_sql -- a mod_wrap2 sub-module for supplying IP-based
  *                           access control data via SQL tables
  *
- * Copyright (c) 2002-2012 TJ Saunders
+ * Copyright (c) 2002-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,7 +81,8 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
   query = ((char **) sqltab->tab_data)[WRAP2_SQL_CLIENT_QUERY_IDX];
 
   /* Find the cmdtable for the sql_lookup command. */
-  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
   if (sql_cmdtab == NULL) {
     wrap2_log("error: unable to find SQL hook symbol 'sql_lookup': "
       "perhaps your proftpd.conf needs 'LoadModule mod_sql.c'?");
@@ -205,7 +206,8 @@ static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
   }
 
   /* Find the cmdtable for the sql_lookup command. */
-  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
   if (sql_cmdtab == NULL) {
     wrap2_log("error: unable to find SQL hook symbol 'sql_lookup': "
       "perhaps your proftpd.conf needs 'LoadModule mod_sql.c'?");

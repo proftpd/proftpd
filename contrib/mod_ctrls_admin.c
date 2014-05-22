@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2013 TJ Saunders
+ * Copyright (c) 2000-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -376,11 +376,12 @@ static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
     if (reqargc == 1) {
       conftable *conftab;
       int stash_idx = -1;
+      unsigned int stash_hash = 0;
 
       /* Create a list of all known configuration directives. */
 
-      conftab = pr_stash_get_symbol(PR_SYM_CONF, NULL, NULL, &stash_idx);
-
+      conftab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, NULL, &stash_idx,
+        &stash_hash);
       while (stash_idx != -1) {
         pr_signals_handle();
 
@@ -388,10 +389,12 @@ static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
           pr_ctrls_add_response(ctrl, "%s (mod_%s.c)", conftab->directive,
             conftab->m->name);
 
-        } else
+        } else {
           stash_idx++;
+        }
 
-        conftab = pr_stash_get_symbol(PR_SYM_CONF, NULL, conftab, &stash_idx);
+        conftab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, conftab, &stash_idx,
+          &stash_hash);
       }
 
       /* Be nice, and sort the directives lexicographically */
