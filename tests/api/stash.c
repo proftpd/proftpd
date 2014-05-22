@@ -374,7 +374,7 @@ Suite *tests_get_stash_suite(void) {
 
   tcase_add_test(testcase, stash_add_symbol_test);
   tcase_add_test(testcase, stash_get_symbol_test);
-  tcase_add_test(testcase, stash_get2_symbol_test);
+  tcase_add_test(testcase, stash_get_symbol2_test);
   tcase_add_test(testcase, stash_remove_symbol_test);
 
   suite_add_tcase(suite, testcase);
