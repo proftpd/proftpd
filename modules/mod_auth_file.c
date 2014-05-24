@@ -1324,33 +1324,6 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Command handlers
- */
-
-MODRET authfile_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    af_user_file = NULL;
-    af_group_file = NULL;
-
-    res = authfile_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&auth_file_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
-/* Configuration handlers
- */
-
 /* usage: AuthUserFile path [home <regexp>] [id <min-max>] [name <regex>] */
 MODRET set_authuserfile(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -1498,6 +1471,30 @@ MODRET set_authuserfile(cmd_rec *cmd) {
   }
 
   return PR_HANDLED(cmd);
+}
+
+/* Command handlers
+ */
+
+MODRET authfile_post_host(cmd_rec *cmd) {
+
+  /* If the HOST command changed the main_server pointer, reinitialize
+   * ourselves.
+   */
+  if (session.prev_server != NULL) {
+    int res;
+
+    af_user_file = NULL;
+    af_group_file = NULL;
+
+    res = authfile_sess_init();
+    if (res < 0) {
+      pr_session_disconnect(&auth_file_module,
+        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+    }
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 /* Initialization routines
