@@ -359,6 +359,8 @@ static char **af_getgrmems(char *s) {
   int nmembers = 0;
 
   while (s && *s && nmembers < MAXMEMBERS) {
+    pr_signals_handle();
+
     members[nmembers++] = s;
     while (*s && *s != ',') {
       s++;
@@ -565,8 +567,9 @@ static struct group *af_getgrnam(const char *name) {
   }
 
   while ((grp = af_getgrent()) != NULL) {
-    if (strcmp(name, grp->gr_name) == 0) {
+    pr_signals_handle();
 
+    if (strcmp(name, grp->gr_name) == 0) {
       /* Found the requested group */
       break;
     }
@@ -583,8 +586,9 @@ static struct group *af_getgrgid(gid_t gid) {
   }
 
   while ((grp = af_getgrent()) != NULL) {
-    if (grp->gr_gid == gid) {
+    pr_signals_handle();
 
+    if (grp->gr_gid == gid) {
       /* Found the requested GID */
       break;
     }
@@ -796,7 +800,6 @@ static struct passwd *af_getpwnam(const char *name) {
     pr_signals_handle();
 
     if (strcmp(name, pwd->pw_name) == 0) {
-
       /* Found the requested user */
       break;
     }
@@ -818,8 +821,9 @@ static struct passwd *af_getpwuid(uid_t uid) {
   }
 
   while ((pwd = af_getpwent()) != NULL) {
-    if (pwd->pw_uid == uid) {
+    pr_signals_handle();
 
+    if (pwd->pw_uid == uid) {
       /* Found the requested UID */
       break;
     }
@@ -910,8 +914,9 @@ MODRET authfile_getpwnam(cmd_rec *cmd) {
 
   /* Ugly -- we iterate through the file.  Time-consuming. */
   while ((pwd = af_getpwent()) != NULL) {
-    if (strcmp(name, pwd->pw_name) == 0) {
+    pr_signals_handle();
 
+    if (strcmp(name, pwd->pw_name) == 0) {
       /* Found the requested name */
       break;
     }
@@ -1000,8 +1005,9 @@ MODRET authfile_getgrnam(cmd_rec *cmd) {
   }
 
   while ((grp = af_getgrent()) != NULL) {
-    if (strcmp(name, grp->gr_name) == 0) {
+    pr_signals_handle();
 
+    if (strcmp(name, grp->gr_name) == 0) {
       /* Found the name requested */
       break;
     }
