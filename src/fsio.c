@@ -2923,7 +2923,10 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
   /* Open an fd on the path using O_RDONLY|O_NOFOLLOW, so that we a)
    * avoid symlinks, and b) get an fd on the (hopefully) directory.
    */
-  flags = O_RDONLY|O_NOFOLLOW;
+  flags = O_RDONLY;
+#ifdef O_NOFOLLOW
+  flags |= O_NOFOLLOW;
+#endif
   fd = open(path, flags);
   xerrno = errno;
 
