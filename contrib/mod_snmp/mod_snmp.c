@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1473,14 +1473,14 @@ static int snmp_agent_handle_packet(int sockfd, pr_netaddr_t *agent_addr) {
 }
 
 static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
-  int res, sockfd;
+  int family, res, sockfd;
 
-  /* XXX Support IPv6? */
-
-  sockfd = socket(AF_INET, SOCK_DGRAM, snmp_proto_udp);
+  family = pr_netaddr_get_family(agent_addr);
+  sockfd = socket(family, SOCK_DGRAM, snmp_proto_udp);
   if (sockfd < 0) {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "unable to create UDP socket: %s", strerror(errno));
+      "unable to create %s UDP socket: %s",
+      family == AF_INET ? "IPv4" : "IPv6", strerror(errno));
     exit(1);
   }
 
@@ -1488,21 +1488,32 @@ static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
     pr_netaddr_get_sockaddr_len(agent_addr));
   if (res < 0) {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "unable to bind UDP socket to %s#%u: %s",
+      "unable to bind %s UDP socket to %s#%u: %s",
+      family == AF_INET ? "IPv4" : "IPv6",
       pr_netaddr_get_ipstr(agent_addr),
       ntohs(pr_netaddr_get_port(agent_addr)), strerror(errno));
     exit(1);
+
+  } else {
+    (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+      "bound %s UDP socket to %s#%u", family == AF_INET ? "IPv4" : "IPv6",
+      pr_netaddr_get_ipstr(agent_addr),
+      ntohs(pr_netaddr_get_port(agent_addr)));
   }
 
   return 0;
 }
 
-static void snmp_agent_loop(int sockfd, pr_netaddr_t *agent_addr) {
-  fd_set listenfds;
+static void snmp_agent_loop(array_header *sockfds, array_header *addrs) {
+  fd_set listen_fds;
   struct timeval tv;
-  int res;
+  int fd, res;
 
   while (TRUE) {
+    register unsigned int i;
+    int maxfd = -1, *fds;
+    pr_netaddr_t **agent_addrs;
+
     /* XXX Is it necessary to even have a timeout?  We could simply block
      * in select(2) indefinitely, until either an event arrives or we are
      * interrupted by a signal.
@@ -1519,10 +1530,21 @@ static void snmp_agent_loop(int sockfd, pr_netaddr_t *agent_addr) {
      */
     snmp_notify_poll_cond();
 
-    FD_ZERO(&listenfds);
-    FD_SET(sockfd, &listenfds);
+    FD_ZERO(&listen_fds);
 
-    res = select(sockfd + 1, &listenfds, NULL, NULL, &tv);
+    fds = sockfds->elts; 
+    agent_addrs = addrs->elts;
+
+    for (i = 0; i < sockfds->nelts; i++) {
+      fd = fds[i];
+      FD_SET(fd, &listen_fds);
+
+      if (fd > maxfd) {
+        maxfd = fd;
+      }
+    }
+
+    res = select(maxfd + 1, &listen_fds, NULL, NULL, &tv);
     if (res == 0) {
       /* Select timeout reached.  Just try again. */
       continue;
@@ -1535,11 +1557,18 @@ static void snmp_agent_loop(int sockfd, pr_netaddr_t *agent_addr) {
       }
 
     } else {
-      if (FD_ISSET(sockfd, &listenfds)) {
-        res = snmp_agent_handle_packet(sockfd, agent_addr);
-        if (res < 0) {
-          (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-            "error handling SNMP packet: %s", strerror(errno));
+      for (i = 0; i < sockfds->nelts; i++) {
+        pr_netaddr_t *agent_addr;
+
+        fd = fds[i];
+        agent_addr = agent_addrs[i];
+
+        if (FD_ISSET(fd, &listen_fds)) {
+          res = snmp_agent_handle_packet(fd, agent_addr);
+          if (res < 0) {
+            (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+              "error handling SNMP packet: %s", strerror(errno));
+          }
         } 
       }
     }
@@ -1547,11 +1576,12 @@ static void snmp_agent_loop(int sockfd, pr_netaddr_t *agent_addr) {
 }
 
 static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
-    pr_netaddr_t *agent_addr) {
-  int agent_fd;
+    array_header *agent_addrs) {
+  register unsigned int i;
   pid_t agent_pid;
   char *agent_chroot = NULL;
   rlim_t curr_nproc, max_nproc;
+  array_header *agent_fds = NULL;
 
   agent_pid = fork();
   switch (agent_pid) {
@@ -1590,17 +1620,32 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
    * an AgentX sub-agent.
    */
 
-  agent_fd = snmp_agent_listen(agent_addr);
-  if (agent_fd < 0) {
-    (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "unable to create listening socket for SNMP agent process: %s",
-      strerror(errno));
-    exit(0);
-  }
+  for (i = 0; i < agent_addrs->nelts; i++) {
+    pr_netaddr_t *agent_addr, **addrs;
+    int agent_fd;
 
-  (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-    "SNMP agent process listening on UDP %s#%u",
-    pr_netaddr_get_ipstr(agent_addr), ntohs(pr_netaddr_get_port(agent_addr)));
+    addrs = agent_addrs->elts;
+    agent_addr = addrs[i];
+
+    agent_fd = snmp_agent_listen(agent_addr);
+    if (agent_fd < 0) {
+      (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+        "unable to create listening socket for SNMP agent process: %s",
+       strerror(errno));
+      exit(0);
+    }
+
+    (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+      "SNMP agent process listening on %s UDP %s#%u",
+      pr_netaddr_get_family(agent_addr) == AF_INET ? "IPv4" : "IPv6",
+      pr_netaddr_get_ipstr(agent_addr), ntohs(pr_netaddr_get_port(agent_addr)));
+
+    if (agent_fds == NULL) {
+      agent_fds = make_array(snmp_pool, 1, sizeof(int));
+    }
+
+    *((int *) push_array(agent_fds)) = agent_fd;
+  }
 
   PRIVS_ROOT
 
@@ -1660,8 +1705,11 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
    * possible exploitation.
    */
   if (pr_rlimit_get_nproc(&curr_nproc, NULL) == 0) {
+    /* Override whatever the configured nproc is; we only want 1. */
+    curr_nproc = 1;
+
     max_nproc = curr_nproc;
- 
+
     if (pr_rlimit_set_nproc(curr_nproc, max_nproc) < 0) {
       (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
         "error setting nproc resource limits to %lu: %s",
@@ -1677,7 +1725,7 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
       "error getting nproc limits: %s", strerror(errno));
   }
 
-  snmp_agent_loop(agent_fd, agent_addr);
+  snmp_agent_loop(agent_fds, agent_addrs);
 
   /* When we are done, we simply exit. */;
   pr_trace_msg("snmp", 3, "SNMP agent PID %lu exiting",
@@ -1791,15 +1839,16 @@ static void snmp_agent_stop(pid_t agent_pid) {
 /* Configuration handlers
  */
 
-/* usage: SNMPAgent "master"|"agentx" address[:port] */
+/* usage: SNMPAgent "master"|"agentx" address[:port] [...] */
 MODRET set_snmpagent(cmd_rec *cmd) {
+  register unsigned int i;
   config_rec *c;
+  array_header *agent_addrs;
   int agent_type;
-  pr_netaddr_t *agent_addr;
-  int agent_port = SNMP_DEFAULT_AGENT_PORT;
-  char *ptr;
 
-  CHECK_ARGS(cmd, 2);
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT);
 
   if (strncasecmp(cmd->argv[1], "master", 7) == 0) {
@@ -1813,35 +1862,77 @@ MODRET set_snmpagent(cmd_rec *cmd) {
       cmd->argv[1], "'", NULL));
   }
 
-  /* Separate the port out from the address, if present.
-   *
-   * XXX Make sure we can handle an IPv6 address here, e.g.:
-   *
-   *   [::1]:162
-   */
-  ptr = strrchr(cmd->argv[2], ':');
-  if (ptr != NULL) {
-    *ptr = '\0';
+  agent_addrs = make_array(snmp_pool, 1, sizeof(pr_netaddr_t *));
 
-    agent_port = atoi(ptr + 1);
-    if (agent_port < 1 ||
-        agent_port > 65535) {
-      CONF_ERROR(cmd, "port must be between 1-65535");
+  for (i = 2; i < cmd->argc; i++) {
+    pr_netaddr_t *agent_addr;
+    int agent_port = SNMP_DEFAULT_AGENT_PORT;
+    char *addr = NULL, *ptr;
+    size_t addrlen;
+
+    /* Separate the port out from the address, if present. */
+    ptr = strrchr(cmd->argv[i], ':');
+
+    if (ptr != NULL) {
+      char *ptr2;
+
+      /* We need to handle the following possibilities:
+       *
+       *  ipv4-addr
+       *  ipv4-addr:port
+       *  [ipv6-addr]
+       *  [ipv6-addr]:port
+       *
+       * Thus we check to see if the last ':' occurs before, or after,
+       * a ']' for an IPv6 address.
+       */
+
+      ptr2 = strrchr(cmd->argv[i], ']');
+      if (ptr2 != NULL) {
+        if (ptr2 > ptr) {
+          /* The found ':' is part of an IPv6 address, not a port delimiter. */
+          ptr = NULL;
+        }
+      }
+
+      if (ptr != NULL) {
+        *ptr = '\0';
+
+        agent_port = atoi(ptr + 1);
+        if (agent_port < 1 ||
+            agent_port > 65535) {
+          CONF_ERROR(cmd, "port must be between 1-65535");
+        }
+      }
     }
-  }
 
-  agent_addr = pr_netaddr_get_addr(snmp_pool, cmd->argv[2], NULL);
-  if (agent_addr == NULL) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve \"",
-      cmd->argv[2], "\"", NULL));
-  }
+    addr = cmd->argv[i];
+    addrlen = strlen(addr);
 
-  pr_netaddr_set_port(agent_addr, htons(agent_port));
+    /* Make sure we can handle an IPv6 address here, e.g.:
+     *
+     *   [::1]:162
+     */
+    if (addrlen > 0 &&
+        (addr[0] == '[' && addr[addrlen-1] == ']')) {
+      addr = pstrndup(cmd->pool, addr + 1, addrlen - 2);
+    }
+
+    agent_addr = pr_netaddr_get_addr(snmp_pool, addr, NULL);
+    if (agent_addr == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve \"", addr, "\"",
+        NULL));
+    }
+
+    pr_netaddr_set_port(agent_addr, htons(agent_port));
+
+    *((pr_netaddr_t **) push_array(agent_addrs)) = agent_addr;
+  }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = agent_type;
-  c->argv[1] = agent_addr;
+  c->argv[1] = agent_addrs;
  
   return PR_HANDLED(cmd);
 }
@@ -3322,7 +3413,7 @@ static void snmp_postparse_ev(const void *event_data, void *user_data) {
   unsigned int nvhosts = 0;
   const char *tables_dir;
   int agent_type, res;
-  pr_netaddr_t *agent_addr;
+  array_header *agent_addrs;
   unsigned char ban_loaded = FALSE, sftp_loaded = FALSE, tls_loaded = FALSE;
 
   c = find_config(main_server->conf, CONF_PARAM, "SNMPEngine", FALSE);
@@ -3467,9 +3558,9 @@ static void snmp_postparse_ev(const void *event_data, void *user_data) {
   }
 
   agent_type = *((int *) c->argv[0]);
-  agent_addr = c->argv[1];
+  agent_addrs = c->argv[1];
 
-  snmp_agent_pid = snmp_agent_start(tables_dir, agent_type, agent_addr);
+  snmp_agent_pid = snmp_agent_start(tables_dir, agent_type, agent_addrs);
   if (snmp_agent_pid == 0) {
     snmp_engine = FALSE;
     pr_log_debug(DEBUG0, MOD_SNMP_VERSION
