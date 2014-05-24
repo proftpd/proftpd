@@ -80,7 +80,7 @@ typedef struct file_rec {
 
 } authfile_file_t;
 
-/* List of server-specific Authiles */
+/* List of server-specific AuthFiles */
 static authfile_file_t *af_user_file = NULL;
 static authfile_file_t *af_group_file = NULL;
 
