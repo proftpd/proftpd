@@ -91,7 +91,7 @@ static int authfile_sess_init(void);
 static int af_setpwent(void);
 static int af_setgrent(void);
 
-static const char *trace_channel = "authfile";
+static const char *trace_channel = "auth.file";
 
 /* Support routines.  Move the passwd/group functions out of lib/ into here. */
 
