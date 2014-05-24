@@ -64,7 +64,7 @@ functionality, and providing OpenNMS support/examples.
 <p>
 <hr>
 <h2><a name="SNMPAgent">SNMPAgent</a></h2>
-<strong>Syntax:</strong> SNMPAgent master|agentx <em>address[:port]</em><br>
+<strong>Syntax:</strong> SNMPAgent master|agentx <em>address[:port] ...</em><br>
 <strong>Default:</strong> <em>None</em><br>
 <strong>Context:</strong> &quot;server config&quot;<br>
 <strong>Module:</strong> mod_snmp<br>
@@ -82,6 +82,18 @@ for UDP SNMP packets.  By default, a port of 161 is assumed, use
 <em>address:port</em> to specify an alternate port, <i>e.g.</i>:
 <pre>
   SNMPAgent master localhost:1161
+</pre>
+Note that IPv6 addresses should be enclosed in square brackets, as they can
+contain colons as well, <i>e.g.</i>:
+<pre>
+  SNMPAgent master [::1]:1161
+</pre>
+
+<p>
+Multiple addresses can be supplied, allowing <code>mod_snmp<code> to listen
+on multiple addresses/ports simultaneously:
+<pre>
+  SNMPAgent master 1.2.3.4:1161 [a::f]:2262
 </pre>
 
 <p>
@@ -1339,7 +1351,7 @@ Last Updated: <i>$Date: 2013-05-15 15:21:44 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2011-2013 TJ Saunders<br>
+&copy; Copyright 2011-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
