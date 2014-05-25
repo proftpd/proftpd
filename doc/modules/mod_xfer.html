@@ -169,6 +169,17 @@ a suffix:
 prefix as well.
 
 <p>
+In <code>proftpd-1.3.6rc1</code> and later, the <em>prefix</em> and
+<em>suffix</em> values can use the <code>%P</code> variable, which will
+be substituted with the session PID.  This can help to reduce issues
+encountered when an FTP upload fails in such a way that proftpd cannot properly
+clean up the <code>HiddenStores</code> temporary file.  For example:
+<pre>
+  # Use the session PID as part of the name
+  HiddenStores .in. .%P
+</pre>
+
+<p>
 <b><i>Discussion</i></b><br>
 When would you want or need to specify different prefix and suffix values
 for <code>HiddenStores</code>?  You might need this when, for example, your
@@ -440,7 +451,7 @@ Last Updated: <i>$Date: 2013-03-13 18:08:28 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2013 The ProFTPD Project<br>
+&copy; Copyright 2000-2014 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
