@@ -37,6 +37,7 @@ static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
 static int logstderr = TRUE;
 static int debug_level = DEBUG0;	/* Default is no debug logging */
+static int default_level = PR_LOG_NOTICE;
 static int facility = LOG_DAEMON;
 static int set_facility = -1;
 static char systemlog_fn[PR_TUNABLE_PATH_MAX] = {'\0'};
@@ -503,7 +504,7 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   } else {
     /* Default SyslogLevel */
-    max_priority = PR_LOG_NOTICE;
+    max_priority = default_level;
   }
 
   if (priority > max_priority) {
@@ -648,13 +649,20 @@ void log_stderr(int bool) {
   logstderr = bool;
 }
 
-/* Set the debug logging level, see log.h for constants.  Higher
+/* Set the debug logging level; see log.h for constants.  Higher
  * numbers mean print more, DEBUG0 (0) == print no debugging log
  * (default)
  */
 int pr_log_setdebuglevel(int level) {
   int old_level = debug_level;
   debug_level = level;
+  return old_level;
+}
+
+/* Set the default logging level; see log.h for constants. */
+int pr_log_setdefaultlevel(int level) {
+  int old_level = default_level;
+  default_level = level;
   return old_level;
 }
 

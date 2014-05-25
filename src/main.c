@@ -2784,6 +2784,12 @@ int main(int argc, char *argv[], char **envp) {
         exit(1);
       }
       pr_log_setdebuglevel(atoi(optarg));
+
+      /* If the admin uses -d on the command-line, they explicitly WANT
+       * debug logging, thus make sure the default SyslogLevel is set to
+       * DEBUG (rather than NOTICE); see Bug#3983.
+       */
+      pr_log_setdefaultlevel(PR_LOG_DEBUG);
       break;
 
     case 'c':
