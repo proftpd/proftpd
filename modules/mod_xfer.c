@@ -1317,9 +1317,6 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       *((int *) c->argv[0]) == TRUE) {
     char *prefix, *suffix;
 
-    prefix = c->argv[1];
-    suffix = c->argv[2];
-
     /* If we're using HiddenStores, then REST won't work. */
     if (session.restart_pos) {
       pr_log_debug(DEBUG9, "HiddenStore in effect, refusing restarted upload");
@@ -1336,6 +1333,28 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
         _("APPE not compatible with server configuration"));
       errno = EINVAL;
       return PR_ERROR(cmd);
+    }
+
+    prefix = c->argv[1];
+    suffix = c->argv[2];
+
+    /* Substitute the %P variable for the PID, if present. */
+    if (strstr(prefix, "%P") != NULL) {
+      char pid_buf[32];
+
+      memset(pid_buf, '\0', sizeof(pid_buf));
+      snprintf(pid_buf, sizeof(pid_buf)-1, "%lu", (unsigned long) session.pid);
+
+      prefix = sreplace(cmd->pool, prefix, "%P", pid_buf, NULL);
+    }
+
+    if (strstr(suffix, "%P") != NULL) {
+      char pid_buf[32];
+
+      memset(pid_buf, '\0', sizeof(pid_buf));
+      snprintf(pid_buf, sizeof(pid_buf)-1, "%lu", (unsigned long) session.pid);
+      
+      suffix = sreplace(cmd->pool, suffix, "%P", pid_buf, NULL);
     }
 
     if (get_hidden_store_path(cmd, path, prefix, suffix) < 0) {
