@@ -38,6 +38,8 @@
 # error "Missing Check installation; necessary for ProFTPD testsuite"
 #endif
 
+int tests_stubs_set_main_server(server_rec *);
+
 Suite *tests_get_pool_suite(void);
 Suite *tests_get_array_suite(void);
 Suite *tests_get_str_suite(void);
@@ -64,6 +66,8 @@ Suite *tests_get_netio_suite(void);
 Suite *tests_get_trace_suite(void);
 Suite *tests_get_parser_suite(void);
 Suite *tests_get_pidfile_suite(void);
+Suite *tests_get_config_suite(void);
+Suite *tests_get_auth_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.

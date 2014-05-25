@@ -36,17 +36,12 @@ module *static_modules[] = { NULL };
 module *loaded_modules = NULL;
 xaset_t *server_list = NULL;
 
+int tests_stubs_set_main_server(server_rec *s) {
+  main_server = s;
+  return 0;
+}
+
 char *dir_realpath(pool *p, const char *path) {
-  return NULL;
-}
-
-void *get_param_ptr(xaset_t *set, const char *name, int recurse) {
-  errno = ENOENT;
-  return NULL;
-}
-
-struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
-  errno = ENOENT;
   return NULL;
 }
 

@@ -405,6 +405,11 @@ struct passwd *pr_auth_getpwent(pool *p) {
   modret_t *mr = NULL;
   struct passwd *res = NULL;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   cmd = make_cmd(p, 0);
   mr = dispatch_auth(cmd, "getpwent", NULL);
 
@@ -441,6 +446,11 @@ struct group *pr_auth_getgrent(pool *p) {
   modret_t *mr = NULL;
   struct group *res = NULL;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   cmd = make_cmd(p, 0);
   mr = dispatch_auth(cmd, "getgrent", NULL);
 
@@ -472,6 +482,12 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   modret_t *mr = NULL;
   struct passwd *res = NULL;
   module *m = NULL;
+
+  if (p == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "getpwnam", &m);
@@ -561,6 +577,11 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
   modret_t *mr = NULL;
   struct passwd *res = NULL;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   cmd = make_cmd(p, 1, (void *) &uid);
   mr = dispatch_auth(cmd, "getpwuid", NULL);
 
@@ -601,6 +622,12 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
   modret_t *mr = NULL;
   struct group *res = NULL;
 
+  if (p == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "getgrnam", NULL);
 
@@ -638,6 +665,11 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
   modret_t *mr = NULL;
   struct group *res = NULL;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   cmd = make_cmd(p, 1, (void *) &gid);
   mr = dispatch_auth(cmd, "getgrgid", NULL);
 
@@ -674,6 +706,13 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
   module *m = NULL;
   int res = PR_AUTH_NOPWD;
 
+  if (p == NULL ||
+      name == NULL ||
+      pw == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   cmd = make_cmd(p, 2, name, pw);
 
   /* First, check for any of the modules in the "authenticating only" list
@@ -685,6 +724,7 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
     for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
         elt = elt->next) {
+      pr_signals_handle();
 
       pr_trace_msg(trace_channel, 7, "checking with auth-only module '%s'",
         elt->name);
@@ -759,6 +799,12 @@ int pr_auth_authorize(pool *p, const char *name) {
   module *m = NULL;
   int res = PR_AUTH_OK;
 
+  if (p == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   cmd = make_cmd(p, 1, name);
 
   if (auth_tab) {
@@ -801,6 +847,14 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   module *m = NULL;
   int res = PR_AUTH_BADPWD;
 
+  if (p == NULL ||
+      cpw == NULL ||
+      name == NULL ||
+      pw == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   cmd = make_cmd(p, 3, cpw, name, pw);
 
   /* First, check for any of the modules in the "authenticating only" list
@@ -812,6 +866,7 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
 
     for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
         elt = elt->next) {
+      pr_signals_handle();
 
       m = pr_module_get(elt->name);
       if (m) {
@@ -879,6 +934,12 @@ int pr_auth_requires_pass(pool *p, const char *name) {
   modret_t *mr;
   int res = TRUE;
 
+  if (p == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "requires_pass", NULL);
 
@@ -903,6 +964,11 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
   modret_t *mr = NULL;
   char *res = NULL;
   int have_name = FALSE;
+
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   memset(namebuf, '\0', sizeof(namebuf));
 
@@ -963,6 +1029,11 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
   char *res = NULL;
   int have_name = FALSE;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   memset(namebuf, '\0', sizeof(namebuf));
 
   gidcache_create();
@@ -1020,6 +1091,12 @@ uid_t pr_auth_name2uid(pool *p, const char *name) {
   modret_t *mr = NULL;
   uid_t res = (uid_t) -1;
 
+  if (p == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return (uid_t) -1;
+  }
+
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "name2uid", NULL);
 
@@ -1027,7 +1104,7 @@ uid_t pr_auth_name2uid(pool *p, const char *name) {
     res = *((uid_t *) mr->data);
 
   } else {
-    errno = EINVAL;
+    errno = ENOENT;
   }
 
   if (cmd->tmp_pool) {
@@ -1043,6 +1120,12 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
   modret_t *mr = NULL;
   gid_t res = (gid_t) -1;
 
+  if (p == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return (gid_t) -1;
+  }
+
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "name2gid", NULL);
 
@@ -1050,7 +1133,7 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
     res = *((gid_t *) mr->data);
 
   } else {
-    errno = EINVAL;
+    errno = ENOENT;
   }
 
   if (cmd->tmp_pool) {
@@ -1063,17 +1146,24 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
 
 int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
     array_header **group_names) {
-
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   int res = -1;
 
-  /* Allocate memory for the array_headers of GIDs and group names. */
-  if (group_ids)
-    *group_ids = make_array(permanent_pool, 2, sizeof(gid_t));
+  if (p == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
-  if (group_names)
+  /* Allocate memory for the array_headers of GIDs and group names. */
+  if (group_ids) {
+    *group_ids = make_array(permanent_pool, 2, sizeof(gid_t));
+  }
+
+  if (group_names) {
     *group_names = make_array(permanent_pool, 2, sizeof(char *));
+  }
 
   cmd = make_cmd(p, 3, name, group_ids ? *group_ids : NULL,
     group_names ? *group_names : NULL);
@@ -1353,8 +1443,9 @@ int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
   int res = TRUE;
   unsigned char *require_valid_shell;
 
-  if (shell == NULL)
+  if (shell == NULL) {
     return res;
+  }
 
   require_valid_shell = get_param_ptr(ctx, "RequireValidShell", FALSE);
 

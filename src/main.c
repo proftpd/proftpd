@@ -899,6 +899,7 @@ static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
     init_netaddr();
     init_class();
     init_config();
+    init_dirtree();
 
 #ifdef PR_USE_NLS
     encode_free();
@@ -2900,6 +2901,7 @@ int main(int argc, char *argv[], char **envp) {
   init_class();
   free_bindings();
   init_config();
+  init_dirtree();
   init_stash();
 
 #ifdef PR_USE_CTRLS
