@@ -426,6 +426,7 @@ typedef struct {
 #include "support.h"
 #include "str.h"
 #include "sets.h"
+#include "configdb.h"
 #include "dirtree.h"
 #include "expr.h"
 #include "rlimit.h"
