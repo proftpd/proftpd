@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Configuration structure, server, command and associated prototypes.
+/* Server, command and associated prototypes.
  * $Id: dirtree.h,v 1.88 2013-07-16 19:06:13 castaglia Exp $
  */
 
@@ -34,8 +34,7 @@
 #include "pool.h"
 #include "sets.h"
 #include "table.h"
-
-typedef struct config_struc config_rec;
+#include "configdb.h"
 
 struct conn_struc;
 
@@ -132,45 +131,6 @@ typedef struct cmd_struc {
   int cmd_id;			/* Index into commands list, for faster comparisons */
 } cmd_rec;
 
-struct config_struc {
-  struct config_struc *next,*prev;
-
-  int config_type;
-  unsigned int config_id;
-
-  struct pool_rec *pool;	/* Memory pool for this object */
-  xaset_t *set;			/* The set we are stored in */
-  char *name;
-  int argc;
-  void **argv;
-
-  long flags;			/* Flags */
-
-  server_rec *server;		/* Server this config element is attached to */
-  config_rec *parent;		/* Our parent configuration record */
-  xaset_t *subset;		/* Sub-configuration */
-};
-
-#define CONF_ROOT		(1 << 0) /* No conf record */
-#define CONF_DIR		(1 << 1) /* Per-Dir configuration */
-#define CONF_ANON		(1 << 2) /* Anon. FTP configuration */
-#define CONF_LIMIT		(1 << 3) /* Limits commands available */
-#define CONF_VIRTUAL		(1 << 4) /* Virtual host */
-#define CONF_DYNDIR		(1 << 5) /* .ftpaccess file */
-#define CONF_GLOBAL		(1 << 6) /* "Global" context (applies to main server and ALL virtualhosts */
-#define CONF_CLASS		(1 << 7) /* Class context */
-#define CONF_NAMED		(1 << 8) /* Named virtual host */
-#define CONF_USERDATA		(1 << 14) /* Runtime user data */
-#define CONF_PARAM		(1 << 15) /* config/args pair */
-
-/* config_rec flags */
-#define CF_MERGEDOWN		(1 << 0) /* Merge option down */
-#define CF_MERGEDOWN_MULTI	(1 << 1) /* Merge down, allowing multiple instances */
-#define CF_DYNAMIC		(1 << 2) /* Dynamically added entry */
-#define CF_DEFER		(1 << 3) /* Defer hashing until authentication */
-#define CF_SILENT		(1 << 4) /* Do not print a config dump when merging */
-#define CF_MULTI		(1 << 5) /* Allow multiple instances, but do not merge down */
-
 /* Operation codes for dir_* funcs */
 #define OP_HIDE			1	/* Op for hiding dirs/files */
 #define OP_COMMAND		2	/* Command operation */
@@ -178,16 +138,6 @@ struct config_struc {
 /* For the Order directive */
 #define ORDER_ALLOWDENY		0
 #define ORDER_DENYALLOW		1
-
-/* The following macro determines the "highest" level available for
- * configuration directives.  If a current dir_config is available, it's
- * subset is used, otherwise anon config or main server
- */
-
-#define CURRENT_CONF		(session.dir_config ? session.dir_config->subset \
-				 : (session.anon_config ? session.anon_config->subset \
-                                    : main_server->conf))
-#define TOPLEVEL_CONF		(session.anon_config ? session.anon_config->subset : main_server->conf)
 
 extern server_rec		*main_server;
 extern int			tcpBackLog;
@@ -238,43 +188,9 @@ void kludge_enable_umask(void);
 int pr_define_add(const char *, int);
 unsigned char pr_define_exists(const char *);
 
-void init_config(void);
 int fixup_servers(xaset_t *list);
+xaset_t *get_dir_ctxt(pool *, char *);
 int parse_config_path(pool *, const char *);
-config_rec *add_config_set(xaset_t **, const char *);
-config_rec *add_config(server_rec *, const char *);
-config_rec *add_config_param(const char *, int, ...);
-config_rec *add_config_param_str(const char *, int, ...);
-config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
-config_rec *pr_conf_add_server_config_param_str(server_rec *, const char *,
-  int, ...);
-
-/* Flags used when searching for specific config_recs in the in-memory
- * config database, particularly when 'recurse' is TRUE.
- */
-#define PR_CONFIG_FIND_FL_SKIP_ANON		0x001
-#define PR_CONFIG_FIND_FL_SKIP_DIR		0x002
-#define PR_CONFIG_FIND_FL_SKIP_LIMIT		0x004
-#define PR_CONFIG_FIND_FL_SKIP_DYNDIR		0x008
-
-config_rec *find_config_next(config_rec *, config_rec *, int,
-  const char *, int);
-config_rec *find_config_next2(config_rec *, config_rec *, int,
-  const char *, int, unsigned long);
-config_rec *find_config(xaset_t *, int, const char *, int);
-config_rec *find_config2(xaset_t *, int, const char *, int, unsigned long);
-void find_config_set_top(config_rec *);
-
-int remove_config(xaset_t *, const char *, int);
-
-#define PR_CONFIG_FL_INSERT_HEAD	0x001
-config_rec *pr_config_add_set(xaset_t **, const char *, int);
-config_rec *pr_config_add(server_rec *, const char *, int);
-
-/* Returns the assigned ID for the provided directive name, or zero
- * if no ID mapping was found.
- */
-unsigned int pr_config_get_id(const char *name);
 
 /* Returns the buffer size to use for data transfers, regardless of IO
  * direction.
@@ -294,20 +210,6 @@ int pr_config_get_xfer_bufsz2(int);
  */
 int pr_config_get_server_xfer_bufsz(int);
 
-/* Assigns a unique ID for the given configuration directive.  The
- * mapping of directive to ID is stored in a lookup table, so that
- * searching of the config database by directive name can be done using
- * ID comparisons rather than string comparisons.
- *
- * Returns the ID assigned for the given directive, or zero if there was an
- * error.
- */
-unsigned int pr_config_set_id(const char *name);
-
-void *get_param_ptr(xaset_t *, const char *, int);
-void *get_param_ptr_next(const char *, int);
-xaset_t *get_dir_ctxt(pool *, char *);
-
 config_rec *dir_match_path(pool *, char *);
 void build_dyn_config(pool *, const char *, struct stat *, unsigned char);
 unsigned char dir_hide_file(const char *);
@@ -326,7 +228,8 @@ char *get_context_name(cmd_rec *);
 int get_boolean(cmd_rec *, int);
 char *get_full_cmd(cmd_rec *);
 
-void pr_config_dump(void (*)(const char *, ...), xaset_t *, char *);
+/* Internal use only. */
+void init_dirtree(void);
 
 #ifdef PR_USE_DEVEL
 void pr_dirs_dump(void (*)(const char *, ...), xaset_t *, char *);
