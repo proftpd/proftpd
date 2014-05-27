@@ -422,6 +422,7 @@ typedef struct {
 #include "str.h"
 #include "ascii.h"
 #include "table.h"
+#include "signals.h"
 #include "proftpd.h"
 #include "support.h"
 #include "str.h"

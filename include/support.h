@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,9 +60,6 @@ int getopt_long(int, char * const [], const char *, const struct option *,
 # endif /* !HAVE_GETOPT_LONG */
 #endif /* !HAVE_GETOPT */
 
-void pr_signals_block(void);
-void pr_signals_unblock(void);
-
 char *dir_interpolate(pool *, const char *);
 char *dir_abs_path(pool *, const char *, int);
 char *dir_realpath(pool *, const char *);
@@ -70,9 +67,12 @@ char *dir_canonical_path(pool *, const char *);
 char *dir_canonical_vpath(pool *, const char *);
 char *dir_best_path(pool *, const char *);
 
+/* Schedulables. */
 void schedule(void (*f)(void *, void *, void *, void *), int, void *, void *,
   void *, void *);
 void run_schedule(void);
+void restart_daemon(void *, void *, void *, void *);
+void shutdown_end_session(void *, void *, void *, void *);
 
 size_t get_name_max(char *, int);
 
