@@ -1345,7 +1345,7 @@ What about the <code>READ</code> and <code>WRITE</code> command groups?
   </li>
 </ul>
 
-<p>
+<p><a name="EnvironmentVariables">
 <b>Environment Variables</b><br>
 The <code>mod_sftp</code> module will set the following environment
 variables whenever an SSH2 client connects:
@@ -1358,12 +1358,12 @@ In addition, the following environment variables will be set (with appropriate
 values), once the client has successfully exchanged keys with
 <code>mod_sftp</code>:
 <ul>
-  <li>SFTP_CLIENT_CIPHER_ALGO
-  <li>SFTP_CLIENT_COMPRESSION_ALGO
-  <li>SFTP_CLIENT_MAC_ALGO
-  <li>SFTP_SERVER_CIPHER_ALGO
-  <li>SFTP_SERVER_COMPRESSION_ALGO
-  <li>SFTP_SERVER_MAC_ALGO
+  <li><code>SFTP_CLIENT_CIPHER_ALGO</code>
+  <li><code>SFTP_CLIENT_COMPRESSION_ALGO</code>
+  <li><code>SFTP_CLIENT_MAC_ALGO</code>
+  <li><code>SFTP_SERVER_CIPHER_ALGO</code>
+  <li><code>SFTP_SERVER_COMPRESSION_ALGO</code>
+  <li><code>SFTP_SERVER_MAC_ALGO</code>
 </ul>
 
 <p>
