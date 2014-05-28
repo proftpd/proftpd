@@ -68,7 +68,7 @@ static int sftp_get_client_version(conn_t *conn) {
   int res;
 
   /* 255 is the RFC-defined maximum banner/ID string size */
-  char buf[256];
+  char buf[256], *client_version = NULL;
 
   /* Read client version.  This looks ugly, reading one byte at a time.
    * It is necessary, though.  The banner sent by the client is not of any
@@ -136,9 +136,22 @@ static int sftp_get_client_version(conn_t *conn) {
 
       if (sftp_opts & SFTP_OPT_OLD_PROTO_COMPAT) {
         if (strncmp(buf, "SSH-1.99-", 9) == 0) {
+          client_version = buf + 9;
           bad_proto = FALSE;
         }
       } 
+
+    } else {
+      client_version = buf + 8;
+    }
+
+    if (client_version != NULL) {
+      char *k, *v;
+
+      k = pstrdup(session.pool, "SFTP_CLIENT_BANNER");
+      v = pstrdup(session.pool, client_version);
+      pr_env_unset(session.pool, k);
+      pr_env_set(session.pool, k, v);
     }
 
     if (bad_proto) {
