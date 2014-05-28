@@ -45,6 +45,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#ScoreboardFile">ScoreboardFile</a>
   <li><a href="#ScoreboardMutex">ScoreboardMutex</a>
   <li><a href="#ServerIdent">ServerIdent</a>
+  <li><a href="#ServerName">ServerName</a>
   <li><a href="#ServerType">ServerType</a>
   <li><a href="#SocketBindTight">SocketBindTight</a>
   <li><a href="#SocketOptions">SocketOptions</a>
@@ -975,6 +976,34 @@ An example of a custom identification string might be:
 <pre>
   ServerIdent on "Welcome to ftp.linux.co.uk"
 </pre>
+
+<p>
+Note that the following variables can be used in the configured
+<code>ServerIdent</code> text:
+<ul>
+  <li><code>%L</code> (<i>server IP address</i>)
+  <li><code>%V</code> (<i>server fully-qualified domain name</i>)
+  <li><code>%v</code> (<i><a href="#ServerName"><code>ServerName</code></a></i>)
+</ul>
+For example:
+<pre>
+  ServerIdent on "Welcome to %v"
+</pre>
+
+<p>
+<hr>
+<h2><a name="ServerName">ServerName</a></h2>
+<strong>Syntax:</strong> ServerName <em>"standalone"|"inetd"</em><br>
+<strong>Default:</strong> ServerName "ProFTPD Server <em>version</em>"
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>ServerName</code> directive configures the text that will be
+displayed to a client connecting to the server.  This text will be displayed
+to the client <i>e.g.</i> as part of the response for a <code>HELP</code>
+command.
 
 <p>
 <hr>
