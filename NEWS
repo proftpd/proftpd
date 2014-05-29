@@ -24,6 +24,7 @@ Git
 - Bug 4065 - mod_sftp should provide the SSH client banner as environment
   variable, for logging.
 - Bug 4067 - Create ExtendedLog class for SFTP requests.
+- Bug 4068 - MaxClients directive doesn't work for <Anonymous> sessions.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
