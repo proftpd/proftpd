@@ -23,6 +23,7 @@ Git
 - Bug 4062 - Support PID variable in HiddenStores filename.
 - Bug 4065 - mod_sftp should provide the SSH client banner as environment
   variable, for logging.
+- Bug 4067 - Create ExtendedLog class for SFTP requests.
 
 1.3.5 - Released 15-May-2014
 --------------------------------

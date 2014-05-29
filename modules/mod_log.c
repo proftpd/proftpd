@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,7 +58,11 @@ struct logfile_struc {
 
   logformat_t		*lf_format;
 
-  int			lf_classes;
+  /* Included (whitelisted) logging classes. */
+  int			lf_incl_classes;
+
+  /* Excluded (blacklisted) logging classes. */
+  int			lf_excl_classes;
 
   /* Pointer to the "owning" configuration */
   config_rec		*lf_conf;
@@ -463,11 +467,13 @@ MODRET set_logformat(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static int parse_classes(char *s) {
-  int classes = CL_NONE;
+static int parse_classes(char *s, int *incl_classes, int *excl_classes) {
+  int incl = CL_NONE, excl = CL_NONE;
   char *nextp = NULL;
 
   do {
+    int exclude = FALSE;
+
     pr_signals_handle();
 
     nextp = strchr(s, ',');
@@ -481,42 +487,116 @@ static int parse_classes(char *s) {
       }
     }
 
+    if (*s == '!') {
+      exclude = TRUE;
+      s++;
+    }
+
     if (strcasecmp(s, "NONE") == 0) {
-      classes = CL_NONE;
+      if (exclude) {
+        excl = CL_NONE;
+
+      } else {
+        incl = CL_NONE;
+      }
+
       break;
     }
 
     if (strcasecmp(s, "ALL") == 0) {
-      classes = CL_ALL;
+      if (exclude) {
+        excl = CL_ALL;
+
+      } else {
+        incl = CL_ALL;
+      }
+
       break;
 
     } else if (strcasecmp(s, "AUTH") == 0) {
-      classes |= CL_AUTH;
+      if (exclude) {
+        excl |= CL_AUTH;
+
+      } else {
+        incl |= CL_AUTH;
+      }
 
     } else if (strcasecmp(s, "INFO") == 0) {
-      classes |= CL_INFO;
+      if (exclude) {
+        excl |= CL_INFO;
+
+      } else {
+        incl |= CL_INFO;
+      }
 
     } else if (strcasecmp(s, "DIRS") == 0) {
-      classes |= CL_DIRS;
+      if (exclude) {
+        excl |= CL_DIRS;
+
+      } else {
+        incl |= CL_DIRS;
+      }
 
     } else if (strcasecmp(s, "READ") == 0) {
-      classes |= CL_READ;
+      if (exclude) {
+        excl |= CL_READ;
+
+      } else { 
+        incl |= CL_READ;
+      }
 
     } else if (strcasecmp(s, "WRITE") == 0) {
-      classes |= CL_WRITE;
+      if (exclude) {
+        excl |= CL_WRITE;
+
+      } else {
+        incl |= CL_WRITE;
+      }
 
     } else if (strcasecmp(s, "MISC") == 0) {
-      classes |= CL_MISC;
+      if (exclude) {
+        excl |= CL_MISC;
+
+      } else {
+        incl |= CL_MISC;
+      }
 
     } else if (strcasecmp(s, "SEC") == 0 ||
                strcasecmp(s, "SECURE") == 0) {
-      classes |= CL_SEC;
+      if (exclude) {
+        excl |= CL_SEC;
+
+      } else {
+        incl |= CL_SEC;
+      }
 
     } else if (strcasecmp(s, "EXIT") == 0) {
-      classes |= CL_EXIT;
+      if (exclude) {
+        excl |= CL_EXIT;
+
+      } else {
+        incl |= CL_EXIT;
+      }
+
+    } else if (strcasecmp(s, "SSH") == 0) {
+      if (exclude) {
+        excl |= CL_SSH;
+
+      } else {
+        incl |= CL_SSH;
+      }
+
+    } else if (strcasecmp(s, "SFTP") == 0) {
+      if (exclude) {
+        excl |= CL_SFTP;
+
+      } else {
+        incl |= CL_SFTP;
+      }
 
     } else {
       pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined", s);
+      errno = EINVAL;
       return -1;
     }
 
@@ -525,7 +605,10 @@ static int parse_classes(char *s) {
 
   } while (s);
 
-  return classes;
+  *incl_classes = incl;
+  *excl_classes = excl;
+
+  return 0;
 }
 
 /* Syntax: ExtendedLog file [<cmd-classes> [<nickname>]] */
@@ -537,17 +620,20 @@ MODRET set_extendedlog(cmd_rec *cmd) {
 
   argc = cmd->argc;
 
-  if (argc < 2)
+  if (argc < 2) {
     CONF_ERROR(cmd, "Syntax: ExtendedLog file [<cmd-classes> [<nickname>]]");
+  }
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
   if (strncasecmp(cmd->argv[1], "syslog:", 7) == 0) {
-    char *tmp = strchr(cmd->argv[1], ':');
+    char *ptr;
 
-    if (pr_log_str2sysloglevel(++tmp) < 0) {
+    ptr = strchr(cmd->argv[1], ':');
+
+    if (pr_log_str2sysloglevel(++ptr) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown syslog level: '",
-        tmp, "'", NULL));
+        ptr, "'", NULL));
 
     } else {
       c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
@@ -562,24 +648,26 @@ MODRET set_extendedlog(cmd_rec *cmd) {
   }
 
   if (argc > 2) {
-    int res;
+    int incl_classes = 0, excl_classes = 0, res;
 
     /* Parse the given class names, to make sure that they are all valid. */
-    res = parse_classes(cmd->argv[2]);
+    res = parse_classes(cmd->argv[2], &incl_classes, &excl_classes);
     if (res < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid log class in '",
         cmd->argv[2], "'", NULL));    
     }
 
     c->argv[1] = palloc(c->pool, sizeof(int));
-    *((int *) c->argv[1]) = res;
+    *((int *) c->argv[1]) = incl_classes;
+    c->argv[2] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[2]) = excl_classes;
   }
 
   if (argc > 3) {
-    c->argv[2] = pstrdup(log_pool, cmd->argv[3]);
+    c->argv[3] = pstrdup(log_pool, cmd->argv[3]);
   }
 
-  c->argc = argc-1;
+  c->argc = argc;
   return PR_HANDLED(cmd);
 }
 
@@ -1706,24 +1794,39 @@ MODRET log_any(cmd_rec *cmd) {
 
   /* If not in anon mode, only handle logs for main servers */
   for (lf = logs; lf; lf = lf->next) {
-    if (lf->lf_fd != -1 &&
+    int log_cmd = FALSE;
 
-        /* If the logging class of this command is one of the classes
-         * configured for this ExtendedLog...
-         */ 
-        ((cmd->cmd_class & lf->lf_classes) ||
+    /* Skip any unopened files (obviously). */
+    if (lf->lf_fd < 0) {
+      continue;
+    }
 
-         /* ...or if the logging class of this command is unknown (defaults to
-          * zero), and this ExtendedLog is configured to log ALL commands, then
-          * log it.
-          */
-         (cmd->cmd_class == 0 && lf->lf_classes == CL_ALL))) {
+    /* If this is not an <Anonymous> section, and this IS an <Anonymous>
+     * ExtendedLog, skip it.
+     */
+    if (session.anon_config == NULL &&
+        lf->lf_conf != NULL &&
+        lf->lf_conf->config_type == CONF_ANON) {
+      continue;
+    }
 
-      if (!session.anon_config &&
-          lf->lf_conf &&
-          lf->lf_conf->config_type == CONF_ANON)
-        continue;
+    /* Skip any excluded commands. */
+    if (cmd->cmd_class & lf->lf_excl_classes) {
+      continue;
+    }
 
+    if (cmd->cmd_class & lf->lf_incl_classes) {
+      log_cmd = TRUE;
+    }
+
+    /* If the logging class of this command is unknown (defaults to zero),
+     * AND this ExtendedLog is configured to log ALL commands, log it.
+     */
+    if (cmd->cmd_class == 0 && lf->lf_incl_classes == CL_ALL) {
+      log_cmd = TRUE;
+    }
+
+    if (log_cmd) {
       do_log(cmd, lf);
     }
   }
@@ -1838,8 +1941,8 @@ static int log_init(void) {
 
 static void find_extendedlogs(void) {
   config_rec *c;
-  char *logfname, *logfmt_s;
-  int logclasses = CL_ALL;
+  char *logfname, *logfmt_s = NULL;
+  int incl_classes = CL_ALL, excl_classes = 0;
   logformat_t *logfmt;
   logfile_t *extlog = NULL;
   unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
@@ -1865,11 +1968,12 @@ static void find_extendedlogs(void) {
     logfname = c->argv[0];
     logfmt_s = NULL;
 
-    if (c->argc > 1) {
-      logclasses = *((int *) c->argv[1]);
+    if (c->argc > 2) {
+      incl_classes = *((int *) c->argv[1]);
+      excl_classes = *((int *) c->argv[2]);
 
-      if (c->argc > 2) {
-        logfmt_s = c->argv[2];
+      if (c->argc > 3) {
+        logfmt_s = c->argv[3];
       }
     }
 
@@ -1878,7 +1982,7 @@ static void find_extendedlogs(void) {
      * directive might be trying to override a higher-level config; see
      * Bug#1908.
      */
-    if (logclasses == CL_NONE &&
+    if (incl_classes == CL_NONE &&
         (c->parent != NULL && c->parent->config_type != CONF_ANON)) {
       goto loop_extendedlogs;
     }
@@ -1907,7 +2011,8 @@ static void find_extendedlogs(void) {
     extlog->lf_filename = pstrdup(session.pool, logfname);
     extlog->lf_fd = -1;
     extlog->lf_syslog_level = -1;
-    extlog->lf_classes = logclasses;
+    extlog->lf_incl_classes = incl_classes;
+    extlog->lf_excl_classes = excl_classes;
     extlog->lf_format = logfmt;
     extlog->lf_conf = c->parent;
     if (log_set == NULL) {
@@ -1995,7 +2100,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
           lf->lf_conf->config_type == CONF_ANON) {
         pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
           lf->lf_filename, lf->lf_fd);
-        close(lf->lf_fd);
+        (void) close(lf->lf_fd);
         lf->lf_fd = -1;
       }
     }
@@ -2011,7 +2116,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
           lf->lf_conf != session.anon_config) {
         pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
           lf->lf_filename, lf->lf_fd);
-        close(lf->lf_fd);
+        (void) close(lf->lf_fd);
         lf->lf_fd = -1;
       }
     }
@@ -2034,7 +2139,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
               strcmp(lfi->lf_filename, lf->lf_filename) == 0) {
             pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
               lf->lf_filename, lfi->lf_fd);
-            close(lfi->lf_fd);
+            (void) close(lfi->lf_fd);
             lfi->lf_fd = -1;
           }
         }
@@ -2042,10 +2147,10 @@ MODRET log_post_pass(cmd_rec *cmd) {
         /* Go ahead and close the log if it's CL_NONE */
         if (lf->lf_fd != -1 &&
             lf->lf_fd != EXTENDED_LOG_SYSLOG &&
-            lf->lf_classes == CL_NONE) {
+            lf->lf_incl_classes == CL_NONE) {
           pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
             lf->lf_filename, lf->lf_fd);
-          close(lf->lf_fd);
+          (void) close(lf->lf_fd);
           lf->lf_fd = -1;
         }
       }
