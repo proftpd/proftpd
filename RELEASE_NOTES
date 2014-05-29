@@ -17,6 +17,8 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    ExtendedLog SSH, SFTP classes, ! notation (Bug#4067)
+
     HiddenStores %P (Bug#4062)
 
     SNMPAgent multiple addresses (Bug#4061)

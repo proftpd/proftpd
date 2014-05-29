@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -406,7 +406,7 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_OPEN"));
   cmd->arg = channel_type;
-  cmd->cmd_class = CL_MISC;
+  cmd->cmd_class = CL_MISC|CL_SSH;
 
   if (strncmp(channel_type, "session", 8) != 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -444,7 +444,7 @@ static int handle_channel_close(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_CLOSE"));
   cmd->arg = pstrdup(pkt->pool, chan_str);
-  cmd->cmd_class = CL_MISC;
+  cmd->cmd_class = CL_MISC|CL_SSH;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -680,7 +680,7 @@ static int handle_channel_eof(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_EOF"));
   cmd->arg = pstrdup(pkt->pool, chan_str);
-  cmd->cmd_class = CL_MISC;
+  cmd->cmd_class = CL_MISC|CL_SSH;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -992,7 +992,7 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_REQUEST"));
   cmd->arg = channel_request;
-  cmd->cmd_class = CL_MISC;
+  cmd->cmd_class = CL_MISC|CL_SSH;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
@@ -1147,7 +1147,7 @@ static int handle_channel_window_adjust(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_WINDOW_ADJUST"));
   cmd->arg = pstrdup(pkt->pool, adjust_str);
-  cmd->cmd_class = CL_MISC;
+  cmd->cmd_class = CL_MISC|CL_SSH;
 
   chan = get_channel(channel_id);
   if (chan == NULL) {
