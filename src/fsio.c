@@ -2914,8 +2914,9 @@ int pr_fsio_set_use_mkdtemp(int value) {
  * its permissions.
  */
 static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
-  int flags, fd, res, xerrno = 0;
+  int flags, fd, ignore_eacces = FALSE, res, xerrno = 0;
   struct stat st;
+  mode_t dir_mode;
 
   /* We're not using the pool at the moment. */
   (void) p;
@@ -2969,6 +2970,25 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
     return -1;
   }
 
+  /* Note that some filesystems (e.g. CIFS) may not actually create a
+   * directory with the expected 0700 mode.  If that is the case, then a
+   * subsequence chmod(2) on that directory will likely fail.  Thus we also
+   * double-check the mode of the directory created via mkdtemp(3), and
+   * attempt to mitigate Bug#4063.
+   */
+  dir_mode = (st.st_mode & ~S_IFMT);
+  if (dir_mode != 0700) {
+    ignore_eacces = TRUE;
+
+    pr_trace_msg(trace_channel, 3,
+      "schmod: path '%s' has mode %04o, expected 0700", path, dir_mode);
+
+    /* This is such an unexpected situation that it warrants some logging. */
+    pr_log_pri(PR_LOG_DEBUG,
+      "NOTICE: directory '%s' has unexpected mode %04o (expected 0700)", path,
+      dir_mode);
+  }
+
   if (use_root) {
     PRIVS_ROOT
   }
@@ -2997,17 +3017,27 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
      *
      * Maybe this exception for ENOSYS here should be made configurable?
      */
-    if (xerrno != ENOSYS) {
-      pr_trace_msg(trace_channel, 3,
-        "schmod: unable to set perms %04o on path '%s': %s", perms, path,
-        strerror(xerrno));
-      errno = xerrno;
-      return -1;
+
+    if (xerrno == ENOSYS) {
+      pr_log_debug(DEBUG0, "schmod: unable to set perms %04o on "
+        "path '%s': %s (chmod(2) not supported by underlying filesystem?)",
+        perms, path, strerror(xerrno));
+      return 0;
     }
 
-    pr_log_debug(DEBUG0, "mkdir: unable to set perms %04o on "
-      "path '%s': %s (chmod(2) not supported by underlying filesystem?)",
-      perms, path, strerror(xerrno));
+    if (xerrno == EACCES &&
+        ignore_eacces == TRUE) {
+      pr_log_debug(DEBUG0, "schmod: unable to set perms %04o on "
+        "path '%s': %s (chmod(2) not supported by underlying filesystem?)",
+        perms, path, strerror(xerrno));
+      return 0;
+    }
+
+    pr_trace_msg(trace_channel, 3,
+      "schmod: unable to set perms %04o on path '%s': %s", perms, path,
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
   }
 
   return 0;
