@@ -2754,6 +2754,13 @@ MODRET ls_nlst(cmd_rec *cmd) {
     parse_list_opts(&list_options, &glob_flags, TRUE);
   }
 
+  /* If, after parsing out any options, the target string is empty, assume
+   * the current directory (Bug#4069).
+   */
+  if (*target == '\0') {
+    target = pstrdup(cmd->tmp_pool, ".");
+  }
+
   /* If the target starts with '~' ... */
   if (*target == '~') {
     char pb[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
