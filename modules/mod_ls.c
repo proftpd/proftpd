@@ -43,8 +43,8 @@
 static void addfile(cmd_rec *, const char *, const char *, time_t, off_t);
 static int outputfiles(cmd_rec *);
 
-static int listfile(cmd_rec *, pool *, const char *);
-static int listdir(cmd_rec *, pool *, const char *);
+static int listfile(cmd_rec *, pool *, const char *, const char *);
+static int listdir(cmd_rec *, pool *, const char *, const char *);
 
 static int sendline(int flags, char *fmt, ...)
 #ifdef __GNUC__
@@ -434,7 +434,8 @@ static char months[12][4] =
   { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
-static int listfile(cmd_rec *cmd, pool *p, const char *name) {
+static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
+    const char *name) {
   int rval = 0, len;
   time_t sort_time;
   char m[PR_TUNABLE_PATH_MAX+1] = {'\0'}, l[PR_TUNABLE_PATH_MAX+1] = {'\0'}, s[16] = {'\0'};
@@ -759,16 +760,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         }
 
         if (opt_STAT) {
-          /* Per RFC 959, the proper response code for a STAT on a file is
-           * 211 for system status, 212 for a directory, and 213 for a file.
-           * If we are here, it means we use either 212 or 213.
-           */ 
-          char *resp_code = R_213;
-
-          if (S_ISDIR(st.st_mode)) {
-            resp_code = R_212;
-          }
-
           pr_response_add(resp_code, "%s%s", nameline, suffix);
 
         } else {
@@ -1190,7 +1181,8 @@ static char **sreaddir(const char *dirname, const int sort) {
 }
 
 /* This listdir() requires a chdir() first. */
-static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
+static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
+    const char *name) {
   char **dir;
   int dest_workp = 0;
   register unsigned int i = 0;
@@ -1249,11 +1241,11 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           d = 0;
 
         } else {
-          d = listfile(cmd, workp, *s);
+          d = listfile(cmd, workp, resp_code, *s);
         }
 
       } else {
-        d = listfile(cmd, workp, *s);
+        d = listfile(cmd, workp, resp_code, *s);
       }
 
       if (opt_R && d == 0) {
@@ -1333,14 +1325,16 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
         char *subdir;
         int res = 0;
 
-        if (strcmp(name, ".") == 0)
+        if (strcmp(name, ".") == 0) {
           subdir = *r;
-        else
+
+        } else {
           subdir = pdircat(workp, name, *r, NULL);
+        }
 
         if (opt_STAT) {
-          pr_response_add(R_211, "%s", "");
-          pr_response_add(R_211, "%s:",
+          pr_response_add(resp_code, "%s", "");
+          pr_response_add(resp_code, "%s:",
             pr_fs_encode_path(cmd->tmp_pool, subdir));
 
         } else if (sendline(0, "\r\n%s:\r\n",
@@ -1348,14 +1342,15 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
             sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
           pop_cwd(cwd_buf, &symhold);
 
-          if (dest_workp)
+          if (dest_workp) {
             destroy_pool(workp);
+          }
 
           return -1;
         }
 
         list_ndepth.curr++;
-        res = listdir(cmd, workp, subdir);
+        res = listdir(cmd, workp, resp_code, subdir);
         list_ndepth.curr--;
         pop_cwd(cwd_buf, &symhold);
 
@@ -1363,15 +1358,17 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           break;
 
         } else if (res < 0) {
-          if (dest_workp)
+          if (dest_workp) {
             destroy_pool(workp);
+          }
 
           /* Explicitly free the memory allocated for containing the list of
            * filenames.
            */
           i = 0;
-          while (dir[i] != NULL)
+          while (dir[i] != NULL) {
             free(dir[i++]);
+          }
           free(dir);
 
           return -1;
@@ -1381,16 +1378,18 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
     }
   }
 
-  if (dest_workp)
+  if (dest_workp) {
     destroy_pool(workp);
+  }
 
   /* Explicitly free the memory allocated for containing the list of
    * filenames.
    */
   if (dir) {
     i = 0;
-    while (dir[i] != NULL)
+    while (dir[i] != NULL) {
       free(dir[i++]);
+    }
     free(dir);
   }
 
@@ -1705,7 +1704,8 @@ static int have_options(cmd_rec *cmd, const char *arg) {
 /* The main work for LIST and STAT (not NLST).  Returns -1 on error, 0 if
  * successful.
  */
-static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
+static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
+    int clearflags) {
   int skiparg = 0;
   int glob_flags = 0;
 
@@ -1921,7 +1921,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
               !(S_ISDIR(target_mode)) ||
               (!opt_R && S_ISDIR(target_mode) && strcmp(*path, target) != 0)) {
 
-            if (listfile(cmd, cmd->tmp_pool, *path) < 0) {
+            if (listfile(cmd, cmd->tmp_pool, resp_code, *path) < 0) {
               ls_terminate();
               if (use_globbing && globbed)
                 pr_fs_globfree(&g);
@@ -1963,8 +1963,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
           if (!justone) {
             if (opt_STAT) {
-              pr_response_add(R_211, "%s", "");
-              pr_response_add(R_211, "%s:",
+              pr_response_add(resp_code, "%s", "");
+              pr_response_add(resp_code, "%s:",
                 pr_fs_encode_path(cmd->tmp_pool, *path));
 
             } else {
@@ -1981,7 +1981,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             int res = 0;
 
             list_ndepth.curr++;
-            res = listdir(cmd, cmd->tmp_pool, *path);
+            res = listdir(cmd, cmd->tmp_pool, resp_code, *path);
             list_ndepth.curr--;
 
             pop_cwd(cwd_buf, &symhold);
@@ -2053,14 +2053,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     if (ls_perms_full(cmd->tmp_pool, cmd, ".", NULL)) {
 
       if (opt_d) {
-        if (listfile(cmd, NULL, ".") < 0) {
+        if (listfile(cmd, NULL, resp_code, ".") < 0) {
           ls_terminate();
           return -1;
         }
 
       } else {
         list_ndepth.curr++;
-        if (listdir(cmd, NULL, ".") < 0) {
+        if (listdir(cmd, NULL, resp_code, ".") < 0) {
           ls_terminate();
           return -1;
         }
@@ -2442,7 +2442,7 @@ MODRET genericlist(cmd_rec *cmd) {
     list_times_gmt = *tmp;
   }
 
-  res = dolist(cmd, pr_fs_decode_path(cmd->tmp_pool, cmd->arg), TRUE);
+  res = dolist(cmd, pr_fs_decode_path(cmd->tmp_pool, cmd->arg), R_211, TRUE);
 
   if (XFER_ABORTED) {
     pr_data_abort(0, 0);
@@ -2645,7 +2645,7 @@ MODRET ls_stat(cmd_rec *cmd) {
   pr_response_add(resp_code, _("Status of %s:"), arg && *arg ?
     pr_fs_encode_path(cmd->tmp_pool, arg) :
     pr_fs_encode_path(cmd->tmp_pool, "."));
-  res = dolist(cmd, arg && *arg ? arg : ".", FALSE);
+  res = dolist(cmd, arg && *arg ? arg : ".", resp_code, FALSE);
   pr_response_add(resp_code, _("End of status"));
   return (res == -1 ? PR_ERROR(cmd) : PR_HANDLED(cmd));
 }
