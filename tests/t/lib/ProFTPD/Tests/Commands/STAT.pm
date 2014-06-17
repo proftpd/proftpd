@@ -393,6 +393,7 @@ sub stat_dir_with_files_bug3990 {
 
       my $resp_code = $client->response_code();
       my $resp_msgs = $client->response_msgs();
+      my $resp_nmsgs = scalar(@$resp_msgs);
       my $resp_msg = $resp_msgs->[1];
 
       my $expected;
@@ -404,6 +405,10 @@ sub stat_dir_with_files_bug3990 {
       $expected = '^(\s+)?\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $expected = 14;
+      $self->assert($expected == $resp_nmsgs,
+        test_msg("Expected $expected response lines, got $resp_nmsgs"));
     };
 
     if ($@) {
