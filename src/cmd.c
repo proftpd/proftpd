@@ -115,6 +115,7 @@ static struct cmd_entry cmd_ids[] = {
 cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) { 
   pool *newpool = NULL;
   cmd_rec *cmd = NULL;
+  int *xerrno = NULL;
   va_list args;
 
   if (p == NULL) {
@@ -152,6 +153,11 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
    */
   cmd->notes = pr_table_nalloc(cmd->pool, 0, 8);
 
+  /* Initialize the "errno" note to be zero, so that it is always present. */
+  xerrno = palloc(cmd->pool, sizeof(int));
+  *xerrno = 0;
+  (void) pr_table_add(cmd->notes, "errno", xerrno, sizeof(int));
+
   return cmd;
 }
 
@@ -166,6 +172,7 @@ int pr_cmd_clear_cache(cmd_rec *cmd) {
    */
 
   (void) pr_table_remove(cmd->notes, "displayable-str", NULL);
+  (void) pr_cmd_set_errno(cmd, 0);
 
   return 0;
 }
@@ -197,6 +204,44 @@ int pr_cmd_cmp(cmd_rec *cmd, int cmd_id) {
   }
 
   return cmd->cmd_id < cmd_id ? -1 : 1;
+}
+
+int pr_cmd_get_errno(cmd_rec *cmd) {
+  void *v;
+  int *xerrno;
+
+  if (cmd == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  v = pr_table_get(cmd->notes, "errno", NULL);
+  if (v == NULL) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  xerrno = v;
+  return *xerrno;
+}
+
+int pr_cmd_set_errno(cmd_rec *cmd, int xerrno) {
+  void *v;
+
+  if (cmd == NULL ||
+      cmd->notes == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  v = pr_table_get(cmd->notes, "errno", NULL);
+  if (v == NULL) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  *((int *) v) = xerrno;
+  return 0;
 }
 
 int pr_cmd_set_name(cmd_rec *cmd, const char *cmd_name) {
