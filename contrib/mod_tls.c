@@ -9942,9 +9942,6 @@ static int tls_sess_init(void) {
     tls_flags |= TLS_SESS_ON_CTRL;
 
     if (tls_required_on_data != -1) {
-      /* Only accept this if SSL/TLS is allowed, by policy, on data
-       * connections.
-       */
       tls_flags |= TLS_SESS_NEED_DATA_PROT;
     }
 
