@@ -1105,6 +1105,43 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
           user);
         goto auth_failure;
 
+      case PR_AUTH_CRED_INSUFFICIENT:
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): Insufficient credentials", user);
+        goto auth_failure;
+
+      case PR_AUTH_CRED_UNAVAIL:
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): Unavailable credentials", user);
+        goto auth_failure;
+
+      case PR_AUTH_CRED_ERROR:
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): Failure setting credentials", user);
+        goto auth_failure;
+
+      case PR_AUTH_INFO_UNAVAIL:
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): Unavailable authentication service", user);
+        goto auth_failure;
+
+      case PR_AUTH_MAX_ATTEMPTS_EXCEEDED:
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): Max authentication service attempts reached",
+          user);
+        goto auth_failure;
+
+      case PR_AUTH_INIT_ERROR:
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): Failed initializing authentication service",
+          user);
+        goto auth_failure;
+
+      case PR_AUTH_NEW_TOKEN_REQUIRED:
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): New authentication token required", user);
+        goto auth_failure;
+
       default:
         break;
     };
