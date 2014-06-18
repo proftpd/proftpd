@@ -23,8 +23,6 @@
  *
  * This is mod_exec, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_exec.c,v 1.40 2014-05-02 21:13:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,7 +32,7 @@
 # include <sys/resource.h>
 #endif
 
-#define MOD_EXEC_VERSION	"mod_exec/0.9.12"
+#define MOD_EXEC_VERSION	"mod_exec/0.9.13"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -104,6 +102,18 @@ static int exec_closelog(void) {
   }
 
   return 0;
+}
+
+static int exec_enabled(void) {
+  config_rec *c;
+  int enabled = TRUE;
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, "ExecEnable", FALSE);
+  if (c) {
+    enabled = *((int *) c->argv[0]);
+  }
+
+  return enabled;
 }
 
 static char *exec_get_cmd(char **list) {
@@ -1189,8 +1199,13 @@ MODRET exec_pre_cmd(cmd_rec *cmd) {
   config_rec *c = NULL;
   array_header *seen_execs = NULL;
 
-  if (!exec_engine)
+  if (!exec_engine) {
     return PR_DECLINED(cmd);
+  }
+
+  if (!exec_enabled()) {
+    return PR_DECLINED(cmd);
+  }
 
   /* Create an array that will contain the IDs of the Execs we've
    * already processed.
@@ -1248,8 +1263,13 @@ MODRET exec_post_cmd(cmd_rec *cmd) {
   config_rec *c = NULL;
   array_header *seen_execs = NULL;
 
-  if (!exec_engine)
+  if (!exec_engine) {
     return PR_DECLINED(cmd);
+  }
+
+  if (!exec_enabled()) {
+    return PR_DECLINED(cmd);
+  }
 
   /* Create an array that will contain the IDs of the Execs we've
    * already processed.
@@ -1306,8 +1326,13 @@ MODRET exec_post_cmd_err(cmd_rec *cmd) {
   config_rec *c = NULL;
   array_header *seen_execs = NULL;
 
-  if (!exec_engine)
+  if (!exec_engine) {
     return PR_DECLINED(cmd);
+  }
+
+  if (!exec_enabled()) {
+    return PR_DECLINED(cmd);
+  }
 
   /* Create an array that will contain the IDs of the Execs we've
    * already processed.
@@ -1392,6 +1417,26 @@ MODRET set_execbeforecommand(cmd_rec *cmd) {
     c->argv[i] = pstrdup(c->pool, cmd->argv[i]);
 
   c->flags |= CF_MERGEDOWN_MULTI;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: ExecEnable on|off */
+MODRET set_execenable(cmd_rec *cmd) {
+  int enable = -1;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON|CONF_DIR|CONF_DYNDIR);
+
+  enable = get_boolean(cmd, 1);
+  if (enable == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = enable;
 
   return PR_HANDLED(cmd);
 }
@@ -1939,6 +1984,7 @@ static int exec_init(void) {
 
 static conftable exec_conftab[] = {
   { "ExecBeforeCommand",set_execbeforecommand,	NULL },
+  { "ExecEnable",	set_execenable,		NULL },
   { "ExecEngine",	set_execengine,		NULL },
   { "ExecEnviron",	set_execenviron,	NULL },
   { "ExecLog",		set_execlog,		NULL },
