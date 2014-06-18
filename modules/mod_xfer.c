@@ -3421,15 +3421,13 @@ static int xfer_sess_init(void) {
     }
   }
 
-  /* IFF we are running on port 990, AND the RFC2228 mechanism is "TLS" at
-   * this point in time, then set the flag to disable use of sendfile; the
-   * client is probably an FTPS client using implicit SSL (Bug#4073).
+  /* IF the RFC2228 mechanism is "TLS" at this point in time, then set the flag
+   * to disable use of sendfile; the client is probably an FTPS client using
+   * implicit SSL (Bug#4073).
    */
-  if (session.rfc2228_mech) {
-    if (strncmp(session.rfc2228_mech, "TLS", 4) == 0 &&
-        main_server->ServerPort == 990) {
-      have_rfc2228_data = TRUE;
-    }
+  if (session.rfc2228_mech != NULL &&
+      strncmp(session.rfc2228_mech, "TLS", 4) == 0) {
+    have_rfc2228_data = TRUE;
   }
 
   return 0;
