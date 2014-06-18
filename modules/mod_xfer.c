@@ -54,7 +54,7 @@ static pr_fh_t *retr_fh = NULL;
 static pr_fh_t *stor_fh = NULL;
 static pr_fh_t *displayfilexfer_fh = NULL;
 
-static unsigned char have_prot = FALSE;
+static unsigned char have_rfc2228_data = FALSE;
 static unsigned char have_zmode = FALSE;
 static unsigned char use_sendfile = TRUE;
 static off_t use_sendfile_len = 0;
@@ -610,7 +610,7 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
   if (pr_throttle_have_rate() ||
      !(session.xfer.file_size - data_len) ||
      (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) ||
-     have_prot || have_zmode ||
+     have_rfc2228_data || have_zmode ||
      !use_sendfile) {
 
     if (!xfer_logged_sendfile_decline_msg) {
@@ -625,7 +625,7 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
       } else if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
         pr_log_debug(DEBUG10, "declining use of sendfile for ASCII data");
 
-      } else if (have_prot) {
+      } else if (have_rfc2228_data) {
         pr_log_debug(DEBUG10, "declining use of sendfile due to RFC2228 data "
           "channel protections");
 
@@ -1153,10 +1153,10 @@ MODRET xfer_post_prot(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
   if (strncmp(cmd->argv[1], "C", 2) != 0) {
-    have_prot = TRUE;
+    have_rfc2228_data = TRUE;
 
   } else {
-    have_prot = FALSE;
+    have_rfc2228_data = FALSE;
   }
 
   return PR_DECLINED(cmd);
@@ -3418,6 +3418,17 @@ static int xfer_sess_init(void) {
           displayfilexfer_fh = NULL;
         }
       }
+    }
+  }
+
+  /* IFF we are running on port 990, AND the RFC2228 mechanism is "TLS" at
+   * this point in time, then set the flag to disable use of sendfile; the
+   * client is probably an FTPS client using implicit SSL (Bug#4073).
+   */
+  if (session.rfc2228_mech) {
+    if (strncmp(session.rfc2228_mech, "TLS", 4) == 0 &&
+        main_server->ServerPort == 990) {
+      have_rfc2228_data = TRUE;
     }
   }
 
