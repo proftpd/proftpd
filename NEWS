@@ -28,6 +28,7 @@ Git
 - Bug 4069 - NLST -a shows / directory instead of the current directory.
 - Bug 4063 - Unable to create directory on NFS/CIFS partition: Permission
   denied.
+- Bug 4073 - Polycom VOIP phones unable to use FTPS data transfers.
 
 1.3.5 - Released 15-May-2014
 --------------------------------

@@ -61,6 +61,7 @@ int pr_pidfile_write(void) {
   PRIVS_RELINQUISH
 
   if (fh == NULL) {
+    errno = xerrno;
     return -1;
   }
 
