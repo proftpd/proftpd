@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013 The ProFTPD Project
+ * Copyright (c) 2013-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1361,6 +1361,7 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
          ldap_attr_loginshell, NULL,
        };
   struct passwd *pw = NULL;
+  int res;
 
   if (ldap_do_users == FALSE) {
     return PR_DECLINED(cmd);
@@ -1396,10 +1397,18 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
     return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
   }
 
-  if (pr_auth_check(cmd->tmp_pool, ldap_authbinds ? NULL : pw->pw_passwd,
-      username, cmd->argv[1])) {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "bad password for user %s", pw->pw_name);
+  res = pr_auth_check(cmd->tmp_pool, ldap_authbinds ? NULL : pw->pw_passwd,
+    username, cmd->argv[1]);
+  if (res != 0) {
+    if (res == -1) {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "bad password for user %s: %s", pw->pw_name, strerror(errno));
+
+    } else {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "bad password for user %s", pw->pw_name);
+    }
+
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 

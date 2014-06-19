@@ -9941,6 +9941,10 @@ static int tls_sess_init(void) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
 
+    if (tls_required_on_data != -1) {
+      tls_flags |= TLS_SESS_NEED_DATA_PROT;
+    }
+
     pr_session_set_protocol("ftps");
     session.rfc2228_mech = "TLS";
   }

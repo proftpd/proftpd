@@ -222,7 +222,7 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
   int idx = 0;
   xaset_t **symbol_table;
 
-  if (!data) {
+  if (data == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -294,7 +294,7 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
 static struct stash *stash_lookup(pr_stash_type_t sym_type,
     const char *name, size_t namelen, int idx, unsigned int hash) {
   struct stash *sym = NULL;
-  xaset_t **symbol_table;
+  xaset_t **symbol_table = NULL;
 
   switch (sym_type) {
     case PR_SYM_CONF:
@@ -312,6 +312,10 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
     case PR_SYM_HOOK:
       symbol_table = hook_symbol_table;
       break;
+
+    default:
+      errno = EINVAL;
+      return NULL;
   }
 
   if (symbol_table[idx]) {
@@ -380,7 +384,7 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
     const char *name, size_t namelen, int idx, unsigned int hash, void *prev) {
   struct stash *sym = NULL;
   int last_hit = 0;
-  xaset_t **symbol_table;
+  xaset_t **symbol_table = NULL;
 
   switch (sym_type) {
     case PR_SYM_CONF:
@@ -398,6 +402,10 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
     case PR_SYM_HOOK:
       symbol_table = hook_symbol_table;
       break;
+
+    default:
+      errno = EINVAL;
+      return NULL;
   }
 
   if (symbol_table[idx]) {
@@ -588,7 +596,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
   int count = 0, symtab_idx = 0;
   size_t sym_namelen = 0;
   unsigned int hash;
-  xaset_t **symbol_table;
+  xaset_t **symbol_table = NULL;
 
   switch (sym_type) {
     case PR_SYM_CONF:
@@ -606,6 +614,10 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
     case PR_SYM_HOOK:
       symbol_table = hook_symbol_table;
       break;
+
+    default:
+      errno = EINVAL;
+      return -1;
   }
 
   if (sym_name == NULL) {

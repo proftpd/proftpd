@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2013 The ProFTPD Project
+ * Copyright 2000-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -237,7 +237,6 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
     pam_user = NULL;
     pam_user_len = 0;
   }
-
 }
 
 MODRET pam_auth(cmd_rec *cmd) {
@@ -360,10 +359,12 @@ MODRET pam_auth(cmd_rec *cmd) {
 
   /* Set our host environment for PAM modules that check host information.
    */
-  if (session.c != NULL)
+  if (session.c != NULL) {
     pam_set_item(pamh, PAM_RHOST, session.c->remote_name);
-  else
+
+  } else {
     pam_set_item(pamh, PAM_RHOST, "IHaveNoIdeaHowIGotHere");
+  }
 
   if (!(auth_pam_opts & AUTH_PAM_OPT_NO_TTY)) {
     memset(ttyentry, '\0', sizeof(ttyentry));
@@ -384,6 +385,24 @@ MODRET pam_auth(cmd_rec *cmd) {
       case PAM_USER_UNKNOWN:
         retval = PR_AUTH_NOPWD;
         break;
+
+#ifdef PAM_CRED_INSUFFICIENT
+      case PAM_CRED_INSUFFICIENT:
+        retval = PR_AUTH_CRED_INSUFFICIENT;
+        break;
+#endif /* PAM_CRED_INSUFFICIENT */
+
+#ifdef PAM_AUTHINFO_UNAVAIL
+      case PAM_AUTHINFO_UNAVAIL:
+        retval = PR_AUTH_INFO_UNAVAIL;
+        break;
+#endif /* PAM_AUTHINFO_UNAVAIL */
+
+#ifdef PAM_MAXTRIES
+      case PAM_MAXTRIES:
+        retval = PR_AUTH_MAX_ATTEMPTS_EXCEEDED;
+        break;
+#endif /* PAM_MAXTRIES */
 
       default:
         retval = PR_AUTH_BADPWD;
@@ -412,6 +431,14 @@ MODRET pam_auth(cmd_rec *cmd) {
         retval = PR_AUTH_AGEPWD;
         break;
 #endif /* PAM_AUTHTOKEN_REQD */
+
+#ifdef PAM_NEW_AUTHTOKEN_REQD
+      case PAM_NEW_AUTHTOKEN_REQD:
+        pr_trace_msg(trace_channel, 8,
+          "account mgmt error: PAM_NEW_AUTHTOKEN_REQD");
+        retval = PR_AUTH_NEW_TOKEN_REQUIRED;
+        break;
+#endif /* PAM_NEW_AUTHTOKEN_REQD */
 
       case PAM_ACCT_EXPIRED:
         pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_ACCT_EXPIRED");
@@ -448,6 +475,9 @@ MODRET pam_auth(cmd_rec *cmd) {
   if (pam_error != PAM_SUCCESS) {
     switch (pam_error) {
       case PAM_SESSION_ERR:
+        retval = PR_AUTH_INIT_ERROR;
+        break;
+
       default:
         retval = PR_AUTH_DISABLEDPWD;
         break;
@@ -467,6 +497,20 @@ MODRET pam_auth(cmd_rec *cmd) {
 
   if (pam_error != PAM_SUCCESS) {
     switch (pam_error) {
+#ifdef PAM_CRED_UNAVAIL
+      case PAM_CRED_UNAVAIL:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_UNAVAIL");
+        retval = PR_AUTH_CRED_UNAVAIL;
+        break;
+#endif /* PAM_CRED_UNAVAIL */
+
+#ifdef PAM_CRED_ERR
+      case PAM_CRED_ERR:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_ERR");
+        retval = PR_AUTH_CRED_ERROR;
+        break;
+#endif /* PAM_CRED_ERR */
+
       case PAM_CRED_EXPIRED:
         pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_EXPIRED");
         retval = PR_AUTH_AGEPWD;

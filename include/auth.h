@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2011 The ProFTPD Project team
+ * Copyright (c) 2004-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,6 +57,27 @@
 
 /* Account has been disabled */
 #define PR_AUTH_DISABLEDPWD		-5
+
+/* Insufficient credentials. */
+#define PR_AUTH_CRED_INSUFFICIENT	-6
+
+/* Unavailable credentials. */
+#define PR_AUTH_CRED_UNAVAIL		-7
+
+/* Failure setting/using credentials. */
+#define PR_AUTH_CRED_ERROR		-8
+
+/* Unavailable credential/authentication service. */
+#define PR_AUTH_INFO_UNAVAIL		-9
+
+/* Max authentication attempts reached. */
+#define PR_AUTH_MAX_ATTEMPTS_EXCEEDED	-10
+
+/* Authentication service initialization failure. */
+#define PR_AUTH_INIT_ERROR		-11
+
+/* New authentication token/credentials needed. */
+#define PR_AUTH_NEW_TOKEN_REQUIRED	-12
 
 void pr_auth_setpwent(pool *);
 void pr_auth_endpwent(pool *);
