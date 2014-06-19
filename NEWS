@@ -29,6 +29,7 @@ Git
 - Bug 4063 - Unable to create directory on NFS/CIFS partition: Permission
   denied.
 - Bug 4073 - Polycom VOIP phones unable to use FTPS data transfers.
+- Bug 4070 - Support wider range of causes of authentication failure.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
