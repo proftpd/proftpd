@@ -33,6 +33,7 @@ Git
 - Bug 4077 - ShaperLog not closed/reopened on SIGHUP, causing log rotation
   problems.
 - Bug 4076 - Ability to disable mod_exec on a per-directory basis.
+- Bug 4079 - Invalid response encoding for SFTP space-available request.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
