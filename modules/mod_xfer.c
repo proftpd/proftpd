@@ -2087,11 +2087,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
   }
 
   if (session.restart_pos) {
-
     /* Make sure that the requested offset is valid (within the size of the
      * file being resumed).
      */
     if (session.restart_pos > st.st_size) {
+      pr_trace_msg(trace_channel, 4,
+        "REST offset %" PR_LU " exceeds file size (%" PR_LU " bytes)",
+        (pr_off_t) session.restart_pos, (pr_off_t) st.st_size);
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
       pr_fsio_close(retr_fh);
       retr_fh = NULL;
