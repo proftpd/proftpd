@@ -341,7 +341,8 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
       FD_SET(nstrm->strm_fd, &rfds);
 
       pr_trace_msg(trace_channel, 8,
-        "lingering %lu secs before closing fd %d", (unsigned long) tv.tv_sec,
+        "lingering %lu %s before closing fd %d",
+        (unsigned long) tv.tv_sec, tv.tv_sec != 1 ? "secs" : "sec",
         nstrm->strm_fd);
 
       res = select(nstrm->strm_fd+1, &rfds, NULL, NULL, &tv);

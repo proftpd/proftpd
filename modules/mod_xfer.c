@@ -77,7 +77,6 @@ static unsigned long xfer_prio_flags = 0;
 
 static void xfer_exit_ev(const void *, void *);
 static void xfer_sigusr2_ev(const void *, void *);
-static void xfer_timeout_idle_ev(const void *, void *);
 static void xfer_timeout_session_ev(const void *, void *);
 static void xfer_timeout_stalled_ev(const void *, void *);
 static int xfer_sess_init(void);
@@ -2509,6 +2508,7 @@ MODRET xfer_log_retr(cmd_rec *cmd) {
 }
 
 static int noxfer_timeout_cb(CALLBACK_FRAME) {
+  int timeout;
   const char *proto;
 
   if (session.sf_flags & SF_XFER) {
@@ -2516,10 +2516,12 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
     return 1;
   }
 
+  timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER);
+
   pr_event_generate("core.timeout-no-transfer", NULL);
   pr_response_send_async(R_421,
-    _("No transfer timeout (%d seconds): closing control connection"),
-    pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER));
+    _("No transfer timeout (%d %s): closing control connection"),
+    timeout, timeout != 1 ? "seconds" : "second");
 
   pr_timer_remove(PR_TIMER_IDLE, ANY_MODULE);
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
@@ -2556,8 +2558,6 @@ MODRET xfer_post_host(cmd_rec *cmd) {
 
     pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
     pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
-    pr_event_unregister(&xfer_module, "core.timeout-idle",
-      xfer_timeout_idle_ev);
     pr_event_unregister(&xfer_module, "core.timeout-session",
       xfer_timeout_session_ev);
     pr_event_unregister(&xfer_module, "core.timeout-stalled",
@@ -3364,26 +3364,18 @@ static void xfer_timedout(const char *reason) {
   }
 }
 
-/* In all of the following event handlers, the "else" case, for an
- * idle/session/stalled transfer, will be handled by the 'core.exit' event
- * handler above.  In that case, a data transfer WILL have actually been in
- * progress, whereas in the !SF_XFER case, the client requested a transfer,
- * but never actually opened the data connection.
- */
-
-static void xfer_timeout_idle_ev(const void *event_data, void *user_data) {
-  if (!(session.sf_flags & SF_XFER)) {
-    xfer_timedout("session idle");
-  }
-}
-
 static void xfer_timeout_session_ev(const void *event_data, void *user_data) {
-  if (!(session.sf_flags & SF_XFER)) {
-    xfer_timedout("session timeout");
-  }
+  xfer_timedout("session timeout");
 }
 
 static void xfer_timeout_stalled_ev(const void *event_data, void *user_data) {
+  /* In this event handler, the "else" case, for a stalled transfer, will
+   * be handled by the 'core.exit' event handler above.  For in that
+   * scenario, a data transfer WILL have actually been in progress,
+   * whereas in the !SF_XFER case, the client requested a transfer, but
+   * never actually opened the data connection.
+   */
+
   if (!(session.sf_flags & SF_XFER)) {
     xfer_timedout("transfer stalled");
   }
@@ -3415,8 +3407,6 @@ static int xfer_sess_init(void) {
   pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
-  pr_event_register(&xfer_module, "core.timeout-idle",
-    xfer_timeout_idle_ev, NULL);
   pr_event_register(&xfer_module, "core.timeout-session",
     xfer_timeout_session_ev, NULL);
   pr_event_register(&xfer_module, "core.timeout-stalled",
