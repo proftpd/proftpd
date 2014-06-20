@@ -52,6 +52,7 @@ questions, concerns, or suggestions regarding this module.
 <h2>Directives</h2>
 <ul>
   <li><a href="#ExecBeforeCommand">ExecBeforeCommand</a>
+  <li><a href="#ExecEnable">ExecEnable</a>
   <li><a href="#ExecEngine">ExecEngine</a>
   <li><a href="#ExecEnviron">ExecEnviron</a>
   <li><a href="#ExecLog">ExecLog</a>
@@ -105,6 +106,20 @@ See Also:
   <a href="#ExecOnExit">ExecOnExit</a>,
   <a href="#ExecOnRestart">ExecOnRestart</a>,
   <a href="http://www.proftpd.org/docs/directives/linked/config_ref_Limit.html">&lt;Limit&gt;</a>
+
+<p>
+<hr>
+<h2><a name="ExecEnable">ExecEnable</a></h2>
+<strong>Syntax:</strong> ExecEnable <em>on|off</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_exec<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>ExecEnable</code> directive can be used to disable the execution
+of commands by <code>mod_exec</code> for particular directories or anonymous
+logins.
 
 <p>
 <hr>
