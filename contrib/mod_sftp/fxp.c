@@ -4856,7 +4856,7 @@ static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
   /* Unused bytes available to user. */
   sftp_msg_write_long(&buf, &buflen, (uint64_t) get_user_bytes_unused(&fs));
 
-  sftp_msg_write_long(&buf, &buflen, (uint32_t) fs.f_frsize);
+  sftp_msg_write_int(&buf, &buflen, (uint32_t) fs.f_frsize);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
