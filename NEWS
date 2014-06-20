@@ -30,6 +30,8 @@ Git
   denied.
 - Bug 4073 - Polycom VOIP phones unable to use FTPS data transfers.
 - Bug 4070 - Support wider range of causes of authentication failure.
+- Bug 4077 - ShaperLog not closed/reopened on SIGHUP, causing log rotation
+  problems.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
