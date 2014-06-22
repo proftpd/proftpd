@@ -30,12 +30,16 @@
 
 static pool *p = NULL;
 
+static const char *fsio_link_path = "/tmp/prt-fsio-symlink.lnk";
+
 /* Fixtures */
 
 static void set_up(void) {
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
+
+  init_fs();
 }
 
 static void tear_down(void) {
@@ -43,7 +47,9 @@ static void tear_down(void) {
     destroy_pool(p);
     p = NULL;
     permanent_pool = NULL;
-  } 
+  }
+
+  (void) unlink(fsio_link_path);
 }
 
 /* Tests */
@@ -175,6 +181,87 @@ START_TEST (fs_dircat_test) {
 }
 END_TEST
 
+START_TEST (fsio_symlink_test) {
+  int res;
+  const char *target_path, *link_path;
+
+  target_path = link_path = NULL;
+  res = pr_fsio_symlink(target_path, link_path);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  target_path = "/tmp";
+  link_path = NULL;
+  res = pr_fsio_symlink(target_path, link_path);
+  fail_unless(res < 0, "Failed to handle null link_path argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  target_path = NULL;
+  link_path = fsio_link_path;
+  res = pr_fsio_symlink(target_path, link_path);
+  fail_unless(res < 0, "Failed to handle null target_path argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Symlink a file (that exists) to itself */
+  link_path = target_path = "/tmp";
+  res = pr_fsio_symlink(target_path, link_path);
+  fail_unless(res < 0, "Failed to handle same existing source/destination");
+  fail_unless(errno == EEXIST, "Expected EEXIST, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Create expected symlink */
+  link_path = fsio_link_path;
+  target_path = "/tmp";
+  res = pr_fsio_symlink(target_path, link_path);
+  fail_unless(res == 0, "Failed to create symlink from '%s' to '%s': %s",
+    link_path, target_path, strerror(errno));
+  (void) unlink(link_path);
+}
+END_TEST
+
+START_TEST (fsio_readlink_test) {
+  int res;
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  const char *link_path, *target_path, *path;
+
+  res = pr_fsio_readlink(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Read a non-symlink file */
+  path = "/";
+  res = pr_fsio_readlink(path, buf, sizeof(buf)-1);
+  fail_unless(res < 0, "Failed to handle non-symlink path");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Read a symlink file */
+  target_path = "/tmp";
+  link_path = fsio_link_path;
+  res = pr_fsio_symlink(target_path, link_path);
+  fail_unless(res == 0, "Failed to create symlink from '%s' to '%s': %s",
+    link_path, target_path, strerror(errno));
+
+  memset(buf, '\0', sizeof(buf));
+  res = pr_fsio_readlink(link_path, buf, sizeof(buf)-1);
+  fail_unless(res > 0, "Failed to read symlink '%s': %s", link_path,
+    strerror(errno));
+  buf[res] = '\0';
+  fail_unless(strcmp(buf, target_path) == 0, "Expected '%s', got '%s'",
+    target_path, buf);
+
+  /* Read a symlink file using a zero-length buffer */
+  res = pr_fsio_readlink(link_path, buf, 0);
+  fail_unless(res == 0, "Expected length 0, got %d", res);
+
+  (void) unlink(link_path);
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -188,6 +275,9 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_clean_path_test);
   tcase_add_test(testcase, fs_clean_path2_test);
   tcase_add_test(testcase, fs_dircat_test);
+
+  tcase_add_test(testcase, fsio_symlink_test);
+  tcase_add_test(testcase, fsio_readlink_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
