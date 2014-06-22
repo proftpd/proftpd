@@ -256,7 +256,7 @@ START_TEST (fsio_readlink_test) {
 
   /* Read a symlink file using a zero-length buffer */
   res = pr_fsio_readlink(link_path, buf, 0);
-  fail_unless(res == 0, "Expected length 0, got %d", res);
+  fail_unless(res <= 0, "Expected length <= 0, got %d", res);
 
   (void) unlink(link_path);
 }
