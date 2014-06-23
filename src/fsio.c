@@ -257,31 +257,33 @@ static off_t sys_lseek(pr_fh_t *fh, int fd, off_t offset, int whence) {
   return lseek(fd, offset, whence);
 }
 
-static int sys_link(pr_fs_t *fs, const char *path1, const char *path2) {
+static int sys_link(pr_fs_t *fs, const char *target_path,
+    const char *link_path) {
   int res;
 
   if (guard_chroot) {
-    res = chroot_allow_path(path2);
+    res = chroot_allow_path(link_path);
     if (res < 0) {
       return -1;
     }
   }
 
-  res = link(path1, path2);
+  res = link(target_path, link_path);
   return res;
 }
 
-static int sys_symlink(pr_fs_t *fs, const char *path1, const char *path2) {
+static int sys_symlink(pr_fs_t *fs, const char *target_path,
+    const char *link_path) {
   int res;
 
   if (guard_chroot) {
-    res = chroot_allow_path(path2);
+    res = chroot_allow_path(link_path);
     if (res < 0) {
       return -1;
     }
   }
 
-  res = symlink(path1, path2);
+  res = symlink(target_path, link_path);
   return res;
 }
 
@@ -3432,13 +3434,22 @@ int pr_fsio_lstat(const char *path, struct stat *sbuf) {
 
 int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_READLINK);
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      buf == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_READLINK);
 
   /* Find the first non-NULL custom readlink handler.  If there are none,
    * use the system readlink.
    */
-  while (fs && fs->fs_next && !fs->readlink)
+  while (fs && fs->fs_next && !fs->readlink) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s readlink() for path '%s'",
     fs->fs_name, path);
@@ -3450,6 +3461,12 @@ int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
 int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
   int res;
   pr_fs_t *fs;
+
+  if (path == NULL ||
+      buf == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   fs = lookup_file_fs(path, NULL, FSIO_FILE_READLINK);
   if (fs == NULL) {
@@ -3880,102 +3897,131 @@ off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
   return res;
 }
 
-int pr_fsio_link_canon(const char *lfrom, const char *lto) {
+int pr_fsio_link_canon(const char *target_path, const char *link_path) {
   int res;
-  pr_fs_t *from_fs, *to_fs, *fs;
+  pr_fs_t *target_fs, *link_fs, *fs;
 
-  from_fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
-  if (from_fs == NULL) {
+  if (target_path == NULL ||
+      link_path == NULL) {
+    errno = EINVAL;
     return -1;
   }
 
-  to_fs = lookup_file_fs(lto, NULL, FSIO_FILE_LINK);
-  if (to_fs == NULL) {
+  target_fs = lookup_file_fs(target_path, NULL, FSIO_FILE_LINK);
+  if (target_fs == NULL) {
     return -1;
   }
 
-  if (from_fs->allow_xdev_link == FALSE ||
-      to_fs->allow_xdev_link == FALSE) {
-    if (from_fs != to_fs) {
+  link_fs = lookup_file_fs(link_path, NULL, FSIO_FILE_LINK);
+  if (link_fs == NULL) {
+    return -1;
+  }
+
+  if (target_fs->allow_xdev_link == FALSE ||
+      link_fs->allow_xdev_link == FALSE) {
+    if (target_fs != link_fs) {
       errno = EXDEV;
       return -1;
     }
   }
 
-  fs = to_fs;
+  fs = link_fs;
 
   /* Find the first non-NULL custom link handler.  If there are none,
    * use the system link.
    */
-  while (fs && fs->fs_next && !fs->link)
+  while (fs && fs->fs_next && !fs->link) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
-    fs->fs_name, lfrom, lto);
-  res = (fs->link)(fs, lfrom, lto);
+    fs->fs_name, target_path, link_path);
+  res = (fs->link)(fs, target_path, link_path);
 
   return res;
 }
 
-int pr_fsio_link(const char *lfrom, const char *lto) {
+int pr_fsio_link(const char *target_path, const char *link_path) {
   int res;
-  pr_fs_t *from_fs, *to_fs, *fs;
+  pr_fs_t *target_fs, *link_fs, *fs;
 
-  from_fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
-  if (from_fs == NULL) {
+  if (target_path == NULL ||
+      link_path == NULL) {
+    errno = EINVAL;
     return -1;
   }
 
-  to_fs = lookup_file_fs(lto, NULL, FSIO_FILE_LINK);
-  if (to_fs == NULL) {
+  target_fs = lookup_file_fs(target_path, NULL, FSIO_FILE_LINK);
+  if (target_fs == NULL) {
     return -1;
   }
 
-  if (from_fs->allow_xdev_link == FALSE ||
-      to_fs->allow_xdev_link == FALSE) {
-    if (from_fs != to_fs) {
+  link_fs = lookup_file_fs(link_path, NULL, FSIO_FILE_LINK);
+  if (link_fs == NULL) {
+    return -1;
+  }
+
+  if (target_fs->allow_xdev_link == FALSE ||
+      link_fs->allow_xdev_link == FALSE) {
+    if (target_fs != link_fs) {
       errno = EXDEV;
       return -1;
     }
   }
 
-  fs = to_fs;
+  fs = link_fs;
 
   /* Find the first non-NULL custom link handler.  If there are none,
    * use the system link.
    */
-  while (fs && fs->fs_next && !fs->link)
+  while (fs && fs->fs_next && !fs->link) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
-    fs->fs_name, lfrom, lto);
-  res = (fs->link)(fs, lfrom, lto);
+    fs->fs_name, target_path, link_path);
+  res = (fs->link)(fs, target_path, link_path);
 
   return res;
 }
 
-int pr_fsio_symlink_canon(const char *lfrom, const char *lto) {
+int pr_fsio_symlink_canon(const char *target_path, const char *link_path) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(lto, NULL, FSIO_FILE_SYMLINK);
+  pr_fs_t *fs;
+
+  if (target_path == NULL ||
+      link_path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_canon_fs(link_path, NULL, FSIO_FILE_SYMLINK);
 
   /* Find the first non-NULL custom symlink handler.  If there are none,
    * use the system symlink
    */
-  while (fs && fs->fs_next && !fs->symlink)
+  while (fs && fs->fs_next && !fs->symlink) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
-    fs->fs_name, lto);
-  res = (fs->symlink)(fs, lfrom, lto);
+    fs->fs_name, link_path);
+  res = (fs->symlink)(fs, target_path, link_path);
 
   return res;
 }
 
-int pr_fsio_symlink(const char *lfrom, const char *lto) {
+int pr_fsio_symlink(const char *target_path, const char *link_path) {
   int res;
   pr_fs_t *fs;
 
-  fs = lookup_file_fs(lto, NULL, FSIO_FILE_SYMLINK);
+  if (target_path == NULL ||
+      link_path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(link_path, NULL, FSIO_FILE_SYMLINK);
   if (fs == NULL) {
     return -1;
   }
@@ -3983,12 +4029,13 @@ int pr_fsio_symlink(const char *lfrom, const char *lto) {
   /* Find the first non-NULL custom symlink handler.  If there are none,
    * use the system symlink.
    */
-  while (fs && fs->fs_next && !fs->symlink)
+  while (fs && fs->fs_next && !fs->symlink) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
-    fs->fs_name, lto);
-  res = (fs->symlink)(fs, lfrom, lto);
+    fs->fs_name, link_path);
+  res = (fs->symlink)(fs, target_path, link_path);
 
   return res;
 }
