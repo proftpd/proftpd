@@ -34,6 +34,7 @@ Git
   problems.
 - Bug 4076 - Ability to disable mod_exec on a per-directory basis.
 - Bug 4079 - Invalid response encoding for SFTP space-available request.
+- Bug 4080 - mod_sftp does not implement SFTP LINK request properly.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
