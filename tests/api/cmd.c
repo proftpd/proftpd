@@ -441,6 +441,27 @@ START_TEST (cmd_get_displayable_str_test) {
 }
 END_TEST
 
+START_TEST (cmd_get_errno_test) {
+  int res, xerrno;
+  cmd_rec *cmd = NULL;
+
+  res = pr_cmd_get_errno(NULL);
+  fail_unless(res == -1, "Failed to handle null cmd_rec");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  cmd = pr_cmd_alloc(p, 1, "foo");
+  res = pr_cmd_get_errno(cmd);
+  fail_unless(res == 0, "Expected errno 0, got %d", res);
+
+  res = pr_cmd_set_errno(cmd, ENOENT);
+  fail_unless(res == 0, "Failed to stash errno ENOENT: %s", strerror(errno));
+
+  res = pr_cmd_get_errno(cmd);
+  fail_unless(res == ENOENT, "Expected errno ENOENT, got %s (%d)",
+    strerror(res), res);
+}
+END_TEST
+
 Suite *tests_get_cmd_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -456,6 +477,7 @@ Suite *tests_get_cmd_suite(void) {
   tcase_add_test(testcase, cmd_cmp_test);
   tcase_add_test(testcase, cmd_strcmp_test);
   tcase_add_test(testcase, cmd_get_displayable_str_test);
+  tcase_add_test(testcase, cmd_get_errno_test);
 
   suite_add_tcase(suite, testcase);
 

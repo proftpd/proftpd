@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2012 The ProFTPD Project team
+ * Copyright (c) 2009-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 cmd_rec *pr_cmd_alloc(pool *, int, ...);
 int pr_cmd_clear_cache(cmd_rec *);
 char *pr_cmd_get_displayable_str(cmd_rec *, size_t *);
+int pr_cmd_get_errno(cmd_rec *);
 
 int pr_cmd_cmp(cmd_rec *cmd, int cmd_id);
 int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name);
@@ -106,6 +107,7 @@ int pr_cmd_get_id(const char *name_name);
 #define PR_CMD_MIN_NAMELEN	3
 #define PR_CMD_MAX_NAMELEN	4
 
+int pr_cmd_set_errno(cmd_rec *, int);
 int pr_cmd_set_name(cmd_rec *, const char *);
 
 /* Implemented in main.c */

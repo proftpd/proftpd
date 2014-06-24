@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -93,6 +93,9 @@ MODRET site_chgrp(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -102,14 +105,21 @@ MODRET site_chgrp(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 #endif
 
   path = dir_realpath(cmd->tmp_pool, arg);
+  if (path == NULL) {
+    int xerrno = errno;
 
-  if (!path) {
-    pr_response_add_err(R_550, "%s: %s", arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -123,9 +133,14 @@ MODRET site_chgrp(cmd_rec *cmd) {
     /* Try the parameter as a group name. */
     gid = pr_auth_name2gid(cmd->tmp_pool, cmd->argv[1]);
     if (gid == (gid_t) -1) {
+      int xerrno = EINVAL;
+
       pr_log_debug(DEBUG9,
         "SITE CHGRP: Unable to resolve group name '%s' to GID", cmd->argv[1]);
-      pr_response_add_err(R_550, "%s: %s", arg, strerror(EINVAL));
+      pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
   }
@@ -141,6 +156,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
 
     pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
 
@@ -181,6 +197,9 @@ MODRET site_chmod(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->argv[1], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -190,6 +209,9 @@ MODRET site_chmod(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->argv[1], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 #endif
@@ -200,6 +222,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
     pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -383,6 +406,9 @@ MODRET site_chmod(cmd_rec *cmd) {
 
     if (invalid) {
       pr_response_add_err(R_550, _("'%s': invalid mode"), cmd->argv[1]);
+
+      pr_cmd_set_errno(cmd, EINVAL);
+      errno = EINVAL;
       return PR_ERROR(cmd);
     }
   }
@@ -398,6 +424,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
 
@@ -444,6 +471,9 @@ MODRET site_help(cmd_rec *cmd) {
       }
 
     pr_response_add_err(R_502, _("Unknown command 'SITE %s'"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, ENOSYS);
+    errno = ENOSYS;
     return PR_ERROR(cmd);
   }
 
@@ -466,6 +496,9 @@ modret_t *site_dispatch(cmd_rec *cmd) {
 
   if (!cmd->argc) {
     pr_response_add_err(R_500, _("'SITE' requires parameters"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -474,13 +507,20 @@ modret_t *site_dispatch(cmd_rec *cmd) {
       if (site_commands[i].requires_auth && cmd_auth_chk &&
           !cmd_auth_chk(cmd)) {
         pr_response_send(R_530, _("Please login with USER and PASS"));
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
         return PR_ERROR(cmd);
 
-      } else
+      } else {
         return site_commands[i].handler(cmd);
+      }
     }
 
   pr_response_add_err(R_500, _("'SITE %s' not understood"), cmd->argv[0]);
+
+  pr_cmd_set_errno(cmd, EINVAL);
+  errno = EINVAL;
   return PR_ERROR(cmd);
 }
 

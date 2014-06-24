@@ -7457,6 +7457,9 @@ MODRET tls_any(cmd_rec *cmd) {
           "denying %s command", cmd->argv[0]);
         pr_response_add_err(R_550,
           _("SSL/TLS required on the control channel"));
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
         return PR_ERROR(cmd);
       }
     }
@@ -7469,6 +7472,9 @@ MODRET tls_any(cmd_rec *cmd) {
       tls_log("SSL/TLS required but absent on control channel, "
         "denying %s command", cmd->argv[0]);
       pr_response_add_err(R_550, _("SSL/TLS required on the control channel"));
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
 
     } else {
@@ -7479,6 +7485,9 @@ MODRET tls_any(cmd_rec *cmd) {
           "denying %s command", cmd->argv[0]);
         pr_response_add_err(R_550,
           _("SSL/TLS required on the control channel"));
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
         return PR_ERROR(cmd);
       }
     }
@@ -7503,6 +7512,9 @@ MODRET tls_any(cmd_rec *cmd) {
         tls_log("SSL/TLS required but absent on data channel, "
           "denying %s command", cmd->argv[0]);
         pr_response_add_err(R_522, _("SSL/TLS required on the data channel"));
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
         return PR_ERROR(cmd);
       }
     }
@@ -7540,6 +7552,9 @@ MODRET tls_any(cmd_rec *cmd) {
             session.anon_config ? session.anon_config->name :
             main_server->ServerName);
           pr_response_add_err(R_522, _("SSL/TLS required on the data channel"));
+
+          pr_cmd_set_errno(cmd, EPERM);
+          errno = EPERM;
           return PR_ERROR(cmd);
         }
       }
@@ -7563,17 +7578,26 @@ MODRET tls_auth(cmd_rec *cmd) {
   if (tls_flags & TLS_SESS_ON_CTRL) {
     tls_log("Unwilling to accept AUTH after AUTH for this session");
     pr_response_add_err(R_503, _("Unwilling to accept second AUTH"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_504, _("AUTH requires at least one argument"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
   if (tls_flags & TLS_SESS_HAVE_CCC) {
     tls_log("Unwilling to accept AUTH after CCC for this session");
     pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -7670,6 +7694,9 @@ MODRET tls_ccc(cmd_rec *cmd) {
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_533,
       _("CCC not allowed on insecure control connection"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -7678,6 +7705,9 @@ MODRET tls_ccc(cmd_rec *cmd) {
     tls_log("%s: unwilling to accept security parameters: "
       "TLSRequired setting does not allow for unprotected control channel",
       cmd->argv[0]);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -7685,6 +7715,9 @@ MODRET tls_ccc(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
     pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     tls_log("%s: unwilling to accept security parameters", cmd->argv[0]);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -7725,6 +7758,9 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_503,
       _("PBSZ not allowed on insecure control connection"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -7871,12 +7907,18 @@ MODRET tls_prot(cmd_rec *cmd) {
       !(tls_flags & TLS_SESS_HAVE_CCC)) {
     pr_response_add_err(R_503,
       _("PROT not allowed on insecure control connection"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
     pr_response_add_err(R_503,
       _("You must issue the PBSZ command prior to PROT"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -7884,6 +7926,9 @@ MODRET tls_prot(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
     pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
     tls_log("%s: denied by <Limit> configuration", cmd->argv[0]);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -7905,6 +7950,9 @@ MODRET tls_prot(cmd_rec *cmd) {
         cmd->argv[0]);
       tls_log("%s: unwilling to accept security parameter (%s)", cmd->argv[0],
         cmd->argv[1]);
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -7925,6 +7973,9 @@ MODRET tls_prot(cmd_rec *cmd) {
         cmd->argv[0]);
       tls_log("%s: unwilling to accept security parameter (%s)", cmd->argv[0],
         cmd->argv[1]);
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -7940,10 +7991,16 @@ MODRET tls_prot(cmd_rec *cmd) {
      * is handling the security mechanism, and that this module does not
      * allow for the unsupported PROT levels.
      */
+
+    pr_cmd_set_errno(cmd, ENOSYS);
+    errno = ENOSYS;
     return PR_ERROR(cmd);
 
   } else {
     pr_response_add_err(R_504, _("PROT %s unsupported"), cmd->argv[1]);
+
+    pr_cmd_set_errno(cmd, ENOSYS);
+    errno = ENOSYS;
     return PR_ERROR(cmd);
   }
 
@@ -7964,6 +8021,7 @@ MODRET tls_sscn(cmd_rec *cmd) {
     tls_log("denying malformed SSCN command: '%s %s'", cmd->argv[0], cmd->arg);
     pr_response_add_err(R_504, _("%s: %s"), cmd->argv[0], strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -7975,6 +8033,7 @@ MODRET tls_sscn(cmd_rec *cmd) {
     tls_log("%s denied by <Limit> configuration", cmd->argv[0]);
     pr_response_add_err(R_550, _("%s: %s"), cmd->argv[0], strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -8001,6 +8060,7 @@ MODRET tls_sscn(cmd_rec *cmd) {
         cmd->argv[1]);
       pr_response_add_err(R_501, _("%s: %s"), cmd->argv[0], strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }

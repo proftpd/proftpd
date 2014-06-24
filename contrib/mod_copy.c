@@ -2,7 +2,7 @@
  * ProFTPD: mod_copy -- a module supporting copying of files on the server
  *                      without transferring the data to the client and back
  *
- * Copyright (c) 2009-2012 TJ Saunders
+ * Copyright (c) 2009-2013 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -491,6 +491,9 @@ MODRET copy_copy(cmd_rec *cmd) {
     if (authenticated == NULL ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -509,6 +512,7 @@ MODRET copy_copy(cmd_rec *cmd) {
       pr_cmd_set_name(cmd, cmd_name);
       pr_response_add_err(R_550, "%s: %s", cmd->argv[3], strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -519,6 +523,7 @@ MODRET copy_copy(cmd_rec *cmd) {
 
       pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -564,12 +569,18 @@ MODRET copy_cpfr(cmd_rec *cmd) {
       pr_log_debug(DEBUG2, MOD_COPY_VERSION
         ": 'CPFR %s' denied by PathAllowFilter", path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), path);
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
 
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
       pr_log_debug(DEBUG2, MOD_COPY_VERSION
         ": 'CPFR %s' denied by PathDenyFilter", path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), path);
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
   }
 
@@ -579,7 +590,12 @@ MODRET copy_cpfr(cmd_rec *cmd) {
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       !exists(path)) {
-    pr_response_add_err(R_550, "%s: %s", path, strerror(errno));
+    int xerrno = errno;
+
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -605,6 +621,9 @@ MODRET copy_cpto(cmd_rec *cmd) {
   from = pr_table_get(session.notes, "mod_copy.cpfr-path", NULL);
   if (from == NULL) {
     pr_response_add_err(R_503, _("Bad sequence of commands"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -623,6 +642,7 @@ MODRET copy_cpto(cmd_rec *cmd) {
 
     pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }

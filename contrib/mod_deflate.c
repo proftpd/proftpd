@@ -783,6 +783,9 @@ MODRET deflate_opts(cmd_rec *cmd) {
 
       if (cmd->argc % 2 != 0) {
         pr_response_add_err(R_501, _("Bad number of parameters"));
+
+        pr_cmd_set_errno(cmd, EINVAL);
+        errno = EINVAL;
         return PR_ERROR(cmd);
       }
 
@@ -791,6 +794,9 @@ MODRET deflate_opts(cmd_rec *cmd) {
             strcasecmp(cmd->argv[i], "engine") == 0) {
           pr_response_add_err(R_501, _("%s: unsupported MODE Z option: %s"),
             cmd->argv[0], cmd->argv[i]);
+
+          pr_cmd_set_errno(cmd, ENOSYS);
+          errno = ENOSYS;
           return PR_ERROR(cmd);
 
         } else if (strcasecmp(cmd->argv[i], "level") == 0) {
@@ -800,6 +806,9 @@ MODRET deflate_opts(cmd_rec *cmd) {
               level > 9) {
             pr_response_add_err(R_501, _("%s: bad MODE Z option value: %s %s"),
               cmd->argv[0], cmd->argv[i], cmd->argv[i+1]);
+
+            pr_cmd_set_errno(cmd, EINVAL);
+            errno = EINVAL;
             return PR_ERROR(cmd);
           }
 
@@ -808,6 +817,9 @@ MODRET deflate_opts(cmd_rec *cmd) {
         } else {
           pr_response_add_err(R_501, _("%s: unknown MODE Z option: %s"),
             cmd->argv[0], cmd->argv[i]);
+
+          pr_cmd_set_errno(cmd, EINVAL);
+          errno = EINVAL;
           return PR_ERROR(cmd);
         }
       }
@@ -843,6 +855,9 @@ MODRET deflate_mode(cmd_rec *cmd) {
         session.rfc2228_mech);
 
       pr_response_add_err(R_504, _("Unable to handle MODE Z at this time"));
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 

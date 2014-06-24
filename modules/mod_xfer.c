@@ -1057,6 +1057,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
 
     /* This probably shouldn't happen */
     pr_response_add_err(R_451, _("%s: Bad file name"), path);
+    errno = EINVAL;
     return -1;
   }
 
@@ -1073,6 +1074,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
 
     /* This probably shouldn't happen */
     pr_response_add_err(R_451, _("%s: File name too long"), path);
+    errno = EPERM;
     return -1;
   }
 
@@ -1113,6 +1115,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
 
     pr_response_add_err(R_550, _("%s: Temporary hidden file %s already exists"),
       cmd->arg, hidden_path);
+    errno = EEXIST;
     return -1;
   }
 
@@ -1190,6 +1193,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;
     return PR_ERROR(cmd);
   }
@@ -1205,6 +1210,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       cmd->arg);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -1218,6 +1224,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
         path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+
+      pr_cmd_set_errno(cmd, EPERM);
       errno = EPERM;
       return PR_ERROR(cmd);
 
@@ -1225,12 +1233,16 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
         path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
+
+      pr_cmd_set_errno(cmd, EPERM);
       errno = EPERM;
       return PR_ERROR(cmd);
   }
 
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
@@ -1243,6 +1255,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EACCES);
     errno = EACCES;
     return PR_ERROR(cmd);
   }
@@ -1266,6 +1280,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
 
       /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+      pr_cmd_set_errno(cmd, EISDIR);
       errno = EISDIR;
       return PR_ERROR(cmd);
     }
@@ -1284,6 +1299,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       cmd->arg);
     session.restart_pos = 0L;
     session.xfer.xfer_type = STOR_DEFAULT;
+
+    pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
@@ -1322,7 +1339,9 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       pr_log_debug(DEBUG9, "HiddenStore in effect, refusing restarted upload");
       pr_response_add_err(R_501,
         _("REST not compatible with server configuration"));
-      errno = EINVAL;
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -1331,7 +1350,9 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       pr_log_debug(DEBUG9, "HiddenStore in effect, refusing APPE upload");
       pr_response_add_err(R_550,
         _("APPE not compatible with server configuration"));
-      errno = EINVAL;
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -1358,6 +1379,10 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     }
 
     if (get_hidden_store_path(cmd, path, prefix, suffix) < 0) {
+      int xerrno = errno;
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
   }
@@ -1387,11 +1412,17 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   if (cmd->argc > 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1401,6 +1432,9 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
    */
   if (session.restart_pos) {
     pr_response_add_err(R_550, _("STOU incompatible with REST"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1427,6 +1461,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     pr_response_add_err(R_450, _("%s: unable to generate unique filename"),
       cmd->argv[0]);
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
 
@@ -1438,7 +1473,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
      * opens the unique file, but this may have to do, as closing that
      * race would involve some major restructuring.
      */
-    close(tmpfd);
+    (void) close(tmpfd);
   }
 
   /* It's OK to reuse the char * pointer for filename. */
@@ -1454,6 +1489,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     (void) pr_fsio_unlink(cmd->arg);
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -1469,6 +1506,9 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EACCES);
+    errno = EACCES;
     return PR_ERROR(cmd);
   }
 
@@ -1479,6 +1519,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
 
     /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+    pr_cmd_set_errno(cmd, EISDIR);
     errno = EISDIR;
     return PR_ERROR(cmd);
   }
@@ -1528,6 +1569,8 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
@@ -1657,6 +1700,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
       (void) pr_fsio_close(stor_fh);
       stor_fh = NULL;
+
+      pr_cmd_set_errno(cmd, EINVAL);
+      errno = EINVAL;
       return PR_ERROR(cmd);
     }
 
@@ -1668,6 +1714,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
     pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
       strerror(ferrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(ferrno));
+
+    pr_cmd_set_errno(cmd, ferrno);
+    errno = ferrno;
     return PR_ERROR(cmd);
   }
 
@@ -1692,8 +1741,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
   stor_chown();
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
+    int xerrno = errno;
+
     stor_abort();
     pr_data_abort(0, TRUE);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1715,6 +1769,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   /* Check the MaxStoreFileSize, and abort now if zero. */
   if (have_limit &&
       nbytes_max_store == 0) {
+    int xerrno;
 
     pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
@@ -1725,15 +1780,16 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     /* Set errno to EFBIG (or the most appropriate alternative). */
 #if defined(EFBIG)
-    pr_data_abort(EFBIG, FALSE);
-    errno = EFBIG;
+    xerrno = EFBIG;
 #elif defined(EDQUOT)
-    pr_data_abort(EDQUOT, FALSE);
-    errno = EDQUOT;
+    xerrno = EDQUOT;
 #else
-    pr_data_abort(EPERM, FALSE);
-    errno = EPERM;
+    xerrno = EPERM;
 #endif
+
+    pr_data_abort(xerrno, FALSE);
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1756,6 +1812,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
      */
     if (have_limit &&
         (nbytes_stored + st.st_size > nbytes_max_store)) {
+      int xerrno;
 
       pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
         "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, path);
@@ -1765,15 +1822,16 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     /* Set errno to EFBIG (or the most appropriate alternative). */
 #if defined(EFBIG)
-      pr_data_abort(EFBIG, FALSE);
-      errno = EFBIG;
+      xerrno = EFBIG;
 #elif defined(EDQUOT)
-      pr_data_abort(EDQUOT, FALSE);
-      errno = EDQUOT;
+      xerrno = EDQUOT;
 #else
-      pr_data_abort(EPERM, FALSE);
-      errno = EPERM;
+      xerrno = EPERM;
 #endif
+
+      pr_data_abort(xerrno, FALSE);
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 
@@ -1786,8 +1844,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (res != len) {
       int xerrno = EIO;
 
-      if (res < 0)
+      if (res < 0) {
         xerrno = errno;
+      }
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
         "error writing to '%s': %s", cmd->argv[0], session.user,
@@ -1797,6 +1856,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       stor_abort();
       pr_data_abort(xerrno, FALSE);
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -1808,6 +1868,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (XFER_ABORTED) {
     stor_abort();
     pr_data_abort(0, 0);
+
+    pr_cmd_set_errno(cmd, EIO);
+    errno = EIO; 
     return PR_ERROR(cmd);
 
   } else if (len < 0) {
@@ -1823,6 +1886,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     pr_data_abort(xerrno, FALSE);
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
 
@@ -1844,18 +1908,24 @@ MODRET xfer_stor(cmd_rec *cmd) {
 #if defined(EDQUOT)
       if (xerrno == EDQUOT) {
         pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
         return PR_ERROR(cmd);
       }
 #elif defined(EFBIG)
       if (xerrno == EFBIG) {
         pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
         return PR_ERROR(cmd);
       }
 #endif
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -1878,6 +1948,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
         pr_fsio_unlink(session.xfer.path_hidden);
 
+        pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
         return PR_ERROR(cmd);
       }
@@ -1901,6 +1972,9 @@ MODRET xfer_rest(cmd_rec *cmd) {
   if (cmd->argc != 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -1910,6 +1984,9 @@ MODRET xfer_rest(cmd_rec *cmd) {
   if (*cmd->argv[1] == '-') {
     pr_response_add_err(R_501,
       _("REST requires a value greater than or equal to 0"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -1923,6 +2000,9 @@ MODRET xfer_rest(cmd_rec *cmd) {
       *endp) {
     pr_response_add_err(R_501,
       _("REST requires a value greater than or equal to 0"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -1940,6 +2020,9 @@ MODRET xfer_rest(cmd_rec *cmd) {
     pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
     pr_response_add_err(R_501,
       _("%s: Resuming transfers not allowed in ASCII mode"), cmd->argv[0]);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   } 
 
@@ -1965,6 +2048,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;
     return PR_ERROR(cmd);
   }
@@ -1978,6 +2063,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -1996,6 +2082,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   if (xfer_check_limit(cmd) < 0) {
     pr_response_add_err(R_451, _("%s: Too many transfers"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
@@ -2006,6 +2094,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -2018,6 +2107,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
 
     /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+    pr_cmd_set_errno(cmd, EISDIR);
     errno = EISDIR;
     return PR_ERROR(cmd);
   }
@@ -2032,6 +2122,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     pr_response_add_err(R_451, _("%s: Restart not permitted, try again"),
       cmd->arg);
     session.restart_pos = 0L;
+
+    pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
@@ -2072,17 +2164,22 @@ MODRET xfer_retr(cmd_rec *cmd) {
       dir, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
   if (pr_fsio_stat(dir, &st) < 0) {
     /* Error stat'ing the file. */
     int xerrno = errno;
-    pr_fsio_close(retr_fh);
-    errno = xerrno;
 
+    pr_fsio_close(retr_fh);
     retr_fh = NULL;
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -2098,6 +2195,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
       pr_fsio_close(retr_fh);
       retr_fh = NULL;
 
+      pr_cmd_set_errno(cmd, EINVAL);
+      errno = EINVAL;
       return PR_ERROR(cmd);
     }
 
@@ -2117,6 +2216,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
         " for file %s: %s", (pr_off_t) session.restart_pos, dir,
         strerror(xerrno));
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
+
+      pr_cmd_set_errno(cmd, EINVAL);
+      errno = EINVAL;
       return PR_ERROR(cmd);
     }
 
@@ -2135,8 +2237,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
     cnt_steps = 1;
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, st.st_size - curr_pos) < 0) {
+    int xerrno = errno;
+
     retr_abort();
     pr_data_abort(0, TRUE);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -2165,6 +2272,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     /* Set errno to EPERM ("Operation not permitted") */
     pr_data_abort(EPERM, FALSE);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -2199,6 +2309,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       retr_abort();
       pr_data_abort(xerrno, FALSE);
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -2225,6 +2336,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (XFER_ABORTED) {
     retr_abort();
     pr_data_abort(0, FALSE);
+
+    pr_cmd_set_errno(cmd, EIO);
+    errno = EIO;
     return PR_ERROR(cmd);
 
   } else {
@@ -2253,6 +2367,9 @@ MODRET xfer_abor(cmd_rec *cmd) {
   if (cmd->argc != 1) {
     pr_response_add_err(R_500, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -2285,6 +2402,9 @@ MODRET xfer_type(cmd_rec *cmd) {
       cmd->argc > 3) {
     pr_response_add_err(R_500, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -2310,6 +2430,9 @@ MODRET xfer_type(cmd_rec *cmd) {
   } else {
     pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
       cmd->argv[0], cmd->argv[1]);
+
+    pr_cmd_set_errno(cmd, ENOSYS);
+    errno = ENOSYS;
     return PR_ERROR(cmd);
   }
 
@@ -2321,6 +2444,9 @@ MODRET xfer_stru(cmd_rec *cmd) {
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -2350,14 +2476,18 @@ MODRET xfer_stru(cmd_rec *cmd) {
       /* RFC-1123 recommends against implementing P. */
       pr_response_add_err(R_504, _("'%s' unsupported structure type"),
         pr_cmd_get_displayable_str(cmd, NULL));
+
+      pr_cmd_set_errno(cmd, ENOSYS);
+      errno = ENOSYS;
       return PR_ERROR(cmd);
-      break;
 
     default:
       pr_response_add_err(R_501, _("'%s' unrecognized structure type"),
         pr_cmd_get_displayable_str(cmd, NULL));
+
+      pr_cmd_set_errno(cmd, EINVAL);
+      errno = EINVAL;
       return PR_ERROR(cmd);
-      break;
   }
 }
 
@@ -2365,6 +2495,9 @@ MODRET xfer_mode(cmd_rec *cmd) {
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -2382,11 +2515,17 @@ MODRET xfer_mode(cmd_rec *cmd) {
     case 'C':
       pr_response_add_err(R_504, _("'%s' unsupported transfer mode"),
         pr_cmd_get_displayable_str(cmd, NULL));
+
+      pr_cmd_set_errno(cmd, ENOSYS);
+      errno = ENOSYS;
       return PR_ERROR(cmd);
   }
 
   pr_response_add_err(R_501, _("'%s' unrecognized transfer mode"),
     pr_cmd_get_displayable_str(cmd, NULL));
+
+  pr_cmd_set_errno(cmd, EINVAL);
+  errno = EINVAL;
   return PR_ERROR(cmd);
 }
 
@@ -2402,6 +2541,9 @@ MODRET xfer_allo(cmd_rec *cmd) {
       cmd->argc != 4) {
     pr_response_add_err(R_504, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -2413,6 +2555,9 @@ MODRET xfer_allo(cmd_rec *cmd) {
 
   if (tmp && *tmp) {
     pr_response_add_err(R_504, _("%s: Invalid ALLO argument"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -2446,6 +2591,9 @@ MODRET xfer_allo(cmd_rec *cmd) {
           " KB available on '%s'", cmd->argv[0], (pr_off_t) requested_kb,
           (pr_off_t) avail_kb, path);
         pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(ENOSPC));
+
+        pr_cmd_set_errno(cmd, ENOSPC);
+        errno = ENOSPC;
         return PR_ERROR(cmd);
       }
 

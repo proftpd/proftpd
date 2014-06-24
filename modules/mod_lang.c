@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_lang -- a module for handling the LANG command [RFC2640]
  *
- * Copyright (c) 2006-2013 The ProFTPD Project
+ * Copyright (c) 2006-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -392,6 +392,9 @@ MODRET lang_lang(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     pr_log_debug(DEBUG4, MOD_LANG_VERSION ": LANG command denied by <Limit>");
     pr_response_add_err(R_500, _("Unable to handle command"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -409,11 +412,17 @@ MODRET lang_lang(cmd_rec *cmd) {
     pr_log_debug(DEBUG7, MOD_LANG_VERSION ": assuming language files are "
       "unavailable after login, denying LANG command");
     pr_response_add_err(R_500, _("Unable to handle command"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
   if (cmd->argc > 2) {
     pr_response_add_err(R_501, _("Invalid number of arguments"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -436,6 +445,9 @@ MODRET lang_lang(cmd_rec *cmd) {
     pr_log_debug(DEBUG3, MOD_LANG_VERSION ": language '%s' unsupported: %s",
       cmd->argv[1], strerror(errno));
     pr_response_add_err(R_504, _("Language %s not supported"), cmd->argv[1]);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -490,12 +502,18 @@ MODRET lang_utf8(cmd_rec *cmd) {
 
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"), method);
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
   b = get_boolean(cmd, 1);
   if (b < 0) {
     pr_response_add_err(R_501, _("'%s' not understood"), method);
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -539,6 +557,9 @@ MODRET lang_utf8(cmd_rec *cmd) {
               ": unable to accept 'OPTS UTF8 off' due to UseEncoding "
               "directive in config file");
             pr_response_add_err(R_451, _("Unable to accept %s"), method);
+
+            pr_cmd_set_errno(cmd, EPERM);
+            errno = EPERM;
             return PR_ERROR(cmd);
           }
 
@@ -563,6 +584,9 @@ MODRET lang_utf8(cmd_rec *cmd) {
               ": unable to accept 'OPTS UTF8 off' due to UseEncoding "
               "'strict' keyword in config file");
             pr_response_add_err(R_451, _("Unable to accept %s"), method);
+
+            pr_cmd_set_errno(cmd, EPERM);
+            errno = EPERM;
             return PR_ERROR(cmd);
           }
 
@@ -575,6 +599,9 @@ MODRET lang_utf8(cmd_rec *cmd) {
             pr_fs_use_encoding(FALSE);
 
             pr_response_add_err(R_451, _("Unable to accept %s"), method);
+
+            pr_cmd_set_errno(cmd, EPERM);
+            errno = EPERM;
             return PR_ERROR(cmd);
           }
 
@@ -618,6 +645,9 @@ MODRET lang_utf8(cmd_rec *cmd) {
               ": unable to accept 'OPTS UTF8 on' due to UseEncoding "
               "directive in config file");
             pr_response_add_err(R_451, _("Unable to accept %s"), method);
+
+            pr_cmd_set_errno(cmd, EPERM);
+            errno = EPERM;
             return PR_ERROR(cmd);
           }
 
@@ -634,6 +664,9 @@ MODRET lang_utf8(cmd_rec *cmd) {
               ": unable to accept 'OPTS UTF8 on' due to UseEncoding "
               "'strict' keyword in config file");
             pr_response_add_err(R_451, _("Unable to accept %s"), method);
+
+            pr_cmd_set_errno(cmd, EPERM);
+            errno = EPERM;
             return PR_ERROR(cmd);
           }
         }
@@ -647,6 +680,9 @@ MODRET lang_utf8(cmd_rec *cmd) {
         pr_log_debug(DEBUG3, MOD_LANG_VERSION
           ": error enabling UTF8 encoding: %s", strerror(errno));
         pr_response_add_err(R_451, _("Unable to accept %s"), method);
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
         return PR_ERROR(cmd);
       }
 
