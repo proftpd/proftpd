@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2011 The ProFTPD Project
+ * Copyright (c) 2004-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -447,7 +447,9 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     if (!authenticated ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
-      errno = EACCES;
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -461,6 +463,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -471,6 +474,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -486,6 +490,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
         ": %s command denied by <Limit>", cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -496,6 +501,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -535,7 +541,9 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
     if (!authenticated ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
-      errno = EACCES;
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -550,6 +558,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -565,6 +574,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
         ": %s command denied by <Limit>", cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -575,6 +585,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -615,7 +626,9 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     if (!authenticated ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
-      errno = EACCES;
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 

@@ -588,8 +588,9 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     session.xfer.direction = direction;
   }
 
-  if (!reason)
+  if (!reason) {
     reason = filename;
+  }
 
   /* Passive data transfers... */
   if (session.sf_flags & SF_PASSIVE ||
@@ -621,6 +622,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
       session.d = NULL;
+      errno = session.d->xerrno;
       return -1;
     }
 
@@ -629,22 +631,25 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
       session.d = NULL;
+      errno = session.d->xerrno;
       return -1;
     }
 
     memset(&session.xfer.start_time, '\0', sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);
 
-    if (session.xfer.direction == PR_NETIO_IO_RD)
+    if (session.xfer.direction == PR_NETIO_IO_RD) {
       nstrm = session.d->instrm;
 
-    else
+    } else {
       nstrm = session.d->outstrm;
+    }
 
     session.sf_flags |= SF_XFER;
 
-    if (timeout_noxfer)
+    if (timeout_noxfer) {
       pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+    }
 
     /* Allow aborts -- set the current NetIO stream to allow interrupted
      * syscalls, so our SIGURG handler can interrupt it
@@ -665,18 +670,20 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     act.sa_flags |= SA_INTERRUPT;
 #endif
 
-    if (sigaction(SIGURG, &act, NULL) < 0)
+    if (sigaction(SIGURG, &act, NULL) < 0) {
       pr_log_pri(PR_LOG_WARNING,
         "warning: unable to set SIGURG signal handler: %s", strerror(errno));
+    }
 
 #ifdef HAVE_SIGINTERRUPT
     /* This is the BSD way of ensuring interruption.
      * Linux uses it too (??)
      */
-    if (siginterrupt(SIGURG, 1) < 0)
+    if (siginterrupt(SIGURG, 1) < 0) {
       pr_log_pri(PR_LOG_WARNING,
         "warning: unable to make SIGURG interrupt system calls: %s",
         strerror(errno));
+    }
 #endif
   }
 

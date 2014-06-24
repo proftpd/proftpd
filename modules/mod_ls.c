@@ -2479,7 +2479,12 @@ MODRET ls_stat(cmd_rec *cmd) {
     /* In this case, the client is requesting the current session status. */
 
     if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
-      pr_response_add_err(R_500, "%s: %s", cmd->argv[0], strerror(EPERM));
+      int xerrno = EPERM;
+
+      pr_response_add_err(R_500, "%s: %s", cmd->argv[0], strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 
@@ -2631,6 +2636,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     pr_response_add_err(R_450, "%s: %s", arg && *arg ? arg : ".",
       strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -2847,6 +2853,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
         } else {
           if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
             if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+              int xerrno = errno;
+
+              pr_cmd_set_errno(cmd, xerrno);
+              errno = xerrno;
               return PR_ERROR(cmd);
             }
 
@@ -2858,12 +2868,19 @@ MODRET ls_nlst(cmd_rec *cmd) {
           }
 
           pr_response_add_err(R_450, _("No files found"));
+
+          pr_cmd_set_errno(cmd, ENOENT);
+          errno = ENOENT;
           return PR_ERROR(cmd);
         }
 
       } else {
         if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
           if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+            int xerrno = errno;
+
+            pr_cmd_set_errno(cmd, xerrno);
+            errno = xerrno;
             return PR_ERROR(cmd);
           }
 
@@ -2875,11 +2892,18 @@ MODRET ls_nlst(cmd_rec *cmd) {
         }
 
         pr_response_add_err(R_450, _("No files found"));
+
+        pr_cmd_set_errno(cmd, ENOENT);
+        errno = ENOENT;
         return PR_ERROR(cmd);
       }
     }
 
     if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+      int xerrno = errno;
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
       return PR_ERROR(cmd);
     }
 
@@ -2956,6 +2980,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (xerrno == ENOENT &&
           (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
         if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+          xerrno = errno;
+
+          pr_cmd_set_errno(cmd, xerrno);
+          errno = xerrno;
           return PR_ERROR(cmd);
         }
         session.sf_flags |= SF_ASCII_OVERRIDE;
@@ -2968,6 +2996,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       pr_response_add_err(R_450, "%s: %s", *cmd->arg ? cmd->arg :
         pr_fs_encode_path(cmd->tmp_pool, session.vwd), strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -2975,16 +3004,20 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Don't display hidden files */
     if (hidden) {
       c = find_ls_limit(target);
-
       if (c) {
-        unsigned char *ignore_hidden = get_param_ptr(c->subset,
-          "IgnoreHidden", FALSE);
+        unsigned char *ignore_hidden;
+        int xerrno;
 
+        ignore_hidden = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
         if (ignore_hidden &&
             *ignore_hidden == TRUE) {
 
           if (list_flags & LS_FL_NO_ERROR_IF_ABSENT) {
             if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+              xerrno = errno;
+
+              pr_cmd_set_errno(cmd, xerrno);
+              errno = xerrno;
               return PR_ERROR(cmd);
             }
             session.sf_flags |= SF_ASCII_OVERRIDE;
@@ -2994,14 +3027,17 @@ MODRET ls_nlst(cmd_rec *cmd) {
             return PR_HANDLED(cmd);
           }
 
-          pr_response_add_err(R_450, "%s: %s",
-            pr_fs_encode_path(cmd->tmp_pool, target), strerror(ENOENT));
+          xerrno = ENOENT;
 
         } else {
-          pr_response_add_err(R_450, "%s: %s",
-            pr_fs_encode_path(cmd->tmp_pool, target), strerror(EACCES));
+          xerrno = EACCES;
         }
 
+        pr_response_add_err(R_450, "%s: %s",
+          pr_fs_encode_path(cmd->tmp_pool, target), strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
     }
@@ -3016,6 +3052,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (xerrno == ENOENT &&
           (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
         if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+          xerrno = errno;
+
+          pr_cmd_set_errno(cmd, xerrno);
+          errno = xerrno;
           return PR_ERROR(cmd);
         }
         session.sf_flags |= SF_ASCII_OVERRIDE;
@@ -3027,6 +3067,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(xerrno));
 
+      pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
@@ -3041,6 +3082,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     } else if (S_ISDIR(st.st_mode)) {
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+        int xerrno = errno;
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
       session.sf_flags |= SF_ASCII_OVERRIDE;
@@ -3049,6 +3094,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     } else {
       pr_response_add_err(R_450, _("%s: Not a regular file"), cmd->arg);
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 

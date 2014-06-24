@@ -865,6 +865,9 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   if (cmd->argc < 3) {
     pr_response_add_err(R_501, _("Invalid number of arguments"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -877,6 +880,9 @@ MODRET facts_mff(cmd_rec *cmd) {
   ptr = strchr(cmd->arg, ' ');
   if (ptr == NULL) {
     pr_response_add_err(R_501, _("Invalid command syntax"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -886,7 +892,12 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (canon_path == NULL) {
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+    int xerrno = EINVAL;
+
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -894,17 +905,30 @@ MODRET facts_mff(cmd_rec *cmd) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
   if (facts_filters_allow_path(cmd, decoded_path) < 0) {
-    pr_response_add_err(R_550, "%s: %s", path, strerror(EACCES));
+    int xerrno = EACCES;
+
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
   ptr = strchr(facts, ';');
   if (ptr == NULL) {
-    pr_response_add_err(R_550, "%s: %s", facts, strerror(EINVAL));
+    int xerrno = EINVAL;
+
+    pr_response_add_err(R_550, "%s: %s", facts, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -919,15 +943,25 @@ MODRET facts_mff(cmd_rec *cmd) {
       char *timestamp, *ptr2;
 
       ptr2 = strchr(facts, '=');
-      if (!ptr2) {
-        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(EINVAL));
+      if (ptr2 == NULL) {
+        int xerrno = EINVAL;
+
+        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 
       timestamp = ptr2 + 1;
 
       if (strlen(timestamp) < 14) {
-        pr_response_add_err(R_501, "%s: %s", timestamp, strerror(EINVAL));
+        int xerrno = EINVAL;
+
+        pr_response_add_err(R_501, "%s: %s", timestamp, strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 
@@ -945,6 +979,7 @@ MODRET facts_mff(cmd_rec *cmd) {
         pr_response_add_err(xerrno == ENOENT ? R_550 : R_501, "%s: %s", path,
           strerror(xerrno));
 
+        pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
         return PR_ERROR(cmd);
       }
@@ -955,17 +990,27 @@ MODRET facts_mff(cmd_rec *cmd) {
       char *group, *ptr2;
 
       ptr2 = strchr(facts, '=');
-      if (!ptr2) {
+      if (ptr2 == NULL) {
+        int xerrno = EINVAL;
+
         *ptr = ';';
-        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(EINVAL));
+        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 
       group = ptr2 + 1;
 
       if (facts_modify_unix_group(cmd->tmp_pool, decoded_path, group) < 0) {
-        pr_response_add_err(errno == ENOENT ? R_550 : R_501, "%s: %s", path,
-          strerror(errno));
+        int xerrno = errno;
+
+        pr_response_add_err(xerrno == ENOENT ? R_550 : R_501, "%s: %s", path,
+          strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 
@@ -975,17 +1020,27 @@ MODRET facts_mff(cmd_rec *cmd) {
       char *mode_str, *ptr2;
 
       ptr2 = strchr(facts, '=');
-      if (!ptr2) {
+      if (ptr2 == NULL) {
+        int xerrno = errno;
+
         *ptr = ';';
-        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(EINVAL));
+        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 
       mode_str = ptr2 + 1;
 
       if (facts_modify_unix_mode(cmd->tmp_pool, decoded_path, mode_str) < 0) {
-        pr_response_add_err(errno == ENOENT ? R_550 : R_501, "%s: %s", path,
-          strerror(errno));
+        int xerrno = errno;
+
+        pr_response_add_err(xerrno == ENOENT ? R_550 : R_501, "%s: %s", path,
+          strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
         return PR_ERROR(cmd);
       }
 
@@ -999,6 +1054,9 @@ MODRET facts_mff(cmd_rec *cmd) {
       pr_response_add_err(R_504, _("Cannot modify fact '%s'"), facts);
 
       *ptr = ';';
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
       return PR_ERROR(cmd);
     }
 
@@ -1022,6 +1080,9 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   if (cmd->argc < 3) {
     pr_response_add_err(R_501, _("Invalid number of arguments"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -1034,6 +1095,9 @@ MODRET facts_mfmt(cmd_rec *cmd) {
   ptr = strchr(cmd->arg, ' ');
   if (ptr == NULL) {
     pr_response_add_err(R_501, _("Invalid command syntax"));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 
@@ -1043,7 +1107,12 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (canon_path == NULL) {
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EINVAL));
+    int xerrno = EINVAL;
+
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno; 
     return PR_ERROR(cmd);
   }
 
@@ -1051,16 +1120,29 @@ MODRET facts_mfmt(cmd_rec *cmd) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
   if (facts_filters_allow_path(cmd, decoded_path) < 0) {
-    pr_response_add_err(R_550, "%s: %s", path, strerror(EACCES));
+    int xerrno = EACCES;
+
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
   if (strlen(timestamp) < 14) {
-    pr_response_add_err(R_501, "%s: %s", timestamp, strerror(EINVAL));
+    int xerrno = EINVAL;
+
+    pr_response_add_err(R_501, "%s: %s", timestamp, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1083,6 +1165,7 @@ MODRET facts_mfmt(cmd_rec *cmd) {
     pr_response_add_err(xerrno == ENOENT ? R_550 : R_501, "%s: %s", path,
       strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
@@ -1127,6 +1210,9 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1147,11 +1233,17 @@ MODRET facts_mlsd(cmd_rec *cmd) {
       "denying %s", decoded_path, strerror(xerrno), cmd->argv[0]);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
   if (!S_ISDIR(info.st.st_mode)) {
     pr_response_add_err(R_550, _("'%s' is not a directory"), path);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1233,13 +1325,19 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
 
+    pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
   }
 
   /* Open data connection */
   if (pr_data_open(NULL, C_MLSD, PR_NETIO_IO_WR, 0) < 0) {
+    int xerrno = errno;
+
     pr_fsio_closedir(dirh);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
   session.sf_flags |= SF_ASCII_OVERRIDE;
@@ -1354,6 +1452,9 @@ MODRET facts_mlst(cmd_rec *cmd) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1429,6 +1530,9 @@ MODRET facts_mlst(cmd_rec *cmd) {
   if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags, fake_uid,
       fake_gid, fake_mode) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
@@ -1478,6 +1582,9 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
 
   if (cmd->argc > 2) {
     pr_response_add_err(R_501, _("'%s' not understood"), method);
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
     return PR_ERROR(cmd);
   }
 

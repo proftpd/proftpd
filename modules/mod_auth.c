@@ -2192,6 +2192,9 @@ MODRET auth_pre_user(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): "
       "maximum USER length exceeded", cmd->arg);
     pr_response_add_err(R_501, _("Login incorrect."));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
     return PR_ERROR(cmd);
   }
 
