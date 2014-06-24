@@ -88,6 +88,14 @@ be logged (at debug level 2):
 </pre>
 
 <p>
+The <code>RLimitChroot</code> directive is <b>not</b> intended to <b>prevent</b>
+"Roaring Beast" style attacks entirely; the guarded <code>/etc</code> and
+<code>/lib</code> directories might be created via other means, outside of
+ProFTPD, which would also allow for the attack.  The <code>RLimitChroot</code>
+directive is meant to <em>mitigate</em> (not <em>prevent</em>) the attacks by
+making sure it cannot be done using <i>just</i> ProFTPD.
+
+<p>
 <hr>
 <h2><a name="RLimitCPU">RLimitCPU</a></h2>
 <strong>Syntax:</strong> RLimitCPU <em>[scope] soft-limit|"max" [hard-limit|"max"]</em><br>

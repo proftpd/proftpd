@@ -4856,7 +4856,7 @@ static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
   /* Unused bytes available to user. */
   sftp_msg_write_long(&buf, &buflen, (uint64_t) get_user_bytes_unused(&fs));
 
-  fxp_msg_write_short(&buf, &buflen, (uint32_t) fs.f_frsize);
+  sftp_msg_write_int(&buf, &buflen, (uint32_t) fs.f_frsize);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -6299,7 +6299,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
 static int fxp_handle_link(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
-  char *args, *cmd_name, *src_path, *dst_path;
+  char *args, *cmd_name, *link_path, *target_path;
   const char *reason;
   char is_symlink;
   int have_error = FALSE, res;
@@ -6307,17 +6307,18 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   struct fxp_packet *resp;
   cmd_rec *cmd;
 
-  src_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  link_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-    src_path = sftp_utf8_decode_str(fxp->pool, src_path);
+    link_path = sftp_utf8_decode_str(fxp->pool, link_path);
   }
 
-  dst_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  target_path = sftp_msg_read_string(fxp->pool, &fxp->payload,
+    &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-    dst_path = sftp_utf8_decode_str(fxp->pool, dst_path);
+    target_path = sftp_utf8_decode_str(fxp->pool, target_path);
   }
 
-  args = pstrcat(fxp->pool, src_path, " ", dst_path, NULL);
+  args = pstrcat(fxp->pool, link_path, " ", target_path, NULL);
 
   cmd = fxp_cmd_alloc(fxp->pool, "LINK", args);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
@@ -6330,30 +6331,30 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   is_symlink = sftp_msg_read_byte(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
   pr_proctitle_set("%s - %s: LINK %s %s %s", session.user, session.proc_prefix,
-    src_path, dst_path, is_symlink ? "true" : "false");
+    link_path, target_path, is_symlink ? "true" : "false");
 
-  pr_trace_msg(trace_channel, 7, "received request: LINK %s %s %d", src_path,
-    dst_path, is_symlink);
+  pr_trace_msg(trace_channel, 7, "received request: LINK %s %s %s", link_path,
+    target_path, is_symlink ? "true" : "false");
 
-  if (strlen(src_path) == 0) {
+  if (strlen(link_path) == 0) {
     /* Use the default directory if the path is empty. */
-    src_path = sftp_auth_get_default_dir();
+    link_path = sftp_auth_get_default_dir();
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "empty link path given in LINK request, using '%s'", src_path);
+      "empty link path given in LINK request, using '%s'", link_path);
   }
 
-  if (strlen(dst_path) == 0) {
+  if (strlen(target_path) == 0) {
     /* Use the default directory if the path is empty. */
-    dst_path = sftp_auth_get_default_dir();
+    target_path = sftp_auth_get_default_dir();
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "empty target path given in LINK request, using '%s'", dst_path);
+      "empty target path given in LINK request, using '%s'", target_path);
   }
 
   /* Make sure we use the full paths. */
-  src_path = dir_canonical_vpath(fxp->pool, src_path);
-  dst_path = dir_canonical_vpath(fxp->pool, dst_path);
+  link_path = dir_canonical_vpath(fxp->pool, link_path);
+  target_path = dir_canonical_vpath(fxp->pool, target_path);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -6361,26 +6362,28 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "LINK");
 
-  if (!dir_check(fxp->pool, cmd, G_READ, src_path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_READ, target_path, NULL)) {
     have_error = TRUE;
   }
 
   if (!have_error) {
-    if (!dir_check(fxp->pool, cmd, G_WRITE, dst_path, NULL)) {
+    if (!dir_check(fxp->pool, cmd, G_WRITE, link_path, NULL)) {
       have_error = TRUE;
     }
   }
 
-  if (!have_error) {
-    pr_cmd_set_name(cmd, "SYMLINK");
-
-    if (!dir_check(fxp->pool, cmd, G_READ, src_path, NULL)) {
-      have_error = TRUE;
-    }
-
+  if (is_symlink) {
     if (!have_error) {
-      if (!dir_check(fxp->pool, cmd, G_WRITE, dst_path, NULL)) {
+      pr_cmd_set_name(cmd, "SYMLINK");
+
+      if (!dir_check(fxp->pool, cmd, G_READ, target_path, NULL)) {
         have_error = TRUE;
+      }
+
+      if (!have_error) {
+        if (!dir_check(fxp->pool, cmd, G_WRITE, link_path, NULL)) {
+          have_error = TRUE;
+        }
       }
     }
   }
@@ -6390,7 +6393,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "LINK of '%s' to '%s' blocked by <Limit %s> configuration",
-      src_path, dst_path, cmd->argv[0]);
+      target_path, link_path, cmd->argv[0]);
 
     pr_cmd_set_name(cmd, cmd_name);
 
@@ -6413,10 +6416,10 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   pr_cmd_set_name(cmd, cmd_name);
 
   if (is_symlink) {
-    res = pr_fsio_symlink(src_path, dst_path);
+    res = pr_fsio_symlink(target_path, link_path);
 
   } else {
-    res = pr_fsio_link(src_path, dst_path);
+    res = pr_fsio_link(target_path, link_path);
   }
 
   if (res < 0) {
@@ -6424,7 +6427,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error %s symlinking '%s' to '%s': %s",
-      is_symlink ? "symlinking" : "linking", src_path, dst_path,
+      is_symlink ? "symlinking" : "linking", target_path, link_path,
       strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
@@ -10676,24 +10679,34 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
 static int fxp_handle_symlink(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
-  char *args, *args2, *cmd_name, *src_path, *dst_path, *vpath;
+  char *args, *args2, *cmd_name, *link_path, *target_path, *vpath;
   const char *reason;
   int have_error = FALSE, res;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
 
-  src_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  /* Note: The ietf-secsh-filexfer drafts define the arguments for SYMLINK
+   * as "linkpath" (the file being created), followed by "targetpath" (the
+   * target of the link).  The following code reads the arguments in the
+   * opposite (thus wrong) order.  This is done deliberately, to match
+   * the behavior that OpenSSH uses; see:
+   *
+   *  https://bugzilla.mindrot.org/show_bug.cgi?id=861
+   */
+
+  target_path = sftp_msg_read_string(fxp->pool, &fxp->payload,
+    &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-    src_path = sftp_utf8_decode_str(fxp->pool, src_path);
+    target_path = sftp_utf8_decode_str(fxp->pool, target_path);
   }
 
-  dst_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  link_path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-    dst_path = sftp_utf8_decode_str(fxp->pool, dst_path);
+    link_path = sftp_utf8_decode_str(fxp->pool, link_path);
   }
 
-  args = pstrcat(fxp->pool, src_path, " ", dst_path, NULL);
+  args = pstrcat(fxp->pool, target_path, " ", link_path, NULL);
 
   cmd = fxp_cmd_alloc(fxp->pool, "SYMLINK", args);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
@@ -10704,37 +10717,37 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     PR_SCORE_CMD_ARG, "%s", args, NULL, NULL);
 
   pr_proctitle_set("%s - %s: SYMLINK %s %s", session.user, session.proc_prefix,
-    src_path, dst_path);
+    link_path, target_path);
 
-  pr_trace_msg(trace_channel, 7, "received request: SYMLINK %s %s", src_path,
-    dst_path);
+  pr_trace_msg(trace_channel, 7, "received request: SYMLINK %s %s", target_path,
+    link_path);
 
-  if (strlen(src_path) == 0) {
+  if (strlen(target_path) == 0) {
     /* Use the default directory if the path is empty. */
-    src_path = sftp_auth_get_default_dir();
+    target_path = sftp_auth_get_default_dir();
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "empty link path given in SYMLINK request, using '%s'", src_path);
+      "empty target path given in SYMLINK request, using '%s'", target_path);
   }
 
-  if (strlen(dst_path) == 0) {
+  if (strlen(link_path) == 0) {
     /* Use the default directory if the path is empty. */
-    dst_path = sftp_auth_get_default_dir();
+    link_path = sftp_auth_get_default_dir();
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "empty target path given in SYMLINK request, using '%s'", dst_path);
+      "empty link path given in SYMLINK request, using '%s'", link_path);
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   /* Make sure we use the full paths. */
-  vpath = dir_canonical_vpath(fxp->pool, src_path);
+  vpath = dir_canonical_vpath(fxp->pool, target_path);
   if (vpath == NULL) {
     int xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error resolving '%s': %s", src_path, strerror(xerrno));
+      "error resolving '%s': %s", target_path, strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -10754,14 +10767,14 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  src_path = vpath;
+  target_path = vpath;
 
-  vpath = dir_canonical_vpath(fxp->pool, dst_path);
+  vpath = dir_canonical_vpath(fxp->pool, link_path);
   if (vpath == NULL) {
     int xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error resolving '%s': %s", dst_path, strerror(xerrno));
+      "error resolving '%s': %s", link_path, strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -10781,7 +10794,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  dst_path = vpath;
+  link_path = vpath;
 
   /* We use a slightly different cmd_rec here, for the benefit of PRE_CMD
    * handlers such as mod_rewrite.  It is impossible for a client to
@@ -10793,7 +10806,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
    * paths.
    */
 
-  args2 = pstrcat(fxp->pool, src_path, "\t", dst_path, NULL);
+  args2 = pstrcat(fxp->pool, target_path, "\t", link_path, NULL);
   cmd2 = fxp_cmd_alloc(fxp->pool, "SYMLINK", args2);
   cmd2->cmd_class = CL_WRITE;
 
@@ -10801,7 +10814,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "SYMLINK of '%s' to '%s' blocked by '%s' handler", src_path, dst_path,
+      "SYMLINK of '%s' to '%s' blocked by '%s' handler", target_path, link_path,
       cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
@@ -10832,21 +10845,21 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     ptr2 = strchr(cmd2->arg, '\t');
     if (ptr2) {
       *ptr2 = '\0';
-      src_path = cmd2->arg;
-      dst_path = ptr2 + 1;
+      target_path = cmd2->arg;
+      link_path = ptr2 + 1;
     }
   }
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "SYMLINK");
 
-  if (!dir_check(fxp->pool, cmd, G_READ, src_path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_READ, target_path, NULL)) {
     pr_cmd_set_name(cmd, cmd_name);
     have_error = TRUE;
   }
 
   if (!have_error &&
-      !dir_check(fxp->pool, cmd, G_WRITE, dst_path, NULL)) {
+      !dir_check(fxp->pool, cmd, G_WRITE, link_path, NULL)) {
     pr_cmd_set_name(cmd, cmd_name);
     have_error = TRUE;
   }
@@ -10858,7 +10871,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "SYMLINK of '%s' to '%s' blocked by <Limit> configuration",
-      src_path, dst_path);
+      target_path, link_path);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -10876,13 +10889,13 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  res = pr_fsio_symlink(src_path, dst_path);
+  res = pr_fsio_symlink(target_path, link_path);
 
   if (res < 0) {
     int xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error symlinking '%s' to '%s': %s", src_path, dst_path,
+      "error symlinking '%s' to '%s': %s", target_path, link_path,
       strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
