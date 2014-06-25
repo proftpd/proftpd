@@ -1720,7 +1720,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* Stash the offset at which we're writing from this file. */
+  /* Stash the offset at which we're writing to this file. */
   curr_offset = pr_fsio_lseek(stor_fh, (off_t) 0, SEEK_CUR);
   if (curr_offset != (off_t) -1) {
     off_t *file_offset;

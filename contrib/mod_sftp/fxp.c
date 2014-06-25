@@ -11162,7 +11162,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     } else {
       off_t *file_offset;
 
-      /* Stash the offset at which we're writing from this file. */
+      /* Stash the offset at which we're writing to this file. */
       file_offset = palloc(cmd->pool, sizeof(off_t));
       *file_offset = (off_t) offset;
       (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
