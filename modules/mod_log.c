@@ -495,9 +495,8 @@ static int parse_classes(char *s, int *classes) {
       } else {
         incl = CL_NONE;
       }
-    }
 
-    if (strcasecmp(s, "ALL") == 0) {
+    } else if (strcasecmp(s, "ALL") == 0) {
       if (exclude) {
         incl = CL_NONE;
 
