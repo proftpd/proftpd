@@ -1535,11 +1535,6 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     return NULL;
   }
 
-  if (cmap.homedirfield == NULL &&
-      cmap.defaulthomedir) {
-    return NULL;
-  }
-
   /* Check to see if the passwd already exists in one of the passwd caches.
    * Give preference to name-based lookups, as opposed to UID-based lookups.
    */
