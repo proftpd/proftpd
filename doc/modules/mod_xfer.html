@@ -303,6 +303,100 @@ See also: <a href="#MaxRetrieveFileSize"><code>MaxRetrieveFileSize</code></a>
 
 <p>
 <hr>
+<h2><a name="MaxTransfersPerHost">MaxTransfersPerHost</a></h2>
+<strong>Syntax:</strong> MaxTransfersPerHost <em>cmd-list count [message]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.3.2rc1 and later
+
+<p>
+The <code>MaxTransfersPerHost</code> directive limits the number of data
+transfers happening at the same time <i>from the same host</i>.  The
+<em>cmd-list</em> parameter is a comma-separated list of the data transfer FTP
+commands (APPE, RETR, STOR, and/or STOU) to which the limit applies.  The
+optional <em>message</em> parameter may be used, which will be displayed to a
+client attempting to exceed the maximum value.  If <em>message</em> is
+<i>not</i> supplied, the following message is used by default:
+<pre>
+  "Sorry, the maximum number of data transfers (%m) from your host are currently being used."
+</pre>
+
+<p>
+For example:
+<pre>
+  MaxTransfersPerHost RETR 2
+</pre>
+will result in the following FTP response to a client exceeding the download
+limit:
+<pre>
+  "451 Sorry, the maximum number of data transfers (2) from your host are currently being used."
+</pre>
+And for uploads, you might using something like:
+<pre>
+  MaxTransferPerHost APPE,STOR,STOU 1
+</pre>
+
+<p>
+See also: <a href="#MaxTransfersPerUser"><code>MaxTransfersPerUser</code></a>
+
+<p>
+<hr>
+<h2><a name="MaxTransfersPerUser">MaxTransfersPerUser</a></h2>
+<strong>Syntax:</strong> MaxTransfersPerUser <em>cmd-list count [message]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.3.2rc1 and later
+
+<p>
+The <code>MaxTransfersPerUser</code> directive limits the number of data
+transfers happening at the same time <i>for the same user name</i>.  The
+<em>cmd-list</em> parameter is a comma-separated list of the data transfer FTP
+commands (APPE, RETR, STOR, and/or STOU) to which the limit applies.  The
+optional <em>message</em> parameter may be used, which will be displayed to a
+client attempting to exceed the maximum value.  If <em>message</em> is
+<i>not</i> supplied, the following message is used by default:
+<pre>
+  "Sorry, the maximum number of data transfers (%m) from this user are currently being used."
+</pre>
+
+<p>
+For example:
+<pre>
+  MaxTransfersPerUser RETR 2
+</pre>
+will result in the following FTP response to a client exceeding the download
+limit:
+<pre>
+  "451 Sorry, the maximum number of data transfers (2) from this user are currently being used."
+</pre>
+And for uploads, you might using something like:
+<pre>
+  MaxTransferPerUser APPE,STOR,STOU 1
+</pre>
+
+<p>
+See also: <a href="#MaxTransfersPerHost"><code>MaxTransfersPerHost</code></a>
+
+<p>
+<hr>
+<h2><a name="StoreUniquePrefix">StoreUniquePrefix</a></h2>
+<strong>Syntax:</strong> StoreUniquePrefix <em>prefix</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.2.6rc1 and later
+
+<p>
+The <code>StoreUniquePrefix</code> directive is used to configure a
+<em>prefix</em> for the generated unique random filenames used for the STOU
+FTP command.  The last six characters of the filename will be random.
+<b>Note</b>: Slash (/) characters are <b>not</b> allowed in the <em>prefix</em>
+value.
+
+<p>
+<hr>
 <h2><a name="TimeoutNoTransfer">TimeoutNoTransfer</a></h2>
 <strong>Syntax:</strong> TimeoutNoTransfer <em>seconds</em><br>
 <strong>Default:</strong> 300 seconds<br>
