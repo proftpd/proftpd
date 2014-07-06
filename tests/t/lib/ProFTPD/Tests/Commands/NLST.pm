@@ -42,9 +42,14 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  nlst_ok_glob => {
+  nlst_ok_glob_file => {
     order => ++$order,
     test_class => [qw(forking)],
+  },
+
+  nlst_ok_glob_dir_bug4084 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
   },
 
   nlst_fails_login_required => {
@@ -823,49 +828,18 @@ sub nlst_ok_no_path {
   unlink($log_file);
 }
 
-sub nlst_ok_glob {
+sub nlst_ok_glob_file {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -874,7 +848,8 @@ sub nlst_ok_glob {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -892,8 +867,7 @@ sub nlst_ok_glob {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->nlst_raw("*.conf");
       unless ($conn) {
@@ -930,7 +904,7 @@ sub nlst_ok_glob {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -940,18 +914,129 @@ sub nlst_ok_glob {
   }
 
   # Stop server
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
+  test_cleanup($setup->{log_file}, $ex);
+}
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+sub nlst_ok_glob_dir_bug4084 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-    die($ex);
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($sub_dir);
+
+  my $sub_file = File::Spec->rel2abs("$sub_dir/test.dat");
+  if (open(my $fh, "> $sub_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $sub_file: $!");
   }
 
-  unlink($log_file);
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->nlst_raw("*");
+      unless ($conn) {
+        die("NLST failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
+
+      $client->quit();
+
+      my $res = {};
+      my $names = [split(/\n/, $buf)];
+      foreach my $name (@$names) {
+        $res->{$name} = 1;
+      }
+
+      my $expected = {
+        'cmds.pid' => 1,
+        'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
+        'cmds.group' => 1,
+        'cmds.passwd' => 1,
+        'cmds.conf' => 1,
+        'test.d' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+      foreach my $name (keys(%$res)) {
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub nlst_fails_login_required {
