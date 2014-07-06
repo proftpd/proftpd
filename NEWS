@@ -36,6 +36,7 @@ Git
 - Bug 4079 - Invalid response encoding for SFTP space-available request.
 - Bug 4080 - mod_sftp does not implement SFTP LINK request properly.
 - Bug 4083 - Using SQLDefaultHomedir with null home results in "No such user".
+- Bug 4084 - "NLST *" returns files from subdirectories.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
