@@ -2369,6 +2369,37 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      strncasecmp(tag, "file-modified", 14) == 0) {
+    char *modified;
+
+    modified = pr_table_get(cmd->notes, "mod_xfer.file-modified", NULL);
+    if (modified) {
+      long_tag = pstrdup(cmd->tmp_pool, modified);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "false");
+    }
+  }
+
+  if (long_tag == NULL &&
+      strncasecmp(tag, "file-offset", 12) == 0) {
+    off_t *offset;
+
+    offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
+    if (offset) {
+      char offset_str[1024];
+
+      memset(offset_str, '\0', sizeof(offset_str));
+      snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
+        (pr_off_t) *offset);
+      long_tag = pstrdup(cmd->tmp_pool, offset_str);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
+  }
+
+  if (long_tag == NULL &&
       strncasecmp(tag, "iso8601", 8) == 0) {
     char buf[32];
     struct timeval now;

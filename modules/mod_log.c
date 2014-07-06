@@ -1710,7 +1710,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
         memset(offset_str, '\0', sizeof(offset_str));
         snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
-          (pr_off_t) offset);
+          (pr_off_t) *offset);
         sstrncpy(argp, offset_str, sizeof(arg));
 
       } else {
