@@ -6426,9 +6426,8 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
     int xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error %s symlinking '%s' to '%s': %s",
-      is_symlink ? "symlinking" : "linking", target_path, link_path,
-      strerror(xerrno));
+      "error %s '%s' to '%s': %s", is_symlink ? "symlinking" : "linking",
+      target_path, link_path, strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
