@@ -262,7 +262,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     if (sftp_keystore_verify_user_key(pkt->pool, user, pubkey_data,
         pubkey_len) < 0) {
       *send_userauth_fail = TRUE;
-      errno = EPERM;
+      errno = EACCES;
       return 0;
     }
 
@@ -305,7 +305,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
         "failed to verify '%s' signature on public key auth request for "
         "user '%s'", pubkey_algo, orig_user);
       *send_userauth_fail = TRUE;
-      errno = EPERM;
+      errno = EACCES;
       return 0;
     }
   }

@@ -171,7 +171,7 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   if (sftp_blacklist_reject_key(pkt->pool, hostkey_data, hostkey_datalen)) {
     *send_userauth_fail = TRUE;
-    errno = EPERM;
+    errno = EACCES;
     return 0;
   }
 
@@ -183,7 +183,7 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   if (sftp_keystore_verify_host_key(pkt->pool, user, host_fqdn, host_user,
       hostkey_data, hostkey_datalen) < 0) {
     *send_userauth_fail = TRUE;
-    errno = EPERM;
+    errno = EACCES;
     return 0;
   }
 
