@@ -39,6 +39,8 @@ Git
 - Bug 4084 - "NLST *" returns files from subdirectories.
 - Bug 4081 - Not possible to create relative symlinks with SFTP.
 - Bug 4087 - mod_sftp does not handle "MaxLoginAttempts none" properly.
+- Bug 4089 - mod_sftp does not allow multiple attempts using a given
+  authentication method.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
