@@ -42,6 +42,8 @@ Git
 - Bug 4089 - mod_sftp does not allow multiple attempts using a given
   authentication method.
 - Bug 4090 - mod_wrap2_file does not support IPv6 addresses properly.
+- Bug 4091 - Log "Operation not permitted" privs errors at NOTICE rather than
+  ERROR.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
