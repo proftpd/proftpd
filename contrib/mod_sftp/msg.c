@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,6 @@
 # include <execinfo.h>
 #endif
 
-
 #ifdef PR_USE_OPENSSL_ECC
 /* Max GFp field length = 528 bits.  SEC1 uncompressed encoding uses 2
  * bitstring points.  SEC1 specifies a 1 byte point type header.
@@ -47,6 +46,8 @@
  * caller-provided pool.
  */
 static unsigned char msg_buf[8 * 1024];
+
+static const char *trace_channel = "ssh2";
 
 static void log_stacktrace(void) {
 #if defined(HAVE_EXECINFO_H) && \
@@ -137,6 +138,10 @@ unsigned char *sftp_msg_read_data(pool *p, unsigned char **buf,
       "(buflen = %lu)", (unsigned long) datalen, (unsigned long) *buflen);
     log_stacktrace();
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  if (datalen == 0) {
+    return NULL;
   }
 
   data = palloc(p, datalen);
@@ -251,6 +256,16 @@ char *sftp_msg_read_string(pool *p, unsigned char **buf, uint32_t *buflen) {
   uint32_t len = 0;
   char *str = NULL;
 
+  /* If there is no data remaining, treat this as if the string is empty
+   * (see Bug#4093).
+   */
+  if (*buflen == 0) {
+    pr_trace_msg(trace_channel, 9,
+      "malformed message format (buflen = %lu) for reading string, using \"\"",
+      (unsigned long) *buflen);
+    return "";
+  }
+
   len = sftp_msg_read_int(p, buf, buflen);
 
   /* We can't use sftp_msg_read_data() here, since we need to allocate and
@@ -282,13 +297,6 @@ EC_POINT *sftp_msg_read_ecpoint(pool *p, unsigned char **buf, uint32_t *buflen,
   BN_CTX *bn_ctx;
   unsigned char *data = NULL;
   uint32_t datalen = 0;
-
-  bn_ctx = BN_CTX_new();
-  if (bn_ctx == NULL) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error allocating new BN_CTX: %s", sftp_crypto_get_errors());
-    return NULL;
-  }
 
   datalen = sftp_msg_read_int(p, buf, buflen);
 
@@ -324,11 +332,19 @@ EC_POINT *sftp_msg_read_ecpoint(pool *p, unsigned char **buf, uint32_t *buflen,
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
+  bn_ctx = BN_CTX_new();
+  if (bn_ctx == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error allocating new BN_CTX: %s", sftp_crypto_get_errors());
+    return NULL;
+  }
+
   if (EC_POINT_oct2point(curve, point, data, datalen, bn_ctx) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to convert binary EC point data: %s",
       sftp_crypto_get_errors());
     log_stacktrace();
+    BN_CTX_free(bn_ctx);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 

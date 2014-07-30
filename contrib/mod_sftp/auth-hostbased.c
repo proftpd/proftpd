@@ -64,6 +64,14 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   }
 
   hostkey_algo = sftp_msg_read_string(pkt->pool, buf, buflen);
+  if (hostkey_algo == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "missing required host key algorithm, rejecting request");
+
+    *send_userauth_fail = TRUE;
+    errno = EINVAL;
+    return 0;
+  }
 
   hostkey_datalen = sftp_msg_read_int(pkt->pool, buf, buflen);
   hostkey_data = sftp_msg_read_data(pkt->pool, buf, buflen, hostkey_datalen);
