@@ -774,6 +774,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
         res = setsockopt(c->listen_fd, ip_level, IPV6_TCLASS, (void *) &tos,
           sizeof(tos));
         if (res < 0
+            && errno != EINVAL
 #ifdef ENOPROTOOPT
             && errno != ENOPROTOOPT
 #endif /* !ENOPROTOOPT */
