@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp keystores
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -163,6 +163,14 @@ int sftp_keystore_verify_host_key(pool *p, const char *user,
   int res = -1;
   config_rec *c;
 
+  if (host_fqdn == NULL ||
+      host_user == NULL ||
+      key_data == NULL ||
+      key_len == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedHostKeys",
     FALSE);
   if (c == NULL) {
@@ -263,6 +271,12 @@ int sftp_keystore_verify_user_key(pool *p, const char *user,
   register unsigned int i;
   int res = -1;
   config_rec *c;
+
+  if (key_data == NULL ||
+      key_len == 0) {
+    errno = EINVAL;
+    return -1;
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedUserKeys",
     FALSE);
