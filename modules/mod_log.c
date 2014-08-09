@@ -1783,8 +1783,11 @@ MODRET log_any(cmd_rec *cmd) {
   for (lf = logs; lf; lf = lf->next) {
     int log_cmd = FALSE;
 
-    /* Skip any unopened files (obviously). */
-    if (lf->lf_fd < 0) {
+    /* Skip any unopened files (obviously); make sure that special fd
+     * for syslog is NOT skipped, though.
+     */
+    if (lf->lf_fd < 0 &&
+        lf->lf_fd != EXTENDED_LOG_SYSLOG) {
       continue;
     }
 
