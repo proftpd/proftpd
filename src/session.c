@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2013 The ProFTPD Project team
+ * Copyright (c) 2009-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -285,6 +285,11 @@ void pr_session_send_banner(server_rec *s, int flags) {
       if (strstr(server_ident, "%v") != NULL) {
         server_ident = sreplace(session.pool, server_ident, "%v",
           main_server->ServerName, NULL);
+      }
+
+      if (strstr(server_ident, "%{version}") != NULL) {
+        server_ident = sreplace(session.pool, server_ident, "%{version}",
+          PROFTPD_VERSION_TEXT, NULL);
       }
 
       if (flags & PR_DISPLAY_FL_SEND_NOW) {
