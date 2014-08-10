@@ -103,7 +103,7 @@ sub tls_sess_cache_shm {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'tls_shmcache:20',
+    Trace => 'tls.shmcache:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,

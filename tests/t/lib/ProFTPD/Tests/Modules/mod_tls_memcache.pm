@@ -128,7 +128,7 @@ sub tls_sess_cache_memcache {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'memcache:30 tls_memcache:20',
+    Trace => 'memcache:30 tls.memcache:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,

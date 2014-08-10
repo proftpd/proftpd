@@ -125,6 +125,21 @@ from <code>NIS</code> maps or <code>NSS</code> lookups, and local users.
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_auth_unix</code> module is compiled by default.
 
+<p>
+<b>Logging</b><br>
+The <code>mod_auth_unix</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>auth.unix
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace auth.unix:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 
@@ -203,7 +218,7 @@ Last Updated: <i>$Date: 2013-09-29 23:28:02 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2010-2013<br>
+&copy; Copyright 2010-2014<br>
  All Rights Reserved<br>
 </i></b></font>
 

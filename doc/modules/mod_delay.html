@@ -219,6 +219,21 @@ IP address ranges.  For example:
 </pre>
 More information on defining classes can be found <a href="../howto/Classes.html">here</a>.
 
+<p>
+<b>Logging</b><br>
+The <code>mod_delay</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>delay
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace delay:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 

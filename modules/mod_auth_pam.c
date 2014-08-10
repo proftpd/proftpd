@@ -81,7 +81,7 @@ static int		pam_conv_error		= 0;
 static unsigned long auth_pam_opts = 0UL;
 #define AUTH_PAM_OPT_NO_TTY	0x0001
 
-static const char *trace_channel = "pam";
+static const char *trace_channel = "auth.pam";
 
 /* On non-Solaris systems, the struct pam_message argument is declared
  * const, but on Solaris, it isn't.  To avoid compiler warnings about

@@ -336,6 +336,21 @@ of DSO modules, use the <code>--enable-dso</code> configure option:
 This option causes <code>mod_dso</code> to be compiled into
 <code>proftpd</code>.
 
+<p>
+<b>Logging</b><br>
+The <code>mod_dso</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>dso
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace dso:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 
@@ -450,7 +465,7 @@ Last Updated: <i>$Date: 2013-05-09 03:58:40 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2013 TJ Saunders<br>
+&copy; Copyright 2004-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
