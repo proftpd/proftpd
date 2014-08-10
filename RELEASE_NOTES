@@ -15,9 +15,13 @@ ChangeLog files.
 
   + New Configuration Directives:
 
+    DelayOnEvent (Bug#4020)
+
     ExecEnable (Bug#4076)
 
   + Changed Configuration Directives
+
+    DelayTable none (Bug#4020)
 
     ExtendedLog SSH, SFTP classes, ! notation (Bug#4067)
       Note that existing ExtendedLogs that expect to see the SFTP requests will
