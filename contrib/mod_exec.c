@@ -675,6 +675,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       fd_set readfds;
       struct timeval tv;
       time_t start_time = time(NULL);
+      pool *tmp_pool = cmd ? cmd->tmp_pool : make_sub_pool(session.pool);
 
       /* We set the result value to zero initially, so that at least one
        * pass through the stdout/stderr reading code happens.
@@ -751,15 +752,17 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         }
 
         if (fds >= 0) {
-          int buflen;
-          char buf[PIPE_BUF];
+          long buflen, bufsz;
+          char *buf;
+
+          buf = pr_fsio_getpipebuf(tmp_pool, exec_stdout_pipe[0], &bufsz);
 
           /* The child sent us something.  How thoughtful. */
 
           if (FD_ISSET(exec_stdout_pipe[0], &readfds)) {
-            memset(buf, '\0', sizeof(buf));
+            memset(buf, '\0', bufsz);
 
-            buflen = read(exec_stdout_pipe[0], buf, sizeof(buf)-1);
+            buflen = read(exec_stdout_pipe[0], buf, bufsz-1);
             if (buflen > 0) {
               if (exec_opts & EXEC_OPT_SEND_STDOUT) {
 
@@ -806,9 +809,9 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
           }
 
           if (FD_ISSET(exec_stderr_pipe[0], &readfds)) {
-            memset(buf, '\0', sizeof(buf));
+            memset(buf, '\0', bufsz);
 
-            buflen = read(exec_stderr_pipe[0], buf, sizeof(buf)-1);
+            buflen = read(exec_stderr_pipe[0], buf, bufsz-1);
             if (buflen > 0) {
 
               /* Trim trailing CRs and LFs. */
@@ -841,6 +844,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         }
 
         res = waitpid(pid, &status, WNOHANG);
+      }
+
+      if (cmd == NULL) {
+        destroy_pool(tmp_pool);
       }
 
     } else {

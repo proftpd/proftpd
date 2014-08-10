@@ -4479,6 +4479,40 @@ int pr_fsio_chroot(const char *path) {
   return res;
 }
 
+char *pr_fsio_getpipebuf(pool *p, int fd, long *bufsz) {
+  char *buf = NULL;
+  long buflen;
+
+  if (p == NULL) {
+    errno == EINVAL;
+    return NULL;
+  }
+
+#if defined(PIPE_BUF)
+  buflen = PIPE_BUF;
+
+#elif defined(HAVE_FPATHCONF)
+  /* Some platforms do not define a PIPE_BUF constant.  For them, we need
+   * to use fpathconf(2), if available.
+   */
+  buflen = fpathconf(fd, _PC_PIPE_BUF);
+  if (buflen < 0) {
+    return NULL;
+  }
+
+#else
+  errno = ENOSYS;
+  return NULL;
+#endif
+
+  if (bufsz != NULL) {
+    *bufsz = buflen;
+  }
+
+  buf = palloc(p, buflen);
+  return buf;
+}
+
 char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
   char *bp = NULL;
   int toread = 0;

@@ -291,6 +291,7 @@ int pr_fsio_set_use_mkdtemp(int);
 /* FS-related functions */
 
 char *pr_fsio_getline(char *, int, pr_fh_t *, unsigned int *);
+char *pr_fsio_getpipebuf(pool *, int, long *);
 char *pr_fsio_gets(char *, size_t, pr_fh_t *);
 int pr_fsio_puts(const char *, pr_fh_t *);
 int pr_fsio_set_block(pr_fh_t *);

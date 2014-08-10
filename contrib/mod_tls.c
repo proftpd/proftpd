@@ -1786,11 +1786,14 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         }
 
         if (FD_ISSET(stderr_pipe[0], &readfds)) {
-          int stderrlen;
-          char stderrbuf[PIPE_BUF];
+          long stderrlen, stderrsz;
+          char *stderrbuf;
+          pool *tmp_pool = make_sub_pool(s->pool);
 
-          memset(stderrbuf, '\0', sizeof(stderrbuf));
-          stderrlen = read(stderr_pipe[0], stderrbuf, sizeof(stderrbuf)-1);
+          stderrbuf = pr_fsio_getpipebuf(tmp_pool, stderr_pipe[0], &stderrsz);
+          memset(stderrbuf, '\0', stderrsz);
+
+          stderrlen = read(stderr_pipe[0], stderrbuf, stderrsz-1);
           if (stderrlen > 0) {
             while (stderrlen &&
                    (stderrbuf[stderrlen-1] == '\r' ||
@@ -1807,6 +1810,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
               ": error reading stderr from '%s': %s",
               tls_passphrase_provider, strerror(errno));
           }
+
+          destroy_pool(tmp_pool);
+          tmp_pool = NULL;
         }
       }
 
