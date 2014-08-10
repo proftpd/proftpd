@@ -135,6 +135,24 @@ well:
   &lt;/IfModule&gt;
 </pre>
 
+<p>
+<b>Logging</b><br>
+The <code>mod_deflate</code> module supports different forms of logging.  The
+main module logging is done via the <code>DeflateLog</code> directive.
+For debugging purposes, the module also uses <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific log
+channels:
+<ul>
+  <li>deflate
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace deflate:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 
@@ -195,7 +213,7 @@ Last Updated: <i>$Date: 2013-08-14 21:40:17 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2006-2013 TJ Saunders<br>
+&copy; Copyright 2006-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

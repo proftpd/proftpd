@@ -69,6 +69,22 @@ If memcache support has not been enabled in your proftpd, this configuration
 </pre>
 
 <p>
+<b>Logging</b><br>
+The <code>mod_tls_memcache</code> module supports <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific log
+channels:
+<ul>
+  <li>tls.memcache
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace tls.memcache:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
+<p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_tls_memcache</code> module is distributed with the ProFTPD
@@ -97,7 +113,7 @@ Last Updated: <i>$Date: 2011-02-16 00:27:50 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2011 TJ Saunders<br>
+&copy; Copyright 2011-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

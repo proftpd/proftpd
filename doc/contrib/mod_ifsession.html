@@ -313,6 +313,21 @@ module:
 </pre>
 
 <p>
+<b>Logging</b><br>
+The <code>mod_ifsession</code> module supports <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>ifsession
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace ifsession:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
+<p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
@@ -321,7 +336,7 @@ Last Updated: <i>$Date: 2013-08-14 21:40:17 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2013 TJ Saunders<br>
+&copy; Copyright 2000-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

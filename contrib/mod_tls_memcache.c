@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_memcache -- a module which provides a shared SSL session
  *                              cache using memcached servers
  *
- * Copyright (c) 2011-2013 TJ Saunders
+ * Copyright (c) 2011-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -114,7 +114,7 @@ static array_header *tls_mcache_sess_list = NULL;
 /* For communicating with memcached servers for shared session data. */
 static pr_memcache_t *mcache = NULL;
 
-static const char *trace_channel = "tls_memcache";
+static const char *trace_channel = "tls.memcache";
 
 static int tls_mcache_close(tls_sess_cache_t *);
 

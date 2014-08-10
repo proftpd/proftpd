@@ -86,6 +86,22 @@ Use of these <code>SITE</code> command can be controlled via
 <p>
 See also: <a href="#SITE_CPFR">SITE CPFR</a>
 
+<p>
+<b>Logging</b><br>
+The <code>mod_copy</code> module supports <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific log
+channels:
+<ul>
+  <li>copy
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace copy:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 To install <code>mod_copy</code>, copy the <code>mod_copy.c</code> file into:
@@ -124,7 +140,7 @@ Last Updated: <i>$Date: 2010-03-10 19:20:43 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2009-2010 TJ Saunders<br>
+&copy; Copyright 2009-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

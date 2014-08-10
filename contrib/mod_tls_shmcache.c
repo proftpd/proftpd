@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_shmcache -- a module which provides a shared SSL session
  *                              cache using SysV shared memory
  *
- * Copyright (c) 2009-2013 TJ Saunders
+ * Copyright (c) 2009-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

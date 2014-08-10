@@ -77,7 +77,7 @@ static int sql_passwd_pbkdf2_len = -1;
 #define SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS		-3
 #define SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH		-4
 
-static const char *trace_channel = "sql_passwd";
+static const char *trace_channel = "sql.passwd";
 
 static cmd_rec *sql_passwd_cmd_create(pool *parent_pool, int argc, ...) {
   pool *cmd_pool = NULL;

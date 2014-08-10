@@ -128,6 +128,22 @@ sure that this module is loaded <i>after</i> the <code>mod_tls</code> module,
 <hr>
 <h2><a name="Usage">Usage</a></h2>
 
+<p>
+<b>Logging</b><br>
+The <code>mod_tls_shmcache</code> module supports <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific log
+channels:
+<ul>
+  <li>tls.shmcache
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace tls.shmcache:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 
@@ -164,7 +180,7 @@ Last Updated: <i>$Date: 2013-11-05 21:33:21 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2009-2013 TJ Saunders<br>
+&copy; Copyright 2009-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
