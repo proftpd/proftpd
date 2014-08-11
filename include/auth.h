@@ -138,7 +138,7 @@ int pr_auth_clear_auth_only_modules(void);
 void pr_auth_cache_clear(void);
 
 /* Enable caching of certain data within the Auth API. */
-int pr_auth_cache_set(int onoff, unsigned int flags);
+int pr_auth_cache_set(int enable, unsigned int flags);
 #define PR_AUTH_CACHE_FL_UID2NAME	0x00001
 #define PR_AUTH_CACHE_FL_GID2NAME	0x00002
 #define PR_AUTH_CACHE_FL_AUTH_MODULE	0x00004

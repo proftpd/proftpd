@@ -735,6 +735,10 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
     uidcache_add(res->pw_uid, res->pw_name);
   }
 
+  if (auth_caching & PR_AUTH_CACHE_FL_NAME2UID) {
+    usercache_add(res->pw_name, res->pw_uid);
+  }
+
   /* Get the (possibly rewritten) home directory. */
   res->pw_dir = pr_auth_get_home(p, res->pw_dir);
 
@@ -826,6 +830,10 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
 
   if (auth_caching & PR_AUTH_CACHE_FL_GID2NAME) {
     gidcache_add(res->gr_gid, name);
+  }
+
+  if (auth_caching & PR_AUTH_CACHE_FL_NAME2GID) {
+    groupcache_add(name, res->gr_gid);
   }
 
   pr_log_debug(DEBUG10, "retrieved GID %lu for group '%s'",
