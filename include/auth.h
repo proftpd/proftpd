@@ -134,11 +134,32 @@ int pr_auth_remove_auth_only_module(const char *);
  */
 int pr_auth_clear_auth_only_modules(void);
 
+/* Clears any cached IDs/names. */
+void pr_auth_cache_clear(void);
+
 /* Enable caching of certain data within the Auth API. */
-int pr_auth_cache_set(int, unsigned int);
+int pr_auth_cache_set(int onoff, unsigned int flags);
 #define PR_AUTH_CACHE_FL_UID2NAME	0x00001
 #define PR_AUTH_CACHE_FL_GID2NAME	0x00002
 #define PR_AUTH_CACHE_FL_AUTH_MODULE	0x00004
+#define PR_AUTH_CACHE_FL_NAME2UID	0x00008
+#define PR_AUTH_CACHE_FL_NAME2GID	0x00010
+#define PR_AUTH_CACHE_FL_BAD_UID2NAME	0x00020
+#define PR_AUTH_CACHE_FL_BAD_GID2NAME	0x00040
+#define PR_AUTH_CACHE_FL_BAD_NAME2UID	0x00080
+#define PR_AUTH_CACHE_FL_BAD_NAME2GID	0x00100
+
+/* Default Auth API cache flags/settings. */
+#define PR_AUTH_CACHE_FL_DEFAULT \
+  (PR_AUTH_CACHE_FL_UID2NAME|\
+   PR_AUTH_CACHE_FL_GID2NAME|\
+   PR_AUTH_CACHE_FL_AUTH_MODULE|\
+   PR_AUTH_CACHE_FL_NAME2UID|\
+   PR_AUTH_CACHE_FL_NAME2GID|\
+   PR_AUTH_CACHE_FL_BAD_UID2NAME|\
+   PR_AUTH_CACHE_FL_BAD_GID2NAME|\
+   PR_AUTH_CACHE_FL_BAD_NAME2UID|\
+   PR_AUTH_CACHE_FL_BAD_NAME2GID)
 
 /* Wrapper function for retrieving the user's home directory.  This handles
  * any possible RewriteHome configuration.

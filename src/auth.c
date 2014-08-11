@@ -32,7 +32,8 @@
 #include "privs.h"
 
 static pool *auth_pool = NULL;
-static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *gid_tab = NULL;
+static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *user_tab = NULL,
+  *gid_tab = NULL, *group_tab = NULL;
 static xaset_t *auth_module_list = NULL;
 
 struct auth_module_elt {
@@ -45,7 +46,7 @@ static const char *trace_channel = "auth";
 /* Caching of ID-to-name lookups, for both UIDs and GIDs, is enabled by
  * default.
  */
-static unsigned int auth_caching = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME|PR_AUTH_CACHE_FL_AUTH_MODULE;
+static unsigned int auth_caching = PR_AUTH_CACHE_FL_DEFAULT;
 
 /* Key comparison callback for the uidcache and gidcache. */
 static int uid_keycmp_cb(const void *key1, size_t keysz1,
@@ -84,9 +85,8 @@ static unsigned int gid_hash_cb(const void *key, size_t keysz) {
 }
 
 static void uidcache_create(void) {
-  if ((auth_caching & PR_AUTH_CACHE_FL_UID2NAME) &&
-      !uid_tab &&
-      auth_pool) {
+  if (uid_tab == NULL &&
+      auth_pool != NULL) {
     int ok = TRUE;
 
     uid_tab = pr_table_alloc(auth_pool, 0);
@@ -117,19 +117,16 @@ static void uidcache_create(void) {
 }
 
 static void uidcache_add(uid_t uid, const char *name) {
-  if (!(auth_caching & PR_AUTH_CACHE_FL_UID2NAME)) {
-    return;
-  }
-
   uidcache_create();
 
-  if (uid_tab) {
+  if (uid_tab != NULL) {
     int count;
 
     (void) pr_table_rewind(uid_tab);
     count = pr_table_kexists(uid_tab, (const void *) &uid, sizeof(uid_t));
     if (count <= 0) {
       uid_t *cache_uid;
+      size_t namelen;
 
       /* Allocate memory for a UID out of the ID cache pool, so that this
        * UID can be used as a key.
@@ -137,8 +134,10 @@ static void uidcache_add(uid_t uid, const char *name) {
       cache_uid = palloc(auth_pool, sizeof(uid_t));
       *cache_uid = uid;
 
+      namelen = strlen(name);
+
       if (pr_table_kadd(uid_tab, (const void *) cache_uid, sizeof(uid_t),
-          pstrdup(auth_pool, name), strlen(name) + 1) < 0 &&
+          pstrndup(auth_pool, name, namelen), namelen + 1) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
           "error adding name '%s' for UID %lu to the uidcache: %s", name,
@@ -153,10 +152,32 @@ static void uidcache_add(uid_t uid, const char *name) {
   }
 }
 
+static int uidcache_get(uid_t uid, char *name, size_t namesz) {
+  if (uid_tab != NULL) {
+    void *v = NULL;
+
+    v = pr_table_kget(uid_tab, (const void *) &uid, sizeof(uid_t), NULL);
+    if (v) {
+      memset(name, '\0', namesz);
+      sstrncpy(name, v, namesz);
+
+      pr_trace_msg(trace_channel, 8,
+       "using name '%s' from uidcache for UID %lu", name, (unsigned long) uid);
+      return 0;
+    }
+
+   pr_trace_msg(trace_channel, 9,
+      "no value found in uidcache for UID %lu: %s", (unsigned long) uid,
+      strerror(errno));
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
 static void gidcache_create(void) {
-  if ((auth_caching & PR_AUTH_CACHE_FL_GID2NAME) &&
-      !gid_tab &&
-      auth_pool) {
+  if (gid_tab == NULL&&
+      auth_pool != NULL) {
     int ok = TRUE;
 
     gid_tab = pr_table_alloc(auth_pool, 0);
@@ -187,19 +208,16 @@ static void gidcache_create(void) {
 }
 
 static void gidcache_add(gid_t gid, const char *name) {
-  if (!(auth_caching & PR_AUTH_CACHE_FL_GID2NAME)) {
-    return;
-  }
-
   gidcache_create();
 
-  if (gid_tab) {
+  if (gid_tab != NULL) {
     int count;
 
     (void) pr_table_rewind(gid_tab);
     count = pr_table_kexists(gid_tab, (const void *) &gid, sizeof(gid_t));
     if (count <= 0) {
       gid_t *cache_gid;
+      size_t namelen;
 
       /* Allocate memory for a GID out of the ID cache pool, so that this
        * GID can be used as a key.
@@ -207,8 +225,10 @@ static void gidcache_add(gid_t gid, const char *name) {
       cache_gid = palloc(auth_pool, sizeof(gid_t));
       *cache_gid = gid;
 
+      namelen = strlen(name);
+
       if (pr_table_kadd(gid_tab, (const void *) cache_gid, sizeof(gid_t),
-          pstrdup(auth_pool, name), strlen(name) + 1) < 0 &&
+          pstrndup(auth_pool, name, namelen), namelen + 1) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
           "error adding name '%s' for GID %lu to the gidcache: %s", name,
@@ -221,6 +241,155 @@ static void gidcache_add(gid_t gid, const char *name) {
       }
     }
   }
+}
+
+static int gidcache_get(gid_t gid, char *name, size_t namesz) {
+  if (gid_tab != NULL) {
+    void *v = NULL;
+
+    v = pr_table_kget(gid_tab, (const void *) &gid, sizeof(gid_t), NULL);
+    if (v) {
+      memset(name, '\0', namesz);
+      sstrncpy(name, v, namesz);
+
+      pr_trace_msg(trace_channel, 8,
+       "using name '%s' from gidcache for GID %lu", name, (unsigned long) gid);
+      return 0;
+    }
+
+   pr_trace_msg(trace_channel, 9,
+      "no value found in gidcache for GID %lu: %s", (unsigned long) gid,
+      strerror(errno));
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
+static void usercache_create(void) {
+  if (user_tab == NULL &&
+      auth_pool != NULL) {
+    user_tab = pr_table_alloc(auth_pool, 0);
+  }
+}
+
+static void usercache_add(const char *name, uid_t uid) {
+  usercache_create();
+
+  if (user_tab != NULL) {
+    int count;
+
+    (void) pr_table_rewind(user_tab);
+    count = pr_table_exists(user_tab, name);
+    if (count <= 0) {
+      const char *cache_name;
+      uid_t *cache_key;
+
+      /* Allocate memory for a key out of the ID cache pool, so that this
+       * name can be used as a key.
+       */
+      cache_name = pstrdup(auth_pool, name); 
+      cache_key = palloc(auth_pool, sizeof(uid_t));
+      *cache_key = uid;
+
+      if (pr_table_add(user_tab, cache_name, cache_key, sizeof(uid_t)) < 0 &&
+          errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error adding UID %lu for user '%s' to the usercache: %s",
+          (unsigned long) uid, name, strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 5,
+          "stashed UID %lu for user '%s' in the usercache",
+          (unsigned long) uid, name);
+      }
+    }
+  }
+}
+
+static int usercache_get(const char *name, uid_t *uid) {
+  if (user_tab != NULL) {
+    void *v = NULL;
+
+    v = pr_table_get(user_tab, name, NULL);
+    if (v != NULL) {
+      *uid = *((uid_t *) v);
+
+      pr_trace_msg(trace_channel, 8,
+       "using UID %lu for user '%s' from usercache", (unsigned long) *uid,
+       name);
+      return 0;
+    }
+
+   pr_trace_msg(trace_channel, 9,
+      "no value found in usercache for user '%s': %s", name, strerror(errno));
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
+static void groupcache_create(void) {
+  if (group_tab == NULL &&
+      auth_pool != NULL) {
+    group_tab = pr_table_alloc(auth_pool, 0);
+  }
+}
+
+static void groupcache_add(const char *name, gid_t gid) {
+  groupcache_create();
+
+  if (group_tab != NULL) {
+    int count;
+
+    (void) pr_table_rewind(group_tab);
+    count = pr_table_exists(group_tab, name);
+    if (count <= 0) {
+      const char *cache_name;
+      gid_t *cache_key;
+
+      /* Allocate memory for a key out of the ID cache pool, so that this
+       * name can be used as a key.
+       */
+      cache_name = pstrdup(auth_pool, name); 
+      cache_key = palloc(auth_pool, sizeof(gid_t));
+      *cache_key = gid;
+
+      if (pr_table_add(group_tab, cache_name, cache_key, sizeof(gid_t)) < 0 &&
+          errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error adding GID %lu for group '%s' to the groupcache: %s",
+          (unsigned long) gid, name, strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 5,
+          "stashed GID %lu for group '%s' in the groupcache",
+          (unsigned long) gid, name);
+      }
+    }
+  }
+}
+
+static int groupcache_get(const char *name, gid_t *gid) {
+  if (group_tab != NULL) {
+    void *v = NULL;
+
+    v = pr_table_get(group_tab, name, NULL);
+    if (v) {
+      *gid = *((gid_t *) v);
+
+      pr_trace_msg(trace_channel, 8,
+       "using GID %lu for group '%s' from groupcache", (unsigned long) *gid,
+       name);
+      return 0;
+    }
+
+   pr_trace_msg(trace_channel, 9,
+      "no value found in groupcache for group '%s': %s", name, strerror(errno));
+  }
+
+  errno = ENOENT;
+  return -1;
 }
 
 /* The difference between this function, and pr_cmd_alloc(), is that this
@@ -562,7 +731,9 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
     }
   }
 
-  uidcache_add(res->pw_uid, res->pw_name);
+  if (auth_caching & PR_AUTH_CACHE_FL_UID2NAME) {
+    uidcache_add(res->pw_uid, res->pw_name);
+  }
 
   /* Get the (possibly rewritten) home directory. */
   res->pw_dir = pr_auth_get_home(p, res->pw_dir);
@@ -653,7 +824,9 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
     return NULL;
   }
 
-  gidcache_add(res->gr_gid, name);
+  if (auth_caching & PR_AUTH_CACHE_FL_GID2NAME) {
+    gidcache_add(res->gr_gid, name);
+  }
 
   pr_log_debug(DEBUG10, "retrieved GID %lu for group '%s'",
     (unsigned long) res->gr_gid, name);
@@ -962,10 +1135,11 @@ int pr_auth_requires_pass(pool *p, const char *name) {
 }
 
 const char *pr_auth_uid2name(pool *p, uid_t uid) {
-  static char namebuf[64];
+  static char namebuf[PR_TUNABLE_LOGIN_MAX+1];
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   char *res = NULL;
+  unsigned int cache_lookup_flags = (PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_BAD_UID2NAME);
   int have_name = FALSE;
 
   if (p == NULL) {
@@ -973,29 +1147,12 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
     return NULL;
   }
 
-  memset(namebuf, '\0', sizeof(namebuf));
-
   uidcache_create();
 
-  if ((auth_caching & PR_AUTH_CACHE_FL_UID2NAME) &&
-      uid_tab) {
-    void *v = NULL;
-
-    v = pr_table_kget(uid_tab, (const void *) &uid, sizeof(uid_t), NULL);
-    if (v) {
-      sstrncpy(namebuf, v, sizeof(namebuf));
-
-      pr_trace_msg(trace_channel, 8,
-        "using name '%s' from uidcache for UID %lu", namebuf,
-        (unsigned long) uid);
- 
+  if (auth_caching & cache_lookup_flags) {
+    if (uidcache_get(uid, namebuf, sizeof(namebuf)) == 0) {
       res = namebuf;
       return res;
-
-    } else {
-      pr_trace_msg(trace_channel, 9,
-        "no value found in uidcache for UID %lu: %s", (unsigned long) uid,
-        strerror(errno));
     }
   }
 
@@ -1008,7 +1165,10 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
     sstrncpy(namebuf, res, sizeof(namebuf));
     res = namebuf;
 
-    uidcache_add(uid, res);
+    if (auth_caching & PR_AUTH_CACHE_FL_UID2NAME) {
+      uidcache_add(uid, res);
+    }
+
     have_name = TRUE;
   }
 
@@ -1019,17 +1179,22 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
 
   if (!have_name) {
     snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) uid);
+    res = namebuf;
+
+    if (auth_caching & PR_AUTH_CACHE_FL_BAD_UID2NAME) {
+      uidcache_add(uid, res);
+    }
   }
 
-  res = namebuf;
   return res;
 }
 
 const char *pr_auth_gid2name(pool *p, gid_t gid) {
+  static char namebuf[PR_TUNABLE_LOGIN_MAX+1];
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
-  static char namebuf[64];
   char *res = NULL;
+  unsigned int cache_lookup_flags = (PR_AUTH_CACHE_FL_GID2NAME|PR_AUTH_CACHE_FL_BAD_GID2NAME);
   int have_name = FALSE;
 
   if (p == NULL) {
@@ -1037,29 +1202,12 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
     return NULL;
   }
 
-  memset(namebuf, '\0', sizeof(namebuf));
-
   gidcache_create();
 
-  if ((auth_caching & PR_AUTH_CACHE_FL_GID2NAME) &&
-       gid_tab) {
-    void *v = NULL;
- 
-    v = pr_table_kget(gid_tab, (const void *) &gid, sizeof(gid_t), NULL);
-    if (v) {
-      sstrncpy(namebuf, v, sizeof(namebuf));
-
-      pr_trace_msg(trace_channel, 8,
-        "using name '%s' from gidcache for GID %lu", namebuf,
-        (unsigned long) gid);
-
+  if (auth_caching & cache_lookup_flags) {
+    if (gidcache_get(gid, namebuf, sizeof(namebuf)) == 0) {
       res = namebuf;
       return res;
-
-    } else {
-      pr_trace_msg(trace_channel, 9,
-        "no value found in gidcache for GID %lu: %s", (unsigned long) gid,
-        strerror(errno));
     }
   }
 
@@ -1072,7 +1220,10 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
     sstrncpy(namebuf, res, sizeof(namebuf));
     res = namebuf;
 
-    gidcache_add(gid, res);
+    if (auth_caching & PR_AUTH_CACHE_FL_GID2NAME) {
+      gidcache_add(gid, res);
+    }
+
     have_name = TRUE;
   }
 
@@ -1083,9 +1234,13 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
 
   if (!have_name) {
     snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) gid);
+    res = namebuf;
+
+    if (auth_caching & PR_AUTH_CACHE_FL_BAD_GID2NAME) {
+      gidcache_add(gid, res);
+    }
   }
 
-  res = namebuf;
   return res;
 }
 
@@ -1093,6 +1248,8 @@ uid_t pr_auth_name2uid(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   uid_t res = (uid_t) -1;
+  unsigned int cache_lookup_flags = (PR_AUTH_CACHE_FL_NAME2UID|PR_AUTH_CACHE_FL_BAD_NAME2UID);
+  int have_id = FALSE;
 
   if (p == NULL ||
       name == NULL) {
@@ -1100,11 +1257,34 @@ uid_t pr_auth_name2uid(pool *p, const char *name) {
     return (uid_t) -1;
   }
 
+  usercache_create();
+
+  if (auth_caching & cache_lookup_flags) {
+    uid_t cache_uid;
+
+    if (usercache_get(name, &cache_uid) == 0) {
+      res = cache_uid;
+
+      if (res == (uid_t) -1) {
+        errno = ENOENT;
+      }
+
+      return res;
+    }
+  }
+
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "name2uid", NULL);
 
-  if (MODRET_ISHANDLED(mr)) {
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = *((uid_t *) mr->data);
+
+    if (auth_caching & PR_AUTH_CACHE_FL_NAME2UID) {
+      usercache_add(name, res);
+    }
+
+    have_id = TRUE;
 
   } else {
     errno = ENOENT;
@@ -1113,6 +1293,11 @@ uid_t pr_auth_name2uid(pool *p, const char *name) {
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
+  }
+
+  if (!have_id &&
+      (auth_caching & PR_AUTH_CACHE_FL_BAD_NAME2UID)) {
+    usercache_add(name, res);
   }
 
   return res;
@@ -1122,6 +1307,8 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   gid_t res = (gid_t) -1;
+  unsigned int cache_lookup_flags = (PR_AUTH_CACHE_FL_NAME2GID|PR_AUTH_CACHE_FL_BAD_NAME2GID);
+  int have_id = FALSE;
 
   if (p == NULL ||
       name == NULL) {
@@ -1129,11 +1316,34 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
     return (gid_t) -1;
   }
 
+  groupcache_create();
+
+  if (auth_caching & cache_lookup_flags) {
+    gid_t cache_gid;
+
+    if (groupcache_get(name, &cache_gid) == 0) {
+      res = cache_gid;
+
+      if (res == (gid_t) -1) {
+        errno = ENOENT;
+      }
+
+      return res;
+    }
+  }
+
   cmd = make_cmd(p, 1, name);
   mr = dispatch_auth(cmd, "name2gid", NULL);
 
-  if (MODRET_ISHANDLED(mr)) {
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr)) {
     res = *((gid_t *) mr->data);
+
+    if (auth_caching & PR_AUTH_CACHE_FL_NAME2GID) {
+      groupcache_add(name, res);
+    }
+
+    have_id = TRUE;
 
   } else {
     errno = ENOENT;
@@ -1142,6 +1352,11 @@ gid_t pr_auth_name2gid(pool *p, const char *name) {
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
+  }
+
+  if (!have_id &&
+      (auth_caching & PR_AUTH_CACHE_FL_BAD_NAME2GID)) {
+    groupcache_add(name, res);
   }
 
   return res;
@@ -1636,14 +1851,46 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   return res;
 }
 
-int pr_auth_cache_set(int bool, unsigned int flags) {
-  if (bool != 0 &&
-      bool != 1) {
+void pr_auth_cache_clear(void) {
+  if (auth_tab != NULL) {
+    pr_table_empty(auth_tab);
+    pr_table_free(auth_tab);
+    auth_tab = NULL;
+  }
+
+  if (uid_tab != NULL) {
+    pr_table_empty(uid_tab);
+    pr_table_free(uid_tab);
+    uid_tab = NULL;
+  }
+
+  if (user_tab != NULL) {
+    pr_table_empty(user_tab);
+    pr_table_free(user_tab);
+    user_tab = NULL;
+  }
+
+  if (gid_tab != NULL) {
+    pr_table_empty(gid_tab);
+    pr_table_free(gid_tab);
+    gid_tab = NULL;
+  }
+
+  if (group_tab != NULL) {
+    pr_table_empty(group_tab);
+    pr_table_free(group_tab);
+    group_tab = NULL;
+  }  
+}
+
+int pr_auth_cache_set(int enable, unsigned int flags) {
+  if (enable != FALSE &&
+      enable != TRUE) {
     errno = EINVAL;
     return -1;
   }
 
-  if (bool == 0) {
+  if (enable == FALSE) {
     if (flags & PR_AUTH_CACHE_FL_UID2NAME) {
       auth_caching &= ~PR_AUTH_CACHE_FL_UID2NAME;
       pr_trace_msg(trace_channel, 7, "UID-to-name caching (uidcache) disabled");
@@ -1659,9 +1906,45 @@ int pr_auth_cache_set(int bool, unsigned int flags) {
       pr_trace_msg(trace_channel, 7,
         "auth module caching (authcache) disabled");
     }
+
+    if (flags & PR_AUTH_CACHE_FL_NAME2UID) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_NAME2UID;
+      pr_trace_msg(trace_channel, 7,
+        "name-to-UID caching (usercache) disabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_NAME2GID) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_NAME2GID;
+      pr_trace_msg(trace_channel, 7,
+        "name-to-GID caching (groupcache) disabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_UID2NAME) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_BAD_UID2NAME;
+      pr_trace_msg(trace_channel, 7,
+        "UID-to-name negative caching (uidcache) disabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_GID2NAME) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_BAD_GID2NAME;
+      pr_trace_msg(trace_channel, 7,
+        "GID-to-name negative caching (gidcache) disabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_NAME2UID) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_BAD_NAME2UID;
+      pr_trace_msg(trace_channel, 7,
+        "name-to-UID negative caching (usercache) disabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_NAME2GID) {
+      auth_caching &= ~PR_AUTH_CACHE_FL_BAD_NAME2GID;
+      pr_trace_msg(trace_channel, 7,
+        "name-to-GID negative caching (groupcache) disabled");
+    }
   }
 
-  if (bool == 1) {
+  if (enable == TRUE) {
     if (flags & PR_AUTH_CACHE_FL_UID2NAME) {
       auth_caching |= PR_AUTH_CACHE_FL_UID2NAME;
       pr_trace_msg(trace_channel, 7, "UID-to-name caching (uidcache) enabled");
@@ -1675,6 +1958,41 @@ int pr_auth_cache_set(int bool, unsigned int flags) {
     if (flags & PR_AUTH_CACHE_FL_AUTH_MODULE) {
       auth_caching &= ~PR_AUTH_CACHE_FL_AUTH_MODULE;
       pr_trace_msg(trace_channel, 7, "auth module caching (authcache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_NAME2UID) {
+      auth_caching |= PR_AUTH_CACHE_FL_NAME2UID;
+      pr_trace_msg(trace_channel, 7, "name-to-UID caching (usercache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_NAME2GID) {
+      auth_caching |= PR_AUTH_CACHE_FL_NAME2GID;
+      pr_trace_msg(trace_channel, 7,
+        "name-to-GID caching (groupcache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_UID2NAME) {
+      auth_caching |= PR_AUTH_CACHE_FL_BAD_UID2NAME;
+      pr_trace_msg(trace_channel, 7,
+        "UID-to-name negative caching (uidcache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_GID2NAME) {
+      auth_caching |= PR_AUTH_CACHE_FL_BAD_GID2NAME;
+      pr_trace_msg(trace_channel, 7,
+        "GID-to-name negative caching (gidcache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_NAME2UID) {
+      auth_caching |= PR_AUTH_CACHE_FL_BAD_NAME2UID;
+      pr_trace_msg(trace_channel, 7,
+        "name-to-UID negative caching (usercache) enabled");
+    }
+
+    if (flags & PR_AUTH_CACHE_FL_BAD_NAME2GID) {
+      auth_caching |= PR_AUTH_CACHE_FL_BAD_NAME2GID;
+      pr_trace_msg(trace_channel, 7,
+        "name-to-GID negative caching (groupcache) enabled");
     }
   }
 
