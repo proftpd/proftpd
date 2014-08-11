@@ -122,6 +122,11 @@ MODRET handle_getpwuid(cmd_rec *cmd) {
   return mod_create_data(cmd, &test_pwd);
 }
 
+MODRET decline_name2uid(cmd_rec *cmd) {
+  name2uid_count++;
+  return PR_DECLINED(cmd);
+}
+
 MODRET handle_name2uid(cmd_rec *cmd) {
   const char *name;
 
@@ -133,6 +138,11 @@ MODRET handle_name2uid(cmd_rec *cmd) {
   }
 
   return mod_create_data(cmd, (void *) &(test_pwd.pw_uid));
+}
+
+MODRET decline_uid2name(cmd_rec *cmd) {
+  uid2name_count++;
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_uid2name(cmd_rec *cmd) {
@@ -189,6 +199,11 @@ MODRET handle_getgrgid(cmd_rec *cmd) {
   return mod_create_data(cmd, &test_grp);
 }
 
+MODRET decline_name2gid(cmd_rec *cmd) {
+  name2gid_count++;
+  return PR_DECLINED(cmd);
+}
+
 MODRET handle_name2gid(cmd_rec *cmd) {
   const char *name;
 
@@ -200,6 +215,11 @@ MODRET handle_name2gid(cmd_rec *cmd) {
   }
 
   return mod_create_data(cmd, (void *) &(test_grp.gr_gid));
+}
+
+MODRET decline_gid2name(cmd_rec *cmd) {
+  gid2name_count++;
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_gid2name(cmd_rec *cmd) {
@@ -277,6 +297,8 @@ static void set_up(void) {
   name2gid_count = 0;
   gid2name_count = 0;
   getgroups_count = 0;
+
+  pr_auth_cache_clear();
 }
 
 static void tear_down(void) {
@@ -482,6 +504,8 @@ START_TEST (auth_name2uid_test) {
   authtable authtab;
   char *sym_name = "name2uid";
 
+  pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_NAME2UID);
+
   uid = pr_auth_name2uid(NULL, NULL);
   fail_unless(uid == (uid_t) -1, "Found UID unexpectedly");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
@@ -513,11 +537,12 @@ START_TEST (auth_name2uid_test) {
 
   mark_point();
 
-  uid = pr_auth_name2uid(p, "other");
-  fail_unless(uid == (uid_t) -1, "Found UID for user 'other' unexpectedly");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
-    errno, strerror(errno));
-  fail_unless(name2uid_count == 2, "Expected call count 2, got %u",
+  /* Call again; the call counter should NOT increment due to caching. */
+
+  uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
+  fail_unless(uid == PR_TEST_AUTH_UID, "Expected UID %lu, got %lu",
+    (unsigned long) PR_TEST_AUTH_UID, (unsigned long) uid);
+  fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
     name2uid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
@@ -530,10 +555,13 @@ START_TEST (auth_uid2name_test) {
   authtable authtab;
   char *sym_name = "uid2name";
 
+  pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_UID2NAME);
+
   name = pr_auth_uid2name(NULL, -1);
   fail_unless(name == NULL, "Found name unexpectedly: %s", name);
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
+  mark_point();
 
   name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
   fail_unless(name != NULL, "Failed to find name for UID %lu: %s",
@@ -759,6 +787,8 @@ START_TEST (auth_name2gid_test) {
   authtable authtab;
   char *sym_name = "name2gid";
 
+  pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_NAME2GID);
+
   gid = pr_auth_name2gid(NULL, NULL);
   fail_unless(gid == (gid_t) -1, "Found GID unexpectedly");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
@@ -790,11 +820,12 @@ START_TEST (auth_name2gid_test) {
 
   mark_point();
 
-  gid = pr_auth_name2gid(p, "other");
-  fail_unless(gid == (gid_t) -1, "Found GID for group 'other' unexpectedly");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
-    errno, strerror(errno));
-  fail_unless(name2gid_count == 2, "Expected call count 2, got %u",
+  /* Call again; the call counter should NOT increment due to caching. */
+
+  gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
+  fail_unless(gid == PR_TEST_AUTH_GID, "Expected GID %lu, got %lu",
+    (unsigned long) PR_TEST_AUTH_GID, (unsigned long) gid);
+  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
@@ -807,10 +838,13 @@ START_TEST (auth_gid2name_test) {
   authtable authtab;
   char *sym_name = "gid2name";
 
+  pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_GID2NAME);
+
   name = pr_auth_gid2name(NULL, -1);
   fail_unless(name == NULL, "Found name unexpectedly: %s", name);
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
+  mark_point();
 
   name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
   fail_unless(name != NULL, "Failed to find name for GID %lu: %s",
@@ -965,6 +999,150 @@ START_TEST (auth_cache_gid2name_test) {
 }
 END_TEST
 
+START_TEST (auth_cache_uid2name_failed_test) {
+  int res;
+  const char *name; 
+  authtable authtab;
+  char *sym_name = "uid2name";
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = decline_uid2name;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  mark_point();
+
+  name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
+  fail_unless(name != NULL, "Expected name, got null");
+  fail_unless(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
+    "Expected name '%s', got '%s'", PR_TEST_AUTH_UID_STR, name);
+  fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
+    uid2name_count);
+
+  /* Call again; the call counter should NOT increment due to caching. */
+
+  name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
+  fail_unless(name != NULL, "Expected name, got null");
+  fail_unless(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
+    "Expected name '%s', got '%s'", PR_TEST_AUTH_UID_STR, name);
+  fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
+    uid2name_count);
+
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+}
+END_TEST
+
+START_TEST (auth_cache_gid2name_failed_test) {
+  int res;
+  const char *name; 
+  authtable authtab;
+  char *sym_name = "gid2name";
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = decline_gid2name;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  mark_point();
+
+  name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
+  fail_unless(name != NULL, "Expected name, got null");
+  fail_unless(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
+    "Expected name '%s', got '%s'", PR_TEST_AUTH_GID_STR, name);
+  fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
+    gid2name_count);
+
+  /* Call again; the call counter should NOT increment due to caching. */
+
+  name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
+  fail_unless(name != NULL, "Expected name, got null");
+  fail_unless(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
+    "Expected name '%s', got '%s'", PR_TEST_AUTH_GID_STR, name);
+  fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
+    gid2name_count);
+
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+}
+END_TEST
+
+START_TEST (auth_cache_name2uid_failed_test) {
+  int res;
+  uid_t uid;
+  authtable authtab;
+  char *sym_name = "name2uid";
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = decline_name2uid;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  mark_point();
+
+  uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
+  fail_unless(uid == (uid_t) -1, "Expected -1, got %lu", (unsigned long) uid);
+  fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
+    name2uid_count);
+
+  /* Call again; the call counter should NOT increment due to caching. */
+
+  uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
+  fail_unless(uid == (uid_t) -1, "Expected -1, got %lu", (unsigned long) uid);
+  fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
+    name2uid_count);
+
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+}
+END_TEST
+
+START_TEST (auth_cache_name2gid_failed_test) {
+  int res;
+  gid_t gid;
+  authtable authtab;
+  char *sym_name = "name2gid";
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = decline_name2gid;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  mark_point();
+
+  gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
+  fail_unless(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
+  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+    name2gid_count);
+
+  /* Call again; the call counter should NOT increment due to caching. */
+
+  gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
+  fail_unless(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
+  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+    name2gid_count);
+
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+}
+END_TEST
+
 Suite *tests_get_auth_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -997,6 +1175,10 @@ Suite *tests_get_auth_suite(void) {
   /* Caching tests */
   tcase_add_test(testcase, auth_cache_uid2name_test);
   tcase_add_test(testcase, auth_cache_gid2name_test);
+  tcase_add_test(testcase, auth_cache_uid2name_failed_test);
+  tcase_add_test(testcase, auth_cache_gid2name_failed_test);
+  tcase_add_test(testcase, auth_cache_name2uid_failed_test);
+  tcase_add_test(testcase, auth_cache_name2gid_failed_test);
 
 #if 0
   /* Authorization */
