@@ -47,6 +47,7 @@ Git
 - Bug 4093 - Improve mod_sftp handling of missing packet payloads.
 - Bug 4050 - Use of PIPE_BUF causes build failure on platforms without it.
 - Bug 4020 - Add minimum delay options to mod_delay functionality.
+- Bug 4030 - Cache negative/failed Auth API name/ID lookups.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
