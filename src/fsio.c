@@ -4484,7 +4484,7 @@ char *pr_fsio_getpipebuf(pool *p, int fd, long *bufsz) {
   long buflen;
 
   if (p == NULL) {
-    errno == EINVAL;
+    errno = EINVAL;
     return NULL;
   }
 

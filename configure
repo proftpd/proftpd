@@ -16897,7 +16897,7 @@ echo "$as_me: error: cannot build $amodule as a shared module" >&2;}
           done
         done
 
-        ac_shared_modules=`echo "$shared_modules" | sed -e 's/:/.la /g'`.la ;
+        ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
         for amodule in $ac_shared_modules; do
           ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
         done
