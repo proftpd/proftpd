@@ -3119,3 +3119,21 @@ for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
     fi
   fi
 done
+
+# Display a summary of what modules will be compiled
+
+disp_static=`echo "$ac_static_modules" | sed -e 's/\\.o//g'`;
+disp_shared=`echo "$ac_shared_modules" | sed -e 's/\\.la//g'`;
+
+echo "##############"
+echo "Building the following modules statically"
+for amodule in $disp_static; do
+    echo $amodule
+done
+
+echo
+echo "Building the following modules as shared"
+for amodule in $disp_shared; do
+    echo $amodule
+done
+echo "##############"
