@@ -429,7 +429,12 @@ AC_ARG_WITH(shared,
           done
         done
 
-        ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
+        # Append .la to every module name
+        ac_shared_modules=""
+        for amodule in $shared_modules; do
+            ac_shared_modules+=" $amodule.la"
+        done
+
         for amodule in $ac_shared_modules; do
           ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
         done
