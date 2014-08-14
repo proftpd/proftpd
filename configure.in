@@ -2671,7 +2671,7 @@ for module in $shared_modules ; do
 
   # Create lists for the makefiles
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
-    ac_shared_module+=" $moduleobj"
+    ac_shared_modules+=" $moduleobj"
 
   elif test -d $srcdir/modules/$module; then
     ac_shared_module_dirs+=" modules/$module";
@@ -2842,7 +2842,6 @@ fi
 
 # Generate object-file lists for makefiles
 for module in $shared_modules; do
-  ac_shared_modules+=" $module.la"
   ac_build_shared_modules+=" modules/$module.la"
 done
 
