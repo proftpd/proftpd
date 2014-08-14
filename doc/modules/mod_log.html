@@ -493,6 +493,42 @@ A <em>path</em> value of "none" will disable logging for the entire daemon.
 The <code>mod_log</code> module is compiled by default.
 
 <p>
+<hr>
+<h2><a name="Usage">Usage</a></h2>
+<p>
+
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<p>
+<font color=red>Question</font>: How can I get the reason a client was
+disconnected, for whatever reason, logged to my <code>ExtendedLog</code>?<br>
+<font color=blue>Answer</font>: You can use the <code>%E</code>
+<a href="#LogFormat"><code>LogFormat</code></a> variable for this, <b>in
+conjunction with</b> the <code>EXIT</code> log class.
+
+<p>
+For example, assume you have configured the following:
+<pre>
+  MaxConnectionsPerUser 2
+</pre>
+and you would like your <code>ExtendedLog</code> to record when this limit
+is reached.  To do this, you would use something like the following:
+<pre>
+  LogFormat eos "%a: user=%U disconnect_reason=\"%E\""
+  ExtendedLog /var/log/proftpd/ext.log EXIT eos
+</pre>
+Of course, you can include other logging classes than just <code>EXIT</code>;
+the above is just an example.
+
+<p>
+With the above, when the <code>MaxConnectionsPerUser</code> is reached,
+your log would have a line like:
+<pre>
+  127.0.0.1: user=tj disconnect_reason="Denied by MaxConnectionsPerUser"
+</pre>
+
+<p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>

@@ -256,6 +256,8 @@ static void ctrls_cls_read(void) {
   pr_ctrls_cl_t *cl = cl_list;
 
   while (cl) {
+    pr_signals_handle();
+
     if (pr_ctrls_recv_request(cl) < 0) {
 
       if (errno == EOF) {
@@ -264,18 +266,21 @@ static void ctrls_cls_read(void) {
       } else if (errno == EINVAL) {
 
         /* Unsupported action requested */
-        if (!cl->cl_flags)
+        if (!cl->cl_flags) {
           cl->cl_flags = PR_CTRLS_CL_NOACTION;
+        }
 
         pr_ctrls_log(MOD_CTRLS_VERSION,
           "recvd from %s/%s client: (invalid action)", cl->cl_user,
           cl->cl_group);
 
-      } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      } else if (errno == EAGAIN ||
+                 errno == EWOULDBLOCK) {
 
         /* Malicious/blocked client */
-        if (!cl->cl_flags)
+        if (!cl->cl_flags) {
           cl->cl_flags = PR_CTRLS_CL_BLOCKED;
+        }
 
       } else {
         pr_ctrls_log(MOD_CTRLS_VERSION,
@@ -289,8 +294,9 @@ static void ctrls_cls_read(void) {
       /* Request successfully read.  Flag this client as being in such a
        * state.
        */
-      if (!cl->cl_flags)
+      if (!cl->cl_flags) {
         cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
+      }
 
       if (ctrl->ctrls_cb_args) {
         int reqargc = ctrl->ctrls_cb_args->nelts;
@@ -299,8 +305,9 @@ static void ctrls_cls_read(void) {
         /* Reconstruct the original request string from the client for
          * logging.
          */
-        while (reqargc--)
+        while (reqargc--) {
           request = pstrcat(cl->cl_pool, request, " ", *reqargv++, NULL);
+        }
 
         pr_ctrls_log(MOD_CTRLS_VERSION,
           "recvd from %s/%s client: '%s'", cl->cl_user, cl->cl_group,
@@ -325,6 +332,8 @@ static int ctrls_cls_write(void) {
      * the list is being modified.
      */
     pr_ctrls_cl_t *tmpcl = cl->cl_next;
+
+    pr_signals_handle();
 
     /* This client has something to hear */
     if (cl->cl_flags == PR_CTRLS_CL_NOACCESS) {

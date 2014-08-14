@@ -1632,11 +1632,13 @@ unsigned char pr_ctrls_check_group_acl(gid_t cl_gid,
       }
     }
 
-  } else if (grp_acl->ngids == 1)
+  } else if (grp_acl->ngids == 1) {
     res = TRUE;
+  }
 
-  if (!grp_acl->allow)
+  if (!grp_acl->allow) {
     res = !res;
+  }
 
   return res;
 }
@@ -1660,11 +1662,13 @@ unsigned char pr_ctrls_check_user_acl(uid_t cl_uid,
       }
     }
 
-  } else if (usr_acl->nuids == 1)
+  } else if (usr_acl->nuids == 1) {
     res = TRUE;
+  }
 
-  if (!usr_acl->allow)
+  if (!usr_acl->allow) {
     res = !res;
+  }
 
   return res;
 }
