@@ -2656,120 +2656,31 @@ if test x"$pr_use_postgres" = xyes; then
   LIBS="$saved_libs"
 fi
 
-for modulename in $shared_modules ; do
-  module=$modulename".la"
-  moduledir=$modulename
+disp_shared_modules=""
+disp_static_modules=""
 
-  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
-    continue
-
-  elif test -d $srcdir/modules/$moduledir; then
-    ac_shared_module_dirs="$ac_shared_module_dirs modules/$moduledir";
-    ac_shared_modules=`echo "$ac_shared_modules" | sed -e "s/$module//"`
-
-  elif test -d $srcdir/contrib/$moduledir; then
-    ac_shared_module_dirs="$ac_shared_module_dirs contrib/$moduledir";
-    ac_shared_modules=`echo "$ac_shared_modules" | sed -e "s/$module//"`
-  fi
-done
-
-for modulename in $static_modules ; do
-  module=$modulename".o"
-  moduledir=$modulename
-
-  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
-    continue
-
-  elif test -d $srcdir/modules/$moduledir; then
-    ac_static_module_dirs="$ac_static_module_dirs modules/$moduledir";
-    static_modules=`echo "$static_modules" | sed -e "s/$modulename//"`
-
-  elif test -d $srcdir/contrib/$moduledir; then
-    ac_static_module_dirs="$ac_static_module_dirs contrib/$moduledir";
-    static_modules=`echo "$static_modules" | sed -e "s/$modulename//"`
-
-    addonlibs=""
-    src=`echo "$module" | sed -e 's/\.o$//'`.c;
-    srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
-
-    if test -f $srcdir/contrib/$moduledir/$src ; then
-      srcarch=`sed -n '/.*\$Archive: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$moduledir/$src"`
-      srclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$moduledir/$src"`
-    else
-      srcarch=
-      srclib=
-    fi
-
-    if test -f $srcdir/contrib/$moduledir/$srcinc ; then
-      if test -z $srcarch ; then
-        incarch=`sed -n '/.*\$Archive: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$moduledir/$srcinc"`
-      else
-        incarch=
-      fi
-
-      inclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$moduledir/$srcinc"`
-    else
-      incarch= 
-      inclib= 
-    fi
-
-    dnl If the module will be providing an archive (.a file), then remove it
-    dnl from the list of static module objects (.o files).
-    for thearch in $srcarch $incarch; do
-      archive=`echo "$thearch" | sed -e 's/\.a$//'`
-
-      if test x"$archive" != x"$moduledir" ; then
-        AC_MSG_ERROR([specified archive '$thearch' does not match expected module archive name '$moduledir.a' -- aborting])
-      fi
-
-      static_modules=`echo "$static_modules" | sed -e "s/$modulename//g"`
-      ac_build_static_module_archives="$ac_build_static_module_archives contrib/$moduledir/$thearch"
-    done
-
-    dnl Test for duplicate libraries, just in case.
-    for thelib in $srclib $inclib; do
-      dup="no"
-
-      for somelib in $ac_addl_libs $LIBS; do
-        if test "$thelib" = "$somelib"; then
-          dup="yes"
-          break
-        fi
-      done
-	
-      if test "$dup" = "no"; then
-        addonlibs="$addonlibs $thelib"
-      fi
-    done
-
-    test x"$addonlibs" = x || ac_addl_libs="$addonlibs $ac_addl_libs"
-  fi
-done
-
-dnl Yes, I know that this is not recommended Autoconf practice.  I doubt,
-dnl though, that many users will require the use of
-dnl `./configure --help=recursive' to see all of the options.
-if test ! -z "$ac_shared_module_dirs" ; then
-  AC_CONFIG_SUBDIRS($ac_shared_module_dirs)
-else
-  ac_shared_module_dirs="\"\""
-fi
-
-if test ! -z "$ac_static_module_dirs" ; then
-  AC_CONFIG_SUBDIRS($ac_static_module_dirs)
-else
-  ac_static_module_dirs="\"\""
-fi
-
-for module in $ac_shared_modules; do
+for module in $shared_modules ; do
   if test x"$enable_dso" != xyes ; then
     AC_MSG_ERROR([cannot build shared modules without DSO support -- aborting])
   fi
 
-  moduledir=`echo "$module" | sed -e 's/\.la$//'`;
-  src=`echo "$module" | sed -e 's/\.la$//'`.c;
-  srcinc=`echo "$module" | sed -e 's/\.la$//'`.h;
+  src=$module".c"
+  srcinc=$module".h"
+  moduleobj=$module".la"
+  disp_shared_modules+=" $module"
 
+  # Create lists for the makefiles
+  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
+    ac_shared_module+=" $moduleobj"
+
+  elif test -d $srcdir/modules/$module; then
+    ac_shared_module_dirs+=" modules/$module";
+
+  elif test -d $srcdir/contrib/$module; then
+    ac_shared_module_dirs+=" contrib/$module";
+  fi
+
+  # Create symlinks
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
     if test ! -e $srcdir/modules/$src; then
       olddir=`pwd`
@@ -2785,7 +2696,7 @@ for module in $ac_shared_modules; do
       cd $olddir
     fi
 
-  elif test -d $srcdir/modules/$moduledir -o -d $srcdir/contrib/$moduledir; then
+  elif test -d $srcdir/modules/$module -o -d $srcdir/contrib/$module; then
     continue
 
   else
@@ -2793,37 +2704,64 @@ for module in $ac_shared_modules; do
   fi
 done
 
-for modulename in $static_modules; do
-  addonlibs=""
-  module=$modulename".o"
-  moduledir=$modulename
-  src=`echo "$module" | sed -e 's/\.o$//'`.c;
-  srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
+
+for module in $static_modules ; do
+  src=$module".c"
+  srcinc=$module".h"
+  moduleobj=$module".o"
+  disp_static_modules+=" $module"
 
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
+    ac_static_module+=" $moduleobj"
+
+  elif test -d $srcdir/modules/$module; then
+    ac_static_module_dirs+=" modules/$module"
+
+    # Create symlinks for source files
     if test ! -e $srcdir/modules/$src; then
-      olddir=`pwd`
-      cd $srcdir/modules
-      ln -s ../contrib/$src $src
-      cd $olddir
+      ln -s $srcdir/contrib/$src $srcdir/modules/$src
     fi
 
+  elif test -d $srcdir/contrib/$module; then
+    addonlibs=""
+    srcarch=
+    srclib=
+    incarch=
+    inclib= 
+
+    # Create symlinks for header files
     if test ! -f $srcdir/include/$srcinc -a -f $srcdir/contrib/$srcinc ; then
-      olddir=`pwd`
-      cd $srcdir/include
-      ln -s ../contrib/$srcinc $srcinc
-      cd $olddir
+      ln -s $srcdir/contrib/$srcinc $srcdir/include/$srcinc
     fi
 
-    srclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/modules/$src"`
-
-    if test -f $srcdir/include/$srcinc ; then
-      inclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/include/$srcinc"`
-    else
-      inclib= 
+    # Add required libraries and archives to appropriate lists
+    if test -f $srcdir/contrib/$module/$src ; then
+      srcarch=`sed -n '/.*\$Archive: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$module/$src"`
+      srclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$module/$src"`
     fi
 
-    dnl Test for duplicate libraries, just in case.
+    if test -f $srcdir/contrib/$module/$srcinc ; then
+      if test -z $srcarch ; then
+        incarch=`sed -n '/.*\$Archive: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$module/$srcinc"`
+      fi
+
+      inclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/contrib/$module/$srcinc"`
+    fi
+
+    # Does the module provide an archive (.a) or does it need to be added to static module list (.o)
+    addedarchives=0
+    for thearch in $srcarch $incarch; do
+      archive=${thearch/\.a/}
+
+      if test x"$archive" != x"$module" ; then
+        AC_MSG_ERROR([specified archive '$thearch' does not match expected module archive name '$module.a' -- aborting])
+      fi
+
+      ac_build_static_module_archives="$ac_build_static_module_archives contrib/$module/$thearch"
+      addedarchives+=1
+    done
+
+    # Test for duplicate libraries, just in case.
     for thelib in $srclib $inclib; do
       dup="no"
 
@@ -2841,10 +2779,48 @@ for modulename in $static_modules; do
 
     test x"$addonlibs" = x || ac_addl_libs="$addonlibs $ac_addl_libs"
 
+    # If there were no archives (.a) files for this module, add it to be compiled
+    if [ $addedarchives -eq 0 ]; then
+      ac_static_module_dirs+=" contrib/$module"
+    fi
+
+  fi
+
+  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
+    addonlibs=""
+    inclib= 
+
+    # Add required libraries to list
+    srclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/modules/$src"`
+
+    if test -f $srcdir/include/$srcinc ; then
+      inclib=`sed -n '/.*\$Libraries: \(.*\)\$.*/s//\1/p' "$srcdir/include/$srcinc"`
+    fi
+
+    # Test for duplicate libraries, just in case.
+    for thelib in $srclib $inclib; do
+      dup="no"
+
+      for somelib in $ac_addl_libs $LIBS; do
+        if test "$thelib" = "$somelib"; then
+          dup="yes"
+          break
+        fi
+      done
+	
+      if test "$dup" = "no"; then
+        addonlibs="$addonlibs $thelib"
+      fi
+    done
+
+    test x"$addonlibs" = x || ac_addl_libs="$addonlibs $ac_addl_libs"
+  fi
+
+  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
     adir=`cat $srcdir/modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
     test x"$adir" = x || ac_addl_dirs="$adir $ac_addl_dirs"
 
-  elif test -d $srcdir/modules/$moduledir -o -d $srcdir/contrib/$moduledir; then
+  elif test -d $srcdir/modules/$module -o -d $srcdir/contrib/$module; then
     continue
 
   else
@@ -2881,6 +2857,21 @@ for module in $core_modules; do
 done
 
 GLUE_MODULE_OBJS="$ac_core_modules $ac_static_modules"
+
+dnl Yes, I know that this is not recommended Autoconf practice.  I doubt,
+dnl though, that many users will require the use of
+dnl `./configure --help=recursive' to see all of the options.
+if test ! -z "$ac_shared_module_dirs" ; then
+  AC_CONFIG_SUBDIRS($ac_shared_module_dirs)
+else
+  ac_shared_module_dirs="\"\""
+fi
+
+if test ! -z "$ac_static_module_dirs" ; then
+  AC_CONFIG_SUBDIRS($ac_static_module_dirs)
+else
+  ac_static_module_dirs="\"\""
+fi
 
 dnl This is a nasty, cap-specific hack.  If we will be using the system
 dnl libcap (i.e. ac_have_libcap is "yes"), then we want to remove the
@@ -3091,23 +3082,27 @@ for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
 done
 
 # Display a summary of what modules will be compiled
-disp_static=`echo "$ac_static_modules" | sed -e 's/\\.o//g'`;
-disp_shared=`echo "$ac_shared_modules" | sed -e 's/\\.la//g'`;
-
 echo
 echo "--------------"
 echo "Build Summary"
 echo "--------------"
+
+echo "Building the following core modules:"
+for amodule in $core_modules; do
+ echo "  $amodule"
+done
+echo
+
 echo "Building the following static modules:"
-for amodule in $disp_static; do
+for amodule in $disp_static_modules; do
  echo "  $amodule"
 done
-
 echo
+
 echo "Building the following shared modules:"
-for amodule in $disp_shared; do
+for amodule in $disp_shared_modules; do
  echo "  $amodule"
 done
-
 echo
+
 echo "--------------"
