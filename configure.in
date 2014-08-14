@@ -364,7 +364,7 @@ AC_ARG_WITH(modules,
 
         # Trim off any leading/trailing colons, and collapse double-colons
         # into single colons; these are common typos.
-        ac_static_modules=`echo "$withval" | sed 's/::/:/g' | sed 's/^://' | sed 's/:$//' | sed -e 's/:/.o /g'`.o ;
+        static_modules=`echo "$withval" | sed 's/::/:/g'| sed 's/^://' | sed 's/:$//' | sed -e 's/:/ /g'`;
 
       fi
     fi
@@ -375,7 +375,7 @@ if test x"$enable_memcache" = xyes; then
   # Yes, we DO want mod_memcache AFTER the other modules in the static
   # module list. Otherwise, the module load ordering will be such that
   # memcache support will not work as expected
-  ac_static_modules="$ac_static_modules mod_memcache.o"
+  static_modules+=" mod_memcache"
 fi
 
 dnl List of modules which are not allowed to be built as DSOs
@@ -581,7 +581,7 @@ AC_ARG_ENABLE(auth-pam,
   ],
   [
     if test "$enableval" = "no"; then
-      if test `echo $ac_static_modules | grep -c mod_auth_pam` != "0"; then
+      if test `echo $static_modules | grep -c mod_auth_pam` != "0"; then
         AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time])
       fi
 
@@ -1308,8 +1308,8 @@ dnl really shouldn't have anything to do with force_shadow or use_shadow.
 if test x"$enable_auth_pam" != xno ; then
   AC_CHECK_HEADERS(security/pam_appl.h security/pam_modules.h pam/pam_appl.h,
     [
-      if test `echo $ac_static_modules | grep -c mod_auth_pam` = "0"; then
-        ac_static_modules="mod_auth_pam.o $ac_static_modules"
+      if test `echo $static_modules | grep -c mod_auth_pam` = "0"; then
+        static_modules+=" mod_auth_pam"
       fi
     ], [],
     [
@@ -1328,7 +1328,7 @@ if test x"$enable_auth_pam" != xno ; then
   dnl tag and is picked up at configure time.  The only thing we need is to
   dnl add -ldl in the event of broken PAM.
 
-  if test `echo $ac_static_modules | grep -c mod_auth_pam` = "1"; then
+  if test `echo $static_modules | grep -c mod_auth_pam` = "1"; then
 
 	AC_CHECK_LIB(pam, pam_start,
 		[AC_DEFINE(HAVE_PAM, 1, [Define if you have PAM support.])],
@@ -1372,7 +1372,7 @@ AC_MSG_CHECKING([whether to enable mod_cap])
 AC_MSG_RESULT($ac_add_mod_cap)
 
 if test x"$ac_add_mod_cap" = xyes; then
-    ac_static_modules="$ac_static_modules mod_cap.o"
+  static_modules+=" mod_cap"
 fi
 
 AC_CHECK_HEADERS(bstring.h crypt.h ctype.h execinfo.h iconv.h inttypes.h langinfo.h limits.h locale.h)
@@ -1750,12 +1750,12 @@ esac])
 dnl Controls
 if test x"$enable_ctrls" = xyes; then
   AC_CHECK_FUNCS(getpeereid getpeerucred)
-  ac_static_modules="$ac_static_modules mod_ctrls.o"
+  static_modules+=" mod_ctrls"
 fi
 
 dnl NLS/LANG support
 if test x"$enable_nls" = xyes; then
-  ac_static_modules="$ac_static_modules mod_lang.o"
+  static_modules+=" mod_lang"
 fi
 
 dnl Controls-related checks
@@ -2139,7 +2139,7 @@ if test x"$enable_nonblocking_log_open" != xno; then
 fi
 
 if test x"$enable_ident" != xno ; then
-  ac_static_modules="mod_ident.o $ac_static_modules"
+  static_modules+=" mod_ident"
 fi
 
 dnl Check for various argv[] replacing functions on various OSs
@@ -2233,13 +2233,12 @@ for amodule in $ac_shared_modules; do
 
   core_modules=`echo "$core_modules" | sed -e "s/$module//g"`;
 
-  ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module.o//g"`;
+  static_modules=`echo "$static_modules" | sed -e "s/$module//g"`;
 done
 
 dnl Check for any duplicates
-my_static_modules=`echo "$ac_static_modules" | sed -e 's/\.o//g'`;
 my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
-all_modules="$core_modules $my_static_modules $my_shared_modules";
+all_modules="$core_modules $static_modules $my_shared_modules";
 
 pr_use_mysql="no"
 pr_use_openssl="no"
@@ -2681,19 +2680,20 @@ for module in $ac_shared_modules ; do
   fi
 done
 
-for module in $ac_static_modules ; do
-  moduledir=`echo "$module" | sed -e 's/\.o$//'`;
+for modulename in $static_modules ; do
+  module=$moduledir".o"
+  moduledir=modulename
 
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
     continue
 
   elif test -d $srcdir/modules/$moduledir; then
     ac_static_module_dirs="$ac_static_module_dirs modules/$moduledir";
-    ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//"`
+    static_modules=`echo "$static_modules" | sed -e "s/$modulename//"`
 
   elif test -d $srcdir/contrib/$moduledir; then
     ac_static_module_dirs="$ac_static_module_dirs contrib/$moduledir";
-    ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//"`
+    static_modules=`echo "$static_modules" | sed -e "s/$modulename//"`
 
     addonlibs=""
     src=`echo "$module" | sed -e 's/\.o$//'`.c;
@@ -2729,7 +2729,7 @@ for module in $ac_static_modules ; do
         AC_MSG_ERROR([specified archive '$thearch' does not match expected module archive name '$moduledir.a' -- aborting])
       fi
 
-      ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`
+      static_modules=`echo "$static_modules" | sed -e "s/$modulename//g"`
       ac_build_static_module_archives="$ac_build_static_module_archives contrib/$moduledir/$thearch"
     done
 
@@ -2800,9 +2800,10 @@ for module in $ac_shared_modules; do
   fi
 done
 
-for module in $ac_static_modules; do
+for modulename in $static_modules; do
   addonlibs=""
-  moduledir=`echo "$module" | sed -e 's/\.o$//'`;
+  module=$modulename".o"
+  moduledir=$modulename
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
   srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
 
@@ -2860,14 +2861,14 @@ done
 
 # Make sure that mod_ifsession, if present in the list, appears at the end.
 if [[ -z "{$static_modules##*mod_ifsession*}" ]]; then
-  ac_static_modules=${static_modules/mod_ifsession\.o/}
-  ac_static_modules+=" mod_ifsession.o"
+  static_modules=${static_modules/mod_ifsession/}
+  static_modules+=" mod_ifsession"
 fi
 
 # Make sure that mod_ifsession, if present in the list, appears at the end, even after mod_ifsession.
 if [[ -z "{$static_modules##*mod_memcache*}" ]]; then
-  ac_static_modules=${static_modules/mod_memcache\.o/}
-  ac_static_modules+=" mod_memcache.o"
+  static_modules=${static_modules/mod_memcache/}
+  static_modules+=" mod_memcache"
 fi
 
 # Generate object-file lists for makefiles
@@ -2875,8 +2876,9 @@ for module in $shared_modules; do
   ac_build_shared_modules+=" modules/$module.la"
 done
 
-for module in $ac_static_modules; do
-  ac_build_static_modules+=" modules/$module"
+for module in $static_modules; do
+  ac_static_modules+=" $module.o"
+  ac_build_static_modules+=" modules/$module.o"
 done
 
 for module in $core_modules; do
