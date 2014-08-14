@@ -22,7 +22,6 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(include/conf.h)
 
 ac_core_modules="mod_core.o mod_xfer.o mod_rlimit.o mod_auth_unix.o mod_auth_file.o mod_auth.o mod_ls.o mod_log.o mod_site.o mod_delay.o mod_facts.o"
-ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_rlimit.o modules/mod_auth_unix.o modules/mod_auth_file.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o modules/mod_delay.o modules/mod_facts.o"
 
 dnl Get the OS type
 AC_CONFIG_AUX_DIR(./)
@@ -564,7 +563,6 @@ AC_ARG_ENABLE(auth-file,
   [
     if test "$enableval" = "no"; then
       ac_core_modules=`echo "$ac_core_modules" | sed -e 's/mod_auth_file\.o//'`
-      ac_build_core_modules=`echo "$ac_build_core_modules" | sed -e 's/modules\/mod_auth_file\.o//'`
     fi
   ])
  
@@ -679,7 +677,6 @@ AC_ARG_ENABLE(dso,
   [
     if test x"$enableval" = x"yes"; then
       ac_core_modules="$ac_core_modules mod_dso.o"
-      ac_build_core_modules="$ac_build_core_modules modules/mod_dso.o"
 
       MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic"
       MAIN_LIBS="\$(LIBLTDL)"
@@ -2259,7 +2256,6 @@ for amodule in $ac_shared_modules; do
   module=`echo "$amodule" | sed -e 's/\.la//g'`.o;
 
   ac_core_modules=`echo "$ac_core_modules" | sed -e "s/$module//g"`;
-  ac_build_core_modules=`echo "$ac_build_core_modules" | sed -e "s/modules\/$module//g"`;
 
   ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`;
 done
@@ -2896,6 +2892,10 @@ done
 
 for module in $ac_static_modules; do
   ac_build_static_modules+=" /modules/$module.o"
+done
+
+for module in $core_modules; do
+  ac_build_core_modules+=" modules/$module"
 done
 
 dnl This is a nasty, cap-specific hack.  If we will be using the system
