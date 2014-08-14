@@ -2894,7 +2894,7 @@ for module in $ac_static_modules; do
   ac_build_static_modules+=" /modules/$module.o"
 done
 
-for module in $core_modules; do
+for module in $ac_core_modules; do
   ac_build_core_modules+=" modules/$module"
 done
 
