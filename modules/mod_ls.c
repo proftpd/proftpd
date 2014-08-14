@@ -2665,11 +2665,9 @@ MODRET ls_list(cmd_rec *cmd) {
   return genericlist(cmd);
 }
 
-/* NLST is a very simplistic directory listing, unlike LIST (which
- * emulates ls), it only sends a list of all files/directories
- * matching the glob(s).
+/* NLST is a very simplistic directory listing, unlike LIST (which emulates
+ * ls(1)), it only sends a list of all files/directories matching the glob(s).
  */
-
 MODRET ls_nlst(cmd_rec *cmd) {
   char *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   size_t targetlen = 0;
@@ -2715,8 +2713,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
      * layer deeper.  For the checks to work, the maxdepth of 2 needs to
      * handled internally as a maxdepth of 3.
      */
-    if (list_ndepth.max)
+    if (list_ndepth.max) {
       list_ndepth.max += 1;
+    }
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
@@ -2923,9 +2922,16 @@ MODRET ls_nlst(cmd_rec *cmd) {
         continue;
 
       if (pr_fsio_stat(p, &st) == 0) {
-        /* If it's a directory, hand off to nlstdir */
+        /* If it's a directory... */
         if (S_ISDIR(st.st_mode)) {
-          res = nlstdir(cmd, p);
+          if (opt_R) {
+            /* ...and we are recursing, hand off to nlstdir()...*/
+            res = nlstdir(cmd, p);
+
+          } else {
+            /*...otherwise, just list the name. */
+            res = nlstfile(cmd, p);
+          }
 
         } else if (S_ISREG(st.st_mode) &&
             ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {

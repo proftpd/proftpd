@@ -385,9 +385,12 @@ under keys of the names above.
 <b>Logging</b><br>
 The <code>mod_geoip</code> module supports different forms of logging.  The
 main module logging is done via the <code>GeoIPLog</code> directive.
-For debugging purposes, the module also uses <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific "geoip" log
-channel.  Thus for trace logging, to aid in debugging, you
-would use the following in your <code>proftpd.conf</code>:
+For debugging purposes, the module also uses <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>geoip
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
 <pre>
   TraceLog /path/to/ftpd/trace.log
   Trace geoip:20
@@ -444,7 +447,7 @@ Last Updated: <i>$Date: 2013-12-12 16:52:28 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2010-2013 TJ Saunders<br>
+&copy; Copyright 2010-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

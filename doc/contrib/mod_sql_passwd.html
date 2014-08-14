@@ -371,6 +371,22 @@ the <code>mod_sql_passwd</code> module to use it:
   &lt;/IfModule&gt;
 </pre>
 
+<p>
+<b>Logging</b><br>
+The <code>mod_sql_passwd</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log
+channels:
+<ul>
+  <li>sql.passwd
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace sql.passwd:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <p><a name="Transformations">
 <b>Processing of Password and Salt Data</b><br>
 The logical description of the processing that <code>mod_sql_passwd</code>

@@ -6426,9 +6426,8 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
     int xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error %s symlinking '%s' to '%s': %s",
-      is_symlink ? "symlinking" : "linking", target_path, link_path,
-      strerror(xerrno));
+      "error %s '%s' to '%s': %s", is_symlink ? "symlinking" : "linking",
+      target_path, link_path, strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -10687,7 +10686,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
 static int fxp_handle_symlink(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
-  char *args, *args2, *cmd_name, *link_path, *target_path, *vpath;
+  char *args, *args2, *cmd_name, *link_path, *link_vpath, *target_path,
+    *target_vpath, *vpath;
   const char *reason;
   int have_error = FALSE, res;
   uint32_t buflen, bufsz, status_code;
@@ -10775,7 +10775,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  target_path = vpath;
+  target_vpath = vpath;
 
   vpath = dir_canonical_vpath(fxp->pool, link_path);
   if (vpath == NULL) {
@@ -10802,7 +10802,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  link_path = vpath;
+  link_vpath = vpath;
 
   /* We use a slightly different cmd_rec here, for the benefit of PRE_CMD
    * handlers such as mod_rewrite.  It is impossible for a client to
@@ -10814,7 +10814,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
    * paths.
    */
 
-  args2 = pstrcat(fxp->pool, target_path, "\t", link_path, NULL);
+  args2 = pstrcat(fxp->pool, target_vpath, "\t", link_vpath, NULL);
   cmd2 = fxp_cmd_alloc(fxp->pool, "SYMLINK", args2);
   cmd2->cmd_class = CL_WRITE;
 
@@ -10861,13 +10861,13 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "SYMLINK");
 
-  if (!dir_check(fxp->pool, cmd, G_READ, target_path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_READ, target_vpath, NULL)) {
     pr_cmd_set_name(cmd, cmd_name);
     have_error = TRUE;
   }
 
   if (!have_error &&
-      !dir_check(fxp->pool, cmd, G_WRITE, link_path, NULL)) {
+      !dir_check(fxp->pool, cmd, G_WRITE, link_vpath, NULL)) {
     pr_cmd_set_name(cmd, cmd_name);
     have_error = TRUE;
   }

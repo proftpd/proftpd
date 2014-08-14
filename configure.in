@@ -418,10 +418,11 @@ AC_ARG_WITH(shared,
         # Trim off any leading/trailing colons, and collapse double-colons
         # into single colons; these are common typos.
         shared_modules=`echo "$withval" | sed 's/::/:/g'| sed 's/^://' | sed 's/:$//' | sed -e 's/:/ /g'`;
+        ac_shared_modules=`echo "$withval" | sed 's/::/:/g'| sed 's/^://' | sed 's/:$//' | sed -e 's/:/.la /g'`.la;
 
         # First double-check that the given list does not contain any
         # unshareable modules
-        for amodule in $shared_modules; do
+        for amodule in $pr_shared_modules; do
           for smodule in $ac_unshareable_modules; do
             if test x"$amodule" = x"$smodule"; then
               AC_MSG_ERROR([cannot build $amodule as a shared module])
@@ -429,7 +430,6 @@ AC_ARG_WITH(shared,
           done
         done
 
-        ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
         for amodule in $ac_shared_modules; do
           ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
         done

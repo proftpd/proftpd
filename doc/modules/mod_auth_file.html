@@ -136,6 +136,21 @@ will be logged on server startup/restart.
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_auth_file</code> module is compiled by default.
 
+<p>
+<b>Logging</b><br>
+The <code>mod_auth_file</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>auth.file
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace auth.file:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 

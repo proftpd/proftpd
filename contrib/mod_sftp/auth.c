@@ -863,7 +863,8 @@ static int send_userauth_methods(void) {
 static void incr_auth_attempts(const char *user) {
   auth_attempts++;
 
-  if (auth_attempts >= auth_attempts_max) {
+  if (auth_attempts_max > 0 &&
+      auth_attempts >= auth_attempts_max) {
     pr_log_auth(PR_LOG_NOTICE,
       "Maximum login attempts (%u) exceeded, connection refused",
       auth_attempts_max);
@@ -1014,7 +1015,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   cmd->arg = pstrcat(pkt->pool, user, " ", method, NULL);
   cmd->cmd_class = CL_AUTH|CL_SSH;
 
-  if (auth_attempts > auth_attempts_max) {
+  if (auth_attempts_max > 0 &&
+      auth_attempts > auth_attempts_max) {
     pr_log_auth(PR_LOG_NOTICE,
       "Maximum login attempts (%u) exceeded, connection refused",
       auth_attempts_max);
@@ -1458,7 +1460,7 @@ int sftp_auth_init(void) {
     pr_pool_tag(auth_pool, "SSH2 Auth Pool");
 
     max_logins = get_param_ptr(main_server->conf, "MaxLoginAttempts", FALSE);
-    if (max_logins) {
+    if (max_logins != NULL) {
       auth_attempts_max = *max_logins;
     }
   }

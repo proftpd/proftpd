@@ -1535,11 +1535,6 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     return NULL;
   }
 
-  if (cmap.homedirfield == NULL &&
-      cmap.defaulthomedir) {
-    return NULL;
-  }
-
   /* Check to see if the passwd already exists in one of the passwd caches.
    * Give preference to name-based lookups, as opposed to UID-based lookups.
    */
@@ -6627,11 +6622,17 @@ static int sql_sess_init(void) {
     return -1;
   }
 
+  /* Construct our internal cache structure for this session. */
+  memset(&cmap, 0, sizeof(cmap));
+
   c = find_config(main_server->conf, CONF_PARAM, "SQLEngine", FALSE);
   if (c != NULL) {
-    engine = *((int *) c->argv[0]);
+    cmap.engine = engine = *((int *) c->argv[0]);
+
+  } else {
+    cmap.engine = engine = (SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG);
   }
- 
+
   /* Get our backend info and toss it up */
   cmd = _sql_make_cmd(tmp_pool, 1, "foo");
   mr = _sql_dispatch(cmd, "sql_identify");
@@ -6664,9 +6665,6 @@ static int sql_sess_init(void) {
 
   cmap.curr_group = NULL;
   cmap.curr_passwd = NULL;
-
-  /* Construct our internal cache structure for this session. */
-  memset(&cmap, 0, sizeof(cmap));
 
   ptr = get_param_ptr(main_server->conf, "SQLAuthenticate", FALSE);
   if (ptr != NULL) {
@@ -7078,8 +7076,6 @@ static int sql_sess_init(void) {
       c = find_config_next(c, c->next, CONF_PARAM, "SQLNamedConnectInfo",
         FALSE);
     }
-
-    cmap.engine = SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG;
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLLogOnEvent", FALSE);
@@ -7094,7 +7090,19 @@ static int sql_sess_init(void) {
     c = find_config_next(c, c->next, CONF_PARAM, "SQLLogOnEvent", FALSE);
   }
 
-  sql_log(DEBUG_INFO, "mod_sql engine     : %s", cmap.engine ? "on" : "off");
+  if (cmap.engine == 0) {
+    sql_log(DEBUG_INFO, "mod_sql engine     : off");
+
+  } else if (cmap.engine == (SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG)) {
+    sql_log(DEBUG_INFO, "mod_sql engine     : on");
+
+  } else if (cmap.engine == SQL_ENGINE_FL_AUTH) {
+    sql_log(DEBUG_INFO, "mod_sql engine     : auth");
+
+  } else if (cmap.engine == SQL_ENGINE_FL_LOG) {
+    sql_log(DEBUG_INFO, "mod_sql engine     : log");
+  }
+
   sql_log(DEBUG_INFO, "negative_cache     : %s", cmap.negative_cache ? "on" : "off");
 
   authstr = "";

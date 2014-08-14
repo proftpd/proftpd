@@ -225,6 +225,11 @@ int sftp_blacklist_reject_key(pool *p, unsigned char *key_data,
   char *digest_name = "none", *hex, *ptr;
   size_t hex_len, hex_maxlen;
 
+  if (key_data == NULL ||
+      key_datalen == 0) {
+    return FALSE;
+  }
+
   if (blacklist_path == NULL) {
     /* No key blacklist configured, nothing to do. */
     return FALSE;

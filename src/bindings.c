@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -206,8 +206,15 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
          * we just got caught in a blocking condition.
          */
         if (listener->mode == CM_ERROR) {
-          pr_log_pri(PR_LOG_ERR, "error: unable to accept an incoming "
-            "connection: %s", strerror(listener->xerrno));
+
+          /* Ignore ECONNABORTED, as they tend to be health checks/probes by
+           * e.g. load balancers and other naive TCP clients.
+           */
+          if (listener->xerrno != ECONNABORTED) {
+            pr_log_pri(PR_LOG_ERR, "error: unable to accept an incoming "
+              "connection: %s", strerror(listener->xerrno));
+          }
+
           listener->xerrno = 0;
           listener->mode = CM_LISTEN;
           return NULL;

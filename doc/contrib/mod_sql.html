@@ -1469,6 +1469,21 @@ Complete the build with the following standard commands:
 </pre>
 
 <p>
+<b>Logging</b><br>
+The <code>mod_sql</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>sql
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace sql:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
+<p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>

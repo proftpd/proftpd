@@ -298,6 +298,21 @@ but portably obtaining them is next to impossible.  On some flavors of Unix
 it simply cannot be done.  Stevens' method is the next best thing right now.
 
 <p>
+<b>Logging</b><br>
+The <code>mod_ctrls</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>ctrls
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace ctrls:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
+<p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_ctrls</code> module is distributed with ProFTPD.  To enable
@@ -318,7 +333,7 @@ Last Updated: <i>$Date: 2013-05-17 15:04:43 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2011 TJ Saunders<br>
+&copy; Copyright 2000-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

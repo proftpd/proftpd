@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2013 TJ Saunders
+ * Copyright (c) 2000-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -727,7 +727,8 @@ static int ctrls_timer_cb(CALLBACK_FRAME) {
     PRIVS_ROOT
     if (chown(ctrls_sock_file, ctrls_sock_uid, ctrls_sock_gid) < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
-        ": unable to chown local socket: %s", strerror(errno));
+        ": unable to chown local socket %s: %s", ctrls_sock_file,
+        strerror(errno));
     }
     PRIVS_RELINQUISH
 

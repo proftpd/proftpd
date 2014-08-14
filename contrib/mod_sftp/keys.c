@@ -412,11 +412,14 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         }
 
         if (FD_ISSET(stderr_pipe[0], &readfds)) {
-          int stderrlen;
-          char stderrbuf[PIPE_BUF];
+          long stderrlen, stderrsz;
+          char *stderrbuf;
+          pool *tmp_pool = make_sub_pool(s->pool);
 
-          memset(stderrbuf, '\0', sizeof(stderrbuf));
-          stderrlen = read(stderr_pipe[0], stderrbuf, sizeof(stderrbuf)-1);
+          stderrbuf = pr_fsio_getpipebuf(tmp_pool, stderr_pipe[0], &stderrsz);
+          memset(stderrbuf, '\0', stderrsz);
+
+          stderrlen = read(stderr_pipe[0], stderrbuf, stderrsz-1);
           if (stderrlen > 0) {
             while (stderrlen &&
                    (stderrbuf[stderrlen-1] == '\r' ||
@@ -433,6 +436,9 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
               ": error reading stderr from '%s': %s",
               passphrase_provider, strerror(errno));
           }
+
+          destroy_pool(tmp_pool);
+          tmp_pool = NULL;
         }
       }
 
@@ -2575,7 +2581,8 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
   EVP_PKEY *pkey;
   int res = FALSE;
 
-  if (pubkey_data == NULL) {
+  if (pubkey_data == NULL ||
+      pubkey_len == 0) {
     errno = EINVAL;
     return -1;
   }
@@ -2645,7 +2652,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   unsigned char digest[EVP_MAX_MD_SIZE];
   char *sig_type;
   unsigned int digestlen;
-  int res;
+  int res = 0;
 
   if (pubkey_algo == NULL ||
       pubkey_data == NULL ||
@@ -2681,64 +2688,63 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   }
 
   if (strncmp(sig_type, "ssh-rsa", 8) == 0) {
-    RSA *rsa;
-    int ok;
-    unsigned int modulus_len;
-
-    rsa = EVP_PKEY_get1_RSA(pkey);
-    modulus_len = RSA_size(rsa);
-
     sig_len = sftp_msg_read_int(p, &signature, &signaturelen);
     sig = (unsigned char *) sftp_msg_read_data(p, &signature, &signaturelen,
       sig_len);
+    if (sig != NULL) {
+      RSA *rsa;
+      unsigned int modulus_len;
+      int ok;
 
-    /* If the signature provided by the client is less than the expected
-     * key length, the verification will fail.  In such cases, we need to
-     * pad the provided signature with trailing zeros (Bug#3992).
-     */
-    if (sig_len < modulus_len) {
-      unsigned int padding_len;
-      unsigned char *padded_sig;
+      rsa = EVP_PKEY_get1_RSA(pkey);
+      modulus_len = RSA_size(rsa);
 
-      padding_len = modulus_len - sig_len;
-      padded_sig = pcalloc(p, modulus_len);
+      /* If the signature provided by the client is less than the expected
+       * key length, the verification will fail.  In such cases, we need to
+       * pad the provided signature with trailing zeros (Bug#3992).
+       */
+      if (sig_len < modulus_len) {
+        unsigned int padding_len;
+        unsigned char *padded_sig;
+
+        padding_len = modulus_len - sig_len;
+        padded_sig = pcalloc(p, modulus_len);
      
-      pr_trace_msg(trace_channel, 12, "padding client-sent "
-        "RSA signature (%lu) bytes with %u bytes of zeroed data",
-        (unsigned long) sig_len, padding_len);
-      memmove(padded_sig + padding_len, sig, sig_len);
+        pr_trace_msg(trace_channel, 12, "padding client-sent "
+          "RSA signature (%lu) bytes with %u bytes of zeroed data",
+          (unsigned long) sig_len, padding_len);
+        memmove(padded_sig + padding_len, sig, sig_len);
 
-      sig = padded_sig;
-      sig_len = (uint32_t) modulus_len;
-    }
+        sig = padded_sig;
+        sig_len = (uint32_t) modulus_len;
+      }
 
-    EVP_DigestInit(&ctx, EVP_sha1());
-    EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
-    EVP_DigestFinal(&ctx, digest, &digestlen);
+      EVP_DigestInit(&ctx, EVP_sha1());
+      EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
+      EVP_DigestFinal(&ctx, digest, &digestlen);
 
-    ok = RSA_verify(NID_sha1, digest, digestlen, sig, sig_len, rsa);
-    if (ok == 1) {
-      res = 0;
+      ok = RSA_verify(NID_sha1, digest, digestlen, sig, sig_len, rsa);
+      if (ok == 1) {
+        res = 0;
+
+      } else {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error verifying RSA signature: %s", sftp_crypto_get_errors());
+        res = -1;
+      }
+
+      RSA_free(rsa);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error verifying RSA signature: %s", sftp_crypto_get_errors());
+        "error verifying RSA signature: missing signature data");
       res = -1;
     }
 
-    RSA_free(rsa);
-
   } else if (strncmp(sig_type, "ssh-dss", 8) == 0) {
-    DSA *dsa;
-    DSA_SIG *dsa_sig;
-    int ok;
-
-    dsa = EVP_PKEY_get1_DSA(pkey);
-
     sig_len = sftp_msg_read_int(p, &signature, &signaturelen);
 
     /* A DSA signature string is composed of 2 20 character parts. */
-
     if (sig_len != 40) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "bad DSA signature len (%lu)", (unsigned long) sig_len);
@@ -2746,50 +2752,62 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
     sig = (unsigned char *) sftp_msg_read_data(p, &signature, &signaturelen,
       sig_len);
+    if (sig != NULL) {
+      DSA *dsa;
+      DSA_SIG *dsa_sig;
+      int ok;
 
-    dsa_sig = DSA_SIG_new();
-    dsa_sig->r = BN_new();
-    dsa_sig->s = BN_new();
+      dsa = EVP_PKEY_get1_DSA(pkey);
 
-    if (BN_bin2bn(sig, 20, dsa_sig->r) == NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error obtaining 'r' DSA signature component: %s",
-        sftp_crypto_get_errors());
-      res = -1;
-    }
+      dsa_sig = DSA_SIG_new();
+      dsa_sig->r = BN_new();
+      dsa_sig->s = BN_new();
 
-    if (BN_bin2bn(sig + 20, 20, dsa_sig->s) == NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error obtaining 's' DSA signature component: %s",
-        sftp_crypto_get_errors());
-      res = -1;
-    }
+      if (BN_bin2bn(sig, 20, dsa_sig->r) == NULL) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error obtaining 'r' DSA signature component: %s",
+          sftp_crypto_get_errors());
+        DSA_free(dsa);
+        DSA_SIG_free(dsa_sig);
+        return -1;
+      }
 
-    EVP_DigestInit(&ctx, EVP_sha1());
-    EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
-    EVP_DigestFinal(&ctx, digest, &digestlen);
+      if (BN_bin2bn(sig + 20, 20, dsa_sig->s) == NULL) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error obtaining 's' DSA signature component: %s",
+          sftp_crypto_get_errors());
+        DSA_free(dsa);
+        DSA_SIG_free(dsa_sig);
+        return -1;
+      }
 
-    ok = DSA_do_verify(digest, digestlen, dsa_sig, dsa);
-    if (ok == 1) {
-      res = 0;
+      EVP_DigestInit(&ctx, EVP_sha1());
+      EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
+      EVP_DigestFinal(&ctx, digest, &digestlen);
+
+      ok = DSA_do_verify(digest, digestlen, dsa_sig, dsa);
+      if (ok == 1) {
+        res = 0;
+
+      } else {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error verifying DSA signature: %s", sftp_crypto_get_errors());
+        res = -1;
+      }
+
+      DSA_free(dsa);
+      DSA_SIG_free(dsa_sig);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error verifying DSA signature: %s", sftp_crypto_get_errors());
+        "error verifying DSA signature: missing signature data");
       res = -1;
     }
-
-    DSA_free(dsa);
-    DSA_SIG_free(dsa_sig);
 
 #ifdef PR_USE_OPENSSL_ECC
   } else if (strncmp(sig_type, "ecdsa-sha2-nistp256", 20) == 0 ||
              strncmp(sig_type, "ecdsa-sha2-nistp384", 20) == 0 ||
              strncmp(sig_type, "ecdsa-sha2-nistp521", 20) == 0) {
-    EC_KEY *ec;
-    ECDSA_SIG *ecdsa_sig;
-    const EVP_MD *md = NULL;
-    int ok;
 
     if (strcmp(pubkey_algo, sig_type) != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -2798,67 +2816,79 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       return -1;
     }
 
-    ecdsa_sig = ECDSA_SIG_new();
-    if (ecdsa_sig == NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error allocating new ECDSA_SIG: %s", sftp_crypto_get_errors());
-      return -1;
-    }
-
     sig_len = sftp_msg_read_int(p, &signature, &signaturelen);
     sig = (unsigned char *) sftp_msg_read_data(p, &signature, &signaturelen,
       sig_len);
+    if (sig != NULL) {
+      EC_KEY *ec;
+      ECDSA_SIG *ecdsa_sig;
+      const EVP_MD *md = NULL;
+      int ok;
 
-    ecdsa_sig->r = sftp_msg_read_mpint(p, &sig, &sig_len);
-    if (ecdsa_sig->r == NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error reading 'r' ECDSA signature component: %s",
-        sftp_crypto_get_errors());
+      ecdsa_sig = ECDSA_SIG_new();
+      if (ecdsa_sig == NULL) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error allocating new ECDSA_SIG: %s", sftp_crypto_get_errors());
+        return -1;
+      }
+
+      ecdsa_sig->r = sftp_msg_read_mpint(p, &sig, &sig_len);
+      if (ecdsa_sig->r == NULL) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading 'r' ECDSA signature component: %s",
+          sftp_crypto_get_errors());
+        ECDSA_SIG_free(ecdsa_sig);
+        return -1;
+      }
+
+      ecdsa_sig->s = sftp_msg_read_mpint(p, &sig, &sig_len);
+      if (ecdsa_sig->s == NULL) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading 's' ECDSA signature component: %s",
+          sftp_crypto_get_errors());
+        ECDSA_SIG_free(ecdsa_sig);
+        return -1;
+      }
+
+      /* Skip past the common leading prefix "ecdsa-sha2-" to compare just
+       * last 9 characters.
+       */
+
+      if (strncmp(sig_type + 11, "nistp256", 9) == 0) {
+        md = EVP_sha256();
+
+      } else if (strncmp(sig_type + 11, "nistp384", 9) == 0) {
+        md = EVP_sha384();
+
+      } else if (strncmp(sig_type + 11, "nistp521", 9) == 0) {
+        md = EVP_sha512();
+      }
+
+      EVP_DigestInit(&ctx, md);
+      EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
+      EVP_DigestFinal(&ctx, digest, &digestlen);
+
+      ec = EVP_PKEY_get1_EC_KEY(pkey);
+
+      ok = ECDSA_do_verify(digest, digestlen, ecdsa_sig, ec);
+      if (ok == 1) {
+        res = 0;
+
+      } else {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error verifying ECDSA signature: %s", sftp_crypto_get_errors());
+        res = -1;
+      }
+
+      EC_KEY_free(ec);
       ECDSA_SIG_free(ecdsa_sig);
-      return -1;
-    }
-
-    ecdsa_sig->s = sftp_msg_read_mpint(p, &sig, &sig_len);
-    if (ecdsa_sig->s == NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error reading 's' ECDSA signature component: %s",
-        sftp_crypto_get_errors());
-      ECDSA_SIG_free(ecdsa_sig);
-      return -1;
-    }
-
-    /* Skip past the common leading prefix "ecdsa-sha2-" to compare just
-     * last 9 characters.
-     */
-
-    if (strncmp(sig_type + 11, "nistp256", 9) == 0) {
-      md = EVP_sha256();
-
-    } else if (strncmp(sig_type + 11, "nistp384", 9) == 0) {
-      md = EVP_sha384();
-
-    } else if (strncmp(sig_type + 11, "nistp521", 9) == 0) {
-      md = EVP_sha512();
-    }
-
-    EVP_DigestInit(&ctx, md);
-    EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
-    EVP_DigestFinal(&ctx, digest, &digestlen);
-
-    ec = EVP_PKEY_get1_EC_KEY(pkey);
-
-    ok = ECDSA_do_verify(digest, digestlen, ecdsa_sig, ec);
-    if (ok == 1) {
-      res = 0;
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error verifying ECDSA signature: %s", sftp_crypto_get_errors());
+        "error verifying ECDSA signature: missing signature data");
       res = -1;
     }
 
-    EC_KEY_free(ec);
-    ECDSA_SIG_free(ecdsa_sig);
 #endif /* PR_USE_OPENSSL_ECC */
 
   } else {

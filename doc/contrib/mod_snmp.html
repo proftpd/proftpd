@@ -319,9 +319,19 @@ can reach the <code>mod_snmp</code> address/port.
 <b>Logging</b><br>
 The <code>mod_snmp</code> module supports different forms of logging.  The
 main module logging is done via the <code>SNMPLog</code> directive.  For
-debugging purposes, the module also uses <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific "snmp" and
-"snmp.db" log channels.  Thus for trace logging, to aid in debugging, you
-would use the following in your <code>proftpd.conf</code>:
+debugging purposes, the module also uses <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>snmp
+  <li>snmp.asn1
+  <li>snmp.db
+  <li>snmp.mib
+  <li>snmp.msg
+  <li>snmp.notify
+  <li>snmp.pdu
+  <li>snmp.smi
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
 <pre>
   TraceLog /path/to/snmp-trace.log
   Trace snmp:20

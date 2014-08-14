@@ -1812,6 +1812,21 @@ A copy of the Draft describing FTP over SSL/TLS is included with the source
 code for this module.
 
 <p>
+<b>Logging</b><br>
+The <code>mod_tls</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>tls
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace tls:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
+<p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_tls</code> module is distributed with ProFTPD.  Simply follow
@@ -1847,7 +1862,7 @@ Last Updated: <i>$Date: 2013-12-09 23:15:16 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2013 TJ Saunders<br>
+&copy; Copyright 2002-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

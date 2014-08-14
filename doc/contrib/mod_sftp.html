@@ -1630,9 +1630,14 @@ multiple <code>&lt;VirtualHost&gt;</code> sections for the same <i>address</i>
 <b>Logging</b><br>
 The <code>mod_sftp</code> module supports different forms of logging.  The
 main module logging is done via the <code>SFTPLog</code> directive.  For
-debugging purposes, the module also uses <a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via the module-specific "scp", "sftp",
-and "ssh2" log channels.  Thus for trace logging, to aid in debugging, you
-would use the following in your <code>proftpd.conf</code>:
+debugging purposes, the module also uses <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>ssh2
+  <li>sftp
+  <li>scp
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
 <pre>
   TraceLog /path/to/sftp-trace.log
   Trace scp:20 sftp:20 ssh2:20

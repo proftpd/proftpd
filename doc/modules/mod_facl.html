@@ -63,6 +63,21 @@ using the following:
 </pre>
 
 <p>
+<b>Logging</b><br>
+The <code>mod_facl</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>facl
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/ftpd/trace.log
+  Trace facl:20
+</pre>
+This trace logging can generate large files; it is intended for debugging use
+only, and should be removed from any production configuration.
+
+<p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
@@ -71,7 +86,7 @@ Last Updated: <i>$Date: 2006-10-11 16:47:15 $</i><br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2006 TJ Saunders<br>
+&copy; Copyright 2000-2014 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
