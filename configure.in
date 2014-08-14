@@ -406,10 +406,6 @@ AC_ARG_WITH(shared,
             fi
           done
         done
-
-        for amodule in $shared_modules; do
-          ac_shared_modules+=" $amodule.la"
-        done
       fi
     fi
   ])
@@ -585,7 +581,7 @@ AC_ARG_ENABLE(auth-pam,
         AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time])
       fi
 
-      if test `echo $ac_shared_modules | grep -c mod_auth_pam` != "0"; then
+      if test `echo $shared_modules | grep -c mod_auth_pam` != "0"; then
         AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-shared at the same time])
       fi
     fi
@@ -2228,17 +2224,13 @@ ac_shared_module_dirs=
 ac_static_module_dirs=
 
 # Remove any modules in the shared module list from the core and static module lists
-for amodule in $ac_shared_modules; do
-  module=`echo "$amodule" | sed -e 's/\.la//g'`;
-
-  core_modules=`echo "$core_modules" | sed -e "s/$module//g"`;
-
-  static_modules=`echo "$static_modules" | sed -e "s/$module//g"`;
+for module in $shared_modules; do
+  core_modules=${core_modules/$module/}
+  static_modules=${static_modules/$module/}
 done
 
 dnl Check for any duplicates
-my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
-all_modules="$core_modules $static_modules $my_shared_modules";
+all_modules="$core_modules $static_modules $shared_modules";
 
 pr_use_mysql="no"
 pr_use_openssl="no"
@@ -2664,8 +2656,9 @@ if test x"$pr_use_postgres" = xyes; then
   LIBS="$saved_libs"
 fi
 
-for module in $ac_shared_modules ; do
-  moduledir=`echo "$module" | sed -e 's/\.la$//'`;
+for modulename in $shared_modules ; do
+  module=$modulename".la"
+  moduledir=$modulename
 
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
     continue
@@ -2681,8 +2674,8 @@ for module in $ac_shared_modules ; do
 done
 
 for modulename in $static_modules ; do
-  module=$moduledir".o"
-  moduledir=modulename
+  module=$modulename".o"
+  moduledir=$modulename
 
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
     continue
@@ -2873,6 +2866,7 @@ fi
 
 # Generate object-file lists for makefiles
 for module in $shared_modules; do
+  ac_shared_modules+=" $module.la"
   ac_build_shared_modules+=" modules/$module.la"
 done
 
