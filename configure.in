@@ -2891,7 +2891,7 @@ for module in $shared_modules; do
 done
 
 for module in $ac_static_modules; do
-  ac_build_static_modules+=" /modules/$module.o"
+  ac_build_static_modules+=" /modules/$module"
 done
 
 for module in $ac_core_modules; do
