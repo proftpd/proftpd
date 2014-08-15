@@ -497,6 +497,7 @@ static X509_STORE *tls_crl_store = NULL;
 static array_header *tls_tmp_dhs = NULL;
 static RSA *tls_tmp_rsa = NULL;
 
+static void tls_exit_ev(const void *, void *);
 static int tls_sess_init(void);
 
 /* SSL/TLS support functions */
@@ -549,6 +550,62 @@ static int tls_ctrl_need_init_handshake = TRUE;
 static int tls_data_need_init_handshake = TRUE;
 
 static const char *trace_channel = "tls";
+
+static void tls_reset_state(void) {
+  if (ssl_ctx != NULL) {
+    SSL_CTX_set_options(ssl_ctx, SSL_CTX_get_options(ssl_ctx));
+  }
+
+  tls_engine = FALSE;
+  tls_flags = 0UL;
+  tls_opts = 0UL;
+
+  if (tls_logfd >= 0) {
+    (void) close(tls_logfd);
+    tls_logfd = -1;
+    tls_logname = NULL;
+  }
+
+  tls_cipher_suite = NULL;
+  tls_crl_file = NULL;
+  tls_crl_path = NULL;
+  tls_dhparam_file = NULL;
+  tls_ec_cert_file = NULL;
+  tls_ec_key_file = NULL;
+  tls_dsa_cert_file = NULL;
+  tls_dsa_key_file = NULL;
+  tls_pkcs12_file = NULL;
+  tls_rsa_cert_file = NULL;
+  tls_rsa_key_file = NULL;
+  tls_rand_file = NULL;
+
+  tls_handshake_timeout = 300;
+  tls_handshake_timed_out = FALSE;
+  tls_handshake_timer_id = -1;
+
+  tls_verify_depth = 9;
+
+  tls_ctrl_netio = NULL;
+  tls_ctrl_rd_nstrm = NULL;
+  tls_ctrl_wr_nstrm = NULL;
+
+  tls_data_netio = NULL;
+  tls_data_rd_nstrm = NULL;
+  tls_data_wr_nstrm = NULL;
+
+  tls_sess_cache = NULL;
+
+  tls_crl_store = NULL;
+  tls_tmp_dhs = NULL;
+  tls_tmp_rsa = NULL;
+
+  tls_ctrl_need_init_handshake = TRUE;
+  tls_data_need_init_handshake = TRUE;
+
+  tls_required_on_auth = 0;
+  tls_required_on_ctrl = 0;
+  tls_required_on_data = 0;
+}
 
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
@@ -7788,23 +7845,26 @@ MODRET tls_post_host(cmd_rec *cmd) {
    * ourselves.
    */
   if (session.prev_server != NULL) {
+    int res;
 
-    /* HOST after AUTH?  Make the SNI check, close the connection if failed. */
+    /* XXX HOST after AUTH?
+     * Make the SNI check, close the connection if failed.
+     */
 
-    /* HOST before AUTH?  Re-init mod_tls. */
+    /* XXX HOST before AUTH?  Re-init mod_tls. */
 
     /* XXX Has a TLS handshake already been performed?  If so, do some stuff. */
+
     /* XXX Perform SNI check */
 
-#if 0
-    int res;
+    tls_reset_state();
+    pr_event_unregister(&tls_module, "core.exit", tls_exit_ev);
 
     res = tls_sess_init();
     if (res < 0) {
       pr_session_disconnect(&tls_module,
         PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
     }
-#endif
   }
 
   return PR_DECLINED(cmd);
@@ -9643,24 +9703,33 @@ static int tls_sess_init(void) {
     tls_engine = TRUE;
 
   } else {
-
-    /* No need for this modules's control channel NetIO handlers
-     * anymore.
+    /* If we have no ServerAlias vhosts at all, then it is OK to clean up
+     * all of the TLS/OpenSSL-related code from this process.  Otherwise,
+     * a client MIGHT send a HOST command for a TLS-enabled vhost; if we
+     * were to always cleanup OpenSSL here, that HOST command would inevitably
+     * lead to a problem.
      */
-    pr_unregister_netio(PR_NETIO_STRM_CTRL);
 
-    /* No need for all the OpenSSL stuff in this process space, either.
-     */
-    tls_cleanup(TLS_CLEANUP_FL_SESS_INIT);
-    tls_scrub_pkeys();
+    if (pr_namebind_count(main_server) == 0) {
+      /* No need for this modules's control channel NetIO handlers
+       * anymore.
+       */
+      pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+      /* No need for all the OpenSSL stuff in this process space, either.
+       */
+      tls_cleanup(TLS_CLEANUP_FL_SESS_INIT);
+      tls_scrub_pkeys();
+    }
 
     return 0;
   }
 
   tls_cipher_suite = get_param_ptr(main_server->conf, "TLSCipherSuite",
     FALSE);
-  if (tls_cipher_suite == NULL)
+  if (tls_cipher_suite == NULL) {
     tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
+  }
 
   tls_crl_file = get_param_ptr(main_server->conf, "TLSCARevocationFile", FALSE);
   tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);

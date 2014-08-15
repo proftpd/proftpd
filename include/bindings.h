@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -174,9 +174,13 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
 server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
   unsigned int port);
 
-/* Opens the pr_namebind_t with the given name.
- */
+/* Opens the pr_namebind_t with the given name. */
 int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port);
+
+/* Provides a count of the number of namebinds associated with this
+ * server_rec.
+ */
+unsigned int pr_namebind_count(server_rec *);
 
 /* Initialize the Bindings layer.
  */

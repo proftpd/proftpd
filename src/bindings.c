@@ -353,11 +353,7 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
     }
 
   } else {
-
-    /* A NULL addr has a special meaning: close _all_ ipbinds in the
-     * list.
-     */
-
+    /* A NULL addr has a special meaning: close _all_ ipbinds in the list. */
     for (i = 0; i < PR_BINDINGS_TABLE_SIZE; i++) {
       pr_ipbind_t *ipbind = NULL;
       for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
@@ -960,7 +956,7 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
           namebind->nb_name != NULL) {
 
         if (namebind->nb_iswildcard == FALSE) {
-          if (strcasecmp(namebind->nb_name, name) == 0)
+          if (strcasecmp(namebind->nb_name, name) == 0) {
             return namebind;
           }
 
@@ -978,6 +974,7 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
             "failed to match name '%s' against pattern '%s'", name,
             namebind->nb_name);
         }
+      }
     }
   }
 
@@ -990,10 +987,23 @@ server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
 
   /* Basically, just a wrapper around pr_namebind_find() */
   namebind = pr_namebind_find(name, addr, port, TRUE);
-  if (namebind == NULL)
+  if (namebind == NULL) {
     return NULL;
+  }
 
   return namebind->nb_server;
+}
+
+unsigned int pr_namebind_count(server_rec *srv) {
+  unsigned int count = 0;
+  pr_ipbind_t *ipbind = NULL;
+
+  ipbind = pr_ipbind_find(srv->addr, srv->ServerPort, FALSE); 
+  if (ipbind != NULL) {
+    count = ipbind->ib_namebinds->nelts; 
+  }
+
+  return count;
 }
 
 int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port) {

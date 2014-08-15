@@ -4335,21 +4335,31 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* XXX Need checking of a <Limit> for HOST commands, so that HOST can be
-   * denied via configuration if need be.
-   */
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
+    int xerrno = EACCES;
 
-  /* XXX Should there be a limit on the number of HOST commands that a client
+    pr_response_add_err(R_504, "%s: %s", cmd->argv[1], strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  /* Should there be a limit on the number of HOST commands that a client
    * can send?
+   *
+   * In practice, this will be limited by the TimeoutLogin time interval;
+   * a client can send as many HOST commands as it wishes, as long as it
+   * successfully authenticates in that time.
    */
 
-#if 0
   /* If the user has already authenticated or negotiated a RFC2228 mechanism,
    * then the HOST command is too late.
    */
   if (session.rfc2228_mech != NULL) {
     pr_log_debug(DEBUG0, "HOST '%s' command received after client has "
-      "requested RFC2228 protection, refusing HOST command", cmd->argv[1]);
+      "requested RFC2228 protection (%s), refusing HOST command", cmd->argv[1],
+      session.rfc2228_mech);
 
     pr_response_add_err(R_503, _("Bad sequence of commands"));
 
@@ -4357,7 +4367,6 @@ MODRET core_host(cmd_rec *cmd) {
     errno = EPERM;
     return PR_ERROR(cmd);
   }
-#endif
 
   host = cmd->argv[1];
   hostlen = strlen(host);
@@ -4516,6 +4525,62 @@ MODRET core_host(cmd_rec *cmd) {
    * AuthOrder, timeouts, etc etc.  (Unfortunately, POST_CMD handlers cannot
    * fail the given command; for modules which then need to end the
    * connection, they'll need to use pr_session_disconnect().)
+   *
+   * Modules implementing post_host handlers:
+   *   mod_auth
+   *   mod_auth_file
+   *   mod_auth_unix
+   *   mod_cap
+   *   mod_core
+   *   mod_delay
+   *   mod_facts
+   *   mod_ident
+   *   mod_log
+   *   mod_memcache
+   *   mod_xfer
+   *   mod_tls
+   *
+   * Modules that MIGHT need post_host handlers:
+   *   mod_ldap
+   *   mod_load
+   *   mod_quotatab et al
+   *   mod_radius
+   *   mod_ratio
+   *   mod_rewrite
+   *   mod_sftp
+   *   mod_sftp_pam
+   *   mod_sftp_sql
+   *   mod_shaper
+   *   mod_snmp
+   *   mod_sql et al
+   *   mod_sql_passwd
+   *   mod_tls_memcache
+   *   mod_tls_shmcache
+   *   mod_wrap
+   *   mod_wrap2 et al
+   *
+   * Modules that NEED a post_host handler:
+   *   mod_ban
+   *   mod_copy
+   *   mod_deflate
+   *   mod_dnsbl
+   *   mod_exec
+   *   mod_ifsession
+   *   mod_log_forensic
+   *   mod_qos
+   *   mod_site_misc
+   *
+   * Modules that do NOT need a post_host handler:
+   *   mod_ctrls_admin
+   *   mod_dynmasq
+   *   mod_ifversion
+   *   mod_readme
+   *     Note: optimize DisplayReadme lookup to be done once, post-pass
+   *   mod_unique_id
+   *
+   * What if these module resets were implemented as event handlers, reacting
+   * to a 'module-reset' event (akin to a module-unload event), rather than
+   * as POST_CMD HOST handlers?
    */
 
   /* XXX Will this function need to use pr_response_add(), rather than
@@ -5559,152 +5624,6 @@ MODRET core_opts(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  return PR_HANDLED(cmd);
-}
-
-MODRET core_host(cmd_rec *cmd) {
-  register unsigned int i;
-  int ok = FALSE;
-  char *host;
-  server_rec *named_server = NULL;
-
-  CHECK_CMD_ARGS(cmd, 2);
-
-  /* XXX
-   * 501 Syntax error
-   * 502 Command unimplemented
-   * 503 Bad sequence (i.e. after previous HOST, USER, AUTH, etc)
-   * 504 Unknown host requested (including if DNS name requested does not
-   *  reverse-map to IP address contacted by client)
-   */
-
-  /* If the user has already authenticated or negotiated a RFC2228 mechanism,
-   * then the HOST command is too late.
-   */
-  if (session.user != NULL) {
-    pr_log_debug(DEBUG0, "HOST command received after client has "
-      "authenticated, ignoring");
-    pr_response_add_err(R_503, _("Bad sequence of commands"));
-    return PR_ERROR(cmd);
-  }
-
-  if (session.rfc2228_mech != NULL) {
-    pr_log_debug(DEBUG0, "HOST command received after client has "
-      "requested RFC2228 protection, ignoring");
-    pr_response_add_err(R_503, _("Bad sequence of commands"));
-    return PR_ERROR(cmd);
-  }
-
-  host = cmd->argv[1];
-
-  /* Make sure the given name contains legal characters. */
-  for (i = 0; i < strlen(host); i++) {
-    if (isalnum((int) host[i]) != 0) {
-      continue;
-    }
-
-    /* Other than alphanumeric characters, the allowed characters are:
-     *  "-_$!%[]:"
-     */
-    if (strpbrk(host, "-_$!%[]:") != NULL) {
-      continue;
-    }
-
-    ok = FALSE;
-    break;
-  }
-
-  if (!ok) {
-    pr_log_debug(DEBUG0, "Illegal HOST parameter '%s', ignoring", host);
-    pr_response_add_err(R_501, _("Illegal HOST command"));
-    return PR_ERROR(cmd);
-  }
-
-  /* According to RFC, the given hostname should be UTF8-encoded; treat it
-   * as such.
-   */
-  host = pr_fs_decode_path(cmd->tmp_pool, host);
-
-  /* If the first and last characters of the host parameter are '[' and ']',
-   * respectively, then the enclosed string SHOULD be an IPv6 address.
-   * Otherwise, the parameter is either a DNS name or an IPv4 address.  If
-   * the address/name cannot be resolved, it is a syntax error.
-   *
-   * If the given parameter is NOT a DNS name, it is either an IPv4 or an IPv6
-   * address.  If this is the case, AND a colon appears (outside of any
-   * square-bracketed string), it is a syntax error.
-   */
-
-  ok = FALSE;
-
-  if (host[0] != '[' &&
-      host[strlen(host)-1] != ']') {
-
-    /* Is it an IPv4 address? */
-    if (pr_netaddr_is_v4(host) == TRUE) {
-
-      /* Does a colon (i.e. port specifier) appear? */
-      if (strchr(host, ':') == NULL) {
-        ok = TRUE;
-
-      } else {
-
-        /* Although the spec says that if IPv6 syntax is preferred, the
-         * client SHOULD use square brackets, we'll be nice, and check
-         * if the host parameter is an IPv6 address if we find a colon.
-         */
-
-        if (pr_netaddr_is_v6(host) == TRUE) {
-          ok = TRUE;
-
-        } else {
-          pr_log_debug(DEBUG0, "Requested host '%s' contains illegal port "
-            "specification", host);
-        }
-      }
-
-    } else {
-      /* Otherwise, assume it's a DNS name. */
-      ok = TRUE;
-    }
-
-  } else {
-    char *v6_host;
-
-    v6_host = pstrndup(cmd->tmp_pool, host + 1, strlen(host) - 1);
-
-    /* Is it an IPv6 address? */
-    if (pr_netaddr_is_v6(v6_host) == TRUE) {
-      ok = TRUE;
-      host = v6_host;
-
-    } else {
-      pr_log_debug(DEBUG0, "Requested host '%s' is a not a well-formed "
-        "IPv6 address", v6_host);
-    }
-  }
-
-  if (!ok) {
-    pr_log_debug(DEBUG0, "Illegal HOST parameter '%s', ignoring", host);
-    pr_response_add_err(R_501, _("Illegal HOST command"));
-    return PR_ERROR(cmd);
-  }
-
-  named_server = pr_namebind_get_server(host, main_server->addr,
-    main_server->ServerPort);
-  if (named_server == NULL) {
-    pr_response_add_err(R_504, _("Unsupported host '%s' requested"), host);
-    return PR_ERROR(cmd);
-  }
-
-  /* XXX Beware of issues caused by this changing of the main_server pointer;
-   * I expect to run into problems where other modules/code caches the
-   * value of the main_server pointer, and do not handle it well when the
-   * pointer is changed.
-   */
-  main_server = named_server;
-
-  pr_response_add(R_220, _("%s FTP server ready"), host);
   return PR_HANDLED(cmd);
 }
 
