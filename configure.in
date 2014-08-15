@@ -2829,12 +2829,13 @@ for module in $static_modules ; do
 done
 
 # Make sure that mod_ifsession, if present in the list, appears at the end.
+# This imposes a certain ordering between mod_ifsession and mod_cap, per Bug#3576
 if [[ -z "{$static_modules##*mod_ifsession*}" ]]; then
   static_modules=${static_modules/mod_ifsession/}
   static_modules+=" mod_ifsession"
 fi
 
-# Make sure that mod_ifsession, if present in the list, appears at the end, even after mod_ifsession.
+# Make sure that mod_memcache, if present in the list, appears at the end, even after mod_ifsession.
 if [[ -z "{$static_modules##*mod_memcache*}" ]]; then
   static_modules=${static_modules/mod_memcache/}
   static_modules+=" mod_memcache"
