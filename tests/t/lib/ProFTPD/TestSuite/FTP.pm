@@ -1630,7 +1630,7 @@ sub stat {
   }
 }
 
-# From the FTP HOST command RFCXXXX (currently in Draft form)
+# From the FTP HOST command RFC 7151
 sub host {
   my $self = shift;
   my $host = shift;
@@ -1662,6 +1662,33 @@ sub abort {
 
   unless ($self->{ftp}->abort()) {
     croak("ABOR command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
+# From the FTP HOST command RFCXXXX (currently in Draft form)
+sub host {
+  my $self = shift;
+  my $host = shift;
+  $host = '' unless defined($passwd);
+  my $code;
+
+  $code = $self->{ftp}->quot('HOST', $host);
+  unless ($code) {
+    croak("HOST command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("HOST command failed: " .  $self->{ftp}->code . ' ' .
       $self->response_msg());
   }
 

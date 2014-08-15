@@ -778,7 +778,6 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 
 /* usage: ServerAlias hostname [hostname ...] */
 MODRET set_serveralias(cmd_rec *cmd) {
-#ifdef PR_USE_HOST
   register unsigned int i;
 
   if (cmd->argc < 2) {
@@ -792,9 +791,6 @@ MODRET set_serveralias(cmd_rec *cmd) {
   }
 
   return PR_HANDLED(cmd);
-#else
-  CONF_ERROR(cmd, "not yet implemented");
-#endif /* PR_USE_HOST */
 }
 
 /* usage: ServerIdent off|on [name] */
@@ -4312,7 +4308,6 @@ MODRET core_help(cmd_rec *cmd) {
 }
 
 MODRET core_host(cmd_rec *cmd) {
-#ifdef PR_USE_HOST
   const char *local_ipstr;
   char *host;
   size_t hostlen;
@@ -4532,9 +4527,6 @@ MODRET core_host(cmd_rec *cmd) {
 
   pr_session_send_banner(main_server, 0);
   return PR_HANDLED(cmd);
-#else
-  return PR_DECLINED(cmd);
-#endif /* PR_USE_HOST */
 }
 
 MODRET core_post_host(cmd_rec *cmd) {
@@ -5570,6 +5562,152 @@ MODRET core_opts(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET core_host(cmd_rec *cmd) {
+  register unsigned int i;
+  int ok = FALSE;
+  char *host;
+  server_rec *named_server = NULL;
+
+  CHECK_CMD_ARGS(cmd, 2);
+
+  /* XXX
+   * 501 Syntax error
+   * 502 Command unimplemented
+   * 503 Bad sequence (i.e. after previous HOST, USER, AUTH, etc)
+   * 504 Unknown host requested (including if DNS name requested does not
+   *  reverse-map to IP address contacted by client)
+   */
+
+  /* If the user has already authenticated or negotiated a RFC2228 mechanism,
+   * then the HOST command is too late.
+   */
+  if (session.user != NULL) {
+    pr_log_debug(DEBUG0, "HOST command received after client has "
+      "authenticated, ignoring");
+    pr_response_add_err(R_503, _("Bad sequence of commands"));
+    return PR_ERROR(cmd);
+  }
+
+  if (session.rfc2228_mech != NULL) {
+    pr_log_debug(DEBUG0, "HOST command received after client has "
+      "requested RFC2228 protection, ignoring");
+    pr_response_add_err(R_503, _("Bad sequence of commands"));
+    return PR_ERROR(cmd);
+  }
+
+  host = cmd->argv[1];
+
+  /* Make sure the given name contains legal characters. */
+  for (i = 0; i < strlen(host); i++) {
+    if (isalnum((int) host[i]) != 0) {
+      continue;
+    }
+
+    /* Other than alphanumeric characters, the allowed characters are:
+     *  "-_$!%[]:"
+     */
+    if (strpbrk(host, "-_$!%[]:") != NULL) {
+      continue;
+    }
+
+    ok = FALSE;
+    break;
+  }
+
+  if (!ok) {
+    pr_log_debug(DEBUG0, "Illegal HOST parameter '%s', ignoring", host);
+    pr_response_add_err(R_501, _("Illegal HOST command"));
+    return PR_ERROR(cmd);
+  }
+
+  /* According to RFC, the given hostname should be UTF8-encoded; treat it
+   * as such.
+   */
+  host = pr_fs_decode_path(cmd->tmp_pool, host);
+
+  /* If the first and last characters of the host parameter are '[' and ']',
+   * respectively, then the enclosed string SHOULD be an IPv6 address.
+   * Otherwise, the parameter is either a DNS name or an IPv4 address.  If
+   * the address/name cannot be resolved, it is a syntax error.
+   *
+   * If the given parameter is NOT a DNS name, it is either an IPv4 or an IPv6
+   * address.  If this is the case, AND a colon appears (outside of any
+   * square-bracketed string), it is a syntax error.
+   */
+
+  ok = FALSE;
+
+  if (host[0] != '[' &&
+      host[strlen(host)-1] != ']') {
+
+    /* Is it an IPv4 address? */
+    if (pr_netaddr_is_v4(host) == TRUE) {
+
+      /* Does a colon (i.e. port specifier) appear? */
+      if (strchr(host, ':') == NULL) {
+        ok = TRUE;
+
+      } else {
+
+        /* Although the spec says that if IPv6 syntax is preferred, the
+         * client SHOULD use square brackets, we'll be nice, and check
+         * if the host parameter is an IPv6 address if we find a colon.
+         */
+
+        if (pr_netaddr_is_v6(host) == TRUE) {
+          ok = TRUE;
+
+        } else {
+          pr_log_debug(DEBUG0, "Requested host '%s' contains illegal port "
+            "specification", host);
+        }
+      }
+
+    } else {
+      /* Otherwise, assume it's a DNS name. */
+      ok = TRUE;
+    }
+
+  } else {
+    char *v6_host;
+
+    v6_host = pstrndup(cmd->tmp_pool, host + 1, strlen(host) - 1);
+
+    /* Is it an IPv6 address? */
+    if (pr_netaddr_is_v6(v6_host) == TRUE) {
+      ok = TRUE;
+      host = v6_host;
+
+    } else {
+      pr_log_debug(DEBUG0, "Requested host '%s' is a not a well-formed "
+        "IPv6 address", v6_host);
+    }
+  }
+
+  if (!ok) {
+    pr_log_debug(DEBUG0, "Illegal HOST parameter '%s', ignoring", host);
+    pr_response_add_err(R_501, _("Illegal HOST command"));
+    return PR_ERROR(cmd);
+  }
+
+  named_server = pr_namebind_get_server(host, main_server->addr,
+    main_server->ServerPort);
+  if (named_server == NULL) {
+    pr_response_add_err(R_504, _("Unsupported host '%s' requested"), host);
+    return PR_ERROR(cmd);
+  }
+
+  /* XXX Beware of issues caused by this changing of the main_server pointer;
+   * I expect to run into problems where other modules/code caches the
+   * value of the main_server pointer, and do not handle it well when the
+   * pointer is changed.
+   */
+  main_server = named_server;
+
+  pr_response_add(R_220, _("%s FTP server ready"), host);
+  return PR_HANDLED(cmd);
+}
+
 MODRET core_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
@@ -5808,9 +5946,7 @@ static int core_init(void) {
   pr_help_add(C_NOOP, _("(no operation)"), TRUE);
   pr_help_add(C_FEAT, _("(returns feature list)"), TRUE);
   pr_help_add(C_OPTS, _("<sp> command [<sp> options]"), TRUE);
-#ifdef PR_USE_HOST
   pr_help_add(C_HOST, _("<cp> hostname"), TRUE);
-#endif /* PR_USE_HOST */
   pr_help_add(C_AUTH, _("<sp> base64-data"), FALSE);
   pr_help_add(C_CCC, _("(clears protection level)"), FALSE);
   pr_help_add(C_CONF, _("<sp> base64-data"), FALSE);
@@ -5827,9 +5963,7 @@ static int core_init(void) {
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
-#ifdef PR_USE_HOST
   pr_feat_add(C_HOST);
-#endif /* PR_USE_HOST */
 
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
@@ -6347,6 +6481,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
   { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_OPTS, G_NONE,  core_opts,    FALSE,	FALSE,	CL_MISC },
+  { CMD, C_HOST, G_NONE,  core_host,    FALSE,	FALSE,	CL_MISC },
   { POST_CMD, C_PASS, G_NONE, core_post_pass, FALSE, FALSE },
   { CMD, C_HOST, G_NONE,  core_host,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD, C_HOST, G_NONE, core_post_host, FALSE, FALSE },
