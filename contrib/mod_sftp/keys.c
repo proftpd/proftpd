@@ -776,12 +776,15 @@ static int pkey_cb(char *buf, int buflen, int rwflag, void *d) {
 static int has_req_perms(int fd) {
   struct stat st;
 
-  if (fstat(fd, &st) < 0)
+  if (fstat(fd, &st) < 0) {
     return -1;
+  }
 
-  if (st.st_mode & (S_IRWXG|S_IRWXO)) {
-    errno = EACCES;
-    return -1;
+  if (!(sftp_opts & SFTP_OPT_INSECURE_HOSTKEY_PERMS)) {
+    if (st.st_mode & (S_IRWXG|S_IRWXO)) {
+      errno = EACCES;
+      return -1;
+    }
   }
 
   return 0;
