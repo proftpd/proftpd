@@ -66,7 +66,7 @@ saved_libs="$LIBS"
 
 dnl Splice out -lsupp, since that library hasn't been built yet
 LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
-LIBS="$LIBS -lcrypto -ldl"
+LIBS="$LIBS -ldl -lcrypto"
 
 AC_TRY_LINK(
   [
@@ -75,7 +75,7 @@ AC_TRY_LINK(
     SSLeay_add_all_algorithms();
   ], [
     AC_MSG_RESULT(yes)
-    LIBS="$saved_libs -ldl"
+    LIBS="-ldl $saved_libs"
   ], [
     AC_MSG_RESULT(no)
     LIBS="$saved_libs"
