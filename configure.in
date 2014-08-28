@@ -2578,7 +2578,7 @@ if test x"$pr_use_openssl" = xyes; then
         ],
         [
           AC_MSG_RESULT(yes)
-          LIBS="$saved_libs -ldl"
+          LIBS="-ldl $saved_libs"
         ],
         [
           AC_MSG_RESULT(no)
