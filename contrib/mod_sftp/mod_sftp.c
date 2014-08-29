@@ -22,9 +22,8 @@
  * source distribution.
  *
  * DO NOT EDIT BELOW THIS LINE
- * $Archive: mod_sftp.a $
- * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.86 2014-03-02 22:05:43 castaglia Exp $
+ * $Archive: mod_sftp.a$
+ * $Libraries: -lcrypto$
  */
 
 #include "mod_sftp.h"

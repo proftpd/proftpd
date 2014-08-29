@@ -10,6 +10,8 @@ SHARED_CFLAGS=-DPR_SHARED_MODULE
 SHARED_LDFLAGS=-avoid-version -export-dynamic -module
 VPATH=@srcdir@
 
+MODULE_LIBS=@MODULE_LIBS@
+
 MODULE_NAME=mod_sftp
 MODULE_OBJS=mod_sftp.o msg.o packet.o cipher.o mac.o umac.o \
   compress.o kex.o keys.o crypto.o utf8.o session.o service.o kbdint.o \

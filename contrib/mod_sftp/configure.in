@@ -11,7 +11,11 @@ AC_ISC_POSIX
 AC_MINIX
 
 AC_HEADER_STDC
-AC_CHECK_HEADERS(stdlib.h unistd.h limits.h fcntl.h)
+AC_CHECK_HEADERS(stdlib.h unistd.h limits.h fcntl.h zlib.h)
+AC_CHECK_LIB(z, inflateInit,
+  [AC_DEFINE(HAVE_LIBZ, 1, [Define if libz is present.])
+   MODULE_LIBS=-lz
+  ])
 
 dnl Need to support/handle the --with-includes and --with-libraries options
 AC_ARG_WITH(includes,
@@ -58,15 +62,13 @@ dnl So for those users stuck using the Solaris 10 whose OpenSSL does
 dnl not provide support for AES ciphers longer than 128 bits, we need to
 dnl check and disable those symbols.  Otherwise mod_sftp fails to build due
 dnl to linker errors.
-saved_libs="$LIBS"
-LIBS="$LIBS -lcrypto"
 
 AC_MSG_CHECKING([whether linking with OpenSSL functions requires -ldl])
 saved_libs="$LIBS"
 
 dnl Splice out -lsupp, since that library hasn't been built yet
 LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
-LIBS="$LIBS -ldl -lcrypto"
+LIBS="-lcrypto -ldl $LIBS"
 
 AC_TRY_LINK(
   [
@@ -75,7 +77,7 @@ AC_TRY_LINK(
     SSLeay_add_all_algorithms();
   ], [
     AC_MSG_RESULT(yes)
-    LIBS="-ldl $saved_libs"
+    LIBS="$saved_libs -ldl"
   ], [
     AC_MSG_RESULT(no)
     LIBS="$saved_libs"
@@ -87,7 +89,7 @@ saved_libs="$LIBS"
 
 dnl Splice out -lsupp, since that library hasn't been built yet
 LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
-LIBS="$LIBS -lcrypto -lz"
+LIBS="-lcrypto -lz $LIBS"
 
 AC_TRY_LINK(
   [
@@ -172,6 +174,7 @@ LIBDIRS="$ac_build_addl_libdirs"
 AC_SUBST(INCLUDES)
 AC_SUBST(LDFLAGS)
 AC_SUBST(LIBDIRS)
+AC_SUBST(MODULE_LIBS)
 
 AC_CONFIG_HEADER(mod_sftp.h)
 AC_OUTPUT(Makefile)
