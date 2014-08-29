@@ -11,9 +11,9 @@ AC_ISC_POSIX
 AC_MINIX
 
 AC_HEADER_STDC
-AC_CHECK_HEADERS(stdlib.h unistd.h limits.h fcntl.h zlib.h)
-AC_CHECK_LIB(z, inflateInit,
-  [AC_DEFINE(HAVE_LIBZ, 1, [Define if libz is present.])
+AC_CHECK_HEADERS(stdlib.h unistd.h limits.h fcntl.h)
+AC_CHECK_HEADER(zlib.h,
+  [AC_DEFINE(HAVE_ZLIB_H, 1, [Define if zlib.h is present.])
    MODULE_LIBS=-lz
   ])
 

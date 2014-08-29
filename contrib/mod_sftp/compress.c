@@ -31,7 +31,7 @@
 #include "crypto.h"
 #include "compress.h"
 
-#if defined(HAVE_ZLIB_H) && defined(HAVE_LIBZ)
+#ifdef HAVE_ZLIB_H
 #include <zlib.h>
 
 static const char *trace_channel = "ssh2";
@@ -569,4 +569,4 @@ int sftp_compress_write_data(struct ssh2_packet *pkt) {
   return 0;
 }
 
-#endif /* !HAVE_ZLIB_H or !HAVE_LIBZ */
+#endif /* !HAVE_ZLIB_H */
