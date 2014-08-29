@@ -825,6 +825,7 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
+#ifdef HAVE_ZLIB_H
   bool = get_boolean(cmd, 1);
   if (bool == -1) {
     if (strncasecmp(cmd->argv[1], "delayed", 8) != 0) {
@@ -834,6 +835,10 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
 
     bool = 2;
   }
+#else
+  pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": platform lacks zlib support, ignoring SFTPCompression");
+  bool = 0;
+#endif /* !HAVE_ZLIB_H */
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
