@@ -857,7 +857,7 @@ sub server_restart {
     close($fh);
 
   } else {
-    die("Can't read $pid_file: $!");
+    croak("Can't read $pid_file: $!");
   }
 
   my $cmd = "kill -HUP $pid";
@@ -1047,11 +1047,11 @@ sub test_append_logfile {
   my $out_file = File::Spec->rel2abs('tests.log');
 
   unless (open($outfh, ">> $out_file")) {
-    die("Can't append to $out_file: $!");
+    croak("Can't append to $out_file: $!");
   }
 
-  unless (open($infh, "< $log_file")) {
-    die("Can't read $log_file: $!");
+  unless (open($infh, "+< $log_file")) {
+    croak("Can't read $log_file: $!");
   }
 
   my ($pkg, $filename, $lineno, $func) = (caller(1))[0, 1, 2, 3];
@@ -1075,7 +1075,7 @@ sub test_append_logfile {
   close($infh);
 
   unless (close($outfh)) {
-    die("Can't write $out_file: $!");
+    croak("Can't write $out_file: $!");
   }
 }
 
