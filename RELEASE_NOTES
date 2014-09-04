@@ -30,6 +30,8 @@ ChangeLog files.
 
     HiddenStores %P (Bug#4062)
 
+    SFTPOptions InsecureHostKeyPerms (Bug#4098)
+
     SNMPAgent multiple addresses (Bug#4061)
 
     SyslogLevel NOTICE default (Bug#3983)
