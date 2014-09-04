@@ -1050,10 +1050,6 @@ sub test_append_logfile {
     croak("Can't append to $out_file: $!");
   }
 
-  unless (open($infh, "+< $log_file")) {
-    croak("Can't read $log_file: $!");
-  }
-
   my ($pkg, $filename, $lineno, $func) = (caller(1))[0, 1, 2, 3];
   if ($func =~ /test_cleanup/) {
     ($pkg, $filename, $lineno, $func) = (caller(2))[0, 1, 2, 3];
@@ -1061,8 +1057,12 @@ sub test_append_logfile {
 
   print $outfh "-----BEGIN $func-----\n";
 
-  while (my $line = <$infh>) {
-    print $outfh $line;
+  if (open($infh, "+< $log_file")) {
+    while (my $line = <$infh>) {
+      print $outfh $line;
+    }
+
+    close($infh);
   }
 
   # If an exception was provided, write that out to the log file, too.
@@ -1071,8 +1071,6 @@ sub test_append_logfile {
   }
 
   print $outfh "-----END $func-----\n";
-
-  close($infh);
 
   unless (close($outfh)) {
     croak("Can't write $out_file: $!");

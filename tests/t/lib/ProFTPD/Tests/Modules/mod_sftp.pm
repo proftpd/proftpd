@@ -33775,9 +33775,9 @@ sub sftp_config_insecure_hostkey_perms_bug4098 {
       'mod_sftp.c' => [
         "SFTPEngine on",
         "SFTPLog $setup->{log_file}",
+        "SFTPOptions InsecureHostKeyPerms",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
-        "SFTPOptions InsecureHostkeyPerms",
       ],
     },
   };
@@ -33789,9 +33789,11 @@ sub sftp_config_insecure_hostkey_perms_bug4098 {
 
   # First, start the server.
   eval { server_start($setup->{config_file}, $setup->{pid_file}) };
-  unless ($@) {
+  if ($@) {
+    $ex = "Server failed to start up with world-readable SFTPHostKey";
+
+  } else {
     server_stop($setup->{pid_file});
-    $ex = "Server started up unexpectedly with world-readable SFTPHostKey";
   }
 
   test_cleanup($setup->{log_file}, $ex);

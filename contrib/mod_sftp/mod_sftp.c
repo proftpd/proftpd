@@ -1089,8 +1089,31 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
 
     if ((st.st_mode & S_IRWXG) ||
         (st.st_mode & S_IRWXO)) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
-        "' as host key, as it is group- or world-accessible", NULL));
+      int insecure_hostkey_perms = FALSE;
+      config_rec *c;
+
+      /* Check for the InsecureHostKeyPerms SFTPOption. */
+      c = find_config(cmd->server->conf, CONF_PARAM, "SFTPOptions", FALSE);
+      while (c != NULL) {
+        unsigned long opts;
+
+        pr_signals_handle();
+
+        opts = *((unsigned long *) c->argv[0]);
+        if (opts & SFTP_OPT_INSECURE_HOSTKEY_PERMS) {
+          insecure_hostkey_perms = TRUE;
+          break;
+        }
+      }
+
+      if (insecure_hostkey_perms) {
+        pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION ": unable to use '%s' "
+          "as host key, as it is group- or world-accessible", cmd->argv[1]);
+
+      } else {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+          "' as host key, as it is group- or world-accessible", NULL));
+      }
     }
   }
 
