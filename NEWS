@@ -49,7 +49,7 @@ Git
 - Bug 4020 - Add minimum delay options to mod_delay functionality.
 - Bug 4030 - Cache negative/failed Auth API name/ID lookups.
 - Bug 4094 - Available space on file system using %f displays wrong value.
-- Bug 4012 -  Failure to build mod_tls when using static libcrypto due to libdl
+- Bug 4012 - Failure to build mod_tls when using static libcrypto due to libdl
   linker errors.
 - Bug 4098 - mod_sftp unable to use SFTPHostKey due to being group readable in
   CentOS 7.
