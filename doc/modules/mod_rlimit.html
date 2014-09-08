@@ -216,6 +216,24 @@ Example:
 The <code>mod_rlimit</code> module is compiled into <code>proftpd</code> by
 default.
 
+<p><a name="FAQ">FAQ</a>
+<b>Frequently Asked Questions</b><br>
+
+<p>
+<font color=red>Question</font>: Why can't I create directories named "lib"
+or "etc" in the root directory?  For example, my FTP client fails like so:
+<code>
+  <font color=blue>Command:	MKD lib</font>
+  <font color=green>Response:	550 lib: Permission denied</font>
+  <font color=blue>Command:	MKD /lib</font>
+  <font color=green>Response:	550 /lib: Permission denied</font>
+</code>
+Although I don't have anything in my <code>proftpd.conf</code> that would block
+these commands, and the filesystem permissions are OK.  Why does this
+happen?<br>
+<font color=blue>Answer</font>: For the answer to this, see the description for
+the <a href="#RLimitChroot"><code>RLimitChroot</code></a> directive.
+
 <p>
 <hr><br>
 
