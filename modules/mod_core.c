@@ -4514,6 +4514,8 @@ MODRET core_host(cmd_rec *cmd) {
       named_server->ServerName, host);
     session.prev_server = main_server;
     main_server = named_server;
+
+    pr_event_generate("core.module-reset", named_server);
   }
 
   /* XXX Ultimately, if HOST is successful, we change the main_server pointer

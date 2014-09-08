@@ -2694,34 +2694,6 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-MODRET xfer_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
-    pr_event_unregister(&xfer_module, "core.timeout-stalled",
-      xfer_xfer_stalled_ev);
-    pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
-
-    if (displayfilexfer_fh != NULL) {
-      (void) pr_fsio_close(displayfilexfer_fh);
-      displayfilexfer_fh = NULL;
-    }
-
-    res = xfer_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&xfer_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 MODRET xfer_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
@@ -3444,33 +3416,6 @@ MODRET set_usesendfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Event handlers
- */
-
-static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
-
-  /* Only do this if we're currently involved in a data transfer.
-   * This is a hack put in to support mod_shaper's antics.
-   */
-  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
-      strcmp(session.curr_cmd, C_RETR) == 0 ||
-      strcmp(session.curr_cmd, C_STOR) == 0 ||
-      strcmp(session.curr_cmd, C_STOU) == 0) {
-    pool *p = make_sub_pool(session.pool);
-    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
-
-    /* Rescan the config tree for TransferRates, picking up any possible
-     * changes.
-     */
-    pr_log_debug(DEBUG2, "rechecking TransferRates");
-    pr_throttle_init(cmd);
-
-    destroy_pool(p);
-  }
-
-  return;
-}
-
 /* Events handlers
  */
 
@@ -3495,6 +3440,52 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
     cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+  }
+
+  return;
+}
+
+static void xfer_mod_reset_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
+  pr_event_unregister(&xfer_module, "core.timeout-stalled",
+    xfer_xfer_stalled_ev);
+  pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
+
+  if (displayfilexfer_fh != NULL) {
+    (void) pr_fsio_close(displayfilexfer_fh);
+    displayfilexfer_fh = NULL;
+  }
+
+  res = xfer_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&xfer_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
+static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
+
+  /* Only do this if we're currently involved in a data transfer.
+   * This is a hack put in to support mod_shaper's antics.
+   */
+  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
+      strcmp(session.curr_cmd, C_RETR) == 0 ||
+      strcmp(session.curr_cmd, C_STOR) == 0 ||
+      strcmp(session.curr_cmd, C_STOU) == 0) {
+    pool *p = make_sub_pool(session.pool);
+    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
+
+    /* Rescan the config tree for TransferRates, picking up any possible
+     * changes.
+     */
+    pr_log_debug(DEBUG2, "rechecking TransferRates");
+    pr_throttle_init(cmd);
+
+    destroy_pool(p);
   }
 
   return;
@@ -3549,6 +3540,7 @@ static int xfer_sess_init(void) {
   pr_event_register(&xfer_module, "core.timeout-stalled",
     xfer_xfer_stalled_ev, NULL);
 
+  pr_event_register(&xfer_module, "core.module-reset", xfer_mod_reset_ev, NULL);
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
 
@@ -3655,7 +3647,6 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
   { POST_CMD,C_PASS,	G_NONE,	 xfer_post_pass,	FALSE, FALSE },
-  { POST_CMD,C_HOST,	G_NONE,	 xfer_post_host,	FALSE, FALSE },
   { 0, NULL }
 };
 
