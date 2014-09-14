@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ static struct umac_ctx *umac_write_ctxs[2];
 static size_t mac_blockszs[2] = { 0, 0 };
 
 /* Buffer size for reading/writing keys */
-#define SFTP_MAC_BUFSZ				1536
+#define SFTP_MAC_BUFSZ				2048
 
 static unsigned int read_mac_idx = 0;
 static unsigned int write_mac_idx = 0;
