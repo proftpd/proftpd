@@ -224,6 +224,27 @@ Alternatively, you can use the <code>HideFiles</code> and
 This latter configuration will apply to <code>LIST</code>, <code>NLST</code>,
 and <code>MLSD</code> equally.
 
+<p><a name="FactsRemove">
+<font color=red>Question</font>: How can I disable the <code>mod_facts</code>
+module entirely?  Some clients (<i>e.g.</i> ncftp) do not appear to implement
+<code>MLSD</code> properly, and do not honor the <code>FEAT</code> response from
+<code>proftpd</code> when <code>FactsAdvertise</code> is configured
+<em>off</em>.<br>
+<font color=blue>Answer</font>: There is no easy way of disabling the
+<code>mod_facts</code> module at present; the
+<a href="#FactsAdvertise"><code>FactsAdvertise</code></a> directive is intended
+to do this in a way compliant with the RFCs.
+
+<p>
+That said, you <i>can</i> compile <code>proftpd</code> such that
+<code>mod_facts</code> is built as a DSO/shared module:
+<pre>
+  $ ./configure --enable-dso --with-shared=mod_facts ...
+</pre>
+and then, in your <code>proftpd.conf</code>, you simply omit any
+"LoadModule mod_facts.c" directive, so that that module is never dynamically
+loaded.
+
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>

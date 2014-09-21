@@ -993,6 +993,11 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
+  sftp_config_insecure_hostkey_perms_bug4098 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
   sftp_multi_channels => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
@@ -33737,6 +33742,61 @@ sub sftp_multi_channels {
   }
 
   unlink($log_file);
+}
+
+sub sftp_config_insecure_hostkey_perms_bug4098 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  # Deliberately set insecure perms on the hostkeys
+  unless (chmod(0444, $rsa_host_key, $dsa_host_key)) {
+    die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPOptions InsecureHostKeyPerms",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # First, start the server.
+  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
+  if ($@) {
+    $ex = "Server failed to start up with world-readable SFTPHostKey";
+
+  } else {
+    server_stop($setup->{pid_file});
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sftp_multi_channel_downloads {

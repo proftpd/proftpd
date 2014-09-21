@@ -773,15 +773,23 @@ static int pkey_cb(char *buf, int buflen, int rwflag, void *d) {
   return 0;
 }
 
-static int has_req_perms(int fd) {
+static int has_req_perms(int fd, const char *path) {
   struct stat st;
 
-  if (fstat(fd, &st) < 0)
+  if (fstat(fd, &st) < 0) {
     return -1;
+  }
 
   if (st.st_mode & (S_IRWXG|S_IRWXO)) {
-    errno = EACCES;
-    return -1;
+    if (!(sftp_opts & SFTP_OPT_INSECURE_HOSTKEY_PERMS)) {
+      errno = EACCES;
+      return -1;
+    }
+
+    pr_log_pri(PR_LOG_INFO, MOD_SFTP_VERSION
+      "notice: the permissions on SFTPHostKey '%s' (%04o) allow "
+      "group-readable and/or world-readable access, increasing chances of "
+      "system users reading the private key", path, st.st_mode);
   }
 
   return 0;
@@ -1940,7 +1948,7 @@ static int load_file_hostkey(pool *p, const char *path) {
     return -1;
   }
 
-  if (has_req_perms(fd) < 0) {
+  if (has_req_perms(fd, path) < 0) {
     if (errno == EACCES) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "'%s' is accessible by group or world, which is not allowed", path);

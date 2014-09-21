@@ -934,6 +934,18 @@ The currently implemented options are:
     permissions sent by the SFTP client, use this option.
 
   <p>
+  <li><code>InsecureHostKeyPerms</code><br>
+    <p>
+    When this option is used, <code>mod_sftp</code> will ignore insecure
+    permissions (<i>i.e.</i> group- or world-readable) on
+    <code>SFTPHostKey</code> files.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
+
+  <p>
   <li><code>MatchKeySubject</code><br>
     <p>
     When this option is used, if public key authentication is used, the
