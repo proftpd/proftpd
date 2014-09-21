@@ -2,7 +2,7 @@
  * ProFTPD: mod_copy -- a module supporting copying of files on the server
  *                      without transferring the data to the client and back
  *
- * Copyright (c) 2009-2013 TJ Saunders
+ * Copyright (c) 2009-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
  *
  * This is mod_copy, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_copy.c,v 1.8 2012-12-27 22:31:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,7 +38,11 @@
 
 extern pr_response_t *resp_list, *resp_err_list;
 
+module copy_module;
+
 static const char *trace_channel = "copy";
+
+static int copy_sess_init(void);
 
 /* These are copied largely from src/mkhome.c */
 
@@ -663,10 +665,31 @@ MODRET copy_log_site(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void copy_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&copy_module, "core.session-reinit", copy_sess_reinit_ev);
+  pr_feat_remove("SITE COPY");
+
+  res = copy_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&copy_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization functions
  */
 
 static int copy_sess_init(void) {
+  pr_event_register(&copy_module, "core.session-reinit", copy_sess_reinit_ev,
+    NULL);
+
   /* Advertise support for the SITE command */
   pr_feat_add("SITE COPY");
 

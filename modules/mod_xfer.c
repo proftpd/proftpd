@@ -3445,15 +3445,16 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
-static void xfer_mod_reset_ev(const void *event_data, void *user_data) {
+static void xfer_sess_reinit_ev(const void *event_data, void *user_data) {
   int res;
 
   /* A HOST command changed the main_server pointer, reinitialize ourselves. */
 
   pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
+  pr_event_unregister(&xfer_module, "core.session-reinit", xfer_sess_reinit_ev);
+  pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
   pr_event_unregister(&xfer_module, "core.timeout-stalled",
     xfer_xfer_stalled_ev);
-  pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
 
   if (displayfilexfer_fh != NULL) {
     (void) pr_fsio_close(displayfilexfer_fh);
@@ -3540,7 +3541,8 @@ static int xfer_sess_init(void) {
   pr_event_register(&xfer_module, "core.timeout-stalled",
     xfer_xfer_stalled_ev, NULL);
 
-  pr_event_register(&xfer_module, "core.module-reset", xfer_mod_reset_ev, NULL);
+  pr_event_register(&xfer_module, "core.session-reinit", xfer_sess_reinit_ev,
+    NULL);
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
 

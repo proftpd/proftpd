@@ -21,8 +21,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mod_facts.c,v 1.60 2013-04-16 16:04:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1666,27 +1664,6 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET facts_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    facts_opts = 0;
-    facts_mlinfo_opts = 0;
-
-    res = facts_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&facts_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 /* Configuration handlers
  */
 
@@ -1737,6 +1714,31 @@ MODRET set_factsoptions(cmd_rec *cmd) {
   *((unsigned long *) c->argv[0]) = opts;
 
   return PR_HANDLED(cmd);
+}
+
+/* Event listeners
+ */
+
+static void facts_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&facts_module, "core.session-reinit",
+    facts_sess_reinit_ev);
+
+  facts_opts = 0;
+  facts_mlinfo_opts = 0;
+
+  pr_feat_remove("MFF modify;UNIX.group;UNIX.mode;");
+  pr_feat_remove("MFMT");
+  pr_feat_remove("TVFS");
+
+  res = facts_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&facts_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
 }
 
 /* Initialization functions
@@ -1808,7 +1810,6 @@ static cmdtable facts_cmdtab[] = {
   { LOG_CMD_ERR,C_MLSD,		G_NONE,	facts_mlsd_cleanup, FALSE, FALSE },
   { CMD,	C_MLST,		G_DIRS,	facts_mlst, TRUE, FALSE, CL_DIRS },
   { CMD,	C_OPTS "_MLST", G_NONE, facts_opts_mlst, FALSE, FALSE },
-  { POST_CMD,	C_HOST,		G_NONE,	facts_post_host, FALSE, FALSE },
   { 0, NULL }
 };
 

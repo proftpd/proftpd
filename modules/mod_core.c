@@ -4515,7 +4515,7 @@ MODRET core_host(cmd_rec *cmd) {
     session.prev_server = main_server;
     main_server = named_server;
 
-    pr_event_generate("core.module-reset", named_server);
+    pr_event_generate("core.session-reinit", named_server);
   }
 
   /* XXX Ultimately, if HOST is successful, we change the main_server pointer
@@ -4529,18 +4529,28 @@ MODRET core_host(cmd_rec *cmd) {
    * connection, they'll need to use pr_session_disconnect().)
    *
    * Modules implementing post_host handlers:
+   *   mod_core
+   *   mod_tls
+   *
+   * Modules implementing 'sess-reinit' event handlers:
    *   mod_auth
    *   mod_auth_file
    *   mod_auth_unix
+   *   mod_ban
    *   mod_cap
-   *   mod_core
+   *   mod_copy
+   *   mod_deflate
    *   mod_delay
+   *   mod_dnsbl
+   *   mod_exec
    *   mod_facts
    *   mod_ident
    *   mod_log
+   *   mod_log_forensic
    *   mod_memcache
+   *   mod_qos
+   *   mod_site_misc
    *   mod_xfer
-   *   mod_tls
    *
    * Modules that MIGHT need post_host handlers:
    *   mod_ldap
@@ -4562,26 +4572,17 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_wrap2 et al
    *
    * Modules that NEED a post_host handler:
-   *   mod_ban
-   *   mod_copy
-   *   mod_deflate
-   *   mod_dnsbl
-   *   mod_exec
-   *   mod_ifsession
-   *   mod_log_forensic
-   *   mod_qos
-   *   mod_site_misc
    *
    * Modules that do NOT need a post_host handler:
    *   mod_ctrls_admin
    *   mod_dynmasq
    *   mod_ifversion
+   *   mod_ifsession
    *   mod_readme
-   *     Note: optimize DisplayReadme lookup to be done once, post-pass
    *   mod_unique_id
    *
    * What if these module resets were implemented as event handlers, reacting
-   * to a 'module-reset' event (akin to a module-unload event), rather than
+   * to a 'session-reinit' event (akin to a module-unload event), rather than
    * as POST_CMD HOST handlers?
    */
 

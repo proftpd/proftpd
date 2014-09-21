@@ -25,7 +25,6 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_deflate.c,v 1.14 2014-01-03 07:19:01 castaglia Exp $
  * $Libraries: -lz $
  */
 
@@ -42,6 +41,8 @@
 #endif
 
 module deflate_module;
+
+static int deflate_sess_init(void);
 
 static int deflate_enabled = FALSE;
 static int deflate_engine = FALSE;
@@ -920,11 +921,42 @@ MODRET deflate_mode(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void deflate_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&deflate_module, "core.session-reinit",
+    deflate_sess_reinit_ev);
+
+  deflate_engine = FALSE;
+  pr_feat_remove("MODE Z");
+  (void) close(&deflate_logfd);
+  deflate_logfd = -1;
+
+  res = deflate_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&deflate_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization functions
  */
 
+static int deflate_init(void) {
+  pr_log_debug(DEBUG5, MOD_DEFLATE_VERSION ": using zlib " ZLIB_VERSION);
+  return 0;
+}
+
 static int deflate_sess_init(void) {
   config_rec *c;
+
+  pr_event_register(&deflate_module, "core.session-reinit",
+    deflate_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "DeflateEngine", FALSE);
   if (c &&
@@ -978,19 +1010,18 @@ static int deflate_sess_init(void) {
    * Look up the optimal transfer buffer size, and use a factor of 8.
    * Later, if needed, a larger buffer will be allocated when necessary.
    */
-  deflate_zbufsz = pr_config_get_xfer_bufsz() * 8;
-  deflate_zbuf_ptr = deflate_zbuf = pcalloc(session.pool, deflate_zbufsz);
-  deflate_zbuflen = 0;
+  if (deflate_zbuf == NULL) {
+    deflate_zbufsz = pr_config_get_xfer_bufsz() * 8;
+    deflate_zbuf_ptr = deflate_zbuf = pcalloc(session.pool, deflate_zbufsz);
+    deflate_zbuflen = 0;
+  }
 
-  deflate_rbufsz = pr_config_get_xfer_bufsz();
-  deflate_rbuf = palloc(session.pool, deflate_rbufsz);
-  deflate_rbuflen = 0;
+  if (deflate_rbuf == NULL) {
+    deflate_rbufsz = pr_config_get_xfer_bufsz();
+    deflate_rbuf = palloc(session.pool, deflate_rbufsz);
+    deflate_rbuflen = 0;
+  }
 
-  return 0;
-}
-
-static int deflate_init(void) {
-  pr_log_debug(DEBUG5, MOD_DEFLATE_VERSION ": using zlib " ZLIB_VERSION);
   return 0;
 }
 

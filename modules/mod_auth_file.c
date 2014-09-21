@@ -22,8 +22,6 @@
  * copyright holders give permission to link this program with OpenSSL, and
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
- *
- * $Id: mod_auth_file.c,v 1.58 2014-01-22 06:39:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1479,28 +1477,25 @@ MODRET set_authuserfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Command handlers
+/* Event listeners
  */
 
-MODRET authfile_post_host(cmd_rec *cmd) {
+static void authfile_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
 
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
 
-    af_user_file = NULL;
-    af_group_file = NULL;
+  pr_event_unregister(&auth_file_module, "core.session-reinit",
+    authfile_sess_reinit_ev);
 
-    res = authfile_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&auth_file_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
+  af_user_file = NULL;
+  af_group_file = NULL;
+
+  res = authfile_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&auth_file_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
   }
-
-  return PR_DECLINED(cmd);
 }
 
 /* Initialization routines
@@ -1539,6 +1534,9 @@ static int authfile_init(void) {
 static int authfile_sess_init(void) {
   config_rec *c = NULL;
 
+  pr_event_register(&auth_file_module, "core.session-reinit",
+    authfile_sess_reinit_ev, NULL);
+
   c = find_config(main_server->conf, CONF_PARAM, "AuthUserFile", FALSE);
   if (c) {
     af_user_file = c->argv[0];
@@ -1559,11 +1557,6 @@ static conftable authfile_conftab[] = {
   { "AuthGroupFile",	set_authgroupfile,	NULL },
   { "AuthUserFile",	set_authuserfile,	NULL },
   { NULL }
-};
-
-static cmdtable authfile_cmdtab[] = {
-  { POST_CMD,	C_HOST,	G_NONE,	authfile_post_host,	FALSE, FALSE },
-  { 0, NULL }
 };
 
 static authtable authfile_authtab[] = {
@@ -1608,7 +1601,7 @@ module auth_file_module = {
   authfile_conftab,
 
   /* Module command handler table */
-  authfile_cmdtab,
+  NULL,
 
   /* Module authentication handler table */
   authfile_authtab,
