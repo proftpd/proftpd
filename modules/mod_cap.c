@@ -518,7 +518,7 @@ static void cap_sess_reinit_ev(const void *event_data, void *user_data) {
 
   /* A HOST command changed the main_server pointer, reinitialize ourselves. */
 
-  pr_event_unregister(&cap_module, "core.session-reinit", cpa_sess_reinit_ev);
+  pr_event_unregister(&cap_module, "core.session-reinit", cap_sess_reinit_ev);
 
   have_capabilities = FALSE;
   use_capabilities = TRUE;

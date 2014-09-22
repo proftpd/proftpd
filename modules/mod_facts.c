@@ -1755,6 +1755,9 @@ static int facts_sess_init(void) {
   config_rec *c;
   int advertise = TRUE;
 
+  pr_event_register(&facts_module, "core.session-reinit",
+    facts_sess_reinit_ev, NULL);
+
   c = find_config(main_server->conf, CONF_PARAM, "FactsAdvertise", FALSE);
   if (c) {
     advertise = *((int *) c->argv[0]);
