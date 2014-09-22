@@ -934,7 +934,7 @@ static void deflate_sess_reinit_ev(const void *event_data, void *user_data) {
 
   deflate_engine = FALSE;
   pr_feat_remove("MODE Z");
-  (void) close(&deflate_logfd);
+  (void) close(deflate_logfd);
   deflate_logfd = -1;
 
   res = deflate_sess_init();

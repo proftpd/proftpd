@@ -312,14 +312,15 @@ static void mcache_restart_ev(const void *event_data, void *user_data) {
     sizeof(memcached_server_st **));
 }
 
-static void memcache_sess_reinit_ev(const void *event_data, void *user_data) {
+static void mcache_sess_reinit_ev(const void *event_data, void *user_data) {
   int res;
+  config_rec *c;
 
   /* A HOST command changed the main_server pointer, reinitialize ourselves. */
 
   pr_event_unregister(&memcache_module, "core.exit", mcache_exit_ev);
   pr_event_unregister(&memcache_module, "core.session-reinit",
-    memcache_sess_reinit_ev);
+    mcache_sess_reinit_ev);
 
   (void) close(memcache_logfd);
   memcache_logfd = -1;
