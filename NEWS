@@ -53,6 +53,8 @@ Git
   linker errors.
 - Bug 4098 - mod_sftp unable to use SFTPHostKey due to being group readable in
   CentOS 7.
+- Bug 4108 - SSL handshakes for data connections sometimes stall for 3-30
+  seconds.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
