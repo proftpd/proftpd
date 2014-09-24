@@ -3622,7 +3622,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* This works with either rfd or wfd (I hope). */
   rbio = BIO_new_socket(conn->rfd, FALSE);
-  wbio = BIO_new_socket(conn->rfd, FALSE);
+  wbio = BIO_new_socket(conn->wfd, FALSE);
   SSL_set_bio(ssl, rbio, wbio);
 
   /* If configured, set a timer for the handshake. */
@@ -3634,6 +3634,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   if (on_data) {
     /* Make sure that TCP_NODELAY is enabled for the handshake. */
     pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+
+    /* Make sure that TCP_CORK (aka TCP_NOPUSH) is DISABLED for the handshake.
+     * This socket option is set via the pr_inet_set_proto_opts() call made
+     * in mod_core, upon handling the PASV/EPSV command.
+     */
+    (void) pr_inet_set_proto_cork(conn->wfd, 0);
   }
 
   retry:
@@ -3672,10 +3678,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_accept() returned WANT_READ, waiting for more to "
+          "read on fd %d", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_accept() returned WANT_WRITE, waiting for more to "
+          "write on fd %d", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -3732,6 +3744,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   if (on_data) {
     /* Disable TCP_NODELAY, now that the handshake is done. */
     pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+
+    /* Reenable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
+    (void) pr_inet_set_proto_cork(conn->wfd, 1);
   }
  
   /* Disable the handshake timer. */
@@ -4067,10 +4082,16 @@ static int tls_connect(conn_t *conn) {
 
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_connect() returned WANT_READ, waiting for more to "
+          "read on fd %d", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_connect() returned WANT_READ, waiting for more to "
+          "read on fd %d", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -4844,7 +4865,11 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   pr_signals_handle();
   count = SSL_read(ssl, buf, len);
   if (count < 0) {
-    long err = SSL_get_error(ssl, count);
+    long err;
+    int fd;
+
+    err = SSL_get_error(ssl, count);
+    fd = SSL_get_fd(ssl);
 
     /* read(2) returns only the generic error number -1 */
     count = -1;
@@ -4854,7 +4879,10 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
         /* OpenSSL needs more data from the wire to finish the current block,
          * so we wait a little while for it.
          */
-        err = tls_readmore(SSL_get_fd(ssl));
+        pr_trace_msg(trace_channel, 17,
+          "SSL_read() returned WANT_READ, waiting for more to "
+          "read on fd %d", fd);
+        err = tls_readmore(fd);
         if (err > 0) {
           goto retry;
 
@@ -4874,7 +4902,10 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
         /* OpenSSL needs to write more data to the wire to finish the current
          * block, so we wait a little while for it.
          */
-        err = tls_writemore(SSL_get_fd(ssl));
+        pr_trace_msg(trace_channel, 17,
+          "SSL_read() returned WANT_WRITE, waiting for more to "
+          "write on fd %d", fd);
+        err = tls_writemore(fd);
         if (err > 0) {
           goto retry;
 
@@ -6302,6 +6333,7 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
     count = -1;
 
     switch (err) {
+      case SSL_ERROR_WANT_READ:
       case SSL_ERROR_WANT_WRITE:
         /* Simulate an EINTR in case OpenSSL wants to write more. */
         errno = EINTR;
