@@ -769,9 +769,10 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
     /* Only set TCLASS flags on IPv6 sockets; IPv4 sockets use TOS. */
     if (pr_netaddr_get_family(c->local_addr) == AF_INET6) {
       if (c->listen_fd != -1) {
-        int res;
+        int level, res;
 
-        res = setsockopt(c->listen_fd, ip_level, IPV6_TCLASS, (void *) &tos,
+        level = ipv6_proto;
+        res = setsockopt(c->listen_fd, level, IPV6_TCLASS, (void *) &tos,
           sizeof(tos));
         if (res < 0
             && errno != EINVAL
