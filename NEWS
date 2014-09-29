@@ -55,6 +55,7 @@ Git
   CentOS 7.
 - Bug 4108 - SSL handshakes for data connections sometimes stall for 3-30
   seconds.
+- Bug 4109 - setsockopt() call for IPV6_TCLASS should use IPPROTO_IPV6.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
