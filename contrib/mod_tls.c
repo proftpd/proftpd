@@ -377,7 +377,6 @@ static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
-static char *tls_logname = NULL;
 
 static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_TIMEOUT		10
@@ -453,6 +452,16 @@ static char *tls_dsa_cert_file = NULL, *tls_dsa_key_file = NULL;
 static char *tls_pkcs12_file = NULL;
 static char *tls_rsa_cert_file = NULL, *tls_rsa_key_file = NULL;
 static char *tls_rand_file = NULL;
+
+/* Ideally we would use the OPENSSL_NO_PSK macro.  However, to use this, we
+ * would need to say "if !defined(OPENSSL_NO_PSK)".  And that does not work
+ * as well for older OpenSSL installations, where that macro would not be
+ * defined anyway.  So instead, we use the presence of another PSK-related
+ * macro as a more reliable sentinel.
+ */
+#if defined(PSK_MAX_PSK_LEN)
+static pr_table_t *tls_psks = NULL;
+#endif /* PSK_MAX_PSK_LEN */
 
 /* Timeout given for TLS handshakes.  The default is 5 minutes. */
 static unsigned int tls_handshake_timeout = 300;
@@ -6731,6 +6740,9 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 }
 #endif
 
+/* TLSSessionCache callbacks
+ */
+
 static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
   unsigned char *sess_id;
   unsigned int sess_id_len;
@@ -6848,6 +6860,55 @@ static void tls_sess_cache_delete_sess_cb(SSL_CTX *ctx, SSL_SESSION *sess) {
 
   return;
 }
+
+#if defined(PSK_MAX_PSK_LEN)
+/* PreSharedKey callbacks
+ */
+
+static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
+    unsigned char *psk, unsigned int max_psklen) {
+  void *v = NULL;
+  BIGNUM *bn = NULL;
+  int bn_len = -1, res;
+
+  if (identity == NULL) {
+    tls_log("%s", "error: client did not provide PSK identity name!");
+    return 0;
+  }
+
+  pr_trace_msg(trace_channel, 5,
+    "PSK lookup: identity '%s' requested", identity);
+
+  v = pr_table_get(tls_psks, identity, NULL);
+  if (v == NULL) {
+    tls_log("requested PSK identity '%s' not configured", identity);
+    return 0;
+  }
+
+  bn = v;
+  bn_len = BN_num_bytes(bn);
+
+  if (bn_len > (int) max_psklen) {
+    tls_log("unable to use '%s' PSK: max buffer size (%u bytes) "
+      "too small for key (%d bytes)", identity, max_psklen, bn_len);
+    return 0;
+  }
+
+  res = BN_bn2bin(bn, psk); 
+  if (res < 0) {
+    tls_log("error converting PSK for identity '%s' to binary: %s",
+      identity, tls_get_errors());
+    return 0;
+
+  } else {
+    pr_trace_msg(trace_channel, 5,
+      "found PSK (%d bytes) for identity '%s'", res, identity);
+  }
+
+  return res;
+}
+
+#endif /* PSK_MAX_PSK_LEN */
 
 /* NetIO callbacks
  */
@@ -7310,7 +7371,6 @@ static void tls_closelog(void) {
   if (tls_logfd != -1) {
     close(tls_logfd);
     tls_logfd = -1;
-    tls_logname = NULL;
   }
 
   return;
@@ -7321,8 +7381,9 @@ int tls_log(const char *fmt, ...) {
   int res;
 
   /* Sanity check */
-  if (!tls_logname)
+  if (tls_logfd < 0) {
     return 0;
+  }
 
   va_start(msg, fmt);
   res = pr_log_vwritefile(tls_logfd, MOD_TLS_VERSION, fmt, msg);
@@ -7333,20 +7394,18 @@ int tls_log(const char *fmt, ...) {
 
 static int tls_openlog(void) {
   int res = 0, xerrno;
+  char *path;
 
   /* Sanity checks */
-  tls_logname = get_param_ptr(main_server->conf, "TLSLog", FALSE);
-  if (tls_logname == NULL)
-    return 0;
-
-  if (strncasecmp(tls_logname, "none", 5) == 0) {
-    tls_logname = NULL;
+  path = get_param_ptr(main_server->conf, "TLSLog", FALSE);
+  if (path == NULL ||
+      strncasecmp(path, "none", 5) == 0) {
     return 0;
   }
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(tls_logname, &tls_logfd, PR_LOG_SYSTEM_MODE);
+  res = pr_log_openfile(path, &tls_logfd, PR_LOG_SYSTEM_MODE);
   xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
@@ -8597,6 +8656,35 @@ MODRET set_tlspkcs12file(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSPreSharedKey name path */
+MODRET set_tlspsk(cmd_rec *cmd) {
+#if defined(PSK_MAX_PSK_LEN)
+  size_t path_len;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* Ensure that the given path starts with "hex:", denoting the
+   * format of the key at the given path.  Support for other formats, e.g.
+   * bcrypt or somesuch, will be added later.
+   */
+  path_len = strlen(cmd->argv[2]);
+  if (path_len < 5 ||
+      strncmp(cmd->argv[2], "hex:", 4) != 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "unsupported TLSPreSharedKey format: ", cmd->argv[2], NULL))
+  }
+
+  (void) add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+#else
+  pr_log_debug(DEBUG0,
+    "%s is not supported by this build/version of OpenSSL, ignoring",
+    cmd->argv[0]);
+#endif /* PSK_MAX_PSK_LEN */
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSProtocol version1 ... versionN */
 MODRET set_tlsprotocol(cmd_rec *cmd) {
   register unsigned int i;
@@ -9748,6 +9836,102 @@ static int tls_sess_init(void) {
   tls_rsa_key_file = get_param_ptr(main_server->conf,
     "TLSRSACertificateKeyFile", FALSE);
 
+#if defined(PSK_MAX_PSK_LEN)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSPreSharedKey", FALSE);
+  while (c != NULL) {
+    register unsigned int i;
+    char key_buf[PR_TUNABLE_BUFFER_SIZE], *identity, *path;
+    int fd, key_len, valid_hex = TRUE, xerrno;
+    BIGNUM *bn = NULL;
+
+    pr_signals_handle();
+
+    identity = c->argv[0];
+    path = c->argv[1];
+
+    /* Advance path the "hex:" format prefix. */
+    path += 4;
+
+    PRIVS_ROOT
+    fd = open(path, O_RDONLY); 
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (fd < 0) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": error opening TLSPreSharedKey file '%s': %s", path,
+        strerror(xerrno));
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    /* Read the entire key into memory. */
+    key_len = read(fd, key_buf, sizeof(key_buf)-1);
+    (void) close(fd);
+
+    if (key_len < 0) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": error reading TLSPreSharedKey file '%s': %s", path,
+        strerror(xerrno));
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+
+    } else if (key_len == 0) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": read zero bytes from TLSPreSharedKey file '%s', ignoring", path);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    key_buf[sizeof(key_buf)-1] = '\0';
+
+    /* Ensure that it is all hex encoded data */
+    for (i = 0; i < key_len; i++) {
+      if (isxdigit((int) key_buf[i]) == 0) {
+        valid_hex = FALSE;
+        break;
+      }
+    }
+ 
+    if (valid_hex == FALSE) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": unable to use '%s': not a hex number", key_buf);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    res = BN_hex2bn(&bn, key_buf);
+    if (res == 0) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": failed to convert '%s' to BIGNUM: %s", key_buf, tls_get_errors());
+
+      if (bn != NULL) {
+        BN_free(bn);
+      }
+
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    if (tls_psks == NULL) {
+      tls_psks = pr_table_nalloc(session.pool, 0, 2);
+    }
+
+    if (pr_table_add(tls_psks, identity, &bn, sizeof(BIGNUM *))) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": error stashing key for identity '%s': %s", identity,
+        strerror(errno));
+      BN_free(bn);
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+  }
+
+  if (pr_table_count(tls_psks) > 0) {
+    SSL_CTX_set_psk_server_callback(ssl_ctx, tls_lookup_psk);
+  }
+#endif /* PSK_MAX_PSK_LEN */
+
   c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
   while (c != NULL) {
     unsigned long opts = 0;
@@ -10085,6 +10269,7 @@ static conftable tls_conftab[] = {
   { "TLSOptions",		set_tlsoptions,		NULL },
   { "TLSPassPhraseProvider",	set_tlspassphraseprovider, NULL },
   { "TLSPKCS12File", 		set_tlspkcs12file,	NULL },
+  { "TLSPreSharedKey",		set_tlspsk,		NULL },
   { "TLSProtocol",		set_tlsprotocol,	NULL },
   { "TLSRandomSeed",		set_tlsrandseed,	NULL },
   { "TLSRenegotiate",		set_tlsrenegotiate,	NULL },
