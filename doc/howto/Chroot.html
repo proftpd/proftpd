@@ -296,6 +296,19 @@ used for the chroot.  It's always a good idea of have a "applies to everyone"
 the path/home directory is a symlink?<br>
 <font color=blue>Answer</font>: Yes.
 
+<p>
+Note that some sites consider this a security risk; if that home directory
+can be deleted by remote users, and replaced with a symlink of their own
+creation (<i>e.g.</i> via SSH or some other webapp), this can be a problem.
+To help mitigate situations like this, you can use the <a href="../modules/mod_auth.html#AllowChrootSymlinks"><code>AllowChrootSymlinks</code></a> directive:
+<pre>
+  # Do not follow symlinks when chrooting
+  AllowChrootSymlinks off
+</pre>
+As stated in the documentation, using <code>AllowChrootSymlinks</code> does
+<b>not</b> prevent this problem entirely; it simply means that
+<i><code>proftpd</code></i> cannot be used to get around the restrictions.
+
 <p><a name="ChrootNotWorking">
 <font color=red>Question</font>: I have configured <code>DefaultRoot</code> in my proftpd.conf, but my clients still see the root directory.  Is it a bug?<br>
 <cont color=blue>Answer</font>.  Usually not.
@@ -322,11 +335,6 @@ assume it is.  Maybe a different config file is being used than the one you
 edited, or maybe the <code>DefaultRoot</code> directive is not in a
 <code>&lt;Global&gt;</code> section and you are using
 <code>&lt;VirtualHost&gt;</code> sections, <i>etc</i>.
-
-<p>
-<hr>
-Last Updated: $Date: 2014-03-13 18:06:26 $<br>
-<hr>
 
 </body>
 </html>
