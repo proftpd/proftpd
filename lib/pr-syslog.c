@@ -265,8 +265,8 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   send(sockfd, logbuf, buflen, 0);
 #else
 
-  /* Prepare the structs for use by putmsg(). As /dev/log is a STREAMS
-   * device on Solaris (and possibly other platforms?), putmsg() is
+  /* Prepare the structs for use by putmsg(). As /dev/log (or /dev/conslog)
+   * is a STREAMS device on Solaris (and possibly other platforms?), putmsg() is
    * used so that syslog facility and level are properly honored; write()
    * does not seem to work as desired.
    */
@@ -348,21 +348,9 @@ int pr_openlog(const char *ident, int opts, int facility) {
 #else
   sockfd = open(PR_PATH_LOG, O_WRONLY);
 
-# ifdef SOLARIS2
-  /* Workaround for a /dev/log bug (SunSolve bug #4817079) on Solaris. */
-  if (sockfd >= 0) {
-    struct strioctl ic;
-
-    ic.ic_cmd = I_ERRLOG;
-    ic.ic_timout = 0;
-    ic.ic_len = 0;
-    ic.ic_dp = NULL;
-
-    if (ioctl(sockfd, I_STR, &ic) < 0)
-      fprintf(stderr, "error setting I_ERRLOG on " PR_PATH_LOG ": %s\n",
-        strerror(errno));
+  if (sockfd < 0) {
+    fprintf(stderr, "error opening '%s': %s\n", PR_PATH_LOG, strerror(errno));
   }
-# endif /* SOLARIS2 */
 #endif
 
   return sockfd;
