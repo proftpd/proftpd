@@ -71,7 +71,7 @@ static size_t cipher_blockszs[2] = {
 };
 
 /* Buffer size for reading/writing keys */
-#define SFTP_CIPHER_BUFSZ			2048
+#define SFTP_CIPHER_BUFSZ			4096
 
 static unsigned int read_cipher_idx = 0;
 static unsigned int write_cipher_idx = 0;
