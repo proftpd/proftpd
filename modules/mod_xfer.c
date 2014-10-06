@@ -956,8 +956,9 @@ static void stor_abort(void) {
     stor_fh = NULL;
   }
 
+  delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+
   if (session.xfer.xfer_type == STOR_HIDDEN) {
-    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
     if (delete_stores == NULL ||
         *delete_stores == TRUE) {
       /* If a hidden store was aborted, remove only hidden file, not real
@@ -966,16 +967,24 @@ static void stor_abort(void) {
       if (session.xfer.path_hidden) {
         pr_log_debug(DEBUG5, "removing aborted HiddenStores file '%s'",
           session.xfer.path_hidden);
-        pr_fsio_unlink(session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        } 
       }
     }
+  }
 
-  } else if (session.xfer.path) {
-    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+  if (session.xfer.path) {
     if (delete_stores == NULL ||
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
-      pr_fsio_unlink(session.xfer.path);
+      if (pr_fsio_unlink(session.xfer.path) < 0) {
+        pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
+          session.xfer.path, strerror(errno));
+      }
     }
   }
 
@@ -998,7 +1007,12 @@ static int stor_complete(void) {
       if (session.xfer.path_hidden) {
         pr_log_debug(DEBUG5, "failed to close HiddenStores file '%s', removing",
           session.xfer.path_hidden);
-        pr_fsio_unlink(session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        } 
       }
     }
 
@@ -1863,7 +1877,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     if (session.xfer.path &&
         session.xfer.path_hidden) {
-      if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
+      if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) < 0) {
         int xerrno = errno;
 
         /* This should only fail on a race condition with a chmod/chown
@@ -1877,11 +1891,19 @@ MODRET xfer_stor(cmd_rec *cmd) {
         pr_response_add_err(R_550, _("%s: Rename of hidden file %s failed: %s"),
           session.xfer.path, session.xfer.path_hidden, strerror(xerrno));
 
-        pr_fsio_unlink(session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "failed to delete HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        } 
 
         errno = xerrno;
         return PR_ERROR(cmd);
       }
+
+      /* One way or another, we've dealt with the HiddenStores file. */
+      session.xfer.path_hidden = NULL;
     }
 
     if (xfer_displayfile() < 0) {
@@ -2464,6 +2486,27 @@ MODRET xfer_smnt(cmd_rec *cmd) {
 }
 
 MODRET xfer_err_cleanup(cmd_rec *cmd) {
+
+  /* If a hidden store was aborted, remove it. */
+  if (session.xfer.xfer_type == STOR_HIDDEN) {
+    unsigned char *delete_stores = NULL;
+
+    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+    if (delete_stores == NULL ||
+        *delete_stores == TRUE) {
+      if (session.xfer.path_hidden) {
+        pr_log_debug(DEBUG5, "removing aborted HiddenStores file '%s'",
+          session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        }
+      }
+    }
+  }
+
   pr_data_clear_xfer_pool();
 
   memset(&session.xfer, '\0', sizeof(session.xfer));
@@ -2511,17 +2554,20 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   int timeout;
   const char *proto;
 
+  timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER);
+
   if (session.sf_flags & SF_XFER) {
+    pr_trace_msg("timer", 4,
+      "TimeoutNoTransfer (%d %s) reached, but data transfer in progress, "
+      "ignoring", timeout, timeout != 1 ? "seconds" : "second");
+
     /* Transfer in progress, ignore this timeout */
     return 1;
   }
 
-  timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER);
-
   pr_event_generate("core.timeout-no-transfer", NULL);
   pr_response_send_async(R_421,
-    _("No transfer timeout (%d %s): closing control connection"),
-    timeout, timeout != 1 ? "seconds" : "second");
+    _("No transfer timeout (%d seconds): closing control connection"), timeout);
 
   pr_timer_remove(PR_TIMER_IDLE, ANY_MODULE);
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);

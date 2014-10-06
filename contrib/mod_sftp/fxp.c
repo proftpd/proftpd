@@ -2751,9 +2751,11 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
           "removing aborted uploaded file '%s'", curr_path);
 
         if (pr_fsio_unlink(curr_path) < 0) {
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error unlinking file '%s': %s", curr_path,
-            strerror(errno));
+          if (errno != ENOENT) { 
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "error unlinking file '%s': %s", curr_path,
+              strerror(errno));
+          }
         }
       }
     }

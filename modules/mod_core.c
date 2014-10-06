@@ -123,9 +123,16 @@ static unsigned long core_exceeded_cmd_rate(cmd_rec *cmd) {
 }
 
 static int core_idle_timeout_cb(CALLBACK_FRAME) {
+  int timeout;
+
+  timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
+
   /* We don't want to quit in the middle of a transfer */
   if (session.sf_flags & SF_XFER) { 
- 
+    pr_trace_msg("timer", 4,
+      "TimeoutIdle (%d %s) reached, but data transfer in progress, ignoring",
+      timeout, timeout != 1 ? "seconds" : "second"); 
+
     /* Restart the timer. */
     return 1; 
   }
@@ -133,8 +140,7 @@ static int core_idle_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-idle", NULL);
  
   pr_response_send_async(R_421,
-    _("Idle timeout (%d seconds): closing control connection"),
-    pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
+    _("Idle timeout (%d seconds): closing control connection"), timeout);
 
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
   pr_timer_remove(PR_TIMER_NOXFER, ANY_MODULE);
