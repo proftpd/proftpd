@@ -133,7 +133,7 @@
  * default linger timeout under 60 seconds.
  */
 #ifndef PR_TUNABLE_TIMEOUTLINGER
-# define PR_TUNABLE_TIMEOUTLINGER	30
+# define PR_TUNABLE_TIMEOUTLINGER	10
 #endif
 
 #ifndef PR_TUNABLE_TIMEOUTLOGIN
