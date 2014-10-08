@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,7 +68,11 @@
 #elif defined(__hpux)
 # define PR_PATH_LOG	"/dev/log.un"
 #else
-# define PR_PATH_LOG	"/dev/log"
+# if defined(SOLARIS2)
+#  define PR_PATH_LOG	"/dev/conslog"
+# else
+#  define PR_PATH_LOG	"/dev/log"
+# endif /* !Solaris */
 #endif
 
 /* Close desriptor used to write to system logger. */
