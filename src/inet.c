@@ -179,6 +179,11 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
   int addr_family;
   int res = 0, one = 1, hold_errno;
 
+  if (p == NULL) {
+    errno = inet_errno = EINVAL;
+    return NULL;
+  }
+
   if (!inet_pool) {
     inet_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(inet_pool, "Inet Pool");
@@ -970,18 +975,23 @@ static void set_owner(int fd) {
 /* Put a socket in async mode (so SIGURG is raised on OOB)
  */
 int pr_inet_set_async(pool *p, conn_t *c) {
+  if (p == NULL ||
+      c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
 #ifdef SO_OOBINLINE
   pr_trace_msg(trace_channel, 7,
-    "setting SO_OOBINLINE for listening socket %d",  c->listen_fd);
+    "setting SO_OOBINLINE for listening socket %d", c->listen_fd);
   set_oobinline(c->listen_fd);
 
   pr_trace_msg(trace_channel, 7,
-    "setting SO_OOBINLINE for reading socket %d",  c->rfd);
+    "setting SO_OOBINLINE for reading socket %d", c->rfd);
   set_oobinline(c->rfd);
 
   pr_trace_msg(trace_channel, 7,
-    "setting SO_OOBINLINE for writing socket %d",  c->wfd);
+    "setting SO_OOBINLINE for writing socket %d", c->wfd);
   set_oobinline(c->wfd);
 #endif
 
@@ -999,6 +1009,12 @@ int pr_inet_set_async(pool *p, conn_t *c) {
 int pr_inet_set_nonblock(pool *p, conn_t *c) {
   int flags;
   int res = -1;
+
+  if (p == NULL ||
+      c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   errno = EBADF;		/* Default */
 
@@ -1025,6 +1041,12 @@ int pr_inet_set_nonblock(pool *p, conn_t *c) {
 int pr_inet_set_block(pool *p, conn_t *c) {
   int flags;
   int res = -1;
+
+  if (p == NULL ||
+      c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   errno = EBADF;		/* Default */
 

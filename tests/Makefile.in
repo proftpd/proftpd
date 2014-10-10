@@ -40,7 +40,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/pidfile.o \
   $(top_srcdir)/src/configdb.o \
   $(top_srcdir)/src/auth.o \
-  $(top_srcdir)/src/filter.o
+  $(top_srcdir)/src/filter.o \
+  $(top_srcdir)/src/inet.o
 
 TEST_API_LIBS=-lcheck
 
@@ -74,6 +75,7 @@ TEST_API_OBJS=\
   api/configdb.o \
   api/auth.o \
   api/filter.o \
+  api/inet.o \
   api/stubs.o \
   api/tests.o
 
