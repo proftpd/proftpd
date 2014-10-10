@@ -58,6 +58,7 @@ static struct testsuite_info suites[] = {
   { "pidfile",		tests_get_pidfile_suite },
   { "config",		tests_get_config_suite },
   { "auth",		tests_get_auth_suite },
+  { "filter",		tests_get_filter_suite },
 
   { NULL, NULL }
 };
@@ -146,6 +147,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "auth") == 0) {
     return tests_get_auth_suite();
+
+  } else if (strcmp(suite, "filter") == 0) {
+    return tests_get_filter_suite();
   }
 
   return NULL;

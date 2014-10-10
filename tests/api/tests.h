@@ -68,6 +68,7 @@ Suite *tests_get_parser_suite(void);
 Suite *tests_get_pidfile_suite(void);
 Suite *tests_get_config_suite(void);
 Suite *tests_get_auth_suite(void);
+Suite *tests_get_filter_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.
