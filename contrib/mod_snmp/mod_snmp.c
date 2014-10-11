@@ -1492,6 +1492,7 @@ static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
       family == AF_INET ? "IPv4" : "IPv6",
       pr_netaddr_get_ipstr(agent_addr),
       ntohs(pr_netaddr_get_port(agent_addr)), strerror(errno));
+    (void) close(sockfd);
     exit(1);
 
   } else {
@@ -1501,7 +1502,7 @@ static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
       ntohs(pr_netaddr_get_port(agent_addr)));
   }
 
-  return 0;
+  return sockfd;
 }
 
 static void snmp_agent_loop(array_header *sockfds, array_header *addrs) {
