@@ -714,20 +714,21 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
        * address; we don't want to have duplicate addresses in the
        * returned list of additional addresses.
        */
-      if (info &&
-          info->ai_family != pr_netaddr_get_family(na)) {
-        pr_netaddr_t **elt;
+      if (info != NULL) {
+        if (info->ai_family != pr_netaddr_get_family(na)) {
+          pr_netaddr_t **elt;
 
-        *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
-        elt = push_array(*addrs);
+          *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
+          elt = push_array(*addrs);
 
-        *elt = pcalloc(p, sizeof(pr_netaddr_t));
-        pr_netaddr_set_family(*elt, info->ai_family);
-        pr_netaddr_set_sockaddr(*elt, info->ai_addr);
+          *elt = pcalloc(p, sizeof(pr_netaddr_t));
+          pr_netaddr_set_family(*elt, info->ai_family);
+          pr_netaddr_set_sockaddr(*elt, info->ai_addr);
 
-        pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
-          info->ai_family == AF_INET ? "IPv4" : "IPv6",
-          pr_netaddr_get_ipstr(*elt));
+          pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
+            info->ai_family == AF_INET ? "IPv4" : "IPv6",
+            pr_netaddr_get_ipstr(*elt));
+        }
 
         pr_freeaddrinfo(info);
       }
