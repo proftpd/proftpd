@@ -2939,7 +2939,7 @@ void sftp_keys_get_passphrases(void) {
       }
 
       k = pcalloc(s->pool, sizeof(struct sftp_pkey));      
-      k->pkeysz = PEM_BUFSIZE;
+      k->pkeysz = PEM_BUFSIZE-1;
       k->server = s;
 
       if (get_passphrase(k, c->argv[0]) < 0) {

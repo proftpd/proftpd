@@ -4458,8 +4458,7 @@ static const char *tls_get_errors(void) {
   return str;
 }
 
-/* Return a page-aligned pointer to memory of at least the given size.
- */
+/* Return a page-aligned pointer to memory of at least the given size. */
 static char *tls_get_page(size_t sz, void **ptr) {
   void *d;
   long pagesz = tls_get_pagesz(), p;
@@ -4477,8 +4476,7 @@ static char *tls_get_page(size_t sz, void **ptr) {
   return ((char *) p);
 }
 
-/* Return the size of a page on this architecture.
- */
+/* Return the size of a page on this architecture. */
 static size_t tls_get_pagesz(void) {
   long pagesz;
 
@@ -9348,7 +9346,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey,
-          k->pkeysz, TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading RSA passphrase: %s", tls_get_errors());
 
@@ -9371,7 +9369,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey,
-          k->pkeysz, TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading DSA passphrase: %s", tls_get_errors());
 
@@ -9395,7 +9393,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, ec->argv[0], buf, k->ec_pkey,
-          k->pkeysz, TLS_PASSPHRASE_FL_EC_KEY) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_EC_KEY) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading EC passphrase: %s", tls_get_errors());
 
@@ -9420,7 +9418,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, pkcs12->argv[0], buf, k->pkcs12_passwd,
-          k->pkeysz, TLS_PASSPHRASE_FL_PKCS12_PASSWD) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_PKCS12_PASSWD) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading PKCS12 password: %s", tls_get_errors());
 
