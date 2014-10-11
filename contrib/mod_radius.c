@@ -257,7 +257,6 @@ static void radius_build_packet(radius_packet_t *, const unsigned char *,
   const unsigned char *, unsigned char *);
 static unsigned char radius_have_var(char *);
 static int radius_closelog(void);
-static int radius_close_socket(int);
 static void radius_get_acct_digest(radius_packet_t *, unsigned char *);
 static radius_attrib_t *radius_get_attrib(radius_packet_t *, unsigned char);
 static void radius_get_rnd_digest(radius_packet_t *);
@@ -2205,9 +2204,14 @@ static int radius_open_socket(void) {
   unsigned short local_port = 0;
 
   /* Obtain a socket descriptor. */
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sockfd < 0) {
+    int xerrno = errno;
+
     radius_log("notice: unable to open socket for communication: %s",
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -2230,17 +2234,13 @@ static int radius_open_socket(void) {
     (local_port < USHRT_MAX));
 
   if (local_port >= USHRT_MAX) {
-    close(sockfd);
+    (void) close(sockfd);
     radius_log("notice: unable to bind to socket: no open local ports");
     return -1;
   }
 
   /* Done */
   return sockfd;
-}
-
-static int radius_close_socket(int sockfd) {
-  return close(sockfd);
 }
 
 static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
@@ -2306,7 +2306,11 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
   res = sendto(sockfd, (char *) packet, ntohs(packet->length), 0,
     &radius_remote_sock, sizeof(struct sockaddr_in));
   if (res < 0) {
-    radius_log("error: unable to send packet: %s", strerror(errno));
+    int xerrno = errno;
+
+    radius_log("error: unable to send packet: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -2405,9 +2409,7 @@ static unsigned char radius_start_accting(void) {
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0) {
-    radius_log("socket close failed");
-  }
+  (void) close(sockfd);
 
   if (recvd_response) {
 
@@ -2525,7 +2527,8 @@ static unsigned char radius_stop_accting(void) {
     radius_log("sending stop acct request packet");
     if (radius_send_packet(sockfd, request, acct_server) < 0) {
       radius_log("packet send failed");
-      return FALSE;
+      acct_server = acct_server->next;
+      continue;
     }
 
     /* Receive the response. */
@@ -2533,18 +2536,18 @@ static unsigned char radius_stop_accting(void) {
     response = radius_recv_packet(sockfd, acct_server->timeout);
     if (response == NULL) {
       radius_log("packet receive failed");
-      return FALSE;
+      acct_server = acct_server->next;
+      continue;
     }
 
     radius_log("packet receive succeeded");
     recvd_response = TRUE;
-    break;
+    acct_server = acct_server->next;
+    continue;
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0) {
-    radius_log("socket close failed");
-  }
+  (void) close(sockfd);
 
   if (recvd_response) {
 
@@ -2921,9 +2924,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0) {
-    radius_log("socket close failed");
-  }
+  (void) close(sockfd);
 
   if (recvd_response) {
 
