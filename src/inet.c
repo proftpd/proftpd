@@ -286,7 +286,6 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
     }
 
     if (fd == -1) {
-
       /* On failure, destroy the connection and return NULL. */
       if (reporting) {
         pr_log_pri(PR_LOG_WARNING,
@@ -315,7 +314,12 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
     memset(&na, 0, sizeof(na));
     if (pr_netaddr_set_family(&na, addr_family) < 0) {
+      int xerrno = errno;
+
       destroy_pool(c->pool);
+      (void) close(fd);
+
+      errno = xerrno;
       return NULL;
     }
 
