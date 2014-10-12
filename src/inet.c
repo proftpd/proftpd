@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.156 2013-10-07 05:51:30 castaglia Exp $
- */
+/* Inet support functions, many wrappers for netdb functions */
 
 #include "conf.h"
 #include "privs.h"
@@ -972,9 +970,17 @@ static void set_oobinline(int fd) {
 #endif
 
 #ifdef F_SETOWN
-static void set_owner(int fd) {
-  if (fd != -1)
-    fcntl(fd, F_SETOWN, session.pid ? session.pid : getpid());
+static void set_socket_owner(int fd) {
+  if (fd >= 0) {
+    pid_t pid;
+
+    pid = session.pid ? session.pid : getpid();
+    if (fcntl(fd, F_SETOWN, pid) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "failed to SETOWN PID %lu on socket fd %d: %s", (unsigned long) pid,
+        fd, strerror(errno));
+    }
+  }
 }
 #endif
 
@@ -1002,9 +1008,9 @@ int pr_inet_set_async(pool *p, conn_t *c) {
 #endif
 
 #ifdef F_SETOWN
-  set_owner(c->listen_fd);
-  set_owner(c->rfd);
-  set_owner(c->wfd);
+  set_socket_owner(c->listen_fd);
+  set_socket_owner(c->rfd);
+  set_socket_owner(c->wfd);
 #endif
 
   return 0;
