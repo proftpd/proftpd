@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: keys.c,v 1.39 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2020,7 +2018,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
 }
 
 const unsigned char *sftp_keys_get_hostkey_data(pool *p,
-    enum sftp_key_type_e key_type, size_t *datalen) {
+    enum sftp_key_type_e key_type, uint32_t *datalen) {
   unsigned char *buf = NULL, *ptr = NULL;
   uint32_t buflen = SFTP_DEFAULT_HOSTKEY_SZ;
 
