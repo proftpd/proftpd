@@ -1606,8 +1606,9 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
     break;
   }
 
-  if (flags & O_NONBLOCK)
-    fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
+  if (flags & O_NONBLOCK) {
+    (void) fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
+  }
 
   if (timeout_stalled) {
     pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
