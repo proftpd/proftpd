@@ -7529,7 +7529,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       (void) pr_table_remove(cmd2->notes, "mod_xfer.file-modified", NULL);
 
       if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
-          pstrdup(cmd->pool, "true"), 0) < 0) {
+          pstrdup(cmd2->pool, "true"), 0) < 0) {
         if (errno != EEXIST) {
           pr_log_pri(PR_LOG_NOTICE,
             "notice: error adding 'mod_xfer.file-modified' note: %s",
