@@ -865,7 +865,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  pr_fsio_set_block(src_fh);
+  if (pr_fsio_set_block(src_fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error putting '%s' into blocking mode: %s", src, strerror(errno));
+  }
 
   /* Do not allow copying of directories. open(2) may not fail when
    * opening the source path, since it is only doing a read-only open,
@@ -873,7 +876,11 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    */
 
   /* This should never fail. */
-  (void) pr_fsio_fstat(src_fh, &src_st);
+  if (pr_fsio_fstat(src_fh, &src_st) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error fstat'ing '%s': %s", src, strerror(errno));
+  }
+
   if (S_ISDIR(src_st.st_mode)) {
     int xerrno = EISDIR;
 
