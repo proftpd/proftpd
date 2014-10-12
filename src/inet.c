@@ -907,24 +907,30 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 
     if (sndbuf > 0) {
       len = sizeof(csndbuf);
-      getsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf, &len);
+      if (getsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf,
+          &len) == 0) {
+        if (sndbuf > csndbuf) {
+          if (setsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
+              sizeof(sndbuf)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_SNDBUF: %s",
+              strerror(errno));
 
-      if (sndbuf > csndbuf) {
-        if (setsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
-            sizeof(sndbuf)) < 0) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_SNDBUF: %s",
-            strerror(errno));
+          } else {
+            pr_trace_msg("data", 8,
+              "set socket sndbuf of %lu bytes", (unsigned long) sndbuf);
+          }
 
         } else {
           pr_trace_msg("data", 8,
-            "set socket sndbuf of %lu bytes", (unsigned long) sndbuf);
+            "socket %d has sndbuf of %lu bytes, ignoring "
+            "requested %lu bytes sndbuf", c->listen_fd, (unsigned long) csndbuf,
+            (unsigned long) sndbuf);
         }
 
       } else {
-        pr_trace_msg("data", 8,
-          "socket %d has sndbuf of %lu bytes, ignoring "
-          "requested %lu bytes sndbuf", c->listen_fd, (unsigned long) csndbuf,
-          (unsigned long) sndbuf);
+        pr_trace_msg("data", 3,
+          "error getting SO_SNDBUF on listen fd %d: %s", c->listen_fd,
+          strerror(errno));
       }
     }
 
@@ -932,24 +938,30 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 
     if (rcvbuf > 0) {
       len = sizeof(crcvbuf);
-      getsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf, &len);
+      if (getsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf,
+          &len) == 0) {
+        if (rcvbuf > crcvbuf) {
+          if (setsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
+              sizeof(rcvbuf)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_RCVFBUF: %s",
+              strerror(errno));
 
-      if (rcvbuf > crcvbuf) {
-        if (setsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
-            sizeof(rcvbuf)) < 0) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_RCVFBUF: %s",
-            strerror(errno));
+          } else {
+            pr_trace_msg("data", 8,
+              "set socket rcvbuf of %lu bytes", (unsigned long) rcvbuf);
+          }
 
         } else {
           pr_trace_msg("data", 8,
-            "set socket rcvbuf of %lu bytes", (unsigned long) rcvbuf);
+           "socket %d has rcvbuf of %lu bytes, ignoring "
+            "requested %lu bytes rcvbuf", c->listen_fd, (unsigned long) crcvbuf,
+            (unsigned long) rcvbuf);
         }
 
       } else {
-        pr_trace_msg("data", 8,
-          "socket %d has rcvbuf of %lu bytes, ignoring "
-          "requested %lu bytes rcvbuf", c->listen_fd, (unsigned long) crcvbuf,
-          (unsigned long) rcvbuf);
+        pr_trace_msg("data", 3,
+          "error getting SO_RCVBUF on listen fd %d: %s", c->listen_fd,
+          strerror(errno));
       }
     }
 
@@ -962,10 +974,12 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 #ifdef SO_OOBINLINE
 static void set_oobinline(int fd) {
   int on = 1;
-  if (fd != -1)
-    if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0)
+  if (fd >= 0) {
+    if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_OOBINLINE: %s",
         strerror(errno));
+    }
+  }
 }
 #endif
 
