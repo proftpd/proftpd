@@ -772,7 +772,7 @@ static void stash_dumpf(const char *fmt, ...) {
 static unsigned int stash_dump_syms(xaset_t **symbol_table, const char *type,
     void (*dumpf)(const char *, ...)) {
   register unsigned int i;
-  unsigned int count;
+  unsigned int count = 0;
 
   for (i = 0; i < PR_TUNABLE_HASH_TABLE_SIZE; i++) {
     unsigned int nrow_syms = 0;
