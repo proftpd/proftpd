@@ -3010,7 +3010,7 @@ void sftp_keys_free(void) {
       EVP_PKEY_free(sftp_ecdsa521_hostkey->pkey);
     }
 
-    sftp_ecdsa256_hostkey = NULL;
+    sftp_ecdsa521_hostkey = NULL;
   }
 #endif /* PR_USE_OPENSSL_ECC */
 }
