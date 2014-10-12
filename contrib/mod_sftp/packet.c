@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -223,6 +223,7 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
 
         if (xerrno == EINTR) {
           pr_signals_handle();
+          res = read(sockfd, ptr, remainlen);
           continue;
         }
 
