@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp RFC4716 keystore
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -513,14 +513,31 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
     return NULL;
   }
 
-  pr_fsio_set_block(fh);
+  if (pr_fsio_set_block(fh) < 0) {
+   xerrno = errno;
+
+    destroy_pool(filestore_pool);
+    (void) pr_fsio_close(fh);
+
+    errno = xerrno;
+    return NULL;
+  }
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
-  pr_fsio_fstat(fh, &st);
+  if (pr_fsio_fstat(fh, &st) < 0) {
+    xerrno = errno;
+
+    destroy_pool(filestore_pool);
+    (void) pr_fsio_close(fh);
+
+    errno = xerrno;
+    return NULL;
+  }
+
   if (S_ISDIR(st.st_mode)) {
     destroy_pool(filestore_pool);
-    pr_fsio_close(fh);
+    (void) pr_fsio_close(fh);
 
     errno = EISDIR;
     return NULL;
