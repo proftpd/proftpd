@@ -597,8 +597,9 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
   /* Only close the input stream if it is actually a different stream than
    * the output stream.
    */
-  if (c->instrm != c->outstrm)
+  if (c->instrm != c->outstrm) {
     pr_netio_close(c->instrm);
+  }
 
   c->outstrm = NULL;
   c->instrm = NULL;
@@ -610,8 +611,9 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
 void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
   pr_inet_set_block(p, c);
 
-  if (c->instrm)
+  if (c->instrm) {
     pr_netio_lingering_abort(c->instrm, linger);
+  }
 
   /* Only close the output stream if it is actually a different stream
    * than the input stream.
@@ -1259,7 +1261,9 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
   /* Leave the connection in CM_ACCEPT mode, so others can see
    * our state.  Re-enable blocking mode, however.
    */
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    return -1;
+  }
 
   return fd;
 }
