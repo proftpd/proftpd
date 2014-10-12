@@ -924,8 +924,8 @@ static unsigned char pr_ldap_quota_lookup(pool *p, char *filter_template,
 
     } else {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "no entries for filter %s, using default quota %s",
-        filter ? filter : "(null)", ldap_default_quota);
+        "no entries for filter %s, using default quota %s", filter,
+        ldap_default_quota);
     }
 
     parse_quota(p, replace, pstrdup(p, ldap_default_quota));
