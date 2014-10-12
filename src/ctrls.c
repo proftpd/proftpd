@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1014,7 +1014,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (fcntl(sockfd, F_SETFD, FD_CLOEXEC) < 0) {
     int xerrno = errno;
 
-    close(sockfd);
+    (void) close(sockfd);
+    pr_signals_unblock();
 
     errno = xerrno;
     return -1;
@@ -1036,13 +1037,14 @@ int pr_ctrls_connect(const char *socket_file) {
   len = sizeof(cl_sock);
 
   /* Make sure the file doesn't already exist */
-  unlink(cl_sock.sun_path);
+  (void) unlink(cl_sock.sun_path);
 
   /* Make it a socket */
   if (bind(sockfd, (struct sockaddr *) &cl_sock, len) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;
@@ -1053,7 +1055,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (chmod(cl_sock.sun_path, PR_CTRLS_CL_MODE) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;
@@ -1070,7 +1073,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (connect(sockfd, (struct sockaddr *) &ctrl_sock, len) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;
@@ -1082,7 +1086,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (ctrls_connect_local_creds(sockfd) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;

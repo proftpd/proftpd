@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -290,10 +290,14 @@ int util_scoreboard_scrub(int verbose) {
 
   /* We can afford to block/wait until we obtain our lock on the file. */
   while (fcntl(fd, F_SETLKW, &lock) < 0) {
-    if (errno == EINTR) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
       continue;
     }
 
+    (void) close(fd);
+    errno = xerrno;
     return -1;
   }
 

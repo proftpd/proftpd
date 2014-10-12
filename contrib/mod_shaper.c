@@ -213,6 +213,8 @@ static int shaper_remove_queue(void) {
   struct msqid_ds ds;
   int res;
 
+  memset(&ds, 0, sizeof(ds));
+
   res = msgctl(shaper_qid, IPC_RMID, &ds);
   if (res < 0) {
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,

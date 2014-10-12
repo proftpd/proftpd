@@ -714,20 +714,21 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
        * address; we don't want to have duplicate addresses in the
        * returned list of additional addresses.
        */
-      if (info &&
-          info->ai_family != pr_netaddr_get_family(na)) {
-        pr_netaddr_t **elt;
+      if (info != NULL) {
+        if (info->ai_family != pr_netaddr_get_family(na)) {
+          pr_netaddr_t **elt;
 
-        *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
-        elt = push_array(*addrs);
+          *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
+          elt = push_array(*addrs);
 
-        *elt = pcalloc(p, sizeof(pr_netaddr_t));
-        pr_netaddr_set_family(*elt, info->ai_family);
-        pr_netaddr_set_sockaddr(*elt, info->ai_addr);
+          *elt = pcalloc(p, sizeof(pr_netaddr_t));
+          pr_netaddr_set_family(*elt, info->ai_family);
+          pr_netaddr_set_sockaddr(*elt, info->ai_addr);
 
-        pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
-          info->ai_family == AF_INET ? "IPv4" : "IPv6",
-          pr_netaddr_get_ipstr(*elt));
+          pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
+            info->ai_family == AF_INET ? "IPv4" : "IPv6",
+            pr_netaddr_get_ipstr(*elt));
+        }
 
         pr_freeaddrinfo(info);
       }
@@ -1763,7 +1764,7 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
  * this function returns a string of the DNS name (if present).
  */
 const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
-  char *name = NULL;
+  char dns_buf[1024], *name = NULL;
   pr_netaddr_t *cache = NULL;
 
   if (na == NULL) {
@@ -1789,17 +1790,17 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
   }
 
   if (reverse_dns) {
-    char buf[256];
     int res = 0;
 
     pr_trace_msg(trace_channel, 3,
       "verifying DNS name for IP address %s via reverse DNS lookup",
       pr_netaddr_get_ipstr(na));
 
-    memset(buf, '\0', sizeof(buf));
+    memset(dns_buf, '\0', sizeof(dns_buf));
     res = pr_getnameinfo(pr_netaddr_get_sockaddr(na),
-      pr_netaddr_get_sockaddr_len(na), buf, sizeof(buf), NULL, 0, NI_NAMEREQD);
-    buf[sizeof(buf)-1] = '\0';
+      pr_netaddr_get_sockaddr_len(na), dns_buf, sizeof(dns_buf), NULL, 0,
+      NI_NAMEREQD);
+    dns_buf[sizeof(dns_buf)-1] = '\0';
 
     if (res == 0) {
       /* Some older glibc's getaddrinfo(3) does not appear to handle IPv6
@@ -1807,12 +1808,12 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
        * which have it, for such older systems.
        */
 #ifdef HAVE_GETHOSTBYNAME2
-      res = netaddr_get_dnsstr_gethostbyname(na, buf);
+      res = netaddr_get_dnsstr_gethostbyname(na, dns_buf);
 #else
-      res = netaddr_get_dnsstr_getaddrinfo(na, buf);
+      res = netaddr_get_dnsstr_getaddrinfo(na, dns_buf);
 #endif /* HAVE_GETHOSTBYNAME2 */
       if (res == 0) {
-        name = buf;
+        name = dns_buf;
         pr_trace_msg(trace_channel, 8,
           "using DNS name '%s' for IP address '%s'", name,
           pr_netaddr_get_ipstr(na));
