@@ -298,8 +298,9 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
   return median;
 }
 
-static void delay_mask_signals(unsigned char block) {
+static int delay_mask_signals(unsigned char block) {
   static sigset_t mask_sigset;
+  int res = -1;
 
   if (block) {
     sigemptyset(&mask_sigset);
@@ -316,19 +317,27 @@ static void delay_mask_signals(unsigned char block) {
 #endif
     sigaddset(&mask_sigset, SIGHUP);
 
-    sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
+    res = sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
 
   } else {
-    sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
+    res = sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
   }
+
+  return res;
 }
 
 static void delay_signals_block(void) {
-  delay_mask_signals(TRUE);
+  if (delay_mask_signals(TRUE) < 0) {
+    pr_trace_msg(trace_channel, 1,
+      "error blocking signals: %s", strerror(errno));
+  }   
 }
 
 static void delay_signals_unblock(void) {
-  delay_mask_signals(FALSE);
+  if (delay_mask_signals(FALSE) < 0) {
+    pr_trace_msg(trace_channel, 1,
+      "error unblocking signals: %s", strerror(errno));
+  }
 }
 
 static long delay_delay(long interval) {
