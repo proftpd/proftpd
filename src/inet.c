@@ -1115,7 +1115,10 @@ int pr_inet_listen(pool *p, conn_t *c, int backlog, int flags) {
  */
 int pr_inet_resetlisten(pool *p, conn_t *c) {
   c->mode = CM_LISTEN;
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    return -1;
+  }
+
   return 0;
 }
 
