@@ -378,7 +378,8 @@ int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg, size_t ctrls_arglen) {
 int pr_ctrls_copy_args(pr_ctrls_t *src_ctrl, pr_ctrls_t *dst_ctrl) {
 
   /* Sanity checks */
-  if (!src_ctrl || !dst_ctrl) {
+  if (src_ctrl == NULL ||
+      dst_ctrl == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -386,13 +387,14 @@ int pr_ctrls_copy_args(pr_ctrls_t *src_ctrl, pr_ctrls_t *dst_ctrl) {
   /* If source ctrl has no ctrls_cb_args member, there's nothing to be
    * done.
    */
-  if (!src_ctrl->ctrls_cb_args)
+  if (src_ctrl->ctrls_cb_args == NULL) {
     return 0;
+  }
 
   /* Make sure the pr_ctrls_t has a temporary pool, from which the args will
    * be allocated.
    */
-  if (!dst_ctrl->ctrls_tmp_pool) {
+  if (dst_ctrl->ctrls_tmp_pool == NULL) {
     dst_ctrl->ctrls_tmp_pool = make_sub_pool(ctrls_pool);
     pr_pool_tag(dst_ctrl->ctrls_tmp_pool, "ctrls tmp pool");
   }
