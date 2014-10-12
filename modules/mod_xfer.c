@@ -838,7 +838,11 @@ static void stor_chown(void) {
       }
 
       pr_fs_clear_cache();
-      pr_fsio_stat(xfer_path, &st);
+      if (pr_fsio_stat(xfer_path, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' stat(2) error during root chmod: %s", xfer_path,
+          strerror(errno));
+      }
 
       /* The chmod happens after the chown because chown will remove
        * the S{U,G}ID bits on some files (namely, directories); the subsequent
@@ -901,7 +905,11 @@ static void stor_chown(void) {
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
-      pr_fsio_stat(xfer_path, &st);
+      if (pr_fsio_stat(xfer_path, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' stat(2) error during %schmod: %s", xfer_path,
+          use_root_privs ? "root " : "", strerror(errno));
+      }
 
       if (use_root_privs) {
         PRIVS_ROOT
