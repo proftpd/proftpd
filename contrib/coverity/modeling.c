@@ -24,6 +24,11 @@
 
 /* Coverity modeling file. */
 
+int setenv(const char *key, const char *value, int overwrite) {
+  __coverity_tainted_data_sink__(key);
+  __coverity_tainted_data_sink__(value);
+}
+
 char *strerror(int errnum) {
   // ignore
 }
