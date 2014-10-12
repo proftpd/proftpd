@@ -2820,6 +2820,8 @@ static void set_tcp_bufsz(server_rec *s) {
 
     pr_log_debug(DEBUG3, "socket error: %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
+
+    return;
   }
 
 #ifndef PR_TUNABLE_RCVBUFSZ
