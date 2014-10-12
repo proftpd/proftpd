@@ -2659,7 +2659,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   uint32_t sig_len;
   unsigned char digest[EVP_MAX_MD_SIZE];
   char *sig_type;
-  unsigned int digestlen;
+  unsigned int digestlen = 0;
   int res = 0;
 
   if (pubkey_algo == NULL ||
