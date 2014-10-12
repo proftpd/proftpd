@@ -3222,7 +3222,7 @@ static void ev_incr_value(unsigned int field_id, const char *field_str,
 
 static void snmp_auth_code_ev(const void *event_data, void *user_data) {
   int auth_code, res;
-  unsigned int field_id, is_ftps = FALSE, notify_id = 0;
+  unsigned int field_id = SNMP_DB_ID_UNKNOWN, is_ftps = FALSE, notify_id = 0;
   const char *notify_str = NULL, *proto;
 
   if (snmp_engine == FALSE) {
