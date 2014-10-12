@@ -602,8 +602,11 @@ MODRET copy_cpfr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  pr_table_add(session.notes, "mod_copy.cpfr-path",
-    pstrdup(session.pool, path), 0);
+  if (pr_table_add(session.notes, "mod_copy.cpfr-path",
+      pstrdup(session.pool, path), 0) < 0) {
+    pr_trace_msg(trace_channel, 4,
+      "error adding 'mod_copy.cpfr-path' note: %s", strerror(errno));
+  }
 
   pr_response_add(R_350, _("File or directory exists, ready for destination "
     "name"));
