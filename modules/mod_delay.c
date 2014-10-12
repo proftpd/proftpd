@@ -167,10 +167,13 @@ static long delay_select_k(unsigned long k, array_header *values) {
   ir = values->nelts - 1;
 
   while (TRUE) {
+    pr_signals_handle();
+
     if (ir <= l+1) {
       if (ir == l+1 &&
-          elts[ir] < elts[l])
+          elts[ir] < elts[l]) {
         delay_swap(elts[l], elts[ir]);
+      }
 
       return elts[k];
 
@@ -180,14 +183,17 @@ static long delay_select_k(unsigned long k, array_header *values) {
       unsigned long mid = (l + ir) >> 1;
 
       delay_swap(elts[mid], elts[l+1]);
-      if (elts[l] > elts[ir])
+      if (elts[l] > elts[ir]) {
         delay_swap(elts[l], elts[ir]);
+      }
 
-      if (elts[l+1] > elts[ir])
+      if (elts[l+1] > elts[ir]) {
         delay_swap(elts[l+1], elts[ir]);
+      }
 
-      if (elts[l] > elts[l+1])
+      if (elts[l] > elts[l+1]) {
         delay_swap(elts[l], elts[l+1]);
+      }
 
       i = l + 1;
       j = ir;
@@ -202,8 +208,9 @@ static long delay_select_k(unsigned long k, array_header *values) {
         do j--;
           while (elts[j] > p);
 
-        if (j < i)
+        if (j < i) {
           break;
+        }
 
         delay_swap(elts[i], elts[j]);
       }
@@ -211,15 +218,18 @@ static long delay_select_k(unsigned long k, array_header *values) {
       elts[l+1] = elts[j];
       elts[j] = p;
 
-      if (p >= k)
+      if (p >= k) {
         ir = j - 1;
+      }
 
-      if (p <= k)
+      if (p <= k) {
         l = i;
+      }
 
       if (l >= (nelts - 1) ||
-          ir >= nelts)
+          ir >= nelts) {
         break;
+      }
     }
   }
 
