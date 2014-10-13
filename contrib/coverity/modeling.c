@@ -24,6 +24,12 @@
 
 /* Coverity modeling file. */
 
+/* ProFTPD functions */
+void pr_session_disconnect(module *m, int reason_code, const char *details) {
+  __coverity_panic__();
+}
+
+/* libc functions */
 int setenv(const char *key, const char *value, int overwrite) {
   __coverity_tainted_data_sink__(key);
   __coverity_tainted_data_sink__(value);
