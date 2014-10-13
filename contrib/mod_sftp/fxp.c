@@ -4131,8 +4131,8 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
@@ -4549,8 +4549,8 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EEXIST));
     pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
@@ -7456,7 +7456,6 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
        * they didn't, however, we need to be prepared with a fallback.
        */
       if (xerrno != ENOENT &&
-          xerrno != EACCES &&
           xerrno != EPERM &&
 #if defined(EDQUOT)
           xerrno != EDQUOT &&
@@ -9538,8 +9537,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -9863,8 +9862,8 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
