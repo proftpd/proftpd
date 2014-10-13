@@ -1368,6 +1368,8 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
           switch (check_limit(c, NULL)) {
             case 1:
               res = TRUE;
+              (*found)++;
+              break;
 
 	    case -1:
             case -2:
@@ -1394,8 +1396,9 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
          int rres;
 
          rres = login_check_limits(c->subset, recurse, and, &rfound);
-         if (rfound)
+         if (rfound) {
            res = (res || rres);
+         }
 
          (*found) += rfound;
          if (res)
