@@ -4882,7 +4882,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
@@ -4933,7 +4933,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_STATFS)
   struct statfs fs;
@@ -4984,11 +4984,14 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
+# else
+  errno = ENOSYS:
+  res = -1;
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
-  errno = ENOSYS;
-  return -1;
+
+  return res;
 }
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
