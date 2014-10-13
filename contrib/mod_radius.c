@@ -348,7 +348,7 @@ static unsigned char radius_have_var(char *var) {
   }
 
   /* Must start with '$(', and end with ')'. */
-  if (!RADIUS_IS_VAR(var)) {
+  if (RADIUS_IS_VAR(var) == FALSE) {
     return FALSE;
   }
 
@@ -1038,7 +1038,7 @@ static void radius_process_group_info(config_rec *c) {
    */
 
   param = (char *) c->argv[0];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_prime_group_name_attr_id,
       &radius_prime_group_name);
 
@@ -1116,7 +1116,7 @@ static void radius_process_quota_info(config_rec *c) {
    */
 
   param = (char *) c->argv[0];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_per_sess_attr_id,
       &radius_quota_per_sess);
 
@@ -1131,7 +1131,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[1];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_limit_type_attr_id,
       &radius_quota_limit_type);
 
@@ -1146,7 +1146,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[2];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_bytes_in_attr_id,
       &radius_quota_bytes_in);
 
@@ -1168,7 +1168,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[3];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_bytes_out_attr_id,
       &radius_quota_bytes_out);
 
@@ -1190,7 +1190,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[4];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_bytes_xfer_attr_id,
       &radius_quota_bytes_xfer);
 
@@ -1212,7 +1212,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[5];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_files_in_attr_id,
       &radius_quota_files_in);
 
@@ -1231,7 +1231,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[6];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_files_out_attr_id,
       &radius_quota_files_out);
 
@@ -1250,7 +1250,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[7];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_files_xfer_attr_id,
       &radius_quota_files_xfer);
 
@@ -1296,7 +1296,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Process the UID string. */
   param = (char *) c->argv[0];
 
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     char *endp = NULL, *value = NULL;
 
     radius_parse_var(param, &radius_uid_attr_id, &value);
@@ -1332,7 +1332,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Process the GID string. */
   param = (char *) c->argv[1];
 
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     char *endp = NULL, *value = NULL;
 
     radius_parse_var(param, &radius_gid_attr_id, &value);
@@ -1368,7 +1368,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Parse the home directory string. */
   param = (char *) c->argv[2];
 
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_home_attr_id, &radius_passwd.pw_dir);
 
     if (*radius_passwd.pw_dir != '/') {
@@ -1386,7 +1386,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Process the shell string. */
   param = (char *) c->argv[3];
   
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_shell_attr_id, &radius_passwd.pw_shell);
 
     if (*radius_passwd.pw_shell != '/') {
