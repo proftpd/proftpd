@@ -4431,8 +4431,13 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
-  pr_table_add(session.notes, "mod_core.rnfr-path",
-    pstrdup(session.pool, src), 0);
+  if (pr_table_add(session.notes, "mod_core.rnfr-path",
+      pstrdup(session.pool, src), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
+    }
+  }
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, dst);
   cmd3->cmd_class = CL_MISC|CL_WRITE;
@@ -9741,8 +9746,13 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  pr_table_add(session.notes, "mod_core.rnfr-path",
-    pstrdup(session.pool, old_path), 0);
+  if (pr_table_add(session.notes, "mod_core.rnfr-path",
+      pstrdup(session.pool, old_path), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
+    }
+  }
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, new_path);
   cmd3->cmd_class = CL_MISC|CL_WRITE;
