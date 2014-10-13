@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: misc.c,v 1.4 2012-12-26 23:18:58 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -40,7 +38,6 @@ int sftp_misc_chown_file(pr_fh_t *fh) {
    * requested via GroupOwner.
    */
   if (session.fsuid != (uid_t) -1) {
-
     PRIVS_ROOT
     res = pr_fsio_fchown(fh, session.fsuid, session.fsgid);
     xerrno = errno;
@@ -63,7 +60,11 @@ int sftp_misc_chown_file(pr_fh_t *fh) {
       }
 
       pr_fs_clear_cache();
-      pr_fsio_fstat(fh, &st);
+      if (pr_fsio_fstat(fh, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' fstat(2) error for root chmod: %s", fh->fh_path,
+          strerror(errno));
+      }
 
       /* The chmod happens after the chown because chown will remove the
        * S{U,G}ID bits on some files (namely, directories); the subsequent
