@@ -3766,12 +3766,23 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     ctrl_ssl = ssl;
 
-    pr_table_add(tls_ctrl_rd_nstrm->notes,
-      pstrdup(tls_ctrl_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
-    pr_table_add(tls_ctrl_wr_nstrm->notes,
-      pstrdup(tls_ctrl_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
+    if (pr_table_add(tls_ctrl_rd_nstrm->notes,
+        pstrdup(tls_ctrl_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on ctrl read stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
+
+    if (pr_table_add(tls_ctrl_wr_nstrm->notes,
+        pstrdup(tls_ctrl_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on ctrl write stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080dfL
     if (SSL_get_secure_renegotiation_support(ssl) == 1) {
@@ -3803,12 +3814,23 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   } else if (conn == session.d) {
     pr_buffer_t *strm_buf;
 
-    pr_table_add(tls_data_rd_nstrm->notes,
-      pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
-    pr_table_add(tls_data_wr_nstrm->notes,
-      pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
+    if (pr_table_add(tls_data_rd_nstrm->notes,
+        pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data read stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
+
+    if (pr_table_add(tls_data_wr_nstrm->notes,
+        pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data write stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
 
     /* Clear any data from the NetIO stream buffers which may have been read
      * in before the SSL/TLS handshake occurred (Bug#3624).
@@ -4158,12 +4180,23 @@ static int tls_connect(conn_t *conn) {
   if (conn == session.d) {
     pr_buffer_t *strm_buf;
 
-    pr_table_add(tls_data_rd_nstrm->notes,
-      pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
-    pr_table_add(tls_data_wr_nstrm->notes,
-      pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
+    if (pr_table_add(tls_data_rd_nstrm->notes,
+        pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data read stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
+
+    if (pr_table_add(tls_data_wr_nstrm->notes,
+        pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data write stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
 
     /* Clear any data from the NetIO stream buffers which may have been read
      * in before the SSL/TLS handshake occurred (Bug#3624).
