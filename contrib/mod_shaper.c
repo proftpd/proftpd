@@ -970,6 +970,14 @@ static int shaper_table_send(void) {
       sess_list[i].sess_upincr);
   }
 
+  if (total_downshares == 0) {
+    total_downshares = 1;
+  }
+
+  if (total_upshares == 0) {
+    total_upshares = 1;
+  }
+
   (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
     "total session shares: %u down, %u up", total_downshares, total_upshares);
 
