@@ -1221,16 +1221,19 @@ static int sql_passwd_sess_init(void) {
 
         (void) close(fd);
 
-        /* If the very last byte in the buffer is a newline, trim it.  This
-         * is to deal with cases where the SaltFile may have been written
-         * with an editor (e.g. vi) which automatically adds a trailing newline.
-         */
-        if (sql_passwd_salt[sql_passwd_salt_len-1] == '\n') {
-          sql_passwd_salt[sql_passwd_salt_len-1] = '\0';
-          sql_passwd_salt_len--;
-        }
+        if (sql_passwd_salt != NULL) {
+          /* If the very last byte in the buffer is a newline, trim it.  This
+           * is to deal with cases where the SaltFile may have been written
+           * with an editor (e.g. vi) which automatically adds a trailing
+           * newline.
+           */
+          if (sql_passwd_salt[sql_passwd_salt_len-1] == '\n') {
+            sql_passwd_salt[sql_passwd_salt_len-1] = '\0';
+            sql_passwd_salt_len--;
+          }
 
-        sql_passwd_salt_flags = salt_flags;
+          sql_passwd_salt_flags = salt_flags;
+        }
 
       } else {
         pr_log_debug(DEBUG1, MOD_SQL_PASSWD_VERSION
