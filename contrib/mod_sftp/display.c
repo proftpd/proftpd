@@ -78,8 +78,9 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
-  pr_fsio_fstat(fh, &st);
-  fh->fh_iosz = st.st_blksize;
+  if (pr_fsio_fstat(fh, &st) == 0) {
+    fh->fh_iosz = st.st_blksize;
+  }
 
   res = pr_fs_fgetsize(fh->fh_fd, &fs_size);
   if (res < 0 &&
