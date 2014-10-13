@@ -362,6 +362,8 @@ static int snmp_limits_allow(xaset_t *set, struct snmp_packet *pkt) {
       switch (snmp_check_limit(c, pkt)) {
         case 1:
           ok = TRUE;
+          found++;
+          break;
 
         case -1:
         case -2:
