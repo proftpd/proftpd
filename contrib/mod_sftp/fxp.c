@@ -11253,7 +11253,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
         pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
           "('%s' [%d])", (unsigned long) status_code, reason,
-          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+          strerror(xerrno), xerrno);
 
         fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
           NULL);
