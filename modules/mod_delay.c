@@ -717,7 +717,10 @@ static int delay_table_init(void) {
     lock.l_type = F_UNLCK;
 
     pr_trace_msg(trace_channel, 8, "unlocking DelayTable '%s'", fh->fh_path);
-    fcntl(fh->fh_fd, F_SETLK, &lock);
+    if (fcntl(fh->fh_fd, F_SETLK, &lock) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error unlocking fd %d: %s", fh->fh_fd, strerror(errno));
+    }
   }
 
   delay_tab.dt_fd = fh->fh_fd;
@@ -866,7 +869,10 @@ static int delay_table_init(void) {
     lock.l_type = F_UNLCK;
 
     pr_trace_msg(trace_channel, 8, "unlocking DelayTable '%s'", fh->fh_path);
-    fcntl(fh->fh_fd, F_SETLK, &lock);
+    if (fcntl(fh->fh_fd, F_SETLK, &lock) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error unlocking fd %d: %s", fh->fh_fd, strerror(errno));
+    }
   }
 
   /* Done */
@@ -1334,7 +1340,10 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
   }
 
   lock.l_type = F_UNLCK;
-  fcntl(fh->fh_fd, F_SETLK, &lock);
+  if (fcntl(fh->fh_fd, F_SETLK, &lock) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error unlocking fd %d: %s", fh->fh_fd, strerror(errno));
+  }
 
   if (pr_fsio_close(fh) < 0) {
     pr_ctrls_add_response(ctrl,
