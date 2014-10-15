@@ -24,6 +24,8 @@
 
 /* Coverity modeling file. */
 
+typedef struct module_struct module;
+
 /* ProFTPD functions */
 void pr_session_disconnect(module *m, int reason_code, const char *details) {
   __coverity_panic__();
@@ -36,5 +38,5 @@ int setenv(const char *key, const char *value, int overwrite) {
 }
 
 char *strerror(int errnum) {
-  // ignore
+  /* ignore */
 }
