@@ -1036,8 +1036,9 @@ int pr_inet_set_nonblock(pool *p, conn_t *c) {
   int flags;
   int res = -1;
 
-  if (p == NULL ||
-      c == NULL) {
+  (void) p;
+
+  if (c == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1047,17 +1048,32 @@ int pr_inet_set_nonblock(pool *p, conn_t *c) {
   if (c->mode == CM_LISTEN ||
       c->mode == CM_CONNECT) {
     flags = fcntl(c->listen_fd, F_GETFL);
-    res = fcntl(c->listen_fd, F_SETFL, flags|O_NONBLOCK);
+    if (flags >= 0) {
+      res = fcntl(c->listen_fd, F_SETFL, flags|O_NONBLOCK);
+
+    } else {
+      res = flags;
+    }
 
   } else {
     if (c->rfd != -1) {
       flags = fcntl(c->rfd, F_GETFL);
-      res = fcntl(c->rfd, F_SETFL, flags|O_NONBLOCK);
+      if (flags >= 0) {
+        res = fcntl(c->rfd, F_SETFL, flags|O_NONBLOCK);
+
+      } else {
+        res = flags;
+      }
     }
 
     if (c->wfd != -1) {
       flags = fcntl(c->wfd, F_GETFL);
-      res = fcntl(c->wfd, F_SETFL, flags|O_NONBLOCK);
+      if (flags >= 0) {
+        res = fcntl(c->wfd, F_SETFL, flags|O_NONBLOCK);
+
+      } else {
+        res = flags;
+      }
     }
   }
 
@@ -1068,8 +1084,9 @@ int pr_inet_set_block(pool *p, conn_t *c) {
   int flags;
   int res = -1;
 
-  if (p == NULL ||
-      c == NULL) {
+  (void) p;
+
+  if (c == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1079,17 +1096,32 @@ int pr_inet_set_block(pool *p, conn_t *c) {
   if (c->mode == CM_LISTEN ||
       c->mode == CM_CONNECT) {
     flags = fcntl(c->listen_fd, F_GETFL);
-    res = fcntl(c->listen_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+    if (flags >= 0) {
+      res = fcntl(c->listen_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+    } else {
+      res = flags;
+    }
 
   } else {
     if (c->rfd != -1) {
       flags = fcntl(c->rfd, F_GETFL);
-      res = fcntl(c->rfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+      if (flags >= 0) {
+        res = fcntl(c->rfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+      } else {
+        res = flags;
+      }
     }
 
     if (c->wfd != -1) {
       flags = fcntl(c->wfd, F_GETFL);
-      res = fcntl(c->wfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+      if (flags >= 0) {
+        res = fcntl(c->wfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+      } else {
+        res = flags;
+      }
     }
   }
 
@@ -1249,7 +1281,7 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
 
   if (c->mode == CM_LISTEN) {
     if (pr_inet_set_nonblock(c->pool, c) < 0) {
-      if (errno != EINVAL) {
+      if (errno != EBADF) {
         pr_trace_msg(trace_channel, 3,
           "error making connection nonblocking: %s", strerror(errno));
       }
@@ -1289,7 +1321,7 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
    * our state.  Re-enable blocking mode, however.
    */
   if (pr_inet_set_block(c->pool, c) < 0) {
-    if (errno != EINVAL) {
+    if (errno != EBADF) {
       pr_trace_msg(trace_channel, 3,
         "error making connection blocking: %s", strerror(errno));
     }
