@@ -7141,10 +7141,8 @@ static int sql_sess_init(void) {
     sql_log(DEBUG_INFO, "SQLMinUserGID      : %u", cmap.minusergid);
   }
    
-  if (SQL_GROUPS) {
-    sql_log(DEBUG_INFO, "SQLDefaultUID      : %u", cmap.defaultuid);
-    sql_log(DEBUG_INFO, "SQLDefaultGID      : %u", cmap.defaultgid);
-  }
+  sql_log(DEBUG_INFO, "SQLDefaultUID      : %u", cmap.defaultuid);
+  sql_log(DEBUG_INFO, "SQLDefaultGID      : %u", cmap.defaultgid);
 
   if (cmap.sql_fstor) {
     sql_log(DEBUG_INFO, "sql_fstor          : %s", cmap.sql_fstor);
