@@ -1492,8 +1492,9 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
   /* If this pr_netaddr_t has already been resolved to an IP string, return the
    * cached string.
    */
-  if (na->na_have_ipstr)
+  if (na->na_have_ipstr) {
     return na->na_ipstr;
+  }
 
   memset(buf, '\0', sizeof(buf));
   res = pr_getnameinfo(pr_netaddr_get_sockaddr(na),

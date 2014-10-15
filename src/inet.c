@@ -1249,7 +1249,10 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
 
   if (c->mode == CM_LISTEN) {
     if (pr_inet_set_nonblock(c->pool, c) < 0) {
-      return -1;
+      if (errno != EINVAL) {
+        pr_trace_msg(trace_channel, 3,
+          "error making connection nonblocking: %s", strerror(errno));
+      }
     }
   }
 
@@ -1264,8 +1267,9 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
     fd = accept(c->listen_fd, NULL, NULL);
 
     if (fd == -1) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
         continue;
+      }
 
       if (errno != EWOULDBLOCK) {
         c->mode = CM_ERROR;
@@ -1285,7 +1289,10 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
    * our state.  Re-enable blocking mode, however.
    */
   if (pr_inet_set_block(c->pool, c) < 0) {
-    return -1;
+    if (errno != EINVAL) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection blocking: %s", strerror(errno));
+    }
   }
 
   return fd;
@@ -1380,8 +1387,9 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   nalen = pr_netaddr_get_sockaddr_len(&na);
 
   if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &nalen) == 0) {
-    if (!c->local_addr)
+    if (c->local_addr == NULL) {
       c->local_addr = pr_netaddr_alloc(c->pool);
+    }
 
     /* getsockname(2) will read the local socket information into the struct
      * sockaddr * given.  Which means that the address family of the local
@@ -1394,6 +1402,12 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     c->local_port = ntohs(pr_netaddr_get_port(&na));
 
   } else {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "getsockname(2) error on fd %d: %s", fd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1426,6 +1440,12 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     c->remote_port = ntohs(pr_netaddr_get_port(&na));
 
   } else {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "getpeername(2) error on fd %d: %s", fd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1453,6 +1473,15 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   int close_fd = TRUE;
 
   res = pr_inet_copy_conn(p, c);
+  if (res == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error copying connection: %s", strerror(xerrno));
+
+    errno = xerrno;
+    return NULL;
+  }
 
   res->listen_fd = -1;
 
@@ -1463,18 +1492,24 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
    */
   if (pr_inet_get_conn_info(res, fd) < 0 &&
       errno != EBADF) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error getting info for connection on fd %d: %s", fd, strerror(xerrno));
+
+    errno = xerrno;
     return NULL;
   }
 
   if (addr) {
-    if (!res->remote_addr) {
+    if (res->remote_addr == NULL) {
       res->remote_addr = pr_netaddr_alloc(res->pool);
     }
 
     memcpy(res->remote_addr, addr, sizeof(pr_netaddr_t));
   }
 
-  if (resolve &&
+  if (resolve == TRUE &&
       res->remote_addr != NULL) {
     res->remote_name = pr_netaddr_get_dnsstr(res->remote_addr);
   }
@@ -1482,9 +1517,16 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   if (res->remote_name == NULL) {
     res->remote_name = pr_netaddr_get_ipstr(res->remote_addr);
     if (res->remote_name == NULL) {
+      int xerrno = errno;
+
       /* If we can't even get the IP address as a string, then something
        * is very wrong, and we should not contine to handle this connection.
        */
+
+      pr_trace_msg(trace_channel, 3,
+        "error getting IP address for client: %s", strerror(xerrno));
+ 
+      errno = xerrno;
       return NULL;
     }
   }
