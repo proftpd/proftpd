@@ -3857,7 +3857,11 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  pr_fsio_set_block(fh);
+  if (pr_fsio_set_block(fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
+      fh->fh_path, strerror(errno));
+  }
 
   if (pr_fsio_lseek(fh, offset, SEEK_SET) < 0) {
     xerrno = errno;
@@ -7610,7 +7614,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  pr_fsio_set_block(fh);
+  if (pr_fsio_set_block(fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
+      fh->fh_path, strerror(errno));
+  }
  
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
