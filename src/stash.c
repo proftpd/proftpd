@@ -107,9 +107,11 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
     }
 
     /* Special case (unlikely, but possible) */
-    if (namelen == 1 &&
-        c1 == '\0') {
-      return 0;
+    if (namelen == 1) {
+      if (c1 == '\0' ||
+          c2 == '\0') {
+        return 0;
+      }
     }
   }
 
