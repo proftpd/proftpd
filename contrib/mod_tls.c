@@ -3633,7 +3633,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (on_data) {
     /* Make sure that TCP_NODELAY is enabled for the handshake. */
-    pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+    (void) pr_inet_set_proto_nodelay(conn->pool, conn, 1);
 
     /* Make sure that TCP_CORK (aka TCP_NOPUSH) is DISABLED for the handshake.
      * This socket option is set via the pr_inet_set_proto_opts() call made
@@ -3650,7 +3650,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
      * without spinning in a tight loop and consuming the CPU).
      */
-    pr_inet_set_nonblock(conn->pool, conn);
+    if (pr_inet_set_nonblock(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection nonblocking: %s", strerror(errno));
+    }
   }
 
   pr_signals_handle();
@@ -3661,7 +3664,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (blocking) {
     /* Return the connection to blocking mode. */
-    pr_inet_set_block(conn->pool, conn);
+    if (pr_inet_set_block(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection blocking: %s", strerror(errno));
+    }
   }
 
   if (res < 1) {
@@ -3743,7 +3749,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (on_data) {
     /* Disable TCP_NODELAY, now that the handshake is done. */
-    pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+    (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
 
     /* Reenable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
     (void) pr_inet_set_proto_cork(conn->wfd, 1);
@@ -4066,7 +4072,7 @@ static int tls_connect(conn_t *conn) {
   }
 
   /* Make sure that TCP_NODELAY is enabled for the handshake. */
-  pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+  (void) pr_inet_set_proto_nodelay(conn->pool, conn, 1);
 
   retry:
 
@@ -4076,7 +4082,10 @@ static int tls_connect(conn_t *conn) {
      * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
      * without spinning in a tight loop and consuming the CPU).
      */
-    pr_inet_set_nonblock(conn->pool, conn);
+    if (pr_inet_set_nonblock(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection nonblocking: %s", strerror(errno));
+    }
   }
 
   pr_signals_handle();
@@ -4087,7 +4096,10 @@ static int tls_connect(conn_t *conn) {
 
   if (blocking) {
     /* Return the connection to blocking mode. */
-    pr_inet_set_block(conn->pool, conn);
+    if (pr_inet_set_block(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection blocking: %s", strerror(errno));
+    }
   }
 
   if (res < 1) {
@@ -4163,7 +4175,7 @@ static int tls_connect(conn_t *conn) {
   }
 
   /* Disable TCP_NODELAY, now that the handshake is done. */
-  pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+  (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
  
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
