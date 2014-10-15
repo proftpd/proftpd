@@ -272,7 +272,10 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   }
 
 #ifndef HAVE_DEV_LOG_STREAMS
-  send(sockfd, logbuf, buflen, 0);
+  if (send(sockfd, logbuf, buflen, 0) < 0) {
+    fprintf(stderr, "error sending log message '%s' to socket fd %d: %s\n",
+      logbuf, sockfd, strerror(errno));
+  }
 #else
 
   /* Prepare the structs for use by putmsg(). As /dev/log (or /dev/conslog)

@@ -650,7 +650,13 @@ int pr_ipbind_listen(fd_set *readfds) {
         }
 
         if (ipbind->ib_listener->mode == CM_ACCEPT) {
-          pr_inet_resetlisten(ipbind->ib_listener->pool, ipbind->ib_listener);
+          if (pr_inet_resetlisten(ipbind->ib_listener->pool,
+              ipbind->ib_listener) < 0) {
+            pr_trace_msg(trace_channel, 3,
+              "error resetting %s#%u for listening: %s",
+              pr_netaddr_get_ipstr(ipbind->ib_addr), ipbind->ib_port,
+              strerror(errno));
+          }
         }
 
         if (ipbind->ib_listener->mode == CM_LISTEN) {

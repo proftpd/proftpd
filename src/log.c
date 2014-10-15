@@ -382,7 +382,7 @@ int log_opensyslog(const char *fn) {
       }
     }
 
-    fcntl(syslog_sockfd, F_SETFD, FD_CLOEXEC);
+    (void) fcntl(syslog_sockfd, F_SETFD, FD_CLOEXEC);
     systemlog_fd = -1;
 
   } else if ((res = pr_log_openfile(systemlog_fn, &systemlog_fd,

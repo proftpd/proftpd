@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.156 2013-10-07 05:51:30 castaglia Exp $
- */
+/* Inet support functions, many wrappers for netdb functions */
 
 #include "conf.h"
 #include "privs.h"
@@ -597,8 +595,9 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
   /* Only close the input stream if it is actually a different stream than
    * the output stream.
    */
-  if (c->instrm != c->outstrm)
+  if (c->instrm != c->outstrm) {
     pr_netio_close(c->instrm);
+  }
 
   c->outstrm = NULL;
   c->instrm = NULL;
@@ -610,8 +609,9 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
 void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
   pr_inet_set_block(p, c);
 
-  if (c->instrm)
+  if (c->instrm) {
     pr_netio_lingering_abort(c->instrm, linger);
+  }
 
   /* Only close the output stream if it is actually a different stream
    * than the input stream.
@@ -907,24 +907,30 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 
     if (sndbuf > 0) {
       len = sizeof(csndbuf);
-      getsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf, &len);
+      if (getsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf,
+          &len) == 0) {
+        if (sndbuf > csndbuf) {
+          if (setsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
+              sizeof(sndbuf)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_SNDBUF: %s",
+              strerror(errno));
 
-      if (sndbuf > csndbuf) {
-        if (setsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
-            sizeof(sndbuf)) < 0) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_SNDBUF: %s",
-            strerror(errno));
+          } else {
+            pr_trace_msg("data", 8,
+              "set socket sndbuf of %lu bytes", (unsigned long) sndbuf);
+          }
 
         } else {
           pr_trace_msg("data", 8,
-            "set socket sndbuf of %lu bytes", (unsigned long) sndbuf);
+            "socket %d has sndbuf of %lu bytes, ignoring "
+            "requested %lu bytes sndbuf", c->listen_fd, (unsigned long) csndbuf,
+            (unsigned long) sndbuf);
         }
 
       } else {
-        pr_trace_msg("data", 8,
-          "socket %d has sndbuf of %lu bytes, ignoring "
-          "requested %lu bytes sndbuf", c->listen_fd, (unsigned long) csndbuf,
-          (unsigned long) sndbuf);
+        pr_trace_msg("data", 3,
+          "error getting SO_SNDBUF on listen fd %d: %s", c->listen_fd,
+          strerror(errno));
       }
     }
 
@@ -932,24 +938,30 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 
     if (rcvbuf > 0) {
       len = sizeof(crcvbuf);
-      getsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf, &len);
+      if (getsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf,
+          &len) == 0) {
+        if (rcvbuf > crcvbuf) {
+          if (setsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
+              sizeof(rcvbuf)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_RCVFBUF: %s",
+              strerror(errno));
 
-      if (rcvbuf > crcvbuf) {
-        if (setsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
-            sizeof(rcvbuf)) < 0) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_RCVFBUF: %s",
-            strerror(errno));
+          } else {
+            pr_trace_msg("data", 8,
+              "set socket rcvbuf of %lu bytes", (unsigned long) rcvbuf);
+          }
 
         } else {
           pr_trace_msg("data", 8,
-            "set socket rcvbuf of %lu bytes", (unsigned long) rcvbuf);
+           "socket %d has rcvbuf of %lu bytes, ignoring "
+            "requested %lu bytes rcvbuf", c->listen_fd, (unsigned long) crcvbuf,
+            (unsigned long) rcvbuf);
         }
 
       } else {
-        pr_trace_msg("data", 8,
-          "socket %d has rcvbuf of %lu bytes, ignoring "
-          "requested %lu bytes rcvbuf", c->listen_fd, (unsigned long) crcvbuf,
-          (unsigned long) rcvbuf);
+        pr_trace_msg("data", 3,
+          "error getting SO_RCVBUF on listen fd %d: %s", c->listen_fd,
+          strerror(errno));
       }
     }
 
@@ -962,17 +974,27 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 #ifdef SO_OOBINLINE
 static void set_oobinline(int fd) {
   int on = 1;
-  if (fd != -1)
-    if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0)
+  if (fd >= 0) {
+    if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_OOBINLINE: %s",
         strerror(errno));
+    }
+  }
 }
 #endif
 
 #ifdef F_SETOWN
-static void set_owner(int fd) {
-  if (fd != -1)
-    fcntl(fd, F_SETOWN, session.pid ? session.pid : getpid());
+static void set_socket_owner(int fd) {
+  if (fd >= 0) {
+    pid_t pid;
+
+    pid = session.pid ? session.pid : getpid();
+    if (fcntl(fd, F_SETOWN, pid) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "failed to SETOWN PID %lu on socket fd %d: %s", (unsigned long) pid,
+        fd, strerror(errno));
+    }
+  }
 }
 #endif
 
@@ -1000,9 +1022,9 @@ int pr_inet_set_async(pool *p, conn_t *c) {
 #endif
 
 #ifdef F_SETOWN
-  set_owner(c->listen_fd);
-  set_owner(c->rfd);
-  set_owner(c->wfd);
+  set_socket_owner(c->listen_fd);
+  set_socket_owner(c->rfd);
+  set_socket_owner(c->wfd);
 #endif
 
   return 0;
@@ -1113,7 +1135,10 @@ int pr_inet_listen(pool *p, conn_t *c, int backlog, int flags) {
  */
 int pr_inet_resetlisten(pool *p, conn_t *c) {
   c->mode = CM_LISTEN;
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    return -1;
+  }
+
   return 0;
 }
 
@@ -1259,7 +1284,9 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
   /* Leave the connection in CM_ACCEPT mode, so others can see
    * our state.  Re-enable blocking mode, however.
    */
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    return -1;
+  }
 
   return fd;
 }

@@ -162,8 +162,9 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
-  pr_fsio_fstat(fh, &st);
-  fh->fh_iosz = st.st_blksize;
+  if (pr_fsio_fstat(fh, &st) == 0) {
+    fh->fh_iosz = st.st_blksize;
+  }
 
   /* Note: The size provided by pr_fs_getsize() is in KB, not bytes. */
   res = pr_fs_fgetsize(fh->fh_fd, &fs_size);

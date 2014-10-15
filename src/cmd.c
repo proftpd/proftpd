@@ -336,9 +336,13 @@ char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
     }
   }
 
-  /* XXX Check for errors here */
-  pr_table_add(cmd->notes, pstrdup(cmd->pool, "displayable-str"),
-    pstrdup(cmd->pool, res), 0);
+  if (pr_table_add(cmd->notes, pstrdup(cmd->pool, "displayable-str"),
+      pstrdup(cmd->pool, res), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_log_debug(DEBUG0,
+        "error setting 'displayable-str' command note: %s", strerror(errno));
+    }
+  }
 
   if (str_len != NULL) {
     *str_len = strlen(res);

@@ -865,7 +865,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  pr_fsio_set_block(src_fh);
+  if (pr_fsio_set_block(src_fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error putting '%s' into blocking mode: %s", src, strerror(errno));
+  }
 
   /* Do not allow copying of directories. open(2) may not fail when
    * opening the source path, since it is only doing a read-only open,
@@ -873,7 +876,11 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    */
 
   /* This should never fail. */
-  (void) pr_fsio_fstat(src_fh, &src_st);
+  if (pr_fsio_fstat(src_fh, &src_st) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error fstat'ing '%s': %s", src, strerror(errno));
+  }
+
   if (S_ISDIR(src_st.st_mode)) {
     int xerrno = EISDIR;
 
@@ -4875,7 +4882,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
@@ -4926,7 +4933,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_STATFS)
   struct statfs fs;
@@ -4977,11 +4984,14 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
+# else
+  errno = ENOSYS:
+  res = -1;
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
-  errno = ENOSYS;
-  return -1;
+
+  return res;
 }
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \

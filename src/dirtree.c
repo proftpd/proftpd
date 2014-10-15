@@ -1368,6 +1368,8 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
           switch (check_limit(c, NULL)) {
             case 1:
               res = TRUE;
+              (*found)++;
+              break;
 
 	    case -1:
             case -2:
@@ -1394,8 +1396,9 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
          int rres;
 
          rres = login_check_limits(c->subset, recurse, and, &rfound);
-         if (rfound)
+         if (rfound) {
            res = (res || rres);
+         }
 
          (*found) += rfound;
          if (res)
@@ -2820,6 +2823,8 @@ static void set_tcp_bufsz(server_rec *s) {
 
     pr_log_debug(DEBUG3, "socket error: %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
+
+    return;
   }
 
 #ifndef PR_TUNABLE_RCVBUFSZ

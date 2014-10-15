@@ -923,11 +923,12 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
     if (bwritten < 0) {
       nstrm->strm_errno = errno;
-      fcntl(nstrm->strm_fd, F_SETFL, flags);
+      (void) fcntl(nstrm->strm_fd, F_SETFL, flags);
 
-      if (nstrm->strm_errno == EWOULDBLOCK)
+      if (nstrm->strm_errno == EWOULDBLOCK) {
         /* Give up ... */
         return total;
+      }
 
       return -1;
     }
