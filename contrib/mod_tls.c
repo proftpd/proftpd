@@ -390,7 +390,12 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1		0x0002
 #define TLS_PROTO_TLS_V1_1		0x0004
 #define TLS_PROTO_TLS_V1_2		0x0008
-#define TLS_PROTO_DEFAULT		(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1)
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+# define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1)
+#else
+# define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2)
+#endif /* OpenSSL 1.0.1 or later */
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
 static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
@@ -2822,7 +2827,7 @@ static int tls_init_server(void) {
 #endif /* OpenSSL-1.0.1 or later */
 
   } else {
-    int disable_proto = (SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+    int disable_proto = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
 
 #ifdef SSL_OP_NO_TLSv1_1
     disable_proto |= SSL_OP_NO_TLSv1_1;
@@ -2869,7 +2874,6 @@ static int tls_init_server(void) {
       tls_get_proto_str(main_server->pool, tls_protocol));
     SSL_CTX_set_options(ssl_ctx, disable_proto);
   }
-
 
   tls_ca_cert = get_param_ptr(main_server->conf, "TLSCACertificateFile", FALSE);
   tls_ca_path = get_param_ptr(main_server->conf, "TLSCACertificatePath", FALSE);
