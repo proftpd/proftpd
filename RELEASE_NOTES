@@ -13,6 +13,13 @@ ChangeLog files.
 
   + Changed Modules
 
+    mod_tls disables SSLv3 by default (Bug#4114)
+
+      For sites which need to support SSLv3, use:
+
+        TLSProtocol SSLv3 TLSv1 ...
+
+
   + New Configuration Directives:
 
     DelayOnEvent (Bug#4020)
