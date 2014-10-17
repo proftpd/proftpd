@@ -2787,6 +2787,23 @@ static const char *tls_get_proto_str(pool *p, unsigned int protos) {
   return proto_str;
 }
 
+/* Construct an options value that disables all supported protocols
+ * default; callers than then clear the bits for the protocol(s) they
+ * wish to enable.
+ */
+static int get_disable_protocol_options(void) {
+  int disable_proto = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+
+#ifdef SSL_OP_NO_TLSv1_1
+  disable_proto |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
+  disable_proto |= SSL_OP_NO_TLSv1_2;
+#endif
+
+  return disable_proto;
+}
+
 static int tls_init_server(void) {
   config_rec *c = NULL;
   char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
@@ -2808,28 +2825,20 @@ static int tls_init_server(void) {
 #endif /* OpenSSL-1.0.1 or later */
 
   } else if (tls_protocol == TLS_PROTO_SSL_V3) {
-    int disable_proto = (SSL_OP_NO_SSLv2|SSL_OP_NO_TLSv1);
+    int disable_proto;
 
-#ifdef SSL_OP_NO_TLSv1_1
-    disable_proto |= SSL_OP_NO_TLSv1_1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
-    disable_proto |= SSL_OP_NO_TLSv1_2;
-#endif
+    disable_proto = get_disable_protocol_options();
+    disable_proto &= ~SSL_OP_NO_SSLv3;
 
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3 protocol only");
     SSL_CTX_set_ssl_version(ssl_ctx, SSLv3_server_method());
     SSL_CTX_set_options(ssl_ctx, disable_proto);
 
   } else if (tls_protocol == TLS_PROTO_TLS_V1) {
-    int disable_proto = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
+    int disable_proto;
 
-#ifdef SSL_OP_NO_TLSv1_1
-    disable_proto |= SSL_OP_NO_TLSv1_1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
-    disable_proto |= SSL_OP_NO_TLSv1_2;
-#endif
+    disable_proto = get_disable_protocol_options();
+    disable_proto &= ~SSL_OP_NO_TLSv1;
 
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1 protocol only");
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_server_method());
@@ -2837,22 +2846,20 @@ static int tls_init_server(void) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
   } else if (tls_protocol == TLS_PROTO_TLS_V1_1) {
-    int disable_proto = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+    int disable_proto;
 
-#ifdef SSL_OP_NO_TLSv1_2
-    disable_proto |= SSL_OP_NO_TLSv1_2;
-#endif
+    disable_proto = get_disable_protocol_options();
+    disable_proto &= ~SSL_OP_NO_TLSv1_1;
 
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1.1 protocol only");
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_1_server_method());
     SSL_CTX_set_options(ssl_ctx, disable_proto);
 
   } else if (tls_protocol == TLS_PROTO_TLS_V1_2) {
-    int disable_proto = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+    int disable_proto;
 
-#ifdef SSL_OP_NO_TLSv1_1
-    disable_proto |= SSL_OP_NO_TLSv1_1;
-#endif
+    disable_proto = get_disable_protocol_options();
+    disable_proto &= ~SSL_OP_NO_TLSv1_2;
 
     pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1.2 protocol only");
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_2_server_method());
@@ -2861,14 +2868,9 @@ static int tls_init_server(void) {
 #endif /* OpenSSL-1.0.1 or later */
 
   } else {
-    int disable_proto = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+    int disable_proto;
 
-#ifdef SSL_OP_NO_TLSv1_1
-    disable_proto |= SSL_OP_NO_TLSv1_1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
-    disable_proto |= SSL_OP_NO_TLSv1_2;
-#endif
+    disable_proto = get_disable_protocol_options();
 
     /* For any other value of tls_protocol, it will be a combination of
      * protocol versions.  Thus we MUST use SSLv23_server_method(), and then
