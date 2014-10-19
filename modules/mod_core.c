@@ -6050,8 +6050,17 @@ static int core_sess_init(void) {
       char *channel, *ptr;
       int min_level, max_level, res;
 
-      ptr = strchr(c->argv[i], ':');
+      pr_signals_handle();
+
       channel = c->argv[i];
+
+      ptr = strchr(channel, ':');
+      if (ptr == NULL) {
+        pr_log_debug(DEBUG6, "skipping badly formatted '%s' setting",
+          channel);
+        continue;
+      }
+
       *ptr = '\0';
 
       res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);
