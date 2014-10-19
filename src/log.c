@@ -269,7 +269,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
 #ifdef PR_USE_NONBLOCKING_LOG_OPEN
   /* Return the fd to blocking mode. */
-  fd_set_block(*log_fd);
+  (void) fd_set_block(*log_fd);
 #endif /* PR_USE_NONBLOCKING_LOG_OPEN */
 
   destroy_pool(tmp_pool);

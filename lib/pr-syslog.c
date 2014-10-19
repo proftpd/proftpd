@@ -336,7 +336,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
           return -1;
         }
 
-        fcntl(sockfd, F_SETFD, 1);
+        (void) fcntl(sockfd, F_SETFD, 1);
       }
     }
 
