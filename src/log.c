@@ -44,6 +44,8 @@ static char systemlog_fn[PR_TUNABLE_PATH_MAX] = {'\0'};
 static char systemlog_host[256] = {'\0'};
 static int systemlog_fd = -1;
 
+static const char *trace_channel = "log";
+
 int syslog_sockfd = -1;
 
 #ifdef PR_USE_NONBLOCKING_LOG_OPEN
@@ -370,8 +372,9 @@ int log_opensyslog(const char *fn) {
     pr_closelog(syslog_sockfd);
 
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
-    if (syslog_sockfd < 0)
+    if (syslog_sockfd < 0) {
       return -1;
+    }
 
     /* Find a usable fd for the just-opened socket fd. */
     if (syslog_sockfd <= STDERR_FILENO) {
@@ -591,6 +594,12 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   if (!syslog_open) {
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, f);
+    if (syslog_sockfd < 0) {
+      (void) pr_trace_msg(trace_channel, 1,
+        "error opening syslog fd: %s", strerror(errno));
+      return;
+    }
+
     syslog_open = TRUE;
 
   } else if (f != facility) {
