@@ -246,7 +246,7 @@ static unsigned char radius_last_acct_pkt_id = 0;
 
 /* Convenience macros. */
 #define RADIUS_IS_VAR(str) \
-  str[0] == '$' && str[1] == '(' && str[strlen(str)-1] == ')'
+  ((str[0] == '$') && (str[1] == '(') && (str[strlen(str)-1] == ')'))
 
 /* Function prototypes. */
 static void radius_add_attrib(radius_packet_t *, unsigned char,
