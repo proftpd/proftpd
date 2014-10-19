@@ -1217,8 +1217,10 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
     pr_ctrls_cl_t *cl = NULL;
 
     for (cl = cl_list; cl; cl = cl->cl_next) {
-      close(cl->cl_fd);
-      cl->cl_fd = -1;
+      if (cl->cl_fd >= 0) {
+        (void) close(cl->cl_fd);
+        cl->cl_fd = -1;
+      }
     }
   }
 
