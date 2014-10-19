@@ -213,6 +213,12 @@ int sftp_keystore_verify_host_key(pool *p, const char *user,
       "user '%s', host %s", store_type, user, host_fqdn);
 
     ptr = strchr(store_type, ':');
+    if (ptr == NULL) {
+      pr_trace_msg(trace_channel, 2,
+        "skipping badly formatted SFTPAuthorizedHostKeys '%s'", store_type);
+      continue;
+    }
+
     *ptr = '\0';
 
     sks = keystore_get_store(store_type, SFTP_SSH2_HOST_KEY_STORE);
@@ -297,6 +303,12 @@ int sftp_keystore_verify_user_key(pool *p, const char *user,
     store_type = c->argv[i];
 
     ptr = strchr(store_type, ':');
+    if (ptr == NULL) {
+      pr_trace_msg(trace_channel, 2,
+        "skipping badly formatted SFTPAuthorizedUserKeys '%s'", store_type);
+      continue;
+    }
+
     *ptr = '\0';
 
     path = ptr + 1;
