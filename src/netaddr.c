@@ -914,7 +914,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 }
 
 int pr_netaddr_get_family(const pr_netaddr_t *na) {
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1686,7 +1686,11 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
   int ok = FALSE;
   int family = pr_netaddr_get_family(na);
   void *inaddr = pr_netaddr_get_inaddr(na);
-    
+
+  if (family < 0) {
+    return -1;
+  }
+
   if (pr_netaddr_is_v4mappedv6(na) == TRUE) {
     family = AF_INET;
     inaddr = get_v4inaddr(na);
