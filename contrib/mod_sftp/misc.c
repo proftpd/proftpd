@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp miscellaneous
- * Copyright (c) 2010-2012 TJ Saunders
+ * Copyright (c) 2010-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,7 +129,11 @@ int sftp_misc_chown_file(pr_fh_t *fh) {
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
-      pr_fsio_fstat(fh, &st);
+      if (pr_fsio_fstat(fh, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' fstat(2) error for %sfchmod: %s", fh->fh_path,
+          use_root_privs ? "root " : "", strerror(errno));
+      }
 
       if (use_root_privs) {
         PRIVS_ROOT
@@ -189,7 +193,10 @@ int sftp_misc_chown_path(const char *path) {
       }
 
       pr_fs_clear_cache();
-      pr_fsio_stat(path, &st);
+      if (pr_fsio_stat(path, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' stat(2) error for root chmod: %s", path, strerror(errno));
+      }
 
       /* The chmod happens after the chown because chown will remove the
        * S{U,G}ID bits on some files (namely, directories); the subsequent
@@ -254,7 +261,11 @@ int sftp_misc_chown_path(const char *path) {
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
-      pr_fsio_stat(path, &st);
+      if (pr_fsio_stat(path, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' stat(2) error for %schmod: %s", path,
+          use_root_privs ? "root " : "", strerror(errno));
+      }
 
       if (use_root_privs) {
         PRIVS_ROOT

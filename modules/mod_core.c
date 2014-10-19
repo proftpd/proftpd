@@ -5310,20 +5310,6 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_fsio_rename(session.xfer.path, path) == -1) {
     int xerrno = errno;
 
-    if (xerrno != EXDEV) {
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
-        "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(xerrno));
-
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
-    }
-
     if (xerrno == EISDIR) {
       /* In this case, the client has requested that a directory be renamed
        * across mount points.  The pr_fs_copy_file() function can't handle
@@ -5348,6 +5334,20 @@ MODRET core_rnto(cmd_rec *cmd) {
        * error messages.
        */
       xerrno = EPERM;
+
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
+        strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    if (xerrno != EXDEV) {
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid,
+        session.xfer.path, path, strerror(xerrno));
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));
@@ -5605,8 +5605,16 @@ MODRET core_post_pass(cmd_rec *cmd) {
       char *channel, *ptr;
       int min_level, max_level, res;
 
-      ptr = strchr(c->argv[i], ':');
+      pr_signals_handle();
+
       channel = c->argv[i];
+      ptr = strchr(channel, ':');
+      if (ptr == NULL) {
+        pr_log_debug(DEBUG6, "skipping badly formatted '%s' setting",
+          channel);
+        continue;
+      }
+
       *ptr = '\0';
 
       res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);
@@ -5733,7 +5741,7 @@ static void core_restart_ev(const void *event_data, void *user_data) {
 
 #ifdef PR_USE_TRACE
   if (trace_log) {
-    pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, -1, -1);
+    (void) pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, -1, -1);
     pr_trace_set_file(NULL);
     trace_log = NULL;
   }
@@ -6050,8 +6058,17 @@ static int core_sess_init(void) {
       char *channel, *ptr;
       int min_level, max_level, res;
 
-      ptr = strchr(c->argv[i], ':');
+      pr_signals_handle();
+
       channel = c->argv[i];
+
+      ptr = strchr(channel, ':');
+      if (ptr == NULL) {
+        pr_log_debug(DEBUG6, "skipping badly formatted '%s' setting",
+          channel);
+        continue;
+      }
+
       *ptr = '\0';
 
       res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);

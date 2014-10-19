@@ -1140,9 +1140,6 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
   if (found_slash == FALSE) {
     parent_dir = "./";
 
-  } else if (basenamestart == 0) {
-    parent_dir = "/";
-
   } else {
     parent_dir = pstrndup(cmd->tmp_pool, path, basenamestart);
   }
@@ -1775,8 +1772,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   /* Check the MaxStoreFileSize, and abort now if zero. */
-  if (have_limit &&
-      nbytes_max_store == 0) {
+  if (have_limit) {
     int xerrno;
 
     pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "

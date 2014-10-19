@@ -1483,8 +1483,6 @@ static int tls_check_server_cert(SSL *ssl, conn_t *conn) {
   }
 
   X509_free(cert);
-
-  ok = 0;
   return ok;
 }
 

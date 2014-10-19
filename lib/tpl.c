@@ -1029,6 +1029,7 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...) {
           pa_addr = (void*)va_arg(ap, void*);
           pa_sz = va_arg(ap, size_t);
           if (pa_sz < sz) {
+              va_end(ap);
               tpl_hook.oops("tpl_dump: buffer too small, need %d bytes\n", sz);
               return -1;
           }
@@ -1475,6 +1476,7 @@ TPL_API int tpl_load(tpl_node *r, int mode, ...) {
     } else if (mode & TPL_FD) {
         fd = va_arg(ap,int);
     } else {
+        va_end(ap);
         tpl_hook.oops("unsupported tpl_load mode %d\n", mode);
         return -1;
     }

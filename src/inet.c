@@ -587,10 +587,11 @@ void pr_inet_close(pool *p, conn_t *c) {
 
 /* Perform shutdown/read on streams */
 void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
-  pr_inet_set_block(p, c);
+  (void) pr_inet_set_block(p, c);
 
-  if (c->outstrm)
+  if (c->outstrm) {
     pr_netio_lingering_close(c->outstrm, linger);
+  }
 
   /* Only close the input stream if it is actually a different stream than
    * the output stream.
@@ -607,7 +608,7 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
 
 /* Similar to a lingering close, perform a lingering abort. */
 void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
-  pr_inet_set_block(p, c);
+  (void) pr_inet_set_block(p, c);
 
   if (c->instrm) {
     pr_netio_lingering_abort(c->instrm, linger);
@@ -1168,6 +1169,7 @@ int pr_inet_listen(pool *p, conn_t *c, int backlog, int flags) {
 int pr_inet_resetlisten(pool *p, conn_t *c) {
   c->mode = CM_LISTEN;
   if (pr_inet_set_block(c->pool, c) < 0) {
+    c->xerrno = errno;
     return -1;
   }
 
@@ -1193,16 +1195,18 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   pr_netaddr_set_port(&remote_na, htons(port));
 
   while (TRUE) {
-    if ((res = connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
-        pr_netaddr_get_sockaddr_len(&remote_na))) == -1 && errno == EINTR) {
+    res = connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
+      pr_netaddr_get_sockaddr_len(&remote_na));
+    if (res < 0 &&
+        errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      break;
+    break;
   }
 
-  if (res == -1) {
+  if (res < 0) {
     c->mode = CM_ERROR;
     c->xerrno = errno;
     return -1;
@@ -1216,7 +1220,6 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
     return -1;
   }
 
-  pr_inet_set_block(c->pool, c);
   return 1;
 }
 
@@ -1247,7 +1250,7 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
       c->mode = CM_ERROR;
       c->xerrno = errno;
 
-      pr_inet_set_block(c->pool, c);
+      (void) pr_inet_set_block(c->pool, c);
 
       errno = c->xerrno;
       return -1;
@@ -1261,12 +1264,16 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   if (pr_inet_get_conn_info(c, c->listen_fd) < 0) {
     c->xerrno = errno;
 
-    pr_inet_set_block(c->pool, c);
+    (void) pr_inet_set_block(c->pool, c);
     errno = c->xerrno;
     return -1;
   }
 
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    c->xerrno = errno;
+    return -1;
+  }
+
   return 1;
 }
 
@@ -1611,7 +1618,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
 
   /* Set options on the sockets. */
   pr_inet_set_socket_opts(res->pool, res, 0, 0, NULL);
-  pr_inet_set_block(res->pool, res);
+  (void) pr_inet_set_block(res->pool, res);
 
   res->mode = CM_OPEN;
 

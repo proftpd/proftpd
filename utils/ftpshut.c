@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,16 +88,19 @@ int main(int argc, char *argv[]) {
 	  show_usage(progname);
         }
 
-        if (c == 'd')
+        if (c == 'd') {
 	  disc = atoi(optarg);
 
-        else if (c == 'l')
+        } else if (c == 'l') {
 	  deny = atoi(optarg);
+        }
 
         break;
 
       case '?':
         fprintf(stderr, "%s: unknown option '%c'\n", progname, (char)optopt);
+        show_usage(progname);
+        break;
 
       case 'h':
       default:

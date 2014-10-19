@@ -45,6 +45,12 @@
 
 #include "mod_ctrls.h"
 
+/* Maximum number of request arguments. */
+#define CTRLS_MAX_NREQARGS	32
+
+/* Maximum number of response arguments. */
+#define CTRLS_MAX_NRESPARGS	1024
+
 /* Maximum length of a single request argument. */
 #define CTRLS_MAX_REQARGLEN	256
 
@@ -522,10 +528,10 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   char reqaction[128] = {'\0'}, *reqarg = NULL;
   size_t reqargsz = 0;
   unsigned int nreqargs = 0, reqarglen = 0;
-  int status = 0;
+  int bread, status = 0;
   register int i = 0;
 
-  if (!cl) {
+  if (cl == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -544,7 +550,8 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
    * the same function, pr_ctrls_send_msg(), is used to send requests
    * as well as responses, and the status is a necessary part of a response.
    */
-  if (read(cl->cl_fd, &status, sizeof(int)) < 0) {
+  bread = read(cl->cl_fd, &status, sizeof(int));
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
@@ -552,14 +559,44 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     errno = xerrno;
     return -1;
   }
+
+  /* Watch for short reads. */
+  if (bread != sizeof(int)) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of status, unable to receive request",
+      bread, (unsigned int) sizeof(int));
+    pr_signals_unblock();
+    errno = EPERM;
+    return -1;
+  }
  
   /* Read in the args, length first, then string. */
-  if (read(cl->cl_fd, &nreqargs, sizeof(unsigned int)) < 0) {
+  bread = read(cl->cl_fd, &nreqargs, sizeof(unsigned int));
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
 
     errno = xerrno;
+    return -1;
+  }
+
+  /* Watch for short reads. */
+  if (bread != sizeof(unsigned int)) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of nreqargs, unable to receive request",
+      bread, (unsigned int) sizeof(unsigned int));
+    pr_signals_unblock();
+    errno = EPERM;
+    return -1;
+  }
+
+  if (nreqargs > CTRLS_MAX_NREQARGS) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "nreqargs (%u) exceeds max (%u), rejecting", nreqargs,
+      CTRLS_MAX_NREQARGS);
+    pr_signals_unblock();
+    errno = ENOMEM;
     return -1;
   }
 
@@ -569,12 +606,23 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
    * matching pr_ctrls_t (if present), and add the remaining arguments to it.
    */
   
-  if (read(cl->cl_fd, &reqarglen, sizeof(unsigned int)) < 0) {
+  bread = read(cl->cl_fd, &reqarglen, sizeof(unsigned int));
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
 
     errno = xerrno;
+    return -1;
+  }
+
+  /* Watch for short reads. */
+  if (bread != sizeof(unsigned int)) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of reqarglen, unable to receive request",
+      bread, (unsigned int) sizeof(unsigned int));
+    pr_signals_unblock();
+    errno = EPERM;
     return -1;
   }
 
@@ -586,12 +634,23 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
   memset(reqaction, '\0', sizeof(reqaction));
 
-  if (read(cl->cl_fd, reqaction, reqarglen) < 0) {
+  bread = read(cl->cl_fd, reqaction, reqarglen);
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
 
     errno = xerrno;
+    return -1;
+  }
+
+  /* Watch for short reads. */
+  if (bread != reqarglen) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of reqaction, unable to receive request",
+      bread, reqarglen);
+    pr_signals_unblock();
+    errno = EPERM;
     return -1;
   }
 
@@ -611,7 +670,8 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   for (i = 0; i < nreqargs; i++) {
     memset(reqarg, '\0', reqargsz);
 
-    if (read(cl->cl_fd, &reqarglen, sizeof(unsigned int)) < 0) {
+    bread = read(cl->cl_fd, &reqarglen, sizeof(unsigned int));
+    if (bread < 0) {
       int xerrno = errno;
 
       pr_signals_unblock();
@@ -620,12 +680,23 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
       return -1;
     }
 
+    /* Watch for short reads. */
+    if (bread != sizeof(unsigned int)) {
+      (void) pr_trace_msg(trace_channel, 3,
+        "short read (%d of %u bytes) of reqarglen (#%u), skipping",
+        bread, i+1, (unsigned int) sizeof(unsigned int));
+      continue;
+    }
+
     if (reqarglen == 0) {
       /* Skip any zero-length arguments. */
       continue;
     }
 
     if (reqarglen > CTRLS_MAX_REQARGLEN) {
+      (void) pr_trace_msg(trace_channel, 3,
+        "reqarglen (#%u) of %u bytes exceeds max (%u bytes), rejecting",
+        i+1, reqarglen, CTRLS_MAX_REQARGLEN);
       pr_signals_unblock();
       errno = ENOMEM;
       return -1;
@@ -646,13 +717,22 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
       reqarg = pcalloc(ctrl->ctrls_tmp_pool, reqargsz);
     }
 
-    if (read(cl->cl_fd, reqarg, reqarglen) < 0) {
+    bread = read(cl->cl_fd, reqarg, reqarglen);
+    if (bread < 0) {
       int xerrno = errno;
 
       pr_signals_unblock();
 
       errno = xerrno;
       return -1;
+    }
+
+    /* Watch for short reads. */
+    if (bread != reqarglen) {
+      (void) pr_trace_msg(trace_channel, 3,
+        "short read (%d of %u bytes) of reqarg (#%u), skipping",
+        bread, i+1, reqarglen);
+      continue;
     }
 
     if (pr_ctrls_add_arg(ctrl, reqarg, reqarglen)) {
@@ -679,6 +759,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
   while (next_ctrl) {
     if (pr_ctrls_copy_args(ctrl, next_ctrl)) {
+      pr_signals_unblock();
       return -1;
     }
 
@@ -704,7 +785,9 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
   char response[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
   /* Sanity checks */
-  if (!resp_pool || ctrls_sockfd < 0 || !status) {
+  if (resp_pool == NULL ||
+      ctrls_sockfd < 0 ||
+      status == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -725,6 +808,15 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
   if (read(ctrls_sockfd, &respargc, sizeof(unsigned int)) !=
       sizeof(unsigned int)) {
     pr_signals_unblock();
+    return -1;
+  }
+
+  if (respargc > CTRLS_MAX_NRESPARGS) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "respargc (%u) exceeds max (%u), rejecting", respargc,
+      CTRLS_MAX_NRESPARGS);
+    pr_signals_unblock();
+    errno = ENOMEM;
     return -1;
   }
 

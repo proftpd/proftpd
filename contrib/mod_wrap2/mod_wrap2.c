@@ -172,6 +172,11 @@ static wrap2_table_t *wrap2_open_table(char *name) {
   wrap2_table_t *tab = NULL;
 
   info = ptr = strchr(name, ':');
+  if (info == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   *info++ = '\0';
 
   /* Look up the table source open routine by name, and invoke it */
