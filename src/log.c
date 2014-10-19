@@ -373,6 +373,11 @@ int log_opensyslog(const char *fn) {
 
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
     if (syslog_sockfd < 0) {
+      int xerrno = errno;
+
+      (void) pr_trace_msg(trace_channel, 1,
+        "error opening syslog fd: %s", strerror(xerrno));
+      errno = xerrno;
       return -1;
     }
 
