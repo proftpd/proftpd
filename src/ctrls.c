@@ -668,8 +668,6 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   }
 
   for (i = 0; i < nreqargs; i++) {
-    int bread;
-
     memset(reqarg, '\0', reqargsz);
 
     bread = read(cl->cl_fd, &reqarglen, sizeof(unsigned int));
