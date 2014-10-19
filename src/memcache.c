@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2013 The ProFTPD Project team
+ * Copyright (c) 2010-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -975,7 +975,6 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
           (unsigned long) keysz, (unsigned long) decr, strerror(xerrno));
 
         errno = xerrno;
-        break;
 
       } else {
         /* We know that we're not using nonblocking IO; this value usually
@@ -985,6 +984,7 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
          */
         res = MEMCACHED_CONNECTION_FAILURE;
       }
+      break;
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
@@ -996,6 +996,8 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
           "unable to connect to %s:%d", memcached_server_name(server),
           memcached_server_port(server));
       }
+
+      break;
     }
 
     default:
