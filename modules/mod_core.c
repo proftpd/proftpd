@@ -5310,20 +5310,6 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_fsio_rename(session.xfer.path, path) == -1) {
     int xerrno = errno;
 
-    if (xerrno != EXDEV) {
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
-        "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(xerrno));
-
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
-    }
-
     if (xerrno == EISDIR) {
       /* In this case, the client has requested that a directory be renamed
        * across mount points.  The pr_fs_copy_file() function can't handle
@@ -5348,6 +5334,20 @@ MODRET core_rnto(cmd_rec *cmd) {
        * error messages.
        */
       xerrno = EPERM;
+
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
+        strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    if (xerrno != EXDEV) {
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid,
+        session.xfer.path, path, strerror(xerrno));
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));
