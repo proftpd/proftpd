@@ -49,7 +49,7 @@
 #define CTRLS_MAX_NREQARGS	32
 
 /* Maximum number of response arguments. */
-#define CTRLS_MAX_NRESPARGS	256
+#define CTRLS_MAX_NRESPARGS	1024
 
 /* Maximum length of a single request argument. */
 #define CTRLS_MAX_REQARGLEN	256
