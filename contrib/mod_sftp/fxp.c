@@ -2711,12 +2711,14 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     }
   }
 
-  /* Add a note indicating that this is a failed transfer. */
-  if (pr_table_add(cmd->notes, "mod_sftp.file-status",
-      pstrdup(fxh->pool, "failed"), 0) < 0) {
-    if (errno != EEXIST) {
-      pr_trace_msg(trace_channel, 3,
-        "error stashing file status in command notes: %s", strerror(errno));
+  if (cmd != NULL) {
+    /* Add a note indicating that this is a failed transfer. */
+    if (pr_table_add(cmd->notes, "mod_sftp.file-status",
+        pstrdup(fxh->pool, "failed"), 0) < 0) {
+      if (errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error stashing file status in command notes: %s", strerror(errno));
+      }
     }
   }
 
