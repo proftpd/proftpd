@@ -7477,8 +7477,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       status_code = fxp_errno2status(xerrno, &reason);
 
       pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+        "('%s' [%d])", (unsigned long) status_code, reason, strerror(errno),
+        xerrno);
 
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
       pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
