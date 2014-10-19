@@ -195,8 +195,7 @@ int sftp_misc_chown_path(const char *path) {
       pr_fs_clear_cache();
       if (pr_fsio_stat(path, &st) < 0) {
         pr_log_debug(DEBUG0,
-          "'%s' stat(2) error for root chmod: %s", fh->fh_path,
-          strerror(errno));
+          "'%s' stat(2) error for root chmod: %s", path, strerror(errno));
       }
 
       /* The chmod happens after the chown because chown will remove the
@@ -264,7 +263,7 @@ int sftp_misc_chown_path(const char *path) {
       pr_fs_clear_cache();
       if (pr_fsio_stat(path, &st) < 0) {
         pr_log_debug(DEBUG0,
-          "'%s' stat(2) error for %schmod: %s", fh->fh_path,
+          "'%s' stat(2) error for %schmod: %s", path,
           use_root_privs ? "root " : "", strerror(errno));
       }
 
