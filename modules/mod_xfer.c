@@ -1140,9 +1140,6 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
   if (found_slash == FALSE) {
     parent_dir = "./";
 
-  } else if (basenamestart == 0) {
-    parent_dir = "/";
-
   } else {
     parent_dir = pstrndup(cmd->tmp_pool, path, basenamestart);
   }
