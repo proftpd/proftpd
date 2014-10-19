@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp miscellaneous
- * Copyright (c) 2010-2012 TJ Saunders
+ * Copyright (c) 2010-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -254,7 +254,11 @@ int sftp_misc_chown_path(const char *path) {
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
-      pr_fsio_stat(path, &st);
+      if (pr_fsio_stat(path, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' stat(2) error for %schmod: %s", fh->fh_path,
+          use_root_privs ? "root " : "", strerror(errno));
+      }
 
       if (use_root_privs) {
         PRIVS_ROOT
