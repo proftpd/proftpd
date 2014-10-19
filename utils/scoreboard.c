@@ -303,6 +303,9 @@ int util_scoreboard_scrub(int verbose) {
 
   /* Skip past the scoreboard header. */
   curr_offset = lseek(fd, (off_t) sizeof(pr_scoreboard_header_t), SEEK_SET);
+  if (curr_offset < 0) {
+    return -1;
+  }
 
   memset(&sce, 0, sizeof(sce));
 
