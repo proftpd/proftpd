@@ -45,6 +45,9 @@
 
 #include "mod_ctrls.h"
 
+/* Maximum number of request arguments. */
+#define CTRLS_MAX_NREQARGS	32
+
 /* Maximum length of a single request argument. */
 #define CTRLS_MAX_REQARGLEN	256
 
@@ -585,6 +588,15 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     return -1;
   }
 
+  if (nreqargs > CTRLS_MAX_NREQARGS) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "nreqargs (%u) exceeds max (%u), rejecting", nreqargs,
+      CTRLS_MAX_NREQARGS);
+    pr_signals_unblock();
+    errno = ENOMEM;
+    return -1;
+  }
+
   /* Next, read in the requested number of arguments.  The client sends
    * the arguments in pairs: first the length of the argument, then the
    * argument itself.  The first argument is the action, so get the first
@@ -681,6 +693,9 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     }
 
     if (reqarglen > CTRLS_MAX_REQARGLEN) {
+      (void) pr_trace_msg(trace_channel, 3,
+        "reqarglen (#%u) of %u bytes exceeds max (%u bytes), rejecting",
+        i+1, reqarglen, CTRLS_MAX_REQARGLEN);
       pr_signals_unblock();
       errno = ENOMEM;
       return -1;
