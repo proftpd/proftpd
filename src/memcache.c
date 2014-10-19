@@ -404,7 +404,6 @@ static int mcache_stat_servers(pr_memcache_t *mcache) {
             pr_trace_msg(trace_channel, 3,
               "error requesting memcached stats: system error: %s",
               strerror(errno));
-            break;
 
           } else {
             /* We know that we're not using nonblocking IO; this value usually
@@ -414,6 +413,7 @@ static int mcache_stat_servers(pr_memcache_t *mcache) {
              */
             res = MEMCACHED_CONNECTION_FAILURE;
           }
+          break;
 
           case MEMCACHED_SOME_ERRORS:
           case MEMCACHED_SERVER_MARKED_DEAD:
@@ -426,6 +426,8 @@ static int mcache_stat_servers(pr_memcache_t *mcache) {
                 "unable to connect to %s:%d", memcached_server_name(server),
                 memcached_server_port(server));
             }
+
+            break;
           }
 
         default:
@@ -912,7 +914,6 @@ int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
           (unsigned long) keysz, (unsigned long) valuesz, strerror(xerrno));
 
         errno = xerrno;
-        break;
 
       } else {
         /* We know that we're not using nonblocking IO; this value usually
@@ -922,6 +923,7 @@ int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
          */
         res = MEMCACHED_CONNECTION_FAILURE;
       }
+      break;
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
@@ -933,6 +935,8 @@ int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
           "unable to connect to %s:%d", memcached_server_name(server),
           memcached_server_port(server));
       }
+
+      break;
     }
 
     default:
@@ -941,6 +945,7 @@ int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
         (unsigned long) keysz, (unsigned long) valuesz,
         memcached_strerror(mcache->mc, res));
       errno = EPERM;
+      break;
   }
 
   return -1;
@@ -1006,6 +1011,7 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
         (unsigned long) keysz, (unsigned long) decr,
         memcached_strerror(mcache->mc, res));
       errno = EPERM;
+      break;
   }
 
   return -1;
@@ -1046,7 +1052,6 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
             (unsigned long) keysz, strerror(xerrno));
 
           errno = xerrno;
-          break;
 
         } else {
           /* We know that we're not using nonblocking IO; this value usually
@@ -1056,6 +1061,7 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
            */
           res = MEMCACHED_CONNECTION_FAILURE;
         }
+        break;
 
       case MEMCACHED_SERVER_MARKED_DEAD:
       case MEMCACHED_CONNECTION_FAILURE: {
@@ -1067,7 +1073,9 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
             "unable to connect to %s:%d", memcached_server_name(server),
             memcached_server_port(server));
         }
-      } 
+
+        break;
+      }
 
       default:
         pr_trace_msg(trace_channel, 6,
@@ -1126,7 +1134,6 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
             (unsigned long) keysz, strerror(xerrno));
 
           errno = xerrno;
-          break;
 
         } else {
           /* We know that we're not using nonblocking IO; this value usually
@@ -1136,6 +1143,7 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
            */
           res = MEMCACHED_CONNECTION_FAILURE;
         }
+        break;
 
       case MEMCACHED_SERVER_MARKED_DEAD:
       case MEMCACHED_CONNECTION_FAILURE: {
@@ -1147,6 +1155,8 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
             "unable to connect to %s:%d", memcached_server_name(server),
             memcached_server_port(server));
         }
+
+        break;
       }
 
       default:
@@ -1210,7 +1220,6 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
           (unsigned long) keysz, (unsigned long) incr, strerror(xerrno));
 
         errno = xerrno;
-        break;
 
       } else {
         /* We know that we're not using nonblocking IO; this value usually
@@ -1220,6 +1229,7 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
          */
         res = MEMCACHED_CONNECTION_FAILURE;
       }
+      break;
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
@@ -1231,6 +1241,8 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
           "unable to connect to %s:%d", memcached_server_name(server),
           memcached_server_port(server));
       }
+
+      break;
     }
 
     default:
@@ -1239,6 +1251,7 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
         (unsigned long) keysz, (unsigned long) incr,
         memcached_strerror(mcache->mc, res));
       errno = EPERM;
+      break;
   }
 
   return -1;
@@ -1272,7 +1285,6 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
           (unsigned long) keysz, strerror(xerrno));
 
         errno = xerrno;
-        break;
 
       } else {
         /* We know that we're not using nonblocking IO; this value usually
@@ -1282,6 +1294,7 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
          */
         res = MEMCACHED_CONNECTION_FAILURE;
       }
+      break;
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
@@ -1293,6 +1306,8 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
           "unable to connect to %s:%d", memcached_server_name(server),
           memcached_server_port(server));
       }
+
+      break;
     }
 
     default:
@@ -1300,6 +1315,7 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
         "error removing key (%lu bytes): %s", (unsigned long) keysz,
         memcached_strerror(mcache->mc, res));
       errno = EPERM;
+      break;
   }
 
   return -1;
@@ -1337,7 +1353,6 @@ int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
           (unsigned long) keysz, (unsigned long) valuesz, strerror(xerrno));
 
         errno = xerrno;
-        break;
 
       } else {
         /* We know that we're not using nonblocking IO; this value usually
@@ -1347,6 +1362,7 @@ int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
          */
         res = MEMCACHED_CONNECTION_FAILURE;
       }
+      break;
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
@@ -1358,6 +1374,8 @@ int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
           "unable to connect to %s:%d", memcached_server_name(server),
           memcached_server_port(server));
       }
+
+      break;
     }
 
     default:
@@ -1366,6 +1384,7 @@ int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
         (unsigned long) keysz, (unsigned long) valuesz,
         memcached_strerror(mcache->mc, res));
       errno = EPERM;
+      break;
   }
 
   return -1;
