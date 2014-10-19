@@ -48,6 +48,9 @@
 /* Maximum number of request arguments. */
 #define CTRLS_MAX_NREQARGS	32
 
+/* Maximum number of response arguments. */
+#define CTRLS_MAX_NRESPARGS	256
+
 /* Maximum length of a single request argument. */
 #define CTRLS_MAX_REQARGLEN	256
 
@@ -807,6 +810,15 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
   if (read(ctrls_sockfd, &respargc, sizeof(unsigned int)) !=
       sizeof(unsigned int)) {
     pr_signals_unblock();
+    return -1;
+  }
+
+  if (respargc > CTRLS_MAX_NRESPARGS) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "respargc (%u) exceeds max (%u), rejecting", respargc,
+      CTRLS_MAX_NRESPARGS);
+    pr_signals_unblock();
+    errno = ENOMEM;
     return -1;
   }
 
