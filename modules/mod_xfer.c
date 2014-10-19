@@ -1775,8 +1775,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   /* Check the MaxStoreFileSize, and abort now if zero. */
-  if (have_limit &&
-      nbytes_max_store == 0) {
+  if (have_limit) {
     int xerrno;
 
     pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
