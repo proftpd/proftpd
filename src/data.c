@@ -1597,7 +1597,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
       }
 
       error = errno;
-      fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
+      (void) fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
       errno = error;
 
       return -1;
