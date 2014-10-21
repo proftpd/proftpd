@@ -1786,32 +1786,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
     have_limit = TRUE;
   }
 
-  /* Check the MaxStoreFileSize, and abort now if zero. */
-  if (have_limit) {
-    int xerrno;
-
-    pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
-      "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
-      nbytes_max_store != 1 ? "bytes" : "byte", path);
-
-    /* Abort the transfer. */
-    stor_abort();
-
-    /* Set errno to EFBIG (or the most appropriate alternative). */
-#if defined(EFBIG)
-    xerrno = EFBIG;
-#elif defined(EDQUOT)
-    xerrno = EDQUOT;
-#else
-    xerrno = EPERM;
-#endif
-
-    pr_data_abort(xerrno, FALSE);
-    pr_cmd_set_errno(cmd, xerrno);
-    errno = xerrno;
-    return PR_ERROR(cmd);
-  }
-
   bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_RD);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
   pr_trace_msg("data", 8, "allocated upload buffer of %lu bytes",
@@ -1839,7 +1813,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       /* Abort the transfer. */
       stor_abort();
 
-    /* Set errno to EFBIG (or the most appropriate alternative). */
+      /* Set errno to EFBIG (or the most appropriate alternative). */
 #if defined(EFBIG)
       xerrno = EFBIG;
 #elif defined(EDQUOT)
@@ -3038,6 +3012,10 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     if (pr_str_get_nbytes(cmd->argv[1], cmd->argv[2], &nbytes) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse: ",
         cmd->argv[1], " ", cmd->argv[2], ": ", strerror(errno), NULL));
+    }
+
+    if (nbytes == 0) {
+      CONF_ERROR(cmd, "size must be greater than zero");
     }
   }
 
