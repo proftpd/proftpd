@@ -392,9 +392,9 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1_2		0x0008
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-# define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1)
-#else
 # define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2)
+#else
+# define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1)
 #endif /* OpenSSL 1.0.1 or later */
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
