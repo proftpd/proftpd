@@ -1736,8 +1736,8 @@ static int tpl_mmap_output_file(char *filename, size_t sz, void **text_out) {
     }
     if (ftruncate(fd,sz) == -1) {
         tpl_hook.oops("ftruncate failed: %s\n", strerror(errno));
-        munmap( text, sz );
-        close(fd);
+        (void) munmap( text, sz );
+        (void) close(fd);
         return -1;
     }
     *text_out = text;
