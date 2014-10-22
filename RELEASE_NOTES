@@ -10,6 +10,7 @@ ChangeLog files.
 ---------
 
   + Delay during TLS handshakes for data connections fixed
+  + SSLv3 disabled by default (Bug#4114)
 
 
 1.3.5
