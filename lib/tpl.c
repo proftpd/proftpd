@@ -1017,6 +1017,7 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...) {
                 bufv += rc;
             } else if (rc == -1) {
                 if (errno == EINTR || errno == EAGAIN) continue;
+                va_end(ap);
                 tpl_hook.oops("error writing to fd %d: %s\n", fd, strerror(errno));
                 free(buf);
                 return -1;
