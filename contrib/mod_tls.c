@@ -673,7 +673,7 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
 
         reused = SSL_session_reused((SSL *) ssl);
         tls_log("%s renegotiation accepted, using cipher %s (%d bits%s)",
-          SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+          SSL_get_version(ssl), SSL_get_cipher_name(ssl),
           SSL_get_cipher_bits(ssl, NULL),
           reused > 0 ? ", resumed session" : "");
       }
@@ -686,7 +686,7 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
          * ciphersuite et al.
          */
         tls_log("%s renegotiation accepted, using cipher %s (%d bits)",
-          SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+          SSL_get_version(ssl), SSL_get_cipher_name(ssl),
           SSL_get_cipher_bits(ssl, NULL));
       }
 
@@ -3875,7 +3875,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     reused = SSL_session_reused(ssl);
 
     tls_log("%s connection accepted, using cipher %s (%d bits%s)",
-      SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+      SSL_get_version(ssl), SSL_get_cipher_name(ssl),
       SSL_get_cipher_bits(ssl, NULL),
       reused > 0 ? ", resumed session" : "");
 
@@ -4021,7 +4021,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      */
     if (!logged_data) {
       tls_log("%s data connection accepted, using cipher %s (%d bits)",
-        SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+        SSL_get_version(ssl), SSL_get_cipher_name(ssl),
         SSL_get_cipher_bits(ssl, NULL));
       logged_data = TRUE;
     }
@@ -4235,7 +4235,7 @@ static int tls_connect(conn_t *conn) {
   }
 
   tls_log("%s connection created, using cipher %s (%d bits)",
-    SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+    SSL_get_version(ssl), SSL_get_cipher_name(ssl),
     SSL_get_cipher_bits(ssl, NULL));
 
   return 0;
@@ -5380,7 +5380,7 @@ static void tls_setup_environ(SSL *ssl) {
     pr_env_set(main_server->pool, k, v);
 
     k = pstrdup(main_server->pool, "TLS_PROTOCOL");
-    v = pstrdup(main_server->pool, SSL_get_cipher_version(ssl));
+    v = pstrdup(main_server->pool, SSL_get_version(ssl));
     pr_env_set(main_server->pool, k, v);
 
     /* Process the SSL session-related environ variable. */
