@@ -2162,8 +2162,9 @@ static void tpl_fatal(char *fmt, ...) {
     va_list ap;
     char exit_msg[100];
 
+    memset(exit_msg, '\0', sizeof(exit_msg));
     va_start(ap,fmt);
-    vsnprintf(exit_msg, 100, fmt, ap);
+    vsnprintf(exit_msg, sizeof(exit_msg)-1, fmt, ap);
     va_end(ap);
 
     tpl_hook.oops("%s", exit_msg);
