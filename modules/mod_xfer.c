@@ -971,7 +971,7 @@ static void stor_abort(void) {
 
   } else if (session.xfer.path) {
     delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
-    if (delete_stores == NULL ||
+    if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
       pr_fsio_unlink(session.xfer.path);
