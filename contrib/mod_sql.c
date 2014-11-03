@@ -5182,7 +5182,8 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     uid_name = pw->pw_name;
 
   } else {
-    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
+    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu",
+      (unsigned long) *((uid_t *) cmd->argv[0]));
     uid_name = uidstr;
   }
 
@@ -5219,7 +5220,8 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
 
   } else {
     memset(gidstr, '\0', sizeof(gidstr));
-    snprintf(gidstr, sizeof(gidstr)-1, "%lu", (unsigned long) cmd->argv[0]);
+    snprintf(gidstr, sizeof(gidstr)-1, "%lu",
+      (unsigned long) *((gid_t *) cmd->argv[0]));
     gid_name = gidstr;
   }
 
