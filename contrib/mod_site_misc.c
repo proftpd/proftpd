@@ -547,7 +547,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
   if (strncasecmp(cmd->argv[1], "MKDIR", 6) == 0) {
     register unsigned int i;
-    char *cmd_name, *path = "";
+    char *cmd_name, *decoded_path, *path = "";
     unsigned char *authenticated;
 
     if (cmd->argc < 3)
@@ -564,10 +564,26 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    for (i = 2; i < cmd->argc; i++)
+    for (i = 2; i < cmd->argc; i++) {
       path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", cmd->argv[i], NULL);
+    }
 
-    path = pr_fs_decode_path(cmd->tmp_pool, path);
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), path);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    path = decoded_path;
 
     if (site_misc_check_filters(cmd, path) < 0) {
       int xerrno = EPERM;
@@ -641,7 +657,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
   if (strncasecmp(cmd->argv[1], "RMDIR", 6) == 0) {
     register unsigned int i;
-    char *cmd_name, *path = "";
+    char *cmd_name, *decoded_path, *path = "";
     unsigned char *authenticated;
 
     if (cmd->argc < 3)
@@ -658,12 +674,26 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    for (i = 2; i < cmd->argc; i++)
+    for (i = 2; i < cmd->argc; i++) {
       path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", cmd->argv[i], NULL);
+    }
 
-    path = pr_fs_decode_path(cmd->tmp_pool, path);
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
 
-    path = dir_canonical_path(cmd->tmp_pool, path);
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), path);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    path = dir_canonical_path(cmd->tmp_pool, decoded_path);
     if (path == NULL) {
       int xerrno = EINVAL;
 
@@ -726,7 +756,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
   if (strncasecmp(cmd->argv[1], "SYMLINK", 8) == 0) {
     struct stat st;
     int res;
-    char *cmd_name, *src, *dst;
+    char *cmd_name, *decoded_path, *src, *dst;
     unsigned char *authenticated;
 
     if (cmd->argc < 4)
@@ -743,8 +773,22 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    src = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
-    src = dir_canonical_path(cmd->tmp_pool, src);
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[2],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[2],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), cmd->argv[2]);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    src = dir_canonical_path(cmd->tmp_pool, decoded_path);
     if (src == NULL) {
       int xerrno = EINVAL;
 
@@ -769,8 +813,22 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    dst = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
-    dst = dir_canonical_path(cmd->tmp_pool, dst);
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[3],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[3],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), cmd->argv[3]);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    dst = dir_canonical_path(cmd->tmp_pool, decoded_path);
     if (dst == NULL) {
       int xerrno = EINVAL;
 
@@ -843,7 +901,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 /* Handle: SITE UTIME mtime path-with-spaces */
 MODRET site_misc_utime_mtime(cmd_rec *cmd) {
   register unsigned int i;
-  char *cmd_name, *path = "";
+  char *cmd_name, *decoded_path, *path = "";
   size_t timestamp_len;
   unsigned int year, month, day, hour, min, sec = 0;
   struct timeval tvs[2];
@@ -867,9 +925,22 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
     path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", cmd->argv[i], NULL);
   }
 
-  path = pr_fs_decode_path(cmd->tmp_pool, path);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
 
-  path = dir_canonical_path(cmd->tmp_pool, path);
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      path);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (path == NULL) {
     int xerrno = EINVAL;
 
@@ -934,7 +1005,7 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
 /* Handle: SITE UTIME path-with-spaces atime mtime ctime UTC */
 MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
   register unsigned int i;
-  char *cmd_name, *path = "", *timestamp;
+  char *cmd_name, *decoded_path, *path = "", *timestamp;
   size_t timestamp_len;
   unsigned int year, month, day, hour, min, sec = 0;
   time_t parsed_atime, parsed_mtime, parsed_ctime;
@@ -944,9 +1015,22 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
     path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", cmd->argv[i], NULL);
   }
 
-  path = pr_fs_decode_path(cmd->tmp_pool, path);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
 
-  path = dir_canonical_path(cmd->tmp_pool, path);
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      path);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (path == NULL) {
     int xerrno = EINVAL;
 

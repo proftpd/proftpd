@@ -1204,7 +1204,7 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
  * the duration of this function.
  */
 MODRET xfer_pre_stor(cmd_rec *cmd) {
-  char *path;
+  char *decoded_path, *path;
   mode_t fmode;
   unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
   config_rec *c;
@@ -1219,8 +1219,22 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = dir_best_path(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_best_path(cmd->tmp_pool, decoded_path);
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
@@ -2039,7 +2053,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
  * for this, as tmp_pool only lasts for the duration of this function).
  */
 MODRET xfer_pre_retr(cmd_rec *cmd) {
-  char *dir = NULL;
+  char *decoded_path, *dir = NULL;
   mode_t fmode;
   unsigned char *allow_restart = NULL;
   config_rec *c;
@@ -2055,8 +2069,22 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dir = dir_realpath(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  dir = dir_realpath(cmd->tmp_pool, decoded_path);
 
   if (!dir ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
