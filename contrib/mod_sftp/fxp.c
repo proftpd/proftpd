@@ -8402,6 +8402,14 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
       return fxp_packet_write(resp);
 
     } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're reading from this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
+
       /* No error. */
       errno = 0;
     }
@@ -11171,6 +11179,15 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
       resp->payload_sz = (bufsz - buflen);
   
       return fxp_packet_write(resp);
+
+    } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're writing to this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
     }
   }
 

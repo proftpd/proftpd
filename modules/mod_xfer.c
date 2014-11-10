@@ -1620,7 +1620,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
-  off_t curr_pos = 0;
+  off_t curr_offset, curr_pos = 0;
 
   memset(&st, 0, sizeof(st));
 
@@ -1752,6 +1752,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, ferrno);
     errno = ferrno;
     return PR_ERROR(cmd);
+  }
+
+  /* Stash the offset at which we're writing to this file. */
+  curr_offset = pr_fsio_lseek(stor_fh, (off_t) 0, SEEK_CUR);
+  if (curr_offset != (off_t) -1) {
+    off_t *file_offset;
+
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) curr_offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
   }
 
   /* Get the latest stats on the file.  If the file already existed, we
@@ -2176,7 +2187,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
   long bufsz, len = 0;
-  off_t curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
+  off_t curr_offset, curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
   /* Prepare for any potential throttling. */
   pr_throttle_init(cmd);
@@ -2253,6 +2264,17 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     curr_pos = session.restart_pos;
     session.restart_pos = 0L;
+  }
+
+  /* Stash the offset at which we're writing from this file. */
+  curr_offset = pr_fsio_lseek(retr_fh, (off_t) 0, SEEK_CUR);
+  if (curr_offset != (off_t) -1) {
+    off_t *file_offset;
+
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) curr_offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
   }
 
   /* Send the data */
