@@ -97,6 +97,7 @@ static int
     opt_r = 0,
     opt_S = 0,
     opt_t = 0,
+    opt_U = 0,
     opt_u = 0,
     opt_STAT = 0;
 
@@ -343,9 +344,9 @@ static int sendline(int flags, char *fmt, ...) {
 
       memset(listbuf, '\0', listbufsz);
       listbuf_ptr = listbuf;
-      listbuflen = 0;
       pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
         (unsigned long) listbuflen);
+      listbuflen = 0;
     }
 
     return res;
@@ -386,9 +387,9 @@ static int sendline(int flags, char *fmt, ...) {
 
     memset(listbuf, '\0', listbufsz);
     listbuf_ptr = listbuf;
-    listbuflen = 0;
     pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
       (unsigned long) listbuflen);
+    listbuflen = 0;
   }
 
   sstrcat(listbuf_ptr, buf, listbufsz - listbuflen);
@@ -769,8 +770,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       if (S_ISREG(st.st_mode) ||
           S_ISDIR(st.st_mode) ||
           S_ISLNK(st.st_mode)) {
-           addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix,
-             sort_time, st.st_size);
+        addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix, sort_time,
+          st.st_size);
       }
     }
   }
@@ -805,10 +806,22 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   struct filename *p;
   size_t l;
 
-  if (!name || !suffix)
+  if (name == NULL ||
+      suffix == NULL) {
     return;
+  }
 
-  if (!fpool) {
+  /* If we are not sorting (-U isin effect), then we have no need
+   * to buffer up the line, and can send it immediately.  This can provide
+   * quite a bit of memory/CPU savings, especially for LIST commands on
+   * wide/deep directories (Bug#4060).
+   */
+  if (opt_U == 1) {
+    (void) sendline(0, "%s%s\r\n", name, suffix);
+    return;
+  }
+
+  if (fpool == NULL) {
     fpool = make_sub_pool(cmd->tmp_pool);
     pr_pool_tag(fpool, "mod_ls: addfile() fpool");
   }
@@ -933,11 +946,25 @@ static int outputfiles(cmd_rec *cmd) {
   int n, res = 0;
   struct filename *p = NULL, *q = NULL;
 
-  if (opt_S || opt_t)
+  if (opt_S || opt_t) {
     sortfiles(cmd);
+  }
 
-  if (!head)		/* nothing to display */
-    return 0;
+  if (head == NULL) {
+    /* Nothing to display. */
+    if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
+      res = -1;
+    }
+
+    destroy_pool(fpool);
+    fpool = NULL;
+    sort_arr = NULL;
+    head = tail = NULL;
+    colwidth = 0;
+    filenames = 0;
+
+    return res;
+  }
 
   tail->down = NULL;
   tail = NULL;
@@ -1224,7 +1251,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
     dest_workp++;
   }
 
-  PR_DEVEL_CLOCK(dir = sreaddir(".", TRUE));
+  PR_DEVEL_CLOCK(dir = sreaddir(".", opt_U ? FALSE : TRUE));
 
   if (dir) {
     char **s;
@@ -1521,11 +1548,15 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
             *glob_flags |= GLOB_NOSORT;
           break;
 
+        case 'U':
+          opt_U = 1;
+          opt_c = opt_S = opt_t = 0;
+          break;
+
         case 'u':
           opt_u = 1;
           ls_sort_by = LS_SORT_BY_ATIME;
           break;
-
       }
     }
 
@@ -1628,6 +1659,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_t = 0;
           if (glob_flags)
             *glob_flags &= GLOB_NOSORT;
+          break;
+
+        case 'U':
+          opt_U = 0;
           break;
 
         case 'u':
