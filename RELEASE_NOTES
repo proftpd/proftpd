@@ -28,6 +28,9 @@ ChangeLog files.
 
     ExecEnable (Bug#4076)
 
+    LangOptions (Bug#4125)
+
+
   + Changed Configuration Directives
 
     DelayTable none (Bug#4020)
