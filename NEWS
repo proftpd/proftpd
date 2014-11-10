@@ -67,6 +67,7 @@ Git
 - Bug 4129 - mod_sql caches incorrect UID/GID when name cannot be retrieved.
 - Bug 4130 - Support the 3-timestamp form of SITE UTIME.
 - Bug 4131 - mod_sftp's autoconf script does not detect OpenSSL SHA2 support.
+- Bug 4058 - Create a 'timing' trace channel, for timing-related data.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
