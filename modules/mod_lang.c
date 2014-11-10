@@ -343,7 +343,7 @@ MODRET set_langoptions(cmd_rec *cmd) {
       opts |= LANG_OPT_REQUIRE_VALID_ENCODING;
 
     } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown LangOption '",
         cmd->argv[i], "'", NULL));
     }
   }
