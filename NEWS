@@ -69,6 +69,8 @@ Git
 - Bug 4131 - mod_sftp's autoconf script does not detect OpenSSL SHA2 support.
 - Bug 4058 - Create a 'timing' trace channel, for timing-related data.
 - Bug 4125 - mod_lang should provide way to reject illegally-encoded filenames.
+- Bug 4060 - Support unsorted LIST entries (-U) to decrease memory/CPU usage
+  for large directory listings.
 
 1.3.5 - Released 15-May-2014
 --------------------------------

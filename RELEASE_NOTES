@@ -30,6 +30,8 @@ ChangeLog files.
 
     LangOptions (Bug#4125)
 
+    ListOptions -U (Bug#4060)
+
 
   + Changed Configuration Directives
 
