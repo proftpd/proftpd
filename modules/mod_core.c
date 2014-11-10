@@ -4557,37 +4557,33 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_xfer
    *
    * Modules that MIGHT need post_host handlers:
-   *   mod_ldap
-   *   mod_load
-   *   mod_quotatab et al
-   *   mod_radius
    *   mod_ratio
-   *   mod_rewrite
-   *   mod_sftp
-   *   mod_sftp_pam
-   *   mod_sftp_sql
-   *   mod_shaper
    *   mod_snmp
-   *   mod_sql et al
-   *   mod_sql_passwd
-   *   mod_tls_memcache
-   *   mod_tls_shmcache
-   *   mod_wrap
-   *   mod_wrap2 et al
    *
    * Modules that NEED a post_host handler:
+   *   mod_ldap
+   *   mod_quotatab et al
+   *   mod_radius
+   *   mod_rewrite
+   *   mod_shaper
+   *   mod_sql et al
+   *   mod_sql_passwd
+   *   mod_wrap
+   *   mod_wrap2 et al
    *
    * Modules that do NOT need a post_host handler:
    *   mod_ctrls_admin
    *   mod_dynmasq
    *   mod_ifversion
    *   mod_ifsession
+   *   mod_load
    *   mod_readme
+   *   mod_sftp (HOST command is FTP only)
+   *   mod_sftp_pam
+   *   mod_sftp_sql
+   *   mod_tls_memcache
+   *   mod_tls_shmcache
    *   mod_unique_id
-   *
-   * What if these module resets were implemented as event handlers, reacting
-   * to a 'session-reinit' event (akin to a module-unload event), rather than
-   * as POST_CMD HOST handlers?
    */
 
   /* XXX Will this function need to use pr_response_add(), rather than
