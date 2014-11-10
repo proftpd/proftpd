@@ -41,6 +41,7 @@ $Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
 - Bug 4124 - DeleteAbortedStores defaults to "on" for all transfers, not just
   HiddenStores.
 - Bug 4129 - mod_sql caches incorrect UID/GID when name cannot be retrieved.
+- Bug 4131 - mod_sftp's autoconf script does not detect OpenSSL SHA2 support.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
