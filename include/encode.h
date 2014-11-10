@@ -47,7 +47,8 @@ void pr_encode_disable_encoding(void);
  */
 int pr_encode_enable_encoding(const char *encoding);
 
-unsigned long pr_encode_set_policy(unsigned long policy);
+unsigned long pr_encode_get_policy(void);
+int pr_encode_set_policy(unsigned long policy);
 
 /* Determines whether the Encode API will disconnect the client if the
  * charset conversion fails, i.e. the client is using an illegal/unsupported

@@ -2444,12 +2444,17 @@ char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
     } 
 
     if (flags & FSIO_DECODE_FL_TELL_ERRORS) {
-      /* Note: At present, we DO return null here to callers, to indicate
-       * the illegal encoding (Bug#4125), if configured to do so via
-       * e.g. the RequireValidEncoding LangOption.
-       */
-      errno = xerrno;
-      return NULL;
+      unsigned long policy;
+
+      policy = pr_encode_get_policy();
+      if (policy & PR_ENCODE_POLICY_FL_REQUIRE_VALID_ENCODING) {
+        /* Note: At present, we DO return null here to callers, to indicate
+         * the illegal encoding (Bug#4125), if configured to do so via
+         * e.g. the RequireValidEncoding LangOption.
+         */
+        errno = xerrno;
+        return NULL;
+      }
     }
 
     return (char *) path;

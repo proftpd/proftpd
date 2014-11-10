@@ -379,12 +379,13 @@ int pr_encode_enable_encoding(const char *codeset) {
 #endif /* !HAVE_ICONV_H */
 }
 
-unsigned long pr_encode_set_policy(unsigned long policy) {
-  unsigned long old_policy;
+unsigned long pr_encode_get_policy(void) {
+  return encoding_policy;
+}
 
-  old_policy = encoding_policy;
+int pr_encode_set_policy(unsigned long policy) {
   encoding_policy = policy;
-  return old_policy;
+  return 0;
 }
 
 const char *pr_encode_get_local_charset(void) {

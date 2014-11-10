@@ -970,6 +970,15 @@ static int lang_sess_init(void) {
     c = find_config_next(c, c->next, CONF_PARAM, "LangOptions", FALSE);
   }
 
+  if (lang_opts & LANG_OPT_REQUIRE_VALID_ENCODING) {
+    unsigned long encoding_policy;
+
+    encoding_policy = pr_encode_set_policy(0L);
+    encoding_policy |= PR_ENCODE_POLICY_FL_REQUIRE_VALID_ENCODING;
+
+    pr_encode_set_policy(encoding_policy);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "UseEncoding", FALSE);
   if (c) {
     if (c->argc == 1) {
