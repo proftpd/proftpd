@@ -811,10 +811,10 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     return;
   }
 
-  /* If we are not sorting (-U isin effect), then we have no need
-   * to buffer up the line, and can send it immediately.  This can provide
-   * quite a bit of memory/CPU savings, especially for LIST commands on
-   * wide/deep directories (Bug#4060).
+  /* If we are not sorting (-U is in effect), then we have no need to buffer
+   * up the line, and can send it immediately.  This can provide quite a bit
+   * of memory/CPU savings, especially for LIST commands on wide/deep
+   * directories (Bug#4060).
    */
   if (opt_U == 1) {
     (void) sendline(0, "%s%s\r\n", name, suffix);
