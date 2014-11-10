@@ -1383,6 +1383,12 @@ values), once the client has successfully exchanged keys with
   <li><code>SFTP_SERVER_COMPRESSION_ALGO</code>
   <li><code>SFTP_SERVER_MAC_ALGO</code>
 </ul>
+And after the client has successfully authenticated, the following variables
+<i>may</i> be set, depending on the authentication mechanism used:
+<ul>
+  <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT</code>
+  <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO</code>
+</ul>
 
 <p>
 These environment variables are intended for informational purposes,
@@ -2166,11 +2172,6 @@ capability).
 
 <p>
 <hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-03-03 05:40:13 $</i><br>
-
-<br><hr>
 
 <font size=2><b><i>
 &copy; Copyright 2008-2014 TJ Saunders<br>

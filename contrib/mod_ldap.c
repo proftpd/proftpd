@@ -22,7 +22,6 @@
  * source code for OpenSSL in the source distribution.
  *
  * -----DO NOT EDIT BELOW THIS LINE-----
- * $Id: mod_ldap.c,v 1.107 2013-11-24 00:45:28 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -43,6 +42,7 @@
 #include <ldap.h>
 
 static int ldap_logfd = -1;
+static const char *trace_channel = "ldap";
 
 #if LDAP_API_VERSION >= 2000
 # define HAS_LDAP_SASL_BIND_S
@@ -91,14 +91,14 @@ static void pr_ldap_set_sizelimit(LDAP *limit_ld, int limit) {
       limit, ldap_err2string(res));
 
   } else {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+    pr_trace_msg(trace_channel, 5,
       "set search query size limit to %d entries", limit);
   }
 
 #else
   limit_ld->ld_sizelimit = limit;
 
-  (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+  pr_trace_msg(trace_channel, 5,
     "set search query size limit to %d entries", limit);
 #endif
 }
@@ -172,8 +172,8 @@ static void pr_ldap_unbind(void) {
   int res;
 
   if (ld == NULL) {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-     "not unbinding to an already unbound connection");
+    pr_trace_msg(trace_channel, 13,
+      "not unbinding to an already unbound connection");
     return;
   }
 
@@ -183,7 +183,7 @@ static void pr_ldap_unbind(void) {
       "error unbinding connection: %s", ldap_err2string(res));
 
   } else {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+    pr_trace_msg(trace_channel, 8,
       "connection successfully unbound");
   }
 
@@ -924,8 +924,8 @@ static unsigned char pr_ldap_quota_lookup(pool *p, char *filter_template,
 
     } else {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "no entries for filter %s, using default quota %s",
-        filter ? filter : "(null)", ldap_default_quota);
+        "no entries for filter %s, using default quota %s", filter,
+        ldap_default_quota);
     }
 
     parse_quota(p, replace, pstrdup(p, ldap_default_quota));

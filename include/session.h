@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2012 The ProFTPD Project team
+ * Copyright (c) 2009-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * copyright holders give permission to link this program with OpenSSL, and
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
- *
- * $Id: session.h,v 1.8 2012-04-15 18:04:14 castaglia Exp $
  */
 
 #ifndef PR_SESSION_H

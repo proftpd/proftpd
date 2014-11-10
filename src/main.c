@@ -934,29 +934,6 @@ void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
   }
 }
 
-#ifndef PR_DEVEL_NO_FORK
-static int dup_low_fd(int fd) {
-  int i, need_close[3] = {-1, -1, -1};
-
-  for (i = 0; i < 3; i++) {
-    if (fd == i) {
-      fd = dup(fd);
-      fcntl(fd, F_SETFD, FD_CLOEXEC);
-
-      need_close[i] = 1;
-    }
-  }
-
-  for (i = 0; i < 3; i++) {
-    if (need_close[i] > -1) {
-      (void) close(i);
-    }
-  }
-
-  return fd;
-}
-#endif /* PR_DEVEL_NO_FORK */
-
 static void set_server_privs(void) {
   uid_t server_uid, current_euid = geteuid();
   gid_t server_gid, current_egid = getegid();
@@ -1017,9 +994,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     /* Need to make sure the child (writer) end of the pipe isn't
      * < 2 (stdio/stdout/stderr) as this will cause problems later.
      */
-    if (semfds[1] < 3) {
-      semfds[1] = dup_low_fd(semfds[1]);
-    }
+    semfds[1] = pr_fs_get_usable_fd(semfds[1]);
 
     /* Make sure we set the close-on-exec flag for the parent's read side
      * of the pipe.
@@ -1186,6 +1161,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     exit(1);
   }
 
+  pr_gettimeofday_millis(&session.connect_time_ms);
   pr_event_generate("core.connect", conn);
 
   /* Find the server for this connection. */

@@ -107,9 +107,11 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
     }
 
     /* Special case (unlikely, but possible) */
-    if (namelen == 1 &&
-        c1 == '\0') {
-      return 0;
+    if (namelen == 1) {
+      if (c1 == '\0' ||
+          c2 == '\0') {
+        return 0;
+      }
     }
   }
 
@@ -772,7 +774,7 @@ static void stash_dumpf(const char *fmt, ...) {
 static unsigned int stash_dump_syms(xaset_t **symbol_table, const char *type,
     void (*dumpf)(const char *, ...)) {
   register unsigned int i;
-  unsigned int count;
+  unsigned int count = 0;
 
   for (i = 0; i < PR_TUNABLE_HASH_TABLE_SIZE; i++) {
     unsigned int nrow_syms = 0;

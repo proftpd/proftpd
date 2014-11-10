@@ -41,12 +41,15 @@ static unsigned char lastlog = FALSE;
 static unsigned char mkhome = FALSE;
 static unsigned char authenticated_without_pass = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
-static int logged_in = 0;
+static int logged_in = FALSE;
 static int auth_client_connected = FALSE;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
 static pr_fh_t *displaylogin_fh = NULL;
 static int TimeoutSession = 0;
+
+static int saw_first_user_cmd = FALSE;
+static const char *timing_channel = "timing";
 
 static int auth_count_scoreboard(cmd_rec *, char *);
 static int auth_scan_scoreboard(void);
@@ -2212,8 +2215,23 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
 MODRET auth_pre_user(cmd_rec *cmd) {
 
-  if (logged_in)
+  if (saw_first_user_cmd == FALSE) {
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+
+      pr_trace_msg(timing_channel, 4, "Time before first USER: %lu ms",
+        elapsed_ms);
+    }
+    saw_first_user_cmd = TRUE;
+  }
+
+  if (logged_in) {
     return PR_DECLINED(cmd);
+  }
 
   /* Close the passwd and group databases, because libc won't let us see new
    * entries to these files without this (only in PersistentPasswd mode).
@@ -2242,11 +2260,13 @@ MODRET auth_user(cmd_rec *cmd) {
   int failnopwprompt = 0, aclp, i;
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
-  if (logged_in)
+  if (logged_in) {
     return PR_ERROR_MSG(cmd, R_500, _("Bad sequence of commands"));
+  }
 
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
+  }
 
   user = cmd->arg;
 
@@ -2447,11 +2467,12 @@ MODRET auth_pass(cmd_rec *cmd) {
   char *user = NULL;
   int res = 0;
 
-  if (logged_in)
+  if (logged_in) {
     return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
+  }
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-  if (!user) {
+  if (user == NULL) {
     (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
     (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
@@ -2483,7 +2504,20 @@ MODRET auth_pass(cmd_rec *cmd) {
       }
     }
 
-    logged_in = 1;
+    logged_in = TRUE;
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+
+      pr_trace_msg(timing_channel, 4,
+        "Time before successful login (via '%s'): %lu ms", session.auth_mech,
+        elapsed_ms);
+    }
+
     return PR_HANDLED(cmd);
   }
 

@@ -487,9 +487,9 @@ int pr_str_get_duration(const char *str, int *duration) {
   }
 
   if (sscanf(str, "%2d:%2d:%2d", &hours, &mins, &secs) == 3) {
-    if (hours < 0 || hours > INT_MAX ||
-        mins < 0 || mins > INT_MAX ||
-        secs < 0 || secs > INT_MAX) {
+    if (hours < 0 ||
+        mins < 0 ||
+        secs < 0) {
       errno = ERANGE;
       return -1;
     }
@@ -524,7 +524,7 @@ int pr_str_get_duration(const char *str, int *duration) {
     /* Parse seconds */
 
     if (sscanf(str, "%d", &secs) == 1) {
-      if (secs < 0 || secs > INT_MAX) {
+      if (secs < 0) {
         errno = ERANGE;
         return -1;
       }
@@ -548,7 +548,7 @@ int pr_str_get_duration(const char *str, int *duration) {
     /* Parse minutes */
 
     if (sscanf(str, "%d", &mins) == 1) {
-      if (mins < 0 || mins > INT_MAX) {
+      if (mins < 0) {
         errno = ERANGE;
         return -1;
       }
@@ -572,7 +572,7 @@ int pr_str_get_duration(const char *str, int *duration) {
     /* Parse hours */
 
     if (sscanf(str, "%d", &hours) == 1) {
-      if (hours < 0 || hours > INT_MAX) {
+      if (hours < 0) {
         errno = ERANGE;
         return -1;
       }
@@ -596,7 +596,7 @@ int pr_str_get_duration(const char *str, int *duration) {
     return -1;
   }
 
-  if (secs < 0 || secs > INT_MAX) {
+  if (secs < 0) {
     errno = ERANGE;
     return -1;
   }

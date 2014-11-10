@@ -999,6 +999,20 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     errno = xerrno;
     return 1;
+
+  } else {
+    off_t curr_offset;
+
+    /* Stash the offset at which we're writing to this file. */
+    curr_offset = pr_fsio_lseek(sp->fh, (off_t) 0, SEEK_CUR);
+    if (curr_offset != (off_t) -1) {
+      off_t *file_offset;
+
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) curr_offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
+    }
   }
 
   if (hiddenstore_path) {
@@ -2029,6 +2043,19 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       errno = xerrno;
       return 1;
+    } else {
+      off_t curr_offset;
+
+      /* Stash the offset at which we're reading from this file. */
+      curr_offset = pr_fsio_lseek(sp->fh, (off_t) 0, SEEK_CUR);
+      if (curr_offset != (off_t) -1) {
+        off_t *file_offset;
+
+        file_offset = palloc(cmd->pool, sizeof(off_t));
+        *file_offset = (off_t) curr_offset;
+        (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+          sizeof(off_t));
+      }
     }
   }
 

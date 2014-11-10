@@ -419,16 +419,19 @@ static int mcache_sess_init(void) {
           pr_log_pri(PR_LOG_NOTICE, MOD_MEMCACHE_VERSION
             ": notice: unable to open MemcacheLog '%s': %s", path,
             strerror(xerrno));
+          break;
 
         case PR_LOG_WRITABLE_DIR:
           pr_log_pri(PR_LOG_WARNING, MOD_MEMCACHE_VERSION
             ": notice: unable to use MemcacheLog '%s': parent directory is "
               "world-writable", path);
+          break;
 
         case PR_LOG_SYMLINK:
           pr_log_pri(PR_LOG_WARNING, MOD_MEMCACHE_VERSION
             ": notice: unable to use MemcacheLog '%s': cannot log to a symlink",
             path);
+          break;
       }
     }
   }

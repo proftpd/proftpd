@@ -82,8 +82,11 @@ static int allow_dyn_config(const char *path) {
     c = find_config_next(c, c->next, CONF_PARAM, "AllowOverride", FALSE);
   }
 
-  /* Print out some nice debugging information. */
-  if (found_config) {
+  /* Print out some nice debugging information, but only if we have a real
+   * path.
+   */
+  if (found_config &&
+      *path) {
     pr_log_debug(DEBUG8, "AllowOverride for path '%s' %s .ftpaccess files",
       path, allow ? "allows" : "denies");
   }
@@ -1368,6 +1371,8 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
           switch (check_limit(c, NULL)) {
             case 1:
               res = TRUE;
+              (*found)++;
+              break;
 
 	    case -1:
             case -2:
@@ -1394,8 +1399,9 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
          int rres;
 
          rres = login_check_limits(c->subset, recurse, and, &rfound);
-         if (rfound)
+         if (rfound) {
            res = (res || rres);
+         }
 
          (*found) += rfound;
          if (res)
@@ -1823,8 +1829,11 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   if (session.chroot_path)
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
 
-  pr_log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'.",
-            path, fullpath);
+  if (*path) {
+    /* Only log this debug line if we are dealing with a real path. */
+    pr_log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'",
+      path, fullpath);
+  }
 
   /* Check and build all appropriate dynamic configuration entries */
   pr_fs_clear_cache();
@@ -1938,15 +1947,17 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   }
 
   if (res &&
-      _umask != (mode_t) -1)
+      _umask != (mode_t) -1) {
     pr_log_debug(DEBUG5,
       "in dir_check_full(): setting umask to %04o (was %04o)",
         (unsigned int) _umask, (unsigned int) umask(_umask));
+  }
 
   destroy_pool(p);
 
-  if (hidden)
+  if (hidden) {
     *hidden = op_hidden || regex_hidden;
+  }
 
   return res;
 }
@@ -2097,14 +2108,16 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   }
 
   if (res &&
-      _umask != (mode_t) -1)
+      _umask != (mode_t) -1) {
     pr_log_debug(DEBUG5, "in dir_check(): setting umask to %04o (was %04o)",
         (unsigned int) _umask, (unsigned int) umask(_umask));
+  }
 
   destroy_pool(p);
 
-  if (hidden)
+  if (hidden) {
     *hidden = op_hidden || regex_hidden;
+  }
 
   return res;
 }
@@ -2820,6 +2833,8 @@ static void set_tcp_bufsz(server_rec *s) {
 
     pr_log_debug(DEBUG3, "socket error: %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
+
+    return;
   }
 
 #ifndef PR_TUNABLE_RCVBUFSZ

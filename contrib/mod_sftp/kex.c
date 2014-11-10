@@ -187,13 +187,13 @@ static int kex_rekey_timer_cb(CALLBACK_FRAME) {
 }
 
 static const unsigned char *calculate_h(struct sftp_kex *kex,
-    const unsigned char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
-    uint32_t *hlen) {
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen,
+    const BIGNUM *k, uint32_t *hlen) {
   EVP_MD_CTX ctx;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 3072;
+  bufsz = buflen = 4096;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
@@ -280,8 +280,9 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
 }
 
 static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
-    const unsigned char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
-    uint32_t min, uint32_t pref, uint32_t max, uint32_t *hlen) {
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen,
+    const BIGNUM *k, uint32_t min, uint32_t pref, uint32_t max,
+    uint32_t *hlen) {
   EVP_MD_CTX ctx;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
@@ -388,13 +389,14 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
 }
 
 static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
-    const unsigned char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
-    unsigned char *rsa_key, uint32_t rsa_keylen, uint32_t *hlen) {
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen,
+    const BIGNUM *k, unsigned char *rsa_key, uint32_t rsa_keylen,
+    uint32_t *hlen) {
   EVP_MD_CTX ctx;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 3072;
+  bufsz = buflen = 4096;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
@@ -474,8 +476,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
 
 #ifdef PR_USE_OPENSSL_ECC
 static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
-    const unsigned char *hostkey_data, size_t hostkey_datalen, const BIGNUM *k,
-    uint32_t *hlen) {
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen,
+    const BIGNUM *k, uint32_t *hlen) {
   EVP_MD_CTX ctx;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
@@ -2173,8 +2175,8 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   const unsigned char *h;
   const unsigned char *hostkey_data, *hsig;
   unsigned char *buf, *ptr;
-  uint32_t bufsz, buflen, hlen = 0;
-  size_t dhlen, hostkey_datalen, hsiglen;
+  uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
+  size_t dhlen, hsiglen;
   BIGNUM *k = NULL;
   int res;
 
@@ -2622,7 +2624,7 @@ static int write_dh_gex_group(struct ssh2_packet *pkt, struct sftp_kex *kex,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 2048;
+  buflen = bufsz = 4096;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_DH_GEX_GROUP);
@@ -2657,8 +2659,8 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
     uint32_t min, uint32_t pref, uint32_t max, int old_request) {
   const unsigned char *h, *hostkey_data, *hsig;
   unsigned char *buf, *ptr;
-  uint32_t bufsz, buflen, hlen = 0;
-  size_t dhlen, hostkey_datalen, hsiglen;
+  uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
+  size_t dhlen, hsiglen;
   BIGNUM *k = NULL;
   int res;
 
@@ -2916,7 +2918,7 @@ static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this buffer large enough?  Too large? */
-  bufsz = buflen = 512;
+  bufsz = buflen = 2048;
   ptr = buf = palloc(kex_pool, bufsz);
 
   /* Write the transient RSA public key into its own buffer, to then be
@@ -2927,7 +2929,7 @@ static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   sftp_msg_write_mpint(&buf, &buflen, kex->rsa->n);
 
   /* XXX Is this buffer large enough?  Too large? */
-  bufsz2 = buflen2 = 1024;
+  bufsz2 = buflen2 = 4096;
   ptr2 = buf2 = palloc(pkt->pool, bufsz2);
 
   sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_KEXRSA_PUBKEY);
@@ -2945,8 +2947,8 @@ static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   unsigned char *buf, *ptr, *buf2, *ptr2;
   const unsigned char *h, *hostkey_data, *hsig;
-  uint32_t buflen, bufsz, buflen2, bufsz2, hlen;
-  size_t hostkey_datalen, hsiglen;
+  uint32_t buflen, bufsz, buflen2, bufsz2, hlen, hostkey_datalen = 0;
+  size_t hsiglen;
 
   hostkey_data = sftp_keys_get_hostkey_data(pkt->pool, kex->use_hostkey_type,
     &hostkey_datalen);
@@ -2966,7 +2968,7 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this buffer large enough?  Too large? */
-  bufsz2 = buflen2 = 512;
+  bufsz2 = buflen2 = 4096;
   ptr2 = buf2 = palloc(kex_pool, bufsz2);
 
   /* Write the transient RSA public key into its own buffer, to then be
@@ -3018,7 +3020,7 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this buffer large enough?  Too large? */
-  bufsz = buflen = 2048;
+  bufsz = buflen = 4096;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEXRSA_DONE);
@@ -3144,8 +3146,8 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   const unsigned char *h;
   const unsigned char *hostkey_data, *hsig;
   unsigned char *buf, *ptr;
-  uint32_t bufsz, buflen, hlen = 0;
-  size_t ecdhlen, hostkey_datalen, hsiglen;
+  uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
+  size_t ecdhlen, hsiglen;
   BIGNUM *k = NULL;
   int res;
 

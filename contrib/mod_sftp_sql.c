@@ -147,7 +147,8 @@ static char *sqlstore_getline(pool *p, char **blob, size_t *bloblen) {
     datalen -= (linelen + delimlen);
 
     /* Check for continued lines. */
-    if (linebuf[linelen-2] == '\\') {
+    if (linelen >= 2 &&
+        linebuf[linelen-2] == '\\') {
       linebuf[linelen-2] = '\0';
       have_line_continuation = TRUE;
     }

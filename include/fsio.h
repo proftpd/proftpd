@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* ProFTPD virtual/modular filesystem support.
- * $Id: fsio.h,v 1.37 2014-01-31 16:52:33 castaglia Exp $
- */
+/* ProFTPD virtual/modular filesystem support. */
 
 #ifndef PR_FSIO_H
 #define PR_FSIO_H
@@ -324,6 +322,15 @@ int pr_fs_interpolate(const char *, char *, size_t);
 int pr_fs_resolve_partial(const char *, char *, size_t, int);
 int pr_fs_resolve_path(const char *, char *, size_t, int);
 char *pr_fs_decode_path(pool *, const char *);
+
+/* Similar to pr_fs_decode_path(), but allows callers to provide flags.  These
+ * flags can be used, for example, to request that if there are errors during
+ * the decoding, the function NOT hide/mask them, as is done by default, but
+ * convey them to the caller for handling at a higher code layer.
+ */ 
+char *pr_fs_decode_path2(pool *, const char *, int);
+#define FSIO_DECODE_FL_TELL_ERRORS		0x001
+
 char *pr_fs_encode_path(pool *, const char *);
 int pr_fs_use_encoding(int);
 int pr_fs_valid_path(const char *);

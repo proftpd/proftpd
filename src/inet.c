@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.156 2013-10-07 05:51:30 castaglia Exp $
- */
+/* Inet support functions, many wrappers for netdb functions */
 
 #include "conf.h"
 #include "privs.h"
@@ -179,6 +177,11 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
   int addr_family;
   int res = 0, one = 1, hold_errno;
 
+  if (p == NULL) {
+    errno = inet_errno = EINVAL;
+    return NULL;
+  }
+
   if (!inet_pool) {
     inet_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(inet_pool, "Inet Pool");
@@ -281,7 +284,6 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
     }
 
     if (fd == -1) {
-
       /* On failure, destroy the connection and return NULL. */
       if (reporting) {
         pr_log_pri(PR_LOG_WARNING,
@@ -310,7 +312,12 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
 
     memset(&na, 0, sizeof(na));
     if (pr_netaddr_set_family(&na, addr_family) < 0) {
+      int xerrno = errno;
+
       destroy_pool(c->pool);
+      (void) close(fd);
+
+      errno = xerrno;
       return NULL;
     }
 
@@ -580,16 +587,18 @@ void pr_inet_close(pool *p, conn_t *c) {
 
 /* Perform shutdown/read on streams */
 void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
-  pr_inet_set_block(p, c);
+  (void) pr_inet_set_block(p, c);
 
-  if (c->outstrm)
+  if (c->outstrm) {
     pr_netio_lingering_close(c->outstrm, linger);
+  }
 
   /* Only close the input stream if it is actually a different stream than
    * the output stream.
    */
-  if (c->instrm != c->outstrm)
+  if (c->instrm != c->outstrm) {
     pr_netio_close(c->instrm);
+  }
 
   c->outstrm = NULL;
   c->instrm = NULL;
@@ -599,10 +608,11 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
 
 /* Similar to a lingering close, perform a lingering abort. */
 void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
-  pr_inet_set_block(p, c);
+  (void) pr_inet_set_block(p, c);
 
-  if (c->instrm)
+  if (c->instrm) {
     pr_netio_lingering_abort(c->instrm, linger);
+  }
 
   /* Only close the output stream if it is actually a different stream
    * than the input stream.
@@ -769,9 +779,10 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
     /* Only set TCLASS flags on IPv6 sockets; IPv4 sockets use TOS. */
     if (pr_netaddr_get_family(c->local_addr) == AF_INET6) {
       if (c->listen_fd != -1) {
-        int res;
+        int level, res;
 
-        res = setsockopt(c->listen_fd, ip_level, IPV6_TCLASS, (void *) &tos,
+        level = ipv6_proto;
+        res = setsockopt(c->listen_fd, level, IPV6_TCLASS, (void *) &tos,
           sizeof(tos));
         if (res < 0
             && errno != EINVAL
@@ -897,24 +908,30 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 
     if (sndbuf > 0) {
       len = sizeof(csndbuf);
-      getsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf, &len);
+      if (getsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf,
+          &len) == 0) {
+        if (sndbuf > csndbuf) {
+          if (setsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
+              sizeof(sndbuf)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_SNDBUF: %s",
+              strerror(errno));
 
-      if (sndbuf > csndbuf) {
-        if (setsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
-            sizeof(sndbuf)) < 0) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_SNDBUF: %s",
-            strerror(errno));
+          } else {
+            pr_trace_msg("data", 8,
+              "set socket sndbuf of %lu bytes", (unsigned long) sndbuf);
+          }
 
         } else {
           pr_trace_msg("data", 8,
-            "set socket sndbuf of %lu bytes", (unsigned long) sndbuf);
+            "socket %d has sndbuf of %lu bytes, ignoring "
+            "requested %lu bytes sndbuf", c->listen_fd, (unsigned long) csndbuf,
+            (unsigned long) sndbuf);
         }
 
       } else {
-        pr_trace_msg("data", 8,
-          "socket %d has sndbuf of %lu bytes, ignoring "
-          "requested %lu bytes sndbuf", c->listen_fd, (unsigned long) csndbuf,
-          (unsigned long) sndbuf);
+        pr_trace_msg("data", 3,
+          "error getting SO_SNDBUF on listen fd %d: %s", c->listen_fd,
+          strerror(errno));
       }
     }
 
@@ -922,24 +939,30 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 
     if (rcvbuf > 0) {
       len = sizeof(crcvbuf);
-      getsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf, &len);
+      if (getsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf,
+          &len) == 0) {
+        if (rcvbuf > crcvbuf) {
+          if (setsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
+              sizeof(rcvbuf)) < 0) {
+            pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_RCVFBUF: %s",
+              strerror(errno));
 
-      if (rcvbuf > crcvbuf) {
-        if (setsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
-            sizeof(rcvbuf)) < 0) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_RCVFBUF: %s",
-            strerror(errno));
+          } else {
+            pr_trace_msg("data", 8,
+              "set socket rcvbuf of %lu bytes", (unsigned long) rcvbuf);
+          }
 
         } else {
           pr_trace_msg("data", 8,
-            "set socket rcvbuf of %lu bytes", (unsigned long) rcvbuf);
+           "socket %d has rcvbuf of %lu bytes, ignoring "
+            "requested %lu bytes rcvbuf", c->listen_fd, (unsigned long) crcvbuf,
+            (unsigned long) rcvbuf);
         }
 
       } else {
-        pr_trace_msg("data", 8,
-          "socket %d has rcvbuf of %lu bytes, ignoring "
-          "requested %lu bytes rcvbuf", c->listen_fd, (unsigned long) crcvbuf,
-          (unsigned long) rcvbuf);
+        pr_trace_msg("data", 3,
+          "error getting SO_RCVBUF on listen fd %d: %s", c->listen_fd,
+          strerror(errno));
       }
     }
 
@@ -952,42 +975,57 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 #ifdef SO_OOBINLINE
 static void set_oobinline(int fd) {
   int on = 1;
-  if (fd != -1)
-    if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0)
+  if (fd >= 0) {
+    if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0) {
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_OOBINLINE: %s",
         strerror(errno));
+    }
+  }
 }
 #endif
 
 #ifdef F_SETOWN
-static void set_owner(int fd) {
-  if (fd != -1)
-    fcntl(fd, F_SETOWN, session.pid ? session.pid : getpid());
+static void set_socket_owner(int fd) {
+  if (fd >= 0) {
+    pid_t pid;
+
+    pid = session.pid ? session.pid : getpid();
+    if (fcntl(fd, F_SETOWN, pid) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "failed to SETOWN PID %lu on socket fd %d: %s", (unsigned long) pid,
+        fd, strerror(errno));
+    }
+  }
 }
 #endif
 
 /* Put a socket in async mode (so SIGURG is raised on OOB)
  */
 int pr_inet_set_async(pool *p, conn_t *c) {
+  if (p == NULL ||
+      c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
 #ifdef SO_OOBINLINE
   pr_trace_msg(trace_channel, 7,
-    "setting SO_OOBINLINE for listening socket %d",  c->listen_fd);
+    "setting SO_OOBINLINE for listening socket %d", c->listen_fd);
   set_oobinline(c->listen_fd);
 
   pr_trace_msg(trace_channel, 7,
-    "setting SO_OOBINLINE for reading socket %d",  c->rfd);
+    "setting SO_OOBINLINE for reading socket %d", c->rfd);
   set_oobinline(c->rfd);
 
   pr_trace_msg(trace_channel, 7,
-    "setting SO_OOBINLINE for writing socket %d",  c->wfd);
+    "setting SO_OOBINLINE for writing socket %d", c->wfd);
   set_oobinline(c->wfd);
 #endif
 
 #ifdef F_SETOWN
-  set_owner(c->listen_fd);
-  set_owner(c->rfd);
-  set_owner(c->wfd);
+  set_socket_owner(c->listen_fd);
+  set_socket_owner(c->rfd);
+  set_socket_owner(c->wfd);
 #endif
 
   return 0;
@@ -999,22 +1037,44 @@ int pr_inet_set_nonblock(pool *p, conn_t *c) {
   int flags;
   int res = -1;
 
+  (void) p;
+
+  if (c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   errno = EBADF;		/* Default */
 
   if (c->mode == CM_LISTEN ||
       c->mode == CM_CONNECT) {
     flags = fcntl(c->listen_fd, F_GETFL);
-    res = fcntl(c->listen_fd, F_SETFL, flags|O_NONBLOCK);
+    if (flags >= 0) {
+      res = fcntl(c->listen_fd, F_SETFL, flags|O_NONBLOCK);
+
+    } else {
+      res = flags;
+    }
 
   } else {
     if (c->rfd != -1) {
       flags = fcntl(c->rfd, F_GETFL);
-      res = fcntl(c->rfd, F_SETFL, flags|O_NONBLOCK);
+      if (flags >= 0) {
+        res = fcntl(c->rfd, F_SETFL, flags|O_NONBLOCK);
+
+      } else {
+        res = flags;
+      }
     }
 
     if (c->wfd != -1) {
       flags = fcntl(c->wfd, F_GETFL);
-      res = fcntl(c->wfd, F_SETFL, flags|O_NONBLOCK);
+      if (flags >= 0) {
+        res = fcntl(c->wfd, F_SETFL, flags|O_NONBLOCK);
+
+      } else {
+        res = flags;
+      }
     }
   }
 
@@ -1025,22 +1085,44 @@ int pr_inet_set_block(pool *p, conn_t *c) {
   int flags;
   int res = -1;
 
+  (void) p;
+
+  if (c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   errno = EBADF;		/* Default */
 
   if (c->mode == CM_LISTEN ||
       c->mode == CM_CONNECT) {
     flags = fcntl(c->listen_fd, F_GETFL);
-    res = fcntl(c->listen_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+    if (flags >= 0) {
+      res = fcntl(c->listen_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+    } else {
+      res = flags;
+    }
 
   } else {
     if (c->rfd != -1) {
       flags = fcntl(c->rfd, F_GETFL);
-      res = fcntl(c->rfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+      if (flags >= 0) {
+        res = fcntl(c->rfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+      } else {
+        res = flags;
+      }
     }
 
     if (c->wfd != -1) {
       flags = fcntl(c->wfd, F_GETFL);
-      res = fcntl(c->wfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+      if (flags >= 0) {
+        res = fcntl(c->wfd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+
+      } else {
+        res = flags;
+      }
     }
   }
 
@@ -1086,7 +1168,11 @@ int pr_inet_listen(pool *p, conn_t *c, int backlog, int flags) {
  */
 int pr_inet_resetlisten(pool *p, conn_t *c) {
   c->mode = CM_LISTEN;
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    c->xerrno = errno;
+    return -1;
+  }
+
   return 0;
 }
 
@@ -1109,16 +1195,18 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   pr_netaddr_set_port(&remote_na, htons(port));
 
   while (TRUE) {
-    if ((res = connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
-        pr_netaddr_get_sockaddr_len(&remote_na))) == -1 && errno == EINTR) {
+    res = connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
+      pr_netaddr_get_sockaddr_len(&remote_na));
+    if (res < 0 &&
+        errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      break;
+    break;
   }
 
-  if (res == -1) {
+  if (res < 0) {
     c->mode = CM_ERROR;
     c->xerrno = errno;
     return -1;
@@ -1132,7 +1220,6 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
     return -1;
   }
 
-  pr_inet_set_block(c->pool, c);
   return 1;
 }
 
@@ -1163,7 +1250,7 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
       c->mode = CM_ERROR;
       c->xerrno = errno;
 
-      pr_inet_set_block(c->pool, c);
+      (void) pr_inet_set_block(c->pool, c);
 
       errno = c->xerrno;
       return -1;
@@ -1177,12 +1264,16 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   if (pr_inet_get_conn_info(c, c->listen_fd) < 0) {
     c->xerrno = errno;
 
-    pr_inet_set_block(c->pool, c);
+    (void) pr_inet_set_block(c->pool, c);
     errno = c->xerrno;
     return -1;
   }
 
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    c->xerrno = errno;
+    return -1;
+  }
+
   return 1;
 }
 
@@ -1197,7 +1288,10 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
 
   if (c->mode == CM_LISTEN) {
     if (pr_inet_set_nonblock(c->pool, c) < 0) {
-      return -1;
+      if (errno != EBADF) {
+        pr_trace_msg(trace_channel, 3,
+          "error making connection nonblocking: %s", strerror(errno));
+      }
     }
   }
 
@@ -1212,8 +1306,9 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
     fd = accept(c->listen_fd, NULL, NULL);
 
     if (fd == -1) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
         continue;
+      }
 
       if (errno != EWOULDBLOCK) {
         c->mode = CM_ERROR;
@@ -1232,7 +1327,12 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
   /* Leave the connection in CM_ACCEPT mode, so others can see
    * our state.  Re-enable blocking mode, however.
    */
-  pr_inet_set_block(c->pool, c);
+  if (pr_inet_set_block(c->pool, c) < 0) {
+    if (errno != EBADF) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection blocking: %s", strerror(errno));
+    }
+  }
 
   return fd;
 }
@@ -1326,8 +1426,9 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   nalen = pr_netaddr_get_sockaddr_len(&na);
 
   if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &nalen) == 0) {
-    if (!c->local_addr)
+    if (c->local_addr == NULL) {
       c->local_addr = pr_netaddr_alloc(c->pool);
+    }
 
     /* getsockname(2) will read the local socket information into the struct
      * sockaddr * given.  Which means that the address family of the local
@@ -1340,6 +1441,12 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     c->local_port = ntohs(pr_netaddr_get_port(&na));
 
   } else {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "getsockname(2) error on fd %d: %s", fd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1372,6 +1479,12 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     c->remote_port = ntohs(pr_netaddr_get_port(&na));
 
   } else {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "getpeername(2) error on fd %d: %s", fd, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1399,6 +1512,15 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   int close_fd = TRUE;
 
   res = pr_inet_copy_conn(p, c);
+  if (res == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error copying connection: %s", strerror(xerrno));
+
+    errno = xerrno;
+    return NULL;
+  }
 
   res->listen_fd = -1;
 
@@ -1409,18 +1531,24 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
    */
   if (pr_inet_get_conn_info(res, fd) < 0 &&
       errno != EBADF) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error getting info for connection on fd %d: %s", fd, strerror(xerrno));
+
+    errno = xerrno;
     return NULL;
   }
 
   if (addr) {
-    if (!res->remote_addr) {
+    if (res->remote_addr == NULL) {
       res->remote_addr = pr_netaddr_alloc(res->pool);
     }
 
     memcpy(res->remote_addr, addr, sizeof(pr_netaddr_t));
   }
 
-  if (resolve &&
+  if (resolve == TRUE &&
       res->remote_addr != NULL) {
     res->remote_name = pr_netaddr_get_dnsstr(res->remote_addr);
   }
@@ -1428,9 +1556,16 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   if (res->remote_name == NULL) {
     res->remote_name = pr_netaddr_get_ipstr(res->remote_addr);
     if (res->remote_name == NULL) {
+      int xerrno = errno;
+
       /* If we can't even get the IP address as a string, then something
        * is very wrong, and we should not contine to handle this connection.
        */
+
+      pr_trace_msg(trace_channel, 3,
+        "error getting IP address for client: %s", strerror(xerrno));
+ 
+      errno = xerrno;
       return NULL;
     }
   }
@@ -1483,7 +1618,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
 
   /* Set options on the sockets. */
   pr_inet_set_socket_opts(res->pool, res, 0, 0, NULL);
-  pr_inet_set_block(res->pool, res);
+  (void) pr_inet_set_block(res->pool, res);
 
   res->mode = CM_OPEN;
 

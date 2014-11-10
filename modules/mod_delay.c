@@ -165,10 +165,13 @@ static long delay_select_k(unsigned long k, array_header *values) {
   ir = values->nelts - 1;
 
   while (TRUE) {
+    pr_signals_handle();
+
     if (ir <= l+1) {
       if (ir == l+1 &&
-          elts[ir] < elts[l])
+          elts[ir] < elts[l]) {
         delay_swap(elts[l], elts[ir]);
+      }
 
       return elts[k];
 
@@ -178,14 +181,17 @@ static long delay_select_k(unsigned long k, array_header *values) {
       unsigned long mid = (l + ir) >> 1;
 
       delay_swap(elts[mid], elts[l+1]);
-      if (elts[l] > elts[ir])
+      if (elts[l] > elts[ir]) {
         delay_swap(elts[l], elts[ir]);
+      }
 
-      if (elts[l+1] > elts[ir])
+      if (elts[l+1] > elts[ir]) {
         delay_swap(elts[l+1], elts[ir]);
+      }
 
-      if (elts[l] > elts[l+1])
+      if (elts[l] > elts[l+1]) {
         delay_swap(elts[l], elts[l+1]);
+      }
 
       i = l + 1;
       j = ir;
@@ -200,8 +206,9 @@ static long delay_select_k(unsigned long k, array_header *values) {
         do j--;
           while (elts[j] > p);
 
-        if (j < i)
+        if (j < i) {
           break;
+        }
 
         delay_swap(elts[i], elts[j]);
       }
@@ -209,15 +216,18 @@ static long delay_select_k(unsigned long k, array_header *values) {
       elts[l+1] = elts[j];
       elts[j] = p;
 
-      if (p >= k)
+      if (p >= k) {
         ir = j - 1;
+      }
 
-      if (p <= k)
+      if (p <= k) {
         l = i;
+      }
 
       if (l >= (nelts - 1) ||
-          ir >= nelts)
+          ir >= nelts) {
         break;
+      }
     }
   }
 
@@ -296,8 +306,9 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
   return median;
 }
 
-static void delay_mask_signals(unsigned char block) {
+static int delay_mask_signals(unsigned char block) {
   static sigset_t mask_sigset;
+  int res = -1;
 
   if (block) {
     sigemptyset(&mask_sigset);
@@ -314,19 +325,27 @@ static void delay_mask_signals(unsigned char block) {
 #endif
     sigaddset(&mask_sigset, SIGHUP);
 
-    sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
+    res = sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
 
   } else {
-    sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
+    res = sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
   }
+
+  return res;
 }
 
 static void delay_signals_block(void) {
-  delay_mask_signals(TRUE);
+  if (delay_mask_signals(TRUE) < 0) {
+    pr_trace_msg(trace_channel, 1,
+      "error blocking signals: %s", strerror(errno));
+  }   
 }
 
 static void delay_signals_unblock(void) {
-  delay_mask_signals(FALSE);
+  if (delay_mask_signals(FALSE) < 0) {
+    pr_trace_msg(trace_channel, 1,
+      "error unblocking signals: %s", strerror(errno));
+  }
 }
 
 static long delay_delay(long interval) {
@@ -696,7 +715,10 @@ static int delay_table_init(void) {
     lock.l_type = F_UNLCK;
 
     pr_trace_msg(trace_channel, 8, "unlocking DelayTable '%s'", fh->fh_path);
-    fcntl(fh->fh_fd, F_SETLK, &lock);
+    if (fcntl(fh->fh_fd, F_SETLK, &lock) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error unlocking fd %d: %s", fh->fh_fd, strerror(errno));
+    }
   }
 
   delay_tab.dt_fd = fh->fh_fd;
@@ -845,7 +867,10 @@ static int delay_table_init(void) {
     lock.l_type = F_UNLCK;
 
     pr_trace_msg(trace_channel, 8, "unlocking DelayTable '%s'", fh->fh_path);
-    fcntl(fh->fh_fd, F_SETLK, &lock);
+    if (fcntl(fh->fh_fd, F_SETLK, &lock) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error unlocking fd %d: %s", fh->fh_fd, strerror(errno));
+    }
   }
 
   /* Done */
@@ -1313,7 +1338,10 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
   }
 
   lock.l_type = F_UNLCK;
-  fcntl(fh->fh_fd, F_SETLK, &lock);
+  if (fcntl(fh->fh_fd, F_SETLK, &lock) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error unlocking fd %d: %s", fh->fh_fd, strerror(errno));
+  }
 
   if (pr_fsio_close(fh) < 0) {
     pr_ctrls_add_response(ctrl,

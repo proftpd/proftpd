@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.207 2014-01-20 19:36:27 castaglia Exp $
- */
+/* Directory listing module for ProFTPD. */
 
 #include "conf.h"
 
@@ -99,6 +97,7 @@ static int
     opt_r = 0,
     opt_S = 0,
     opt_t = 0,
+    opt_U = 0,
     opt_u = 0,
     opt_STAT = 0;
 
@@ -345,9 +344,9 @@ static int sendline(int flags, char *fmt, ...) {
 
       memset(listbuf, '\0', listbufsz);
       listbuf_ptr = listbuf;
-      listbuflen = 0;
       pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
         (unsigned long) listbuflen);
+      listbuflen = 0;
     }
 
     return res;
@@ -388,9 +387,9 @@ static int sendline(int flags, char *fmt, ...) {
 
     memset(listbuf, '\0', listbufsz);
     listbuf_ptr = listbuf;
-    listbuflen = 0;
     pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
       (unsigned long) listbuflen);
+    listbuflen = 0;
   }
 
   sstrcat(listbuf_ptr, buf, listbufsz - listbuflen);
@@ -771,8 +770,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       if (S_ISREG(st.st_mode) ||
           S_ISDIR(st.st_mode) ||
           S_ISLNK(st.st_mode)) {
-           addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix,
-             sort_time, st.st_size);
+        addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix, sort_time,
+          st.st_size);
       }
     }
   }
@@ -807,10 +806,22 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   struct filename *p;
   size_t l;
 
-  if (!name || !suffix)
+  if (name == NULL ||
+      suffix == NULL) {
     return;
+  }
 
-  if (!fpool) {
+  /* If we are not sorting (-U is in effect), then we have no need to buffer
+   * up the line, and can send it immediately.  This can provide quite a bit
+   * of memory/CPU savings, especially for LIST commands on wide/deep
+   * directories (Bug#4060).
+   */
+  if (opt_U == 1) {
+    (void) sendline(0, "%s%s\r\n", name, suffix);
+    return;
+  }
+
+  if (fpool == NULL) {
     fpool = make_sub_pool(cmd->tmp_pool);
     pr_pool_tag(fpool, "mod_ls: addfile() fpool");
   }
@@ -935,11 +946,25 @@ static int outputfiles(cmd_rec *cmd) {
   int n, res = 0;
   struct filename *p = NULL, *q = NULL;
 
-  if (opt_S || opt_t)
+  if (opt_S || opt_t) {
     sortfiles(cmd);
+  }
 
-  if (!head)		/* nothing to display */
-    return 0;
+  if (head == NULL) {
+    /* Nothing to display. */
+    if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
+      res = -1;
+    }
+
+    destroy_pool(fpool);
+    fpool = NULL;
+    sort_arr = NULL;
+    head = tail = NULL;
+    colwidth = 0;
+    filenames = 0;
+
+    return res;
+  }
 
   tail->down = NULL;
   tail = NULL;
@@ -1226,7 +1251,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
     dest_workp++;
   }
 
-  PR_DEVEL_CLOCK(dir = sreaddir(".", TRUE));
+  PR_DEVEL_CLOCK(dir = sreaddir(".", opt_U ? FALSE : TRUE));
 
   if (dir) {
     char **s;
@@ -1523,11 +1548,15 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
             *glob_flags |= GLOB_NOSORT;
           break;
 
+        case 'U':
+          opt_U = 1;
+          opt_c = opt_S = opt_t = 0;
+          break;
+
         case 'u':
           opt_u = 1;
           ls_sort_by = LS_SORT_BY_ATIME;
           break;
-
       }
     }
 
@@ -1630,6 +1659,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_t = 0;
           if (glob_flags)
             *glob_flags &= GLOB_NOSORT;
+          break;
+
+        case 'U':
+          opt_U = 0;
           break;
 
         case 'u':
@@ -2365,6 +2398,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 /* The LIST command.  */
 MODRET genericlist(cmd_rec *cmd) {
   int res = 0;
+  char *decoded_path = NULL;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
@@ -2442,7 +2476,22 @@ MODRET genericlist(cmd_rec *cmd) {
     list_times_gmt = *tmp;
   }
 
-  res = dolist(cmd, pr_fs_decode_path(cmd->tmp_pool, cmd->arg), R_211, TRUE);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  res = dolist(cmd, decoded_path, R_211, TRUE);
 
   if (XFER_ABORTED) {
     pr_data_abort(0, 0);
@@ -2470,7 +2519,7 @@ MODRET ls_err_nlst(cmd_rec *cmd) {
 MODRET ls_stat(cmd_rec *cmd) {
   struct stat st;
   int res;
-  char *arg = cmd->arg, *resp_code = NULL;
+  char *arg = cmd->arg, *decoded_path, *resp_code = NULL;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
@@ -2501,8 +2550,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     }
 
     if (session.sf_flags & SF_XFER) {
-      /* Report on the data transfer attributes.
-       */
+      /* Report on the data transfer attributes. */
 
       pr_response_add(R_DUP, _("%s from %s port %u"),
         (session.sf_flags & SF_PASSIVE) ?
@@ -2532,7 +2580,22 @@ MODRET ls_stat(cmd_rec *cmd) {
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
-  arg = pr_fs_decode_path(cmd->tmp_pool, arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  arg = decoded_path;
 
   /* Get to the actual argument. */
   if (*arg == '-') {
@@ -2669,7 +2732,7 @@ MODRET ls_list(cmd_rec *cmd) {
  * ls(1)), it only sends a list of all files/directories matching the glob(s).
  */
 MODRET ls_nlst(cmd_rec *cmd) {
-  char *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char *decoded_path, *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   size_t targetlen = 0;
   config_rec *c = NULL;
   int res = 0, hidden = 0;
@@ -2684,8 +2747,22 @@ MODRET ls_nlst(cmd_rec *cmd) {
     list_show_symlinks = *tmp;
   }
 
-  target = cmd->argc == 1 ? "." :
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  target = cmd->argc == 1 ? "." : decoded_path;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
   while (c != NULL) {

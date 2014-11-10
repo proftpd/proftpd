@@ -22,9 +22,7 @@
  * source distribution.
  */
 
-/* Display of files
- * $Id: display.c,v 1.12 2013-09-25 16:08:50 castaglia Exp $
- */
+/* Display of files */
 
 #include "mod_sftp.h"
 #include "display.h"
@@ -33,14 +31,17 @@
 
 /* Note: The size provided by pr_fs_getsize2() is in KB, not bytes. */
 static void format_size_str(char *buf, size_t buflen, off_t size) {
-  char *units[] = {"K", "M", "G", "T", "P"};
-  unsigned int nunits = 5;
+  char *units[] = {"K", "M", "G", "T", "P", "E", "Z", "Y"};
+  unsigned int nunits = 8;
   register unsigned int i = 0;
   int res;
 
-  /* Determine the appropriate units label to use. */
+  /* Determine the appropriate units label to use. Do not exceed the max
+   * possible unit support (yottabytes), by ensuring that i maxes out at
+   * index 7 (of 8 possible units).
+   */
   while (size > 1024 &&
-         i < nunits) {
+         i < (nunits - 1)) {
     pr_signals_handle();
 
     size /= 1024;
@@ -77,8 +78,9 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
-  pr_fsio_fstat(fh, &st);
-  fh->fh_iosz = st.st_blksize;
+  if (pr_fsio_fstat(fh, &st) == 0) {
+    fh->fh_iosz = st.st_blksize;
+  }
 
   res = pr_fs_fgetsize(fh->fh_fd, &fs_size);
   if (res < 0 &&

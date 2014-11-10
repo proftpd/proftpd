@@ -2711,12 +2711,14 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     }
   }
 
-  /* Add a note indicating that this is a failed transfer. */
-  if (pr_table_add(cmd->notes, "mod_sftp.file-status",
-      pstrdup(fxh->pool, "failed"), 0) < 0) {
-    if (errno != EEXIST) {
-      pr_trace_msg(trace_channel, 3,
-        "error stashing file status in command notes: %s", strerror(errno));
+  if (cmd != NULL) {
+    /* Add a note indicating that this is a failed transfer. */
+    if (pr_table_add(cmd->notes, "mod_sftp.file-status",
+        pstrdup(fxh->pool, "failed"), 0) < 0) {
+      if (errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error stashing file status in command notes: %s", strerror(errno));
+      }
     }
   }
 
@@ -2751,9 +2753,11 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
           "removing aborted uploaded file '%s'", curr_path);
 
         if (pr_fsio_unlink(curr_path) < 0) {
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error unlinking file '%s': %s", curr_path,
-            strerror(errno));
+          if (errno != ENOENT) { 
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "error unlinking file '%s': %s", curr_path,
+              strerror(errno));
+          }
         }
       }
     }
@@ -3857,7 +3861,11 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  pr_fsio_set_block(fh);
+  if (pr_fsio_set_block(fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
+      fh->fh_path, strerror(errno));
+  }
 
   if (pr_fsio_lseek(fh, offset, SEEK_SET) < 0) {
     xerrno = errno;
@@ -4131,8 +4139,8 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
@@ -4431,8 +4439,13 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
-  pr_table_add(session.notes, "mod_core.rnfr-path",
-    pstrdup(session.pool, src), 0);
+  if (pr_table_add(session.notes, "mod_core.rnfr-path",
+      pstrdup(session.pool, src), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
+    }
+  }
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, dst);
   cmd3->cmd_class = CL_MISC|CL_WRITE;
@@ -4544,8 +4557,8 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EEXIST));
     pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
@@ -5361,7 +5374,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
         (void) pr_table_remove(cmd2->notes, "mod_xfer.file-modified", NULL);
 
         if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
-            pstrdup(cmd->pool, "true"), 0) < 0) {
+            pstrdup(cmd2->pool, "true"), 0) < 0) {
           if (errno != EEXIST) {
             pr_log_pri(PR_LOG_NOTICE,
               "notice: error adding 'mod_xfer.file-modified' note: %s",
@@ -7451,7 +7464,6 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
        * they didn't, however, we need to be prepared with a fallback.
        */
       if (xerrno != ENOENT &&
-          xerrno != EACCES &&
           xerrno != EPERM &&
 #if defined(EDQUOT)
           xerrno != EDQUOT &&
@@ -7469,8 +7481,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       status_code = fxp_errno2status(xerrno, &reason);
 
       pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+        "('%s' [%d])", (unsigned long) status_code, reason, strerror(errno),
+        xerrno);
 
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
       pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -7529,7 +7541,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       (void) pr_table_remove(cmd2->notes, "mod_xfer.file-modified", NULL);
 
       if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
-          pstrdup(cmd->pool, "true"), 0) < 0) {
+          pstrdup(cmd2->pool, "true"), 0) < 0) {
         if (errno != EEXIST) {
           pr_log_pri(PR_LOG_NOTICE,
             "notice: error adding 'mod_xfer.file-modified' note: %s",
@@ -7606,7 +7618,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  pr_fsio_set_block(fh);
+  if (pr_fsio_set_block(fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
+      fh->fh_path, strerror(errno));
+  }
  
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
@@ -8386,6 +8402,14 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
       return fxp_packet_write(resp);
 
     } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're reading from this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
+
       /* No error. */
       errno = 0;
     }
@@ -9533,8 +9557,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -9741,8 +9765,13 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  pr_table_add(session.notes, "mod_core.rnfr-path",
-    pstrdup(session.pool, old_path), 0);
+  if (pr_table_add(session.notes, "mod_core.rnfr-path",
+      pstrdup(session.pool, old_path), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
+    }
+  }
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, new_path);
   cmd3->cmd_class = CL_MISC|CL_WRITE;
@@ -9853,8 +9882,8 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -11150,6 +11179,15 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
       resp->payload_sz = (bufsz - buflen);
   
       return fxp_packet_write(resp);
+
+    } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're writing to this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
     }
   }
 
@@ -11243,7 +11281,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
         pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
           "('%s' [%d])", (unsigned long) status_code, reason,
-          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+          strerror(xerrno), xerrno);
 
         fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
           NULL);
