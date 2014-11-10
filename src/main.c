@@ -1161,6 +1161,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     exit(1);
   }
 
+  pr_gettimeofday_millis(&session.connect_time_ms);
   pr_event_generate("core.connect", conn);
 
   /* Find the server for this connection. */

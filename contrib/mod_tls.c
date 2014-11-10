@@ -554,6 +554,7 @@ static int tls_ctrl_need_init_handshake = TRUE;
 static int tls_data_need_init_handshake = TRUE;
 
 static const char *trace_channel = "tls";
+static const char *timing_channel = "timing";
 
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
@@ -7029,6 +7030,11 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           session.curr_cmd_id == PR_CMD_NLST_ID ||
           tls_sscn_mode == TLS_SSCN_MODE_SERVER) {
         X509 *ctrl_cert = NULL, *data_cert = NULL;
+        uint64_t start_ms;
+
+        if (pr_trace_get_level(timing_channel) > 0) {
+          pr_gettimeofday_millis(&start_ms);
+        }
 
         tls_log("%s", "starting TLS negotiation on data connection");
         tls_data_need_init_handshake = TRUE;
@@ -7038,6 +7044,17 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           session.d->xerrno = EPERM;
           return -1;
         }
+
+        if (pr_trace_get_level(timing_channel)) {
+          unsigned long elapsed_ms;
+          uint64_t finish_ms;
+
+          pr_gettimeofday_millis(&finish_ms);
+          elapsed_ms = (unsigned long) (finish_ms - start_ms);
+
+          pr_trace_msg(timing_channel, 4,
+            "TLS data handshake duration: %lu ms", elapsed_ms);
+        } 
 
         /* Make sure that the certificate used, if any, for this data channel
          * handshake is the same as that used for the control channel handshake.
@@ -7681,9 +7698,15 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   if (strncmp(cmd->argv[1], "TLS", 4) == 0 ||
       strncmp(cmd->argv[1], "TLS-C", 6) == 0) {
-    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
+    uint64_t start_ms;
 
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
+
     pr_event_generate("mod_tls.ctrl-handshake", session.c);
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
@@ -7712,11 +7735,32 @@ MODRET tls_auth(cmd_rec *cmd) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
 
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
+    }
+
   } else if (strncmp(cmd->argv[1], "SSL", 4) == 0 ||
              strncmp(cmd->argv[1], "TLS-P", 6) == 0) {
-    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
+    uint64_t start_ms;
 
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
     tls_log("%s", "SSL/TLS-P requested, starting TLS handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
+
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "SSL/TLS-P negotiation failed on control channel");
 
@@ -7744,6 +7788,21 @@ MODRET tls_auth(cmd_rec *cmd) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
+    }
 
   } else {
     tls_log("AUTH %s unsupported, declining", cmd->argv[1]);
@@ -10063,8 +10122,14 @@ static int tls_sess_init(void) {
   pr_help_add(C_PROT, _("<sp> protection code"), TRUE);
 
   if (tls_opts & TLS_OPT_USE_IMPLICIT_SSL) {
+    uint64_t start_ms;
+
     tls_log("%s", "TLSOption UseImplicitSSL in effect, starting SSL/TLS "
       "handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
 
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "implicit SSL/TLS negotiation failed on control channel");
@@ -10077,6 +10142,21 @@ static int tls_sess_init(void) {
 
     if (tls_required_on_data != -1) {
       tls_flags |= TLS_SESS_NEED_DATA_PROT;
+    }
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
     }
 
     pr_session_set_protocol("ftps");

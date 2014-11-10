@@ -111,7 +111,7 @@ typedef struct {
   uid_t fsuid;				/* Saved file UID */
   gid_t fsgid;				/* Saved file GID */
 
-  char *user,*group;			/* Username/groupname after login */
+  char *user, *group;			/* Username/groupname after login */
   uid_t login_uid;                      /* UID after login, but before
                                          * session.uid is changed
                                          */
@@ -204,6 +204,9 @@ typedef struct {
 
   /* Module which disconnected/ended the session */
   struct module_struc *disconnect_module;
+
+  /* Start/connect time of the session, in milliseconds since epoch. */
+  uint64_t connect_time_ms;
 
 } session_t;
 
