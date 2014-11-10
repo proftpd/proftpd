@@ -23,9 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.58 2013-10-07 05:51:30 castaglia Exp $
- */
+/* "SITE" commands module for ProFTPD. */
 
 #include "conf.h"
 
@@ -82,9 +80,26 @@ MODRET site_chgrp(cmd_rec *cmd) {
   /* Construct the target file name by concatenating all the parameters after
    * the mode, separating them with spaces.
    */
-  for (i = 2; i <= cmd->argc-1; i++)
-    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "",
-      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+  for (i = 2; i <= cmd->argc-1; i++) {
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[i],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in command"));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", decoded_path, NULL);
+  }
 
 #ifdef PR_USE_REGEX
   pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
@@ -186,8 +201,24 @@ MODRET site_chmod(cmd_rec *cmd) {
    * the mode, separating them with spaces.
    */
   for (i = 2; i <= cmd->argc-1; i++) {
-    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "",
-      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[i],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in command"));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", decoded_path, NULL);
   }
 
 #ifdef PR_USE_REGEX

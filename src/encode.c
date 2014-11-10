@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2012 The ProFTPD Project team
+ * Copyright (c) 2006-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* UTF8/charset encoding/decoding
- * $Id: encode.c,v 1.33 2012-04-06 16:44:40 castaglia Exp $
- */
+/* UTF8/charset encoding/decoding. */
 
 #include "conf.h"
 
@@ -42,6 +40,7 @@
 static iconv_t decode_conv = (iconv_t) -1;
 static iconv_t encode_conv = (iconv_t) -1;
 
+static unsigned long encoding_policy = 0UL;
 static const char *local_charset = NULL;
 static const char *encoding = "UTF-8";
 static int supports_telnet_iac = TRUE;
@@ -247,8 +246,9 @@ char *pr_decode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
 
   outbuflen = sizeof(outbuf);
 
-  if (str_convert(decode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0)
+  if (str_convert(decode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0) {
     return NULL;
+  }
 
   *outlen = sizeof(outbuf) - outbuflen;
 
@@ -301,8 +301,9 @@ char *pr_encode_str(pool *p, const char *in, size_t inlen, size_t *outlen) {
 
   outbuflen = sizeof(outbuf);
 
-  if (str_convert(encode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0)
+  if (str_convert(encode_conv, inbuf, &inbuflen, outbuf, &outbuflen) < 0) {
     return NULL;
+  }
 
   *outlen = sizeof(outbuf) - outbuflen;
 
@@ -376,6 +377,14 @@ int pr_encode_enable_encoding(const char *codeset) {
   errno = ENOSYS;
   return -1;
 #endif /* !HAVE_ICONV_H */
+}
+
+unsigned long pr_encode_set_policy(unsigned long policy) {
+  unsigned long old_policy;
+
+  old_policy = encoding_policy;
+  encoding_policy = policy;
+  return old_policy;
 }
 
 const char *pr_encode_get_local_charset(void) {

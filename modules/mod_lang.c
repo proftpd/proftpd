@@ -21,13 +21,11 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mod_lang.c,v 1.41 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_LANG_VERSION		"mod_lang/1.0"
+#define MOD_LANG_VERSION		"mod_lang/1.1"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
@@ -52,6 +50,13 @@ static pool *lang_pool = NULL;
 static array_header *lang_list = NULL;
 static pr_table_t *lang_aliases = NULL;
 static const char *lang_path = PR_LOCALE_DIR;
+
+static unsigned long lang_opts = 0UL;
+#define LANG_OPT_PREFER_SERVER_ENCODING		0x0001
+#define LANG_OPT_REQUIRE_VALID_ENCODING		0x0002
+
+static int lang_use_encoding = -1;
+static const char *lang_local_charset = NULL, *lang_client_charset = NULL;
 
 /* Support routines
  */
@@ -317,6 +322,38 @@ MODRET set_langengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: LangOptions opt1 opt2 ... */
+MODRET set_langoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "PreferServerEncoding") == 0) {
+      opts |= LANG_OPT_PREFER_SERVER_ENCODING;
+
+    } else if (strcmp(cmd->argv[i], "RequireValidEncoding") == 0) {
+      opts |= LANG_OPT_REQUIRE_VALID_ENCODING;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: LangPath path */
 MODRET set_langpath(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -536,86 +573,71 @@ MODRET lang_utf8(cmd_rec *cmd) {
       pr_response_add(R_200, _("UTF8 set to on"));
 
     } else {
-      config_rec *c;
-
-      /* Client requested that we NOT use UTF8, and we are.  Need to disable
-       * encoding, then, unless the UseEncoding setting dictates that we
-       * must.
+      /* Client requested that we NOT use UTF8 (i.e. "OPTS UTF8 off"), and
+       * we are.  Need to disable encoding, then, unless the
+       * LangOptions/UseEncoding settings dictate that we MUST use UTF8.
        */
 
-      c = find_config(main_server->conf, CONF_PARAM, "UseEncoding", FALSE);
-      if (c) {
-        if (c->argc == 1) {
-          int use_encoding;
+      if (lang_use_encoding == TRUE) {
+        /* We have explicit instructions; we cannot change the encoding use as
+         * requested by the client.
+         */
+        pr_log_debug(DEBUG5, MOD_LANG_VERSION
+          ": unable to accept 'OPTS UTF8 off' due to LangOptions/UseEncoding "
+          "directive in config file");
+        pr_response_add_err(R_451, _("Unable to accept %s"), method);
 
-          use_encoding = *((int *) c->argv[0]);
-          if (use_encoding) {
-            /* We have explicit UseEncoding instructions; we cannot change
-             * the encoding use as requested by the client.
-             */
-            pr_log_debug(DEBUG5, MOD_LANG_VERSION
-              ": unable to accept 'OPTS UTF8 off' due to UseEncoding "
-              "directive in config file");
-            pr_response_add_err(R_451, _("Unable to accept %s"), method);
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
+        return PR_ERROR(cmd);
 
-            pr_cmd_set_errno(cmd, EPERM);
-            errno = EPERM;
-            return PR_ERROR(cmd);
-          }
+      } else if (lang_local_charset != NULL &&
+                 lang_client_charset != NULL) {
 
-        } else {
-          char *local_charset, *client_charset;
-          int strict_charsets;
+        /* UseEncoding configured with specific charsets, and the client
+         * requested that we turn UTF8 support off.  Easy enough; just
+         * (re)set the encoding to use the configured charsets.
+         */
 
-          /* UseEncoding configured with specific charsets, and the client
-           * requested that we turn UTF8 support off.  Easy enough; just
-           * (re)set the encoding to use the configured charsets.
+        if (lang_opts & LANG_OPT_PREFER_SERVER_ENCODING) {
+          /* We have explicit instructions; we cannot change the encoding
+           * use as requested by the client.
            */
+          pr_log_debug(DEBUG5, MOD_LANG_VERSION
+            ": unable to accept 'OPTS UTF8 off' due to "
+            "LangOptions/UseEncoding directive in config file");
+          pr_response_add_err(R_451, _("Unable to accept %s"), method);
 
-          local_charset = c->argv[0];
-          client_charset = c->argv[1];
-          strict_charsets = *((int *) c->argv[2]);
-
-          if (strict_charsets == TRUE) {
-            /* We have explicit UseEncoding instructions; we cannot change
-             * the encoding use as requested by the client.
-             */
-            pr_log_debug(DEBUG5, MOD_LANG_VERSION
-              ": unable to accept 'OPTS UTF8 off' due to UseEncoding "
-              "'strict' keyword in config file");
-            pr_response_add_err(R_451, _("Unable to accept %s"), method);
-
-            pr_cmd_set_errno(cmd, EPERM);
-            errno = EPERM;
-            return PR_ERROR(cmd);
-          }
-
-          if (pr_encode_set_charset_encoding(local_charset,
-              client_charset) < 0) {
-
-            pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
-              ": error setting local charset '%s', client charset '%s': %s",
-              local_charset, client_charset, strerror(errno));
-            pr_fs_use_encoding(FALSE);
-
-            pr_response_add_err(R_451, _("Unable to accept %s"), method);
-
-            pr_cmd_set_errno(cmd, EPERM);
-            errno = EPERM;
-            return PR_ERROR(cmd);
-          }
-
-          pr_log_debug(DEBUG3, MOD_LANG_VERSION ": using local charset '%s', "
-            "client charset '%s' for path encoding", local_charset,
-            client_charset);
-          pr_fs_use_encoding(TRUE);
-          pr_response_add(R_200, _("UTF8 set to off"));
-          return PR_HANDLED(cmd);
+          pr_cmd_set_errno(cmd, EPERM);
+          errno = EPERM;
+          return PR_ERROR(cmd);
         }
-     }
 
-     pr_log_debug(DEBUG5, MOD_LANG_VERSION
-       ": disabling use of UTF8 encoding as per client's request");
+        if (pr_encode_set_charset_encoding(lang_local_charset,
+            lang_client_charset) < 0) {
+
+          pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
+            ": error setting local charset '%s', client charset '%s': %s",
+            lang_local_charset, lang_client_charset, strerror(errno));
+          pr_fs_use_encoding(FALSE);
+
+          pr_response_add_err(R_451, _("Unable to accept %s"), method);
+
+          pr_cmd_set_errno(cmd, EPERM);
+          errno = EPERM;
+          return PR_ERROR(cmd);
+        }
+
+        pr_log_debug(DEBUG3, MOD_LANG_VERSION ": using local charset '%s', "
+          "client charset '%s' for path encoding", lang_local_charset,
+          lang_client_charset);
+        pr_fs_use_encoding(TRUE);
+        pr_response_add(R_200, _("UTF8 set to off"));
+        return PR_HANDLED(cmd);
+      }
+
+      pr_log_debug(DEBUG5, MOD_LANG_VERSION
+        ": disabling use of UTF8 encoding as per client's request");
 
       /* No explicit UseEncoding instructions; we can turn off encoding. */
       pr_encode_disable_encoding();
@@ -626,50 +648,34 @@ MODRET lang_utf8(cmd_rec *cmd) {
 
   } else {
     if (b) {
-      config_rec *c;
-
-      /* Client requested that we use UTF8, and we currently are not.
-       * Enable UTF8 encoding, unless the UseEncoding setting dictates that
-       * we cannot.
+      /* Client requested that we use UTF8 (i.e. "OPTS UTF8 on"), and we
+       * currently are not.  Enable UTF8 encoding, unless the
+       * LangOptions/UseEncoding setting dictates that we cannot.
        */
 
-      c = find_config(main_server->conf, CONF_PARAM, "UseEncoding", FALSE);
-      if (c) {
-        if (c->argc == 1) {
-          int use_encoding;
+      if (lang_use_encoding == FALSE) {
+        /* We have explicit instructions. */
+        pr_log_debug(DEBUG5, MOD_LANG_VERSION
+          ": unable to accept 'OPTS UTF8 on' due to LangOptions/UseEncoding "
+          "directive in config file");
+        pr_response_add_err(R_451, _("Unable to accept %s"), method);
 
-          use_encoding = *((int *) c->argv[0]);
-          if (use_encoding == FALSE) {
-            /* We have explicit UseEncoding instructions. */
-            pr_log_debug(DEBUG5, MOD_LANG_VERSION
-              ": unable to accept 'OPTS UTF8 on' due to UseEncoding "
-              "directive in config file");
-            pr_response_add_err(R_451, _("Unable to accept %s"), method);
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
+        return PR_ERROR(cmd);
 
-            pr_cmd_set_errno(cmd, EPERM);
-            errno = EPERM;
-            return PR_ERROR(cmd);
-          }
+      } else if (lang_opts & LANG_OPT_PREFER_SERVER_ENCODING) {
+        /* We have explicit instructions; we cannot change the encoding use
+         * as requested by the client.
+         */
+        pr_log_debug(DEBUG5, MOD_LANG_VERSION
+          ": unable to accept 'OPTS UTF8 on' due to LangOptions/UseEncoding "
+          "directive in config file");
+        pr_response_add_err(R_451, _("Unable to accept %s"), method);
 
-        } else {
-          int strict_charsets;
-
-          strict_charsets = *((int *) c->argv[2]);
-
-          if (strict_charsets == TRUE) {
-            /* We have explicit UseEncoding instructions; we cannot change
-             * the encoding use as requested by the client.
-             */
-            pr_log_debug(DEBUG5, MOD_LANG_VERSION
-              ": unable to accept 'OPTS UTF8 on' due to UseEncoding "
-              "'strict' keyword in config file");
-            pr_response_add_err(R_451, _("Unable to accept %s"), method);
-
-            pr_cmd_set_errno(cmd, EPERM);
-            errno = EPERM;
-            return PR_ERROR(cmd);
-          }
-        }
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
+        return PR_ERROR(cmd);
       } 
 
       pr_log_debug(DEBUG5, MOD_LANG_VERSION
@@ -902,17 +908,19 @@ static int lang_init(void) {
 
 static int lang_sess_init(void) {
   config_rec *c;
-  int strict_encoding = FALSE, utf8_client_encoding = FALSE;
+  int utf8_client_encoding = FALSE;
 
   c = find_config(main_server->conf, CONF_PARAM, "LangEngine", FALSE);
-  if (c)
+  if (c != NULL) {
     lang_engine = *((int *) c->argv[0]);
+  }
 
-  if (!lang_engine)
+  if (lang_engine == FALSE) {
     return 0;
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "LangDefault", FALSE);
-  if (c) {
+  if (c != NULL) {
     char *lang;
 
     lang = c->argv[0];
@@ -941,7 +949,7 @@ static int lang_sess_init(void) {
      * could not be found for some reason), we should still have an entry for
      * the current language.
      */
-    if (!lang_list) {
+    if (lang_list == NULL) {
       lang_list = make_array(lang_pool, 1, sizeof(char *));
     }
 
@@ -950,13 +958,23 @@ static int lang_sess_init(void) {
     } 
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "LangOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    lang_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "LangOptions", FALSE);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "UseEncoding", FALSE);
   if (c) {
     if (c->argc == 1) {
-      int use_encoding;
-
-      use_encoding = *((int *) c->argv[0]);
-      if (use_encoding) {
+      lang_use_encoding = *((int *) c->argv[0]);
+      if (lang_use_encoding == TRUE) {
         pr_fs_use_encoding(TRUE);
 
       } else {
@@ -965,34 +983,42 @@ static int lang_sess_init(void) {
       }
 
     } else {
-      char *local_charset, *client_charset;
+      int strict_encoding;
 
-      local_charset = c->argv[0];
-      client_charset = c->argv[1];
+      lang_local_charset = c->argv[0];
+      lang_client_charset = c->argv[1];
       strict_encoding = *((int *) c->argv[2]);
 
-      if (strcasecmp(client_charset, "UTF8") == 0 ||
-          strcasecmp(client_charset, "UTF-8") == 0) {
+      if (strict_encoding == TRUE) {
+        /* Fold the UseEncoding "strict" keyword functionality into LangOptions;
+         * we want to move people that way anyway.
+         */
+        lang_opts |= LANG_OPT_PREFER_SERVER_ENCODING;
+      }
+
+      if (strcasecmp(lang_client_charset, "UTF8") == 0 ||
+          strcasecmp(lang_client_charset, "UTF-8") == 0) {
         utf8_client_encoding = TRUE;
       }
 
-      if (pr_encode_set_charset_encoding(local_charset, client_charset) < 0) {
+      if (pr_encode_set_charset_encoding(lang_local_charset,
+          lang_client_charset) < 0) {
         pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
           ": error setting local charset '%s', client charset '%s': %s",
-          local_charset, client_charset, strerror(errno));
+          lang_local_charset, lang_client_charset, strerror(errno));
         pr_fs_use_encoding(FALSE);
 
       } else {
         pr_log_debug(DEBUG3, MOD_LANG_VERSION ": using local charset '%s', "
-          "client charset '%s' for path encoding", local_charset,
-          client_charset);
+          "client charset '%s' for path encoding", lang_local_charset,
+          lang_client_charset);
         pr_fs_use_encoding(TRUE);
 
         /* Make sure that gettext() uses the specified charset as well. */
-        if (bind_textdomain_codeset("proftpd", client_charset) == NULL) {
+        if (bind_textdomain_codeset("proftpd", lang_client_charset) == NULL) {
           pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
             ": error setting client charset '%s' for localised messages: %s",
-            client_charset, strerror(errno));
+            lang_client_charset, strerror(errno));
         }
       }
     }
@@ -1002,11 +1028,11 @@ static int lang_sess_init(void) {
     pr_fs_use_encoding(TRUE);
   }
 
-  /* If strict encoding is not required, OR if the encoding configured
-   * explicitly requests UTF8 from the client, then we can list UTF8 in
-   * the FEAT response. 
+  /* If the PreferServerEncoding LangOption is not set, OR if the encoding
+   * configured explicitly requests UTF8 from the client, then we can list
+   * UTF8 in the FEAT response. 
    */
-  if (strict_encoding == FALSE ||
+  if (!(lang_opts & LANG_OPT_PREFER_SERVER_ENCODING) ||
       utf8_client_encoding == TRUE) {
     pr_feat_add("UTF8");
   }
@@ -1025,6 +1051,7 @@ static int lang_sess_init(void) {
 static conftable lang_conftab[] = {
   { "LangDefault",	set_langdefault,	NULL },
   { "LangEngine",	set_langengine,		NULL },
+  { "LangOptions",	set_langoptions,	NULL },
   { "LangPath",		set_langpath,		NULL },
   { "UseEncoding",	set_useencoding,	NULL },
   { NULL }

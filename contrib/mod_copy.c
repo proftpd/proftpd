@@ -25,8 +25,6 @@
  *
  * This is mod_copy, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_copy.c,v 1.8 2012-12-27 22:31:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -483,7 +481,7 @@ MODRET copy_copy(cmd_rec *cmd) {
   }
 
   if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
-    char *cmd_name, *from, *to;
+    char *cmd_name, *decoded_path, *from, *to;
     unsigned char *authenticated;
 
     if (cmd->argc != 4) {
@@ -501,11 +499,40 @@ MODRET copy_copy(cmd_rec *cmd) {
     }
 
     /* XXX What about paths which contain spaces? */
-    from = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
-    from = dir_canonical_vpath(cmd->tmp_pool, from);
 
-    to = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
-    to = dir_canonical_vpath(cmd->tmp_pool, to);
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[2],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[2],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), cmd->argv[2]);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    from = dir_canonical_vpath(cmd->tmp_pool, decoded_path);
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[3],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[3],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), cmd->argv[3]);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    to = dir_canonical_vpath(cmd->tmp_pool, decoded_path);
 
     cmd_name = cmd->argv[0];
     pr_cmd_set_name(cmd, "SITE_COPY");
@@ -559,8 +586,24 @@ MODRET copy_cpfr(cmd_rec *cmd) {
    * the "SITE CPFR", separating them with spaces.
    */
   for (i = 2; i <= cmd->argc-1; i++) {
-    path = pstrcat(cmd->tmp_pool, path, *path ? " " : "",
-      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[i],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), cmd->arg);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", decoded_path, NULL);
   }
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
@@ -637,8 +680,24 @@ MODRET copy_cpto(cmd_rec *cmd) {
    * the "SITE CPTO", separating them with spaces.
    */
   for (i = 2; i <= cmd->argc-1; i++) {
-    to = pstrcat(cmd->tmp_pool, to, *to ? " " : "",
-      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[i],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), cmd->arg);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    to = pstrcat(cmd->tmp_pool, to, *to ? " " : "", decoded_path, NULL);
   }
 
   to = dir_canonical_vpath(cmd->tmp_pool, to);
