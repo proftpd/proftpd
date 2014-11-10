@@ -85,6 +85,7 @@ static unsigned int client_alive_max = 0, client_alive_count = 0;
 static unsigned int client_alive_interval = 0;
 
 static const char *trace_channel = "ssh2";
+static const char *timing_channel = "timing";
 
 static int packet_poll(int sockfd, int io) {
   fd_set rfds, wfds;
@@ -1449,10 +1450,30 @@ int sftp_ssh2_packet_handle(void) {
       sftp_ssh2_packet_handle_unimplemented(pkt);
       break;
 
-    case SFTP_SSH2_MSG_KEXINIT:
+    case SFTP_SSH2_MSG_KEXINIT: {
+      uint64_t start_ms;
+
+      if (pr_trace_get_level(timing_channel) > 0) {
+        pr_gettimeofday_millis(&start_ms);
+      }
+
       /* The client might be initiating a rekey; watch for this. */
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
         sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
+
+      } else {
+        /* First key exchange. */
+
+        if (pr_trace_get_level(timing_channel)) {
+          unsigned long elapsed_ms;
+          uint64_t finish_ms;
+
+          pr_gettimeofday_millis(&finish_ms);
+          elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+
+          pr_trace_msg(timing_channel, 4,
+            "Time before first SSH key exchange: %lu ms", elapsed_ms);
+        }
       }
  
       /* Clear any current "have KEX" state. */
@@ -1465,6 +1486,17 @@ int sftp_ssh2_packet_handle(void) {
 
       sftp_sess_state |= SFTP_SESS_STATE_HAVE_KEX;
 
+      if (pr_trace_get_level(timing_channel)) {
+        unsigned long elapsed_ms;
+        uint64_t finish_ms;
+
+        pr_gettimeofday_millis(&finish_ms);
+        elapsed_ms = (unsigned long) (finish_ms - start_ms);
+
+        pr_trace_msg(timing_channel, 4,
+          "SSH key exchange duration: %lu ms", elapsed_ms);
+      }
+
       /* If we just finished rekeying, drain any of the pending channel
        * data which may have built up during the rekeying exchange.
        */
@@ -1473,6 +1505,7 @@ int sftp_ssh2_packet_handle(void) {
         sftp_channel_drain_data();
       }
       break;
+    }
 
     case SFTP_SSH2_MSG_SERVICE_REQUEST:
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
