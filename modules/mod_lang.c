@@ -973,7 +973,7 @@ static int lang_sess_init(void) {
   if (lang_opts & LANG_OPT_REQUIRE_VALID_ENCODING) {
     unsigned long encoding_policy;
 
-    encoding_policy = pr_encode_set_policy(0L);
+    encoding_policy = pr_encode_get_policy();
     encoding_policy |= PR_ENCODE_POLICY_FL_REQUIRE_VALID_ENCODING;
 
     pr_encode_set_policy(encoding_policy);
