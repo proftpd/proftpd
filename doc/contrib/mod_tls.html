@@ -467,7 +467,7 @@ directive:
 <pre>
   # openssl dhparam -outform PEM -2 <i>nbits</i> &gt;&gt; dhparams.pem
   # openssl dhparam -outform PEM -5 <i>nbits</i> &gt;&gt; dhparams.pem
-<pre>
+</pre>
 Using either -2 or -5 as the generator is fine. The <em>nbits</em> value used
 should vary between 512 and 4096, inclusive.
 
@@ -1141,7 +1141,7 @@ Example:
 <hr>
 <h2><a name="TLSProtocol">TLSProtocol</a></h2>
 <strong>Syntax:</strong> TLSProtocol <em>protocol1</em> ... <em>protocolN</em><br>
-<strong>Default:</strong> SSLv3 TLSv1<br>
+<strong>Default:</strong> TLSv1<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
@@ -1193,7 +1193,8 @@ Note that the parameter "SSLv23" is supported as a legacy style for saying
 "all versions".
 
 <p>
-All use of SSLv2 is disabled.  SSLv2 <b>should not</b> be used.
+All use of SSLv2 is disabled.  SSLv2 <b>should not</b> be used.  As of
+<code>proftpd-1.3.6rc1</code>, SSLv3 support has been disabled as well.
 
 <p>
 <hr>

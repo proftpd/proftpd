@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: keys.c,v 1.39 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -773,15 +771,23 @@ static int pkey_cb(char *buf, int buflen, int rwflag, void *d) {
   return 0;
 }
 
-static int has_req_perms(int fd) {
+static int has_req_perms(int fd, const char *path) {
   struct stat st;
 
-  if (fstat(fd, &st) < 0)
+  if (fstat(fd, &st) < 0) {
     return -1;
+  }
 
   if (st.st_mode & (S_IRWXG|S_IRWXO)) {
-    errno = EACCES;
-    return -1;
+    if (!(sftp_opts & SFTP_OPT_INSECURE_HOSTKEY_PERMS)) {
+      errno = EACCES;
+      return -1;
+    }
+
+    pr_log_pri(PR_LOG_INFO, MOD_SFTP_VERSION
+      "notice: the permissions on SFTPHostKey '%s' (%04o) allow "
+      "group-readable and/or world-readable access, increasing chances of "
+      "system users reading the private key", path, st.st_mode);
   }
 
   return 0;
@@ -1940,7 +1946,7 @@ static int load_file_hostkey(pool *p, const char *path) {
     return -1;
   }
 
-  if (has_req_perms(fd) < 0) {
+  if (has_req_perms(fd, path) < 0) {
     if (errno == EACCES) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "'%s' is accessible by group or world, which is not allowed", path);
@@ -2012,7 +2018,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
 }
 
 const unsigned char *sftp_keys_get_hostkey_data(pool *p,
-    enum sftp_key_type_e key_type, size_t *datalen) {
+    enum sftp_key_type_e key_type, uint32_t *datalen) {
   unsigned char *buf = NULL, *ptr = NULL;
   uint32_t buflen = SFTP_DEFAULT_HOSTKEY_SZ;
 
@@ -2651,7 +2657,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   uint32_t sig_len;
   unsigned char digest[EVP_MAX_MD_SIZE];
   char *sig_type;
-  unsigned int digestlen;
+  unsigned int digestlen = 0;
   int res = 0;
 
   if (pubkey_algo == NULL ||
@@ -2931,7 +2937,7 @@ void sftp_keys_get_passphrases(void) {
       }
 
       k = pcalloc(s->pool, sizeof(struct sftp_pkey));      
-      k->pkeysz = PEM_BUFSIZE;
+      k->pkeysz = PEM_BUFSIZE-1;
       k->server = s;
 
       if (get_passphrase(k, c->argv[0]) < 0) {
@@ -3004,7 +3010,7 @@ void sftp_keys_free(void) {
       EVP_PKEY_free(sftp_ecdsa521_hostkey->pkey);
     }
 
-    sftp_ecdsa256_hostkey = NULL;
+    sftp_ecdsa521_hostkey = NULL;
   }
 #endif /* PR_USE_OPENSSL_ECC */
 }

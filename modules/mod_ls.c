@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.207 2014-01-20 19:36:27 castaglia Exp $
- */
+/* Directory listing module for ProFTPD. */
 
 #include "conf.h"
 
@@ -2365,6 +2363,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 /* The LIST command.  */
 MODRET genericlist(cmd_rec *cmd) {
   int res = 0;
+  char *decoded_path = NULL;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
@@ -2442,7 +2441,22 @@ MODRET genericlist(cmd_rec *cmd) {
     list_times_gmt = *tmp;
   }
 
-  res = dolist(cmd, pr_fs_decode_path(cmd->tmp_pool, cmd->arg), R_211, TRUE);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  res = dolist(cmd, decoded_path, R_211, TRUE);
 
   if (XFER_ABORTED) {
     pr_data_abort(0, 0);
@@ -2470,7 +2484,7 @@ MODRET ls_err_nlst(cmd_rec *cmd) {
 MODRET ls_stat(cmd_rec *cmd) {
   struct stat st;
   int res;
-  char *arg = cmd->arg, *resp_code = NULL;
+  char *arg = cmd->arg, *decoded_path, *resp_code = NULL;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
@@ -2501,8 +2515,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     }
 
     if (session.sf_flags & SF_XFER) {
-      /* Report on the data transfer attributes.
-       */
+      /* Report on the data transfer attributes. */
 
       pr_response_add(R_DUP, _("%s from %s port %u"),
         (session.sf_flags & SF_PASSIVE) ?
@@ -2532,7 +2545,22 @@ MODRET ls_stat(cmd_rec *cmd) {
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
-  arg = pr_fs_decode_path(cmd->tmp_pool, arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  arg = decoded_path;
 
   /* Get to the actual argument. */
   if (*arg == '-') {
@@ -2669,7 +2697,7 @@ MODRET ls_list(cmd_rec *cmd) {
  * ls(1)), it only sends a list of all files/directories matching the glob(s).
  */
 MODRET ls_nlst(cmd_rec *cmd) {
-  char *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char *decoded_path, *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   size_t targetlen = 0;
   config_rec *c = NULL;
   int res = 0, hidden = 0;
@@ -2684,8 +2712,22 @@ MODRET ls_nlst(cmd_rec *cmd) {
     list_show_symlinks = *tmp;
   }
 
-  target = cmd->argc == 1 ? "." :
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  target = cmd->argc == 1 ? "." : decoded_path;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
   while (c != NULL) {

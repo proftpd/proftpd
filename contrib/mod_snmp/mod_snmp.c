@@ -362,6 +362,8 @@ static int snmp_limits_allow(xaset_t *set, struct snmp_packet *pkt) {
       switch (snmp_check_limit(c, pkt)) {
         case 1:
           ok = TRUE;
+          found++;
+          break;
 
         case -1:
         case -2:
@@ -1492,6 +1494,7 @@ static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
       family == AF_INET ? "IPv4" : "IPv6",
       pr_netaddr_get_ipstr(agent_addr),
       ntohs(pr_netaddr_get_port(agent_addr)), strerror(errno));
+    (void) close(sockfd);
     exit(1);
 
   } else {
@@ -1501,7 +1504,7 @@ static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
       ntohs(pr_netaddr_get_port(agent_addr)));
   }
 
-  return 0;
+  return sockfd;
 }
 
 static void snmp_agent_loop(array_header *sockfds, array_header *addrs) {
@@ -3221,7 +3224,7 @@ static void ev_incr_value(unsigned int field_id, const char *field_str,
 
 static void snmp_auth_code_ev(const void *event_data, void *user_data) {
   int auth_code, res;
-  unsigned int field_id, is_ftps = FALSE, notify_id = 0;
+  unsigned int field_id = SNMP_DB_ID_UNKNOWN, is_ftps = FALSE, notify_id = 0;
   const char *notify_str = NULL, *proto;
 
   if (snmp_engine == FALSE) {

@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Core FTPD module
- * $Id: mod_core.c,v 1.461 2014-05-03 22:18:12 castaglia Exp $
- */
+/* Core FTPD module */
 
 #include "conf.h"
 #include "privs.h"
@@ -123,9 +121,16 @@ static unsigned long core_exceeded_cmd_rate(cmd_rec *cmd) {
 }
 
 static int core_idle_timeout_cb(CALLBACK_FRAME) {
+  int timeout;
+
+  timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
+
   /* We don't want to quit in the middle of a transfer */
   if (session.sf_flags & SF_XFER) { 
- 
+    pr_trace_msg("timer", 4,
+      "TimeoutIdle (%d %s) reached, but data transfer in progress, ignoring",
+      timeout, timeout != 1 ? "seconds" : "second"); 
+
     /* Restart the timer. */
     return 1; 
   }
@@ -133,8 +138,7 @@ static int core_idle_timeout_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-idle", NULL);
  
   pr_response_send_async(R_421,
-    _("Idle timeout (%d seconds): closing control connection"),
-    pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE));
+    _("Idle timeout (%d seconds): closing control connection"), timeout);
 
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
   pr_timer_remove(PR_TIMER_NOXFER, ANY_MODULE);
@@ -4839,11 +4843,26 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
 MODRET core_rmd(cmd_rec *cmd) {
   int res;
-  char *dir;
+  char *decoded_path, *dir;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  dir = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, dir);
   switch (res) {
@@ -4914,7 +4933,7 @@ MODRET core_rmd(cmd_rec *cmd) {
 
 MODRET core_mkd(cmd_rec *cmd) {
   int res;
-  char *dir;
+  char *decoded_path, *dir;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -4929,7 +4948,22 @@ MODRET core_mkd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  dir = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, dir);
   switch (res) {
@@ -5000,11 +5034,25 @@ MODRET core_mkd(cmd_rec *cmd) {
 }
 
 MODRET core_cwd(cmd_rec *cmd) {
-  char *dir;
+  char *decoded_path;
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
-  return _chdir(cmd, dir);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  return _chdir(cmd, decoded_path);
 }
 
 MODRET core_cdup(cmd_rec *cmd) {
@@ -5015,13 +5063,27 @@ MODRET core_cdup(cmd_rec *cmd) {
 /* Returns the modification time of a file, as per RFC3659.
  */
 MODRET core_mdtm(cmd_rec *cmd) {
-  char *path;
+  char *decoded_path, *path;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = dir_realpath(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_realpath(cmd->tmp_pool, decoded_path);
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
@@ -5066,7 +5128,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
 }
 
 MODRET core_size(cmd_rec *cmd) {
-  char *path;
+  char *decoded_path, *path;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
@@ -5081,8 +5143,22 @@ MODRET core_size(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = dir_realpath(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_realpath(cmd->tmp_pool, decoded_path);
 
   pr_fs_clear_cache();
 
@@ -5115,12 +5191,27 @@ MODRET core_size(cmd_rec *cmd) {
 
 MODRET core_dele(cmd_rec *cmd) {
   int res;
-  char *path, *fullpath;
+  char *decoded_path, *path, *fullpath;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
   switch (res) {
@@ -5242,7 +5333,7 @@ MODRET core_dele(cmd_rec *cmd) {
 
 MODRET core_rnto(cmd_rec *cmd) {
   int res;
-  char *path;
+  char *decoded_path, *path;
   unsigned char *allow_overwrite = NULL;
   struct stat st;
 
@@ -5261,7 +5352,22 @@ MODRET core_rnto(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
   switch (res) {
@@ -5310,20 +5416,6 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_fsio_rename(session.xfer.path, path) == -1) {
     int xerrno = errno;
 
-    if (xerrno != EXDEV) {
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
-        "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(xerrno));
-
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
-    }
-
     if (xerrno == EISDIR) {
       /* In this case, the client has requested that a directory be renamed
        * across mount points.  The pr_fs_copy_file() function can't handle
@@ -5348,6 +5440,20 @@ MODRET core_rnto(cmd_rec *cmd) {
        * error messages.
        */
       xerrno = EPERM;
+
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
+        strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    if (xerrno != EXDEV) {
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+        "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
+        (unsigned long) session.uid, (unsigned long) session.gid,
+        session.xfer.path, path, strerror(xerrno));
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));
@@ -5402,11 +5508,26 @@ MODRET core_rnto_cleanup(cmd_rec *cmd) {
 
 MODRET core_rnfr(cmd_rec *cmd) {
   int res;
-  char *path;
+  char *decoded_path, *path;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
   switch (res) {
@@ -5605,8 +5726,16 @@ MODRET core_post_pass(cmd_rec *cmd) {
       char *channel, *ptr;
       int min_level, max_level, res;
 
-      ptr = strchr(c->argv[i], ':');
+      pr_signals_handle();
+
       channel = c->argv[i];
+      ptr = strchr(channel, ':');
+      if (ptr == NULL) {
+        pr_log_debug(DEBUG6, "skipping badly formatted '%s' setting",
+          channel);
+        continue;
+      }
+
       *ptr = '\0';
 
       res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);
@@ -5733,7 +5862,7 @@ static void core_restart_ev(const void *event_data, void *user_data) {
 
 #ifdef PR_USE_TRACE
   if (trace_log) {
-    pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, -1, -1);
+    (void) pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, -1, -1);
     pr_trace_set_file(NULL);
     trace_log = NULL;
   }
@@ -6050,8 +6179,17 @@ static int core_sess_init(void) {
       char *channel, *ptr;
       int min_level, max_level, res;
 
-      ptr = strchr(c->argv[i], ':');
+      pr_signals_handle();
+
       channel = c->argv[i];
+
+      ptr = strchr(channel, ':');
+      if (ptr == NULL) {
+        pr_log_debug(DEBUG6, "skipping badly formatted '%s' setting",
+          channel);
+        continue;
+      }
+
       *ptr = '\0';
 
       res = pr_trace_parse_levels(ptr + 1, &min_level, &max_level);

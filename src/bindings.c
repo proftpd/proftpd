@@ -182,12 +182,8 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
   conn_t **listeners = listener_list->elts;
   register unsigned int i = 0;
 
-  if (!readfds) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  if (!listenfd) {
+  if (readfds == NULL ||
+      listenfd == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -201,6 +197,8 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
       int fd = pr_inet_accept_nowait(listener->pool, listener);
 
       if (fd == -1) {
+        int xerrno = errno;
+
         /* Handle errors gracefully.  If we're here, then
          * ipbind->ib_server->listen contains either error information, or
          * we just got caught in a blocking condition.
@@ -217,6 +215,8 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
 
           listener->xerrno = 0;
           listener->mode = CM_LISTEN;
+
+          errno = xerrno;
           return NULL;
         }
       }
@@ -650,7 +650,13 @@ int pr_ipbind_listen(fd_set *readfds) {
         }
 
         if (ipbind->ib_listener->mode == CM_ACCEPT) {
-          pr_inet_resetlisten(ipbind->ib_listener->pool, ipbind->ib_listener);
+          if (pr_inet_resetlisten(ipbind->ib_listener->pool,
+              ipbind->ib_listener) < 0) {
+            pr_trace_msg(trace_channel, 3,
+              "error resetting %s#%u for listening: %s",
+              pr_netaddr_get_ipstr(ipbind->ib_addr), ipbind->ib_port,
+              strerror(errno));
+          }
         }
 
         if (ipbind->ib_listener->mode == CM_LISTEN) {

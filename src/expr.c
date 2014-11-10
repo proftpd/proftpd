@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Expression API implementation
- * $Id: expr.c,v 1.6 2011-12-11 02:14:43 castaglia Exp $
- */
+/* Expression API implementation */
 
 #include "conf.h"
 
@@ -56,8 +54,9 @@ array_header *pr_expr_create(pool *p, int *argc, char **argv) {
         while ((ent = pr_str_get_token(&s, sep)) != NULL) {
           pr_signals_handle();
 
-          if (*ent)
+          if (*ent) {
             *((char **) push_array(acl)) = ent;
+          }
         }
 
       } else {

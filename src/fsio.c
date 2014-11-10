@@ -96,13 +96,13 @@ static unsigned char chk_fs_map = FALSE;
 static char vwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 
-static int guard_chroot = FALSE;
+static int fsio_guard_chroot = FALSE;
 
 /* Runtime enabling/disabling of mkdtemp(3) use. */
 #ifdef HAVE_MKDTEMP
-static int use_mkdtemp = TRUE;
+static int fsio_use_mkdtemp = TRUE;
 #else
-static int use_mkdtemp = FALSE;
+static int fsio_use_mkdtemp = FALSE;
 #endif /* HAVE_MKDTEMP */
 
 /* Runtime enabling/disabling of encoding of paths. */
@@ -173,7 +173,7 @@ static int sys_lstat(pr_fs_t *fs, const char *path, struct stat *sbuf) {
 static int sys_rename(pr_fs_t *fs, const char *rnfm, const char *rnto) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(rnfm);
     if (res < 0) {
       return -1;
@@ -192,7 +192,7 @@ static int sys_rename(pr_fs_t *fs, const char *rnfm, const char *rnto) {
 static int sys_unlink(pr_fs_t *fs, const char *path) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -213,7 +213,7 @@ static int sys_open(pr_fh_t *fh, const char *path, int flags) {
   flags |= O_BINARY;
 #endif
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     /* If we are creating (or truncating) a file, then we need to check. */
     if (flags & (O_APPEND|O_CREAT|O_TRUNC)) {
       res = chroot_allow_path(path);
@@ -230,7 +230,7 @@ static int sys_open(pr_fh_t *fh, const char *path, int flags) {
 static int sys_creat(pr_fh_t *fh, const char *path, mode_t mode) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -261,7 +261,7 @@ static int sys_link(pr_fs_t *fs, const char *target_path,
     const char *link_path) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(link_path);
     if (res < 0) {
       return -1;
@@ -276,7 +276,7 @@ static int sys_symlink(pr_fs_t *fs, const char *target_path,
     const char *link_path) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(link_path);
     if (res < 0) {
       return -1;
@@ -299,7 +299,7 @@ static int sys_ftruncate(pr_fh_t *fh, int fd, off_t len) {
 static int sys_truncate(pr_fs_t *fs, const char *path, off_t len) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -313,7 +313,7 @@ static int sys_truncate(pr_fs_t *fs, const char *path, off_t len) {
 static int sys_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -331,7 +331,7 @@ static int sys_fchmod(pr_fh_t *fh, int fd, mode_t mode) {
 static int sys_chown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -349,7 +349,7 @@ static int sys_fchown(pr_fh_t *fh, int fd, uid_t uid, gid_t gid) {
 static int sys_lchown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -444,7 +444,7 @@ static int sys_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 static int sys_utimes(pr_fs_t *fs, const char *path, struct timeval *tvs) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -506,7 +506,7 @@ static struct dirent *sys_readdir(pr_fs_t *fs, void *dir) {
 static int sys_mkdir(pr_fs_t *fs, const char *path, mode_t mode) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -520,7 +520,7 @@ static int sys_mkdir(pr_fs_t *fs, const char *path, mode_t mode) {
 static int sys_rmdir(pr_fs_t *fs, const char *path) {
   int res;
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
@@ -865,7 +865,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  pr_fsio_set_block(src_fh);
+  if (pr_fsio_set_block(src_fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error putting '%s' into blocking mode: %s", src, strerror(errno));
+  }
 
   /* Do not allow copying of directories. open(2) may not fail when
    * opening the source path, since it is only doing a read-only open,
@@ -873,7 +876,11 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    */
 
   /* This should never fail. */
-  (void) pr_fsio_fstat(src_fh, &src_st);
+  if (pr_fsio_fstat(src_fh, &src_st) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error fstat'ing '%s': %s", src, strerror(errno));
+  }
+
   if (S_ISDIR(src_st.st_mode)) {
     int xerrno = EISDIR;
 
@@ -2395,7 +2402,7 @@ int pr_fs_use_encoding(int bool) {
   return curr_setting;
 }
 
-char *pr_fs_decode_path(pool *p, const char *path) {
+char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
 #ifdef PR_USE_NLS
   size_t outlen;
   char *res;
@@ -2412,8 +2419,10 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 
   res = pr_decode_str(p, path, strlen(path), &outlen);
   if (res == NULL) {
+    int xerrno = errno;
+
     pr_trace_msg("encode", 1, "error decoding path '%s': %s", path,
-      strerror(errno));
+      strerror(xerrno));
 
     if (pr_trace_get_level("encode") >= 14) {
       /* Write out the path we tried (and failed) to decode, in hex. */
@@ -2434,6 +2443,20 @@ char *pr_fs_decode_path(pool *p, const char *path) {
         raw_path);
     } 
 
+    if (flags & FSIO_DECODE_FL_TELL_ERRORS) {
+      unsigned long policy;
+
+      policy = pr_encode_get_policy();
+      if (policy & PR_ENCODE_POLICY_FL_REQUIRE_VALID_ENCODING) {
+        /* Note: At present, we DO return null here to callers, to indicate
+         * the illegal encoding (Bug#4125), if configured to do so via
+         * e.g. the RequireValidEncoding LangOption.
+         */
+        errno = xerrno;
+        return NULL;
+      }
+    }
+
     return (char *) path;
   }
 
@@ -2442,6 +2465,10 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 #else
   return (char *) path;
 #endif /* PR_USE_NLS */
+}
+
+char *pr_fs_decode_path(pool *p, const char *path) {
+  return pr_fs_decode_path2(p, path, 0);
 }
 
 char *pr_fs_encode_path(pool *p, const char *path) {
@@ -2461,8 +2488,10 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 
   res = pr_encode_str(p, path, strlen(path), &outlen);
   if (res == NULL) {
+    int xerrno = errno;
+
     pr_trace_msg("encode", 1, "error encoding path '%s': %s", path,
-      strerror(errno));
+      strerror(xerrno));
 
     if (pr_trace_get_level("encode") >= 14) {
       /* Write out the path we tried (and failed) to encode, in hex. */
@@ -2482,6 +2511,11 @@ char *pr_fs_encode_path(pool *p, const char *path) {
       pr_trace_msg("encode", 14, "unable to encode path (raw bytes): %s",
         raw_path);
     } 
+
+    /* Note: At present, we do NOT return null here to callers; we assume
+     * that all local names, being encoded for the remote client, are OK.
+     * Revisit this assumption if necessary (Bug#4125).
+     */
 
     return (char *) path;
   }
@@ -2882,8 +2916,8 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
 int pr_fsio_guard_chroot(int guard) {
   int prev;
 
-  prev = guard_chroot;
-  guard_chroot = guard;
+  prev = fsio_guard_chroot;
+  fsio_guard_chroot = guard;
 
   return prev;
 }
@@ -2891,10 +2925,10 @@ int pr_fsio_guard_chroot(int guard) {
 int pr_fsio_set_use_mkdtemp(int value) {
   int prev_value;
 
-  prev_value = use_mkdtemp;
+  prev_value = fsio_use_mkdtemp;
 
 #ifdef HAVE_MKDTEMP
-  use_mkdtemp = value;
+  fsio_use_mkdtemp = value;
 #endif /* HAVE_MKDTEMP */
 
   return prev_value;
@@ -3052,7 +3086,7 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
  */
 int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     gid_t gid) {
-  int res, set_sgid = FALSE, xerrno = 0;
+  int res, set_sgid = FALSE, use_mkdtemp, use_root_chown = FALSE, xerrno = 0;
   char *tmpl_path;
   char *dst_dir, *tmpl;
   size_t dst_dirlen, tmpl_len;
@@ -3066,10 +3100,43 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     "smkdir: path '%s', mode %04o, UID %lu, GID %lu", path, (unsigned int) mode,
     (unsigned long) uid, (unsigned long) gid);
 
-  if (guard_chroot) {
+  if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
     if (res < 0) {
       return -1;
+    }
+  }
+
+  use_mkdtemp = fsio_use_mkdtemp;
+  if (use_mkdtemp == TRUE) {
+
+    /* Note that using mkdtemp(3) is a way of dealing with Bug#3841.  The
+     * problem in question, though, only applies if root privs are used
+     * to set the ownership.  Thus if root privs are NOT needed, then there
+     * is no need to use mkdtemp(3).
+     */
+
+    if (uid != (uid_t) -1) {
+      use_root_chown = TRUE;
+
+    } else if (gid != (gid_t) -1) {
+      register unsigned int i;
+
+      use_root_chown = TRUE;
+
+      /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
+      for (i = 0; i < session.gids->nelts; i++) {
+        gid_t *group_ids = session.gids->elts;
+
+        if (group_ids[i] == gid) {
+          use_root_chown = FALSE;
+          break;
+        }
+      }
+    }
+
+    if (use_root_chown == FALSE) {
+      use_mkdtemp = FALSE;
     }
   }
 
@@ -3234,10 +3301,16 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   }
 
   if (uid != (uid_t) -1) {
-    PRIVS_ROOT
+    if (use_root_chown) {
+      PRIVS_ROOT
+    }
+
     res = pr_fsio_lchown(tmpl_path, uid, gid);
     xerrno = errno;
-    PRIVS_RELINQUISH
+
+    if (use_root_chown) {
+      PRIVS_RELINQUISH
+    }
 
     if (res < 0) {
       pr_log_pri(PR_LOG_WARNING, "lchown(%s) as root failed: %s", tmpl_path,
@@ -3255,19 +3328,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     }
 
   } else if (gid != (gid_t) -1) {
-    register unsigned int i;
-    int use_root_chown = TRUE;
-
-    /* Check if session.fsgid is in session.gids.  If not, use root privs.  */
-    for (i = 0; i < session.gids->nelts; i++) {
-      gid_t *group_ids = session.gids->elts;
-
-      if (group_ids[i] == gid) {
-        use_root_chown = FALSE;
-        break;
-      }
-    }
-
     if (use_root_chown) {
       PRIVS_ROOT
     }
@@ -4849,7 +4909,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
@@ -4900,7 +4960,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_STATFS)
   struct statfs fs;
@@ -4951,11 +5011,14 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
+# else
+  errno = ENOSYS:
+  res = -1;
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
-  errno = ENOSYS;
-  return -1;
+
+  return res;
 }
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \

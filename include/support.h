@@ -31,6 +31,7 @@
 #ifndef PR_SUPPORT_H
 #define PR_SUPPORT_H
 
+#include <sys/time.h>
 #include <time.h>
 
 #if defined(NAME_MAX)
@@ -91,5 +92,8 @@ struct tm *pr_gmtime(pool *, const time_t *);
 struct tm *pr_localtime(pool *, const time_t *);
 const char *pr_strtime(time_t);
 const char *pr_strtime2(time_t, int);
+
+int pr_gettimeofday_millis(uint64_t *);
+int pr_timeval2millis(struct timeval *, uint64_t *);
 
 #endif /* PR_SUPPORT_H */

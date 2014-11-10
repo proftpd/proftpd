@@ -22,9 +22,8 @@
  * source distribution.
  *
  * DO NOT EDIT BELOW THIS LINE
- * $Archive: mod_sftp.a $
- * $Libraries: -lcrypto -lz $
- * $Id: mod_sftp.c,v 1.86 2014-03-02 22:05:43 castaglia Exp $
+ * $Archive: mod_sftp.a$
+ * $Libraries: -lcrypto$
  */
 
 #include "mod_sftp.h"
@@ -826,6 +825,7 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
+#ifdef HAVE_ZLIB_H
   bool = get_boolean(cmd, 1);
   if (bool == -1) {
     if (strncasecmp(cmd->argv[1], "delayed", 8) != 0) {
@@ -835,6 +835,10 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
 
     bool = 2;
   }
+#else
+  pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": platform lacks zlib support, ignoring SFTPCompression");
+  bool = 0;
+#endif /* !HAVE_ZLIB_H */
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
@@ -1089,8 +1093,31 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
 
     if ((st.st_mode & S_IRWXG) ||
         (st.st_mode & S_IRWXO)) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
-        "' as host key, as it is group- or world-accessible", NULL));
+      int insecure_hostkey_perms = FALSE;
+      config_rec *c;
+
+      /* Check for the InsecureHostKeyPerms SFTPOption. */
+      c = find_config(cmd->server->conf, CONF_PARAM, "SFTPOptions", FALSE);
+      while (c != NULL) {
+        unsigned long opts;
+
+        pr_signals_handle();
+
+        opts = *((unsigned long *) c->argv[0]);
+        if (opts & SFTP_OPT_INSECURE_HOSTKEY_PERMS) {
+          insecure_hostkey_perms = TRUE;
+          break;
+        }
+      }
+
+      if (insecure_hostkey_perms) {
+        pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION ": unable to use '%s' "
+          "as host key, as it is group- or world-accessible", cmd->argv[1]);
+
+      } else {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+          "' as host key, as it is group- or world-accessible", NULL));
+      }
     }
   }
 
@@ -1247,6 +1274,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[1], "AllowInsecureLogin") == 0) {
       opts |= SFTP_OPT_ALLOW_INSECURE_LOGIN;
+
+    } else if (strcmp(cmd->argv[1], "InsecureHostKeyPerms") == 0) {
+      opts |= SFTP_OPT_INSECURE_HOSTKEY_PERMS;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",

@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_file -- a mod_quotatab sub-module for managing quota
  *                               data via file-based tables
  *
- * Copyright (c) 2002-2011 TJ Saunders
+ * Copyright (c) 2002-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -87,6 +87,9 @@ static int filetab_create(quota_table_t *filetab, void *ptr) {
 
   /* Seek to the end of the table */
   current_pos = lseek(filetab->tab_handle, (off_t) 0, SEEK_END);
+  if (current_pos < 0) {
+    return -1;
+  }
 
   while ((res = writev(filetab->tab_handle, quotav, 8)) < 0) {
     if (errno == EINTR) {
@@ -195,6 +198,10 @@ static int filetab_read(quota_table_t *filetab, void *ptr) {
 
   /* Mark the current file position. */
   off_t current_pos = lseek(filetab->tab_handle, (off_t) 0, SEEK_CUR);
+
+  if (current_pos < 0) {
+    return - 1;
+  }
 
   /* Use readv() to make this more efficient.  It is done piecewise, rather
    * than doing a normal read(2) directly into the struct pointer, to avoid
@@ -349,6 +356,10 @@ static int filetab_write(quota_table_t *filetab, void *ptr) {
 
   /* Mark the current file position. */
   off_t current_pos = lseek(filetab->tab_handle, (off_t) 0, SEEK_CUR);
+
+  if (current_pos < 0) {
+    return -1;
+  }
 
   /* Use writev() to make this more efficient.  It is done piecewise, rather
    * than doing a normal write(2) directly from the struct pointer, to avoid

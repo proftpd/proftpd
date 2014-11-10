@@ -341,7 +341,8 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
       FD_SET(nstrm->strm_fd, &rfds);
 
       pr_trace_msg(trace_channel, 8,
-        "lingering %lu secs before closing fd %d", (unsigned long) tv.tv_sec,
+        "lingering %lu %s before closing fd %d",
+        (unsigned long) tv.tv_sec, tv.tv_sec != 1 ? "secs" : "sec",
         nstrm->strm_fd);
 
       res = select(nstrm->strm_fd+1, &rfds, NULL, NULL, &tv);
@@ -923,11 +924,12 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
     if (bwritten < 0) {
       nstrm->strm_errno = errno;
-      fcntl(nstrm->strm_fd, F_SETFL, flags);
+      (void) fcntl(nstrm->strm_fd, F_SETFL, flags);
 
-      if (nstrm->strm_errno == EWOULDBLOCK)
+      if (nstrm->strm_errno == EWOULDBLOCK) {
         /* Give up ... */
         return total;
+      }
 
       return -1;
     }

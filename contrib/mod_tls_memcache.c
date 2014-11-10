@@ -25,10 +25,6 @@
  *
  * This is mod_tls_memcache, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_memcache.c,v 1.6 2013-11-05 21:37:16 castaglia Exp $
- *  $Libraries: -lssl -lcrypto$
  */
 
 #include "conf.h"

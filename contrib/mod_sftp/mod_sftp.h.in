@@ -45,6 +45,9 @@
 # define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
+/* Define if you have the <zlib.h> header.  */
+#undef HAVE_ZLIB_H
+
 /* Define if you have OpenSSL with crippled AES support. */
 #undef HAVE_AES_CRIPPLED_OPENSSL
 
@@ -83,8 +86,6 @@
 # include <openssl/ecdh.h>
 #endif /* PR_USE_OPENSSL_ECC */
 
-#include <zlib.h>
-
 #define SFTP_ID_PREFIX		"SSH-2.0-"
 #define SFTP_ID_DEFAULT_STRING	SFTP_ID_PREFIX MOD_SFTP_VERSION
 
@@ -105,6 +106,7 @@
 #define SFTP_OPT_IGNORE_SFTP_SET_OWNERS		0x0080
 #define SFTP_OPT_IGNORE_SCP_UPLOAD_TIMES	0x0100
 #define SFTP_OPT_ALLOW_INSECURE_LOGIN		0x0200
+#define SFTP_OPT_INSECURE_HOSTKEY_PERMS		0x0400
 
 /* mod_sftp service flags */
 #define SFTP_SERVICE_FL_SFTP		0x0001

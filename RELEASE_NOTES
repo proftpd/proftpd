@@ -13,11 +13,23 @@ ChangeLog files.
 
   + Changed Modules
 
+    mod_site_misc supports 3-timestamp variant of SITE UTIME (Bug#4130)
+
+    mod_tls disables SSLv3 by default (Bug#4114)
+
+      For sites which need to support SSLv3, use:
+
+        TLSProtocol SSLv3 TLSv1 ...
+
+
   + New Configuration Directives:
 
     DelayOnEvent (Bug#4020)
 
     ExecEnable (Bug#4076)
+
+    LangOptions (Bug#4125)
+
 
   + Changed Configuration Directives
 
@@ -29,6 +41,8 @@ ChangeLog files.
       now necessary.
 
     HiddenStores %P (Bug#4062)
+
+    SFTPOptions InsecureHostKeyPerms (Bug#4098)
 
     SNMPAgent multiple addresses (Bug#4061)
 
