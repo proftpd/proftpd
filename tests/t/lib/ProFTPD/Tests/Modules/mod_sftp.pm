@@ -31469,17 +31469,14 @@ sub sftp_config_limit_allowfilter_stor_allowed {
   my $uid = 500;
   my $gid = 500;
 
-  my $test_dir = File::Spec->rel2abs("$home_dir/test.d");
-  mkpath($test_dir);
-
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $test_dir)) {
+    unless (chmod(0755, $home_dir)) {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $test_dir)) {
+    unless (chown($uid, $gid, $home_dir)) {
       die("Can't set owner of $home_dir to $uid/$gid: $!");
     }
   }
@@ -31490,6 +31487,8 @@ sub sftp_config_limit_allowfilter_stor_allowed {
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
 
   my $config = {
     PidFile => $pid_file,
@@ -31578,6 +31577,12 @@ sub sftp_config_limit_allowfilter_stor_allowed {
 
       $sftp = undef;
       $ssh2->disconnect();
+
+      $self->assert(-f $test_file,
+        test_msg("File $test_file does not exist as expected"));
+
+      $self->assert(-s $test_file,
+        test_msg("File $test_file size is unexpectedly zero"));
     };
 
     if ($@) {
