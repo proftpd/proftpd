@@ -1574,12 +1574,17 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
 
     msg = get_param_ptr(main_server->conf, "WrapDenyMsg", FALSE);
     if (msg != NULL) {
+      char *user;
+
+      user = session.user;
+      if (user == NULL) {
+        user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+      }
+ 
       /* If the client has authenticated, we can interpolate any '%u'
        * variable in the configured deny message.
        */
-      if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
-        msg = sreplace(sftp_pool, msg, "%u", session.user, NULL);
-      }
+      msg = sreplace(sftp_pool, msg, "%u", user, NULL);
 
     } else {
       /* XXX This needs to be properly localized.  However, trying to use
