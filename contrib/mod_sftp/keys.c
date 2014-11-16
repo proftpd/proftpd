@@ -2157,6 +2157,66 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
   return ptr;
 }
 
+int sftp_keys_clear_dsa_hostkey(void) {
+  if (sftp_dsa_hostkey != NULL) {
+    if (sftp_dsa_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_dsa_hostkey->pkey);
+    }
+
+    sftp_dsa_hostkey = NULL;
+    return 0;
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
+int sftp_keys_clear_ecdsa_hostkey(void) {
+#ifdef PR_USE_OPENSSL_ECC
+  if (sftp_ecdsa256_hostkey != NULL) {
+    if (sftp_ecdsa256_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_ecdsa256_hostkey->pkey);
+    }
+
+    sftp_ecdsa256_hostkey = NULL;
+  }
+
+  if (sftp_ecdsa384_hostkey != NULL) {
+    if (sftp_ecdsa384_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_ecdsa384_hostkey->pkey);
+    }
+
+    sftp_ecdsa384_hostkey = NULL;
+  }
+
+  if (sftp_ecdsa521_hostkey != NULL) {
+    if (sftp_ecdsa521_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_ecdsa521_hostkey->pkey);
+    }
+
+    sftp_ecdsa521_hostkey = NULL;
+  }
+
+  return 0;
+#endif /* PR_USE_OPENSSL_ECC */
+  errno = ENOENT;
+  return -1;
+}
+
+int sftp_keys_clear_rsa_hostkey(void) {
+  if (sftp_rsa_hostkey != NULL) {
+    if (sftp_rsa_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_rsa_hostkey->pkey);
+    }
+
+    sftp_rsa_hostkey = NULL;
+    return 0;
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
 int sftp_keys_have_dsa_hostkey(void) {
   if (sftp_dsa_hostkey != NULL) {
     return 0;
@@ -2173,27 +2233,38 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
 #ifdef PR_USE_OPENSSL_ECC
   int count = 0;
 
-  *nids = palloc(p, sizeof(int) * 3);
+  if (nids != NULL) {
+    *nids = palloc(p, sizeof(int) * 3);
+  }
 
   if (sftp_ecdsa256_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa256_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
 
   } else if (sftp_ecdsa384_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa384_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
 
   } else if (sftp_ecdsa521_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa521_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
   }
 
@@ -2928,10 +2999,17 @@ void sftp_keys_get_passphrases(void) {
 
     c = find_config(s->conf, CONF_PARAM, "SFTPHostKey", FALSE);
     while (c) {
+      int flags;
+
       pr_signals_handle();
 
-      /* Skip any agent-provided SFTPHostKey directives. */
-      if (strncmp(c->argv[0], "agent:", 6) == 0) {
+      flags = *((int *) c->argv[1]);
+
+      /* Skip any agent-provided SFTPHostKey directives, as well as any
+       * "disabling key" directives.
+       */
+      if (flags != 0 ||
+          strncmp(c->argv[0], "agent:", 6) == 0) {
         c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
         continue;
       }
@@ -2971,46 +3049,8 @@ void sftp_keys_get_passphrases(void) {
  */
 void sftp_keys_free(void) {
   scrub_pkeys();
- 
-  if (sftp_dsa_hostkey != NULL) {
-    if (sftp_dsa_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_dsa_hostkey->pkey);
-    } 
 
-    sftp_dsa_hostkey = NULL;
-  }
-
-  if (sftp_rsa_hostkey != NULL) {
-    if (sftp_rsa_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_rsa_hostkey->pkey);
-    }
-
-    sftp_rsa_hostkey = NULL;
-  }
-
-#ifdef PR_USE_OPENSSL_ECC
-  if (sftp_ecdsa256_hostkey != NULL) {
-    if (sftp_ecdsa256_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_ecdsa256_hostkey->pkey);
-    }
-
-    sftp_ecdsa256_hostkey = NULL;
-  }
-
-  if (sftp_ecdsa384_hostkey != NULL) {
-    if (sftp_ecdsa384_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_ecdsa384_hostkey->pkey);
-    }
-
-    sftp_ecdsa384_hostkey = NULL;
-  }
-
-  if (sftp_ecdsa521_hostkey != NULL) {
-    if (sftp_ecdsa521_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_ecdsa521_hostkey->pkey);
-    }
-
-    sftp_ecdsa521_hostkey = NULL;
-  }
-#endif /* PR_USE_OPENSSL_ECC */
+  sftp_keys_clear_dsa_hostkey();
+  sftp_keys_clear_ecdsa_hostkey();
+  sftp_keys_clear_rsa_hostkey();
 }

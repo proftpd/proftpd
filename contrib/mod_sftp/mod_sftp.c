@@ -59,6 +59,13 @@ static int sftp_engine = 0;
 static const char *sftp_client_version = NULL;
 static const char *sftp_server_version = SFTP_ID_DEFAULT_STRING;
 
+/* Flags for changing how hostkeys are handled. */
+#define SFTP_HOSTKEY_FL_CLEAR_RSA_KEY		0x001
+#define SFTP_HOSTKEY_FL_CLEAR_DSA_KEY		0x002
+#define SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY		0x004
+
+static const char *trace_channel = "ssh2";
+
 static int sftp_have_authenticated(cmd_rec *cmd) {
   return (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH);
 }
@@ -1067,34 +1074,49 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SFTPHostKey path|"agent:/..." */
+/* usage: SFTPHostKey path|"agent:/..."|"NoRSA"|"NoDSA"|"NoECDSA"" */
 MODRET set_sftphostkey(cmd_rec *cmd) {
   struct stat st;
+  int flags = 0;
+  config_rec *c;
+  const char *path = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strncmp(cmd->argv[1], "agent:", 6) != 0) {
+  if (strncasecmp(cmd->argv[1], "NoRSA", 6) == 0) {
+    flags |= SFTP_HOSTKEY_FL_CLEAR_RSA_KEY;
+
+  } else if (strncasecmp(cmd->argv[1], "NoDSA", 6) == 0) {
+    flags |= SFTP_HOSTKEY_FL_CLEAR_DSA_KEY;
+
+  } else if (strncasecmp(cmd->argv[1], "NoECDSA", 8) == 0) {
+    flags |= SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY;
+  }
+
+  if (strncmp(cmd->argv[1], "agent:", 6) != 0 &&
+      flags == 0) {
     int res, xerrno;
 
-    if (*cmd->argv[1] != '/') {
-      CONF_ERROR(cmd, "must be an absolute path");
+    path = cmd->argv[1];
+    if (*path != '/') {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be an absolute path: ",
+        path, NULL));
     }
 
     PRIVS_ROOT
-    res = stat(cmd->argv[1], &st);
+    res = stat(path, &st);
     xerrno = errno;
     PRIVS_RELINQUISH
 
     if (res < 0) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to check '", cmd->argv[1],
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to check '", path,
         "': ", strerror(xerrno), NULL));
     }
 
     if ((st.st_mode & S_IRWXG) ||
         (st.st_mode & S_IRWXO)) {
       int insecure_hostkey_perms = FALSE;
-      config_rec *c;
 
       /* Check for the InsecureHostKeyPerms SFTPOption. */
       c = find_config(cmd->server->conf, CONF_PARAM, "SFTPOptions", FALSE);
@@ -1112,16 +1134,19 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
 
       if (insecure_hostkey_perms) {
         pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION ": unable to use '%s' "
-          "as host key, as it is group- or world-accessible", cmd->argv[1]);
+          "as host key, as it is group- or world-accessible", path);
 
       } else {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path,
           "' as host key, as it is group- or world-accessible", NULL));
       }
     }
   }
 
-  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, path);
+  c->argv[1] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = flags;
   return PR_HANDLED(cmd);
 }
 
@@ -1787,27 +1812,76 @@ static int sftp_sess_init(void) {
   sftp_pool = make_sub_pool(session.pool);
   pr_pool_tag(sftp_pool, MOD_SFTP_VERSION);
 
+  /* We do two passes through the configured hostkeys.  On the first pass,
+   * we focus on loading all of the configured keys.  On the second pass,
+   * we focus on handling any of the hostkey flags that would e.g. clear the
+   * previously loaded keys.
+   */
+
   c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKey", FALSE);
   while (c) {
     const char *path = c->argv[0];
+    int flags = *((int *) c->argv[1]);
 
-    /* This pool needs to have the lifetime of the session, since the hostkey
-     * data is needed for rekeying, and rekeying can happen at any time
-     * during the session.
-     */
-    if (sftp_keys_get_hostkey(sftp_pool, path) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error loading hostkey '%s', skipping key", path);
+    if (path != NULL &&
+        flags == 0) {
+      /* This pool needs to have the lifetime of the session, since the hostkey
+       * data is needed for rekeying, and rekeying can happen at any time
+       * during the session.
+       */
+      if (sftp_keys_get_hostkey(sftp_pool, path) < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error loading hostkey '%s', skipping key", path);
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
   }
 
-  /* Support having either an RSA hostkey, a DSA hostkey, or both.  But
-   * we have to have at least one hostkey.
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKey", FALSE);
+  while (c) {
+    int flags = *((int *) c->argv[1]);
+
+    if (flags != 0) {
+      /* Handle any flags, such as for clearing previous host keys. */
+      if (flags & SFTP_HOSTKEY_FL_CLEAR_RSA_KEY) {
+        if (sftp_keys_clear_rsa_hostkey() < 0) {
+          pr_trace_msg(trace_channel, 13,
+            "error clearing RSA hostkey: %s", strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 9, "cleared RSA hostkey");
+        }
+
+      } else if (flags & SFTP_HOSTKEY_FL_CLEAR_DSA_KEY) {
+        if (sftp_keys_clear_dsa_hostkey() < 0) {
+          pr_trace_msg(trace_channel, 13,
+            "error clearing DSA hostkey: %s", strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 9, "cleared DSA hostkey");
+        }
+
+      } else if (flags & SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY) {
+        if (sftp_keys_clear_ecdsa_hostkey() < 0) {
+          pr_trace_msg(trace_channel, 13,
+            "error clearing ECDSA hostkey(s): %s", strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 9, "cleared ECDSA hostkey(s)");
+        }
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
+  }
+
+  /* Support having either an RSA hostkey, a DSA hostkey, an ECDSA hostkey,
+   * or any combination thereof.  But we have to have at least one hostkey.
    */
   if (sftp_keys_have_dsa_hostkey() < 0 &&
-      sftp_keys_have_rsa_hostkey() < 0) {
+      sftp_keys_have_rsa_hostkey() < 0 &&
+      sftp_keys_have_ecdsa_hostkey(sftp_pool, NULL) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no available host keys, unable to handle session");
     errno = EACCES;
