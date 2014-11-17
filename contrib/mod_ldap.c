@@ -1851,7 +1851,8 @@ MODRET set_ldapattr(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_ldapuserlookups(cmd_rec *cmd) {
+/* usage: LDAPUsers base-dn [name-filter-template [uid-filter-template]] */
+MODRET set_ldapusers(cmd_rec *cmd) {
   config_rec *c;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1864,6 +1865,9 @@ MODRET set_ldapuserlookups(cmd_rec *cmd) {
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
   if (cmd->argc > 2) {
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+  }
+  if (cmd->argc > 3) {
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
   }
 
   return PR_HANDLED(cmd);
@@ -2316,7 +2320,7 @@ static conftable ldap_conftab[] = {
   { "LDAPQueryTimeout",		set_ldapquerytimeout,		NULL },
   { "LDAPSearchScope",		set_ldapsearchscope,		NULL },
   { "LDAPServer",		set_ldapserver,			NULL },
-  { "LDAPUsers",		set_ldapuserlookups,		NULL },
+  { "LDAPUsers",		set_ldapusers,			NULL },
   { "LDAPUseTLS",		set_ldapusetls,			NULL },
 
   { NULL, NULL, NULL },
