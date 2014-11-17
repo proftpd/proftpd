@@ -44,6 +44,8 @@ ChangeLog files.
 
     HiddenStores %P (Bug#4062)
 
+    SFTPHostKey NoRSA/NoDSA/NoECDSA
+
     SFTPOptions InsecureHostKeyPerms (Bug#4098)
 
     SNMPAgent multiple addresses (Bug#4061)
