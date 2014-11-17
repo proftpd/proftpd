@@ -2173,12 +2173,15 @@ int sftp_keys_clear_dsa_hostkey(void) {
 
 int sftp_keys_clear_ecdsa_hostkey(void) {
 #ifdef PR_USE_OPENSSL_ECC
+  int count = 0;
+
   if (sftp_ecdsa256_hostkey != NULL) {
     if (sftp_ecdsa256_hostkey->pkey != NULL) {
       EVP_PKEY_free(sftp_ecdsa256_hostkey->pkey);
     }
 
     sftp_ecdsa256_hostkey = NULL;
+    count++;
   }
 
   if (sftp_ecdsa384_hostkey != NULL) {
@@ -2187,6 +2190,7 @@ int sftp_keys_clear_ecdsa_hostkey(void) {
     }
 
     sftp_ecdsa384_hostkey = NULL;
+    count++;
   }
 
   if (sftp_ecdsa521_hostkey != NULL) {
@@ -2195,9 +2199,13 @@ int sftp_keys_clear_ecdsa_hostkey(void) {
     }
 
     sftp_ecdsa521_hostkey = NULL;
+    count++;
   }
 
-  return 0;
+  if (count > 0) {
+    return 0;
+  }
+
 #endif /* PR_USE_OPENSSL_ECC */
   errno = ENOENT;
   return -1;
