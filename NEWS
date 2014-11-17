@@ -71,6 +71,8 @@ Git
 - Bug 4125 - mod_lang should provide way to reject illegally-encoded filenames.
 - Bug 4060 - Support unsorted LIST entries (-U) to decrease memory/CPU usage
   for large directory listings.
+- Bug 4133 - LDAPUsers directive does not honor uid-number-filter-template
+  parameter.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
