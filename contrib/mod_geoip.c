@@ -237,7 +237,13 @@ static int check_geoip_filters(geoip_policy_e policy) {
          * matched any allow filters, the connection is rejected, otherwise,
          * it is allowed.
          */
+        (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+          "client matched GeoIPDenyFilter, rejecting connection");
         allow_conn = -1;
+
+      } else {
+        pr_trace_msg(trace_channel, 9,
+          "allowing client connection (policy 'allow,deny')");
       }
       break;
 
@@ -246,7 +252,13 @@ static int check_geoip_filters(geoip_policy_e policy) {
         /* If we have not explicitly matched any allow filters, then
          * reject the connection.
          */
+        (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+          "client did not match any GeoIPAllowFilters, rejecting connection");
         allow_conn = -1;
+
+      } else {
+        pr_trace_msg(trace_channel, 9,
+          "allowing client connection (policy 'deny,allow')");
       }
       break;
   }
