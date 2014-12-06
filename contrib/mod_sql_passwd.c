@@ -237,10 +237,10 @@ static unsigned char *sql_passwd_decode(pool *p, unsigned int encoding,
         /* Assume that only one or two zero bytes of padding were added. */
         if (data[res-1] == '\0') {
           res -= 1;
-        }
 
-        if (data[res-1] == '\0') {
-          res -= 1;
+          if (data[res-1] == '\0') {
+            res -= 1;
+          }
         }
       }
 
