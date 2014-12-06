@@ -30,7 +30,7 @@ ChangeLog files.
 
     LangOptions (Bug#4125)
 
-    ListOptions -U (Bug#4060)
+    SQLPasswordSaltEncoding (Bug#4138)
 
 
   + Changed Configuration Directives
@@ -44,6 +44,8 @@ ChangeLog files.
 
     HiddenStores %P (Bug#4062)
 
+    ListOptions -U (Bug#4060)
+
     SFTPHostKey NoRSA/NoDSA/NoECDSA
 
     SFTPOptions InsecureHostKeyPerms (Bug#4098)
@@ -51,6 +53,7 @@ ChangeLog files.
     SNMPAgent multiple addresses (Bug#4061)
 
     SyslogLevel NOTICE default (Bug#3983)
+
 
   + Changed Command Handling
 
