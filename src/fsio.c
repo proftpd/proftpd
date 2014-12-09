@@ -3039,6 +3039,7 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
    */
   if (res < 0 &&
       xerrno == ENOENT) {
+    ignore_eacces = TRUE;
     res = chmod(path, perms);
     xerrno = errno;
   }
