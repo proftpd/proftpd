@@ -114,7 +114,6 @@ $Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
 - Bug 3981 - Null pointer dereference in mod_exec with ExecOption useStdin.
 - Bug 3982 - Normalize log messages and levels.
 - Bug 3888 - Add LDAPLog directive to mod_ldap.
-- Bug 3982 - Normalize log messages and levels.
 - Bug 3986 - Support filesystems which do not support chmod(2)/chown(2),
   e.g. FAT/ExFAT.
 - Bug 3991 - SSL session caching modules use incorrect OpenSSL cache mode flags,
