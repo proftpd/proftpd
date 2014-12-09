@@ -2950,7 +2950,7 @@ int pr_fsio_set_use_mkdtemp(int value) {
  * its permissions.
  */
 static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
-  int flags, fd, ignore_eacces = FALSE, res, xerrno = 0;
+  int flags, fd, ignore_eacces = FALSE, ignore_eperm = FALSE, res, xerrno = 0;
   struct stat st;
   mode_t dir_mode;
 
@@ -3039,7 +3039,7 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
    */
   if (res < 0 &&
       xerrno == ENOENT) {
-    ignore_eacces = TRUE;
+    ignore_eperm = TRUE;
     res = chmod(path, perms);
     xerrno = errno;
   }
@@ -3072,7 +3072,8 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
 
     if (xerrno == ENOSYS ||
         xerrno == ENOENT ||
-        (xerrno == EACCES && ignore_eacces == TRUE)) {
+        (xerrno == EACCES && ignore_eacces == TRUE) ||
+        (xerrno == EPERM && ignore_eperm == TRUE)) {
       pr_log_debug(DEBUG0, "schmod: unable to set perms %04o on "
         "path '%s': %s (chmod(2) not supported by underlying filesystem?)",
         perms, path, strerror(xerrno));
