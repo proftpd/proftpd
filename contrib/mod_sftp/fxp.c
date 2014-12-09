@@ -8808,7 +8808,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 static int fxp_handle_readlink(struct fxp_packet *fxp) {
   char data[PR_TUNABLE_PATH_MAX + 1];
   unsigned char *buf, *ptr;
-  char *path;
+  char *path, *resolved_path;
   int res;
   uint32_t buflen, bufsz;
   struct fxp_packet *resp;
@@ -8866,8 +8866,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
-  if (path == NULL) {
+  resolved_path = dir_best_path(fxp->pool, cmd->arg);
+  if (resolved_path == NULL) {
     int xerrno = EACCES;
     const char *reason;
     uint32_t status_code;
@@ -8893,12 +8893,12 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (!dir_check(fxp->pool, cmd, G_READ, path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_READ, resolved_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "READLINK of '%s' blocked by <Limit %s> configuration", path,
-      cmd->argv[0]);
+      "READLINK of '%s' (resolved to '%s') blocked by <Limit %s> configuration",
+      path, resolved_path, cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
