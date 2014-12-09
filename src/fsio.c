@@ -3037,7 +3037,8 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
    * get an ENOENT back (as seen on some CIFS mounts, per Bug#4134), try
    * using chmod(2) on the path.
    */
-  if (xerrno == ENOENT) {
+  if (res < 0 &&
+      xerrno == ENOENT) {
     res = chmod(path, perms);
     xerrno = errno;
   }
