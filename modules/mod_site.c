@@ -91,7 +91,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
       pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
         strerror(xerrno));
       pr_response_add_err(R_550,
-        _("%s: Illegal character sequence in command"));
+        _("SITE %s: Illegal character sequence in command"), cmd->argv[1]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -211,7 +211,7 @@ MODRET site_chmod(cmd_rec *cmd) {
       pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
         strerror(xerrno));
       pr_response_add_err(R_550,
-        _("%s: Illegal character sequence in command"));
+        _("SITE %s: Illegal character sequence in command"), cmd->argv[1]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
