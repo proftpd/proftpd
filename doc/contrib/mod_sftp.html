@@ -2192,6 +2192,23 @@ module, or configure it to preserve the SGID bit (<i>e.g.</i> via the
 <a href="../modules/mod_cap.html#CapabilitiesSet"><code>CAP_FSETID</code></a>
 capability).
 
+<p><a name="SFTPWarnings">
+<font color=red>Question</font>: In my SFTP logs, I see these warnings:
+<pre>
+  WARNING: unable to read SFTPDHParamFile '<i>path</i>': Permission denied
+  unable to open SFTPKeyBlacklist '<i>path</i>': Permission denied
+<pre>
+What can I do to fix this?<br>
+<font color=blue>Answer</font>: This indicates that the files are not
+readable (usually <i>world</i>-readable) by the users logging in,
+<b>or</b> that the directories containing the files are not readable
+by the users.
+
+<p>
+Fortunately <code>mod_sftp</code> will function without issue if it
+cannot read either the <code>SFTPDHParamFile</code> or the
+<code>SFTPKeyBlacklist</code> files.
+
 <p>
 <hr><br>
 
