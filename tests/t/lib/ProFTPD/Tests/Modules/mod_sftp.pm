@@ -613,10 +613,24 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_ext_download_rekey => {
+  sftp_ext_download_server_rekey => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
   },
+
+  # TODO: sftp_ext_download_client_rekey
+  # The issues I found with this test are:
+  #   1. Net::SSH2 does not support client-initiated rekeying
+  #   2. Attempting to use the -oRekeyLimit for publickey-based auth using
+  #     sftp(1) causes login to fail; NOT using that option allows the
+  #     login to succeed.  Thus I suspect a bug in that version of
+  #     OpenSSH sftp(1).  For posterity, this is on a Mac OSX machine:
+  #       $ uname -a
+  #       Darwin Ts-MacBook-Pro.local 11.2.0 Darwin Kernel Version 11.2.0: Tue Aug  9 20:54:00 PDT 2011; root:xnu-1699.24.8~1/RELEASE_X86_64 x86_64
+  #
+  #     with OpenSSH version:
+  #       $ ssh -version
+  #       OpenSSH_5.6p1, OpenSSL 0.9.8r 8 Feb 2011
 
   sftp_download_readonly_bug3787 => {
     order => ++$order,
@@ -14308,17 +14322,17 @@ sub sftp_lstat {
       $expected = $test_symlink_size;
       my $file_size = $attrs->{size};
       $self->assert($expected == $file_size,
-        test_msg("Expected '$expected', got '$file_size'"));
+        test_msg("Expected file size '$expected', got '$file_size'"));
 
       $expected = $<;
       my $file_uid = $attrs->{uid};
       $self->assert($expected == $file_uid,
-        test_msg("Expected '$expected', got '$file_uid'"));
+        test_msg("Expected file UID '$expected', got '$file_uid'"));
 
       $expected = $(;
       my $file_gid = $attrs->{gid};
       $self->assert($expected == $file_gid,
-        test_msg("Expected '$expected', got '$file_gid'"));
+        test_msg("Expected file GID '$expected', got '$file_gid'"));
 
       $sftp = undef;
       $ssh2->disconnect();
@@ -14961,6 +14975,11 @@ sub sftp_realpath {
       my $expected;
 
       $expected = $home_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $cwd,
         test_msg("Expected '$expected', got '$cwd'"));
 
@@ -15122,6 +15141,11 @@ sub sftp_realpath_file {
       my $expected;
 
       $expected = $test_file;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -15296,6 +15320,11 @@ sub sftp_realpath_symlink_file {
       my $expected;
 
       $expected = $test_file;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -15627,6 +15656,11 @@ sub sftp_realpath_dir {
       my $expected;
 
       $expected = $test_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -15793,6 +15827,11 @@ sub sftp_realpath_symlink_dir {
       my $expected;
 
       $expected = $test_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -20041,7 +20080,7 @@ sub sftp_ext_download_bug3550 {
   unlink($log_file);
 }
 
-sub sftp_ext_download_rekey {
+sub sftp_ext_download_server_rekey {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -20152,6 +20191,7 @@ sub sftp_ext_download_rekey {
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+        "SFTPRekey required 600 256 10",
       ],
     },
   };
@@ -20182,7 +20222,7 @@ sub sftp_ext_download_rekey {
         'sftp',
         '-oBatchMode=yes',
         '-oCheckHostIP=no',
-        '-oRekeyLimit=256',
+#        '-oRekeyLimit=1024',
         "-oPort=$port",
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
@@ -24391,8 +24431,8 @@ sub sftp_config_dirfakemode {
       }
 
       my $expected = {
-        '.' => '0311',
-        '..' => '0311',
+        '.' => '0310',
+        '..' => '0310',
         'sftp.conf' => '0310',
         'sftp.group' => '0310',
         'sftp.passwd' => '0310',
@@ -32079,6 +32119,11 @@ EOC
       my $expected;
 
       $expected = $sub_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $dir,
         test_msg("Expected '$expected', got '$dir'"));
 
@@ -33875,6 +33920,11 @@ sub sftp_multi_channels {
         my $expected;
 
         $expected = $home_dir;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $cwd,
           test_msg("Expected '$expected', got '$cwd'"));
       }
@@ -34418,43 +34468,47 @@ sub sftp_log_xferlog_download {
 
         $expected = '127.0.0.1';
         $self->assert($expected eq $client_addr,
-          test_msg("Expected '$expected', got '$client_addr'"));
+          test_msg("Expected IP address '$expected', got '$client_addr'"));
 
         $expected = $test_sz;
         $self->assert($expected == $nbytes,
-          test_msg("Expected $expected, got $nbytes"));
+          test_msg("Expected size $expected, got $nbytes"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
         $self->assert($expected eq $path,
-          test_msg("Expected '$expected', got '$path'"));
+          test_msg("Expected path '$expected', got '$path'"));
 
         $expected = 'b';
         $self->assert($expected eq $xfer_type,
-          test_msg("Expected '$expected', got '$xfer_type'"));
+          test_msg("Expected transfer type '$expected', got '$xfer_type'"));
 
         $expected = '_';
         $self->assert($expected eq $action_flag,
-          test_msg("Expected '$expected', got '$action_flag'"));
+          test_msg("Expected action flag '$expected', got '$action_flag'"));
 
         $expected = 'o';
         $self->assert($expected eq $xfer_direction,
-          test_msg("Expected '$expected', got '$xfer_direction'"));
+          test_msg("Expected transfer direction '$expected', got '$xfer_direction'"));
 
         $expected = 'r';
         $self->assert($expected eq $access_mode,
-          test_msg("Expected '$expected', got '$access_mode'"));
+          test_msg("Expected access mode '$expected', got '$access_mode'"));
 
         $expected = $user;
         $self->assert($expected eq $user_name,
-          test_msg("Expected '$expected', got '$user_name'"));
+          test_msg("Expected user '$expected', got '$user_name'"));
 
         $expected = 'sftp';
         $self->assert($expected eq $service_name,
-          test_msg("Expected '$expected', got '$service_name'"));
+          test_msg("Expected service '$expected', got '$service_name'"));
 
         $expected = 'c';
         $self->assert($expected eq $completion_status,
-          test_msg("Expected '$expected', got '$completion_status'"));
+          test_msg("Expected completion status '$expected', got '$completion_status'"));
 
         $ok = 1;
         last;
@@ -34909,6 +34963,11 @@ sub sftp_log_xferlog_delete {
           test_msg("Expected '$expected', got '$client_addr'"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -35379,6 +35438,11 @@ sub sftp_log_xferlog_upload {
           test_msg("Expected $expected, got $nbytes"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -35617,6 +35681,11 @@ sub sftp_log_xferlog_upload_incomplete {
           test_msg("Expected $expected, got $nbytes"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -38009,20 +38078,36 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
         my $expected;
 
         if ($cmd eq 'RNFR') {
-          $expected = '-';
 
+          $expected = '-';
           $self->assert($expected eq $whence,
             test_msg("Expected '$expected', got '$whence'"));
+ 
+          $expected = $test_file1;
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack to deal with how it handles tmp files
+            $expected = ('/private' . $expected);
+          }
+
           $self->assert($expected eq $whither,
             test_msg("Expected '$expected', got '$whither'"));
 
         } elsif ($cmd eq 'RNTO') {
           $expected = $test_file1;
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack to deal with how it handles tmp files
+            $expected = ('/private' . $expected);
+          }
 
           $self->assert($expected eq $whence,
             test_msg("Expected '$expected', got '$whence'"));
 
           $expected = $test_file2;
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack to deal with how it handles tmp files
+            $expected = ('/private' . $expected);
+          }
+
           $self->assert($expected eq $whither,
             test_msg("Expected '$expected', got '$whither'"));
 
@@ -38234,8 +38319,14 @@ sub sftp_log_extlog_var_f_remove {
 
         next unless $cmd eq 'DELE';
 
-        $self->assert($test_file eq $path,
-          test_msg("Expected '$test_file', got '$path'"));
+        my $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
+        $self->assert($expected eq $path,
+          test_msg("Expected file '$expected', got '$path'"));
 
         $ok = 1;
         last;
