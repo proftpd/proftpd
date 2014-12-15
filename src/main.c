@@ -844,7 +844,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
       /* Detect known commands for other protocols; if found, drop the
        * connection, lest we be used as part of an attack on a different
-       * protocol server (Bug#XXXX).
+       * protocol server (Bug#4143).
        */
       if (cmd->is_ftp == FALSE) {
         pr_log_pri(PR_LOG_WARNING,

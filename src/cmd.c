@@ -112,7 +112,7 @@ static struct cmd_entry cmd_ids[] = {
   { NULL,	0 }
 };
 
-/* Due to potential XSS issues (see Bug#XXXX), we want to explicitly
+/* Due to potential XSS issues (see Bug#4143), we want to explicitly
  * check for commands from other text-based protocols (e.g. HTTP and SMTP);
  * if we see these, we want to close the connection with extreme prejudice.
  */
