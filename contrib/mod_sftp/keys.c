@@ -1293,6 +1293,26 @@ int sftp_keys_validate_ecdsa_params(const EC_GROUP *group,
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
+#ifdef SFTP_DEBUG_KEYS
+static void debug_rsa_key(pool *p, const char *label, RSA *rsa) {
+  BIO *bio = NULL;
+  char *data;
+  long datalen;
+
+  bio = BIO_new(BIO_s_mem());
+  RSA_print(bio, rsa, 0);
+  BIO_flush(bio);
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL &&
+      datalen > 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", label);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", data);
+  }
+
+  BIO_free(bio);
+}
+#endif
+
 /* Compare a "blob" of pubkey data sent by the client for authentication
  * with a file pubkey (from an RFC4716 formatted file).  Returns -1 if
  * there was an error, TRUE if the keys are equals, and FALSE if not.
@@ -1327,6 +1347,11 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
 
         client_rsa = EVP_PKEY_get1_RSA(client_pkey);
         file_rsa = EVP_PKEY_get1_RSA(file_pkey);
+
+#ifdef SFTP_DEBUG_KEYS
+        debug_rsa_key(p, "client-sent RSA key:", client_rsa);
+        debug_rsa_key(p, "file RSA key:", file_rsa);
+#endif
 
         if (BN_cmp(client_rsa->e, file_rsa->e) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
@@ -2784,11 +2809,24 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       rsa = EVP_PKEY_get1_RSA(pkey);
       modulus_len = RSA_size(rsa);
 
+      /* If the signature provided by the client is more than the expected
+       * key length, the verification will fail.
+       */
+      if (sig_len > modulus_len) {
+        RSA_free(rsa);
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error verifying RSA signature: "
+          "signature len (%lu) > RSA modulus len (%u)",
+          (unsigned long) sig_len, modulus_len);
+        errno = EINVAL;
+        return -1;
+
       /* If the signature provided by the client is less than the expected
        * key length, the verification will fail.  In such cases, we need to
-       * pad the provided signature with trailing zeros (Bug#3992).
+       * pad the provided signature with leading zeros (Bug#3992).
        */
-      if (sig_len < modulus_len) {
+      } else if (sig_len < modulus_len) {
         unsigned int padding_len;
         unsigned char *padded_sig;
 
