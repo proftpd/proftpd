@@ -45,6 +45,26 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  hiddenstores_timeout_idle_bug4035 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  hiddenstores_timeout_notransfer_bug4035 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  hiddenstores_timeout_stalled_bug4035 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  hiddenstores_timeout_session_bug4035 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -924,6 +944,471 @@ sub hiddenstores_pid_var_bug4062 {
   }
 
   unlink($log_file);
+}
+
+sub hiddenstores_timeout_idle_bug4035 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $timeout_idle = 4;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    DefaultChdir => '~',
+
+    HiddenStores => 'on',
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("Failed to STOR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      # Sleep for longer than the TimeoutIdle
+      sleep($timeout_idle + 1);
+
+      my $buf = "Hello, World!\n";
+      $conn->write($buf, length($buf), 25);
+
+      unless (-f $hidden_file) {
+        die("File $hidden_file does not exist as expected");
+      }
+
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
+
+      if ($^O eq 'darwin') {
+        # MacOSX hack
+        $test_file = ('/private' . $test_file);
+        $hidden_file = ('/private' . $hidden_file);
+      }
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub hiddenstores_timeout_notransfer_bug4035 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $timeout_noxfer = 2;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'timer:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    DefaultChdir => '~',
+
+    HiddenStores => 'on',
+    TimeoutNoTransfer => $timeout_noxfer,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("Failed to STOR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      # Sleep for longer than the TimeoutNoTransfer
+      sleep($timeout_noxfer + 1);
+
+      my $buf = "Hello, World!\n";
+      $conn->write($buf, length($buf), 25);
+
+      unless (-f $hidden_file) {
+        die("File $hidden_file does not exist as expected");
+      }
+
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
+
+      if ($^O eq 'darwin') {
+        # MacOSX hack
+        $test_file = ('/private' . $test_file);
+        $hidden_file = ('/private' . $hidden_file);
+      }
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub hiddenstores_timeout_stalled_bug4035 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $timeout_stalled = 2;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    DefaultChdir => '~',
+
+    HiddenStores => 'on',
+    TimeoutStalled => $timeout_stalled,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("Failed to STOR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      # Sleep for longer than the TimeoutStalled
+      sleep($timeout_stalled + 1);
+
+      my $buf = "Hello, World!\n";
+      $conn->write($buf, length($buf), 25);
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $client->quit() };
+      unless ($@) {
+        die("QUIT succeeded unexpectedly");
+      }
+
+      if ($^O eq 'darwin') {
+        # MacOSX hack
+        $test_file = ('/private' . $test_file);
+        $hidden_file = ('/private' . $hidden_file);
+      }
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      if (-f $test_file) {
+        die("File $test_file exists unexpectedly");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub hiddenstores_timeout_session_bug4035 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $timeout_session = 2;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    DefaultChdir => '~',
+
+    HiddenStores => 'on',
+    TimeoutSession => $timeout_session,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("Failed to STOR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      # Sleep for longer than the TimeoutSession
+      sleep($timeout_session + 2);
+
+      my $buf = "Hello, World!\n";
+      $conn->write($buf, length($buf), 25);
+
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 421;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      eval { $client->quit() };
+      unless ($@) {
+        die("QUIT succeeded unexpectedly");
+      }
+
+      if ($^O eq 'darwin') {
+        # MacOSX hack
+        $test_file = ('/private' . $test_file);
+        $hidden_file = ('/private' . $hidden_file);
+      }
+
+      if (-f $hidden_file) {
+        die("File $hidden_file exists unexpectedly");
+      }
+
+      if (-f $test_file) {
+        die("File $test_file exists unexpectedly");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

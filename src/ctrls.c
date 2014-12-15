@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Controls API routines
- * $Id: ctrls.c,v 1.40 2013-05-28 21:02:02 castaglia Exp $
- */
+/* Controls API routines */
 
 #include "conf.h"
 #include "privs.h"
@@ -44,6 +42,12 @@
 #ifdef PR_USE_CTRLS
 
 #include "mod_ctrls.h"
+
+/* Maximum number of request arguments. */
+#define CTRLS_MAX_NREQARGS	32
+
+/* Maximum number of response arguments. */
+#define CTRLS_MAX_NRESPARGS	1024
 
 /* Maximum length of a single request argument. */
 #define CTRLS_MAX_REQARGLEN	256
@@ -378,7 +382,8 @@ int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg, size_t ctrls_arglen) {
 int pr_ctrls_copy_args(pr_ctrls_t *src_ctrl, pr_ctrls_t *dst_ctrl) {
 
   /* Sanity checks */
-  if (!src_ctrl || !dst_ctrl) {
+  if (src_ctrl == NULL ||
+      dst_ctrl == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -386,13 +391,14 @@ int pr_ctrls_copy_args(pr_ctrls_t *src_ctrl, pr_ctrls_t *dst_ctrl) {
   /* If source ctrl has no ctrls_cb_args member, there's nothing to be
    * done.
    */
-  if (!src_ctrl->ctrls_cb_args)
+  if (src_ctrl->ctrls_cb_args == NULL) {
     return 0;
+  }
 
   /* Make sure the pr_ctrls_t has a temporary pool, from which the args will
    * be allocated.
    */
-  if (!dst_ctrl->ctrls_tmp_pool) {
+  if (dst_ctrl->ctrls_tmp_pool == NULL) {
     dst_ctrl->ctrls_tmp_pool = make_sub_pool(ctrls_pool);
     pr_pool_tag(dst_ctrl->ctrls_tmp_pool, "ctrls tmp pool");
   }
@@ -520,10 +526,10 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   char reqaction[128] = {'\0'}, *reqarg = NULL;
   size_t reqargsz = 0;
   unsigned int nreqargs = 0, reqarglen = 0;
-  int status = 0;
+  int bread, status = 0;
   register int i = 0;
 
-  if (!cl) {
+  if (cl == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -542,7 +548,8 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
    * the same function, pr_ctrls_send_msg(), is used to send requests
    * as well as responses, and the status is a necessary part of a response.
    */
-  if (read(cl->cl_fd, &status, sizeof(int)) < 0) {
+  bread = read(cl->cl_fd, &status, sizeof(int));
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
@@ -550,14 +557,44 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     errno = xerrno;
     return -1;
   }
+
+  /* Watch for short reads. */
+  if (bread != sizeof(int)) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of status, unable to receive request",
+      bread, (unsigned int) sizeof(int));
+    pr_signals_unblock();
+    errno = EPERM;
+    return -1;
+  }
  
   /* Read in the args, length first, then string. */
-  if (read(cl->cl_fd, &nreqargs, sizeof(unsigned int)) < 0) {
+  bread = read(cl->cl_fd, &nreqargs, sizeof(unsigned int));
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
 
     errno = xerrno;
+    return -1;
+  }
+
+  /* Watch for short reads. */
+  if (bread != sizeof(unsigned int)) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of nreqargs, unable to receive request",
+      bread, (unsigned int) sizeof(unsigned int));
+    pr_signals_unblock();
+    errno = EPERM;
+    return -1;
+  }
+
+  if (nreqargs > CTRLS_MAX_NREQARGS) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "nreqargs (%u) exceeds max (%u), rejecting", nreqargs,
+      CTRLS_MAX_NREQARGS);
+    pr_signals_unblock();
+    errno = ENOMEM;
     return -1;
   }
 
@@ -567,12 +604,23 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
    * matching pr_ctrls_t (if present), and add the remaining arguments to it.
    */
   
-  if (read(cl->cl_fd, &reqarglen, sizeof(unsigned int)) < 0) {
+  bread = read(cl->cl_fd, &reqarglen, sizeof(unsigned int));
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
 
     errno = xerrno;
+    return -1;
+  }
+
+  /* Watch for short reads. */
+  if (bread != sizeof(unsigned int)) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of reqarglen, unable to receive request",
+      bread, (unsigned int) sizeof(unsigned int));
+    pr_signals_unblock();
+    errno = EPERM;
     return -1;
   }
 
@@ -584,12 +632,23 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
   memset(reqaction, '\0', sizeof(reqaction));
 
-  if (read(cl->cl_fd, reqaction, reqarglen) < 0) {
+  bread = read(cl->cl_fd, reqaction, reqarglen);
+  if (bread < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
 
     errno = xerrno;
+    return -1;
+  }
+
+  /* Watch for short reads. */
+  if (bread != reqarglen) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of reqaction, unable to receive request",
+      bread, reqarglen);
+    pr_signals_unblock();
+    errno = EPERM;
     return -1;
   }
 
@@ -609,7 +668,8 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   for (i = 0; i < nreqargs; i++) {
     memset(reqarg, '\0', reqargsz);
 
-    if (read(cl->cl_fd, &reqarglen, sizeof(unsigned int)) < 0) {
+    bread = read(cl->cl_fd, &reqarglen, sizeof(unsigned int));
+    if (bread < 0) {
       int xerrno = errno;
 
       pr_signals_unblock();
@@ -618,12 +678,23 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
       return -1;
     }
 
+    /* Watch for short reads. */
+    if (bread != sizeof(unsigned int)) {
+      (void) pr_trace_msg(trace_channel, 3,
+        "short read (%d of %u bytes) of reqarglen (#%u), skipping",
+        bread, i+1, (unsigned int) sizeof(unsigned int));
+      continue;
+    }
+
     if (reqarglen == 0) {
       /* Skip any zero-length arguments. */
       continue;
     }
 
     if (reqarglen > CTRLS_MAX_REQARGLEN) {
+      (void) pr_trace_msg(trace_channel, 3,
+        "reqarglen (#%u) of %u bytes exceeds max (%u bytes), rejecting",
+        i+1, reqarglen, CTRLS_MAX_REQARGLEN);
       pr_signals_unblock();
       errno = ENOMEM;
       return -1;
@@ -644,13 +715,22 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
       reqarg = pcalloc(ctrl->ctrls_tmp_pool, reqargsz);
     }
 
-    if (read(cl->cl_fd, reqarg, reqarglen) < 0) {
+    bread = read(cl->cl_fd, reqarg, reqarglen);
+    if (bread < 0) {
       int xerrno = errno;
 
       pr_signals_unblock();
 
       errno = xerrno;
       return -1;
+    }
+
+    /* Watch for short reads. */
+    if (bread != reqarglen) {
+      (void) pr_trace_msg(trace_channel, 3,
+        "short read (%d of %u bytes) of reqarg (#%u), skipping",
+        bread, i+1, reqarglen);
+      continue;
     }
 
     if (pr_ctrls_add_arg(ctrl, reqarg, reqarglen)) {
@@ -677,6 +757,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
   while (next_ctrl) {
     if (pr_ctrls_copy_args(ctrl, next_ctrl)) {
+      pr_signals_unblock();
       return -1;
     }
 
@@ -702,7 +783,9 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
   char response[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
   /* Sanity checks */
-  if (!resp_pool || ctrls_sockfd < 0 || !status) {
+  if (resp_pool == NULL ||
+      ctrls_sockfd < 0 ||
+      status == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -723,6 +806,15 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
   if (read(ctrls_sockfd, &respargc, sizeof(unsigned int)) !=
       sizeof(unsigned int)) {
     pr_signals_unblock();
+    return -1;
+  }
+
+  if (respargc > CTRLS_MAX_NRESPARGS) {
+    (void) pr_trace_msg(trace_channel, 3,
+      "respargc (%u) exceeds max (%u), rejecting", respargc,
+      CTRLS_MAX_NRESPARGS);
+    pr_signals_unblock();
+    errno = ENOMEM;
     return -1;
   }
 
@@ -1014,7 +1106,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (fcntl(sockfd, F_SETFD, FD_CLOEXEC) < 0) {
     int xerrno = errno;
 
-    close(sockfd);
+    (void) close(sockfd);
+    pr_signals_unblock();
 
     errno = xerrno;
     return -1;
@@ -1036,13 +1129,14 @@ int pr_ctrls_connect(const char *socket_file) {
   len = sizeof(cl_sock);
 
   /* Make sure the file doesn't already exist */
-  unlink(cl_sock.sun_path);
+  (void) unlink(cl_sock.sun_path);
 
   /* Make it a socket */
   if (bind(sockfd, (struct sockaddr *) &cl_sock, len) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;
@@ -1053,7 +1147,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (chmod(cl_sock.sun_path, PR_CTRLS_CL_MODE) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;
@@ -1070,7 +1165,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (connect(sockfd, (struct sockaddr *) &ctrl_sock, len) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;
@@ -1082,7 +1178,8 @@ int pr_ctrls_connect(const char *socket_file) {
   if (ctrls_connect_local_creds(sockfd) < 0) {
     int xerrno = errno;
 
-    unlink(cl_sock.sun_path);
+    (void) unlink(cl_sock.sun_path);
+    (void) close(sockfd);
     pr_signals_unblock();
 
     errno = xerrno;
@@ -1117,10 +1214,15 @@ int pr_ctrls_issock_unix(mode_t sock_mode) {
 #if defined(SO_PEERCRED)
 static int ctrls_get_creds_peercred(int sockfd, uid_t *uid, gid_t *gid,
     pid_t *pid) {
+# if defined(HAVE_STRUCT_SOCKPEERCRED)
+  struct sockpeercred cred;
+# else
   struct ucred cred;
-  socklen_t credlen = sizeof(cred);
+# endif /* HAVE_STRUCT_SOCKPEERCRED */
+  socklen_t cred_len;
 
-  if (getsockopt(sockfd, SOL_SOCKET, SO_PEERCRED, &cred, &credlen) < 0) {
+  cred_len = sizeof(cred);
+  if (getsockopt(sockfd, SOL_SOCKET, SO_PEERCRED, &cred, &cred_len) < 0) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
@@ -1131,14 +1233,17 @@ static int ctrls_get_creds_peercred(int sockfd, uid_t *uid, gid_t *gid,
     return -1;
   }
 
-  if (uid)
+  if (uid) {
     *uid = cred.uid;
+  }
 
-  if (gid)
+  if (gid) {
     *gid = cred.gid;
+  }
 
-  if (pid)
+  if (pid) {
     *pid = cred.pid;
+  }
 
   return 0;
 }

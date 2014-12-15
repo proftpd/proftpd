@@ -114,6 +114,7 @@ static xaset_t *log_set = NULL;
    %w                   - RNFR path ("whence" a rename comes, i.e. the source)
    %{file-modified}     - Indicates whether a file is being modified
                           (i.e. already exists) or not.
+   %{file-offset}       - Contains the offset at which the file is read/written
    %{iso8601}           - ISO-8601 timestamp: YYYY-MM-dd HH:mm:ss,SSS
                             for example: "1999-11-27 15:49:37,459"
    %{microsecs}         - 6 digits of microseconds of current time
@@ -195,6 +196,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
         if (strncmp(tmp, "{file-modified}", 15) == 0) {
           add_meta(&outs, LOGFMT_META_FILE_MODIFIED, 0);
           tmp += 15;
+          continue;
+        }
+
+        if (strncmp(tmp, "{file-offset}", 13) == 0) {
+          add_meta(&outs, LOGFMT_META_FILE_OFFSET, 0);
+          tmp += 13;
           continue;
         }
 
@@ -1685,6 +1692,28 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
       } else {
         sstrncpy(argp, "false", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
+
+    case LOGFMT_META_FILE_OFFSET: {
+      off_t *offset;
+
+      argp = arg;
+
+      offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
+      if (offset) {
+        char offset_str[1024];
+
+        memset(offset_str, '\0', sizeof(offset_str));
+        snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
+          (pr_off_t) *offset);
+        sstrncpy(argp, offset_str, sizeof(arg));
+
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
       }
 
       m++;

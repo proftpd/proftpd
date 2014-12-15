@@ -2711,12 +2711,14 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     }
   }
 
-  /* Add a note indicating that this is a failed transfer. */
-  if (pr_table_add(cmd->notes, "mod_sftp.file-status",
-      pstrdup(fxh->pool, "failed"), 0) < 0) {
-    if (errno != EEXIST) {
-      pr_trace_msg(trace_channel, 3,
-        "error stashing file status in command notes: %s", strerror(errno));
+  if (cmd != NULL) {
+    /* Add a note indicating that this is a failed transfer. */
+    if (pr_table_add(cmd->notes, "mod_sftp.file-status",
+        pstrdup(fxh->pool, "failed"), 0) < 0) {
+      if (errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error stashing file status in command notes: %s", strerror(errno));
+      }
     }
   }
 
@@ -2751,9 +2753,11 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
           "removing aborted uploaded file '%s'", curr_path);
 
         if (pr_fsio_unlink(curr_path) < 0) {
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error unlinking file '%s': %s", curr_path,
-            strerror(errno));
+          if (errno != ENOENT) { 
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "error unlinking file '%s': %s", curr_path,
+              strerror(errno));
+          }
         }
       }
     }
@@ -3857,7 +3861,11 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  pr_fsio_set_block(fh);
+  if (pr_fsio_set_block(fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
+      fh->fh_path, strerror(errno));
+  }
 
   if (pr_fsio_lseek(fh, offset, SEEK_SET) < 0) {
     xerrno = errno;
@@ -4131,8 +4139,8 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
@@ -4431,8 +4439,13 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
-  pr_table_add(session.notes, "mod_core.rnfr-path",
-    pstrdup(session.pool, src), 0);
+  if (pr_table_add(session.notes, "mod_core.rnfr-path",
+      pstrdup(session.pool, src), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
+    }
+  }
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, dst);
   cmd3->cmd_class = CL_MISC|CL_WRITE;
@@ -4544,8 +4557,8 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EEXIST));
     pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
@@ -5361,7 +5374,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
         (void) pr_table_remove(cmd2->notes, "mod_xfer.file-modified", NULL);
 
         if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
-            pstrdup(cmd->pool, "true"), 0) < 0) {
+            pstrdup(cmd2->pool, "true"), 0) < 0) {
           if (errno != EEXIST) {
             pr_log_pri(PR_LOG_NOTICE,
               "notice: error adding 'mod_xfer.file-modified' note: %s",
@@ -7451,7 +7464,6 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
        * they didn't, however, we need to be prepared with a fallback.
        */
       if (xerrno != ENOENT &&
-          xerrno != EACCES &&
           xerrno != EPERM &&
 #if defined(EDQUOT)
           xerrno != EDQUOT &&
@@ -7469,8 +7481,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       status_code = fxp_errno2status(xerrno, &reason);
 
       pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+        "('%s' [%d])", (unsigned long) status_code, reason, strerror(errno),
+        xerrno);
 
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
       pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -7529,7 +7541,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       (void) pr_table_remove(cmd2->notes, "mod_xfer.file-modified", NULL);
 
       if (pr_table_add(cmd2->notes, "mod_xfer.file-modified",
-          pstrdup(cmd->pool, "true"), 0) < 0) {
+          pstrdup(cmd2->pool, "true"), 0) < 0) {
         if (errno != EEXIST) {
           pr_log_pri(PR_LOG_NOTICE,
             "notice: error adding 'mod_xfer.file-modified' note: %s",
@@ -7606,7 +7618,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  pr_fsio_set_block(fh);
+  if (pr_fsio_set_block(fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
+      fh->fh_path, strerror(errno));
+  }
  
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
@@ -8153,7 +8169,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 
 static int fxp_handle_read(struct fxp_packet *fxp) {
   unsigned char *buf, *data = NULL, *ptr;
-  char *cmd_name, *name;
+  char *file, *name, *ptr2;
   int res;
   uint32_t buflen, bufsz, datalen;
   uint64_t offset;
@@ -8306,13 +8322,21 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     PR_SCORE_XFER_DONE, (off_t) offset,
     NULL);
 
-  cmd_name = cmd->argv[0];
-  pr_cmd_set_name(cmd, C_RETR);
+  /* Trim the full path to just the filename, for our RETR command. */
+  ptr2 = strrchr(fxh->fh->fh_path, '/');
+  if (ptr2 != NULL &&
+      ptr2 != fxh->fh->fh_path) {
+    file = pstrdup(fxp->pool, ptr2 + 1);
+
+  } else {
+    file = fxh->fh->fh_path;
+  }
+
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, file);
+  cmd2->cmd_class = CL_WRITE|CL_SFTP;
 
   if (!dir_check(fxp->pool, cmd, G_READ, fxh->fh->fh_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
-
-    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "READ of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -8332,7 +8356,6 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  pr_cmd_set_name(cmd, cmd_name);
 
   /* XXX Check MaxRetrieveFileSize */
 
@@ -8386,6 +8409,14 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
       return fxp_packet_write(resp);
 
     } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're reading from this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
+
       /* No error. */
       errno = 0;
     }
@@ -8817,7 +8848,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 static int fxp_handle_readlink(struct fxp_packet *fxp) {
   char data[PR_TUNABLE_PATH_MAX + 1];
   unsigned char *buf, *ptr;
-  char *path;
+  char *path, *resolved_path;
   int res;
   uint32_t buflen, bufsz;
   struct fxp_packet *resp;
@@ -8875,8 +8906,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
-  if (path == NULL) {
+  resolved_path = dir_best_path(fxp->pool, cmd->arg);
+  if (resolved_path == NULL) {
     int xerrno = EACCES;
     const char *reason;
     uint32_t status_code;
@@ -8902,12 +8933,12 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (!dir_check(fxp->pool, cmd, G_READ, path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_READ, resolved_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "READLINK of '%s' blocked by <Limit %s> configuration", path,
-      cmd->argv[0]);
+      "READLINK of '%s' (resolved to '%s') blocked by <Limit %s> configuration",
+      path, resolved_path, cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -9533,8 +9564,8 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -9741,8 +9772,13 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  pr_table_add(session.notes, "mod_core.rnfr-path",
-    pstrdup(session.pool, old_path), 0);
+  if (pr_table_add(session.notes, "mod_core.rnfr-path",
+      pstrdup(session.pool, old_path), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 8,
+        "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
+    }
+  }
 
   cmd3 = fxp_cmd_alloc(fxp->pool, C_RNTO, new_path);
   cmd3->cmd_class = CL_MISC|CL_WRITE;
@@ -9853,8 +9889,8 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
@@ -10929,7 +10965,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
 static int fxp_handle_write(struct fxp_packet *fxp) {
   unsigned char *buf, *data, *ptr;
-  char cmd_arg[256], *cmd_name, *name;
+  char cmd_arg[256], *file, *name, *ptr2;
   int res;
   uint32_t buflen, bufsz, datalen, status_code;
   uint64_t offset;
@@ -11077,13 +11113,21 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   }
 #endif
 
-  cmd_name = cmd->argv[0];
-  pr_cmd_set_name(cmd, C_STOR);
+  /* Trim the full path to just the filename, for our STOR command. */
+  ptr2 = strrchr(fxh->fh->fh_path, '/');
+  if (ptr2 != NULL &&
+      ptr2 != fxh->fh->fh_path) {
+    file = pstrdup(fxp->pool, ptr2 + 1);
 
-  if (!dir_check(fxp->pool, cmd, G_WRITE, fxh->fh->fh_path, NULL)) {
+  } else {
+    file = fxh->fh->fh_path;
+  }
+ 
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, file);
+  cmd2->cmd_class = CL_WRITE|CL_SFTP;
+
+  if (!dir_check(fxp->pool, cmd2, G_WRITE, fxh->fh->fh_path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
-
-    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "WRITE of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -11103,7 +11147,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  pr_cmd_set_name(cmd, cmd_name);
 
   if (fxp_path_pass_regex_filters(fxp->pool, "WRITE", fxh->fh->fh_path) < 0) {
     status_code = fxp_errno2status(errno, NULL);
@@ -11150,6 +11193,15 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
       resp->payload_sz = (bufsz - buflen);
   
       return fxp_packet_write(resp);
+
+    } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're writing to this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
     }
   }
 
@@ -11243,7 +11295,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
         pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
           "('%s' [%d])", (unsigned long) status_code, reason,
-          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+          strerror(xerrno), xerrno);
 
         fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
           NULL);

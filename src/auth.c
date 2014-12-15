@@ -1711,8 +1711,10 @@ int pr_auth_chroot(const char *path) {
   int res, xerrno = 0;
   time_t now;
 
-#if defined(HAVE_SETENV) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
-  __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
+#if defined(HAVE_SETENV) && \
+    defined(__GLIBC__) && \
+    defined(__GLIBC_MINOR__) && \
+    __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
   char *tz;
 
   tz = pr_env_get(session.pool, "TZ"); 
@@ -1725,6 +1727,8 @@ int pr_auth_chroot(const char *path) {
     } else {
       pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
     }
+  } else {
+    pr_log_debug(DEBUG10, "TZ environment variable already set to '%s'", tz);
   }
 #endif
 

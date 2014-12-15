@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp Display files
- * Copyright (c) 2010-2013 TJ Saunders
+ * Copyright (c) 2010-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,23 +22,26 @@
  * source distribution.
  */
 
-/* Display of files
- * $Id: display.c,v 1.12 2013-09-25 16:08:50 castaglia Exp $
- */
+/* Display of files */
 
 #include "mod_sftp.h"
 #include "display.h"
 #include "packet.h"
 #include "msg.h"
 
+/* Note: The size provided by pr_fs_getsize2() is in KB, not bytes. */
 static void format_size_str(char *buf, size_t buflen, off_t size) {
-  char *units[] = {"", "K", "M", "G", "T", "P"};
-  unsigned int nunits = 6;
+  char *units[] = {"K", "M", "G", "T", "P", "E", "Z", "Y"};
+  unsigned int nunits = 8;
   register unsigned int i = 0;
+  int res;
 
-  /* Determine the appropriate units label to use. */
+  /* Determine the appropriate units label to use. Do not exceed the max
+   * possible unit support (yottabytes), by ensuring that i maxes out at
+   * index 7 (of 8 possible units).
+   */
   while (size > 1024 &&
-         i < nunits) {
+         i < (nunits - 1)) {
     pr_signals_handle();
 
     size /= 1024;
@@ -46,7 +49,15 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
   }
 
   /* Now, prepare the buffer. */
-  snprintf(buf, buflen, "%.3" PR_LU "%sB", (pr_off_t) size, units[i]);
+  res = snprintf(buf, buflen, "%.3" PR_LU "%sB", (pr_off_t) size, units[i]);
+
+  if (res > 2) {
+    /* Check for leading zeroes; it's an aethetic choice. */
+    if (buf[0] == '0' && buf[1] != '.') {
+      memmove(&buf[0], &buf[1], res-1);
+      buf[res-1] = '\0';
+    }
+  }
 }
 
 const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
@@ -67,8 +78,9 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
-  pr_fsio_fstat(fh, &st);
-  fh->fh_iosz = st.st_blksize;
+  if (pr_fsio_fstat(fh, &st) == 0) {
+    fh->fh_iosz = st.st_blksize;
+  }
 
   res = pr_fs_fgetsize(fh->fh_fd, &fs_size);
   if (res < 0 &&

@@ -865,7 +865,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  pr_fsio_set_block(src_fh);
+  if (pr_fsio_set_block(src_fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error putting '%s' into blocking mode: %s", src, strerror(errno));
+  }
 
   /* Do not allow copying of directories. open(2) may not fail when
    * opening the source path, since it is only doing a read-only open,
@@ -873,7 +876,11 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    */
 
   /* This should never fail. */
-  (void) pr_fsio_fstat(src_fh, &src_st);
+  if (pr_fsio_fstat(src_fh, &src_st) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error fstat'ing '%s': %s", src, strerror(errno));
+  }
+
   if (S_ISDIR(src_st.st_mode)) {
     int xerrno = EISDIR;
 
@@ -2395,7 +2402,7 @@ int pr_fs_use_encoding(int bool) {
   return curr_setting;
 }
 
-char *pr_fs_decode_path(pool *p, const char *path) {
+char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
 #ifdef PR_USE_NLS
   size_t outlen;
   char *res;
@@ -2412,8 +2419,10 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 
   res = pr_decode_str(p, path, strlen(path), &outlen);
   if (res == NULL) {
+    int xerrno = errno;
+
     pr_trace_msg("encode", 1, "error decoding path '%s': %s", path,
-      strerror(errno));
+      strerror(xerrno));
 
     if (pr_trace_get_level("encode") >= 14) {
       /* Write out the path we tried (and failed) to decode, in hex. */
@@ -2434,6 +2443,20 @@ char *pr_fs_decode_path(pool *p, const char *path) {
         raw_path);
     } 
 
+    if (flags & FSIO_DECODE_FL_TELL_ERRORS) {
+      unsigned long policy;
+
+      policy = pr_encode_get_policy();
+      if (policy & PR_ENCODE_POLICY_FL_REQUIRE_VALID_ENCODING) {
+        /* Note: At present, we DO return null here to callers, to indicate
+         * the illegal encoding (Bug#4125), if configured to do so via
+         * e.g. the RequireValidEncoding LangOption.
+         */
+        errno = xerrno;
+        return NULL;
+      }
+    }
+
     return (char *) path;
   }
 
@@ -2442,6 +2465,10 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 #else
   return (char *) path;
 #endif /* PR_USE_NLS */
+}
+
+char *pr_fs_decode_path(pool *p, const char *path) {
+  return pr_fs_decode_path2(p, path, 0);
 }
 
 char *pr_fs_encode_path(pool *p, const char *path) {
@@ -2461,8 +2488,10 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 
   res = pr_encode_str(p, path, strlen(path), &outlen);
   if (res == NULL) {
+    int xerrno = errno;
+
     pr_trace_msg("encode", 1, "error encoding path '%s': %s", path,
-      strerror(errno));
+      strerror(xerrno));
 
     if (pr_trace_get_level("encode") >= 14) {
       /* Write out the path we tried (and failed) to encode, in hex. */
@@ -2482,6 +2511,11 @@ char *pr_fs_encode_path(pool *p, const char *path) {
       pr_trace_msg("encode", 14, "unable to encode path (raw bytes): %s",
         raw_path);
     } 
+
+    /* Note: At present, we do NOT return null here to callers; we assume
+     * that all local names, being encoded for the remote client, are OK.
+     * Revisit this assumption if necessary (Bug#4125).
+     */
 
     return (char *) path;
   }
@@ -4875,7 +4909,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
@@ -4926,7 +4960,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
 # elif defined(HAVE_STATFS)
   struct statfs fs;
@@ -4977,11 +5011,14 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
-  return 0;
+  res = 0;
 
+# else
+  errno = ENOSYS:
+  res = -1;
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
-  errno = ENOSYS;
-  return -1;
+
+  return res;
 }
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \

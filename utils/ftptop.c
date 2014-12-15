@@ -1,7 +1,7 @@
 /*
  * ProFTPD - ftptop: a utility for monitoring proftpd sessions
  * Copyright (c) 2000-2002 TJ Saunders <tj@castaglia.org>
- * Copyright (c) 2003-2013 The ProFTPD Project team
+ * Copyright (c) 2003-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -310,6 +310,11 @@ static void process_opts(int argc, char *argv[]) {
         break;
 
       case 'S':
+        if (server_name != NULL) {
+          free(server_name);
+          server_name = NULL;
+        }
+
         server_name = strdup(optarg);
         break;
 
@@ -411,9 +416,10 @@ static void read_scoreboard(void) {
     char *status = "A";
 
     /* If a ServerName was given, skip unless the scoreboard entry matches. */
-    if (server_name &&
-        strcmp(server_name, score->sce_server_label) != 0)
+    if (server_name != NULL &&
+        strcmp(server_name, score->sce_server_label) != 0) {
       continue;
+    }
 
     /* Clear the buffer for this run. */
     memset(buf, '\0', sizeof(buf));

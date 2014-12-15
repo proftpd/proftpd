@@ -246,7 +246,7 @@ static unsigned char radius_last_acct_pkt_id = 0;
 
 /* Convenience macros. */
 #define RADIUS_IS_VAR(str) \
-  str[0] == '$' && str[1] == '(' && str[strlen(str)-1] == ')'
+  ((str[0] == '$') && (str[1] == '(') && (str[strlen(str)-1] == ')'))
 
 /* Function prototypes. */
 static void radius_add_attrib(radius_packet_t *, unsigned char,
@@ -257,7 +257,6 @@ static void radius_build_packet(radius_packet_t *, const unsigned char *,
   const unsigned char *, unsigned char *);
 static unsigned char radius_have_var(char *);
 static int radius_closelog(void);
-static int radius_close_socket(int);
 static void radius_get_acct_digest(radius_packet_t *, unsigned char *);
 static radius_attrib_t *radius_get_attrib(radius_packet_t *, unsigned char);
 static void radius_get_rnd_digest(radius_packet_t *);
@@ -349,7 +348,7 @@ static unsigned char radius_have_var(char *var) {
   }
 
   /* Must start with '$(', and end with ')'. */
-  if (!RADIUS_IS_VAR(var)) {
+  if (RADIUS_IS_VAR(var) == FALSE) {
     return FALSE;
   }
 
@@ -1039,7 +1038,7 @@ static void radius_process_group_info(config_rec *c) {
    */
 
   param = (char *) c->argv[0];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_prime_group_name_attr_id,
       &radius_prime_group_name);
 
@@ -1117,7 +1116,7 @@ static void radius_process_quota_info(config_rec *c) {
    */
 
   param = (char *) c->argv[0];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_per_sess_attr_id,
       &radius_quota_per_sess);
 
@@ -1132,7 +1131,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[1];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_limit_type_attr_id,
       &radius_quota_limit_type);
 
@@ -1147,7 +1146,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[2];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_bytes_in_attr_id,
       &radius_quota_bytes_in);
 
@@ -1169,7 +1168,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[3];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_bytes_out_attr_id,
       &radius_quota_bytes_out);
 
@@ -1191,7 +1190,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[4];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_bytes_xfer_attr_id,
       &radius_quota_bytes_xfer);
 
@@ -1213,7 +1212,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[5];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_files_in_attr_id,
       &radius_quota_files_in);
 
@@ -1232,7 +1231,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[6];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_files_out_attr_id,
       &radius_quota_files_out);
 
@@ -1251,7 +1250,7 @@ static void radius_process_quota_info(config_rec *c) {
   }
 
   param = (char *) c->argv[7];
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_quota_files_xfer_attr_id,
       &radius_quota_files_xfer);
 
@@ -1297,7 +1296,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Process the UID string. */
   param = (char *) c->argv[0];
 
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     char *endp = NULL, *value = NULL;
 
     radius_parse_var(param, &radius_uid_attr_id, &value);
@@ -1333,7 +1332,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Process the GID string. */
   param = (char *) c->argv[1];
 
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     char *endp = NULL, *value = NULL;
 
     radius_parse_var(param, &radius_gid_attr_id, &value);
@@ -1369,7 +1368,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Parse the home directory string. */
   param = (char *) c->argv[2];
 
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_home_attr_id, &radius_passwd.pw_dir);
 
     if (*radius_passwd.pw_dir != '/') {
@@ -1387,7 +1386,7 @@ static void radius_process_user_info(config_rec *c) {
   /* Process the shell string. */
   param = (char *) c->argv[3];
   
-  if (RADIUS_IS_VAR(param)) {
+  if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_shell_attr_id, &radius_passwd.pw_shell);
 
     if (*radius_passwd.pw_shell != '/') {
@@ -2205,9 +2204,14 @@ static int radius_open_socket(void) {
   unsigned short local_port = 0;
 
   /* Obtain a socket descriptor. */
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sockfd < 0) {
+    int xerrno = errno;
+
     radius_log("notice: unable to open socket for communication: %s",
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -2230,17 +2234,13 @@ static int radius_open_socket(void) {
     (local_port < USHRT_MAX));
 
   if (local_port >= USHRT_MAX) {
-    close(sockfd);
+    (void) close(sockfd);
     radius_log("notice: unable to bind to socket: no open local ports");
     return -1;
   }
 
   /* Done */
   return sockfd;
-}
-
-static int radius_close_socket(int sockfd) {
-  return close(sockfd);
 }
 
 static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
@@ -2306,7 +2306,11 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
   res = sendto(sockfd, (char *) packet, ntohs(packet->length), 0,
     &radius_remote_sock, sizeof(struct sockaddr_in));
   if (res < 0) {
-    radius_log("error: unable to send packet: %s", strerror(errno));
+    int xerrno = errno;
+
+    radius_log("error: unable to send packet: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -2405,9 +2409,7 @@ static unsigned char radius_start_accting(void) {
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0) {
-    radius_log("socket close failed");
-  }
+  (void) close(sockfd);
 
   if (recvd_response) {
 
@@ -2525,7 +2527,8 @@ static unsigned char radius_stop_accting(void) {
     radius_log("sending stop acct request packet");
     if (radius_send_packet(sockfd, request, acct_server) < 0) {
       radius_log("packet send failed");
-      return FALSE;
+      acct_server = acct_server->next;
+      continue;
     }
 
     /* Receive the response. */
@@ -2533,18 +2536,18 @@ static unsigned char radius_stop_accting(void) {
     response = radius_recv_packet(sockfd, acct_server->timeout);
     if (response == NULL) {
       radius_log("packet receive failed");
-      return FALSE;
+      acct_server = acct_server->next;
+      continue;
     }
 
     radius_log("packet receive succeeded");
     recvd_response = TRUE;
-    break;
+    acct_server = acct_server->next;
+    continue;
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0) {
-    radius_log("socket close failed");
-  }
+  (void) close(sockfd);
 
   if (recvd_response) {
 
@@ -2921,9 +2924,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   }
 
   /* Close the socket. */
-  if (radius_close_socket(sockfd) < 0) {
-    radius_log("socket close failed");
-  }
+  (void) close(sockfd);
 
   if (recvd_response) {
 

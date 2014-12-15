@@ -390,7 +390,12 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1		0x0002
 #define TLS_PROTO_TLS_V1_1		0x0004
 #define TLS_PROTO_TLS_V1_2		0x0008
-#define TLS_PROTO_DEFAULT		(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1)
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+# define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2)
+#else
+# define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1)
+#endif /* OpenSSL 1.0.1 or later */
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
 static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
@@ -549,6 +554,7 @@ static int tls_ctrl_need_init_handshake = TRUE;
 static int tls_data_need_init_handshake = TRUE;
 
 static const char *trace_channel = "tls";
+static const char *timing_channel = "timing";
 
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
@@ -668,7 +674,7 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
 
         reused = SSL_session_reused((SSL *) ssl);
         tls_log("%s renegotiation accepted, using cipher %s (%d bits%s)",
-          SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+          SSL_get_version(ssl), SSL_get_cipher_name(ssl),
           SSL_get_cipher_bits(ssl, NULL),
           reused > 0 ? ", resumed session" : "");
       }
@@ -681,7 +687,7 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
          * ciphersuite et al.
          */
         tls_log("%s renegotiation accepted, using cipher %s (%d bits)",
-          SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+          SSL_get_version(ssl), SSL_get_cipher_name(ssl),
           SSL_get_cipher_bits(ssl, NULL));
       }
 
@@ -1478,8 +1484,6 @@ static int tls_check_server_cert(SSL *ssl, conn_t *conn) {
   }
 
   X509_free(cert);
-
-  ok = 0;
   return ok;
 }
 
@@ -2621,6 +2625,10 @@ static int tls_init_ctx(void) {
   ssl_opts |= SSL_OP_NO_COMPRESSION;
 #endif /* SSL_OP_NO_COMPRESSION */
 
+#if defined(SSL_OP_SINGLE_ECDH_USE) && defined(PR_USE_OPENSSL_ECC)
+  ssl_opts |= SSL_OP_SINGLE_ECDH_USE;
+#endif /* ECC support */
+
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
   c = find_config(main_server->conf, CONF_PARAM, "TLSServerCipherPreference",
     FALSE);
@@ -2756,30 +2764,77 @@ static int tls_init_ctx(void) {
   return 0;
 }
 
-static const char *tls_get_proto_str(pool *p, unsigned int protos) {
+static const char *tls_get_proto_str(pool *p, unsigned int protos,
+    unsigned int *count) {
   char *proto_str = "";
+  unsigned int nproto = 0;
 
   if (protos & TLS_PROTO_SSL_V3) {
     proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
       "SSLv3", NULL);
+    nproto++;
   }
 
   if (protos & TLS_PROTO_TLS_V1) {
     proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
       "TLSv1", NULL);
+    nproto++;
   }
 
   if (protos & TLS_PROTO_TLS_V1_1) {
     proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
       "TLSv1.1", NULL);
+    nproto++;
   }
 
   if (protos & TLS_PROTO_TLS_V1_2) {
     proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
       "TLSv1.2", NULL);
+    nproto++;
   }
 
+  *count = nproto;
   return proto_str;
+}
+
+/* Construct the options value that disables all unsupported protocols.
+ */
+static int get_disabled_protocols(unsigned int supported_protocols) {
+  int disabled_protocols;
+
+  /* First, create an options value where ALL protocols are disabled. */
+  disabled_protocols = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+
+#ifdef SSL_OP_NO_TLSv1_1
+  disabled_protocols |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
+  disabled_protocols |= SSL_OP_NO_TLSv1_2;
+#endif
+
+  /* Now, based on the given bitset of supported protocols, clear the
+   * necessary bits.
+   */
+
+  if (supported_protocols & TLS_PROTO_SSL_V3) {
+    disabled_protocols &= ~SSL_OP_NO_SSLv3;
+  }
+
+  if (supported_protocols & TLS_PROTO_TLS_V1) {
+    disabled_protocols &= ~SSL_OP_NO_TLSv1;
+  }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+  if (supported_protocols & TLS_PROTO_TLS_V1_1) {
+    disabled_protocols &= ~SSL_OP_NO_TLSv1_1;
+  }
+
+  if (supported_protocols & TLS_PROTO_TLS_V1_2) {
+    disabled_protocols &= ~SSL_OP_NO_TLSv1_2;
+  }
+#endif /* OpenSSL-1.0.1 or later */
+
+  return disabled_protocols;
 }
 
 static int tls_init_server(void) {
@@ -2787,89 +2842,28 @@ static int tls_init_server(void) {
   char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
   X509 *server_ec_cert = NULL, *server_dsa_cert = NULL, *server_rsa_cert = NULL;
   int verify_mode = SSL_VERIFY_PEER;
-  unsigned int tls_protocol = TLS_PROTO_DEFAULT;
+  unsigned int enabled_proto_count = 0, tls_protocol = TLS_PROTO_DEFAULT;
+  int disabled_proto;
+  const char *enabled_proto_str = NULL;
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSProtocol", FALSE);
   if (c != NULL) {
     tls_protocol = *((unsigned int *) c->argv[0]);
   }
 
-  if (tls_protocol == TLS_PROTO_DEFAULT) {
-    /* This is the default, so there is no need to do anything. */
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
-    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3, TLSv1, TLSv1.1, TLSv1.2 protocols");
-#else
-    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3, TLSv1 protocols");
-#endif /* OpenSSL-1.0.1 or later */
+  disabled_proto = get_disabled_protocols(tls_protocol);
 
-  } else if (tls_protocol == TLS_PROTO_SSL_V3) {
-    SSL_CTX_set_ssl_version(ssl_ctx, SSLv3_server_method());
-    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting SSLv3 protocol only");
+  /* Per the comments in <ssl/ssl.h>, SSL_CTX_set_options() uses |= on
+   * the previous value.  This means we can easily OR in our new option
+   * values with any previously set values.
+   */
+  enabled_proto_str = tls_get_proto_str(main_server->pool, tls_protocol,
+    &enabled_proto_count);
 
-  } else if (tls_protocol == TLS_PROTO_TLS_V1) {
-    SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_server_method());
-    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1 protocol only");
-
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
-  } else if (tls_protocol == TLS_PROTO_TLS_V1_1) {
-    SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_1_server_method());
-    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1.1 protocol only");
-
-  } else if (tls_protocol == TLS_PROTO_TLS_V1_2) {
-    SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_2_server_method());
-    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting TLSv1.2 protocol only");
-
-#endif /* OpenSSL-1.0.1 or later */
-
-  } else {
-    int disable_proto = (SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
-
-#ifdef SSL_OP_NO_TLSv1_1
-    disable_proto |= SSL_OP_NO_TLSv1_1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
-    disable_proto |= SSL_OP_NO_TLSv1_2;
-#endif
-
-    /* For any other value of tls_protocol, it will be a combination of
-     * protocol versions.  Thus we MUST use SSLv23_server_method(), and then
-     * try to use SSL_CTX_set_options() to restrict/disable the protocol
-     * versions which are NOT requested.
-     */
-
-    if (tls_protocol & TLS_PROTO_SSL_V3) {
-      /* Clear the "no SSLv3" option. */
-      disable_proto &= ~SSL_OP_NO_SSLv3;
-    }
-
-    if (tls_protocol & TLS_PROTO_TLS_V1) {
-      /* Clear the "no TLSv1" option. */
-      disable_proto &= ~SSL_OP_NO_TLSv1;
-    }
-
-    if (tls_protocol & TLS_PROTO_TLS_V1_1) {
-#ifdef SSL_OP_NO_TLSv1_1
-      /* Clear the "no TLSv1.1" option. */
-      disable_proto &= ~SSL_OP_NO_TLSv1_1;
-#endif
-    }
-
-    if (tls_protocol & TLS_PROTO_TLS_V1_2) {
-#ifdef SSL_OP_NO_TLSv1_2
-      /* Clear the "no TLSv1.2" option. */
-      disable_proto &= ~SSL_OP_NO_TLSv1_2;
-#endif
-    }
-
-    /* Per the comments in <ssl/ssl.h>, SSL_CTX_set_options() uses |= on
-     * the previous value.  This means we can easily OR in our new option
-     * values with any previously set values.
-     */
-    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s protocols only",
-      tls_get_proto_str(main_server->pool, tls_protocol));
-    SSL_CTX_set_options(ssl_ctx, disable_proto);
-  }
-
+  pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s %s",
+    enabled_proto_str,
+    enabled_proto_count != 1 ? "protocols" : "protocol only");
+  SSL_CTX_set_options(ssl_ctx, disabled_proto);
 
   tls_ca_cert = get_param_ptr(main_server->conf, "TLSCACertificateFile", FALSE);
   tls_ca_path = get_param_ptr(main_server->conf, "TLSCACertificatePath", FALSE);
@@ -3622,7 +3616,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* This works with either rfd or wfd (I hope). */
   rbio = BIO_new_socket(conn->rfd, FALSE);
-  wbio = BIO_new_socket(conn->rfd, FALSE);
+  wbio = BIO_new_socket(conn->wfd, FALSE);
   SSL_set_bio(ssl, rbio, wbio);
 
   /* If configured, set a timer for the handshake. */
@@ -3633,7 +3627,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (on_data) {
     /* Make sure that TCP_NODELAY is enabled for the handshake. */
-    pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+    (void) pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+
+    /* Make sure that TCP_CORK (aka TCP_NOPUSH) is DISABLED for the handshake.
+     * This socket option is set via the pr_inet_set_proto_opts() call made
+     * in mod_core, upon handling the PASV/EPSV command.
+     */
+    (void) pr_inet_set_proto_cork(conn->wfd, 0);
   }
 
   retry:
@@ -3644,7 +3644,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
      * without spinning in a tight loop and consuming the CPU).
      */
-    pr_inet_set_nonblock(conn->pool, conn);
+    if (pr_inet_set_nonblock(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection nonblocking: %s", strerror(errno));
+    }
   }
 
   pr_signals_handle();
@@ -3655,7 +3658,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (blocking) {
     /* Return the connection to blocking mode. */
-    pr_inet_set_block(conn->pool, conn);
+    if (pr_inet_set_block(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection blocking: %s", strerror(errno));
+    }
   }
 
   if (res < 1) {
@@ -3672,10 +3678,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_accept() returned WANT_READ, waiting for more to "
+          "read on fd %d", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_accept() returned WANT_WRITE, waiting for more to "
+          "write on fd %d", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -3731,7 +3743,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (on_data) {
     /* Disable TCP_NODELAY, now that the handshake is done. */
-    pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+    (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+
+    /* Reenable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
+    (void) pr_inet_set_proto_cork(conn->wfd, 1);
   }
  
   /* Disable the handshake timer. */
@@ -3751,12 +3766,23 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     ctrl_ssl = ssl;
 
-    pr_table_add(tls_ctrl_rd_nstrm->notes,
-      pstrdup(tls_ctrl_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
-    pr_table_add(tls_ctrl_wr_nstrm->notes,
-      pstrdup(tls_ctrl_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
+    if (pr_table_add(tls_ctrl_rd_nstrm->notes,
+        pstrdup(tls_ctrl_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on ctrl read stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
+
+    if (pr_table_add(tls_ctrl_wr_nstrm->notes,
+        pstrdup(tls_ctrl_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on ctrl write stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080dfL
     if (SSL_get_secure_renegotiation_support(ssl) == 1) {
@@ -3788,12 +3814,23 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   } else if (conn == session.d) {
     pr_buffer_t *strm_buf;
 
-    pr_table_add(tls_data_rd_nstrm->notes,
-      pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
-    pr_table_add(tls_data_wr_nstrm->notes,
-      pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
+    if (pr_table_add(tls_data_rd_nstrm->notes,
+        pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data read stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
+
+    if (pr_table_add(tls_data_wr_nstrm->notes,
+        pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data write stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
 
     /* Clear any data from the NetIO stream buffers which may have been read
      * in before the SSL/TLS handshake occurred (Bug#3624).
@@ -3839,7 +3876,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     reused = SSL_session_reused(ssl);
 
     tls_log("%s connection accepted, using cipher %s (%d bits%s)",
-      SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+      SSL_get_version(ssl), SSL_get_cipher_name(ssl),
       SSL_get_cipher_bits(ssl, NULL),
       reused > 0 ? ", resumed session" : "");
 
@@ -3985,7 +4022,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      */
     if (!logged_data) {
       tls_log("%s data connection accepted, using cipher %s (%d bits)",
-        SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+        SSL_get_version(ssl), SSL_get_cipher_name(ssl),
         SSL_get_cipher_bits(ssl, NULL));
       logged_data = TRUE;
     }
@@ -4029,7 +4066,7 @@ static int tls_connect(conn_t *conn) {
   }
 
   /* Make sure that TCP_NODELAY is enabled for the handshake. */
-  pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+  (void) pr_inet_set_proto_nodelay(conn->pool, conn, 1);
 
   retry:
 
@@ -4039,7 +4076,10 @@ static int tls_connect(conn_t *conn) {
      * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
      * without spinning in a tight loop and consuming the CPU).
      */
-    pr_inet_set_nonblock(conn->pool, conn);
+    if (pr_inet_set_nonblock(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection nonblocking: %s", strerror(errno));
+    }
   }
 
   pr_signals_handle();
@@ -4050,7 +4090,10 @@ static int tls_connect(conn_t *conn) {
 
   if (blocking) {
     /* Return the connection to blocking mode. */
-    pr_inet_set_block(conn->pool, conn);
+    if (pr_inet_set_block(conn->pool, conn) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error making connection blocking: %s", strerror(errno));
+    }
   }
 
   if (res < 1) {
@@ -4067,10 +4110,16 @@ static int tls_connect(conn_t *conn) {
 
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_connect() returned WANT_READ, waiting for more to "
+          "read on fd %d", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
+        pr_trace_msg(trace_channel, 17,
+          "SSL_connect() returned WANT_READ, waiting for more to "
+          "read on fd %d", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -4120,7 +4169,7 @@ static int tls_connect(conn_t *conn) {
   }
 
   /* Disable TCP_NODELAY, now that the handshake is done. */
-  pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+  (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
  
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
@@ -4137,12 +4186,23 @@ static int tls_connect(conn_t *conn) {
   if (conn == session.d) {
     pr_buffer_t *strm_buf;
 
-    pr_table_add(tls_data_rd_nstrm->notes,
-      pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
-    pr_table_add(tls_data_wr_nstrm->notes,
-      pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
-      ssl, sizeof(SSL *));
+    if (pr_table_add(tls_data_rd_nstrm->notes,
+        pstrdup(tls_data_rd_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data read stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
+
+    if (pr_table_add(tls_data_wr_nstrm->notes,
+        pstrdup(tls_data_wr_nstrm->strm_pool, TLS_NETIO_NOTE),
+        ssl, sizeof(SSL *)) < 0) {
+      if (errno != EEXIST) {
+        tls_log("error stashing '%s' note on data write stream: %s",
+          TLS_NETIO_NOTE, strerror(errno));
+      }
+    }
 
     /* Clear any data from the NetIO stream buffers which may have been read
      * in before the SSL/TLS handshake occurred (Bug#3624).
@@ -4176,7 +4236,7 @@ static int tls_connect(conn_t *conn) {
   }
 
   tls_log("%s connection created, using cipher %s (%d bits)",
-    SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
+    SSL_get_version(ssl), SSL_get_cipher_name(ssl),
     SSL_get_cipher_bits(ssl, NULL));
 
   return 0;
@@ -4437,8 +4497,7 @@ static const char *tls_get_errors(void) {
   return str;
 }
 
-/* Return a page-aligned pointer to memory of at least the given size.
- */
+/* Return a page-aligned pointer to memory of at least the given size. */
 static char *tls_get_page(size_t sz, void **ptr) {
   void *d;
   long pagesz = tls_get_pagesz(), p;
@@ -4456,8 +4515,7 @@ static char *tls_get_page(size_t sz, void **ptr) {
   return ((char *) p);
 }
 
-/* Return the size of a page on this architecture.
- */
+/* Return the size of a page on this architecture. */
 static size_t tls_get_pagesz(void) {
   long pagesz;
 
@@ -4844,7 +4902,11 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   pr_signals_handle();
   count = SSL_read(ssl, buf, len);
   if (count < 0) {
-    long err = SSL_get_error(ssl, count);
+    long err;
+    int fd;
+
+    err = SSL_get_error(ssl, count);
+    fd = SSL_get_fd(ssl);
 
     /* read(2) returns only the generic error number -1 */
     count = -1;
@@ -4854,7 +4916,10 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
         /* OpenSSL needs more data from the wire to finish the current block,
          * so we wait a little while for it.
          */
-        err = tls_readmore(SSL_get_fd(ssl));
+        pr_trace_msg(trace_channel, 17,
+          "SSL_read() returned WANT_READ, waiting for more to "
+          "read on fd %d", fd);
+        err = tls_readmore(fd);
         if (err > 0) {
           goto retry;
 
@@ -4874,7 +4939,10 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
         /* OpenSSL needs to write more data to the wire to finish the current
          * block, so we wait a little while for it.
          */
-        err = tls_writemore(SSL_get_fd(ssl));
+        pr_trace_msg(trace_channel, 17,
+          "SSL_read() returned WANT_WRITE, waiting for more to "
+          "write on fd %d", fd);
+        err = tls_writemore(fd);
         if (err > 0) {
           goto retry;
 
@@ -5313,7 +5381,7 @@ static void tls_setup_environ(SSL *ssl) {
     pr_env_set(main_server->pool, k, v);
 
     k = pstrdup(main_server->pool, "TLS_PROTOCOL");
-    v = pstrdup(main_server->pool, SSL_get_cipher_version(ssl));
+    v = pstrdup(main_server->pool, SSL_get_version(ssl));
     pr_env_set(main_server->pool, k, v);
 
     /* Process the SSL session-related environ variable. */
@@ -6302,6 +6370,7 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
     count = -1;
 
     switch (err) {
+      case SSL_ERROR_WANT_READ:
       case SSL_ERROR_WANT_WRITE:
         /* Simulate an EINTR in case OpenSSL wants to write more. */
         errno = EINTR;
@@ -6961,6 +7030,11 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           session.curr_cmd_id == PR_CMD_NLST_ID ||
           tls_sscn_mode == TLS_SSCN_MODE_SERVER) {
         X509 *ctrl_cert = NULL, *data_cert = NULL;
+        uint64_t start_ms;
+
+        if (pr_trace_get_level(timing_channel) > 0) {
+          pr_gettimeofday_millis(&start_ms);
+        }
 
         tls_log("%s", "starting TLS negotiation on data connection");
         tls_data_need_init_handshake = TRUE;
@@ -6970,6 +7044,17 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           session.d->xerrno = EPERM;
           return -1;
         }
+
+        if (pr_trace_get_level(timing_channel)) {
+          unsigned long elapsed_ms;
+          uint64_t finish_ms;
+
+          pr_gettimeofday_millis(&finish_ms);
+          elapsed_ms = (unsigned long) (finish_ms - start_ms);
+
+          pr_trace_msg(timing_channel, 4,
+            "TLS data handshake duration: %lu ms", elapsed_ms);
+        } 
 
         /* Make sure that the certificate used, if any, for this data channel
          * handshake is the same as that used for the control channel handshake.
@@ -7613,9 +7698,15 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   if (strncmp(cmd->argv[1], "TLS", 4) == 0 ||
       strncmp(cmd->argv[1], "TLS-C", 6) == 0) {
-    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
+    uint64_t start_ms;
 
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
+
     pr_event_generate("mod_tls.ctrl-handshake", session.c);
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
@@ -7644,11 +7735,32 @@ MODRET tls_auth(cmd_rec *cmd) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
 
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
+    }
+
   } else if (strncmp(cmd->argv[1], "SSL", 4) == 0 ||
              strncmp(cmd->argv[1], "TLS-P", 6) == 0) {
-    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
+    uint64_t start_ms;
 
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
     tls_log("%s", "SSL/TLS-P requested, starting TLS handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
+
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "SSL/TLS-P negotiation failed on control channel");
 
@@ -7676,6 +7788,21 @@ MODRET tls_auth(cmd_rec *cmd) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
+    }
 
   } else {
     tls_log("AUTH %s unsupported, declining", cmd->argv[1]);
@@ -9316,7 +9443,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey,
-          k->pkeysz, TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading RSA passphrase: %s", tls_get_errors());
 
@@ -9339,7 +9466,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey,
-          k->pkeysz, TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading DSA passphrase: %s", tls_get_errors());
 
@@ -9363,7 +9490,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, ec->argv[0], buf, k->ec_pkey,
-          k->pkeysz, TLS_PASSPHRASE_FL_EC_KEY) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_EC_KEY) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading EC passphrase: %s", tls_get_errors());
 
@@ -9388,7 +9515,7 @@ static void tls_get_passphrases(void) {
       }
 
       if (tls_get_passphrase(s, pkcs12->argv[0], buf, k->pkcs12_passwd,
-          k->pkeysz, TLS_PASSPHRASE_FL_PKCS12_PASSWD) < 0) {
+          k->pkeysz-1, TLS_PASSPHRASE_FL_PKCS12_PASSWD) < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading PKCS12 password: %s", tls_get_errors());
 
@@ -9995,8 +10122,14 @@ static int tls_sess_init(void) {
   pr_help_add(C_PROT, _("<sp> protection code"), TRUE);
 
   if (tls_opts & TLS_OPT_USE_IMPLICIT_SSL) {
+    uint64_t start_ms;
+
     tls_log("%s", "TLSOption UseImplicitSSL in effect, starting SSL/TLS "
       "handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
 
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "implicit SSL/TLS negotiation failed on control channel");
@@ -10009,6 +10142,21 @@ static int tls_sess_init(void) {
 
     if (tls_required_on_data != -1) {
       tls_flags |= TLS_SESS_NEED_DATA_PROT;
+    }
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
     }
 
     pr_session_set_protocol("ftps");

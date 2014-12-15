@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp agent
- * Copyright (c) 2012 TJ Saunders
+ * Copyright (c) 2012-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -219,7 +219,11 @@ static int agent_connect(const char *path) {
     return -1;
   }
 
-  fcntl(fd, F_SETFD, FD_CLOEXEC);
+  if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting CLOEXEC on fd %d for talking to SSH agent: %s",
+      fd, strerror(errno));
+  }
 
   PRIVS_ROOT
   res = connect(fd, (struct sockaddr *) &sock, len);

@@ -2364,6 +2364,37 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      strncasecmp(tag, "file-modified", 14) == 0) {
+    char *modified;
+
+    modified = pr_table_get(cmd->notes, "mod_xfer.file-modified", NULL);
+    if (modified) {
+      long_tag = pstrdup(cmd->tmp_pool, modified);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "false");
+    }
+  }
+
+  if (long_tag == NULL &&
+      strncasecmp(tag, "file-offset", 12) == 0) {
+    off_t *offset;
+
+    offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
+    if (offset) {
+      char offset_str[1024];
+
+      memset(offset_str, '\0', sizeof(offset_str));
+      snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
+        (pr_off_t) *offset);
+      long_tag = pstrdup(cmd->tmp_pool, offset_str);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
+  }
+
+  if (long_tag == NULL &&
       strncasecmp(tag, "iso8601", 8) == 0) {
     char buf[32];
     struct timeval now;
@@ -5182,7 +5213,8 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     uid_name = pw->pw_name;
 
   } else {
-    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
+    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu",
+      (unsigned long) *((uid_t *) cmd->argv[0]));
     uid_name = uidstr;
   }
 
@@ -5219,7 +5251,8 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
 
   } else {
     memset(gidstr, '\0', sizeof(gidstr));
-    snprintf(gidstr, sizeof(gidstr)-1, "%lu", (unsigned long) cmd->argv[0]);
+    snprintf(gidstr, sizeof(gidstr)-1, "%lu",
+      (unsigned long) *((gid_t *) cmd->argv[0]));
     gid_name = gidstr;
   }
 
@@ -7141,10 +7174,8 @@ static int sql_sess_init(void) {
     sql_log(DEBUG_INFO, "SQLMinUserGID      : %u", cmap.minusergid);
   }
    
-  if (SQL_GROUPS) {
-    sql_log(DEBUG_INFO, "SQLDefaultUID      : %u", cmap.defaultuid);
-    sql_log(DEBUG_INFO, "SQLDefaultGID      : %u", cmap.defaultgid);
-  }
+  sql_log(DEBUG_INFO, "SQLDefaultUID      : %u", cmap.defaultuid);
+  sql_log(DEBUG_INFO, "SQLDefaultGID      : %u", cmap.defaultgid);
 
   if (cmap.sql_fstor) {
     sql_log(DEBUG_INFO, "sql_fstor          : %s", cmap.sql_fstor);

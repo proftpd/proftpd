@@ -159,8 +159,17 @@ For example:
   SITE UTIME 200402240836 file.txt
   SITE UTIME 20040224083655 file.txt
 </pre>
-would set the access <b>and</b> modification timestamps on <code>file.txt</code>
 to 8:36 AM, Febrary 24, 2004 (or 8:36:55 AM, Febrary 24, 2004, respectively).
+
+<p>
+Another variant syntax is also supported:
+<pre>
+  SITE UTIME <i>path</i> <i>YYYYMMDDhhmm[ss]</i> <i>YYYYMMDDhhmm[ss]</i> <i>YYYYMMDDhhmm[ss]</i> UTC
+</pre>
+For example:
+<pre>
+  SITE UTIME file.txt 20040224083655 20040224083655 20040224083655 UTC
+</pre>
 
 <p>
 The timestamp specified is treated as being in GMT/UTC, rather than in the
@@ -204,11 +213,6 @@ module:
 
 <p>
 <hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-05-04 19:49:57 $</i><br>
-
-<br><hr>
 
 <font size=2><b><i>
 &copy; Copyright 2004-2014 TJ Saunders<br>

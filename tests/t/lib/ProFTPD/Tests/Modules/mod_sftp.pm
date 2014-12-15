@@ -613,10 +613,24 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_ext_download_rekey => {
+  sftp_ext_download_server_rekey => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
   },
+
+  # TODO: sftp_ext_download_client_rekey
+  # The issues I found with this test are:
+  #   1. Net::SSH2 does not support client-initiated rekeying
+  #   2. Attempting to use the -oRekeyLimit for publickey-based auth using
+  #     sftp(1) causes login to fail; NOT using that option allows the
+  #     login to succeed.  Thus I suspect a bug in that version of
+  #     OpenSSH sftp(1).  For posterity, this is on a Mac OSX machine:
+  #       $ uname -a
+  #       Darwin Ts-MacBook-Pro.local 11.2.0 Darwin Kernel Version 11.2.0: Tue Aug  9 20:54:00 PDT 2011; root:xnu-1699.24.8~1/RELEASE_X86_64 x86_64
+  #
+  #     with OpenSSH version:
+  #       $ ssh -version
+  #       OpenSSH_5.6p1, OpenSSL 0.9.8r 8 Feb 2011
 
   sftp_ext_download_rekey_bug4097 => {
     order => ++$order,
@@ -696,6 +710,11 @@ my $TESTS = {
   sftp_readlink => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
+  },
+
+  sftp_readlink_symlink_dir_bug4140 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
   },
 
   sftp_config_client_alive => {
@@ -994,6 +1013,11 @@ my $TESTS = {
   },
 
   sftp_config_limit_rmdir_bug3753 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_insecure_hostkey_perms_bug4098 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
@@ -14303,17 +14327,17 @@ sub sftp_lstat {
       $expected = $test_symlink_size;
       my $file_size = $attrs->{size};
       $self->assert($expected == $file_size,
-        test_msg("Expected '$expected', got '$file_size'"));
+        test_msg("Expected file size '$expected', got '$file_size'"));
 
       $expected = $<;
       my $file_uid = $attrs->{uid};
       $self->assert($expected == $file_uid,
-        test_msg("Expected '$expected', got '$file_uid'"));
+        test_msg("Expected file UID '$expected', got '$file_uid'"));
 
       $expected = $(;
       my $file_gid = $attrs->{gid};
       $self->assert($expected == $file_gid,
-        test_msg("Expected '$expected', got '$file_gid'"));
+        test_msg("Expected file GID '$expected', got '$file_gid'"));
 
       $sftp = undef;
       $ssh2->disconnect();
@@ -14956,6 +14980,11 @@ sub sftp_realpath {
       my $expected;
 
       $expected = $home_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $cwd,
         test_msg("Expected '$expected', got '$cwd'"));
 
@@ -15117,6 +15146,11 @@ sub sftp_realpath_file {
       my $expected;
 
       $expected = $test_file;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -15291,6 +15325,11 @@ sub sftp_realpath_symlink_file {
       my $expected;
 
       $expected = $test_file;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -15622,6 +15661,11 @@ sub sftp_realpath_dir {
       my $expected;
 
       $expected = $test_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -15788,6 +15832,11 @@ sub sftp_realpath_symlink_dir {
       my $expected;
 
       $expected = $test_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $real_path,
         test_msg("Expected real path '$expected', got '$real_path'"));
 
@@ -20036,7 +20085,7 @@ sub sftp_ext_download_bug3550 {
   unlink($log_file);
 }
 
-sub sftp_ext_download_rekey {
+sub sftp_ext_download_server_rekey {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -20147,6 +20196,7 @@ sub sftp_ext_download_rekey {
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+        "SFTPRekey required 600 256 10",
       ],
     },
   };
@@ -20177,7 +20227,7 @@ sub sftp_ext_download_rekey {
         'sftp',
         '-oBatchMode=yes',
         '-oCheckHostIP=no',
-        '-oRekeyLimit=256',
+#        '-oRekeyLimit=1024',
         "-oPort=$port",
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
@@ -23140,6 +23190,170 @@ sub sftp_readlink {
   unlink($log_file);
 }
 
+sub sftp_readlink_symlink_dir_bug4140 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $dir_name = 'test.d';
+  my $test_dir = File::Spec->rel2abs("$tmpdir/$dir_name");
+  mkpath($test_dir);
+
+  my $cwd = getcwd();
+  unless (chdir($tmpdir)) {
+    die("Can't chdir to $tmpdir: $!");
+  }
+
+  unless (symlink('test.d', 'test.lnk')) {
+    die("Can't symlink 'test.d' to 'test.lnk': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $path = $sftp->readlink('test.lnk');
+      unless ($path) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't readlink test.lnk: [$err_name] ($err_code)");
+      }
+
+      $sftp = undef;
+      $ssh2->disconnect();
+
+      $self->assert($dir_name eq $path,
+        test_msg("Expected '$dir_name', got '$path'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
 sub sftp_config_allowoverwrite {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -24439,8 +24653,8 @@ sub sftp_config_dirfakemode {
       }
 
       my $expected = {
-        '.' => '0311',
-        '..' => '0311',
+        '.' => '0310',
+        '..' => '0310',
         'sftp.conf' => '0310',
         'sftp.group' => '0310',
         'sftp.passwd' => '0310',
@@ -31686,17 +31900,14 @@ sub sftp_config_limit_allowfilter_stor_allowed {
   my $uid = 500;
   my $gid = 500;
 
-  my $test_dir = File::Spec->rel2abs("$home_dir/test.d");
-  mkpath($test_dir);
-
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $test_dir)) {
+    unless (chmod(0755, $home_dir)) {
       die("Can't set perms on $home_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $test_dir)) {
+    unless (chown($uid, $gid, $home_dir)) {
       die("Can't set owner of $home_dir to $uid/$gid: $!");
     }
   }
@@ -31707,6 +31918,8 @@ sub sftp_config_limit_allowfilter_stor_allowed {
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
 
   my $config = {
     PidFile => $pid_file,
@@ -31795,6 +32008,12 @@ sub sftp_config_limit_allowfilter_stor_allowed {
 
       $sftp = undef;
       $ssh2->disconnect();
+
+      $self->assert(-f $test_file,
+        test_msg("File $test_file does not exist as expected"));
+
+      $self->assert(-s $test_file,
+        test_msg("File $test_file size is unexpectedly zero"));
     };
 
     if ($@) {
@@ -32122,6 +32341,11 @@ EOC
       my $expected;
 
       $expected = $sub_dir;
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack to deal with how it handles tmp files
+        $expected = ('/private' . $expected);
+      }
+
       $self->assert($expected eq $dir,
         test_msg("Expected '$expected', got '$dir'"));
 
@@ -33918,6 +34142,11 @@ sub sftp_multi_channels {
         my $expected;
 
         $expected = $home_dir;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $cwd,
           test_msg("Expected '$expected', got '$cwd'"));
       }
@@ -33959,6 +34188,61 @@ sub sftp_multi_channels {
   }
 
   unlink($log_file);
+}
+
+sub sftp_config_insecure_hostkey_perms_bug4098 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  # Deliberately set insecure perms on the hostkeys
+  unless (chmod(0444, $rsa_host_key, $dsa_host_key)) {
+    die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPOptions InsecureHostKeyPerms",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # First, start the server.
+  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
+  if ($@) {
+    $ex = "Server failed to start up with world-readable SFTPHostKey";
+
+  } else {
+    server_stop($setup->{pid_file});
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sftp_multi_channel_downloads {
@@ -34406,43 +34690,47 @@ sub sftp_log_xferlog_download {
 
         $expected = '127.0.0.1';
         $self->assert($expected eq $client_addr,
-          test_msg("Expected '$expected', got '$client_addr'"));
+          test_msg("Expected IP address '$expected', got '$client_addr'"));
 
         $expected = $test_sz;
         $self->assert($expected == $nbytes,
-          test_msg("Expected $expected, got $nbytes"));
+          test_msg("Expected size $expected, got $nbytes"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
         $self->assert($expected eq $path,
-          test_msg("Expected '$expected', got '$path'"));
+          test_msg("Expected path '$expected', got '$path'"));
 
         $expected = 'b';
         $self->assert($expected eq $xfer_type,
-          test_msg("Expected '$expected', got '$xfer_type'"));
+          test_msg("Expected transfer type '$expected', got '$xfer_type'"));
 
         $expected = '_';
         $self->assert($expected eq $action_flag,
-          test_msg("Expected '$expected', got '$action_flag'"));
+          test_msg("Expected action flag '$expected', got '$action_flag'"));
 
         $expected = 'o';
         $self->assert($expected eq $xfer_direction,
-          test_msg("Expected '$expected', got '$xfer_direction'"));
+          test_msg("Expected transfer direction '$expected', got '$xfer_direction'"));
 
         $expected = 'r';
         $self->assert($expected eq $access_mode,
-          test_msg("Expected '$expected', got '$access_mode'"));
+          test_msg("Expected access mode '$expected', got '$access_mode'"));
 
         $expected = $user;
         $self->assert($expected eq $user_name,
-          test_msg("Expected '$expected', got '$user_name'"));
+          test_msg("Expected user '$expected', got '$user_name'"));
 
         $expected = 'sftp';
         $self->assert($expected eq $service_name,
-          test_msg("Expected '$expected', got '$service_name'"));
+          test_msg("Expected service '$expected', got '$service_name'"));
 
         $expected = 'c';
         $self->assert($expected eq $completion_status,
-          test_msg("Expected '$expected', got '$completion_status'"));
+          test_msg("Expected completion status '$expected', got '$completion_status'"));
 
         $ok = 1;
         last;
@@ -34897,6 +35185,11 @@ sub sftp_log_xferlog_delete {
           test_msg("Expected '$expected', got '$client_addr'"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -35367,6 +35660,11 @@ sub sftp_log_xferlog_upload {
           test_msg("Expected $expected, got $nbytes"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -35605,6 +35903,11 @@ sub sftp_log_xferlog_upload_incomplete {
           test_msg("Expected $expected, got $nbytes"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -37997,20 +38300,36 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
         my $expected;
 
         if ($cmd eq 'RNFR') {
-          $expected = '-';
 
+          $expected = '-';
           $self->assert($expected eq $whence,
             test_msg("Expected '$expected', got '$whence'"));
+ 
+          $expected = $test_file1;
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack to deal with how it handles tmp files
+            $expected = ('/private' . $expected);
+          }
+
           $self->assert($expected eq $whither,
             test_msg("Expected '$expected', got '$whither'"));
 
         } elsif ($cmd eq 'RNTO') {
           $expected = $test_file1;
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack to deal with how it handles tmp files
+            $expected = ('/private' . $expected);
+          }
 
           $self->assert($expected eq $whence,
             test_msg("Expected '$expected', got '$whence'"));
 
           $expected = $test_file2;
+          if ($^O eq 'darwin') {
+            # MacOSX-specific hack to deal with how it handles tmp files
+            $expected = ('/private' . $expected);
+          }
+
           $self->assert($expected eq $whither,
             test_msg("Expected '$expected', got '$whither'"));
 
@@ -38222,8 +38541,14 @@ sub sftp_log_extlog_var_f_remove {
 
         next unless $cmd eq 'DELE';
 
-        $self->assert($test_file eq $path,
-          test_msg("Expected '$test_file', got '$path'"));
+        my $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
+        $self->assert($expected eq $path,
+          test_msg("Expected file '$expected', got '$path'"));
 
         $ok = 1;
         last;

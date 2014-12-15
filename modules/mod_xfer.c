@@ -77,7 +77,8 @@ static unsigned long xfer_prio_flags = 0;
 
 static void xfer_exit_ev(const void *, void *);
 static void xfer_sigusr2_ev(const void *, void *);
-static void xfer_xfer_stalled_ev(const void *, void *);
+static void xfer_timeout_session_ev(const void *, void *);
+static void xfer_timeout_stalled_ev(const void *, void *);
 static int xfer_sess_init(void);
 
 static int xfer_prio_adjust(void);
@@ -838,7 +839,11 @@ static void stor_chown(void) {
       }
 
       pr_fs_clear_cache();
-      pr_fsio_stat(xfer_path, &st);
+      if (pr_fsio_stat(xfer_path, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' stat(2) error during root chmod: %s", xfer_path,
+          strerror(errno));
+      }
 
       /* The chmod happens after the chown because chown will remove
        * the S{U,G}ID bits on some files (namely, directories); the subsequent
@@ -901,7 +906,11 @@ static void stor_chown(void) {
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
-      pr_fsio_stat(xfer_path, &st);
+      if (pr_fsio_stat(xfer_path, &st) < 0) {
+        pr_log_debug(DEBUG0,
+          "'%s' stat(2) error during %schmod: %s", xfer_path,
+          use_root_privs ? "root " : "", strerror(errno));
+      }
 
       if (use_root_privs) {
         PRIVS_ROOT
@@ -955,8 +964,9 @@ static void stor_abort(void) {
     stor_fh = NULL;
   }
 
+  delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+
   if (session.xfer.xfer_type == STOR_HIDDEN) {
-    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
     if (delete_stores == NULL ||
         *delete_stores == TRUE) {
       /* If a hidden store was aborted, remove only hidden file, not real
@@ -965,16 +975,24 @@ static void stor_abort(void) {
       if (session.xfer.path_hidden) {
         pr_log_debug(DEBUG5, "removing aborted HiddenStores file '%s'",
           session.xfer.path_hidden);
-        pr_fsio_unlink(session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        } 
       }
     }
+  }
 
-  } else if (session.xfer.path) {
-    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
-    if (delete_stores == NULL ||
+  if (session.xfer.path) {
+    if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
-      pr_fsio_unlink(session.xfer.path);
+      if (pr_fsio_unlink(session.xfer.path) < 0) {
+        pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
+          session.xfer.path, strerror(errno));
+      }
     }
   }
 
@@ -997,7 +1015,12 @@ static int stor_complete(void) {
       if (session.xfer.path_hidden) {
         pr_log_debug(DEBUG5, "failed to close HiddenStores file '%s', removing",
           session.xfer.path_hidden);
-        pr_fsio_unlink(session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        } 
       }
     }
 
@@ -1132,9 +1155,6 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
   if (found_slash == FALSE) {
     parent_dir = "./";
 
-  } else if (basenamestart == 0) {
-    parent_dir = "/";
-
   } else {
     parent_dir = pstrndup(cmd->tmp_pool, path, basenamestart);
   }
@@ -1184,7 +1204,7 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
  * the duration of this function.
  */
 MODRET xfer_pre_stor(cmd_rec *cmd) {
-  char *path;
+  char *decoded_path, *path;
   mode_t fmode;
   unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
   config_rec *c;
@@ -1199,8 +1219,22 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = dir_best_path(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_best_path(cmd->tmp_pool, decoded_path);
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
@@ -1586,7 +1620,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
-  off_t curr_pos = 0;
+  off_t curr_offset, curr_pos = 0;
 
   memset(&st, 0, sizeof(st));
 
@@ -1720,6 +1754,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* Stash the offset at which we're writing to this file. */
+  curr_offset = pr_fsio_lseek(stor_fh, (off_t) 0, SEEK_CUR);
+  if (curr_offset != (off_t) -1) {
+    off_t *file_offset;
+
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) curr_offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
+  }
+
   /* Get the latest stats on the file.  If the file already existed, we
    * want to know its current size.
    */
@@ -1766,33 +1811,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
     have_limit = TRUE;
   }
 
-  /* Check the MaxStoreFileSize, and abort now if zero. */
-  if (have_limit &&
-      nbytes_max_store == 0) {
-    int xerrno;
-
-    pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
-      "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
-      nbytes_max_store != 1 ? "bytes" : "byte", path);
-
-    /* Abort the transfer. */
-    stor_abort();
-
-    /* Set errno to EFBIG (or the most appropriate alternative). */
-#if defined(EFBIG)
-    xerrno = EFBIG;
-#elif defined(EDQUOT)
-    xerrno = EDQUOT;
-#else
-    xerrno = EPERM;
-#endif
-
-    pr_data_abort(xerrno, FALSE);
-    pr_cmd_set_errno(cmd, xerrno);
-    errno = xerrno;
-    return PR_ERROR(cmd);
-  }
-
   bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_RD);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
   pr_trace_msg("data", 8, "allocated upload buffer of %lu bytes",
@@ -1820,7 +1838,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       /* Abort the transfer. */
       stor_abort();
 
-    /* Set errno to EFBIG (or the most appropriate alternative). */
+      /* Set errno to EFBIG (or the most appropriate alternative). */
 #if defined(EFBIG)
       xerrno = EFBIG;
 #elif defined(EDQUOT)
@@ -1932,7 +1950,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     if (session.xfer.path &&
         session.xfer.path_hidden) {
-      if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
+      if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) < 0) {
         int xerrno = errno;
 
         /* This should only fail on a race condition with a chmod/chown
@@ -1946,12 +1964,20 @@ MODRET xfer_stor(cmd_rec *cmd) {
         pr_response_add_err(R_550, _("%s: Rename of hidden file %s failed: %s"),
           session.xfer.path, session.xfer.path_hidden, strerror(xerrno));
 
-        pr_fsio_unlink(session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "failed to delete HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        } 
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
         return PR_ERROR(cmd);
       }
+
+      /* One way or another, we've dealt with the HiddenStores file. */
+      session.xfer.path_hidden = NULL;
     }
 
     if (xfer_displayfile() < 0) {
@@ -2038,7 +2064,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
  * for this, as tmp_pool only lasts for the duration of this function).
  */
 MODRET xfer_pre_retr(cmd_rec *cmd) {
-  char *dir = NULL;
+  char *decoded_path, *dir = NULL;
   mode_t fmode;
   unsigned char *allow_restart = NULL;
   config_rec *c;
@@ -2054,8 +2080,22 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dir = dir_realpath(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  dir = dir_realpath(cmd->tmp_pool, decoded_path);
 
   if (!dir ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
@@ -2147,7 +2187,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
   long bufsz, len = 0;
-  off_t curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
+  off_t curr_offset, curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
   /* Prepare for any potential throttling. */
   pr_throttle_init(cmd);
@@ -2224,6 +2264,17 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     curr_pos = session.restart_pos;
     session.restart_pos = 0L;
+  }
+
+  /* Stash the offset at which we're writing from this file. */
+  curr_offset = pr_fsio_lseek(retr_fh, (off_t) 0, SEEK_CUR);
+  if (curr_offset != (off_t) -1) {
+    off_t *file_offset;
+
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) curr_offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
   }
 
   /* Send the data */
@@ -2613,6 +2664,27 @@ MODRET xfer_smnt(cmd_rec *cmd) {
 }
 
 MODRET xfer_err_cleanup(cmd_rec *cmd) {
+
+  /* If a hidden store was aborted, remove it. */
+  if (session.xfer.xfer_type == STOR_HIDDEN) {
+    unsigned char *delete_stores = NULL;
+
+    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+    if (delete_stores == NULL ||
+        *delete_stores == TRUE) {
+      if (session.xfer.path_hidden) {
+        pr_log_debug(DEBUG5, "removing aborted HiddenStores file '%s'",
+          session.xfer.path_hidden);
+        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
+          if (errno != ENOENT) {
+            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+              session.xfer.path_hidden, strerror(errno));
+          }
+        }
+      }
+    }
+  }
+
   pr_data_clear_xfer_pool();
 
   memset(&session.xfer, '\0', sizeof(session.xfer));
@@ -2657,17 +2729,23 @@ MODRET xfer_log_retr(cmd_rec *cmd) {
 }
 
 static int noxfer_timeout_cb(CALLBACK_FRAME) {
+  int timeout;
   const char *proto;
 
+  timeout = pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER);
+
   if (session.sf_flags & SF_XFER) {
+    pr_trace_msg("timer", 4,
+      "TimeoutNoTransfer (%d %s) reached, but data transfer in progress, "
+      "ignoring", timeout, timeout != 1 ? "seconds" : "second");
+
     /* Transfer in progress, ignore this timeout */
     return 1;
   }
 
   pr_event_generate("core.timeout-no-transfer", NULL);
   pr_response_send_async(R_421,
-    _("No transfer timeout (%d seconds): closing control connection"),
-    pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER));
+    _("No transfer timeout (%d seconds): closing control connection"), timeout);
 
   pr_timer_remove(PR_TIMER_IDLE, ANY_MODULE);
   pr_timer_remove(PR_TIMER_LOGIN, ANY_MODULE);
@@ -2703,9 +2781,11 @@ MODRET xfer_post_host(cmd_rec *cmd) {
     int res;
 
     pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
-    pr_event_unregister(&xfer_module, "core.timeout-stalled",
-      xfer_xfer_stalled_ev);
     pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
+    pr_event_unregister(&xfer_module, "core.timeout-session",
+      xfer_timeout_session_ev);
+    pr_event_unregister(&xfer_module, "core.timeout-stalled",
+      xfer_timeout_stalled_ev);
 
     if (displayfilexfer_fh != NULL) {
       (void) pr_fsio_close(displayfilexfer_fh);
@@ -2982,6 +3062,10 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     if (pr_str_get_nbytes(cmd->argv[1], cmd->argv[2], &nbytes) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse: ",
         cmd->argv[1], " ", cmd->argv[2], ": ", strerror(errno), NULL));
+    }
+
+    if (nbytes == 0) {
+      CONF_ERROR(cmd, "size must be greater than zero");
     }
   }
 
@@ -3447,33 +3531,6 @@ MODRET set_usesendfile(cmd_rec *cmd) {
 /* Event handlers
  */
 
-static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
-
-  /* Only do this if we're currently involved in a data transfer.
-   * This is a hack put in to support mod_shaper's antics.
-   */
-  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
-      strcmp(session.curr_cmd, C_RETR) == 0 ||
-      strcmp(session.curr_cmd, C_STOR) == 0 ||
-      strcmp(session.curr_cmd, C_STOU) == 0) {
-    pool *p = make_sub_pool(session.pool);
-    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
-
-    /* Rescan the config tree for TransferRates, picking up any possible
-     * changes.
-     */
-    pr_log_debug(DEBUG2, "rechecking TransferRates");
-    pr_throttle_init(cmd);
-
-    destroy_pool(p);
-  }
-
-  return;
-}
-
-/* Events handlers
- */
-
 static void xfer_exit_ev(const void *event_data, void *user_data) {
 
   if (session.sf_flags & SF_XFER) {
@@ -3500,26 +3557,56 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
-static void xfer_xfer_stalled_ev(const void *event_data, void *user_data) {
-  if (!(session.sf_flags & SF_XFER)) {
-    if (session.xfer.direction == PR_NETIO_IO_RD) {
-      pr_trace_msg(trace_channel, 6, "transfer stalled, aborting upload");
-      stor_abort();
+static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 
-    } else {
-      pr_trace_msg(trace_channel, 6, "transfer stalled, aborting download");
-      retr_abort();
-    }
+  /* Only do this if we're currently involved in a data transfer.
+   * This is a hack put in to support mod_shaper's antics.
+   */
+  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
+      strcmp(session.curr_cmd, C_RETR) == 0 ||
+      strcmp(session.curr_cmd, C_STOR) == 0 ||
+      strcmp(session.curr_cmd, C_STOU) == 0) {
+    pool *p = make_sub_pool(session.pool);
+    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
+
+    /* Rescan the config tree for TransferRates, picking up any possible
+     * changes.
+     */
+    pr_log_debug(DEBUG2, "rechecking TransferRates");
+    pr_throttle_init(cmd);
+
+    destroy_pool(p);
   }
 
-  /* The "else" case, for a stalled transfer, will be handled by the
-   * 'core.exit' event handler above.  In that case, a data transfer
-   * _will_ have actually been in progress, whereas in the !SF_XFER
-   * case, the client requested a transfer, but never actually opened
-   * the data connection.
+  return;
+}
+
+static void xfer_timedout(const char *reason) {
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    pr_trace_msg(trace_channel, 6, "%s, aborting upload", reason);
+    stor_abort();
+
+  } else {
+    pr_trace_msg(trace_channel, 6, "%s, aborting download", reason);
+    retr_abort();
+  }
+}
+
+static void xfer_timeout_session_ev(const void *event_data, void *user_data) {
+  xfer_timedout("session timeout");
+}
+
+static void xfer_timeout_stalled_ev(const void *event_data, void *user_data) {
+  /* In this event handler, the "else" case, for a stalled transfer, will
+   * be handled by the 'core.exit' event handler above.  For in that
+   * scenario, a data transfer WILL have actually been in progress,
+   * whereas in the !SF_XFER case, the client requested a transfer, but
+   * never actually opened the data connection.
    */
 
-  return;
+  if (!(session.sf_flags & SF_XFER)) {
+    xfer_timedout("transfer stalled");
+  }
 }
 
 /* Initialization routines
@@ -3546,11 +3633,12 @@ static int xfer_sess_init(void) {
 
   /* Exit handlers for HiddenStores cleanup */
   pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
-  pr_event_register(&xfer_module, "core.timeout-stalled",
-    xfer_xfer_stalled_ev, NULL);
-
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
+  pr_event_register(&xfer_module, "core.timeout-session",
+    xfer_timeout_session_ev, NULL);
+  pr_event_register(&xfer_module, "core.timeout-stalled",
+    xfer_timeout_stalled_ev, NULL);
 
   /* Look for a DisplayFileTransfer file which has an absolute path.  If we
    * find one, open a filehandle, such that that file can be displayed

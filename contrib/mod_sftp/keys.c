@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: keys.c,v 1.39 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -774,15 +772,23 @@ static int pkey_cb(char *buf, int buflen, int rwflag, void *d) {
   return 0;
 }
 
-static int has_req_perms(int fd) {
+static int has_req_perms(int fd, const char *path) {
   struct stat st;
 
-  if (fstat(fd, &st) < 0)
+  if (fstat(fd, &st) < 0) {
     return -1;
+  }
 
   if (st.st_mode & (S_IRWXG|S_IRWXO)) {
-    errno = EACCES;
-    return -1;
+    if (!(sftp_opts & SFTP_OPT_INSECURE_HOSTKEY_PERMS)) {
+      errno = EACCES;
+      return -1;
+    }
+
+    pr_log_pri(PR_LOG_INFO, MOD_SFTP_VERSION
+      "notice: the permissions on SFTPHostKey '%s' (%04o) allow "
+      "group-readable and/or world-readable access, increasing chances of "
+      "system users reading the private key", path, st.st_mode);
   }
 
   return 0;
@@ -1288,6 +1294,26 @@ int sftp_keys_validate_ecdsa_params(const EC_GROUP *group,
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
+#ifdef SFTP_DEBUG_KEYS
+static void debug_rsa_key(pool *p, const char *label, RSA *rsa) {
+  BIO *bio = NULL;
+  char *data;
+  long datalen;
+
+  bio = BIO_new(BIO_s_mem());
+  RSA_print(bio, rsa, 0);
+  BIO_flush(bio);
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL &&
+      datalen > 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", label);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", data);
+  }
+
+  BIO_free(bio);
+}
+#endif
+
 /* Compare a "blob" of pubkey data sent by the client for authentication
  * with a file pubkey (from an RFC4716 formatted file).  Returns -1 if
  * there was an error, TRUE if the keys are equals, and FALSE if not.
@@ -1322,6 +1348,11 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
 
         client_rsa = EVP_PKEY_get1_RSA(client_pkey);
         file_rsa = EVP_PKEY_get1_RSA(file_pkey);
+
+#ifdef SFTP_DEBUG_KEYS
+        debug_rsa_key(p, "client-sent RSA key:", client_rsa);
+        debug_rsa_key(p, "file RSA key:", file_rsa);
+#endif
 
         if (BN_cmp(client_rsa->e, file_rsa->e) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
@@ -1941,7 +1972,7 @@ static int load_file_hostkey(pool *p, const char *path) {
     return -1;
   }
 
-  if (has_req_perms(fd) < 0) {
+  if (has_req_perms(fd, path) < 0) {
     if (errno == EACCES) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "'%s' is accessible by group or world, which is not allowed", path);
@@ -2013,7 +2044,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
 }
 
 const unsigned char *sftp_keys_get_hostkey_data(pool *p,
-    enum sftp_key_type_e key_type, size_t *datalen) {
+    enum sftp_key_type_e key_type, uint32_t *datalen) {
   unsigned char *buf = NULL, *ptr = NULL;
   uint32_t buflen = SFTP_DEFAULT_HOSTKEY_SZ;
 
@@ -2155,6 +2186,74 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
   return ptr;
 }
 
+int sftp_keys_clear_dsa_hostkey(void) {
+  if (sftp_dsa_hostkey != NULL) {
+    if (sftp_dsa_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_dsa_hostkey->pkey);
+    }
+
+    sftp_dsa_hostkey = NULL;
+    return 0;
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
+int sftp_keys_clear_ecdsa_hostkey(void) {
+#ifdef PR_USE_OPENSSL_ECC
+  int count = 0;
+
+  if (sftp_ecdsa256_hostkey != NULL) {
+    if (sftp_ecdsa256_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_ecdsa256_hostkey->pkey);
+    }
+
+    sftp_ecdsa256_hostkey = NULL;
+    count++;
+  }
+
+  if (sftp_ecdsa384_hostkey != NULL) {
+    if (sftp_ecdsa384_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_ecdsa384_hostkey->pkey);
+    }
+
+    sftp_ecdsa384_hostkey = NULL;
+    count++;
+  }
+
+  if (sftp_ecdsa521_hostkey != NULL) {
+    if (sftp_ecdsa521_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_ecdsa521_hostkey->pkey);
+    }
+
+    sftp_ecdsa521_hostkey = NULL;
+    count++;
+  }
+
+  if (count > 0) {
+    return 0;
+  }
+
+#endif /* PR_USE_OPENSSL_ECC */
+  errno = ENOENT;
+  return -1;
+}
+
+int sftp_keys_clear_rsa_hostkey(void) {
+  if (sftp_rsa_hostkey != NULL) {
+    if (sftp_rsa_hostkey->pkey != NULL) {
+      EVP_PKEY_free(sftp_rsa_hostkey->pkey);
+    }
+
+    sftp_rsa_hostkey = NULL;
+    return 0;
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
 int sftp_keys_have_dsa_hostkey(void) {
   if (sftp_dsa_hostkey != NULL) {
     return 0;
@@ -2171,27 +2270,38 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
 #ifdef PR_USE_OPENSSL_ECC
   int count = 0;
 
-  *nids = palloc(p, sizeof(int) * 3);
+  if (nids != NULL) {
+    *nids = palloc(p, sizeof(int) * 3);
+  }
 
   if (sftp_ecdsa256_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa256_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
 
   } else if (sftp_ecdsa384_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa384_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
 
   } else if (sftp_ecdsa521_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa521_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
   }
 
@@ -2655,7 +2765,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   uint32_t sig_len;
   unsigned char digest[EVP_MAX_MD_SIZE];
   char *sig_type;
-  unsigned int digestlen;
+  unsigned int digestlen = 0;
   int res = 0;
 
   if (pubkey_algo == NULL ||
@@ -2703,11 +2813,24 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       rsa = EVP_PKEY_get1_RSA(pkey);
       modulus_len = RSA_size(rsa);
 
+      /* If the signature provided by the client is more than the expected
+       * key length, the verification will fail.
+       */
+      if (sig_len > modulus_len) {
+        RSA_free(rsa);
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error verifying RSA signature: "
+          "signature len (%lu) > RSA modulus len (%u)",
+          (unsigned long) sig_len, modulus_len);
+        errno = EINVAL;
+        return -1;
+
       /* If the signature provided by the client is less than the expected
        * key length, the verification will fail.  In such cases, we need to
-       * pad the provided signature with trailing zeros (Bug#3992).
+       * pad the provided signature with leading zeros (Bug#3992).
        */
-      if (sig_len < modulus_len) {
+      } else if (sig_len < modulus_len) {
         unsigned int padding_len;
         unsigned char *padded_sig;
 
@@ -2926,16 +3049,23 @@ void sftp_keys_get_passphrases(void) {
 
     c = find_config(s->conf, CONF_PARAM, "SFTPHostKey", FALSE);
     while (c) {
+      int flags;
+
       pr_signals_handle();
 
-      /* Skip any agent-provided SFTPHostKey directives. */
-      if (strncmp(c->argv[0], "agent:", 6) == 0) {
+      flags = *((int *) c->argv[1]);
+
+      /* Skip any agent-provided SFTPHostKey directives, as well as any
+       * "disabling key" directives.
+       */
+      if (flags != 0 ||
+          strncmp(c->argv[0], "agent:", 6) == 0) {
         c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
         continue;
       }
 
       k = pcalloc(s->pool, sizeof(struct sftp_pkey));      
-      k->pkeysz = PEM_BUFSIZE;
+      k->pkeysz = PEM_BUFSIZE-1;
       k->server = s;
 
       if (get_passphrase(k, c->argv[0]) < 0) {
@@ -2969,46 +3099,8 @@ void sftp_keys_get_passphrases(void) {
  */
 void sftp_keys_free(void) {
   scrub_pkeys();
- 
-  if (sftp_dsa_hostkey != NULL) {
-    if (sftp_dsa_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_dsa_hostkey->pkey);
-    } 
 
-    sftp_dsa_hostkey = NULL;
-  }
-
-  if (sftp_rsa_hostkey != NULL) {
-    if (sftp_rsa_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_rsa_hostkey->pkey);
-    }
-
-    sftp_rsa_hostkey = NULL;
-  }
-
-#ifdef PR_USE_OPENSSL_ECC
-  if (sftp_ecdsa256_hostkey != NULL) {
-    if (sftp_ecdsa256_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_ecdsa256_hostkey->pkey);
-    }
-
-    sftp_ecdsa256_hostkey = NULL;
-  }
-
-  if (sftp_ecdsa384_hostkey != NULL) {
-    if (sftp_ecdsa384_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_ecdsa384_hostkey->pkey);
-    }
-
-    sftp_ecdsa384_hostkey = NULL;
-  }
-
-  if (sftp_ecdsa521_hostkey != NULL) {
-    if (sftp_ecdsa521_hostkey->pkey != NULL) {
-      EVP_PKEY_free(sftp_ecdsa521_hostkey->pkey);
-    }
-
-    sftp_ecdsa256_hostkey = NULL;
-  }
-#endif /* PR_USE_OPENSSL_ECC */
+  sftp_keys_clear_dsa_hostkey();
+  sftp_keys_clear_ecdsa_hostkey();
+  sftp_keys_clear_rsa_hostkey();
 }

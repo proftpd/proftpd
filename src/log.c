@@ -36,13 +36,15 @@
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
 static int logstderr = TRUE;
-static int debug_level = DEBUG0;	/* Default is no debug logging */
+static int debug_level = DEBUG0;
 static int default_level = PR_LOG_NOTICE;
 static int facility = LOG_DAEMON;
 static int set_facility = -1;
 static char systemlog_fn[PR_TUNABLE_PATH_MAX] = {'\0'};
 static char systemlog_host[256] = {'\0'};
 static int systemlog_fd = -1;
+
+static const char *trace_channel = "log";
 
 int syslog_sockfd = -1;
 
@@ -267,7 +269,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
 #ifdef PR_USE_NONBLOCKING_LOG_OPEN
   /* Return the fd to blocking mode. */
-  fd_set_block(*log_fd);
+  (void) fd_set_block(*log_fd);
 #endif /* PR_USE_NONBLOCKING_LOG_OPEN */
 
   destroy_pool(tmp_pool);
@@ -370,8 +372,14 @@ int log_opensyslog(const char *fn) {
     pr_closelog(syslog_sockfd);
 
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
-    if (syslog_sockfd < 0)
+    if (syslog_sockfd < 0) {
+      int xerrno = errno;
+
+      (void) pr_trace_msg(trace_channel, 1,
+        "error opening syslog fd: %s", strerror(xerrno));
+      errno = xerrno;
       return -1;
+    }
 
     /* Find a usable fd for the just-opened socket fd. */
     if (syslog_sockfd <= STDERR_FILENO) {
@@ -382,7 +390,7 @@ int log_opensyslog(const char *fn) {
       }
     }
 
-    fcntl(syslog_sockfd, F_SETFD, FD_CLOEXEC);
+    (void) fcntl(syslog_sockfd, F_SETFD, FD_CLOEXEC);
     systemlog_fd = -1;
 
   } else if ((res = pr_log_openfile(systemlog_fn, &systemlog_fd,
@@ -591,6 +599,12 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   if (!syslog_open) {
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, f);
+    if (syslog_sockfd < 0) {
+      (void) pr_trace_msg(trace_channel, 1,
+        "error opening syslog fd: %s", strerror(errno));
+      return;
+    }
+
     syslog_open = TRUE;
 
   } else if (f != facility) {

@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -290,13 +290,13 @@ int pr_timer_reset(int timerno, module *mod) {
 
   pr_alarms_unblock();
 
-  if (t) {
+  if (t != NULL) {
     pr_trace_msg("timer", 7, "reset timer ID %d ('%s', for module '%s')",
       t->timerno, t->desc, t->mod ? t->mod->name : "[none]");
     return t->timerno;
   }
 
-  return (t ? t->timerno : 0);
+  return 0;
 }
 
 int pr_timer_remove(int timerno, module *mod) {

@@ -213,6 +213,8 @@ static int shaper_remove_queue(void) {
   struct msqid_ds ds;
   int res;
 
+  memset(&ds, 0, sizeof(ds));
+
   res = msgctl(shaper_qid, IPC_RMID, &ds);
   if (res < 0) {
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
@@ -966,6 +968,14 @@ static int shaper_table_send(void) {
       sess_list[i].sess_downincr);
     total_upshares += (shaper_tab.def_upshares +
       sess_list[i].sess_upincr);
+  }
+
+  if (total_downshares == 0) {
+    total_downshares = 1;
+  }
+
+  if (total_upshares == 0) {
+    total_upshares = 1;
   }
 
   (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,

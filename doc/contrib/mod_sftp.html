@@ -681,7 +681,7 @@ to disable the extension, use a '-' (minus) character prefix.  For example:
 <p>
 <hr>
 <h2><a name="SFTPHostKey">SFTPHostKey</a></h2>
-<strong>Syntax:</strong> SFTPHostKey <em>file</em>|agent:<em>/path</em><br>
+<strong>Syntax:</strong> SFTPHostKey <em>file</em>|agent:<em>/path</em>|"NoRSA"|"NoDSA"|"NoECDSA"<br>
 <strong>Default:</strong> <em>None</em><br>
 <strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
 <strong>Module:</strong> mod_sftp<br>
@@ -721,6 +721,28 @@ OpenSSH's <code>ssh-agent</code>.  For example:
 Using an SSH agent for storing host keys allows for configurations where
 the host keys are not stored on files on the server system, <i>e.g.</i>
 the keys can be loaded into the SSH agent from a PKCS#11 token.
+
+<p>
+The <code>SFTPHostKey</code> directive, as of <code>proftpd-1.3.6rc1</code>
+and later, can be used to <em>disable</em> host keys configured via
+<code>&lt;Global&gt;</code>.  For example, if you have a global RSA key that
+you wish to disable in all vhosts, you might use the "NoRSA" flag, <i>e.g.</i>:
+<pre>
+  &lt;Global&gt;
+    SFTPHostKey /path/to/ssh_rsa_host_key
+    ...
+  &lt;/Global&gt;
+
+  &lt;VirtualHost a.b.c.d&gt;
+    ...
+    # Configure our per-vhost DSA host key
+    SFTPHostKey /path/to/ssh_dsa_host_key
+
+    # ...and disable the global RSA host key
+    SFTPHostKey NoRSA
+    ...
+  &lt;/VirtualHost&gt;
+</pre>
 
 <p>
 <hr>
@@ -932,6 +954,18 @@ The currently implemented options are:
     permissions in an upload.) If you need more FTP-like functionality for any
     reason and wish to have <code>mod_sftp</code> silently ignore any
     permissions sent by the SFTP client, use this option.
+
+  <p>
+  <li><code>InsecureHostKeyPerms</code><br>
+    <p>
+    When this option is used, <code>mod_sftp</code> will ignore insecure
+    permissions (<i>i.e.</i> group- or world-readable) on
+    <code>SFTPHostKey</code> files.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
 
   <p>
   <li><code>MatchKeySubject</code><br>
@@ -1370,6 +1404,12 @@ values), once the client has successfully exchanged keys with
   <li><code>SFTP_SERVER_CIPHER_ALGO</code>
   <li><code>SFTP_SERVER_COMPRESSION_ALGO</code>
   <li><code>SFTP_SERVER_MAC_ALGO</code>
+</ul>
+And after the client has successfully authenticated, the following variables
+<i>may</i> be set, depending on the authentication mechanism used:
+<ul>
+  <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT</code>
+  <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO</code>
 </ul>
 
 <p>
@@ -2152,13 +2192,25 @@ module, or configure it to preserve the SGID bit (<i>e.g.</i> via the
 <a href="../modules/mod_cap.html#CapabilitiesSet"><code>CAP_FSETID</code></a>
 capability).
 
+<p><a name="SFTPWarnings">
+<font color=red>Question</font>: In my SFTP logs, I see these warnings:
+<pre>
+  WARNING: unable to read SFTPDHParamFile '<i>path</i>': Permission denied
+  unable to open SFTPKeyBlacklist '<i>path</i>': Permission denied
+<pre>
+What can I do to fix this?<br>
+<font color=blue>Answer</font>: This indicates that the files are not
+readable (usually <i>world</i>-readable) by the users logging in,
+<b>or</b> that the directories containing the files are not readable
+by the users.
+
+<p>
+Fortunately <code>mod_sftp</code> will function without issue if it
+cannot read either the <code>SFTPDHParamFile</code> or the
+<code>SFTPKeyBlacklist</code> files.
+
 <p>
 <hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-03-03 05:40:13 $</i><br>
-
-<br><hr>
 
 <font size=2><b><i>
 &copy; Copyright 2008-2014 TJ Saunders<br>

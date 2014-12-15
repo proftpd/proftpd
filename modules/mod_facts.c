@@ -21,8 +21,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mod_facts.c,v 1.60 2013-04-16 16:04:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -888,7 +886,20 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   path = pstrdup(cmd->tmp_pool, ptr + 1);
 
-  decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      path);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (canon_path == NULL) {
@@ -1103,7 +1114,20 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   path = pstrdup(cmd->tmp_pool, ptr + 1);
 
-  decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      path);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (canon_path == NULL) {
@@ -1200,7 +1224,21 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   if (cmd->argc != 1) {
     path = pstrdup(cmd->tmp_pool, cmd->arg);
-    decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), path);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
 
   } else {
     decoded_path = path = pr_fs_getcwd();
@@ -1441,7 +1479,21 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   if (cmd->argc != 1) {
     path = pstrdup(cmd->tmp_pool, cmd->arg);
-    decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), path);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
 
   } else {
     decoded_path = path = pr_fs_getcwd();
