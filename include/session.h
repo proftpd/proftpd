@@ -72,6 +72,9 @@
 /* Disconnected due to snprintf(3) buffer truncation. */
 #define PR_SESS_DISCONNECT_SNPRINTF_TRUNCATED	13
 
+/* Disconnected due to wrong protocol used (e.g. HTTP/SMTP). */
+#define PR_SESS_DISCONNECT_BAD_PROTOCOL		14
+
 /* Returns a string describing the reason the client was disconnected or
  * the session ended.  If a pointer to a char * was provided, any extra
  * disconnect details will be provided.

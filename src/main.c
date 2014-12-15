@@ -572,6 +572,20 @@ int pr_cmd_read(cmd_rec **res) {
     cmd = make_ftp_cmd(session.pool, cp, flags);
     if (cmd) {
       *res = cmd;
+
+      if (pr_cmd_is_http(cmd) == TRUE) {
+        cmd->is_ftp = FALSE;
+        cmd->protocol = "HTTP";
+
+      } else if (pr_cmd_is_smtp(cmd) == TRUE) {
+        cmd->is_ftp = FALSE;
+        cmd->protocol = "SMTP";
+
+      } else {
+        /* Assume that the client is sending valid FTP commands. */
+        cmd->is_ftp = TRUE;
+        cmd->protocol = "FTP";
+      }
     } 
   }
 
@@ -827,6 +841,20 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     }
 
     if (cmd) {
+
+      /* Detect known commands for other protocols; if found, drop the
+       * connection, lest we be used as part of an attack on a different
+       * protocol server (Bug#XXXX).
+       */
+      if (cmd->is_ftp == FALSE) {
+        pr_log_pri(PR_LOG_WARNING,
+          "client sent %s command '%s', disconnecting", cmd->protocol,
+          cmd->argv[0]);
+        pr_event_generate("core.bad-protocol", cmd);
+        pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BAD_PROTOCOL,
+          cmd->protocol);
+      }
+ 
       pr_cmd_dispatch(cmd);
       destroy_pool(cmd->pool);
 
