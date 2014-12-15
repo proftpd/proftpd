@@ -632,7 +632,7 @@ my $TESTS = {
   #       $ ssh -version
   #       OpenSSH_5.6p1, OpenSSL 0.9.8r 8 Feb 2011
 
-  sftp_ext_download_rekey_bug4097 => {
+  sftp_ext_download_rekey_rsa1024_hostkey_bug4097 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
@@ -1488,6 +1488,7 @@ sub set_up {
   # files.
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $rsa1024_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa1024_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
   my $ecdsa256_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_ecdsa256_key');
   my $ecdsa384_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_ecdsa384_key');
@@ -1495,10 +1496,10 @@ sub set_up {
   my $passphrase_rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/passphrase_host_rsa_key');
   my $passphrase_dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/passphrase_host_dsa_key');
 
-  unless (chmod(0400, $rsa_host_key, $dsa_host_key,
+  unless (chmod(0400, $rsa_host_key, $rsa1024_host_key, $dsa_host_key,
       $ecdsa256_host_key, $ecdsa384_host_key, $ecdsa521_host_key,
       $passphrase_rsa_host_key, $passphrase_dsa_host_key)) {
-    die("Can't set perms on $rsa_host_key, $dsa_host_key, $ecdsa256_host_key, $ecdsa384_host_key, $ecdsa521_host_key, $passphrase_rsa_host_key, $passphrase_dsa_host_key: $!");
+    die("Can't set perms on $rsa_host_key, $rsa1024_host_key, $dsa_host_key, $ecdsa256_host_key, $ecdsa384_host_key, $ecdsa521_host_key, $passphrase_rsa_host_key, $passphrase_dsa_host_key: $!");
   }
 }
 
@@ -20342,7 +20343,7 @@ sub sftp_ext_download_server_rekey {
   unlink($log_file);
 }
 
-sub sftp_ext_download_rekey_bug4097 {
+sub sftp_ext_download_rekey_rsa1024_hostkey_bug4097 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'sftp');
@@ -20420,6 +20421,7 @@ sub sftp_ext_download_rekey_bug4097 {
         "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+        "SFTPRekey required 600 256 10",
       ],
     },
   };
@@ -20446,12 +20448,14 @@ sub sftp_ext_download_rekey_bug4097 {
   $self->handle_sigchld();
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
+    sleep(1);
+
     eval {
       my @cmd = (
         'sftp',
         '-oBatchMode=yes',
         '-oCheckHostIP=no',
-        '-oRekeyLimit=256',
+#        '-oRekeyLimit=256',
         "-oPort=$port",
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
