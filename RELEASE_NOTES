@@ -35,6 +35,8 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    BanOnEvent BadProtocol (Bug#4143)
+
     DelayTable none (Bug#4020)
 
     ExtendedLog SSH, SFTP classes, ! notation (Bug#4067)
