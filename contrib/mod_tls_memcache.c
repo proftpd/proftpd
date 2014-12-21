@@ -907,8 +907,8 @@ static int tls_mcache_init(void) {
     return -1;
   }
 #else
-  pr_log_pri(PR_LOG_NOTICE, MOD_TLS_MEMCACHE_VERSION
-    ": notice: unable to register 'memcache' SSL session cache: Memcache support not enabled");
+  pr_log_pri(PR_LOG_DEBUG, MOD_TLS_MEMCACHE_VERSION
+    ": unable to register 'memcache' SSL session cache: Memcache support not enabled");
 #endif /* PR_USE_MEMCACHE */
 
   return 0;
