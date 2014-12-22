@@ -2908,7 +2908,7 @@ static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   uint32_t buflen, bufsz, buflen2, bufsz2, hostkey_datalen;
 
   hostkey_data = sftp_keys_get_hostkey_data(pkt->pool, kex->use_hostkey_type,
-    (size_t *) &hostkey_datalen);
+    &hostkey_datalen);
   if (hostkey_data == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error obtaining hostkey for KEXRSA key exchange: %s", strerror(errno));
