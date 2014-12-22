@@ -268,7 +268,7 @@ START_TEST (fsio_access_dir_test) {
   int res;
   uid_t uid = getuid(), other_uid = 1000;
   gid_t gid = getgid(), other_gid = 1000;
-  mode_t curr_umask, perms;
+  mode_t perms;
 
   res = pr_fsio_access(NULL, X_OK, uid, gid, NULL);
   fail_unless(res < 0, "Failed to handle null path");
@@ -276,14 +276,18 @@ START_TEST (fsio_access_dir_test) {
     errno);
 
   /* Make the directory to check; we want it to have perms 771.*/
-  curr_umask = umask(0);
   perms = (mode_t) 0771;
   if (mkdir(fsio_access_dir_path, perms) < 0) {
-    int xerrno = errno;
-
-    umask(curr_umask);
     fail("unable to create directory '%s': %s", fsio_access_dir_path,
-      strerror(xerrno));
+      strerror(errno));
+  }
+
+  /* Use chmod(2) to ensure that the directory has the perms we want,
+   * regardless of any umask settings.
+   */
+  if (chmod(fsio_access_dir_path, perms) < 0) {
+    fail("unable to set perms %04o on directory '%s': %s", perms,
+      fsio_access_dir_path, strerror(errno));
   }
 
   /* First, check that we ourselves can access our own directory. */
@@ -313,7 +317,6 @@ START_TEST (fsio_access_dir_test) {
   /* Ideally these checks would fail with EACCES.  However, it looks like this
    * behavior may be system-dependent; this test fails on travis-ci.  Hmm.
    */
-#if 0
   res = pr_fsio_access(fsio_access_dir_path, R_OK, other_uid, other_gid, NULL);
   fail_unless(res < 0, "other read access on directory succeeded unexpectedly");
   fail_unless(errno == EACCES, "Expected EACCES, got %s (%d)", strerror(errno),
@@ -328,7 +331,6 @@ START_TEST (fsio_access_dir_test) {
   res = pr_fsio_access(fsio_access_dir_path, X_OK, other_uid, other_gid, NULL);
   fail_unless(res == 0, "Failed to check for execute access on directory: %s",
     strerror(errno));
-#endif
 
   (void) rmdir(fsio_access_dir_path);
 }
