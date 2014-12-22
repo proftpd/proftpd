@@ -593,8 +593,9 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
 
     sstrcat(pathbuf, path, sizeof(pathbuf)-1);
 
-  } else
+  } else {
     sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
+  }
 
   /* Determine which filesystem function to use, stat() or lstat() */
   if (op == FSIO_FILE_STAT) {
@@ -613,12 +614,18 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
     /* Update the given struct stat pointer with the cached info */
     memcpy(sbuf, &statcache.sc_stat, sizeof(struct stat));
 
+    pr_trace_msg(trace_channel, 8, "using cached stat for %s for path '%s'",
+      op == FSIO_FILE_STAT ? "stat()" : "lstat()", path);
+
     /* Use the cached errno as well */
     errno = statcache.sc_errno;
 
     return statcache.sc_retval;
   }
 
+  pr_trace_msg(trace_channel, 8, "using %s %s for path '%s'",
+    fs ? fs->fs_name : "system",
+    op == FSIO_FILE_STAT ? "stat()" : "lstat()", path);
   res = mystat(fs, pathbuf, sbuf);
 
   /* Update the cache */
@@ -1946,8 +1953,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
       sstrncpy(workpath, cwd, sizeof(workpath));
     }
 
-  } else
+  } else {
     sstrncpy(curpath, path, sizeof(curpath));
+  }
 
   while (fini--) {
     where = curpath;
@@ -2002,8 +2010,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         size_t wherelen = strlen(where);
 
         ptr = where;
-        if (wherelen >= 1)
+        if (wherelen >= 1) {
           ptr += (wherelen - 1);
+        }
 
       } else {
         *ptr = '\0';
@@ -2013,8 +2022,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
       if (*namebuf) {
         for (last = namebuf; *last; last++);
-        if (*--last != '/')
+        if (*--last != '/') {
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
+        }
 
       } else {
         sstrcat(namebuf, "/", sizeof(namebuf)-1);
@@ -2026,8 +2036,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
       fs = lookup_dir_fs(namebuf, op);
 
-      if (fs_cache_lstat(fs, namebuf, &sbuf) == -1)
+      if (fs_cache_lstat(fs, namebuf, &sbuf) == -1) {
         return -1;
+      }
 
       if (S_ISLNK(sbuf.st_mode)) {
         char linkpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
@@ -2054,12 +2065,14 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         }
 
         *(linkpath + len) = '\0';
-        if (*linkpath == '/')
+        if (*linkpath == '/') {
           *workpath = '\0';
+        }
 
         /* Trim any trailing slash. */
-        if (linkpath[len-1] == '/')
+        if (linkpath[len-1] == '/') {
           linkpath[len-1] = '\0';
+        }
 
         if (*linkpath == '~') {
           char tmpbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
@@ -2067,8 +2080,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
           *workpath = '\0';
           sstrncpy(tmpbuf, linkpath, sizeof(tmpbuf));
 
-          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)-1) == -1)
+          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)-1) < 0) {
 	    return -1;
+          }
         }
 
         if (*where) {
@@ -2096,11 +2110,11 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
     }
   }
 
-  if (!workpath[0])
+  if (!workpath[0]) {
     sstrncpy(workpath, "/", sizeof(workpath));
+  }
 
   sstrncpy(buf, workpath, buflen);
-
   return 0;
 }
 
@@ -2125,10 +2139,12 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
   if (pr_fs_interpolate(path, curpath, sizeof(curpath)-1) != -1)
     sstrncpy(curpath, path, sizeof(curpath));
 
-  if (curpath[0] != '/')
+  if (curpath[0] != '/') {
     sstrncpy(workpath, cwd, sizeof(workpath));
-  else
+
+  } else {
     workpath[0] = '\0';
+  }
 
   while (fini--) {
     where = curpath;
@@ -2152,8 +2168,9 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         where += 3;
         ptr = last = workpath;
         while (*ptr) {
-          if (*ptr == '/')
+          if (*ptr == '/') {
             last = ptr;
+          }
           ptr++;
         }
 
@@ -2167,22 +2184,25 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         size_t wherelen = strlen(where);
 
         ptr = where;
-        if (wherelen >= 1)
+        if (wherelen >= 1) {
           ptr += (wherelen - 1);
+        }
 
-      } else
+      } else {
         *ptr = '\0';
+      }
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
 
       if (*namebuf) {
         for (last = namebuf; *last; last++);
-
-        if (*--last != '/')
+        if (*--last != '/') {
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
+        }
 
-      } else
+      } else {
         sstrcat(namebuf, "/", sizeof(namebuf)-1);
+      }
 
       sstrcat(namebuf, where, sizeof(namebuf)-1);
 
@@ -2221,8 +2241,9 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
 
         *(linkpath+len) = '\0';
 
-        if (*linkpath == '/')
+        if (*linkpath == '/') {
           *workpath = '\0';
+        }
 
         /* Trim any trailing slash. */
         if (linkpath[len-1] == '/')
@@ -2234,8 +2255,9 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
 
           sstrncpy(tmpbuf, linkpath, sizeof(tmpbuf));
 
-          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)-1) == -1)
+          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)-1) < 0) {
 	    return -1;
+          }
         }
 
         if (*where) {
@@ -2257,16 +2279,17 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         errno = ENOENT;
         return -1;               /* path/notadir/morepath */
 
-      } else
+      } else {
         sstrncpy(workpath, namebuf, sizeof(workpath));
+      }
     }
   }
 
-  if (!workpath[0])
+  if (!workpath[0]) {
     sstrncpy(workpath, "/", sizeof(workpath));
+  }
 
   sstrncpy(buf, workpath, buflen);
-
   return 0;
 }
 
