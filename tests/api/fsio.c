@@ -31,6 +31,7 @@
 static pool *p = NULL;
 
 static const char *fsio_link_path = "/tmp/prt-fsio-symlink.lnk";
+static const char *fsio_access_dir_path = "/tmp/prt-fsio-access.d";
 
 /* Fixtures */
 
@@ -50,6 +51,7 @@ static void tear_down(void) {
   }
 
   (void) unlink(fsio_link_path);
+  (void) rmdir(fsio_access_dir_path);
 }
 
 /* Tests */
@@ -262,6 +264,71 @@ START_TEST (fsio_readlink_test) {
 }
 END_TEST
 
+START_TEST (fsio_access_dir_test) {
+  int res;
+  const char *path = NULL;
+  uid_t uid = getuid(), other_uid = 1000;
+  gid_t gid = getgid(), other_gid = 1000;
+  mode_t curr_umask, perms;
+
+  res = pr_fsio_access(NULL, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Make the directory to check; we want it to have perms 771.*/
+  curr_umask = umask(0);
+  if (mkdir(fsio_access_dir_path, (mode_t) 0771) < 0) {
+    int xerrno = errno;
+
+    umask(curr_umask);
+    fail("unable to create directory '%s': %s", fsio_access_dir_path,
+      strerror(xerrno));
+  }
+
+  /* First, check that we ourselves can access our own directory. */
+
+  res = pr_fsio_access(fsio_access_dir_path, F_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for file access on directory: %s",
+    strerror(errno));
+
+  res = pr_fsio_access(fsio_access_dir_path, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for read access on directory: %s",
+    strerror(errno));
+
+  res = pr_fsio_access(fsio_access_dir_path, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for read access on directory: %s",
+    strerror(errno));
+
+  res = pr_fsio_access(fsio_access_dir_path, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for execute access on directory: %s",
+    strerror(errno));
+
+  /* Next, check that others can access the directory. */
+
+  res = pr_fsio_access(fsio_access_dir_path, F_OK, other_uid, other_gid, NULL);
+  fail_unless(res == 0,
+    "Failed to check for other file access on directory: %s", strerror(errno));
+
+  res = pr_fsio_access(fsio_access_dir_path, R_OK, other_uid, other_gid, NULL);
+  fail_unless(res < 0, "other read access on directory succeeded unexpectedly");
+  fail_unless(errno == EACCES, "Expected EACCES, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_access(fsio_access_dir_path, W_OK, other_uid, other_gid, NULL);
+  fail_unless(res < 0,
+    "other write access on directory succeeded unexpectedly");
+  fail_unless(errno == EACCES, "Expected EACCES, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_access(fsio_access_dir_path, X_OK, other_uid, other_gid, NULL);
+  fail_unless(res == 0, "Failed to check for execute access on directory: %s",
+    strerror(errno));
+
+  (void) rmdir(fsio_access_dir_path);
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -278,6 +345,7 @@ Suite *tests_get_fsio_suite(void) {
 
   tcase_add_test(testcase, fsio_symlink_test);
   tcase_add_test(testcase, fsio_readlink_test);
+  tcase_add_test(testcase, fsio_access_dir_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

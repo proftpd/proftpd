@@ -370,12 +370,14 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
   struct stat st;
 
   pr_fs_clear_cache();
-  if (pr_fsio_stat(path, &st) < 0)
+  if (pr_fsio_stat(path, &st) < 0) {
     return -1;
+  }
 
   /* Root always succeeds. */
-  if (uid == PR_ROOT_UID)
+  if (uid == PR_ROOT_UID) {
     return 0;
+  }
 
   /* Initialize mask to reflect the permission bits that are applicable for
    * the given user. mask contains the user-bits if the user ID equals the
@@ -385,8 +387,9 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
    */
   mask = S_IROTH|S_IWOTH|S_IXOTH;
 
-  if (st.st_uid == uid)
+  if (st.st_uid == uid) {
     mask |= S_IRUSR|S_IWUSR|S_IXUSR;
+  }
 
   /* Check the current group, as well as all supplementary groups.
    * Fortunately, we have this information cached, so accessing it is
