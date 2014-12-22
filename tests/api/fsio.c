@@ -266,7 +266,6 @@ END_TEST
 
 START_TEST (fsio_access_dir_test) {
   int res;
-  const char *path = NULL;
   uid_t uid = getuid(), other_uid = 1000;
   gid_t gid = getgid(), other_gid = 1000;
   mode_t curr_umask, perms;
@@ -278,7 +277,8 @@ START_TEST (fsio_access_dir_test) {
 
   /* Make the directory to check; we want it to have perms 771.*/
   curr_umask = umask(0);
-  if (mkdir(fsio_access_dir_path, (mode_t) 0771) < 0) {
+  perms = (mode_t) 0771;
+  if (mkdir(fsio_access_dir_path, perms) < 0) {
     int xerrno = errno;
 
     umask(curr_umask);
