@@ -429,7 +429,7 @@ static int site_misc_parsetime(char *timestamp, size_t timestamp_len,
 
     if (*sec > 60) {
       pr_log_debug(DEBUG7, MOD_SITE_MISC_VERSION
-        ": bad number of seconds in '%s' (%u)", timestamp, sec);
+        ": bad number of seconds in '%s' (%u)", timestamp, *sec);
       errno = EINVAL;
       return -1;
     }
