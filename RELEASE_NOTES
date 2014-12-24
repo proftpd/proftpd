@@ -44,7 +44,7 @@ ChangeLog files.
       no longer do so; adding the "SFTP" logging class to such ExtendedLogs is
       now necessary.
 
-    HiddenStores %P (Bug#4062)
+    HiddenStores %P (Bug#4062), APPE (Bug#4144)
 
     ListOptions -U (Bug#4060)
 
