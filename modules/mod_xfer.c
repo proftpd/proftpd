@@ -1379,45 +1379,47 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    /* APPE is not compatible with HiddenStores either (Bug#3598). */
-    if (session.xfer.xfer_type == STOR_APPEND) {
-      pr_log_debug(DEBUG9, "HiddenStore in effect, refusing APPE upload");
-      pr_response_add_err(R_550,
-        _("APPE not compatible with server configuration"));
+    /* For Bug#3598, we rejected any APPE command when HiddenStores are in
+     * effect (for good reasons).
+     *
+     * However, for Bug#4144, we're relaxing that policy.  Instead of rejecing
+     * the APPE command, we accept that command, but we disable the HiddenStores
+     * functionality.
+     */
+    if (session.xfer.xfer_type != STOR_APPEND) {
+      prefix = c->argv[1];
+      suffix = c->argv[2];
 
-      pr_cmd_set_errno(cmd, EPERM);
-      errno = EPERM;
-      return PR_ERROR(cmd);
-    }
+      /* Substitute the %P variable for the PID, if present. */
+      if (strstr(prefix, "%P") != NULL) {
+        char pid_buf[32];
 
-    prefix = c->argv[1];
-    suffix = c->argv[2];
+        memset(pid_buf, '\0', sizeof(pid_buf));
+        snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
+          (unsigned long) session.pid);
+        prefix = sreplace(cmd->pool, prefix, "%P", pid_buf, NULL);
+      }
 
-    /* Substitute the %P variable for the PID, if present. */
-    if (strstr(prefix, "%P") != NULL) {
-      char pid_buf[32];
+      if (strstr(suffix, "%P") != NULL) {
+        char pid_buf[32];
 
-      memset(pid_buf, '\0', sizeof(pid_buf));
-      snprintf(pid_buf, sizeof(pid_buf)-1, "%lu", (unsigned long) session.pid);
+        memset(pid_buf, '\0', sizeof(pid_buf));
+        snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
+          (unsigned long) session.pid);
+        suffix = sreplace(cmd->pool, suffix, "%P", pid_buf, NULL);
+      }
 
-      prefix = sreplace(cmd->pool, prefix, "%P", pid_buf, NULL);
-    }
+      if (get_hidden_store_path(cmd, path, prefix, suffix) < 0) {
+        int xerrno = errno;
 
-    if (strstr(suffix, "%P") != NULL) {
-      char pid_buf[32];
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
+        return PR_ERROR(cmd);
+      }
 
-      memset(pid_buf, '\0', sizeof(pid_buf));
-      snprintf(pid_buf, sizeof(pid_buf)-1, "%lu", (unsigned long) session.pid);
-      
-      suffix = sreplace(cmd->pool, suffix, "%P", pid_buf, NULL);
-    }
-
-    if (get_hidden_store_path(cmd, path, prefix, suffix) < 0) {
-      int xerrno = errno;
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
+    } else {
+      pr_log_debug(DEBUG9,
+        "HiddenStores in effect for APPE, ignoring HiddenStores");
     }
   }
 
