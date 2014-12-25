@@ -15740,7 +15740,7 @@ LIB_DEPS="\"\""
 
 
 
-LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o json.o"
 
 
 # Check whether --with-getopt was given.
