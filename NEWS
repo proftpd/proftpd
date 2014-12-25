@@ -78,6 +78,7 @@ Git
 - Bug 4140 - SFTP READLINK requests to symlinks to directories fail.
 - Bug 4143 - HTTPS/FTPS protocol confusion leads to XSS.
 - Bug 4144 - Support APPE when HiddenStores are enabled.
+- Bug 4031 - Support JSON output format for ftpwho.
 - Bug 4145 - Segfault if AuthUserFile is a relative symlink.
 - Bug 4152 - Reduce logging of non-fatal "unable to open incoming connection"
   errors.

@@ -61,3 +61,7 @@ ChangeLog files.
 
     STAT 211, 212, 213 response codes (Bug#3990)
 
+
+  + Changed Utilities
+
+    ftpwho -o json (Bug#4031)
