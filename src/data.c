@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -120,17 +120,13 @@ static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
   return *bufsize;
 }
 
-/* this function rewrites the contents of the given buffer, making sure that
+/* This function rewrites the contents of the given buffer, making sure that
  * each LF has a preceding CR, as required by RFC959:
  *
  *  buf = pointer to a buffer
  *  buflen = length of data in buffer
  *  bufsize = total size of buffer
- *  expand = will contain the number of expansion bytes (CRs) added,
- *           and should be the difference between buflen's original
- *           value and its value when this function returns
  */
-
 static int have_dangling_cr = FALSE;
 static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
     unsigned int bufsize) {
