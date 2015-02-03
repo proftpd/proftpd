@@ -1364,12 +1364,18 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       memcpy(session.xfer.buf, cl_buf, buflen);
 
       if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+        unsigned int added = 0;
+
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in
          * the internal buffer, including any added CRs.
          */
-        xfrm_ascii_write(&session.xfer.buf, &xferbuflen, session.xfer.bufsize);
+        added = xfrm_ascii_write(&session.xfer.buf, &xferbuflen,
+          session.xfer.bufsize);
+        pr_trace_msg(trace_channel, 9,
+          "ASCII transformation added %u CRs; transfer buffer now = %u bytes",
+          added, xferbuflen);
       }
 
       bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf, xferbuflen);
