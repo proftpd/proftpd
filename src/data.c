@@ -557,6 +557,9 @@ void pr_data_reset(void) {
     destroy_pool(session.d->pool);
   }
 
+  /* Clear any leftover state from previous transfers. */
+  have_dangling_cr = FALSE;
+
   session.d = NULL;
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
 }
