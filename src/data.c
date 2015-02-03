@@ -586,6 +586,9 @@ void pr_data_init(char *filename, int direction) {
 
     session.xfer.direction = direction;
   }
+
+  /* Clear any leftover state from previous transfers. */
+  have_dangling_cr = FALSE;
 }
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
