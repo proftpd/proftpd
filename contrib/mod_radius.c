@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2014 TJ Saunders
+ * Copyright (c) 2001-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -502,9 +502,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
      */
 
     if (radius_uid_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_uid_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_uid_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         int uid = -1;
@@ -546,9 +546,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_gid_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_gid_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_gid_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         int gid = -1;
@@ -590,9 +590,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_home_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_home_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_home_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *home;
@@ -630,9 +630,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_shell_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_shell_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_shell_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *shell;
@@ -680,9 +680,10 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     radius_log("parsing packet for RadiusGroupInfo attributes");
 
     if (radius_prime_group_name_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_prime_group_name_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet,
+        radius_prime_group_name_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *group_name;
@@ -707,9 +708,10 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_addl_group_names_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_addl_group_names_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet,
+        radius_addl_group_names_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *group_names, *group_names_str;
@@ -745,9 +747,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_addl_group_ids_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_addl_group_ids_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_addl_group_ids_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *group_ids, *group_ids_str;
@@ -808,9 +810,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     radius_log("parsing packet for RadiusQuotaInfo attributes");
 
     if (radius_quota_per_sess_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_per_sess_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_quota_per_sess_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *per_sess;
@@ -835,9 +837,10 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_quota_limit_type_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_limit_type_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet,
+        radius_quota_limit_type_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *limit_type;
@@ -862,9 +865,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_quota_bytes_in_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_bytes_in_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_quota_bytes_in_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *bytes_in;
@@ -889,9 +892,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_quota_bytes_out_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_bytes_out_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_quota_bytes_out_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *bytes_out;
@@ -916,9 +919,10 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_quota_bytes_xfer_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_bytes_xfer_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet,
+        radius_quota_bytes_xfer_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *bytes_xfer;
@@ -943,9 +947,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_quota_files_in_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_files_in_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_quota_files_in_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *files_in;
@@ -970,9 +974,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_quota_files_out_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_files_out_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet, radius_quota_files_out_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *files_out;
@@ -997,9 +1001,10 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
 
     if (radius_quota_files_xfer_attr_id) {
-      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
-        radius_quota_files_xfer_attr_id);
+      radius_attrib_t *attrib;
 
+      attrib = radius_get_vendor_attrib(packet,
+        radius_quota_files_xfer_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *files_xfer;
@@ -1945,13 +1950,13 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
   if (type == RADIUS_OLD_PASSWORD)
     attrib = radius_get_attrib(packet, RADIUS_OLD_PASSWORD);
   
-  if (!attrib)
+  if (attrib == NULL) {
     radius_add_attrib(packet, type, pwhash, pwlen);
 
-  else
-
+  } else {
     /* Overwrite the packet data. */
     memcpy(attrib->data, pwhash, pwlen);
+  }
 }
 
 static void radius_get_acct_digest(radius_packet_t *packet,
