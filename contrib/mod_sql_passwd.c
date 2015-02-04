@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2014 TJ Saunders
+ * Copyright (c) 2009-2015 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -175,7 +175,7 @@ static int get_pbkdf2_config(char *algo, const EVP_MD **md,
     char *iter_str, int *iter, char *len_str, int *len) {
 
   *md = EVP_get_digestbyname(algo);
-  if (md == NULL) {
+  if (*md == NULL) {
     return SQL_PASSWD_ERR_PBKDF2_UNKNOWN_DIGEST;
   }
 
