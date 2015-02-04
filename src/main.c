@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* House initialization and main program loop
- * $Id: main.c,v 1.462 2014-01-25 16:34:09 castaglia Exp $
- */
+/* House initialization and main program loop */
 
 #include "conf.h"
 
@@ -1184,8 +1182,26 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pr_signals_unblock();
 
   if (conn == NULL) {
-    pr_log_pri(PR_LOG_ERR, "fatal: unable to open incoming connection: %s",
-      strerror(xerrno));
+    /* There are some errors, e.g. ENOTCONN ("Transport endpoint is not
+     * connected") which can easily happen, as during scans/TCP
+     * probes/healthchecks, commonly done by load balancers, firewalls, and
+     * other clients.  By the time proftpd reaches the point of looking up
+     * the peer data for that connection, the client has disconnected.
+     *
+     * These are normal errors, and thus should not be logged as fatal
+     * conditions.
+     */
+    if (xerrno != ENOTCONN &&
+        xerrno != ECONNABORTED &&
+        xerrno != ECONNRESET) {
+      pr_log_pri(PR_LOG_ERR, "fatal: unable to open incoming connection: %s",
+        strerror(xerrno));
+
+    } else {
+      pr_log_pri(PR_LOG_DEBUG, "unable to open incoming connection: %s",
+        strerror(xerrno));
+    }
+
     exit(1);
   }
 
