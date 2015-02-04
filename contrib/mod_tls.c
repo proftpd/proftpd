@@ -1861,7 +1861,7 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
   static int need_banner = TRUE;
   struct tls_pkey_data *pdata = d;
 
-  if (!tls_passphrase_provider) {
+  if (tls_passphrase_provider == NULL) {
     register unsigned int attempt;
     int pwlen = 0;
 
@@ -1890,8 +1890,8 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
        * means a system error occurred, and 1 means user interaction problems.
        */
       if (res != 0) {
-         fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
-         continue;
+        fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
+        continue;
       }
 
       /* Ensure that the buffer is NUL-terminated. */
@@ -1941,9 +1941,10 @@ static void set_prompt_fds(void) {
    * to the general stderr logfile.
    */
   prompt_fd = open("/dev/null", O_WRONLY);
-  if (prompt_fd == -1)
+  if (prompt_fd == -1) {
     /* This is an arbitrary, meaningless placeholder number. */
     prompt_fd = 76;
+  }
 
   dup2(STDERR_FILENO, prompt_fd);
   dup2(STDOUT_FILENO, STDERR_FILENO);
@@ -2168,8 +2169,9 @@ static int tls_get_passphrase(server_rec *s, const char *path,
   /* Restore the normal stderr logging. */
   restore_prompt_fds();
 
-  if (pkey == NULL)
+  if (pkey == NULL) {
     return -1;
+  }
 
   EVP_PKEY_free(pkey);
 
