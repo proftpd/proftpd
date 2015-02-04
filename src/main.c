@@ -1191,14 +1191,14 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
      * These are normal errors, and thus should not be logged as fatal
      * conditions.
      */
-    if (xerrno != ENOTCONN &&
-        xerrno != ECONNABORTED &&
-        xerrno != ECONNRESET) {
-      pr_log_pri(PR_LOG_ERR, "fatal: unable to open incoming connection: %s",
+    if (xerrno == ENOTCONN ||
+        xerrno == ECONNABORTED ||
+        xerrno == ECONNRESET) {
+      pr_log_pri(PR_LOG_DEBUG, "unable to open incoming connection: %s",
         strerror(xerrno));
 
     } else {
-      pr_log_pri(PR_LOG_DEBUG, "unable to open incoming connection: %s",
+      pr_log_pri(PR_LOG_ERR, "fatal: unable to open incoming connection: %s",
         strerror(xerrno));
     }
 
