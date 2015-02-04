@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2014 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2015 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -1594,17 +1594,20 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   sigemptyset(&sa_ignore.sa_mask);
   sa_ignore.sa_flags = 0;
 
-  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0)
+  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0)
+  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0) {
     return -1;
+  }
 
   sigemptyset(&set_chldmask);
   sigaddset(&set_chldmask, SIGCHLD);
 
-  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0)
+  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0) {
     return -1;
+  }
 
   tls_prepare_provider_pipes(stdout_pipe, stderr_pipe);
 
@@ -1760,8 +1763,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
       fds = select(maxfd + 1, &readfds, NULL, NULL, &tv);
 
       if (fds == -1 &&
-          errno == EINTR)
+          errno == EINTR) {
         pr_signals_handle();
+      }
 
       if (fds > 0) {
         /* The child sent us something.  How thoughtful. */
@@ -1769,12 +1773,16 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         if (FD_ISSET(stdout_pipe[0], &readfds)) {
           res = read(stdout_pipe[0], buf, buflen);
           if (res > 0) {
-              while (res && (buf[res-1] == '\r' || buf[res-1] == '\n'))
-                res--;
-              buf[res] = '\0';
+            while (res &&
+                   (buf[res-1] == '\r' ||
+                    buf[res-1] == '\n')) {
+              res--;
+            }
+            buf[res] = '\0';
+            buf[buflen-1] = '\0';
 
-              pr_trace_msg(trace_channel, 18,
-                "read passphrase from '%s'", tls_passphrase_provider);
+            pr_trace_msg(trace_channel, 18, "read passphrase from '%s'",
+              tls_passphrase_provider);
 
           } else if (res < 0) {
             int xerrno = errno;
@@ -1801,8 +1809,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
           if (stderrlen > 0) {
             while (stderrlen &&
                    (stderrbuf[stderrlen-1] == '\r' ||
-                    stderrbuf[stderrlen-1] == '\n'))
+                    stderrbuf[stderrlen-1] == '\n')) {
               stderrlen--;
+            }
             stderrbuf[stderrlen] = '\0';
 
             pr_log_debug(DEBUG5, MOD_TLS_VERSION
@@ -1825,14 +1834,17 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   }
 
   /* Restore the previous signal actions. */
-  if (sigaction(SIGINT, &sa_intr, NULL) < 0)
+  if (sigaction(SIGINT, &sa_intr, NULL) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0)
+  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0) {
     return -1; 
+  }
 
-  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0)
+  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0) {
     return -1;
+  }
 
   if (WIFSIGNALED(status)) {
     pr_log_debug(DEBUG2, MOD_TLS_VERSION
@@ -1882,6 +1894,8 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
          continue;
       }
 
+      /* Ensure that the buffer is NUL-terminated. */
+      buf[buflen-1] = '\0';
       pwlen = strlen(buf);
       if (pwlen < 1) {
         fprintf(stderr, "Error: passphrase must be at least one character\n");

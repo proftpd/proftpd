@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -229,17 +229,20 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   sigemptyset(&sa_ignore.sa_mask);
   sa_ignore.sa_flags = 0;
 
-  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0)
+  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0)
+  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0) {
     return -1;
+  }
 
   sigemptyset(&set_chldmask);
   sigaddset(&set_chldmask, SIGCHLD);
 
-  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0)
+  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0) {
     return -1;
+  }
 
   prepare_provider_pipes(stdout_pipe, stderr_pipe);
 
@@ -395,12 +398,13 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         if (FD_ISSET(stdout_pipe[0], &readfds)) {
           res = read(stdout_pipe[0], buf, buflen);
           if (res > 0) {
-              while (res &&
-                     (buf[res-1] == '\r' ||
-                      buf[res-1] == '\n')) {
-                res--;
-              }
-              buf[res] = '\0';
+            while (res &&
+                   (buf[res-1] == '\r' ||
+                    buf[res-1] == '\n')) {
+              res--;
+            }
+            buf[res] = '\0';
+            buf[buflen-1] = '\0';
 
           } else if (res < 0) {
             pr_log_debug(DEBUG2, MOD_SFTP_VERSION
@@ -445,14 +449,17 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   }
 
   /* Restore the previous signal actions. */
-  if (sigaction(SIGINT, &sa_intr, NULL) < 0)
+  if (sigaction(SIGINT, &sa_intr, NULL) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0)
+  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0) {
     return -1;
+  }
 
-  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0)
+  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0) {
     return -1;
+  }
 
   if (WIFSIGNALED(status)) {
     pr_log_debug(DEBUG2, MOD_SFTP_VERSION ": '%s' died from signal %d",
@@ -530,6 +537,8 @@ static int get_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
          continue;
       }
 
+      /* Ensure that the buffer is NUL-terminated. */
+      buf[buflen-1] = '\0';
       pwlen = strlen(buf);
       if (pwlen < 1) {
         fprintf(stderr, "Error: passphrase must be at least one character\n");
