@@ -1572,7 +1572,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else if (*(*opt + 1) == ' ') {
+    } else if (**opt && (*(*opt + 1) == ' ')) {
       /* If the next character is a blank space, advance just one character. */
       (*opt)++;
       break;
@@ -1686,7 +1686,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else if (*(*opt + 1) == ' ') {
+    } else if (**opt && (*(*opt + 1) == ' ')) {
       /* If the next character is a blank space, advance just one character. */
       (*opt)++;
       break;
