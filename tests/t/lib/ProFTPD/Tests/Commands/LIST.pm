@@ -196,10 +196,7 @@ sub new {
 }
 
 sub list_tests {
-#  return testsuite_get_runnable_tests($TESTS);
-  return qw(
-    list_option_parsing
-  );
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub list_ok_raw_active {
@@ -5347,8 +5344,8 @@ sub list_option_parsing {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      for (my $i = 0; $i < 3; $i++) {
-        my $conn = $client->list_raw("-a  ");
+      for (my $i = 0; $i < 5; $i++) {
+        my $conn = $client->list_raw("-a ");
         unless ($conn) {
           die("LIST failed: " . $client->response_code() . " " .
             $client->response_msg());
