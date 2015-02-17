@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1572,7 +1572,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else if (*(*opt + 1) == ' ') {
+    } else if (**opt && *(*opt + 1) == ' ') {
       /* If the next character is a blank space, advance just one character. */
       (*opt)++;
       break;
@@ -1686,7 +1686,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else if (*(*opt + 1) == ' ') {
+    } else if (**opt && *(*opt + 1) == ' ') {
       /* If the next character is a blank space, advance just one character. */
       (*opt)++;
       break;
