@@ -1466,7 +1466,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     while ((*opt)++ && PR_ISALNUM(**opt)) {
       switch (**opt) {
         case '1':
-          if (strcmp(session.curr_cmd, C_STAT) != 0) {
+          if (session.curr_cmd_id != PR_CMD_STAT_ID) {
             opt_1 = 1;
             opt_l = opt_C = 0;
           }
@@ -1485,7 +1485,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'C':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_l = 0;
             opt_C = 1;
           }
@@ -1501,13 +1501,13 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'F':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_F = 1;
           }
           break;
 
         case 'h':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_h = 1;
           }
           break;
@@ -1517,7 +1517,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'l':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_l = 1;
             opt_C = 0;
             opt_1 = 0;
@@ -1525,7 +1525,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'n':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_n = 1;
           }
           break;
@@ -1544,8 +1544,9 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
         case 't':
           opt_t = 1;
-          if (glob_flags)
+          if (glob_flags) {
             *glob_flags |= GLOB_NOSORT;
+          }
           break;
 
         case 'U':
@@ -1583,8 +1584,9 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     }
   }
 
-  if (!handle_plus_opts)
+  if (!handle_plus_opts) {
     return;
+  }
 
   /* Check for non-standard options */
   while (*opt && **opt == '+') {
@@ -2833,8 +2835,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       while (target && *target == '-') {
         /* Advance to the next whitespace */
-        while (*target != '\0' && !PR_ISSPACE(*target))
+        while (*target != '\0' && !PR_ISSPACE(*target)) {
           target++;
+        }
 
         ptr = target;
 
@@ -2848,7 +2851,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
           /* Options are found; skip past the leading whitespace. */
           target = ptr;
 
-        } else if (*(target + 1) == ' ') {
+        } else if (*target && *(target + 1) == ' ') {
           /* If the next character is a blank space, advance just one
            * character.
            */
@@ -2995,8 +2998,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
       p = *path;
       path++;
 
-      if (*p == '.' && (!opt_A || is_dotdir(p)))
+      if (*p == '.' && (!opt_A || is_dotdir(p))) {
         continue;
+      }
 
       if (pr_fsio_stat(p, &st) == 0) {
         /* If it's a directory... */
@@ -3013,8 +3017,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
         } else if (S_ISREG(st.st_mode) &&
             ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
           /* Don't display hidden files */
-          if (hidden)
+          if (hidden) {
             continue;
+          }
 
           res = nlstfile(cmd, p);
         }
