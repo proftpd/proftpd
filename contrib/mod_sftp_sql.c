@@ -377,7 +377,7 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char **blob,
     } else {
       if (key) {
         if (strstr(line, ": ") != NULL) {
-          if (strncasecmp(line, "Comment: ", 9) == 0) {
+          if (strncasecmp(line, "Subject: ", 9) == 0) {
             key->subject = pstrdup(p, line + 9);
           }
 
