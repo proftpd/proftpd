@@ -50,6 +50,8 @@ $Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
 - Bug 4145 - Segfault if AuthUserFile is a relative symlink.
 - Bug 4152 - Reduce logging of non-fatal "unable to open incoming connection"
   errors.
+- Bug 4155 - SSH keys with too-long Comment headers aren't recognized by
+  mod_sftp_sql.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
