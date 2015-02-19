@@ -140,6 +140,14 @@ static char *sqlstore_getline(pool *p, char **blob, size_t *bloblen) {
       continue;
     }
 
+    /* Watch out for lines larger than our buffer. */
+    if (linelen > sizeof(linebuf)) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "line of key data (%lu bytes) exceeds buffer size, truncating; "
+        "this WILL cause authentication failures", (unsigned long) linelen);
+      linelen = sizeof(linebuf);
+    }
+
     memcpy(linebuf, data, linelen);
     linebuf[linelen-1] = '\0';
 
