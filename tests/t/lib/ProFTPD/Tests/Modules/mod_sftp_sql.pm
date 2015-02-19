@@ -2226,7 +2226,7 @@ sub ssh2_auth_publickey_rsa_sql_rfc4716_overlong_comment_bug4155 {
   my $db_file = File::Spec->rel2abs("$tmpdir/sftp.db");
 
   my $rsa_rfc4716_data = '---- BEGIN SSH2 PUBLIC KEY ----
-#Comment: "2048-bit RSA, converted from OpenSSH by jbaird@fc-qaftp01.corp.follett.com"
+Comment: "2048-bit RSA, converted from OpenSSH by jbaird@fc-qaftp01.corp.follett.com"
 AAAAB3NzaC1yc2EAAAABIwAAAQEA13H33uYHCPKX+any43mlzsjxrZuFpgdACmCuPa90Kh
 Xe6hIg6rx5nNLMOuKHfpMEshCQnj9zmtjSGyLZ9ufJv6Wg3SSHTIKQW2HtR9MLM8zzVXDE
 pcsWQUbwAs7mBdYKlOJxFP3J4PMVAiJe+GnQ889nXkdixB4SRU6LCfrPwg5c1Ho5FOPYys
