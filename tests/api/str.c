@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,6 +65,11 @@ START_TEST (sstrncpy_test) {
 
   ok = "Therefore, all progress depends on the unreasonable man";
 
+  mark_point();
+  res = sstrncpy(ok, ok, 1);
+  fail_unless(res == 1, "Expected result 1, got %d", len, res);
+
+  mark_point();
   memset(dst, 'A', sz);
   len = 1;
 

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -183,6 +183,18 @@ START_TEST (fs_dircat_test) {
 }
 END_TEST
 
+START_TEST (fs_setcwd_test) {
+  int res;
+
+  /* Make sure that we don't segfault if we call pr_fs_setcwd() on the
+   * buffer that it is already using.
+   */
+  res = pr_fs_setcwd(pr_fs_getcwd());
+  fail_unless(res == 0, "Failed to set cwd to '%s': %s", pr_fs_getcwd(),
+    strerror(errno));
+}
+END_TEST
+
 START_TEST (fsio_symlink_test) {
   int res;
   const char *target_path, *link_path;
@@ -353,6 +365,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_clean_path_test);
   tcase_add_test(testcase, fs_clean_path2_test);
   tcase_add_test(testcase, fs_dircat_test);
+  tcase_add_test(testcase, fs_setcwd_test);
 
   tcase_add_test(testcase, fsio_symlink_test);
   tcase_add_test(testcase, fsio_readlink_test);
