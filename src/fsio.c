@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project
+ * Copyright (c) 2001-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1674,11 +1674,19 @@ pr_fs_match_t *pr_get_fs_match(const char *path, int op) {
 }
 #endif /* PR_USE_REGEX and PR_FS_MATCH */
 
-void pr_fs_setcwd(const char *dir) {
-  pr_fs_resolve_path(dir, cwd, sizeof(cwd)-1, FSIO_DIR_CHDIR);
-  sstrncpy(cwd, dir, sizeof(cwd));
+int pr_fs_setcwd(const char *dir) {
+  if (pr_fs_resolve_path(dir, cwd, sizeof(cwd)-1, FSIO_DIR_CHDIR) < 0) {
+    return -1;
+  }
+
+  if (sstrncpy(cwd, dir, sizeof(cwd)) < 0) {
+    return -1;
+  }
+
   fs_cwd = lookup_dir_fs(cwd, FSIO_DIR_CHDIR);
   cwd[sizeof(cwd) - 1] = '\0';
+
+  return 0;
 }
 
 const char *pr_fs_getcwd(void) {
