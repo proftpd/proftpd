@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Data transfer module for ProFTPD
- *
- * $Id: mod_xfer.c,v 1.334 2014-04-28 17:11:18 castaglia Exp $
- */
+/* Data transfer module for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -64,6 +61,7 @@ static int xfer_check_limit(cmd_rec *);
 
 /* TransferOptions */
 #define PR_XFER_OPT_HANDLE_ALLO		0x0001
+#define PR_XFER_OPT_IGNORE_ASCII	0x0002
 static unsigned long xfer_opts = PR_XFER_OPT_HANDLE_ALLO;
 
 /* Transfer priority */
@@ -2044,7 +2042,8 @@ MODRET xfer_rest(cmd_rec *cmd) {
    * clients.
    */
   if ((session.sf_flags & SF_ASCII) &&
-      pos != 0) {
+      pos != 0 &&
+      !(xfer_opts & PR_XFER_OPT_IGNORE_ASCII)) {
     pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
     pr_response_add_err(R_501,
       _("%s: Resuming transfers not allowed in ASCII mode"), cmd->argv[0]);
@@ -2829,6 +2828,23 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
      */
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "TransferOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    xfer_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TransferOptions", FALSE);
+  }
+
+  if (xfer_opts & PR_XFER_OPT_IGNORE_ASCII) {
+    pr_log_debug(DEBUG8, "Ignoring ASCII translation for this session");
+    pr_data_ignore_ascii(TRUE);
+  }
+
   /* Check for TransferPriority. */
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TransferPriority", FALSE);
   if (c) {
@@ -3241,6 +3257,36 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
   c->flags |= CF_MERGEDOWN;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: TransferOptions opt1 opt2 ... */
+MODRET set_transferoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcasecmp(cmd->argv[i], "IgnoreASCII") == 0) {
+      opts |= PR_XFER_OPT_IGNORE_ASCII;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TransferOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
 
   return PR_HANDLED(cmd);
 }
@@ -3709,6 +3755,7 @@ static conftable xfer_conftab[] = {
   { "StoreUniquePrefix",	set_storeuniqueprefix,		NULL },
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
+  { "TransferOptions",		set_transferoptions,		NULL },
   { "TransferPriority",		set_transferpriority,		NULL },
   { "TransferRate",		set_transferrate,		NULL },
   { "UseSendfile",		set_usesendfile,		NULL },
