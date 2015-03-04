@@ -32,6 +32,8 @@ ChangeLog files.
 
     SQLPasswordSaltEncoding (Bug#4138)
 
+    TransferOptions IgnoreASCII (Bug#4159)
+
 
   + Changed Configuration Directives
 
