@@ -1191,8 +1191,14 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
     char *buf = session.xfer.buf;
     pr_buffer_t *pbuf;
 
-    if ((session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) &&
-        !(data_opts & PR_DATA_OPT_IGNORE_ASCII)) {
+    /* We use ASCII translation if:
+     *
+     * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
+     * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
+     */
+    if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
+        ((session.sf_flags & SF_ASCII) &&
+         !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
       int adjlen, buflen;
 
       do {
@@ -1399,8 +1405,14 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       /* Fill up our internal buffer. */
       memcpy(session.xfer.buf, cl_buf, buflen);
 
-      if ((session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) &&
-          !(data_opts & PR_DATA_OPT_IGNORE_ASCII)) {
+      /* We use ASCII translation if:
+       *
+       * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
+      * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
+       */
+      if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
+          ((session.sf_flags & SF_ASCII) &&
+           !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
         unsigned int added = 0;
 
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
