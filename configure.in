@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2014 The ProFTPD Project team
+dnl Copyright (c) 2001-2015 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -1548,6 +1548,8 @@ AC_CHECK_SIZEOF(size_t, 0)
 AC_CHECK_SIZEOF(time_t, 0)
 AC_CHECK_SIZEOF(char *, 0)
 AC_CHECK_SIZEOF(void *, 0)
+AC_CHECK_SIZEOF(uid_t, 0)
+AC_CHECK_SIZEOF(gid_t, 0)
 
 dnl Check for generic typedefs
 AC_CHECK_TYPE(mode_t, mode_t)
