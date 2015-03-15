@@ -21,6 +21,8 @@ ChangeLog files.
 
         TLSProtocol SSLv3 TLSv1 ...
 
+    mod_tls no longer supports EXPORT ciphers (Bug#4163)
+
 
   + New Configuration Directives:
 
