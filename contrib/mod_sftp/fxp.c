@@ -9057,7 +9057,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > fxp_utf8_protocol_version) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -10545,7 +10545,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   const char *fake_user = NULL, *fake_group = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > fxp_utf8_protocol_version) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
