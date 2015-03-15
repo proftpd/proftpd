@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: fxp.c,v 1.203 2014-01-17 06:11:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -9103,7 +9101,6 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       if (fxp->payload_sz > 0) {
         composite_path = sftp_msg_read_string(fxp->pool, &fxp->payload,
           &fxp->payload_sz);
-(void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "handle_realpath: have composite-path = '%s'", composite_path);
 
         /* XXX One problem with the most recent SFTP Draft is that it does NOT
          * include a count of the number of composite-paths that the client
@@ -9143,6 +9140,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   
       pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
         path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+      sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+      sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+      sftp_msg_write_int(&buf, &buflen, 1);
       fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
         "nobody");
     }
@@ -9197,6 +9198,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
         pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
           path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+        sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+        sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+        sftp_msg_write_int(&buf, &buflen, 1);
         fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
           "nobody");
       }
@@ -9252,6 +9257,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
         path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+      sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+      sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+      sftp_msg_write_int(&buf, &buflen, 1);
       fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
         "nobody");
     }
@@ -9293,6 +9302,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
         pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
           path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+        sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+        sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+        sftp_msg_write_int(&buf, &buflen, 1);
         fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
           "nobody");
       }
