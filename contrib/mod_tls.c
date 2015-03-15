@@ -519,7 +519,6 @@ static int tls_get_passphrase(server_rec *, const char *, const char *,
 static char *tls_get_subj_name(SSL *);
 
 static int tls_openlog(void);
-static RSA *tls_rsa_cb(SSL *, int, int);
 static int tls_seed_prng(void);
 static void tls_setup_environ(SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
@@ -3078,7 +3077,6 @@ static int tls_init_server(void) {
       return -1;
     }
 
-    SSL_CTX_set_tmp_rsa_callback(ssl_ctx, tls_rsa_cb);
     server_rsa_cert = cert;
   }
 
@@ -4985,40 +4983,6 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   }
 
   return count;
-}
-
-static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylength) {
-  BIGNUM *e = NULL;
-
-  if (tls_tmp_rsa) {
-    return tls_tmp_rsa;
-  }
-
-#if OPENSSL_VERSION_NUMBER > 0x000908000L
-  e = BN_new();
-  if (e == NULL) {
-    return NULL;
-  }
-
-  if (BN_set_word(e, RSA_F4) != 1) {
-    BN_free(e);
-    return NULL;
-  }
-
-  if (RSA_generate_key_ex(tls_tmp_rsa, keylength, e, NULL) != 1) {
-    BN_free(e);
-    return NULL;
-  }
-
-#else
-  tls_tmp_rsa = RSA_generate_key(keylength, RSA_F4, NULL, NULL);
-#endif /* OpenSSL version 0.9.8 and later */
-
-  if (e != NULL) {
-    BN_free(e);
-  }
-
-  return tls_tmp_rsa;
 }
 
 static int tls_seed_prng(void) {
@@ -8341,10 +8305,18 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
 
 /* usage: TLSCipherSuite string */
 MODRET set_tlsciphersuite(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  char *ciphersuite = NULL;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  ciphersuite = cmd->argv[1];
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
+  c->argv[0] = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+
   return PR_HANDLED(cmd);
 }
 
@@ -9802,8 +9774,9 @@ static int tls_sess_init(void) {
 
   tls_cipher_suite = get_param_ptr(main_server->conf, "TLSCipherSuite",
     FALSE);
-  if (tls_cipher_suite == NULL)
+  if (tls_cipher_suite == NULL) {
     tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
+  }
 
   tls_crl_file = get_param_ptr(main_server->conf, "TLSCARevocationFile", FALSE);
   tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);
