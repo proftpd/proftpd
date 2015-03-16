@@ -1175,18 +1175,34 @@ START_TEST (strnrstr_test) {
 END_TEST
 
 START_TEST (str2uid_test) {
+  int res;
+
+  res = pr_str2uid(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
 }
 END_TEST
 
 START_TEST (str2gid_test) {
+  int res;
+
+  res = pr_str2gid(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
 }
 END_TEST
 
 START_TEST (uid2str_test) {
+  const char *res;
+
+  res = pr_uid2str(NULL, (uid_t) 1);
+  fail_unless(strcmp(res, "1") == 0);
 }
 END_TEST
 
 START_TEST (gid2str_test) {
+  const char *res;
+
+  res = pr_gid2str(NULL, (gid_t) 1);
+  fail_unless(strcmp(res, "1") == 0);
 }
 END_TEST
 

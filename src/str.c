@@ -504,6 +504,10 @@ static int parse_ul(const char *val, unsigned long *num) {
 
 int pr_str2uid(const char *val, uid_t *uid) {
   int res;
+#ifdef HAVE_STRTOULL
+  unsigned long long ull = 0ULL;
+#endif /* HAVE_STRTOULL */
+  unsigned long ul = 0UL;
 
   if (val == NULL ||
       uid == NULL) {
@@ -513,19 +517,34 @@ int pr_str2uid(const char *val, uid_t *uid) {
 
 #if SIZEOF_UID_T == SIZEOF_LONG_LONG
 # ifdef HAVE_STRTOULL
-  res = parse_ull(val, uid);
+  if (parse_ull(val, &ull) < 0) {
+    return -1;
+  }
+  *uid = ull; 
+
 # else
-  res = parse_ul(val, uid);
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *uid = ul;
 # endif /* HAVE_STRTOULL */
 #else
-  res = parse_ul(val, uid);
+  (void) ull;
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *uid = ul;
 #endif /* sizeof(uid_t) != sizeof(long long) */
 
-  return res;
+  return 0;
 }
 
 int pr_str2gid(const char *val, gid_t *gid) {
   int res;
+#ifdef HAVE_STRTOULL
+  unsigned long long ull = 0ULL;
+#endif /* HAVE_STRTOULL */
+  unsigned long ul = 0UL;
 
   if (val == NULL ||
       gid == NULL) {
@@ -535,15 +554,26 @@ int pr_str2gid(const char *val, gid_t *gid) {
 
 #if SIZEOF_GID_T == SIZEOF_LONG_LONG
 # ifdef HAVE_STRTOULL
-  res = parse_ull(val, gid);
+  if (parse_ull(val, &ull) < 0) {
+    return -1;
+  }
+  *gid = ull; 
+
 # else
-  res = parse_ul(val, gid);
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *gid = ul;
 # endif /* HAVE_STRTOULL */
 #else
-  res = parse_ul(val, gid);
+  (void) ull;
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *gid = ul;
 #endif /* sizeof(gid_t) != sizeof(long long) */
-  
-  return res;
+
+  return 0;
 }
 
 const char *pr_uid2str(pool *p, uid_t uid) {
@@ -564,6 +594,8 @@ const char *pr_uid2str(pool *p, uid_t uid) {
 }
 
 const char *pr_gid2str(pool *p, gid_t gid) {
+  static char buf[64];
+
   memset(&buf, 0, sizeof(buf));
 #if SIZEOF_GID_T == SIZEOF_LONG_LONG
   snprintf(buf, sizeof(buf)-1, "%llu", (unsigned long long) gid);

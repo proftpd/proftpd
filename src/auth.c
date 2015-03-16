@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,8 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.102 2013-11-10 01:56:49 castaglia Exp $
+/* Authentication front-end for ProFTPD.
  */
 
 #include "conf.h"
@@ -742,8 +741,8 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   /* Get the (possibly rewritten) home directory. */
   res->pw_dir = pr_auth_get_home(p, res->pw_dir);
 
-  pr_log_debug(DEBUG10, "retrieved UID %lu for user '%s'",
-    (unsigned long) res->pw_uid, name);
+  pr_log_debug(DEBUG10, "retrieved UID %s for user '%s'",
+    pr_uid2str(NULL, res->pw_uid), name);
   return res;
 }
 
@@ -836,8 +835,8 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
     groupcache_add(name, res->gr_gid);
   }
 
-  pr_log_debug(DEBUG10, "retrieved GID %lu for group '%s'",
-    (unsigned long) res->gr_gid, name);
+  pr_log_debug(DEBUG10, "retrieved GID %s for group '%s'",
+    pr_gid2str(NULL, res->gr_gid), name);
   return res;
 }
 
@@ -1413,12 +1412,9 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
       gid_t *gids = (*group_ids)->elts;
 
       for (i = 0; i < (*group_ids)->nelts; i++) {
-        char buf[64];
-        snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) gids[i]);
-        buf[sizeof(buf)-1] = '\0';
-
         pr_signals_handle();
-        strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);
+        strgids = pstrcat(p, strgids, i != 0 ? ", " : "",
+          pr_gid2str(NULL, gids[i]), NULL);
       }
 
       pr_log_debug(DEBUG10, "retrieved group %s: %s",
