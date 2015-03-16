@@ -1515,7 +1515,6 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
   struct passwd *pwd = NULL;
-  char uidstr[MOD_SQL_BUFSIZE];
   char *usrwhere, *where;
   char *realname = NULL;
   int i = 0;
@@ -1627,8 +1626,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
   } else {
     /* Assume we have a UID */
-    memset(uidstr, '\0', sizeof(uidstr));
-    snprintf(uidstr, sizeof(uidstr)-1, "%lu", (unsigned long) p->pw_uid);
+    const char *uidstr;
+
+    uidstr = pr_uid2str(cmd->tmp_pool, p->pw_uid);
     sql_log(DEBUG_WARN, "cache miss for UID '%s'", uidstr);
 
     if (!cmap.usercustombyid) {
@@ -1847,7 +1847,6 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
   int cnt = 0;
   sql_data_t *sd = NULL;
   char *groupname = NULL;
-  char gidstr[MOD_SQL_BUFSIZE] = {'\0'};
   char **rows = NULL;
   int numrows = 0;
   array_header *ah = NULL;
@@ -1884,8 +1883,10 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
     sql_log(DEBUG_WARN, "cache miss for group '%s'", groupname);
 
   } else {
+    const char *gidstr = NULL;
+
     /* Get groupname from GID */
-    snprintf(gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) g->gr_gid);
+    gidstr = pr_gid2str(NULL, g->gr_gid);
 
     sql_log(DEBUG_WARN, "cache miss for GID '%s'", gidstr);
 
@@ -5191,11 +5192,11 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
   char *uid_name = NULL;
   struct passwd *pw;
   struct passwd lpw;
-  char uidstr[MOD_SQL_BUFSIZE] = {'\0'};
 
   if (!SQL_USERS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_uid2name");
 
@@ -5214,8 +5215,9 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_uid2name");
 
-  if (pw == NULL)
+  if (pw == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   /* In the case of a lookup of a negatively cached UID, the pw_name
    * member will be NULL, which causes an undesired handling by
@@ -5225,9 +5227,10 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     uid_name = pw->pw_name;
 
   } else {
-    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu",
-      (unsigned long) *((uid_t *) cmd->argv[0]));
-    uid_name = uidstr;
+    const char *uidstr = NULL;
+
+    uidstr = pr_uid2str(cmd->pool, *((uid_t *) cmd->argv[0]));
+    uid_name = (char *) uidstr;
   }
 
   return mod_create_data(cmd, uid_name);
@@ -5237,11 +5240,11 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
   char *gid_name = NULL;
   struct group *gr;
   struct group lgr;
-  char gidstr[MOD_SQL_BUFSIZE];
 
   if (!SQL_GROUPS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_gid2name");
 
@@ -5251,8 +5254,9 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_gid2name");
 
-  if (gr == NULL)
+  if (gr == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   /* In the case of a lookup of a negatively cached GID, the gr_name
    * member will be NULL, which causes an undesired handling by
@@ -5262,10 +5266,10 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
     gid_name = gr->gr_name;
 
   } else {
-    memset(gidstr, '\0', sizeof(gidstr));
-    snprintf(gidstr, sizeof(gidstr)-1, "%lu",
-      (unsigned long) *((gid_t *) cmd->argv[0]));
-    gid_name = gidstr;
+    const char *gidstr = NULL;
+
+    gidstr = pr_gid2str(cmd->pool, *((gid_t *) cmd->argv[0]));
+    gid_name = (char *) gidstr;
   }
 
   return mod_create_data(cmd, gid_name);
