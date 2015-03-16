@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* FSIO API tests
- * $Id: fsio.c,v 1.3 2014-01-20 19:36:27 castaglia Exp $
- */
+/* FSIO API tests */
 
 #include "tests.h"
 
@@ -36,6 +34,8 @@ static void set_up(void) {
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
+
+  init_fs();
 }
 
 static void tear_down(void) {
