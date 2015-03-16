@@ -414,10 +414,7 @@ sub new {
 }
 
 sub list_tests {
-#  return testsuite_get_runnable_tests($TESTS);
-  return qw(
-    sql_64_bit_uid_bugXXXX
-  );
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub build_db {
