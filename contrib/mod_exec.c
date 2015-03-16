@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
  *
- * Copyright (c) 2002-2014 TJ Saunders
+ * Copyright (c) 2002-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1604,9 +1604,8 @@ MODRET set_execonevent(cmd_rec *cmd) {
   if (cmd->argv[1][strlen(cmd->argv[1])-1] == '*') {
     flags |= EXEC_FL_RUN_AS_ROOT;
     cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
-  }
 
-  if (cmd->argv[1][strlen(cmd->argv[1])-1] == '~') {
+  } else if (cmd->argv[1][strlen(cmd->argv[1])-1] == '~') {
     flags |= EXEC_FL_RUN_AS_USER;
     cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
   }
