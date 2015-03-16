@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2013 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
  */
 
 /* String manipulation functions
- * $Id: str.h,v 1.11 2013-11-24 00:45:29 castaglia Exp $
  */
 
 #ifndef PR_STR_H
@@ -66,6 +65,14 @@ char *pr_str_get_word(char **, int);
  * A "time string" is formatted as "hh:mm:ss".
  */
 int pr_str_get_duration(const char *str, int *duration);
+
+/* Converts a string to a uid_t/gid_t, respectively. */
+int pr_str2uid(const char *, uid_t *);
+int pr_str2gid(const char *, gid_t *);
+
+/* Converts a uid_t/gid_t to a string, respectively */
+const char *pr_uid2str(pool *, uid_t);
+const char *pr_gid2str(pool *, gid_t);
 
 #define PR_STR_FL_PRESERVE_COMMENTS		0x0001
 #define PR_STR_FL_PRESERVE_WHITESPACE		0x0002

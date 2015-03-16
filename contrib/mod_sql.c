@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
  * holders give permission to link this program with OpenSSL, and distribute
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
- *
- * $Id: mod_sql.c,v 1.247 2014-02-15 08:31:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1242,8 +1240,8 @@ static void show_passwd(struct passwd *p) {
   }
 
   sql_log(DEBUG_INFO, "+ pwd.pw_name  : %s", p->pw_name);
-  sql_log(DEBUG_INFO, "+ pwd.pw_uid   : %lu", (unsigned long) p->pw_uid);
-  sql_log(DEBUG_INFO, "+ pwd.pw_gid   : %lu", (unsigned long) p->pw_gid);
+  sql_log(DEBUG_INFO, "+ pwd.pw_uid   : %s", pr_uid2str(NULL, p->pw_uid));
+  sql_log(DEBUG_INFO, "+ pwd.pw_gid   : %s", pr_gid2str(NULL, p->pw_gid));
   sql_log(DEBUG_INFO, "+ pwd.pw_dir   : %s", p->pw_dir ?
     p->pw_dir : "(null)");
   sql_log(DEBUG_INFO, "+ pwd.pw_shell : %s", p->pw_shell ?
@@ -1710,7 +1708,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   uid = cmap.defaultuid;
   if (cmap.uidfield) {
     if (sd->data[i]) {
-      uid = atoi(sd->data[i++]);
+      if (pr_str2uid(sd->data[i++], &uid) < 0) {
+        uid = cmap.defaultuid;
+      }
 
     } else {
       i++;
@@ -1720,7 +1720,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   gid = cmap.defaultgid;
   if (cmap.gidfield) {
     if (sd->data[i]) {
-      gid = atoi(sd->data[i++]);
+      if (pr_str2gid(sd->data[i++], &gid) < 0) {
+        gid = cmap.defaultgid;
+      }
 
     } else {
       i++;
@@ -2195,10 +2197,14 @@ static int sql_getgroups(cmd_rec *cmd) {
   numrows = sd->rnum;
 
   for (i = 0; i < numrows; i++) {
+    gid_t gid;
     char *groupname = sd->data[(i * 3)];
-    gid_t gid = (gid_t) atoi(sd->data[(i * 3) +1]);
     char *memberstr = sd->data[(i * 3) + 2], *member = NULL;
     array_header *members = make_array(cmd->tmp_pool, 2, sizeof(char *));
+
+    if (pr_str2gid(sd->data[(i * 3) +1], &gid) < 0) {
+      gid = (gid_t) -1;
+    }
 
     *((gid_t *) push_array(gids)) = gid;
     *((char **) push_array(groups)) = pstrdup(permanent_pool, groupname);
@@ -4599,7 +4605,10 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
         uid = cmap.defaultuid;
         if (cmap.uidfield) {
           if (sd->data[i]) {
-            uid = atoi(sd->data[i++]);
+            if (pr_str2uid(sd->data[i++], &uid) < 0) {
+              uid = cmap.defaultuid;
+            }
+
           } else {
             i++;
           }
@@ -4608,7 +4617,10 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
         gid = cmap.defaultgid;
         if (cmap.gidfield) {
           if (sd->data[i]) {
-            gid = atoi(sd->data[i++]);
+            if (pr_str2gid(sd->data[i++], &gid) < 0) {
+              gid = cmap.defaultgid;
+            }
+
           } else {
             i++;
           }
