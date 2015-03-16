@@ -402,7 +402,7 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  sql_64_bit_uid_bugXXXX => {
+  sql_64_bit_uid_bug4164 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -14090,7 +14090,7 @@ EOS
   unlink($log_file);
 }
 
-sub sql_64_bit_uid_bugXXXX {
+sub sql_64_bit_uid_bug4164 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
