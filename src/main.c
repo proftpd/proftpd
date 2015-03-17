@@ -1837,6 +1837,7 @@ static void show_settings(void) {
   printf("%s", "  LDFLAGS: " PR_BUILD_LDFLAGS "\n");
   printf("%s", "  LIBS: " PR_BUILD_LIBS "\n");
 
+  /* Files/paths */
   printf("%s", "\n  Files:\n");
   printf("%s", "    Configuration File:\n");
   printf("%s", "      " PR_CONFIG_FILE_PATH "\n");
@@ -1850,6 +1851,24 @@ static void show_settings(void) {
   printf("%s", "    Shared Module Directory:\n");
   printf("%s", "      " PR_LIBEXEC_DIR "\n");
 #endif /* PR_USE_DSO */
+
+  /* Informational */
+  printf("%s", "\n  Info:\n");
+#if SIZEOF_UID_T == SIZEOF_INT
+  printf("    + Max supported UID: %u\n", UINT_MAX);
+#elif SIZEOF_UID_T == SIZEOF_LONG
+  printf("    + Max supported UID: %lu\n", ULONG_MAX);
+#elif SIZEOF_UID_T == SIZEOF_LONG_LONG
+  printf("    + Max supported UID: %llu\n", ULLONG_MAX);
+#endif
+
+#if SIZEOF_GID_T == SIZEOF_INT
+  printf("    + Max supported GID: %u\n", UINT_MAX);
+#elif SIZEOF_GID_T == SIZEOF_LONG
+  printf("    + Max supported GID: %lu\n", ULONG_MAX);
+#elif SIZEOF_GID_T == SIZEOF_LONG_LONG
+  printf("    + Max supported GID: %llu\n", ULLONG_MAX);
+#endif
 
   /* Feature settings */
   printf("%s", "\n  Features:\n");

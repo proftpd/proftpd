@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003-2013 The ProFTPD Project team
+ * Copyright (c) 2003-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
- * $Id: mod_cap.c,v 1.35 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -360,8 +359,9 @@ MODRET cap_post_pass(cmd_rec *cmd) {
      */
     if (strncmp(proto, "ssh2", 5) != 0 ||
         xerrno != EPERM) {
-      pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu) failed: %s",
-        (unsigned long) session.uid, (unsigned long) PR_ROOT_UID,
+      pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%s, %s) failed: %s",
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_uid2str(cmd->tmp_pool, PR_ROOT_UID),
         strerror(xerrno));
     }
 
@@ -376,8 +376,9 @@ MODRET cap_post_pass(cmd_rec *cmd) {
    */
 
   res = lp_init_cap();
-  if (res != -1)
+  if (res != -1) {
     res = lp_add_cap(CAP_NET_BIND_SERVICE, CAP_PERMITTED);
+  }
 
   /* Add the CAP_CHOWN capability, unless explicitly configured not to. */
   if (res != -1 &&
@@ -451,8 +452,10 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   }
 
   if (setreuid(dst_uid, session.uid) == -1) {
-    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%lu, %lu) failed: %s",
-      (unsigned long) dst_uid, (unsigned long) session.uid, strerror(errno));
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid(%s, %s) failed: %s",
+      pr_uid2str(cmd->tmp_pool, dst_uid),
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      strerror(errno));
     lp_free_cap();
     pr_signals_unblock();
     pr_session_disconnect(&cap_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
@@ -460,17 +463,20 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   pr_signals_unblock();
 
   pr_log_debug(DEBUG9, MOD_CAP_VERSION
-    ": uid = %lu, euid = %lu, gid = %lu, egid = %lu",
-    (unsigned long) getuid(), (unsigned long) geteuid(),
-    (unsigned long) getgid(), (unsigned long) getegid());
+    ": uid = %s, euid = %s, gid = %s, egid = %s",
+    pr_uid2str(cmd->tmp_pool, getuid()),
+    pr_uid2str(cmd->tmp_pool, geteuid()),
+    pr_gid2str(cmd->tmp_pool, getgid()),
+    pr_gid2str(cmd->tmp_pool, getegid()));
 
   /* Now our only capabilities consist of CAP_NET_BIND_SERVICE (and other
    * configured caps), however in order to actually be able to bind to
    * low-numbered ports, we need the capability to be in the effective set.
    */
 
-  if (res != -1)
+  if (res != -1) {
     res = lp_add_cap(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);
+  }
 
   /* Add the CAP_CHOWN capability, unless explicitly configured not to. */
   if (res != -1 &&
