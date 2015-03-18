@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: scp.c,v 1.87 2014-01-20 20:49:04 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -847,7 +845,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           return 1;
         }
 
-        sftp_misc_chown_path(sp->filename);
+        sftp_misc_chown_path(p, sp->filename);
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -981,9 +979,9 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (sp->fh == NULL) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error opening '%s': %s", "scp upload", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(cmd->tmp_pool, session.uid), pr_gid2str(NULL, session.gid),
       hiddenstore_path ? hiddenstore_path : sp->best_path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1020,8 +1018,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   pr_fsio_set_block(sp->fh);
-
-  sftp_misc_chown_file(sp->fh);
+  sftp_misc_chown_file(p, sp->fh);
 
   write_confirm(p, channel_id, 0, NULL);
   return 0;
@@ -2023,9 +2020,9 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     if (sp->fh == NULL) {
       int xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", "scp download", session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
+        pr_uid2str(cmd->tmp_pool, session.uid), pr_gid2str(NULL, session.gid),
         sp->best_path, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

@@ -7158,7 +7158,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   /* Handle any possible UserOwner/GroupOwner directives for created
    * directories.
    */
-  if (sftp_misc_chown_path(path) < 0) {
+  if (sftp_misc_chown_path(fxp->pool, path) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error changing ownership on path '%s': %s", path, strerror(errno));
   }
@@ -7684,7 +7684,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     /* Handle any possible UserOwner/GroupOwner directives for uploaded
      * files.
      */
-    if (sftp_misc_chown_file(fh) < 0) {
+    if (sftp_misc_chown_file(fxp->pool, fh) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error changing ownership on file '%s': %s", fh->fh_path,
         strerror(errno));

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2013 The ProFTPD Project team
+ * Copyright (c) 2003-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.23 2013-10-09 05:21:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -183,8 +182,8 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
 
   /* Make sure the new symlink has the proper ownership. */
   if (pr_fsio_chown(dst_path, uid, gid) < 0) {
-    pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %u/%u: %s",
-      dst_path, (unsigned int) uid, (unsigned int) gid, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %s/%s: %s",
+      dst_path, pr_uid2str(p, uid), pr_gid2str(p, gid), strerror(errno));
   }
 
   return 0; 
@@ -256,7 +255,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
       /* Make sure the destination file has the proper ownership and mode. */
       if (pr_fsio_chown(dst_path, uid, gid) < 0) {
         pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' "
-          "to %u/%u: %s", dst_path, (unsigned int) uid, (unsigned int) gid,
+          "to %s/%s: %s", dst_path, pr_uid2str(p, uid), pr_gid2str(p, gid),
           strerror(errno));
       }
 

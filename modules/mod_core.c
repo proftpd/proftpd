@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4915,10 +4915,10 @@ MODRET core_rmd(cmd_rec *cmd) {
   if (pr_fsio_rmdir(dir) < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error removing directory '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, dir,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -5015,10 +5015,10 @@ MODRET core_mkd(cmd_rec *cmd) {
       session.fsgid) < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error making directory '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, dir,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
  
@@ -5284,10 +5284,10 @@ MODRET core_dele(cmd_rec *cmd) {
   if (S_ISDIR(st.st_mode)) {
     int xerrno = EISDIR;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error deleting '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
 
     pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
@@ -5301,10 +5301,10 @@ MODRET core_dele(cmd_rec *cmd) {
   if (pr_fsio_unlink(path) < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error deleting '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
 
     pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
@@ -5426,10 +5426,10 @@ MODRET core_rnto(cmd_rec *cmd) {
        * client.
        */
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error copying '%s' to '%s': %s (previous error was '%s')",
-        cmd->argv[0], session.user, (unsigned long) session.uid,
-        (unsigned long) session.gid, session.xfer.path, path,
+        cmd->argv[0], session.user, pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
         strerror(xerrno), strerror(EXDEV));
 
       pr_log_debug(DEBUG4,
@@ -5450,10 +5450,11 @@ MODRET core_rnto(cmd_rec *cmd) {
     }
 
     if (xerrno != EXDEV) {
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(xerrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
+        strerror(xerrno));
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));
@@ -5469,10 +5470,11 @@ MODRET core_rnto(cmd_rec *cmd) {
     if (pr_fs_copy_file(session.xfer.path, path) < 0) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error copying '%s' to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(xerrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
+        strerror(xerrno));
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));

@@ -2436,14 +2436,16 @@ int main(int argc, char *argv[], char **envp) {
    */
 
   if (geteuid() != daemon_uid) {
-    pr_log_pri(PR_LOG_ERR, "unable to set UID to %lu, current UID: %lu",
-      (unsigned long) daemon_uid, (unsigned long) geteuid());
+    pr_log_pri(PR_LOG_ERR, "unable to set UID to %s, current UID: %s",
+      pr_uid2str(permanent_pool, daemon_uid),
+      pr_uid2str(permanent_pool, geteuid()));
     exit(1);
   }
 
   if (getegid() != daemon_gid) {
-    pr_log_pri(PR_LOG_ERR, "unable to set GID to %lu, current GID: %lu",
-      (unsigned long) daemon_gid, (unsigned long) getegid());
+    pr_log_pri(PR_LOG_ERR, "unable to set GID to %s, current GID: %s",
+      pr_gid2str(permanent_pool, daemon_gid),
+      pr_gid2str(permanent_pool, getegid()));
     exit(1);
   }
 #endif /* PR_DEVEL_COREDUMP */
