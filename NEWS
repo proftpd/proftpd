@@ -89,6 +89,8 @@ Git
 - Bug 4156 - Segfault handling LIST/NLST FTP command on Mac OS X.
 - Bug 4160 - Malformed response to SSH_FXP_REALPATH with SFTP version 6.
 - Bug 4163 - Remove support for EXPORT grade ciphers.
+- Bug 4164 - mod_sql fails to read UID/GID values larger than 32 bits from SQL
+  tables.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
