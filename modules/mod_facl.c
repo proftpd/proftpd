@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2014 The ProFTPD Project team
+ * Copyright (c) 2004-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
  */
 
 /* POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.17 2014-05-04 19:26:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -247,8 +246,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     ae_type = ACL_USER_OBJ;
     have_access_entry = TRUE;
 
-    pr_trace_msg(trace_channel, 10, "user ID %lu matches ACL owner user ID",
-      (unsigned long) uid);
+    pr_trace_msg(trace_channel, 10, "user ID %S matches ACL owner user ID",
+      pr_uid2str(NULL, uid));
   }
 
   /* 2. If not matched above, and if the given user ID matches one of the
@@ -267,7 +266,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       have_access_entry = TRUE;
 
       pr_trace_msg(trace_channel, 10,
-        "user ID %lu matches ACL allowed users list", (unsigned long) uid);
+        "user ID %s matches ACL allowed users list", pr_uid2str(NULL, uid));
 
       break;
     }
@@ -302,8 +301,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       have_access_entry = TRUE;
 
       pr_trace_msg(trace_channel, 10,
-        "primary group ID %lu matches ACL owner group ID",
-        (unsigned long) gid);
+        "primary group ID %s matches ACL owner group ID",
+        pr_gid2str(NULL, gid));
 
     } else if (ret < 0) {
       pr_trace_msg(trace_channel, 5,
@@ -339,8 +338,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
           have_access_entry = TRUE;
 
           pr_trace_msg(trace_channel, 10,
-            "supplemental group ID %lu matches ACL owner group ID",
-            (unsigned long) suppl_gid);
+            "supplemental group ID %s matches ACL owner group ID",
+            pr_gid2str(NULL, suppl_gid));
 
           break;
 
@@ -384,8 +383,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
         have_access_entry = TRUE;
 
         pr_trace_msg(trace_channel, 10,
-          "primary group ID %lu matches ACL allowed groups list",
-          (unsigned long) gid);
+          "primary group ID %s matches ACL allowed groups list",
+          pr_gid2str(NULL, gid));
 
         break;
 
@@ -425,8 +424,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
             have_access_entry = TRUE;
 
             pr_trace_msg(trace_channel, 10,
-              "supplemental group ID %lu matches ACL allowed groups list",
-              (unsigned long) suppl_gid);
+              "supplemental group ID %s matches ACL allowed groups list",
+              pr_gid2str(NULL, suppl_gid));
 
             break;
 
@@ -555,8 +554,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   if (res < 0) {
     errno = EACCES;
     pr_trace_msg(trace_channel, 3,
-      "returning EACCES for path '%s', user ID %lu", path,
-      (unsigned long) uid);
+      "returning EACCES for path '%s', user ID %s", path,
+      pr_uid2str(NULL, uid));
   }
 
   return res;
@@ -678,8 +677,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     ae_type = USER_OBJ;
     have_access_entry = TRUE;
 
-    pr_trace_msg(trace_channel, 10, "user ID %lu matches ACL owner user ID",
-      (unsigned long) uid);
+    pr_trace_msg(trace_channel, 10, "user ID %s matches ACL owner user ID",
+      pr_uid2str(NULL, uid));
   }
 
   /* 2. If not matched above, and f the given user ID matches one of the
@@ -699,7 +698,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       have_access_entry = TRUE;
 
       pr_trace_msg(trace_channel, 10,
-        "user ID %lu matches ACL allowed users list", (unsigned long) uid);
+        "user ID %s matches ACL allowed users list", pr_uid2str(NULL, uid));
 
       break;
     }
@@ -721,8 +720,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       have_access_entry = TRUE;
 
       pr_trace_msg(trace_channel, 10,
-        "primary group ID %lu matches ACL owner group ID",
-        (unsigned long) gid);
+        "primary group ID %s matches ACL owner group ID",
+        pr_gid2str(NULL, gid));
     }
   }
 
@@ -740,8 +739,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
           have_access_entry = TRUE;
 
           pr_trace_msg(trace_channel, 10,
-            "supplemental group ID %lu matches ACL owner group ID",
-            (unsigned long) suppl_gid);
+            "supplemental group ID %s matches ACL owner group ID",
+            pr_gid2str(NULL, suppl_gid));
 
           break;
         }
@@ -768,8 +767,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
         have_access_entry = TRUE;
 
         pr_trace_msg(trace_channel, 10,
-          "primary group ID %lu matches ACL allowed groups list",
-          (unsigned long) gid);
+          "primary group ID %s matches ACL allowed groups list",
+          pr_gid2str(NULL, gid));
 
         break;
       }
@@ -791,8 +790,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
             have_access_entry = TRUE;
 
             pr_trace_msg(trace_channel, 10,
-              "supplemental group ID %lu matches ACL allowed groups list",
-              (unsigned long) suppl_gid);
+              "supplemental group ID %s matches ACL allowed groups list",
+              pr_gid2str(NULL, suppl_gid));
 
             break;
           }
@@ -858,8 +857,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   if (res < 0) {
     errno = EACCES;
     pr_trace_msg(trace_channel, 3,
-      "returning EACCES for path '%s', user ID %lu", path,
-      (unsigned long) uid);
+      "returning EACCES for path '%s', user ID %s", path,
+      pr_uid2str(NULL, uid));
   }
 
   return res;

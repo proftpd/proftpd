@@ -1426,9 +1426,9 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
         int xerrno = errno;
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error changing ownership of '%s' to UID %lu, GID %lu: %s",
-          path, (unsigned long) client_uid, (unsigned long) client_gid,
-          strerror(xerrno));
+          "error changing ownership of '%s' to UID %s, GID %s: %s",
+          path, pr_uid2str(fxp->pool, client_uid),
+          pr_gid2str(fxp->pool, client_gid), strerror(xerrno));
 
         status_code = fxp_errno2status(xerrno, &reason);
 
@@ -1444,8 +1444,9 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "client set ownership of '%s' to UID %lu, GID %lu",
-          path, (unsigned long) client_uid, (unsigned long) client_gid);
+          "client set ownership of '%s' to UID %s, GID %s",
+          path, pr_uid2str(fxp->pool, client_uid),
+          pr_gid2str(fxp->pool, client_gid));
       }
     }
   }
@@ -1723,13 +1724,13 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
   if ((flags & SSH2_FX_ATTR_UIDGID) ||
       (flags & SSH2_FX_ATTR_OWNERGROUP)) {
-    snprintf(ptr, bufsz - buflen, "UNIX.owner=%lu;",
-      (unsigned long) st->st_uid);
+    snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
+      pr_uid2str(NULL, st->st_uid));
     buflen = strlen(buf);
     ptr = buf + buflen;
 
-    snprintf(ptr, bufsz - buflen, "UNIX.group=%lu;",
-      (unsigned long) st->st_gid);
+    snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
+      pr_gid2str(NULL, st->st_gid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -4616,9 +4617,9 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     if (errno != EXDEV) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-        "GID %lu): error renaming '%s' to '%s': %s", session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
+      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+        "GID %s): error renaming '%s' to '%s': %s", session.user,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
         src, dst, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4636,9 +4637,10 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       if (res < 0) {
         xerrno = errno;
 
-        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-          "GID %lu): error copying '%s' to '%s': %s", session.user,
-          (unsigned long) session.uid, (unsigned long) session.gid,
+        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+          "GID %s): error copying '%s' to '%s': %s", session.user,
+          pr_uid2str(fxp->pool, session.uid),
+          pr_gid2str(fxp->pool, session.gid),
           src, dst, strerror(xerrno));
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -7121,10 +7123,10 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "MKDIR, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "MKDIR, user '%s' (UID %s, GID %s): "
       "error making directory '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "MKDIR of '%s' failed: %s", path, strerror(xerrno));
@@ -7156,7 +7158,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   /* Handle any possible UserOwner/GroupOwner directives for created
    * directories.
    */
-  if (sftp_misc_chown_path(path) < 0) {
+  if (sftp_misc_chown_path(fxp->pool, path) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error changing ownership on path '%s': %s", path, strerror(errno));
   }
@@ -7581,9 +7583,9 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "OPEN, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "OPEN, user '%s' (UID %s, GID %s): "
       "error opening '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
       hiddenstore_path ? hiddenstore_path : path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -7682,7 +7684,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     /* Handle any possible UserOwner/GroupOwner directives for uploaded
      * files.
      */
-    if (sftp_misc_chown_file(fh) < 0) {
+    if (sftp_misc_chown_file(fxp->pool, fh) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error changing ownership on file '%s': %s", fh->fh_path,
         strerror(errno));
@@ -8017,10 +8019,10 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "OPENDIR, user '%s' (UID %lu, "
-      "GID %lu): error opening '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+    (void) pr_trace_msg("fileperms", 1, "OPENDIR, user '%s' (UID %s, "
+      "GID %s): error opening '%s': %s", session.user,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error opening '%s': %s", path, strerror(xerrno));
@@ -8445,9 +8447,9 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     if (res < 0) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "READ, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "READ, user '%s' (UID %s, GID %s): "
         "error reading from '%s': %s", session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
         fxh->fh->fh_path, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -8965,10 +8967,10 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 
     status_code = fxp_errno2status(xerrno, &reason);
 
-    (void) pr_trace_msg("fileperms", 1, "READLINK, user '%s' (UID %lu, "
-      "GID %lu): error using readlink() on  '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+    (void) pr_trace_msg("fileperms", 1, "READLINK, user '%s' (UID %s, "
+      "GID %s): error using readlink() on  '%s': %s", session.user,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
       "('%s' [%d])", (unsigned long) status_code, reason,
@@ -9602,10 +9604,10 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "REMOVE, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "REMOVE, user '%s' (UID %s, GID %s): "
       "error deleting '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, real_path,
-      strerror(xerrno));
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      real_path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error unlinking '%s': %s", real_path, strerror(xerrno));
@@ -9998,9 +10000,9 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     if (errno != EXDEV) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-        "GID %lu): error renaming '%s' to '%s': %s", session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
+      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+        "GID %s): error renaming '%s' to '%s': %s", session.user,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
         old_path, new_path, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -10017,10 +10019,11 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       if (pr_fs_copy_file(old_path, new_path) < 0) {
         xerrno = errno;
 
-        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-          "GID %lu): error copying '%s' to '%s': %s", session.user,
-          (unsigned long) session.uid, (unsigned long) session.gid,
-          old_path, new_path, strerror(xerrno));
+        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+          "GID %s): error copying '%s' to '%s': %s", session.user,
+          pr_uid2str(fxp->pool, session.uid),
+          pr_gid2str(fxp->pool, session.gid), old_path, new_path,
+          strerror(xerrno));
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error copying '%s' to '%s': %s", old_path, new_path,
@@ -10281,10 +10284,10 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "RMDIR, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "RMDIR, user '%s' (UID %s, GID %s): "
       "error removing directory '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error removing directory '%s': %s", path, strerror(xerrno));
@@ -11246,9 +11249,9 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "WRITE, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "WRITE, user '%s' (UID %s, GID %s): "
       "error writing to '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
       fxh->fh->fh_path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

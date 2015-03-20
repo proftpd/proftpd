@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -164,10 +164,11 @@ MODRET site_chgrp(cmd_rec *cmd) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
-      "error chown'ing '%s' to GID %lu: %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
-      path, (unsigned long) gid, strerror(xerrno));
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
+      "error chown'ing '%s' to GID %s: %s", cmd->argv[0], session.user,
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), path,
+      pr_gid2str(cmd->tmp_pool, gid), strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
 
@@ -448,10 +449,11 @@ MODRET site_chmod(cmd_rec *cmd) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error chmod'ing '%s' to %04o: %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
-      dir, (unsigned int) mode, strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, (unsigned int) mode,
+      strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 

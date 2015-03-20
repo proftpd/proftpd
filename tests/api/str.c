@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* String API tests
- * $Id: str.c,v 1.12 2014-01-27 18:34:44 castaglia Exp $
- */
+/* String API tests. */
 
 #include "tests.h"
 
@@ -1176,6 +1174,38 @@ START_TEST (strnrstr_test) {
 }
 END_TEST
 
+START_TEST (str2uid_test) {
+  int res;
+
+  res = pr_str2uid(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+}
+END_TEST
+
+START_TEST (str2gid_test) {
+  int res;
+
+  res = pr_str2gid(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+}
+END_TEST
+
+START_TEST (uid2str_test) {
+  const char *res;
+
+  res = pr_uid2str(NULL, (uid_t) 1);
+  fail_unless(strcmp(res, "1") == 0);
+}
+END_TEST
+
+START_TEST (gid2str_test) {
+  const char *res;
+
+  res = pr_gid2str(NULL, (gid_t) 1);
+  fail_unless(strcmp(res, "1") == 0);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1206,6 +1236,10 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, get_nbytes_test);
   tcase_add_test(testcase, get_duration_test);
   tcase_add_test(testcase, strnrstr_test);
+  tcase_add_test(testcase, str2uid_test);
+  tcase_add_test(testcase, str2gid_test);
+  tcase_add_test(testcase, uid2str_test);
+  tcase_add_test(testcase, gid2str_test);
 
   suite_add_tcase(suite, testcase);
 

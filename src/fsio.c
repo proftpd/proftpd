@@ -3131,8 +3131,8 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   }
 
   pr_trace_msg(trace_channel, 9,
-    "smkdir: path '%s', mode %04o, UID %lu, GID %lu", path, (unsigned int) mode,
-    (unsigned long) uid, (unsigned long) gid);
+    "smkdir: path '%s', mode %04o, UID %s, GID %s", path, (unsigned int) mode,
+    pr_uid2str(p, uid), pr_gid2str(p, gid));
 
   if (fsio_guard_chroot) {
     res = chroot_allow_path(path);
@@ -3352,12 +3352,12 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
     } else {
       if (gid != (gid_t) -1) {
-        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu, GID %lu successful",
-          tmpl_path, (unsigned long) uid, (unsigned long) gid);
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %s, GID %s successful",
+          tmpl_path, pr_uid2str(p, uid), pr_gid2str(p, gid));
 
       } else {
-        pr_log_debug(DEBUG2, "root lchown(%s) to UID %lu successful",
-          tmpl_path, (unsigned long) uid);
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %s successful",
+          tmpl_path, pr_uid2str(NULL, uid));
       }
     }
 
@@ -3378,8 +3378,8 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
         use_root_chown ? "root " : "", tmpl_path, strerror(xerrno));
 
     } else {
-      pr_log_debug(DEBUG2, "%slchown(%s) to GID %lu successful",
-        use_root_chown ? "root " : "", tmpl_path, (unsigned long) gid);
+      pr_log_debug(DEBUG2, "%slchown(%s) to GID %s successful",
+        use_root_chown ? "root " : "", tmpl_path, pr_gid2str(p, gid));
     }
   }
 

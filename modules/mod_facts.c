@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2014 The ProFTPD Project
+ * Copyright (c) 2007-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -245,8 +245,8 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_GROUP) {
-    snprintf(ptr, bufsz - buflen, "UNIX.group=%lu;",
-      (unsigned long) info->st.st_gid);
+    snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
+      pr_gid2str(NULL, info->st.st_gid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -259,8 +259,8 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_OWNER) {
-    snprintf(ptr, bufsz - buflen, "UNIX.owner=%lu;",
-      (unsigned long) info->st.st_uid);
+    snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
+      pr_uid2str(NULL, info->st.st_uid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -1356,9 +1356,10 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   if (dirh == NULL) {
     int xerrno = errno;
 
-    pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %lu, GID %lu): "
+    pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %s, GID %s): "
       "error opening directory '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid),
       best_path, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));

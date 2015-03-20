@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.317 2013-12-29 20:17:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2777,12 +2776,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           uid_t uid;
 
-          uid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2uid(cmd->argv[++i], &uid) < 0) { 
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
               cmd->argv[i], "'", NULL));
           }
@@ -2801,12 +2797,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           gid_t gid;
 
-          gid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2gid(cmd->argv[++i], &gid) < 0) {
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
               cmd->argv[i], "'", NULL));
           }

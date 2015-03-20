@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2014 TJ Saunders
+ * Copyright (c) 2001-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@
  * the ideas in Eric Estabrook's mod_quota, available from
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
- *
- * $Id: mod_quotatab.c,v 1.87 2013-12-09 19:16:13 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -2522,11 +2520,11 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
       user_owner = pr_auth_uid2name(cmd->tmp_pool, quotatab_dele_st.st_uid);
       group_owner = pr_auth_gid2name(cmd->tmp_pool, quotatab_dele_st.st_gid);
 
-      quotatab_log("deleted file '%s' belongs to user '%s' (UID %lu), "
-        "not the current user '%s' (UID %lu); attempting to credit user '%s' "
+      quotatab_log("deleted file '%s' belongs to user '%s' (UID %s), "
+        "not the current user '%s' (UID %s); attempting to credit user '%s' "
         "for the deleted bytes", path, user_owner,
-        (unsigned long) quotatab_dele_st.st_uid, session.user,
-        (unsigned long) session.uid, user_owner);
+        pr_uid2str(cmd->tmp_pool, quotatab_dele_st.st_uid), session.user,
+        pr_uid2str(cmd->tmp_pool, session.uid), user_owner);
 
       quotatab_mutex_lock(F_WRLCK);
 

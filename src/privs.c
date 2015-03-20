@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2014 The ProFTPD Project team
+ * Copyright (c) 2009-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * holders give permission to link this program with OpenSSL, and distribute
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
- *
- * $Id: privs.c,v 1.6 2012-12-29 00:45:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -224,8 +222,8 @@ int pr_privs_user(const char *file, int lineno) {
     return 0;
   }
 
-  pr_log_debug(DEBUG9, "USER PRIVS %lu at %s:%d",
-    (unsigned long) session.login_uid, file, lineno);
+  pr_log_debug(DEBUG9, "USER PRIVS %s at %s:%d",
+    pr_uid2str(NULL, session.login_uid), file, lineno);
 
   if (user_privs > 0) {
     pr_trace_msg(trace_channel, 9, "user privs count = %u, ignoring PRIVS_USER",

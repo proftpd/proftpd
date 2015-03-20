@@ -571,15 +571,15 @@ static int xfer_parse_cmdlist(const char *name, config_rec *c,
   return 0;
 }
 
-static int transmit_normal(char *buf, long bufsz) {
+static int transmit_normal(pool *p, char *buf, size_t bufsz) {
   long sz = pr_fsio_read(retr_fh, buf, bufsz);
 
   if (sz < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "RETR, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "RETR, user '%s' (UID %s, GID %s): "
       "error reading from '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(p, session.uid), pr_gid2str(p, session.gid),
       retr_fh->fh_path, strerror(xerrno));
 
     errno = xerrno;
@@ -729,8 +729,8 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
  * transmit_sendfile(), if sendfile support is enabled.  The transmit_normal()
  * function only needs/uses buf and bufsz.
  */
-static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
-    long bufsz) {
+static long transmit_data(pool *p, off_t data_len, off_t *data_offset,
+    char *buf, size_t bufsz) {
   long res;
   int xerrno = 0;
 
@@ -754,7 +754,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     /* sendfile() should not be used for some reason, fallback to using
      * normal data transmission methods.
      */
-    res = transmit_normal(buf, bufsz);
+    res = transmit_normal(p, buf, bufsz);
     xerrno = errno;
 
   } else {
@@ -766,7 +766,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     pr_log_debug(DEBUG10, "use of sendfile(2) failed due to %s (%d), "
       "falling back to normal data transmission", strerror(errno),
       errno);
-    res = transmit_normal(buf, bufsz);
+    res = transmit_normal(p, buf, bufsz);
     xerrno = errno;
 
 # else
@@ -780,7 +780,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
   }
 
 #else
-  res = transmit_normal(buf, bufsz);
+  res = transmit_normal(p, buf, bufsz);
   xerrno = errno;
 #endif /* HAVE_SENDFILE */
 
@@ -798,7 +798,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
   return res;
 }
 
-static void stor_chown(void) {
+static void stor_chown(pool *p) {
   struct stat st;
   char *xfer_path = NULL;
 
@@ -827,13 +827,13 @@ static void stor_chown(void) {
 
     } else {
       if (session.fsgid != (gid_t) -1) {
-        pr_log_debug(DEBUG2, "root lchown(%s) to uid %lu, gid %lu successful",
-          xfer_path, (unsigned long) session.fsuid,
-          (unsigned long) session.fsgid);
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %s, GID %s successful",
+          xfer_path, pr_uid2str(p, session.fsuid),
+          pr_gid2str(p, session.fsgid));
 
       } else {
-        pr_log_debug(DEBUG2, "root lchown(%s) to uid %lu successful", xfer_path,
-          (unsigned long) session.fsuid);
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %s successful", xfer_path,
+          pr_uid2str(p, session.fsuid));
       }
 
       pr_fs_clear_cache();
@@ -899,9 +899,9 @@ static void stor_chown(void) {
         use_root_privs ? "root " : "", xfer_path, strerror(xerrno));
 
     } else {
-      pr_log_debug(DEBUG2, "%slchown(%s) to gid %lu successful",
+      pr_log_debug(DEBUG2, "%slchown(%s) to GID %s successful",
         use_root_privs ? "root " : "", xfer_path,
-        (unsigned long) session.fsgid);
+        pr_gid2str(p, session.fsgid));
 
       pr_fs_clear_cache();
       if (pr_fsio_stat(xfer_path, &st) < 0) {
@@ -1665,10 +1665,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (stor_fh == NULL) {
       ferrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path_hidden, strerror(ferrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path_hidden,
+        strerror(ferrno));
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
@@ -1685,10 +1686,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
     } else {
       ferrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, strerror(ferrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path,
+        strerror(ferrno));
     }
 
   } else {
@@ -1698,10 +1700,10 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (stor_fh == NULL) {
       ferrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid, path,
-        strerror(ferrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(ferrno));
     }
   }
 
@@ -1783,7 +1785,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   session.xfer.file_size = curr_pos;
 
   /* First, make sure the uploaded file has the requested ownership. */
-  stor_chown();
+  stor_chown(cmd->tmp_pool);
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
     int xerrno = errno;
@@ -1866,10 +1868,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
         xerrno = errno;
       }
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error writing to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        stor_fh->fh_path, strerror(xerrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), stor_fh->fh_path,
+        strerror(xerrno));
 
       stor_abort();
       pr_data_abort(xerrno, FALSE);
@@ -2199,10 +2202,10 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (retr_fh == NULL) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error opening '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
-      dir, strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -2248,10 +2251,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
       errno = xerrno;
       retr_fh = NULL;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error seeking to byte %" PR_LU " of '%s': %s", cmd->argv[0],
-        session.user, (unsigned long) session.uid, (unsigned long) session.gid,
-        (pr_off_t) session.restart_pos, dir, strerror(xerrno));
+        session.user, pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), (pr_off_t) session.restart_pos,
+        dir, strerror(xerrno));
 
       pr_log_debug(DEBUG0, "error seeking to offset %" PR_LU
         " for file %s: %s", (pr_off_t) session.restart_pos, dir,
@@ -2348,7 +2352,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     if (XFER_ABORTED)
       break;
 
-    len = transmit_data(nbytes_sent, &curr_pos, lbuf, bufsz);
+    len = transmit_data(cmd->pool, nbytes_sent, &curr_pos, lbuf, bufsz);
     if (len == 0)
       break;
 
