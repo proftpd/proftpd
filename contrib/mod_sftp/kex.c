@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: kex.c,v 1.39 2013-10-02 06:18:53 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2076,26 +2074,32 @@ static int set_session_keys(struct sftp_kex *kex) {
   const char *k, *v;
 
   if (sftp_cipher_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0)
+      kex->hlen) < 0) {
     return -1;
+  }
 
   if (sftp_cipher_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0)
+      kex->hlen) < 0) {
     return -1;
+  }
 
   if (sftp_mac_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0)
+      kex->hlen) < 0) {
     return -1;
+  }
 
   if (sftp_mac_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0)
+      kex->hlen) < 0) {
     return -1;
+  }
 
-  if (sftp_compress_init_read(SFTP_COMPRESS_FL_NEW_KEY) < 0)
+  if (sftp_compress_init_read(SFTP_COMPRESS_FL_NEW_KEY) < 0) {
     return -1;
+  }
 
-  if (sftp_compress_init_write(SFTP_COMPRESS_FL_NEW_KEY) < 0)
+  if (sftp_compress_init_write(SFTP_COMPRESS_FL_NEW_KEY) < 0) {
     return -1;
+  }
 
   k = pstrdup(session.pool, "SFTP_CLIENT_CIPHER_ALGO");
   v = pstrdup(session.pool, sftp_cipher_get_read_algo());
@@ -2182,7 +2186,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
   /* Compute the shared secret */
   dhlen = DH_size(kex->dh);
-  buf = palloc(kex_pool, dhlen);
+  buf = palloc(pkt->pool, dhlen);
 
   pr_trace_msg(trace_channel, 12, "computing DH key");
   res = DH_compute_key((unsigned char *) buf, kex->e, kex->dh);
@@ -3289,6 +3293,7 @@ static int handle_kex_ecdh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   if (finish_ecdh(kex) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finishing ECDH key: %s", strerror(errno));
+    destroy_pool(pkt->pool);
     return -1;
   }
 
@@ -3380,21 +3385,25 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
     switch (mesg_type) {
       case SFTP_SSH2_MSG_DEBUG:
         sftp_ssh2_packet_handle_debug(pkt);
+        destroy_pool(pkt->pool);
         pkt = NULL;
         break;
 
       case SFTP_SSH2_MSG_DISCONNECT:
         sftp_ssh2_packet_handle_disconnect(pkt);
+        destroy_pool(pkt->pool);
         pkt = NULL;
         break;
 
       case SFTP_SSH2_MSG_IGNORE:
         sftp_ssh2_packet_handle_ignore(pkt);
+        destroy_pool(pkt->pool);
         pkt = NULL;
         break;
 
       case SFTP_SSH2_MSG_UNIMPLEMENTED:
         sftp_ssh2_packet_handle_ignore(pkt);
+        destroy_pool(pkt->pool);
         pkt = NULL;
         break;
 
@@ -3627,6 +3636,10 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
         SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_PROTOCOL_ERROR, NULL);
     }
 
+    /* Note: All of the above handle_kex_*() functions are REQUIRED to have
+     * destroyed the pkt->pool themselves, thus we do NOT need to do it here.
+     */
+
   } else {
     res = handle_kex_rsa(kex);
     if (res < 0) {
@@ -3666,6 +3679,8 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   cmd->cmd_class = CL_AUTH|CL_SSH;
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+
+  destroy_pool(pkt->pool);
 
   /* If we didn't send our NEWKEYS message earlier, do it now. */
   if (!sent_newkeys) {

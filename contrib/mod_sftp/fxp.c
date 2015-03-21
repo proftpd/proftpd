@@ -2571,6 +2571,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   struct fxp_handle *fxh;
 
   sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "SFTP file handle pool");
   fxh = pcalloc(sub_pool, sizeof(struct fxp_handle));
   fxh->pool = sub_pool;
 
@@ -2795,6 +2796,7 @@ static struct fxp_packet *fxp_packet_create(pool *p, uint32_t channel_id) {
   struct fxp_packet *fxp;
 
   sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "SFTP packet pool");
   fxp = pcalloc(sub_pool, sizeof(struct fxp_packet));
   fxp->pool = sub_pool;
   fxp->channel_id = channel_id;
@@ -4681,6 +4683,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
    */
 
   session.xfer.p = make_sub_pool(fxp_pool);
+  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
 
@@ -5455,6 +5458,10 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   /* Now re-populate the session.xfer struct, for mod_log's handling of
    * the CLOSE request.
    */
+  if (session.xfer.p) {
+    destroy_pool(session.xfer.p);
+  }
+
   session.xfer.p = fxp->pool;
   session.xfer.direction = xfer_direction;
   session.xfer.filename = xfer_filename;
@@ -7784,6 +7791,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   memset(&session.xfer, 0, sizeof(session.xfer));
 
   session.xfer.p = make_sub_pool(fxp_pool);
+  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
   session.xfer.path = pstrdup(session.xfer.p, orig_path);
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
@@ -8144,6 +8152,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     memset(&session.xfer, 0, sizeof(session.xfer));
 
     session.xfer.p = make_sub_pool(fxp_pool);
+    pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
     memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);
     session.xfer.direction = PR_NETIO_IO_WR;
@@ -10064,6 +10073,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
    */
 
   session.xfer.p = make_sub_pool(fxp_pool);
+  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
 
