@@ -63,6 +63,8 @@ struct sftp_kex_names {
 };
 
 struct sftp_kex {
+  pool *pool;
+
   /* Versions */
   const char *client_version;
   const char *server_version;
@@ -1229,13 +1231,18 @@ static struct sftp_kex *create_kex(pool *p) {
   struct sftp_kex *kex;
   const char *list;
   config_rec *c;
+  pool *tmp_pool;
 
-  kex = pcalloc(p, sizeof(struct sftp_kex));
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "Kex KEXINIT Pool");
+
+  kex = pcalloc(tmp_pool, sizeof(struct sftp_kex));
+  kex->pool = tmp_pool;
   kex->client_version = kex_client_version;
   kex->server_version = kex_server_version;
-  kex->client_names = pcalloc(p, sizeof(struct sftp_kex_names));
-  kex->server_names = pcalloc(p, sizeof(struct sftp_kex_names));
-  kex->session_names = pcalloc(p, sizeof(struct sftp_kex_names));
+  kex->client_names = pcalloc(kex->pool, sizeof(struct sftp_kex_names));
+  kex->server_names = pcalloc(kex->pool, sizeof(struct sftp_kex_names));
+  kex->session_names = pcalloc(kex->pool, sizeof(struct sftp_kex_names));
   kex->use_hostkey_type = SFTP_KEY_UNKNOWN;
   kex->dh = NULL;
   kex->e = NULL;
@@ -1247,17 +1254,17 @@ static struct sftp_kex *create_kex(pool *p) {
   kex->rsa_encrypted = NULL;
   kex->rsa_encrypted_len = 0;
 
-  list = get_kexinit_exchange_list(kex_pool);
+  list = get_kexinit_exchange_list(kex->pool);
   kex->server_names->kex_algo = list;
 
-  list = get_kexinit_hostkey_algo_list(kex_pool);
+  list = get_kexinit_hostkey_algo_list(kex->pool);
   kex->server_names->server_hostkey_algo = list;
 
-  list = sftp_crypto_get_kexinit_cipher_list(kex_pool);
+  list = sftp_crypto_get_kexinit_cipher_list(kex->pool);
   kex->server_names->c2s_encrypt_algo = list;
   kex->server_names->s2c_encrypt_algo = list;
 
-  list = sftp_crypto_get_kexinit_digest_list(kex_pool);
+  list = sftp_crypto_get_kexinit_digest_list(kex->pool);
   kex->server_names->c2s_mac_algo = list;
   kex->server_names->s2c_mac_algo = list;
 
@@ -1348,6 +1355,11 @@ static void destroy_kex(struct sftp_kex *kex) {
     if (kex->hlen > 0) {
       pr_memscrub((char *) kex->h, kex->hlen);
       kex->hlen = 0;
+    }
+
+    if (kex->pool) {
+      destroy_pool(kex->pool);
+      kex->pool = NULL;
     }
   }
 
@@ -1588,7 +1600,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   const char *client_pref, *server_pref;
   pool *tmp_pool;
 
-  tmp_pool = make_sub_pool(kex_pool);
+  tmp_pool = make_sub_pool(kex->pool);
   pr_pool_tag(tmp_pool, "SSH2 session shared name pool");
 
   client_list = kex->client_names->kex_algo;
@@ -1624,7 +1636,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     }
   }
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_kex_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1652,7 +1664,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent host key algorithms: %s", server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_hostkey_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1680,7 +1692,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent client encryption algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_encrypt_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1708,7 +1720,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent server encryption algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_encrypt_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1736,7 +1748,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent client MAC algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_mac_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1764,7 +1776,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent server MAC algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_mac_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1792,7 +1804,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent client compression algorithms: %s", server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_comp_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1820,7 +1832,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent server compression algorithms: %s", server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_comp_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1848,7 +1860,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent client languages: %s", client_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_lang(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1879,7 +1891,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent server languages: %s", client_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_lang(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1915,43 +1927,43 @@ static int read_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   buflen = pkt->payload_len;
 
   /* Make a copy of the payload for later. */
-  kex->client_kexinit_payload = palloc(kex_pool, pkt->payload_len);
+  kex->client_kexinit_payload = palloc(kex->pool, pkt->payload_len);
   kex->client_kexinit_payload_len = pkt->payload_len;
   memcpy(kex->client_kexinit_payload, pkt->payload, pkt->payload_len);
 
   /* Read the cookie, which is a mandated length of 16 bytes. */
   (void) sftp_msg_read_data(pkt->pool, &buf, &buflen, 16);
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->kex_algo = list;
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->server_hostkey_algo = list;
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->c2s_encrypt_algo = list;
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->s2c_encrypt_algo = list;
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->c2s_mac_algo = list;
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->s2c_mac_algo = list;
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->c2s_comp_algo = list;
 
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->s2c_comp_algo = list;
 
   /* Client-to-server languages */
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->c2s_lang = list;
 
   /* Server-to-client languages */
-  list = sftp_msg_read_string(kex_pool, &buf, &buflen);
+  list = sftp_msg_read_string(kex->pool, &buf, &buflen);
   kex->client_names->s2c_lang = list;
 
   /* Read the "first kex packet follows" byte */
@@ -2046,7 +2058,7 @@ static int write_kexinit(struct ssh2_packet *pkt, struct sftp_kex *kex) {
    * is the KEXINIT identifier.
    */
   kex->server_kexinit_payload_len = pkt->payload_len - 1;
-  kex->server_kexinit_payload = palloc(kex_pool, pkt->payload_len - 1);
+  kex->server_kexinit_payload = palloc(kex->pool, pkt->payload_len - 1);
   memcpy(kex->server_kexinit_payload, pkt->payload + 1, pkt->payload_len - 1);
 
   return 0;
