@@ -1604,11 +1604,17 @@ static void pool_printf(const char *fmt, ...) {
 }
 
 static void sftp_sigusr2_ev(const void *event_data, void *user_data) {
-  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
-    "-----BEGIN POOL DUMP-----");
-  pr_pool_debug_memory(pool_printf);
-  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
-    "-----END POOL DUMP-----");
+  /* Note: the mod_shaper module deliberately uses the SIGUSR2 signal
+   * for handling shaping.  Thus we only want to dump out the pools
+   * IFF mod_shaper is NOT present.
+   */
+  if (pr_module_exists("mod_shaper.c") == FALSE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "-----BEGIN POOL DUMP-----");
+    pr_pool_debug_memory(pool_printf);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "-----END POOL DUMP-----");
+  }
 }
 #endif /* PR_USE_DEVEL */
 
