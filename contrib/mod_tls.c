@@ -3693,15 +3693,15 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
         pr_trace_msg(trace_channel, 17,
-          "SSL_accept() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_READ encountered while accepting %s conn on fd %d, "
+          "waiting to read data", on_data ? "data" : "ctrl", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
         pr_trace_msg(trace_channel, 17,
-          "SSL_accept() returned WANT_WRITE, waiting for more to "
-          "write on fd %d", conn->rfd);
+          "WANT_WRITE encountered while accepting %s conn on fd %d, "
+          "waiting to send data", on_data ? "data" : "ctrl", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -4125,15 +4125,15 @@ static int tls_connect(conn_t *conn) {
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
         pr_trace_msg(trace_channel, 17,
-          "SSL_connect() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_READ encountered while connecting on fd %d, "
+          "waiting to read data", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
         pr_trace_msg(trace_channel, 17,
-          "SSL_connect() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_WRITE encountered while connecting on fd %d, "
+          "waiting to read data", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -4931,8 +4931,8 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "SSL_read() returned WANT_READ, waiting for more to "
-          "read on fd %d", fd);
+          "WANT_READ encountered while reading SSL data on fd %d, "
+          "waiting to read data", fd);
         err = tls_readmore(fd);
         if (err > 0) {
           goto retry;
@@ -4954,8 +4954,8 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * block, so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "SSL_read() returned WANT_WRITE, waiting for more to "
-          "write on fd %d", fd);
+          "WANT_WRITE encountered while writing SSL data on fd %d, "
+          "waiting to send data", fd);
         err = tls_writemore(fd);
         if (err > 0) {
           goto retry;
