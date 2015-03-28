@@ -1221,7 +1221,8 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
 
     while (buflen > 0 &&
            toread > 0 &&
-           *pbuf->current != '\n' &&
+           (*pbuf->current != '\n' ||
+            (*pbuf->current == '\n' && *(pbuf->current - 1) != '\r')) &&
            toread--) {
       pr_signals_handle();
 
@@ -1314,11 +1315,25 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
     if (buflen > 0 &&
         toread > 0 &&
         *pbuf->current == '\n') {
-      buflen--;
-      toread--;
-      *bp++ = *pbuf->current++;
-      pbuf->remaining++;
 
+      /* If the current character is LF, and the previous character we
+       * copied was a CR, then strip the CR by overwriting it with the LF,
+       * turning the copied data from Telnet CRLF line termination to
+       * Unix LF line termination.
+       */
+      if (*(bp-1) == '\r') {
+        /* We already decrement the buffer length for the CR; no need to
+         * do it we are overwriting that CR.
+         */
+        *(bp-1) = *pbuf->current++;
+
+      } else {
+        *bp++ = *pbuf->current++;
+        buflen--;
+      }
+
+      pbuf->remaining++;
+      toread--;
       saw_newline = TRUE;
       break;
     }

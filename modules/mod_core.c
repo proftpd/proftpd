@@ -3341,9 +3341,9 @@ MODRET core_log_quit(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Per RFC959, directory responses for MKD and PWD should be
+/* Per RFC 959, directory responses for MKD and PWD should be
  * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
- * the add'l quotes must be duplicated.
+ * the additional quotes MUST be duplicated.
  */
 static const char *quote_dir(cmd_rec *cmd, char *dir) {
   return sreplace(cmd->tmp_pool, dir, "\"", "\"\"", NULL);
