@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* NetIO routines
- * $Id: netio.c,v 1.63 2014-01-06 06:57:16 castaglia Exp $
- */
+/* NetIO routines */
 
 #include "conf.h"
 
@@ -1162,18 +1160,19 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
 
 static int telnet_mode = 0;
 
-char *pr_netio_telnet_gets(char *buf, size_t buflen,
+int pr_netio_telnet_gets2(char *buf, size_t bufsz,
     pr_netio_stream_t *in_nstrm, pr_netio_stream_t *out_nstrm) {
   char *bp = buf;
   unsigned char cp;
   int toread, handle_iac = TRUE, saw_newline = FALSE;
   pr_buffer_t *pbuf = NULL;
+  size_t buflen = bufsz;
 
   if (buflen == 0 ||
       in_nstrm == NULL ||
       out_nstrm == NULL) {
     errno = EINVAL;
-    return NULL;
+    return -1;
   }
 
 #ifdef PR_USE_NLS
@@ -1202,10 +1201,10 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       if (toread <= 0) {
         if (bp != buf) {
           *bp = '\0';
-          return buf;
+          return (bufsz - buflen - 1);
         }
 
-        return NULL;
+        return -1;
       }
 
       pbuf->remaining = pbuf->buflen - toread;
@@ -1340,18 +1339,30 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
 
     properly_terminated_prev_command = FALSE;
     errno = E2BIG;
-    return NULL;
+    return -1;
   }
 
   if (!properly_terminated_prev_command) {
     properly_terminated_prev_command = TRUE;
     pr_log_pri(PR_LOG_NOTICE, "client sent too-long command, ignoring");
     errno = E2BIG;
-    return NULL;
+    return -1;
   }
 
   properly_terminated_prev_command = TRUE;
   *bp = '\0';
+  return (bufsz - buflen - 1);
+}
+
+char *pr_netio_telnet_gets(char *buf, size_t bufsz,
+    pr_netio_stream_t *in_nstrm, pr_netio_stream_t *out_nstrm) {
+  int res;
+
+  res = pr_netio_telnet_gets2(buf, bufsz, in_nstrm, out_nstrm);
+  if (res < 0) {
+    return NULL;
+  }
+
   return buf;
 }
 
