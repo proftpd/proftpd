@@ -174,9 +174,6 @@ sub test_http_req {
       my $req = HTTP::Request->new($req => "http://127.0.0.1:$port/path/to/some/file");
       my $resp = $client->request($req);
 
-use Data::Dumper;
-print STDERR "resp: ", Dumper($resp), "\n";
-
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# response: ", $resp->as_string, "\n";
       }
