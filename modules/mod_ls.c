@@ -1942,11 +1942,14 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           target_mode = st.st_mode;
 
           if (S_ISLNK(st.st_mode) &&
-              (lmode = file_mode((char *) *path)) != 0) {
-            if (opt_L || !list_show_symlinks)
+              (lmode = symlink_mode((char *) *path)) != 0) {
+            if (opt_L || !list_show_symlinks) {
               st.st_mode = lmode;
+            }
 
-            target_mode = lmode;
+            if (lmode != 0) {
+              target_mode = lmode;
+            }
           }
 
           /* If the -d option is used or the file is not a directory, OR
