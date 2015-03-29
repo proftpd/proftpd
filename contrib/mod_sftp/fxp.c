@@ -2817,7 +2817,6 @@ static struct fxp_packet *fxp_packet_get_packet(uint32_t channel_id) {
   }
 
   fxp = fxp_packet_create(fxp_pool, channel_id);
-
   return fxp;
 }
 
@@ -11799,6 +11798,7 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     }
 
     destroy_pool(fxp->pool);
+    fxp_packet_set_packet(NULL);
 
     if (res < 0) {
       fxp_session = NULL;
