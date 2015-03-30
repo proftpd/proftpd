@@ -11793,6 +11793,7 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unhandled SFTP request type %d", fxp->request_type);
         destroy_pool(fxp->pool);
+        fxp_packet_set_packet(NULL);
         fxp_session = NULL;
         return -1;
     }
