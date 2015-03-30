@@ -1026,7 +1026,7 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   module *m = NULL;
   int res = PR_AUTH_BADPWD;
 
-  /* Note: it's poassible for cpw to be NULL (mod_ldap might do this, for
+  /* Note: it's possible for cpw to be NULL (mod_ldap might do this, for
    * example), so we cannot enforce that it be non-NULL.
    */
 

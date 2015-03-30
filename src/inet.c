@@ -124,7 +124,7 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
   pool *sub_pool = NULL;
 
   sub_pool = make_sub_pool(p);
-  pr_pool_tag(sub_pool, "pr_inet_copy_conn() subpool");
+  pr_pool_tag(sub_pool, "inet_copy_conn pool");
 
   res = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
 
@@ -191,7 +191,7 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
   pr_netaddr_clear(&na);
 
   sub_pool = make_sub_pool(p);
-  pr_pool_tag(sub_pool, "init_conn() subpool");
+  pr_pool_tag(sub_pool, "init_conn pool");
 
   c = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
   c->pool = sub_pool;

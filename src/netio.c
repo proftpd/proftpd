@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* NetIO routines
- * $Id: netio.c,v 1.63 2014-01-06 06:57:16 castaglia Exp $
- */
+/* NetIO routines */
 
 #include "conf.h"
 
@@ -88,6 +86,7 @@ static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   }
 
   netio_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(netio_pool, "netio stream pool");
   nstrm = pcalloc(netio_pool, sizeof(pr_netio_stream_t));
 
   nstrm->strm_pool = netio_pool;
