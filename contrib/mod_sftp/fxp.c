@@ -6940,6 +6940,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 
   attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags);
   if (attrs == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "MKDIR request missing required attributes, ignoring");
     return 0;
   }
 
@@ -6969,11 +6971,11 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       "empty path given in MKDIR request, using '%s'", path);
   }
 
-  cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
-  cmd->cmd_class = CL_WRITE|CL_SFTP;
-
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
+  cmd->cmd_class = CL_WRITE|CL_SFTP;
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
