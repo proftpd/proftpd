@@ -9465,7 +9465,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 
   path = cmd->arg;
 
-  cmd2 = fxp_cmd_alloc(fxp_pool, C_DELE, path);
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_DELE, path);
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
