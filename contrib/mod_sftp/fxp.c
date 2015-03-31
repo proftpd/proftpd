@@ -209,6 +209,10 @@ struct fxp_handle {
 
   void *dirh;
   const char *dir;
+
+  /* For indicating whether the file passed dir_check() for respective operations. */
+  int fh_read_checked;
+  int fh_write_checked;
 };
 
 struct fxp_packet {
@@ -7742,6 +7746,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   fxh->fh_flags = open_flags;
   fxh->fh_existed = file_existed;
   memcpy(fxh->fh_st, &st, sizeof(struct stat));
+  fxh->fh_read_checked = 0;
+  fxh->fh_write_checked = 0;
 
   if (hiddenstore_path) {
     fxh->fh_real_path = pstrdup(fxh->pool, path);
@@ -8348,7 +8354,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, file);
   cmd2->cmd_class = CL_WRITE|CL_SFTP;
 
-  if (!dir_check(fxp->pool, cmd, G_READ, fxh->fh->fh_path, NULL)) {
+  if (fxh->fh_read_checked == 0 && !dir_check(fxp->pool, cmd, G_READ, fxh->fh->fh_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -8368,6 +8374,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
+  } else {
+    fxh->fh_read_checked = 1;
   }
 
   /* XXX Check MaxRetrieveFileSize */
@@ -11128,7 +11136,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, file);
   cmd2->cmd_class = CL_WRITE|CL_SFTP;
 
-  if (!dir_check(fxp->pool, cmd2, G_WRITE, fxh->fh->fh_path, NULL)) {
+  if (fxh->fh_write_checked == 0 && !dir_check(fxp->pool, cmd2, G_WRITE, fxh->fh->fh_path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -11148,6 +11156,8 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
+  } else {
+    fxh->fh_write_checked = 1;
   }
 
   if (fxp_path_pass_regex_filters(fxp->pool, "WRITE", fxh->fh->fh_path) < 0) {
