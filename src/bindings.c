@@ -271,7 +271,6 @@ int pr_ipbind_add_binds(server_rec *serv) {
 
 int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
     unsigned char close_namebinds) {
-  int res = 0;
   register unsigned int i = 0;
 
   if (addr) {
