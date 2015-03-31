@@ -561,7 +561,7 @@ static fs_statcache_t statcache;
 static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
     unsigned int op) {
   int res = -1;
-  char pathbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char pathbuf[PR_TUNABLE_PATH_MAX + 1];
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
   size_t pathlen;
 
@@ -575,6 +575,8 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
     errno = ENOENT;
     return -1;
   }
+
+  memset(pathbuf, '\0', sizeof(pathbuf));
 
   /* Use only absolute path names.  Construct them, if given a relative
    * path, based on cwd.  This obviates the need for something like
@@ -653,8 +655,7 @@ static pr_fs_t *lookup_file_canon_fs(const char *, char **, int);
  * during the hit.
  */
 static pr_fs_t *lookup_dir_fs(const char *path, int op) {
-  char buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
-  char tmp_path[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char buf[PR_TUNABLE_PATH_MAX + 1], tmp_path[PR_TUNABLE_PATH_MAX + 1];
   pr_fs_t *fs = NULL;
   int exact = FALSE;
   size_t tmp_pathlen = 0;
@@ -663,6 +664,8 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
   pr_fs_match_t *fsm = NULL;
 #endif /* PR_FS_MATCH */
 
+  memset(buf, '\0', sizeof(buf));
+  memset(tmp_path, '\0', sizeof(tmp_path));
   sstrncpy(buf, path, sizeof(buf));
 
   /* Check if the given path is an absolute path.  Since there may be
