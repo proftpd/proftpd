@@ -11227,7 +11227,8 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
    * want to track the on-disk size for enforcing limits such as
    * MaxStoreFileSize.
    */
-  fxh->fh_st->st_size += res;
+  if (res > 0 && (offset + res) > fxh->fh_st->st_size)
+      fxh->fh_st->st_size = offset + res;
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
