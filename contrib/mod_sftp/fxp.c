@@ -4283,7 +4283,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   /* No errors. */
   xerrno = errno = 0;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(dst);
   pr_fsio_stat(dst, &st);
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
@@ -6151,7 +6151,6 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  pr_fs_clear_cache();
   if (pr_fsio_fstat(fxh->fh, &st) < 0) {
     uint32_t status_code;
     const char *reason;
@@ -6858,7 +6857,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) < 0) {
     uint32_t status_code;
     const char *reason;
@@ -10679,7 +10678,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) < 0) {
     uint32_t status_code;
     const char *reason;

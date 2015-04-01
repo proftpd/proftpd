@@ -423,7 +423,7 @@ static int snmp_mkdir(const char *dir, uid_t uid, gid_t gid, mode_t mode) {
   struct stat st;
   int res = -1;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
 
   if (res == -1 &&
@@ -461,7 +461,7 @@ static int snmp_mkpath(pool *p, const char *path, uid_t uid, gid_t gid,
   char *currpath = NULL, *tmppath = NULL;
   struct stat st;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) == 0) {
     /* Path already exists, nothing to be done. */
     errno = EEXIST;

@@ -2052,9 +2052,10 @@ MODRET log_pre_dele(cmd_rec *cmd) {
     /* Briefly cache the size of the file being deleted, so that it can be
      * logged properly using %b.
      */
-    pr_fs_clear_cache();
-    if (pr_fsio_stat(path, &st) == 0)
+    pr_fs_clear_cache2(path);
+    if (pr_fsio_stat(path, &st) == 0) {
       log_dele_filesz = st.st_size;
+    }
   }
 
   return PR_DECLINED(cmd);

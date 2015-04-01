@@ -3220,9 +3220,6 @@ MODRET core_pre_any(cmd_rec *cmd) {
   unsigned long cmd_delay = 0;
   char *rnfr_path = NULL;
 
-  /* Make sure any FS caches are clear before each command. */
-  pr_fs_clear_cache();
-
   /* Check for an exceeded MaxCommandRate. */
   cmd_delay = core_exceeded_cmd_rate(cmd);
   if (cmd_delay > 0) {
@@ -4659,18 +4656,17 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
   unsigned char show_symlinks = TRUE, *tmp = NULL;
 
   odir = ndir;
-  pr_fs_clear_cache();
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     show_symlinks = *tmp;
+  }
 
   if (show_symlinks) {
     int use_cdpath = FALSE;
 
     dir = dir_realpath(cmd->tmp_pool, ndir);
-
-    if (!dir) {
+    if (dir == NULL) {
       use_cdpath = TRUE;
     }
 
@@ -4679,8 +4675,9 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
       allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
         NULL);
-      if (!allowed_access)
+      if (!allowed_access) {
         use_cdpath = TRUE;
+      }
     }
 
     if (!use_cdpath &&
@@ -5159,10 +5156,11 @@ MODRET core_size(cmd_rec *cmd) {
   }
 
   path = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (path != NULL) {
+    pr_fs_clear_cache2(path);
+  }
 
-  pr_fs_clear_cache();
-
-  if (!path ||
+  if (path == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       pr_fsio_stat(path, &st) == -1) {
     int xerrno = errno;
@@ -5265,7 +5263,7 @@ MODRET core_dele(cmd_rec *cmd) {
    * so we need to use lstat(), not stat(), lest we log the wrong size.
    */
   memset(&st, 0, sizeof(st));
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) < 0) {
     int xerrno = errno;
 
@@ -5400,7 +5398,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   /* Deny the rename if AllowOverwrites are not allowed, and the destination
    * rename file already exists.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if ((!allow_overwrite || *allow_overwrite == FALSE) &&
       pr_fsio_stat(path, &st) == 0) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", path);
@@ -5780,6 +5778,11 @@ MODRET core_post_pass(cmd_rec *cmd) {
     core_max_cmd_ts = 0;
   }
 
+  /* Configure the statcache to start caching for the authenticated session. */
+  pr_fs_statcache_reset();
+  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
+    PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -5860,6 +5863,7 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
  */
 
 static void core_restart_ev(const void *event_data, void *user_data) {
+  pr_fs_statcache_reset();
   pr_scoreboard_scrub();
 
 #ifdef PR_USE_TRACE

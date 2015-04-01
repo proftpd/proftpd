@@ -2261,13 +2261,14 @@ MODRET sql_pre_dele(cmd_rec *cmd) {
     /* Briefly cache the size of the file being deleted, so that it can be
      * logged properly using %b.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(path);
     if (pr_fsio_stat(path, &st) < 0) {
       sql_log(DEBUG_INFO, "%s: unable to stat '%s': %s", cmd->argv[0],
         path, strerror(errno));
     
-    } else
+    } else {
       sql_dele_filesz = st.st_size;
+    }
   }
 
   return PR_DECLINED(cmd);

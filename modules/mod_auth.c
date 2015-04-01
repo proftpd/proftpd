@@ -768,7 +768,7 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
           path[pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(path);
         res = pr_fsio_lstat(path, &st);
         if (res < 0) {
           xerrno = errno;
@@ -1262,7 +1262,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
           chroot_path[chroot_pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(chroot_path);
         res = pr_fsio_lstat(chroot_path, &st);
         if (res < 0) {
           int xerrno = errno;

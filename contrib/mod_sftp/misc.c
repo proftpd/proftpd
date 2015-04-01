@@ -59,7 +59,6 @@ int sftp_misc_chown_file(pool *p, pr_fh_t *fh) {
           pr_uid2str(NULL, session.fsuid));
       }
 
-      pr_fs_clear_cache();
       if (pr_fsio_fstat(fh, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' fstat(2) error for root chmod: %s", fh->fh_path,
@@ -128,7 +127,6 @@ int sftp_misc_chown_file(pool *p, pr_fh_t *fh) {
         use_root_privs ? "root " : "", fh->fh_path,
         pr_gid2str(NULL, session.fsgid));
 
-      pr_fs_clear_cache();
       if (pr_fsio_fstat(fh, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' fstat(2) error for %sfchmod: %s", fh->fh_path,
@@ -192,7 +190,7 @@ int sftp_misc_chown_path(pool *p, const char *path) {
           pr_uid2str(NULL, session.fsuid));
       }
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error for root chmod: %s", path, strerror(errno));
@@ -260,7 +258,7 @@ int sftp_misc_chown_path(pool *p, const char *path) {
         use_root_privs ? "root " : "", path,
         pr_gid2str(NULL, session.fsgid));
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error for %schmod: %s", path,

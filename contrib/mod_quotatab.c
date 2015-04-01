@@ -1890,7 +1890,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being appended to, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -1923,7 +1923,7 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
    * in file size as the increment.  Make sure that no caching effects 
    * mess with the stat.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     append_bytes = st.st_size - quotatab_disk_nbytes;
 
@@ -2032,7 +2032,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
    * in file size as the increment.  Make sure that no caching effects 
    * mess with the stat.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     append_bytes = st.st_size - quotatab_disk_nbytes;
 
@@ -2188,7 +2188,7 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being overwritten, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->argv[2]);
   if (pr_fsio_stat(cmd->argv[2], &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -2263,7 +2263,7 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->argv[2]);
   if (pr_fsio_stat(cmd->argv[2], &st) == 0) {
     if (quotatab_disk_nfiles == 0) {
 
@@ -2460,7 +2460,7 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
     /* Briefly cache the size (in bytes) of the file to be deleted, so that
      * if successful, the byte counts can be adjusted correctly.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(path);
     if (pr_fsio_lstat(path, &quotatab_dele_st) < 0) {
       quotatab_disk_nbytes = 0;
 
@@ -3308,7 +3308,7 @@ MODRET quotatab_pre_rmd(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the directory to be deleted, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -3356,7 +3356,7 @@ MODRET quotatab_pre_rnto(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being overwritten, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
     quotatab_disk_nfiles = 0;
@@ -3487,7 +3487,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
    * stat fails, it means that a new file is being uploaded, so set the
    * disk_nbytes to be zero. 
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -3537,7 +3537,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
    * in file size as the increment.  Make sure that no caching effects
    * mess with the stat.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     store_bytes = st.st_size - quotatab_disk_nbytes;
 
@@ -3707,7 +3707,7 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
      * in file size as the increment.  Make sure that no caching effects 
      * mess with the stat.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(cmd->arg);
     if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
       store_bytes = st.st_size - quotatab_disk_nbytes;
 

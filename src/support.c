@@ -454,7 +454,11 @@ mode_t file_mode(const char *path) {
   struct stat sbuf;
   mode_t res = 0;
 
-  pr_fs_clear_cache();
+  if (path == NULL) {
+    return res;
+  }
+
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &sbuf) != -1) {
     if (S_ISLNK(sbuf.st_mode)) {
       res = _symlink(path, (ino_t) 0, 0);
