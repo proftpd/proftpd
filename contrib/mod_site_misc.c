@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2014 The ProFTPD Project
+ * Copyright (c) 2004-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,8 +57,7 @@ static int site_misc_create_dir(const char *dir) {
   struct stat st;
   int res;
 
-  pr_fs_clear_cache();
-
+  pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
   if (res < 0 &&
       errno != ENOENT) {
@@ -93,10 +92,10 @@ static int site_misc_create_path(pool *p, const char *path) {
   struct stat st;
   char *curr_path, *tmp_path;
 
-  pr_fs_clear_cache();
-
-  if (pr_fsio_stat(path, &st) == 0)
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) == 0) {
     return 0;
+  }
 
   /* The given path should already be canonicalized; we do not need to worry
    * if it is relative to the current working directory or not.
@@ -312,10 +311,10 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
 static int site_misc_delete_path(pool *p, const char *path) {
   struct stat st;
 
-  pr_fs_clear_cache();
-
-  if (pr_fsio_stat(path, &st) < 0)
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) < 0) {
     return -1;
+  }
 
   if (!S_ISDIR(st.st_mode)) {
     errno = EINVAL;
@@ -867,7 +866,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
      * in the filesystem.
      */
        
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(src);
     res = pr_fsio_stat(src, &st);
     if (res < 0) {
       int xerrno = errno;

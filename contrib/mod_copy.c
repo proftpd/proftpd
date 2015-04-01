@@ -2,7 +2,7 @@
  * ProFTPD: mod_copy -- a module supporting copying of files on the server
  *                      without transferring the data to the client and back
  *
- * Copyright (c) 2009-2014 TJ Saunders
+ * Copyright (c) 2009-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ static int create_dir(const char *dir) {
   struct stat st;
   int res = -1;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
 
   if (res < 0 &&
@@ -84,10 +84,10 @@ static int create_path(pool *p, const char *path) {
   struct stat st;
   char *curr_path, *dup_path; 
  
-  pr_fs_clear_cache();
- 
-  if (pr_fsio_stat(path, &st) == 0)
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) == 0) {
     return 0;
+  }
  
   dup_path = pstrdup(p, path);
 
@@ -280,7 +280,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
 
           /* Write a TransferLog entry as well. */
 
-          pr_fs_clear_cache();
+          pr_fs_clear_cache2(dst_path);
           pr_fsio_stat(dst_path, &st);
 
           abs_path = dir_abs_path(p, dst_path, TRUE);
@@ -365,7 +365,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
   if (S_ISREG(st.st_mode)) { 
     char *abs_path;
 
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(to);
     res = pr_fsio_stat(to, &st);
     if (res == 0) {
       unsigned char *allow_overwrite;
@@ -391,7 +391,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
       return -1;
     }
 
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(to);
     if (pr_fsio_stat(to, &st) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error stat'ing '%s': %s", to, strerror(errno));
@@ -436,7 +436,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
     }
 
   } else if (S_ISLNK(st.st_mode)) {
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(to);
     res = pr_fsio_stat(to, &st);
     if (res == 0) {
       unsigned char *allow_overwrite;

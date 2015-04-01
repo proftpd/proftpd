@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* User configurable defaults and tunable parameters.
- * $Id: options.h,v 1.36 2014-01-25 16:34:09 castaglia Exp $
- */
+/* User configurable defaults and tunable parameters. */
 
 #ifndef PR_OPTIONS_H
 #define PR_OPTIONS_H
@@ -225,6 +223,15 @@
  * The default behavior is delay 0.2 secs between retries.
  */
 # define PR_TUNABLE_EINTR_RETRY_INTERVAL	0.2
+#endif
+
+/* FS Statcache tuning. */
+#ifndef PR_TUNABLE_FS_STATCACHE_SIZE
+# define PR_TUNABLE_FS_STATCACHE_SIZE		32
+#endif
+
+#ifndef PR_TUNABLE_FS_STATCACHE_MAX_AGE
+# define PR_TUNABLE_FS_STATCACHE_MAX_AGE	30
 #endif
 
 #endif /* PR_OPTIONS_H */

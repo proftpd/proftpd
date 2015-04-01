@@ -386,7 +386,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
        * stat in order to ensure that the unique fact values are the same.
        */
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       res = pr_fsio_stat(path, &target_st);
       if (res < 0) {
         int xerrno = errno;
@@ -743,7 +743,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
        * enable the CAP_FOWNER capability for the session, or b) use root
        * privs.
        */
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         errno = xerrno;
         return -1;
@@ -1381,7 +1381,6 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   }
   session.sf_flags |= SF_ASCII_OVERRIDE;
 
-  pr_fs_clear_cache();
   facts_mlinfobuf_init();
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
@@ -1579,7 +1578,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   info.pool = cmd->tmp_pool;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(decoded_path);
   if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags, fake_uid,
       fake_gid, fake_mode) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);

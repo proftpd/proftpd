@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* FSIO API tests
- * $Id: fsio.c,v 1.3 2014-01-20 19:36:27 castaglia Exp $
- */
+/* FSIO API tests */
 
 #include "tests.h"
 
@@ -41,6 +39,12 @@ static void set_up(void) {
   }
 
   init_fs();
+  pr_fs_statcache_set(PR_TUNABLE_FS_STATCACHE_SIZE,
+    PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("fs.statcache", 1, 20);
+  }
 }
 
 static void tear_down(void) {
@@ -48,6 +52,12 @@ static void tear_down(void) {
     destroy_pool(p);
     p = NULL;
     permanent_pool = NULL;
+  }
+
+  pr_fs_statcache_set(PR_TUNABLE_FS_STATCACHE_SIZE,
+    PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("fs.statcache", 0, 0);
   }
 
   (void) unlink(fsio_link_path);
@@ -352,6 +362,82 @@ START_TEST (fsio_access_dir_test) {
 }
 END_TEST
 
+START_TEST (fsio_stat_test) {
+  int res;
+  struct stat st;
+  unsigned int item_count = 3, max_age = 1, policy = 0;
+
+  res = pr_fsio_stat(NULL, &st);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_stat("/", NULL);
+  fail_unless(res < 0, "Failed to handle null struct stat");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fs_statcache_set(item_count, max_age, policy);
+  fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
+
+  res = pr_fsio_stat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_stat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Now wait for longer than 1 second (our configured max age) */
+  sleep(max_age + 1);
+
+  res = pr_fsio_stat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+}
+END_TEST
+
+START_TEST (fsio_lstat_test) {
+  int res;
+  struct stat st;
+  unsigned int item_count = 3, max_age = 1, policy = 0;
+
+  res = pr_fsio_lstat(NULL, &st);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_lstat("/", NULL);
+  fail_unless(res < 0, "Failed to handle null struct stat");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fs_statcache_set(item_count, max_age, policy);
+  fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
+
+  res = pr_fsio_lstat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_lstat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Now wait for longer than 1 second (our configured max age) */
+  sleep(max_age + 1);
+
+  res = pr_fsio_lstat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -370,6 +456,9 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_symlink_test);
   tcase_add_test(testcase, fsio_readlink_test);
   tcase_add_test(testcase, fsio_access_dir_test);
+
+  tcase_add_test(testcase, fsio_stat_test);
+  tcase_add_test(testcase, fsio_lstat_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

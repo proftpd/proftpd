@@ -70,13 +70,15 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
   mode_t mask;
   struct stat st;
 
-  pr_fs_clear_cache();
-  if (pr_fsio_stat(path, &st) < 0)
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) < 0) {
     return -1;
+  }
 
   /* Root always succeeds. */
-  if (uid == PR_ROOT_UID)
+  if (uid == PR_ROOT_UID) {
     return 0;
+  }
 
   /* Initialize mask to reflect the permission bits that are applicable for
    * the given user. mask contains the user-bits if the user ID equals the
@@ -876,9 +878,10 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   struct stat st;
   void *acls;
 
-  pr_fs_clear_cache();
-  if (pr_fsio_stat(path, &st) < 0)
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) < 0) {
     return -1;
+  }
 
   /* Look up the acl for this path. */
 # if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL)
@@ -974,9 +977,9 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   struct stat st;
   void *acls;
 
-  pr_fs_clear_cache();
-  if (pr_fsio_fstat(fh, &st) < 0)
+  if (pr_fsio_fstat(fh, &st) < 0) {
     return -1;
+  }
 
   /* Look up the acl for this fd. */
 # if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL)

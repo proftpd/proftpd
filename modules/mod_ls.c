@@ -512,7 +512,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       /* Attempt to fully dereference symlink */
       struct stat l_st;
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(name);
       if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
@@ -1720,8 +1720,9 @@ static int have_options(cmd_rec *cmd, const char *arg) {
    * options.
    */
 
-  if (cmd->argc > 2)
+  if (cmd->argc > 2) {
     return TRUE;
+  }
 
   /* Now we need to determine if the given string (arg) should be handled
    * as options (as when the target path is implied, e.g. "LIST -al") or
@@ -1729,11 +1730,12 @@ static int have_options(cmd_rec *cmd, const char *arg) {
    * then it's a path.
    */
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(arg);
   res = pr_fsio_stat(arg, &st);
 
-  if (res == 0)
+  if (res == 0) {
     return FALSE;
+  }
 
   return TRUE;
 }
@@ -1865,7 +1867,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
     if (pr_str_is_fnmatch(target) == FALSE) {
       struct stat st;
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(target);
       if (pr_fsio_stat(target, &st) < 0) {
         int xerrno = errno;
 
@@ -2698,7 +2700,7 @@ MODRET ls_stat(cmd_rec *cmd) {
   opt_C = opt_d = opt_F = opt_R = 0;
   opt_a = opt_l = opt_STAT = 1;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(arg && *arg ? arg : ".");
   res = pr_fsio_stat(arg && *arg ? arg : ".", &st);
   if (res < 0) {
     int xerrno = errno;
@@ -3138,7 +3140,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Make sure the target is a file or directory, and that we have access
      * to it.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(target);
     if (pr_fsio_stat(target, &st) < 0) {
       int xerrno = errno;
 

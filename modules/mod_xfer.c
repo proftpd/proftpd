@@ -836,7 +836,7 @@ static void stor_chown(pool *p) {
           pr_uid2str(p, session.fsuid));
       }
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(xfer_path);
       if (pr_fsio_stat(xfer_path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during root chmod: %s", xfer_path,
@@ -903,7 +903,7 @@ static void stor_chown(pool *p) {
         use_root_privs ? "root " : "", xfer_path,
         pr_gid2str(p, session.fsgid));
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(xfer_path);
       if (pr_fsio_stat(xfer_path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during %schmod: %s", xfer_path,

@@ -443,14 +443,22 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
 }
 
 mode_t symlink_mode(const char *path) {
-  _symlink(path, (ino_t) 0, 0);
+  if (path == NULL) {
+    return 0;
+  }
+
+  return _symlink(path, (ino_t) 0, 0);
 }
 
 mode_t file_mode(const char *path) {
   struct stat sbuf;
   mode_t res = 0;
 
-  pr_fs_clear_cache();
+  if (path == NULL) {
+    return res;
+  }
+
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &sbuf) != -1) {
     if (S_ISLNK(sbuf.st_mode)) {
       res = _symlink(path, (ino_t) 0, 0);

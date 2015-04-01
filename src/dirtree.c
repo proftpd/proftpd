@@ -1854,7 +1854,7 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   int res = 1, isfile;
   int op_hidden = FALSE, regex_hidden = FALSE;
 
-  if (!path) {
+  if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1864,8 +1864,9 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
 
   fullpath = (char *) path;
 
-  if (session.chroot_path)
+  if (session.chroot_path) {
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
+  }
 
   if (*path) {
     /* Only log this debug line if we are dealing with a real path. */
@@ -1874,10 +1875,10 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   }
 
   /* Check and build all appropriate dynamic configuration entries */
-  pr_fs_clear_cache();
   isfile = pr_fsio_stat(path, &st);
-  if (isfile == -1)
+  if (isfile < 0) {
     memset(&st, '\0', sizeof(st));
+  }
 
   build_dyn_config(p, path, &st, TRUE);
 
@@ -2025,8 +2026,9 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
 
   fullpath = (char *) path;
 
-  if (session.chroot_path)
+  if (session.chroot_path) {
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
+  }
 
   c = (session.dir_config ? session.dir_config :
         (session.anon_config ? session.anon_config : NULL));
@@ -2037,10 +2039,10 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   }
 
   /* Check and build all appropriate dynamic configuration entries */
-  pr_fs_clear_cache();
   isfile = pr_fsio_stat(path, &st);
-  if (isfile == -1)
+  if (isfile < 0) {
     memset(&st, 0, sizeof(st));
+  }
 
   build_dyn_config(p, path, &st, FALSE);
 

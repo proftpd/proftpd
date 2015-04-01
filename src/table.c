@@ -680,16 +680,18 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
 
   for (ent = head; ent; ent = ent->next) {
     if (ent->key == NULL ||
-        ent->key->hash != h)
+        ent->key->hash != h) {
       continue;
+    }
 
     /* Matching hashes.  Now to see if the keys themselves match. */
     if (tab->keycmp(ent->key->key_data, ent->key->key_datasz,
         key_data, key_datasz) == 0) {
       void *value_data = ent->value_data;
 
-      if (value_datasz)
+      if (value_datasz) {
         *value_datasz = ent->value_datasz;
+      }
 
       tab_entry_remove(tab, ent);
       tab_entry_free(tab, ent);
@@ -878,19 +880,25 @@ int pr_table_do(pr_table_t *tab, int (*cb)(const void *key_data,
     void *user_data, int flags) {
   register unsigned int i;
 
-  if (!tab || !cb) {
+  if (tab == NULL ||
+      cb == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (tab->nents == 0)
+  if (tab->nents == 0) {
     return 0;
+  }
 
   for (i = 0; i < tab->nchains; i++) {
-    pr_table_entry_t *ent = tab->chains[i];
+    pr_table_entry_t *ent;
 
+    ent = tab->chains[i];
     while (ent) {
+      pr_table_entry_t *next_ent;
       int res;
+
+      next_ent = ent->next;
 
       if (!handling_signal) { 
         pr_signals_handle();
@@ -904,7 +912,7 @@ int pr_table_do(pr_table_t *tab, int (*cb)(const void *key_data,
         return -1;
       }
 
-      ent = ent->next;
+      ent = next_ent;
     }
   }
 
@@ -1018,7 +1026,8 @@ void *pr_table_next(pr_table_t *tab) {
 void *pr_table_remove(pr_table_t *tab, const char *key_data,
     size_t *value_datasz) {
 
-  if (!tab || !key_data) {
+  if (tab == NULL ||
+      key_data == NULL) {
     errno = EINVAL;
     return NULL;
   }
