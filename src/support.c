@@ -443,7 +443,11 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
 }
 
 mode_t symlink_mode(const char *path) {
-  _symlink(path, (ino_t) 0, 0);
+  if (path == NULL) {
+    return 0;
+  }
+
+  return _symlink(path, (ino_t) 0, 0);
 }
 
 mode_t file_mode(const char *path) {
