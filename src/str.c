@@ -503,7 +503,6 @@ static int parse_ul(const char *val, unsigned long *num) {
 }
 
 int pr_str2uid(const char *val, uid_t *uid) {
-  int res;
 #ifdef HAVE_STRTOULL
   unsigned long long ull = 0ULL;
 #endif /* HAVE_STRTOULL */
@@ -540,7 +539,6 @@ int pr_str2uid(const char *val, uid_t *uid) {
 }
 
 int pr_str2gid(const char *val, gid_t *gid) {
-  int res;
 #ifdef HAVE_STRTOULL
   unsigned long long ull = 0ULL;
 #endif /* HAVE_STRTOULL */
