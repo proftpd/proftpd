@@ -560,9 +560,9 @@ struct fs_statcache_evict_data {
 static const char *statcache_channel = "fs.statcache";
 static pool *statcache_pool = NULL;
 static pr_table_t *statcache_tab = NULL;
-static unsigned int statcache_size = PR_TUNABLE_FS_STATCACHE_SIZE;
-static unsigned int statcache_max_age = PR_TUNABLE_FS_STATCACHE_MAX_AGE;
-static unsigned int statcache_policy = 0;
+static unsigned int statcache_size = 0;
+static unsigned int statcache_max_age = 0;
+static unsigned int statcache_flags = 0;
 
 #define fs_cache_lstat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_LSTAT)
 #define fs_cache_stat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_STAT)
@@ -1035,12 +1035,12 @@ void pr_fs_statcache_reset(void) {
   statcache_tab = pr_table_alloc(statcache_pool, 0);
 }
 
-int pr_fs_statcache_set(unsigned int size, unsigned int max_age, 
-    unsigned int policy) {
+int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age, 
+    unsigned int flags) {
 
   statcache_size = size;
   statcache_max_age = max_age;
-  statcache_policy = policy;
+  statcache_flags = flags;
 
   return 0;
 }

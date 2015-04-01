@@ -324,15 +324,15 @@ void pr_fs_statcache_dump(void);
 /* Clears the entire statcache and re-creates the memory pool. */
 void pr_fs_statcache_reset(void);
 
-/* Tune the statcache defaults: max number of items in the cache at any
+/* Tune the statcache policy: max number of items in the cache at any
  * one time, the max age (in seconds) for items in the cache, and the policy
  * flags.
  *
  * Note that setting a size of zero, OR setting a max age of zero, effectively
  * disables the statcache.
  */
-int pr_fs_statcache_set(unsigned int size, unsigned int max_age,
-  unsigned int policy);
+int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
+  unsigned int flags);
 
 int pr_fs_copy_file(const char *, const char *);
 int pr_fs_setcwd(const char *);

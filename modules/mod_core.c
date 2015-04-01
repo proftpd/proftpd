@@ -5778,8 +5778,10 @@ MODRET core_post_pass(cmd_rec *cmd) {
     core_max_cmd_ts = 0;
   }
 
-  /* Reset the statcache, for the authenticated session. */
+  /* Configure the statcache to start caching for the authenticated session. */
   pr_fs_statcache_reset();
+  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
+    PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since

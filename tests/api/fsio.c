@@ -39,7 +39,7 @@ static void set_up(void) {
   }
 
   init_fs();
-  pr_fs_statcache_set(PR_TUNABLE_FS_STATCACHE_SIZE,
+  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   if (getenv("TEST_VERBOSE") != NULL) {
@@ -54,7 +54,7 @@ static void tear_down(void) {
     permanent_pool = NULL;
   }
 
-  pr_fs_statcache_set(PR_TUNABLE_FS_STATCACHE_SIZE,
+  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("fs.statcache", 0, 0);
@@ -365,7 +365,7 @@ END_TEST
 START_TEST (fsio_stat_test) {
   int res;
   struct stat st;
-  unsigned int item_count = 3, max_age = 1, policy = 0;
+  unsigned int cache_size = 3, max_age = 1, policy_flags = 0;
 
   res = pr_fsio_stat(NULL, &st);
   fail_unless(res < 0, "Failed to handle null path");
@@ -377,7 +377,7 @@ START_TEST (fsio_stat_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
     errno);
 
-  res = pr_fs_statcache_set(item_count, max_age, policy);
+  res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
   fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
 
   res = pr_fsio_stat("/foo/bar/baz/quxx", &st);
@@ -403,7 +403,7 @@ END_TEST
 START_TEST (fsio_lstat_test) {
   int res;
   struct stat st;
-  unsigned int item_count = 3, max_age = 1, policy = 0;
+  unsigned int cache_size = 3, max_age = 1, policy_flags = 0;
 
   res = pr_fsio_lstat(NULL, &st);
   fail_unless(res < 0, "Failed to handle null path");
@@ -415,7 +415,7 @@ START_TEST (fsio_lstat_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
     errno);
 
-  res = pr_fs_statcache_set(item_count, max_age, policy);
+  res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
   fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
 
   res = pr_fsio_lstat("/foo/bar/baz/quxx", &st);
