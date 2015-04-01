@@ -369,7 +369,6 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
   mode_t mask;
   struct stat st;
 
-  pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) < 0) {
     return -1;
   }
