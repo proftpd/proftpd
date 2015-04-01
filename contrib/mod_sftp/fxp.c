@@ -11225,8 +11225,19 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
    * associated with fstat(2) on network filesystems such as NFS.  And we
    * want to track the on-disk size for enforcing limits such as
    * MaxStoreFileSize.
+   *
+   * Note that we only want to increment the file size if the chunk we
+   * just wrote is PAST the current end of the file; we could be just
+   * overwriting a chunk of the file.
    */
-  fxh->fh_st->st_size += res;
+  if (res > 0) {
+    size_t new_size;
+
+    new_size = offset + res;
+    if (new_size > fxh->fh_st->st_size) {
+      fxh->fh_st->st_size = new_size;
+    }
+  }
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
