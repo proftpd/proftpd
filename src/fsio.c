@@ -785,6 +785,11 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
 
   /* Update the cache */
   res = fs_statcache_add(pathbuf, path_len, st, errno, retval, now);
+  if (res < 0) {
+    pr_trace_msg(statcache_channel, 6,
+      "error adding cached stat for '%s': %s", pathbuf, strerror(errno));
+  }
+
   return retval;
 }
 
