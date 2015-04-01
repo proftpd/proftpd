@@ -197,6 +197,11 @@ struct fxp_handle {
   /* For supporting the HiddenStores directive */
   char *fh_real_path;
 
+  /* For referencing information about the opened file; NOTE THAT THIS MAY
+   * BE STALE.
+   */
+  struct stat *fh_st;
+ 
   /* For tracking the number of bytes transferred for this file; for
    * better TransferLog tracking.
    */
@@ -2601,6 +2606,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
 
     if (fxp_handle_get(handle) == NULL) {
       fxh->name = handle;
+      fxh->fh_st = pcalloc(fxh->pool, sizeof(struct stat));
       break;
     }
 
@@ -7189,7 +7195,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   uint32_t attr_flags, buflen, bufsz, desired_access = 0, flags;
   int file_existed = FALSE, open_flags, res, timeout_stalled;
   pr_fh_t *fh;
-  struct stat *attrs;
+  struct stat *attrs, st;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2 = NULL;
@@ -7617,6 +7623,12 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  memset(&st, 0, sizeof(st));
+  if (pr_fsio_fstat(fh, &st) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "fstat error on '%s' (fd %d): %s", path, fh->fh_fd, strerror(errno));
+  }
+
   if (pr_fsio_set_block(fh) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
@@ -7728,6 +7740,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   fxh->fh = fh;
   fxh->fh_flags = open_flags;
   fxh->fh_existed = file_existed;
+  memcpy(fxh->fh_st, &st, sizeof(struct stat));
 
   if (hiddenstore_path) {
     fxh->fh_real_path = pstrdup(fxh->pool, path);
@@ -10984,7 +10997,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   int res;
   uint32_t buflen, bufsz, datalen, status_code;
   uint64_t offset;
-  struct stat st;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
@@ -11067,32 +11079,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
   fxh->fh_bytes_xferred += datalen;
-
-  if (pr_fsio_fstat(fxh->fh, &st) < 0) {
-    const char *reason;
-    int xerrno = errno;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error checking '%s' for WRITE: %s", fxh->fh->fh_path, strerror(xerrno));
-
-    status_code = fxp_errno2status(xerrno, &reason);
-
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
-
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
-      NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
-  
-    return fxp_packet_write(resp);
-  }
 
   /* It would be nice to check the requested offset against the size of
    * the file.  However, the protocol specifically allows for sparse files,
@@ -11182,7 +11168,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (S_ISREG(st.st_mode)) {
+  if (S_ISREG(fxh->fh_st->st_mode)) {
     if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
       const char *reason;
       int xerrno = errno;
@@ -11234,6 +11220,14 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   
   res = pr_fsio_write(fxh->fh, (char *) data, datalen);
 
+  /* Increment the "on-disk" file size with the number of bytes written.
+   * We do this, rather than using fstat(2), to avoid performance penalties
+   * associated with fstat(2) on network filesystems such as NFS.  And we
+   * want to track the on-disk size for enforcing limits such as
+   * MaxStoreFileSize.
+   */
+  fxh->fh_st->st_size += res;
+
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
   }
@@ -11275,7 +11269,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (pr_fsio_fstat(fxh->fh, &st) == 0) {
+  if (fxh->fh_st->st_size > 0) {
     config_rec *c;
     off_t nbytes_max_store = 0;
 
@@ -11287,7 +11281,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     }
 
     if (nbytes_max_store > 0) {
-      if (st.st_size > nbytes_max_store) {
+      if (fxh->fh_st->st_size > nbytes_max_store) {
         const char *reason;
 #if defined(EFBIG)
         int xerrno = EFBIG;
