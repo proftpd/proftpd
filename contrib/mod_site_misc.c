@@ -217,6 +217,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
       cmd->arg = pstrdup(cmd->pool, file);
       cmd->cmd_class = CL_WRITE;
 
+      pr_response_block(TRUE);
       res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
       if (res < 0) {
         int xerrno = errno;
@@ -228,6 +229,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
         pr_response_clear(&resp_err_list);
+        pr_response_block(FALSE);
 
         destroy_pool(sub_pool);
         pr_fsio_closedir(dirh);
@@ -245,6 +247,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
         pr_response_clear(&resp_err_list);
+        pr_response_block(FALSE);
 
         destroy_pool(sub_pool);
         pr_fsio_closedir(dirh);
@@ -253,10 +256,12 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         return -1;
       }
 
+      pr_response_add(R_250, "%s command successful", cmd->argv[0]);
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
       pr_response_clear(&resp_list);
       destroy_pool(sub_pool);
+      pr_response_block(FALSE);
     }
   }
 
@@ -269,6 +274,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   cmd->arg = pstrdup(cmd->pool, dir);
   cmd->cmd_class = CL_DIRS|CL_WRITE;
 
+  pr_response_block(TRUE);
   res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
   if (res < 0) {
     int xerrno = errno;
@@ -277,9 +283,11 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
       ": removing directory '%s' blocked by RMD handler: %s", dir,
       strerror(xerrno));
 
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     pr_response_clear(&resp_err_list);
+    pr_response_block(FALSE);
 
     destroy_pool(sub_pool);
 
@@ -291,18 +299,23 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   if (res < 0) {
     int xerrno = errno;
 
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     pr_response_clear(&resp_err_list);
+    pr_response_block(FALSE);
 
     destroy_pool(sub_pool);
     errno = xerrno;
     return -1;
   }
 
+  pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
+    quote_dir(cmd->tmp_pool, dir));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
+  pr_response_block(FALSE);
   destroy_pool(sub_pool);
 
   return 0;
