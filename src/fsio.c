@@ -666,6 +666,9 @@ static int fs_statcache_evict(time_t now) {
   return -1;
 }
 
+/* Returns 1 if we successfully added a cache entry, 0 if not, and -1 if
+ * there was an error.
+ */
 static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
     int xerrno, int retval, time_t now) {
   int res;
@@ -702,7 +705,7 @@ static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
     res = 0;
   }
 
-  return res;
+  return (res == 0 ? 1 : res);
 }
 
 static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
@@ -801,7 +804,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
     pr_trace_msg(trace_channel, 8,
       "error adding cached stat for '%s': %s", cleaned_path, strerror(errno));
 
-  } else {
+  } else if (res > 0) {
     pr_trace_msg(trace_channel, 8,
       "added cached stat for path '%s' (retval %d, errno %s)", path,
       retval, strerror(xerrno));
@@ -1072,6 +1075,10 @@ int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
 
 int pr_fs_clear_cache2(const char *path) {
   int res;
+
+  if (pr_table_count(statcache_tab) == 0) {
+    return 0;
+  }
 
   if (path != NULL) {
     int count;

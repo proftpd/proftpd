@@ -5844,6 +5844,7 @@ MODRET core_post_pass(cmd_rec *cmd) {
   }
 
   /* Configure the statcache to start caching for the authenticated session. */
+  pr_fs_statcache_reset();
   c = find_config(main_server->conf, CONF_PARAM, "FSCachePolicy", FALSE);
   if (c != NULL) {
     int engine;
