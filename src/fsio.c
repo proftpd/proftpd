@@ -807,6 +807,10 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
       retval, strerror(xerrno));
   }
 
+  if (retval < 0) {
+    errno = xerrno;
+  }
+
   return retval;
 }
 
