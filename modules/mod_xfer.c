@@ -1711,12 +1711,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
       session.restart_pos) {
     int xerrno = 0;
 
+    pr_fs_clear_cache2(path);
     if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1) {
       pr_log_debug(DEBUG4, "unable to seek to position %" PR_LU " of '%s': %s",
         (pr_off_t) session.restart_pos, cmd->arg, strerror(errno));
       xerrno = errno;
 
-    } else if (pr_fsio_stat(path, &st) == -1) {
+    } else if (pr_fsio_stat(path, &st) < 0) {
       pr_log_debug(DEBUG4, "unable to stat '%s': %s", cmd->arg,
         strerror(errno));
       xerrno = errno;
@@ -1821,8 +1822,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
   while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
     pr_signals_handle();
 
-    if (XFER_ABORTED)
+    if (XFER_ABORTED) {
       break;
+    }
 
     nbytes_stored += len;
 
@@ -2214,7 +2216,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (pr_fsio_stat(dir, &st) < 0) {
+  if (pr_fsio_fstat(retr_fh, &st) < 0) {
     /* Error stat'ing the file. */
     int xerrno = errno;
 
@@ -2349,12 +2351,14 @@ MODRET xfer_retr(cmd_rec *cmd) {
   while (nbytes_sent != session.xfer.file_size) {
     pr_signals_handle();
 
-    if (XFER_ABORTED)
+    if (XFER_ABORTED) {
       break;
+    }
 
     len = transmit_data(cmd->pool, nbytes_sent, &curr_pos, lbuf, bufsz);
-    if (len == 0)
+    if (len == 0) {
       break;
+    }
 
     if (len < 0) {
       /* Make sure that the errno value, needed for the pr_data_abort() call,

@@ -666,6 +666,9 @@ static int fs_statcache_evict(time_t now) {
   return -1;
 }
 
+/* Returns 1 if we successfully added a cache entry, 0 if not, and -1 if
+ * there was an error.
+ */
 static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
     int xerrno, int retval, time_t now) {
   int res;
@@ -702,7 +705,7 @@ static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
     res = 0;
   }
 
-  return res;
+  return (res == 0 ? 1 : res);
 }
 
 static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
@@ -801,7 +804,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
     pr_trace_msg(trace_channel, 8,
       "error adding cached stat for '%s': %s", cleaned_path, strerror(errno));
 
-  } else {
+  } else if (res > 0) {
     pr_trace_msg(trace_channel, 8,
       "added cached stat for path '%s' (retval %d, errno %s)", path,
       retval, strerror(xerrno));
@@ -1072,6 +1075,10 @@ int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
 
 int pr_fs_clear_cache2(const char *path) {
   int res;
+
+  if (pr_table_count(statcache_tab) == 0) {
+    return 0;
+  }
 
   if (path != NULL) {
     int count;
@@ -3960,24 +3967,44 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
 
 int pr_fsio_unlink_canon(const char *name) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_UNLINK);
+  pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_UNLINK);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom unlink handler.  If there are none,
    * use the system unlink.
    */
-  while (fs && fs->fs_next && !fs->unlink)
+  while (fs && fs->fs_next && !fs->unlink) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s unlink() for path '%s'",
     fs->fs_name, name);
   res = (fs->unlink)(fs, name);
 
+  if (res == 0) {
+    pr_fs_clear_cache2(name);
+  }
+
   return res;
 }
-	
+
 int pr_fsio_unlink(const char *name) {
   int res;
   pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   fs = lookup_file_fs(name, NULL, FSIO_FILE_UNLINK);
   if (fs == NULL) {
@@ -3987,12 +4014,17 @@ int pr_fsio_unlink(const char *name) {
   /* Find the first non-NULL custom unlink handler.  If there are none,
    * use the system unlink.
    */
-  while (fs && fs->fs_next && !fs->unlink)
+  while (fs && fs->fs_next && !fs->unlink) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s unlink() for path '%s'",
     fs->fs_name, name);
   res = (fs->unlink)(fs, name);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(name);
+  }
 
   return res;
 }
@@ -4001,8 +4033,17 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   char *deref = NULL;
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
+  pr_fs_t *fs = NULL;
 
-  pr_fs_t *fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_OPEN);
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_OPEN);
+  if (fs == NULL) {
+    return NULL;
+  }
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
@@ -4026,9 +4067,15 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
     name);
   fh->fh_fd = (fs->open)(fh, deref, flags);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    if ((flags & O_CREAT) ||
+        (flags & O_TRUNC)) {
+      pr_fs_clear_cache2(name);
+    }
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -4046,7 +4093,7 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   pr_fh_t *fh = NULL;
   pr_fs_t *fs = NULL;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -4078,9 +4125,15 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
     name);
   fh->fh_fd = (fs->open)(fh, name, flags);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    if ((flags & O_CREAT) ||
+        (flags & O_TRUNC)) {
+      pr_fs_clear_cache2(name);
+    }
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -4098,6 +4151,11 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
   pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CREAT);
   if (fs == NULL) {
@@ -4118,16 +4176,20 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   /* Find the first non-NULL custom creat handler.  If there are none,
    * use the system creat.
    */
-  while (fs && fs->fs_next && !fs->creat)
+  while (fs && fs->fs_next && !fs->creat) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
     name);
   fh->fh_fd = (fs->creat)(fh, deref, mode);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    pr_fs_clear_cache2(name);
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -4144,6 +4206,11 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
   pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   fs = lookup_file_fs(name, NULL, FSIO_FILE_CREAT);
   if (fs == NULL) {
@@ -4164,16 +4231,20 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   /* Find the first non-NULL custom creat handler.  If there are none,
    * use the system creat.
    */
-  while (fs && fs->fs_next && !fs->creat)
+  while (fs && fs->fs_next && !fs->creat) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
     name);
   fh->fh_fd = (fs->creat)(fh, name, mode);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    pr_fs_clear_cache2(name);
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -4190,7 +4261,7 @@ int pr_fsio_close(pr_fh_t *fh) {
   int res = 0;
   pr_fs_t *fs;
 
-  if (!fh) {
+  if (fh == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -4199,12 +4270,17 @@ int pr_fsio_close(pr_fh_t *fh) {
    * use the system close.
    */
   fs = fh->fh_fs;
-  while (fs && fs->fs_next && !fs->close)
+  while (fs && fs->fs_next && !fs->close) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s close() for path '%s'", fs->fs_name,
     fh->fh_path);
   res = (fs->close)(fh, fh->fh_fd);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(fh->fh_path);
+  }
 
   destroy_pool(fh->fh_pool);
   return res;

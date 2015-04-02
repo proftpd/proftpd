@@ -227,8 +227,6 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     fullpath = pstrdup(p, path);
   }
  
-  pr_fs_clear_cache2(fullpath);
-
   if (use_canon) {
     res = dir_check_canon(p, cmd, cmd->group, fullpath, hidden);
 
@@ -278,7 +276,6 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     pr_fs_clean_path(path, fullpath, PR_TUNABLE_PATH_MAX);
   }
 
-  pr_fs_clear_cache2(fullpath);
   res = dir_check(p, cmd, cmd->group, fullpath, hidden);
 
   if (session.dir_config) {
@@ -328,10 +325,17 @@ static int sendline(int flags, char *fmt, ...) {
     listbuflen = (listbuf_ptr - listbuf) + strlen(listbuf_ptr);
 
     if (listbuflen > 0) {
+      int using_ascii = FALSE;
+
       /* Make sure the ASCII flags are cleared from the session flags,
        * so that the pr_data_xfer() function does not try to perform
        * ASCII translation on this data.
        */
+      if (session.sf_flags & SF_ASCII) {
+        using_ascii = TRUE;
+      }
+
+      session.sf_flags &= ~SF_ASCII;
       session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
       res = pr_data_xfer(listbuf, listbuflen);
@@ -347,6 +351,9 @@ static int sendline(int flags, char *fmt, ...) {
           strerror(xerrno));
       }
 
+      if (using_ascii) {
+        session.sf_flags |= SF_ASCII;
+      }
       session.sf_flags |= SF_ASCII_OVERRIDE;
 
       memset(listbuf, '\0', listbufsz);
@@ -519,7 +526,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       /* Attempt to fully dereference symlink */
       struct stat l_st;
 
-      pr_fs_clear_cache2(name);
       if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
@@ -569,11 +575,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       }
 
       len = pr_fsio_readlink(name, l, sizeof(l) - 1);
-      if (len < 0)
+      if (len < 0) {
         return 0;
+      }
 
-      if (len >= sizeof(l))
+      if (len >= sizeof(l)) {
         return 0;
+      }
 
       l[len] = '\0';
 
@@ -592,11 +600,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
     /* Skip dotfiles, unless requested not to via -a or -A. */
     if (*name == '.' &&
-        (!opt_a && (!opt_A || is_dotdir(name))))
+        (!opt_a && (!opt_A || is_dotdir(name)))) {
       return 0;
+    }
 
-    if (hidden)
+    if (hidden) {
       return 0;
+    }
 
     switch (ls_sort_by) {
       case LS_SORT_BY_MTIME:
@@ -743,7 +753,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
           suffix[0] = '\0';
           if (opt_F) {
-            pr_fs_clear_cache2(name);
             if (pr_fsio_stat(name, &st) == 0) {
               if (S_ISLNK(st.st_mode)) {
                 suffix[0] = '@';
@@ -835,14 +844,15 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
 
   if (fpool == NULL) {
     fpool = make_sub_pool(cmd->tmp_pool);
-    pr_pool_tag(fpool, "mod_ls: addfile() fpool");
+    pr_pool_tag(fpool, "mod_ls addfile pool");
   }
 
   if (opt_S || opt_t) {
     struct sort_filename *s;
 
-    if (!sort_arr)
+    if (sort_arr == NULL) {
       sort_arr = make_array(fpool, 50, sizeof(struct sort_filename));
+    }
 
     s = (struct sort_filename *) push_array(sort_arr);
     s->sort_time = sort_time;
@@ -854,18 +864,20 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   }
 
   l = strlen(name) + strlen(suffix);
-  if (l > colwidth)
+  if (l > colwidth) {
     colwidth = l;
+  }
 
   p = (struct filename *) pcalloc(fpool, sizeof(struct filename));
   p->line = pcalloc(fpool, l + 2);
   snprintf(p->line, l + 1, "%s%s", name, suffix);
 
-  if (tail)
+  if (tail) {
     tail->down = p;
 
-  else
+  } else {
     head = p;
+  }
 
   tail = p;
   filenames++;
@@ -981,12 +993,14 @@ static int outputfiles(cmd_rec *cmd) {
   tail->down = NULL;
   tail = NULL;
   colwidth = (colwidth | 7) + 1;
-  if (opt_l || !opt_C)
+  if (opt_l || !opt_C) {
     colwidth = 75;
+  }
 
   /* avoid division by 0 if colwidth > 75 */
-  if (colwidth > 75)
+  if (colwidth > 75) {
     colwidth = 75;
+  }
 
   if (opt_C) {
     p = head;
@@ -997,8 +1011,9 @@ static int outputfiles(cmd_rec *cmd) {
       pr_signals_handle();
 
       p = p->down;
-      if (p)
+      if (p) {
         p->top = 0;
+      }
       n--;
     }
 
@@ -1025,8 +1040,9 @@ static int outputfiles(cmd_rec *cmd) {
       p = p->down;
     }
 
-    if (p && p->down)
+    if (p && p->down) {
       p->down = NULL;
+    }
   }
 
   p = head;
@@ -1079,8 +1095,9 @@ static int outputfiles(cmd_rec *cmd) {
 }
 
 static void discard_output(void) {
-  if (fpool)
+  if (fpool) {
     destroy_pool(fpool);
+  }
   fpool = NULL;
 
   head = tail = NULL;
@@ -1988,8 +2005,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
             if (listfile(cmd, cmd->tmp_pool, resp_code, *path) < 0) {
               ls_terminate();
-              if (use_globbing && globbed)
+              if (use_globbing && globbed) {
                 pr_fs_globfree(&g);
+              }
               return -1;
             }
 
@@ -2419,16 +2437,18 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   sendline(LS_SENDLINE_FL_FLUSH, " ");
 
-  if (!curdir)
+  if (!curdir) {
     pop_cwd(cwd_buf, &symhold);
+  }
   destroy_pool(workp);
 
   /* Explicitly free the memory allocated for containing the list of
    * filenames.
    */
   i = 0;
-  while (list[i] != NULL)
+  while (list[i] != NULL) {
     free(list[i++]);
+  }
   free(list);
 
   return count;
