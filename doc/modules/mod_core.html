@@ -27,6 +27,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#DisplayChdir">DisplayChdir</a>
   <li><a href="#DisplayConnect">DisplayConnect</a>
   <li><a href="#DisplayQuit">DisplayQuit</a>
+  <li><a href="#FSCachePolicy">FSCachePolicy</a>
   <li><a href="#GroupOwner">GroupOwner</a>
   <li><a href="#HideGroup">HideGroup</a>
   <li><a href="#HideNoAccess">HideNoAccess</a>
@@ -361,6 +362,47 @@ more information on the variables that can be used in a
 <p>
 See also: <a href="#DisplayChdir"><code>DisplayChdir</code></a>,
 <a href="#DisplayConnect"><code>DisplayConnect</code></a>
+
+<hr>
+<h2><a name="FSCachePolicy">FSCachePolicy</a></h2>
+<strong>Syntax:</strong> FSCachePolicy <em>on|off|size count [maxAge <em>secs]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>FSCachePolicy</code> directive configures the internal
+filesystem-related cache, used for performance optimizations on <i>e.g.</i>
+network filesystems.  This directive can be used to disable this internal
+cache, or to tune the caching policy.
+
+<p>
+To disable the cache altogether, use:
+<pre>
+  FSCachePolicy off
+</pre>
+
+<p>
+To configure the maximum number of entries in the cache before eviction happens:
+<pre>
+  FSCachePolicy size 64
+</pre>
+
+<p>
+To configure the maximum age (in seconds) of a cached entry before it is
+evicted:
+<pre>
+  FSCachePolicy maxAge 60
+</pre>
+
+<p>
+The <em>size</em> and <em>maxAge</em> parameters can be combined/set in the
+same directive, <i>e.g.</i>:
+<pre>
+  # Set the maximum cache size at 128, and the max age at 120 seconds
+  FSCachePolicy size 128 maxAge 120
+</pre>
 
 <hr>
 <h2><a name="GroupOwner">GroupOwner</a></h2>
@@ -1721,13 +1763,8 @@ addresses.
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-01-30 16:50:10 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2000-2014 The ProFTPD Project<br>
+&copy; Copyright 2000-2015 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
