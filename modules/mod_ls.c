@@ -322,10 +322,17 @@ static int sendline(int flags, char *fmt, ...) {
     listbuflen = (listbuf_ptr - listbuf) + strlen(listbuf_ptr);
 
     if (listbuflen > 0) {
+      int using_ascii = FALSE;
+
       /* Make sure the ASCII flags are cleared from the session flags,
        * so that the pr_data_xfer() function does not try to perform
        * ASCII translation on this data.
        */
+      if (session.sf_flags & SF_ASCII) {
+        using_ascii = TRUE;
+      }
+
+      session.sf_flags &= ~SF_ASCII;
       session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
       res = pr_data_xfer(listbuf, listbuflen);
@@ -341,6 +348,9 @@ static int sendline(int flags, char *fmt, ...) {
           strerror(xerrno));
       }
 
+      if (using_ascii) {
+        session.sf_flags |= SF_ASCII;
+      }
       session.sf_flags |= SF_ASCII_OVERRIDE;
 
       memset(listbuf, '\0', listbufsz);
