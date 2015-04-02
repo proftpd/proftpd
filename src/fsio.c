@@ -3190,6 +3190,11 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   int res;
   pr_fs_t *fs;
 
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   fs = lookup_dir_fs(path, FSIO_DIR_MKDIR);
   if (fs == NULL) {
     return -1;
@@ -3198,12 +3203,17 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   /* Find the first non-NULL custom mkdir handler.  If there are none,
    * use the system mkdir.
    */
-  while (fs && fs->fs_next && !fs->mkdir)
+  while (fs && fs->fs_next && !fs->mkdir) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s mkdir() for path '%s'", fs->fs_name,
     path);
   res = (fs->mkdir)(fs, path, mode);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(path);
+  }
 
   return res;
 }
@@ -3680,6 +3690,11 @@ int pr_fsio_rmdir(const char *path) {
   int res;
   pr_fs_t *fs;
 
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   fs = lookup_dir_fs(path, FSIO_DIR_RMDIR);
   if (fs == NULL) {
     return -1;
@@ -3688,12 +3703,17 @@ int pr_fsio_rmdir(const char *path) {
   /* Find the first non-NULL custom rmdir handler.  If there are none,
    * use the system rmdir.
    */
-  while (fs && fs->fs_next && !fs->rmdir)
+  while (fs && fs->fs_next && !fs->rmdir) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s rmdir() for path '%s'", fs->fs_name,
     path);
   res = (fs->rmdir)(fs, path);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(path);
+  }
 
   return res;
 }
@@ -4502,7 +4522,7 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
   int res;
   pr_fs_t *fs;
 
-  if (!fh) {
+  if (fh == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -4511,29 +4531,49 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
    * use the system ftruncate.
    */
   fs = fh->fh_fs;
-  while (fs && fs->fs_next && !fs->ftruncate)
+  while (fs && fs->fs_next && !fs->ftruncate) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s ftruncate() for path '%s'",
     fs->fs_name, fh->fh_path);
   res = (fs->ftruncate)(fh, fh->fh_fd, len);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(fh->fh_path);
+  }
 
   return res;
 }
 
 int pr_fsio_truncate_canon(const char *path, off_t len) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_TRUNC);
+  pr_fs_t *fs;
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_TRUNC);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom truncate handler.  If there are none,
    * use the system truncate.
    */
-  while (fs && fs->fs_next && !fs->truncate)
+  while (fs && fs->fs_next && !fs->truncate) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s truncate() for path '%s'",
     fs->fs_name, path);
   res = (fs->truncate)(fs, path, len);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(path);
+  }
 
   return res;
 }
@@ -4541,6 +4581,11 @@ int pr_fsio_truncate_canon(const char *path, off_t len) {
 int pr_fsio_truncate(const char *path, off_t len) {
   int res;
   pr_fs_t *fs;
+ 
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   fs = lookup_file_fs(path, NULL, FSIO_FILE_TRUNC);
   if (fs == NULL) {
@@ -4550,12 +4595,17 @@ int pr_fsio_truncate(const char *path, off_t len) {
   /* Find the first non-NULL custom truncate handler.  If there are none,
    * use the system truncate.
    */
-  while (fs && fs->fs_next && !fs->truncate)
+  while (fs && fs->fs_next && !fs->truncate) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s truncate() for path '%s'",
     fs->fs_name, path);
   res = (fs->truncate)(fs, path, len);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(path);
+  }
   
   return res;
 }
