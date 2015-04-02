@@ -426,6 +426,7 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
     return (mode_t)0;
   buf[i] = '\0';
 
+  pr_fs_clear_cache2(buf);
   if (pr_fsio_lstat(buf, &sbuf) != -1) {
     if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
       errno = ELOOP;
