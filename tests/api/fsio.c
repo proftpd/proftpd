@@ -385,6 +385,20 @@ START_TEST (fsio_stat_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
     errno);
 
+  res = pr_fsio_stat("/", &st);
+  fail_unless(res == 0, "Unexpected stat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  /* Now, do the stat(2) again, and make sure we get the same information
+   * from the cache.
+   */
+  res = pr_fsio_stat("/", &st);
+  fail_unless(res == 0, "Unexpected stat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  pr_fs_statcache_reset();
   res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
   fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
 
@@ -423,6 +437,20 @@ START_TEST (fsio_lstat_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
     errno);
 
+  res = pr_fsio_lstat("/", &st);
+  fail_unless(res == 0, "Unexpected lstat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  /* Now, do the lstat(2) again, and make sure we get the same information
+   * from the cache.
+   */
+  res = pr_fsio_lstat("/", &st);
+  fail_unless(res == 0, "Unexpected lstat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  pr_fs_statcache_reset();
   res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
   fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
 

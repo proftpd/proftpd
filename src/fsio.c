@@ -3960,24 +3960,44 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
 
 int pr_fsio_unlink_canon(const char *name) {
   int res;
-  pr_fs_t *fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_UNLINK);
+  pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_UNLINK);
+  if (fs == NULL) {
+    return -1;
+  }
 
   /* Find the first non-NULL custom unlink handler.  If there are none,
    * use the system unlink.
    */
-  while (fs && fs->fs_next && !fs->unlink)
+  while (fs && fs->fs_next && !fs->unlink) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s unlink() for path '%s'",
     fs->fs_name, name);
   res = (fs->unlink)(fs, name);
 
+  if (res == 0) {
+    pr_fs_clear_cache2(name);
+  }
+
   return res;
 }
-	
+
 int pr_fsio_unlink(const char *name) {
   int res;
   pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   fs = lookup_file_fs(name, NULL, FSIO_FILE_UNLINK);
   if (fs == NULL) {
@@ -3987,12 +4007,17 @@ int pr_fsio_unlink(const char *name) {
   /* Find the first non-NULL custom unlink handler.  If there are none,
    * use the system unlink.
    */
-  while (fs && fs->fs_next && !fs->unlink)
+  while (fs && fs->fs_next && !fs->unlink) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s unlink() for path '%s'",
     fs->fs_name, name);
   res = (fs->unlink)(fs, name);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(name);
+  }
 
   return res;
 }
@@ -4190,7 +4215,7 @@ int pr_fsio_close(pr_fh_t *fh) {
   int res = 0;
   pr_fs_t *fs;
 
-  if (!fh) {
+  if (fh == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -4199,12 +4224,17 @@ int pr_fsio_close(pr_fh_t *fh) {
    * use the system close.
    */
   fs = fh->fh_fs;
-  while (fs && fs->fs_next && !fs->close)
+  while (fs && fs->fs_next && !fs->close) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s close() for path '%s'", fs->fs_name,
     fh->fh_path);
   res = (fs->close)(fh, fh->fh_fd);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(fh->fh_path);
+  }
 
   destroy_pool(fh->fh_pool);
   return res;
