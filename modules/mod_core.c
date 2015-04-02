@@ -1338,6 +1338,71 @@ MODRET add_from(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: FSCachePolicy on|off|size {count} [maxAge {age}] */
+MODRET set_fscachepolicy(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc != 2 &&
+      cmd->argc != 5) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  if (cmd->argc == 2) {
+    int engine;
+
+    engine = get_boolean(cmd, 1);
+    if (engine == -1) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = engine;
+    c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = PR_TUNABLE_FS_STATCACHE_SIZE;
+    c->argv[2] = palloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[2]) = PR_TUNABLE_FS_STATCACHE_MAX_AGE;
+
+    return PR_HANDLED(cmd);
+  }
+
+  c = add_config_param_str(cmd->argv[0], 3, NULL, NULL, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = TRUE;
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strncasecmp(cmd->argv[i], "size", 5) == 0) {
+      int size;
+
+      size = atoi(cmd->argv[i++]);
+      if (size < 1) {
+        CONF_ERROR(cmd, "size parameter must be greater than 1");
+      }
+
+      c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+      *((unsigned int *) c->argv[1]) = size;
+
+    } else if (strncasecmp(cmd->argv[i], "maxAge", 7) == 0) {
+      int max_age;
+
+      max_age = atoi(cmd->argv[i++]);
+      if (max_age < 1) {
+        CONF_ERROR(cmd, "maxAge parameter must be greater than 1");
+      }
+
+      c->argv[2] = palloc(c->pool, sizeof(unsigned int));
+      *((unsigned int *) c->argv[2]) = max_age;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown FSCachePolicy: ",
+        cmd->argv[i], NULL));
+    }
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_group(cmd_rec *cmd) {
   struct group *grp = NULL;
 
@@ -5779,9 +5844,27 @@ MODRET core_post_pass(cmd_rec *cmd) {
   }
 
   /* Configure the statcache to start caching for the authenticated session. */
-  pr_fs_statcache_reset();
-  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
-    PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  c = find_config(main_server->conf, CONF_PARAM, "FSCachePolicy", FALSE);
+  if (c != NULL) {
+    int engine;
+    unsigned int size, max_age;
+
+    engine = *((int *) c->argv[0]);
+    size = *((unsigned int *) c->argv[1]);
+    max_age = *((unsigned int *) c->argv[2]);
+
+    if (engine) {
+      pr_fs_statcache_set_policy(size, max_age, 0);
+
+    } else {
+      pr_fs_statcache_set_policy(0, 0, 0);
+    }
+
+  } else {
+    /* Set the default statcache policy. */
+    pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
+      PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  }
 
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
@@ -6401,6 +6484,7 @@ static conftable core_conftab[] = {
   { "DisplayConnect",		set_displayconnect,		NULL },
   { "DisplayQuit",		set_displayquit,		NULL },
   { "From",			add_from,			NULL },
+  { "FSCachePolicy",		set_fscachepolicy,		NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "HideFiles",		set_hidefiles,			NULL },
