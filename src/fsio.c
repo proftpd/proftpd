@@ -4026,8 +4026,17 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   char *deref = NULL;
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
+  pr_fs_t *fs = NULL;
 
-  pr_fs_t *fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_OPEN);
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_OPEN);
+  if (fs == NULL) {
+    return NULL;
+  }
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
@@ -4051,9 +4060,15 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
     name);
   fh->fh_fd = (fs->open)(fh, deref, flags);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    if ((flags & O_CREAT) ||
+        (flags & O_TRUNC)) {
+      pr_fs_clear_cache2(name);
+    }
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -4071,7 +4086,7 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   pr_fh_t *fh = NULL;
   pr_fs_t *fs = NULL;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -4103,9 +4118,15 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
     name);
   fh->fh_fd = (fs->open)(fh, name, flags);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    if ((flags & O_CREAT) ||
+        (flags & O_TRUNC)) {
+      pr_fs_clear_cache2(name);
+    }
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -4123,6 +4144,11 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
   pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CREAT);
   if (fs == NULL) {
@@ -4143,16 +4169,20 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   /* Find the first non-NULL custom creat handler.  If there are none,
    * use the system creat.
    */
-  while (fs && fs->fs_next && !fs->creat)
+  while (fs && fs->fs_next && !fs->creat) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
     name);
   fh->fh_fd = (fs->creat)(fh, deref, mode);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    pr_fs_clear_cache2(name);
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -4169,6 +4199,11 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   pool *tmp_pool = NULL;
   pr_fh_t *fh = NULL;
   pr_fs_t *fs;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   fs = lookup_file_fs(name, NULL, FSIO_FILE_CREAT);
   if (fs == NULL) {
@@ -4189,16 +4224,20 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   /* Find the first non-NULL custom creat handler.  If there are none,
    * use the system creat.
    */
-  while (fs && fs->fs_next && !fs->creat)
+  while (fs && fs->fs_next && !fs->creat) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
     name);
   fh->fh_fd = (fs->creat)(fh, name, mode);
 
-  if (fh->fh_fd == -1) {
+  if (fh->fh_fd < 0) {
     destroy_pool(fh->fh_pool);
     return NULL;
+
+  } else {
+    pr_fs_clear_cache2(name);
   }
 
   if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
