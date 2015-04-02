@@ -786,8 +786,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           st.st_size);
       }
     }
-  } else {
-pr_log_debug(DEBUG0, "listfile: lstat(2) returned %s (%d) for path '%s'", strerror(errno), errno, name);
   }
 
   return rval;
@@ -1102,30 +1100,22 @@ static char **sreaddir(const char *dirname, const int sort) {
   DIR *d;
   struct dirent *de;
   struct stat st;
-  int i, dir_fd, xerrno;
+  int i, dir_fd;
   char **p;
   size_t ssize, dsize;
 
   pr_fs_clear_cache2(dirname);
   if (pr_fsio_stat(dirname, &st) < 0) {
-    xerrno = errno;
-pr_trace_msg("fsio", 9, "sreaddir: stat(2) error for '%s': %s", dirname, strerror(xerrno));
-    errno = xerrno;
     return NULL;
   }
 
   if (!S_ISDIR(st.st_mode)) {
-    xerrno = errno = ENOTDIR;
-pr_trace_msg("fsio", 9, "sreaddir: error for '%s': %s", dirname, strerror(xerrno));
-    errno = xerrno;
+    errno = ENOTDIR;
     return NULL;
   }
 
   d = pr_fsio_opendir(dirname);
   if (d == NULL) {
-    xerrno = errno;
-pr_trace_msg("fsio", 9, "sreaddir: opendir(3) error for '%s': %s", dirname, strerror(xerrno));
-    errno = xerrno;
     return NULL;
   }
 
@@ -1278,7 +1268,6 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
   }
 
   PR_DEVEL_CLOCK(dir = sreaddir(".", opt_U ? FALSE : TRUE));
-
   if (dir) {
     char **s;
     char **r;
@@ -1430,8 +1419,10 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
       }
       r++;
     }
+
   } else {
-pr_log_debug(DEBUG0, "listdir: sreaddir() returned %s (%d) for path '.'", strerror(errno), errno);
+    pr_trace_msg("fsio", 9,
+      "sreaddir() error on '.': %s", strerror(errno));
   }
 
   if (dest_workp) {
@@ -2006,7 +1997,6 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           }
 
         } else {
-pr_log_debug(DEBUG0, "lstat(2) returned %s (%d) for path '%s'", strerror(errno), errno, *path);
           **path = '\0';
         }
 
@@ -2311,8 +2301,12 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   PR_DEVEL_CLOCK(list = sreaddir(".", FALSE));
   if (list == NULL) {
-    if (!curdir)
+    pr_trace_msg("fsio", 9,
+      "sreaddir() error on '.': %s", strerror(errno));
+
+    if (!curdir) {
       pop_cwd(cwd_buf, &symhold);
+    }
 
     destroy_pool(workp);
     return 0;
