@@ -549,12 +549,12 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     char *cmd_name, *decoded_path, *path = "";
     unsigned char *authenticated;
 
-    if (cmd->argc < 3)
+    if (cmd->argc < 3) {
       return PR_DECLINED(cmd);
+    }
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
-
-    if (!authenticated ||
+    if (authenticated == NULL ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
 
