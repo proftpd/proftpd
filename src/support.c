@@ -116,6 +116,16 @@ void pr_signals_unblock(void) {
   sigs_nblocked--;
 }
 
+const char *quote_dir(pool *p, char *path) {
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  return sreplace(p, path, "\"", "\"\"", NULL);
+}
+
 void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
     void *a2, void *a3, void *a4) {
   pool *p, *sub_pool;

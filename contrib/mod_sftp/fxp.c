@@ -7183,6 +7183,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
 
+  pr_response_add(R_257, "\"%s\" - Directory successfully created",
+    quote_dir(cmd->tmp_pool, path));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 

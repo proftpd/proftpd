@@ -3403,14 +3403,6 @@ MODRET core_log_quit(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Per RFC959, directory responses for MKD and PWD should be
- * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
- * the add'l quotes must be duplicated.
- */
-static const char *quote_dir(cmd_rec *cmd, char *dir) {
-  return sreplace(cmd->tmp_pool, dir, "\"", "\"\"", NULL);
-}
-
 MODRET core_pwd(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
 
@@ -3425,7 +3417,7 @@ MODRET core_pwd(cmd_rec *cmd) {
   }
 
   pr_response_add(R_257, _("\"%s\" is the current directory"),
-    quote_dir(cmd, pr_fs_encode_path(cmd->tmp_pool, session.vwd)));
+    quote_dir(cmd->tmp_pool, pr_fs_encode_path(cmd->tmp_pool, session.vwd)));
 
   return PR_HANDLED(cmd);
 }
@@ -5090,7 +5082,7 @@ MODRET core_mkd(cmd_rec *cmd) {
   }
 
   pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
-    quote_dir(cmd, dir));
+    quote_dir(cmd->tmp_pool, dir));
 
   return PR_HANDLED(cmd);
 }
