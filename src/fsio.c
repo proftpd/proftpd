@@ -690,6 +690,7 @@ static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
   pr_pool_tag(sc_pool, "FS statcache entry pool");
   sc = pcalloc(sc_pool, sizeof(struct fs_statcache));
   sc->sc_pool = sc_pool;
+  memcpy(&(sc->sc_stat), st, sizeof(struct stat));
   sc->sc_errno = xerrno;
   sc->sc_retval = retval;
   sc->sc_cached_ts = now;
@@ -706,8 +707,8 @@ static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
 
 static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
     unsigned int op) {
-  int res = -1, retval;
-  char pathbuf[PR_TUNABLE_PATH_MAX + 1];
+  int res = -1, retval, xerrno = 0;
+  char cleaned_path[PR_TUNABLE_PATH_MAX+1], pathbuf[PR_TUNABLE_PATH_MAX+1];
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
   size_t path_len;
   struct fs_statcache *sc = NULL;
@@ -726,6 +727,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   }
 
   now = time(NULL);
+  memset(cleaned_path, '\0', sizeof(cleaned_path));
   memset(pathbuf, '\0', sizeof(pathbuf));
 
   /* Use only absolute path names.  Construct them, if given a relative
@@ -747,11 +749,16 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
       pathbuf_len++;
     }
 
-    sstrcat(pathbuf + pathbuf_len, path, sizeof(pathbuf)- pathbuf_len - 1);
+    /* If the given directory is ".", then we don't need to append it. */
+    if (strncmp(path, ".", 2) != 0) {
+      sstrcat(pathbuf + pathbuf_len, path, sizeof(pathbuf)- pathbuf_len - 1);
+    }
 
   } else {
     sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
   }
+
+  pr_fs_clean_path2(pathbuf, cleaned_path, sizeof(cleaned_path)-1, 0);
 
   /* Determine which filesystem function to use, stat() or lstat() */
   if (op == FSIO_FILE_STAT) {
@@ -761,16 +768,18 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
     mystat = fs->lstat ? fs->lstat : sys_lstat;
   }
 
-  path_len = strlen(pathbuf);
+  path_len = strlen(cleaned_path);
 
-  sc = fs_statcache_get(pathbuf, path_len, now);
+  sc = fs_statcache_get(cleaned_path, path_len, now);
   if (sc != NULL) {
 
     /* Update the given struct stat pointer with the cached info */
     memcpy(st, &(sc->sc_stat), sizeof(struct stat));
 
-    pr_trace_msg(trace_channel, 8, "using cached stat for %s for path '%s'",
-      op == FSIO_FILE_STAT ? "stat()" : "lstat()", path);
+    pr_trace_msg(trace_channel, 8,
+      "using cached stat for %s for path '%s' (retval %d, errno %s)",
+      op == FSIO_FILE_STAT ? "stat()" : "lstat()", path, sc->sc_retval,
+      strerror(sc->sc_errno));
 
     /* Use the cached errno as well */
     errno = sc->sc_errno;
@@ -781,13 +790,25 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   pr_trace_msg(trace_channel, 8, "using %s %s for path '%s'",
     fs ? fs->fs_name : "system",
     op == FSIO_FILE_STAT ? "stat()" : "lstat()", path);
-  retval = mystat(fs, pathbuf, st);
+  retval = mystat(fs, cleaned_path, st);
+  if (retval < 0) {
+    xerrno = errno;
+  }
 
   /* Update the cache */
-  res = fs_statcache_add(pathbuf, path_len, st, errno, retval, now);
+  res = fs_statcache_add(cleaned_path, path_len, st, xerrno, retval, now);
   if (res < 0) {
-    pr_trace_msg(statcache_channel, 6,
-      "error adding cached stat for '%s': %s", pathbuf, strerror(errno));
+    pr_trace_msg(trace_channel, 8,
+      "error adding cached stat for '%s': %s", cleaned_path, strerror(errno));
+
+  } else {
+    pr_trace_msg(trace_channel, 8,
+      "added cached stat for path '%s' (retval %d, errno %s)", path,
+      retval, strerror(xerrno));
+  }
+
+  if (retval < 0) {
+    errno = xerrno;
   }
 
   return retval;
@@ -1061,6 +1082,7 @@ int pr_fs_clear_cache2(const char *path) {
     }
 
     pr_table_remove(statcache_tab, path, NULL);
+    pr_trace_msg(statcache_channel, 17, "cleared entry for '%s'", path);
     res = count;
 
   } else {

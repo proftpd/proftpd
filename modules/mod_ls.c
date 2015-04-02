@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -213,21 +213,23 @@ static void pop_cwd(char *_cwd, unsigned char *symhold) {
 }
 
 static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
-  int res, canon = 0;
+  int res, use_canon = FALSE;
   char *fullpath;
   mode_t *fake_mode = NULL;
 
   fullpath = dir_realpath(p, path);
-
-  if (!fullpath) {
+  if (fullpath == NULL) {
     fullpath = dir_canonical_path(p, path);
-    canon = 1;
+    use_canon = TRUE;
   }
 
-  if (!fullpath)
+  if (fullpath) {
     fullpath = pstrdup(p, path);
+  }
+ 
+  pr_fs_clear_cache2(fullpath);
 
-  if (canon) {
+  if (use_canon) {
     res = dir_check_canon(p, cmd, cmd->group, fullpath, hidden);
 
   } else {
@@ -260,11 +262,13 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   mode_t *fake_mode = NULL;
 
   /* No need to process dotdirs. */
-  if (is_dotdir(path))
+  if (is_dotdir(path)) {
     return 1;
+  }
 
-  if (*path == '~')
+  if (*path == '~') {
     return ls_perms_full(p, cmd, path, hidden);
+  }
 
   if (*path != '/') {
     pr_fs_clean_path(pdircat(p, pr_fs_getcwd(), path, NULL), fullpath,
@@ -274,6 +278,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     pr_fs_clean_path(path, fullpath, PR_TUNABLE_PATH_MAX);
   }
 
+  pr_fs_clear_cache2(fullpath);
   res = dir_check(p, cmd, cmd->group, fullpath, hidden);
 
   if (session.dir_config) {
@@ -458,9 +463,11 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
   }
   list_nfiles.curr++;
 
-  if (!p)
+  if (p == NULL) {
     p = cmd->tmp_pool;
+  }
 
+  pr_fs_clear_cache2(name);
   if (pr_fsio_lstat(name, &st) == 0) {
     char *display_name = NULL;
 
@@ -735,16 +742,19 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           char *buf = nameline + strlen(nameline);
 
           suffix[0] = '\0';
-          if (opt_F && pr_fsio_stat(name, &st) == 0) {
-            if (S_ISLNK(st.st_mode)) {
-              suffix[0] = '@';
+          if (opt_F) {
+            pr_fs_clear_cache2(name);
+            if (pr_fsio_stat(name, &st) == 0) {
+              if (S_ISLNK(st.st_mode)) {
+                suffix[0] = '@';
 
-            } else if (S_ISDIR(st.st_mode)) {
-              suffix[0] = '/';
+              } else if (S_ISDIR(st.st_mode)) {
+                suffix[0] = '/';
 
-            } else if (st.st_mode & 0111) {
-              suffix[0] = '*';
-            }
+              } else if (st.st_mode & 0111) {
+                suffix[0] = '*';
+              }
+           }
           }
 
           if (!opt_L && list_show_symlinks) {
@@ -1094,8 +1104,10 @@ static char **sreaddir(const char *dirname, const int sort) {
   char **p;
   size_t ssize, dsize;
 
-  if (pr_fsio_stat(dirname, &st) < 0)
+  pr_fs_clear_cache2(dirname);
+  if (pr_fsio_stat(dirname, &st) < 0) {
     return NULL;
+  }
 
   if (!S_ISDIR(st.st_mode)) {
     errno = ENOTDIR;
@@ -1103,8 +1115,9 @@ static char **sreaddir(const char *dirname, const int sort) {
   }
 
   d = pr_fsio_opendir(dirname);
-  if (d == NULL)
+  if (d == NULL) {
     return NULL;
+  }
 
   /* It doesn't matter if the following guesses are wrong, but it slows
    * the system a bit and wastes some memory if they are wrong, so
@@ -1239,10 +1252,11 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
   }
   list_ndirs.curr++;
 
-  if (XFER_ABORTED)
+  if (XFER_ABORTED) {
     return -1;
+  }
 
-  if (!workp) {
+  if (workp == NULL) {
     workp = make_sub_pool(cmd->tmp_pool);
     pr_pool_tag(workp, "mod_ls: listdir(): workp (from cmd->tmp_pool)");
     dest_workp++;
@@ -1254,7 +1268,6 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
   }
 
   PR_DEVEL_CLOCK(dir = sreaddir(".", opt_U ? FALSE : TRUE));
-
   if (dir) {
     char **s;
     char **r;
@@ -1285,22 +1298,25 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
         **s = '.';
         *(*s + 1) = '\0';
 
-      } else if (d == 2)
+      } else if (d == 2) {
         break;
+      }
 
       s++;
     }
 
     if (outputfiles(cmd) < 0) {
-      if (dest_workp)
+      if (dest_workp) {
         destroy_pool(workp);
+      }
 
       /* Explicitly free the memory allocated for containing the list of
        * filenames.
        */
       i = 0;
-      while (dir[i] != NULL)
+      while (dir[i] != NULL) {
         free(dir[i++]);
+      }
       free(dir);
 
       return -1;
@@ -1365,7 +1381,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
             pr_fs_encode_path(cmd->tmp_pool, subdir));
 
         } else if (sendline(0, "\r\n%s:\r\n",
-                     pr_fs_encode_path(cmd->tmp_pool, subdir)) < 0 ||
+                   pr_fs_encode_path(cmd->tmp_pool, subdir)) < 0 ||
             sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
           pop_cwd(cwd_buf, &symhold);
 
@@ -1403,6 +1419,10 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
       }
       r++;
     }
+
+  } else {
+    pr_trace_msg("fsio", 9,
+      "sreaddir() error on '.': %s", strerror(errno));
   }
 
   if (dest_workp) {
@@ -1429,11 +1449,13 @@ static void ls_terminate(void) {
 
     if (!XFER_ABORTED) {
       /* An error has occured, other than client ABOR */
-      if (ls_errno)
+      if (ls_errno) {
         pr_data_abort(ls_errno,FALSE);
-      else
+
+      } else {
         pr_data_abort((session.d && session.d->outstrm ?
-                   PR_NETIO_ERRNO(session.d->outstrm) : errno),FALSE);
+                      PR_NETIO_ERRNO(session.d->outstrm) : errno), FALSE);
+      }
     }
     ls_errno = 0;
 
@@ -1939,6 +1961,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
         pr_signals_handle();
 
+        pr_fs_clear_cache2(*path);
         if (pr_fsio_lstat(*path, &st) == 0) {
           mode_t target_mode, lmode;
           target_mode = st.st_mode;
@@ -2033,8 +2056,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
             } else if (res < 0) {
               ls_terminate();
-              if (use_globbing && globbed)
+              if (use_globbing && globbed) {
                 pr_fs_globfree(&g);
+              }
               return -1;
             }
           }
@@ -2042,8 +2066,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
         if (XFER_ABORTED) {
           discard_output();
-          if (use_globbing && globbed)
+          if (use_globbing && globbed) {
             pr_fs_globfree(&g);
+          }
           return -1;
         }
 
@@ -2073,8 +2098,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
       }
     }
 
-    if (!skiparg && use_globbing && globbed)
+    if (!skiparg && use_globbing && globbed) {
       pr_fs_globfree(&g);
+    }
 
     if (XFER_ABORTED) {
       discard_output();
@@ -2275,8 +2301,12 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   PR_DEVEL_CLOCK(list = sreaddir(".", FALSE));
   if (list == NULL) {
-    if (!curdir)
+    pr_trace_msg("fsio", 9,
+      "sreaddir() error on '.': %s", strerror(errno));
+
+    if (!curdir) {
       pop_cwd(cwd_buf, &symhold);
+    }
 
     destroy_pool(workp);
     return 0;
@@ -2925,6 +2955,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (res == GLOB_NOMATCH) {
         struct stat st;
 
+        pr_fs_clear_cache2(target);
         if (pr_fsio_stat(target, &st) == 0) {
           pr_log_debug(DEBUG10, "NLST: glob(3) returned GLOB_NOMATCH for '%s', "
             "handling as literal path", target);
@@ -3009,6 +3040,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
         continue;
       }
 
+      pr_fs_clear_cache2(p);
       if (pr_fsio_stat(p, &st) == 0) {
         /* If it's a directory... */
         if (S_ISDIR(st.st_mode)) {

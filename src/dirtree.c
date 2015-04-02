@@ -2597,8 +2597,10 @@ int parse_config_path(pool *p, const char *path) {
 
   have_glob = pr_str_is_fnmatch(path); 
 
-  if (!have_glob && pr_fsio_lstat(path, &st) < 0)
+  if (!have_glob &&
+      pr_fsio_lstat(path, &st) < 0) {
     return -1;
+  }
 
   if (have_glob ||
       (!S_ISLNK(st.st_mode) && S_ISDIR(st.st_mode))) {

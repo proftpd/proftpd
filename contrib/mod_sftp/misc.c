@@ -50,7 +50,7 @@ int sftp_misc_chown_file(pool *p, pr_fh_t *fh) {
     } else {
       if (session.fsgid != (gid_t) -1) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "root chown(%s) to UID %s, GID % successful", fh->fh_path,
+          "root chown(%s) to UID %s, GID %s successful", fh->fh_path,
           pr_uid2str(p, session.fsuid), pr_gid2str(p, session.fsgid));
 
       } else {
