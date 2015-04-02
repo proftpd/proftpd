@@ -690,6 +690,7 @@ static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
   pr_pool_tag(sc_pool, "FS statcache entry pool");
   sc = pcalloc(sc_pool, sizeof(struct fs_statcache));
   sc->sc_pool = sc_pool;
+  memcpy(&(sc->sc_stat), st, sizeof(struct stat));
   sc->sc_errno = xerrno;
   sc->sc_retval = retval;
   sc->sc_cached_ts = now;
