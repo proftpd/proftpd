@@ -15,8 +15,8 @@
 <hr><br>
 
 This module is contained in the <code>mod_radius.c</code> file for
-ProFTPD 1.2.<i>x</i>/1.3.<i>x</i>, and is not compiled by default.
-Installation instructions are discussed <a href="#Installation">here</a>.
+ProFTPD 1.3.<i>x</i>, and is not compiled by default.  Installation
+instructions are discussed <a href="#Installation">here</a>.
 
 <p>
 This module is used to authenticate users using the <code>RADIUS</code>
@@ -53,6 +53,7 @@ some circumstances.
   <li><a href="#RadiusGroupInfo">RadiusGroupInfo</a>
   <li><a href="#RadiusLog">RadiusLog</a>
   <li><a href="#RadiusNASIdentifier">RadiusNASIdentifier</a>
+  <li><a href="#RadiusOptions">RadiusOptions</a>
   <li><a href="#RadiusQuotaInfo">RadiusQuotaInfo</a>
   <li><a href="#RadiusRealm">RadiusRealm</a>
   <li><a href="#RadiusUserInfo">RadiusUserInfo</a>
@@ -216,6 +217,81 @@ Example:
 <pre>
   RadiusNASIdentifier customID
 </pre>
+
+<p>
+<hr>
+<h2><a name="RadiusOptions">RadiusOptions</a></h2>
+<strong>Syntax:</strong> RadiusOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_radius<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>RadiusOptions</code> directive is used to configure various optional
+behavior of <code>mod_radius</code>.
+
+<p>
+For example:
+<pre>
+  RadiusOptions IgnoreReplyMessage IgnoreSessionTimeoutd
+</pre>
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>IgnoreClass</code><br>
+    <p>
+    Some RADIUS servers will send the <code>Class</code> attribute in their
+    <code>Access-Accept</code> response, containing a value that should be
+    sent in every accounting requesting.  To tell <code>mod_radius</code> to
+    ignore/not send this <code>Class</code> attribute, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
+
+  <p>
+  <li><code>IgnoreReplyMessage</code><br>
+    <p>
+    Some RADIUS servers will send the <code>Reply-Message</code> attribute in
+    their <code>Access-Accept</code> and <code>Access-Reject</code> responses,
+    containing messages that should be displayed to the connecting user.
+    To tell <code>mod_radius</code> to ignore/not display these
+    <code>Reply-Message</code> attributes, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
+
+  <p>
+  <li><code>IgnoreIdleTimeout</code><br>
+    <p>
+    Some RADIUS servers will send the <code>Idle-Timeout</code> attribute in
+    their <code>Access-Accept</code> response, containing a timeout value to
+    be used for idle sessions.  To tell <code>mod_radius</code> to ignore/not
+    use this <code>Idle-Timeout</code> value, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
+
+  <p>
+  <li><code>IgnoreSessionTimeout</code><br>
+    <p>
+    Some RADIUS servers will send the <code>Session-Timeout</code> attribute in
+    their <code>Access-Accept</code> response, containing a timeout value to
+    be used for maximum session durations.  To tell <code>mod_radius</code> to
+    ignore/not use this <code>Session-Timeout</code> value, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
+</ul>
 
 <p>
 <hr>
@@ -433,6 +509,10 @@ following data:
   <li><b>Acct-Output-Octets</b>: The number of bytes downloaded<br>
   </li>
   <br>
+
+  <li><b>Acct-Terminate-Cause</b>: The reason the session ended<br>
+  </li>
+  <br>
 </ul>
 Merely configuring a <code>RadiusAcctServer</code> enables the module's
 accounting capabilities.
@@ -494,15 +574,27 @@ module:
 </pre>
 
 <p>
+<b>Logging</b><br>
+The <code>mod_radius</code> module supports different forms of logging.  The
+main module logging is done via the <code>RadiusLog</code> directive.  For
+debugging purposes, the module also uses <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>radius
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/sftp-trace.log
+  Trace radius:20
+</pre>
+This trace logging can generate large files; it is intended for debugging
+use only, and should be removed from any production configuration.
+
+<p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-08-14 21:40:18 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2000-2013 TJ Saunders<br>
+&copy; Copyright 2000-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

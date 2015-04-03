@@ -26,11 +26,9 @@
  *
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
- *
- * $Id: mod_radius.c,v 1.72 2014-01-06 18:37:44 castaglia Exp $
  */
 
-#define MOD_RADIUS_VERSION "mod_radius/0.9.2"
+#define MOD_RADIUS_VERSION	"mod_radius/0.9.3"
 
 #include "conf.h"
 #include "privs.h"
@@ -47,16 +45,14 @@
 /* From RFC2138 */
 #define RADIUS_STRING_LEN	254
 
-/* RADIUS attribute structures
- */
+/* RADIUS attribute structures */
 typedef struct {
   unsigned char type;
   unsigned char length;
   unsigned char data[1];
 } radius_attrib_t;
 
-/* RADIUS packet header
- */
+/* RADIUS packet header */
 typedef struct {
   unsigned char code;
   unsigned char id;
@@ -69,8 +65,7 @@ typedef struct {
 
 #define RADIUS_HEADER_LEN	20
 
-/* RADIUS ID Definitions (see RFC2865)
- */
+/* RADIUS ID Definitions (see RFC 2865, 2866) */
 #define RADIUS_AUTH_REQUEST		1
 #define RADIUS_AUTH_ACCEPT		2
 #define RADIUS_AUTH_REJECT		3
@@ -79,8 +74,7 @@ typedef struct {
 #define RADIUS_ACCT_STATUS		6
 #define RADIUS_AUTH_CHALLENGE		11
 
-/* RADIUS Attribute Definitions (see RFC2865)
- */
+/* RADIUS Attribute Definitions (see RFC 2865, 2866) */
 #define RADIUS_USER_NAME		1
 #define RADIUS_PASSWORD			2
 #define RADIUS_NAS_IP_ADDRESS		4
@@ -89,6 +83,7 @@ typedef struct {
 #define RADIUS_OLD_PASSWORD		17
 #define RADIUS_REPLY_MESSAGE		18
 #define RADIUS_STATE			24
+#define RADIUS_CLASS			25
 #define RADIUS_VENDOR_SPECIFIC		26
 #define RADIUS_SESSION_TIMEOUT		27
 #define RADIUS_IDLE_TIMEOUT		28
@@ -115,15 +110,23 @@ typedef struct {
 #define RADIUS_ACCT_STATUS_STOP		2
 #define RADIUS_ACCT_STATUS_ALIVE	3
 
-/* RADIUS NAS port types
- */
+/* RADIUS NAS port types */
 #define RADIUS_NAS_PORT_TYPE_VIRTUAL	5
 
-/* RADIUS authentication types
- */
+/* RADIUS authentication types */
 #define RADIUS_AUTH_NONE		0
 #define RADIUS_AUTH_RADIUS		1
 #define RADIUS_AUTH_LOCAL		2
+
+/* RADIUS Acct-Terminate-Cause types */
+#define RADIUS_ACCT_TERMINATE_CAUSE_USER_REQUEST	1
+#define RADIUS_ACCT_TERMINATE_CAUSE_LOST_SERVICE	3
+#define RADIUS_ACCT_TERMINATE_CAUSE_IDLE_TIMEOUT	4
+#define RADIUS_ACCT_TERMINATE_CAUSE_SESSION_TIMEOUT	5
+#define RADIUS_ACCT_TERMINATE_CAUSE_ADMIN_RESET		6
+#define RADIUS_ACCT_TERMINATE_CAUSE_ADMIN_REBOOT	7
+#define RADIUS_ACCT_TERMINATE_CAUSE_SERVICE_UNAVAIL	15
+#define RADIUS_ACCT_TERMINATE_CAUSE_USER_ERROR		16
 
 /* The RFC says 4096 octets max, and most packets are less than 256.
  * However, this number is just larger than the maximum MTU of just
@@ -131,9 +134,10 @@ typedef struct {
  */
 #define RADIUS_PACKET_LEN		1600
 
-/* Miscellaneous default values
- */
+/* Miscellaneous default values */
 #define DEFAULT_RADIUS_TIMEOUT	30
+
+#define RADIUS_ATTRIB_LEN(attr)		((attr)->length)
 
 /* Adjust the VSA length (I'm not sure why this is necessary, but a reading
  * of the FreeRADIUS sources show it to be.  Weird.)
@@ -168,9 +172,15 @@ static pool *radius_pool = NULL;
 static unsigned char radius_engine = FALSE;
 static radius_server_t *radius_acct_server = NULL;
 static radius_server_t *radius_auth_server = NULL;
-
 static int radius_logfd = -1;
-static char *radius_logname = NULL;
+
+/* mod_radius option flags */
+#define RADIUS_OPT_IGNORE_REPLY_MESSAGE_ATTR		0x0001
+#define RADIUS_OPT_IGNORE_CLASS_ATTR			0x0002
+#define RADIUS_OPT_IGNORE_SESSION_TIMEOUT_ATTR		0x0004
+#define RADIUS_OPT_IGNORE_IDLE_TIMEOUT_ATTR		0x0008
+
+static unsigned long radius_opts = 0UL;
 
 static struct sockaddr radius_local_sock, radius_remote_sock;
 
@@ -181,6 +191,10 @@ static time_t radius_session_start = 0;
 static int radius_session_authtype = RADIUS_AUTH_LOCAL;
 static unsigned char radius_auth_ok = FALSE;
 static unsigned char radius_auth_reject = FALSE;
+
+/* For tracking the Class attribute, for sending in accounting requests. */
+static char *radius_class = NULL;
+static size_t radius_classlen = 0;
 
 /* "Fake" user/group information for RADIUS users. */
 static unsigned char radius_have_user_info = FALSE;
@@ -244,6 +258,8 @@ static int radius_quota_files_xfer_attr_id = 0;
  */
 static unsigned char radius_last_acct_pkt_id = 0;
 
+static const char *trace_channel = "radius";
+
 /* Convenience macros. */
 #define RADIUS_IS_VAR(str) \
   ((str[0] == '$') && (str[1] == '(') && (str[strlen(str)-1] == ')'))
@@ -259,6 +275,8 @@ static unsigned char radius_have_var(char *);
 static int radius_closelog(void);
 static void radius_get_acct_digest(radius_packet_t *, unsigned char *);
 static radius_attrib_t *radius_get_attrib(radius_packet_t *, unsigned char);
+static radius_attrib_t *radius_get_next_attrib(radius_packet_t *,
+  unsigned char, unsigned int *, radius_attrib_t *);
 static void radius_get_rnd_digest(radius_packet_t *);
 static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *,
   unsigned char);
@@ -278,14 +296,15 @@ static unsigned char radius_parse_gids_str(pool *, char *, gid_t **,
 static unsigned char radius_parse_groups_str(pool *, char *, char ***,
   unsigned int *);
 static void radius_parse_var(char *, int *, char **);
-static void radius_process_accpt_packet(radius_packet_t *);
+static int radius_process_accept_packet(radius_packet_t *);
+static int radius_process_reject_packet(radius_packet_t *);
 static void radius_process_group_info(config_rec *);
 static void radius_process_quota_info(config_rec *);
 static void radius_process_user_info(config_rec *);
 static radius_packet_t *radius_recv_packet(int, unsigned int);
 static int radius_send_packet(int, radius_packet_t *, radius_server_t *);
-static unsigned char radius_start_accting(void);
-static unsigned char radius_stop_accting(void);
+static int radius_start_accting(void);
+static int radius_stop_accting(void);
 static int radius_verify_packet(radius_packet_t *, radius_packet_t *,
   unsigned char *);
 
@@ -473,24 +492,183 @@ static unsigned char radius_parse_groups_str(pool *p, char *groups_str,
   return TRUE;
 }
 
-static void radius_process_accpt_packet(radius_packet_t *packet) {
+static int radius_process_standard_attribs(radius_packet_t *packet) {
+  int attrib_count = 0;
 
-  /* First, parse the packet for any non-RadiusUserInfo attributes,
-   * such as timeouts.  None are currently implemented, but...this would
-   * be the place to do it.
-   */
-  /* radius_log("parsing packet for custom attribute IDs"); */
+  radius_log("parsing packet for standard attribute IDs");
 
-  /* Now, parse the packet for any server-supplied RadiusUserInfo attributes,
-   * if RadiusUserInfo is indeed in effect.
-   */
+  /* Handle any CLASS attribute. */
+  if (!(radius_opts & RADIUS_OPT_IGNORE_CLASS_ATTR)) {
+    radius_attrib_t *attrib = NULL;
 
-  if (radius_have_user_info == FALSE &&
-      radius_have_group_info == FALSE &&
-      radius_have_quota_info == FALSE) {
-    /* Return now if there's no reason for doing extra work. */
-    return;
+    attrib = radius_get_attrib(packet, RADIUS_CLASS);
+    if (attrib != NULL) {
+      unsigned char attrib_len;
+
+      pr_signals_handle();
+
+      attrib_len = RADIUS_ATTRIB_LEN(attrib);
+      if (attrib_len > 0) {
+        char *class = NULL;
+
+        class = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
+        pr_trace_msg(trace_channel, 7,
+          "found Class attribute in Access-Accept message: %s", class);
+        radius_class = class;
+        radius_classlen = attrib_len;
+      }
+
+      attrib_count++;
+
+    } else {
+      pr_trace_msg(trace_channel, 6,
+        "packet lacks Class attribute (%d)", RADIUS_CLASS);
+    }
   }
+
+  /* Handle any REPLY_MESSAGE attributes. */
+  if (!(radius_opts & RADIUS_OPT_IGNORE_REPLY_MESSAGE_ATTR)) {
+    radius_attrib_t *attrib = NULL;
+    unsigned int packet_len = 0;
+
+    attrib = radius_get_next_attrib(packet, RADIUS_REPLY_MESSAGE, &packet_len,
+      NULL);
+    while (attrib != NULL) {
+      unsigned char attrib_len;
+
+      pr_signals_handle();
+
+      attrib_len = RADIUS_ATTRIB_LEN(attrib);
+      if (attrib_len > 0) {
+        char *reply_msg = NULL;
+
+        reply_msg = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
+        pr_trace_msg(trace_channel, 7,
+          "found REPLY_MESSAGE attribute in Access-Accept message: %s",
+          reply_msg);
+        pr_response_add(R_DUP, "%s", reply_msg);
+      }
+
+      attrib_count++;
+      attrib = radius_get_next_attrib(packet, RADIUS_REPLY_MESSAGE, &packet_len,
+        attrib);
+    }
+
+    if (attrib_count == 0) {
+      pr_trace_msg(trace_channel, 6,
+        "packet lacks Reply-Message attribute (%d)", RADIUS_REPLY_MESSAGE);
+    }
+  }
+
+  /* Handle any IDLE_TIMEOUT attribute. */
+  if (!(radius_opts & RADIUS_OPT_IGNORE_IDLE_TIMEOUT_ATTR)) {
+    radius_attrib_t *attrib = NULL;
+
+    attrib = radius_get_attrib(packet, RADIUS_IDLE_TIMEOUT);
+    if (attrib != NULL) {
+      unsigned char attrib_len;
+
+      pr_signals_handle();
+
+      attrib_len = RADIUS_ATTRIB_LEN(attrib);
+      if (attrib_len > 0) {
+        int timeout = -1;
+
+        if (attrib_len > sizeof(timeout)) {
+          radius_log("invalid attribute length (%u) for Idle-Timeout, "
+            "truncating", attrib_len);
+          attrib_len = sizeof(timeout);
+        }
+
+        memcpy(&timeout, attrib->data, attrib_len);
+        timeout = ntohl(timeout);
+
+        if (timeout < 0) {
+          radius_log("packet includes Idle-Timeout attribute %d for "
+            "illegal timeout: '%d'", RADIUS_IDLE_TIMEOUT, timeout);
+
+        } else {
+          config_rec *c;
+
+          radius_log("packet includes Idle-Timeout attribute %d for "
+            "timeout: '%d'", RADIUS_IDLE_TIMEOUT, timeout);
+          remove_config(main_server->conf, "TimeoutIdle", TRUE);
+
+          c = pr_config_add_set(&main_server->conf, "TimeoutIdle",
+            PR_CONFIG_FL_INSERT_HEAD);
+          c->config_type = CONF_PARAM;
+          c->argc = 1;
+          c->argv[0] = palloc(c->pool, sizeof(int));
+          *((int *) c->argv[0]) = timeout;
+
+          attrib_count++;
+        }
+      }
+
+    } else {
+      pr_trace_msg(trace_channel, 6,
+        "packet lacks Idle-Timeout attribute (%d)", RADIUS_IDLE_TIMEOUT);
+    }
+  }
+
+  /* Handle any SESSION_TIMEOUT attribute. */
+  if (!(radius_opts & RADIUS_OPT_IGNORE_SESSION_TIMEOUT_ATTR)) {
+    radius_attrib_t *attrib = NULL;
+
+    attrib = radius_get_attrib(packet, RADIUS_SESSION_TIMEOUT);
+    if (attrib != NULL) {
+      unsigned char attrib_len;
+
+      pr_signals_handle();
+
+      attrib_len = RADIUS_ATTRIB_LEN(attrib);
+      if (attrib_len > 0) {
+        int timeout = -1;
+
+        if (attrib_len > sizeof(timeout)) {
+          radius_log("invalid attribute length (%u) for Session-Timeout, "
+            "truncating", attrib_len);
+          attrib_len = sizeof(timeout);
+        }
+
+        memcpy(&timeout, attrib->data, attrib_len);
+        timeout = ntohl(timeout);
+
+        if (timeout < 0) {
+          radius_log("packet includes Session-Timeout attribute %d for "
+            "illegal timeout: '%d'", RADIUS_SESSION_TIMEOUT, timeout);
+
+        } else {
+          config_rec *c;
+
+          radius_log("packet includes Session-Timeout attribute %d for "
+            "timeout: '%d'", RADIUS_SESSION_TIMEOUT, timeout);
+          remove_config(main_server->conf, "TimeoutSession", TRUE);
+
+          c = pr_config_add_set(&main_server->conf, "TimeoutSession",
+            PR_CONFIG_FL_INSERT_HEAD);
+          c->config_type = CONF_PARAM;
+          c->argc = 2;
+          c->argv[0] = palloc(c->pool, sizeof(int));
+          *((int *) c->argv[0]) = timeout;
+          c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+          *((unsigned int *) c->argv[1]) = 0;
+
+          attrib_count++;
+        }
+      }
+
+    } else {
+      pr_trace_msg(trace_channel, 6,
+        "packet lacks Session-Timeout attribute (%d)", RADIUS_SESSION_TIMEOUT);
+    }
+  }
+
+  return attrib_count;
+}
+
+static int radius_process_user_info_attribs(radius_packet_t *pkt) {
+  int attrib_count = 0;
 
   if (radius_uid_attr_id || radius_gid_attr_id ||
       radius_home_attr_id || radius_shell_attr_id) {
@@ -504,7 +682,7 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_uid_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_uid_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_uid_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         int uid = -1;
@@ -527,7 +705,7 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
 
         if (uid < 0) {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
-            "illegal user ID: '%u'", radius_vendor_name, radius_uid_attr_id,
+            "illegal user ID: '%d'", radius_vendor_name, radius_uid_attr_id,
             uid);
 
         } else {
@@ -536,11 +714,13 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
             "user ID: '%u'", radius_vendor_name, radius_uid_attr_id,
             radius_passwd.pw_uid);
+          attrib_count++;
         }
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "user ID: defaulting to '%u'", radius_vendor_name, radius_uid_attr_id,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for user ID; "
+          "defaulting to '%u'", radius_vendor_name, radius_uid_attr_id,
           radius_passwd.pw_uid);
       }
     }
@@ -548,7 +728,7 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_gid_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_gid_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_gid_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         int gid = -1;
@@ -571,7 +751,7 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
 
         if (gid < 0) {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
-            "illegal group ID: '%u'", radius_vendor_name, radius_gid_attr_id,
+            "illegal group ID: '%d'", radius_vendor_name, radius_gid_attr_id,
             gid);
 
         } else {
@@ -580,35 +760,28 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
             "group ID: '%u'", radius_vendor_name, radius_gid_attr_id,
             radius_passwd.pw_gid);
+          attrib_count++;
         }
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "group ID: defaulting to '%u'", radius_vendor_name,
-          radius_gid_attr_id, radius_passwd.pw_gid);
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for group ID; "
+          "defaulting to '%u'", radius_vendor_name, radius_gid_attr_id,
+          radius_passwd.pw_gid);
       }
     }
 
     if (radius_home_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_home_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_home_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *home;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
 
-        /* RADIUS strings are not NUL-terminated. */
-        home = pcalloc(radius_pool, attrib_len + 1);
-
-        /* Parse the attribute value into a string of the necessary length,
-         * then replace radius_passwd.pw_dir with it.  Make sure it's a sane
-         * home directory (ie starts with a '/').
-         */
-
-        memcpy(home, attrib->data, attrib_len);
-
+        home = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         if (*home != '/') {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
             "illegal home: '%s'", radius_vendor_name, radius_home_attr_id,
@@ -620,35 +793,28 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
             "home directory: '%s'", radius_vendor_name, radius_home_attr_id,
             radius_passwd.pw_dir);
+          attrib_count++;
         }
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "home directory: defaulting to '%s'", radius_vendor_name,
-          radius_home_attr_id, radius_passwd.pw_dir);
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for home directory; "
+          "defaulting to '%s'", radius_vendor_name, radius_home_attr_id,
+          radius_passwd.pw_dir);
       }
     }
 
     if (radius_shell_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_shell_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_shell_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *shell;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
 
-        /* RADIUS strings are not NUL-terminated. */
-        shell = pcalloc(radius_pool, attrib_len + 1);
-
-        /* Parse the attribute value into a string of the necessary length,
-         * then replace radius_passwd.pw_shell with it.  Make sure it's a sane
-         * shell (ie starts with a '/').
-         */
-
-        memcpy(shell, attrib->data, attrib_len);
-
+        shell = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         if (*shell != '/') {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
             "illegal shell: '%s'", radius_vendor_name, radius_shell_attr_id,
@@ -660,15 +826,23 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
           radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
             "shell: '%s'", radius_vendor_name, radius_shell_attr_id,
             radius_passwd.pw_shell);
+          attrib_count++;
         }
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "shell: defaulting to '%s'", radius_vendor_name, radius_shell_attr_id,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for shell; "
+          "defaulting to '%s'", radius_vendor_name, radius_shell_attr_id,
           radius_passwd.pw_shell);
       }
     }
   }
+
+  return attrib_count;
+}
+
+static int radius_process_group_info_attribs(radius_packet_t *pkt) {
+  int attrib_count = 0;
 
   if (radius_prime_group_name_attr_id ||
       radius_addl_group_names_attr_id ||
@@ -682,27 +856,25 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_prime_group_name_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet,
-        radius_prime_group_name_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_prime_group_name_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *group_name;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
 
-        /* RADIUS strings are not NUL-terminated. */
-        group_name = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(group_name, attrib->data, attrib_len);
-
+        group_name = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_prime_group_name = pstrdup(radius_pool, group_name);
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "primary group name: '%s'", radius_vendor_name,
           radius_prime_group_name_attr_id, radius_prime_group_name);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "prime group name: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for prime group "
+          "name; defaulting to '%s'", radius_vendor_name,
           radius_prime_group_name_attr_id, radius_prime_group_name);
       }
     }
@@ -710,17 +882,13 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_addl_group_names_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet,
-        radius_addl_group_names_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_addl_group_names_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *group_names, *group_names_str;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        group_names = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(group_names, attrib->data, attrib_len);
+        group_names = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
 
         /* Make a copy of the string, for parsing purposes.  The parsing
          * of this string will consume it.
@@ -739,9 +907,12 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
             radius_addl_group_names_attr_id, group_names);
         }
 
+        attrib_count++;
+
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "additional group names: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for additional "
+          "group names; defaulting to '%s'", radius_vendor_name,
           radius_addl_group_names_attr_id, radius_addl_group_names_str);
       }
     }
@@ -749,16 +920,13 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_addl_group_ids_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_addl_group_ids_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_addl_group_ids_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *group_ids, *group_ids_str;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        group_ids = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(group_ids, attrib->data, attrib_len);
+        group_ids = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
 
         /* Make a copy of the string, for parsing purposes.  The parsing
          * of this string will consume it.
@@ -776,9 +944,12 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
             radius_addl_group_ids_attr_id, group_ids);
         }
 
+        attrib_count++;
+
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "additional group IDs: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for additional "
+          "group IDs; defaulting to '%s'", radius_vendor_name,
           radius_addl_group_ids_attr_id, radius_addl_group_ids_str);
       }
     }
@@ -798,6 +969,12 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     }
   }
 
+  return attrib_count;
+}
+
+static int radius_process_quota_info_attribs(radius_packet_t *pkt) {
+  int attrib_count = 0;
+
   if (radius_quota_per_sess_attr_id ||
       radius_quota_limit_type_attr_id ||
       radius_quota_bytes_in_attr_id ||
@@ -812,26 +989,25 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_per_sess_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_quota_per_sess_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_per_sess_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *per_sess;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        per_sess = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(per_sess, attrib->data, attrib_len);
+        per_sess = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
 
         radius_quota_per_sess = per_sess;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota per-session: '%s'", radius_vendor_name,
           radius_quota_per_sess_attr_id, radius_quota_per_sess);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota per-session: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota "
+          "per-session; defaulting to '%s'", radius_vendor_name,
           radius_quota_per_sess_attr_id, radius_quota_per_sess);
       }
     }
@@ -839,27 +1015,24 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_limit_type_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet,
-        radius_quota_limit_type_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_limit_type_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *limit_type;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        limit_type = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(limit_type, attrib->data, attrib_len);
-
+        limit_type = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_quota_limit_type = limit_type;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota limit type: '%s'", radius_vendor_name,
           radius_quota_limit_type_attr_id, radius_quota_limit_type);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota limit type: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota limit "
+          "type; defaulting to '%s'", radius_vendor_name,
           radius_quota_limit_type_attr_id, radius_quota_limit_type);
       }
     }
@@ -867,26 +1040,24 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_bytes_in_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_quota_bytes_in_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_bytes_in_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *bytes_in;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        bytes_in = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(bytes_in, attrib->data, attrib_len);
-
+        bytes_in = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_quota_bytes_in = bytes_in;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota bytes in available: '%s'", radius_vendor_name,
           radius_quota_bytes_in_attr_id, radius_quota_bytes_in);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota bytes in available: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota bytes in "
+          "available; defaulting to '%s'", radius_vendor_name,
           radius_quota_bytes_in_attr_id, radius_quota_bytes_in);
       }
     }
@@ -894,26 +1065,24 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_bytes_out_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_quota_bytes_out_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_bytes_out_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *bytes_out;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        bytes_out = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(bytes_out, attrib->data, attrib_len);
-
+        bytes_out = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_quota_bytes_out = bytes_out;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota bytes out available: '%s'", radius_vendor_name,
           radius_quota_bytes_out_attr_id, radius_quota_bytes_out);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota bytes out available: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota bytes out "
+          "available; defaulting to '%s'", radius_vendor_name,
           radius_quota_bytes_out_attr_id, radius_quota_bytes_out);
       }
     }
@@ -921,27 +1090,24 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_bytes_xfer_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet,
-        radius_quota_bytes_xfer_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_bytes_xfer_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *bytes_xfer;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        bytes_xfer = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(bytes_xfer, attrib->data, attrib_len);
-
+        bytes_xfer = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_quota_bytes_xfer = bytes_xfer;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota bytes xfer available: '%s'", radius_vendor_name,
           radius_quota_bytes_xfer_attr_id, radius_quota_bytes_xfer);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota bytes xfer available: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota bytes xfer "
+          "available; defaulting to '%s'", radius_vendor_name,
           radius_quota_bytes_xfer_attr_id, radius_quota_bytes_xfer);
       }
     }
@@ -949,26 +1115,24 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_files_in_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_quota_files_in_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_files_in_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *files_in;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        files_in = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(files_in, attrib->data, attrib_len);
-
+        files_in = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_quota_files_in = files_in;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota files in available: '%s'", radius_vendor_name,
           radius_quota_files_in_attr_id, radius_quota_files_in);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota files in available: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota files in "
+          "available; defaulting to '%s'", radius_vendor_name,
           radius_quota_files_in_attr_id, radius_quota_files_in);
       }
     }
@@ -976,26 +1140,24 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_files_out_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet, radius_quota_files_out_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_files_out_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *files_out;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        files_out = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(files_out, attrib->data, attrib_len);
-
+        files_out = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_quota_files_out = files_out;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota files out available: '%s'", radius_vendor_name,
           radius_quota_files_out_attr_id, radius_quota_files_out);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota files out available: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota files out "
+          "available; defaulting to '%s'", radius_vendor_name,
           radius_quota_files_out_attr_id, radius_quota_files_out);
       }
     }
@@ -1003,31 +1165,89 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
     if (radius_quota_files_xfer_attr_id) {
       radius_attrib_t *attrib;
 
-      attrib = radius_get_vendor_attrib(packet,
-        radius_quota_files_xfer_attr_id);
+      attrib = radius_get_vendor_attrib(pkt, radius_quota_files_xfer_attr_id);
       if (attrib) {
         unsigned char attrib_len;
         char *files_xfer;
 
         attrib_len = RADIUS_VSA_ATTRIB_LEN(attrib);
-
-        /* RADIUS strings are not NUL-terminated. */
-        files_xfer = pcalloc(radius_pool, attrib_len + 1);
-        memcpy(files_xfer, attrib->data, attrib_len);
-
+        files_xfer = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
         radius_quota_files_xfer = files_xfer;
 
         radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
           "quota files xfer available: '%s'", radius_vendor_name,
           radius_quota_files_xfer_attr_id, radius_quota_files_xfer);
+        attrib_count++;
 
       } else {
-        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
-          "quota files xfer available: defaulting to '%s'", radius_vendor_name,
+        pr_trace_msg(trace_channel, 6,
+          "packet lacks '%s' Vendor-Specific Attribute %d for quota files "
+          "xfer available; defaulting to '%s'", radius_vendor_name,
           radius_quota_files_xfer_attr_id, radius_quota_files_xfer);
       }
     }
   }
+
+  return attrib_count;
+}
+
+static int radius_process_accept_packet(radius_packet_t *pkt) {
+  int attrib_count = 0;
+
+  attrib_count += radius_process_standard_attribs(pkt);
+
+  /* Now, parse the packet for any server-supplied RadiusUserInfo attributes,
+   * if RadiusUserInfo is indeed in effect.
+   */
+
+  if (radius_have_user_info == FALSE &&
+      radius_have_group_info == FALSE &&
+      radius_have_quota_info == FALSE) {
+    /* Return now if there's no reason for doing extra work. */
+    return attrib_count;
+  }
+
+  attrib_count += radius_process_user_info_attribs(pkt);
+  attrib_count += radius_process_group_info_attribs(pkt);
+  attrib_count += radius_process_quota_info_attribs(pkt);
+
+  return attrib_count;
+}
+
+static int radius_process_reject_packet(radius_packet_t *packet) {
+  int attrib_count = 0;
+
+  /* Handle any REPLY_MESSAGE attributes. */
+  if (!(radius_opts & RADIUS_OPT_IGNORE_REPLY_MESSAGE_ATTR)) {
+    radius_attrib_t *attrib = NULL;
+    unsigned int packet_len = 0;
+
+    attrib = radius_get_next_attrib(packet, RADIUS_REPLY_MESSAGE, &packet_len,
+      NULL);
+    while (attrib != NULL) {
+      unsigned char attrib_len;
+
+      pr_signals_handle();
+
+      attrib_len = RADIUS_ATTRIB_LEN(attrib);
+      if (attrib_len > 0) {
+        char *reply_msg = NULL;
+
+        reply_msg = pstrndup(radius_pool, (char *) attrib->data, attrib_len);
+
+        pr_trace_msg(trace_channel, 7,
+          "found REPLY_MESSAGE attribute in Access-Reject message: %s",
+          reply_msg);
+        pr_response_add_err(R_DUP, "%s", reply_msg);
+      }
+
+      attrib_count++;
+      attrib = radius_get_next_attrib(packet, RADIUS_REPLY_MESSAGE, &packet_len,
+        attrib);
+    }
+  }
+
+  return attrib_count;
 }
 
 static void radius_process_group_info(config_rec *c) {
@@ -1779,23 +1999,23 @@ static void Decode(uint32_t *output, unsigned char *input, unsigned int len) {
 }
 
 #ifndef HAVE_MEMCPY
-/* Note: Replace "for loop" with standard memcpy if possible.
- */
+/* Note: Replace "for loop" with standard memcpy if possible. */
 static void MD5_memcpy(unsigned char *output, unsigned char *input,
     unsigned int len) {
   unsigned int i;
 
-  for (i = 0; i < len; i++)
+  for (i = 0; i < len; i++) {
     output[i] = input[i];
+  }
 }
 
-/* Note: Replace "for loop" with standard memset if possible.
- */
+/* Note: Replace "for loop" with standard memset if possible. */
 static void MD5_memset(unsigned char *output, int value, unsigned int len) {
   unsigned int i;
 
-  for (i = 0; i < len; i++)
-    ((char *)output)[i] = (char)value;
+  for (i = 0; i < len; i++) {
+    ((char *) output)[i] = (char) value;
+  }
 }
 #endif
 #endif /* !PR_USE_OPENSSL */
@@ -1808,7 +2028,6 @@ static int radius_closelog(void) {
   if (radius_logfd != -1) {
     close(radius_logfd);
     radius_logfd = -1;
-    radius_logname = NULL;
   }
 
   return 0;
@@ -1819,8 +2038,9 @@ static int radius_log(const char *fmt, ...) {
   int res;
 
   /* sanity check */
-  if (!radius_logname)
+  if (radius_logfd < 0) {
     return 0;
+  }
 
   va_start(msg, fmt);
   res = pr_log_vwritefile(radius_logfd, MOD_RADIUS_VERSION, fmt, msg);
@@ -1831,21 +2051,22 @@ static int radius_log(const char *fmt, ...) {
 
 static int radius_openlog(void) {
   int res = 0, xerrno = 0;
+  config_rec *c;
+  const char *path;
 
-  /* Sanity checks */
-  radius_logname = (char *) get_param_ptr(main_server->conf, "RadiusLog",
-    FALSE);
-  if (radius_logname == NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusLog", FALSE);
+  if (c == NULL) {
     return 0;
+  }
 
-  if (strcasecmp(radius_logname, "none") == 0) {
-    radius_logname = NULL;
+  path = c->argv[0];
+  if (strcasecmp(path, "none") == 0) {
     return 0;
   }
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(radius_logname, &radius_logfd, PR_LOG_SYSTEM_MODE);
+  res = pr_log_openfile(path, &radius_logfd, PR_LOG_SYSTEM_MODE);
   xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
@@ -1879,7 +2100,6 @@ static void radius_add_attrib(radius_packet_t *packet, unsigned char type,
 /* Add a RADIUS password attribute to the packet. */
 static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     const unsigned char *passwd, unsigned char *secret) {
-
   MD5_CTX ctx, secret_ctx;
   radius_attrib_t *attrib = NULL;
   unsigned char calculated[RADIUS_VECTOR_LEN];
@@ -1947,9 +2167,10 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     radius_xor(&pwhash[i * RADIUS_PASSWD_LEN], calculated, RADIUS_PASSWD_LEN);
   }
 
-  if (type == RADIUS_OLD_PASSWORD)
+  if (type == RADIUS_OLD_PASSWORD) {
     attrib = radius_get_attrib(packet, RADIUS_OLD_PASSWORD);
-  
+  }
+ 
   if (attrib == NULL) {
     radius_add_attrib(packet, type, pwhash, pwlen);
 
@@ -1957,6 +2178,8 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     /* Overwrite the packet data. */
     memcpy(attrib->data, pwhash, pwlen);
   }
+
+  pr_memscrub(pwhash, sizeof(pwhash));
 }
 
 static void radius_get_acct_digest(radius_packet_t *packet,
@@ -2006,19 +2229,38 @@ static void radius_get_rnd_digest(radius_packet_t *packet) {
 /* RADIUS packet manipulation functions.
  */
 
-/* Find an attribute in a RADIUS packet.  Note that the packet length
- * is always kept in network byte order.
+/* For iterating through all of the attributes in a packet, callers can
+ * provide a pointer to the previous attribute returned, or NULL.
  */
-static radius_attrib_t *radius_get_attrib(radius_packet_t *packet,
-    unsigned char type) {
-  radius_attrib_t *attrib = (radius_attrib_t *) &packet->data;
-  int len = ntohs(packet->length) - RADIUS_HEADER_LEN;
+static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
+    unsigned char attrib_type, unsigned int *packet_len,
+    radius_attrib_t *prev_attrib) {
+  radius_attrib_t *attrib = NULL;
+  unsigned int len;
 
-  while (attrib->type != type) {
+  if (packet_len == NULL) {
+    len = ntohs(packet->length) - RADIUS_HEADER_LEN;
+
+  } else {
+    len = *packet_len;
+  }
+
+  if (prev_attrib == NULL) {
+    attrib = (radius_attrib_t *) &packet->data;
+
+  } else {
+    attrib = prev_attrib;
+  }
+
+  while (attrib->type != attrib_type) {
     if (attrib->length == 0 ||
         (len -= attrib->length) <= 0) {
 
       /* Requested attribute not found. */
+      if (packet_len != NULL) {
+        *packet_len = 0;
+      }
+
       return NULL;
     }
 
@@ -2026,7 +2268,16 @@ static radius_attrib_t *radius_get_attrib(radius_packet_t *packet,
     attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
   }
 
+  if (packet_len != NULL) {
+    *packet_len = len;
+  }
+
   return attrib;
+}
+
+static radius_attrib_t *radius_get_attrib(radius_packet_t *packet,
+    unsigned char attrib_type) {
+  return radius_get_next_attrib(packet, attrib_type, NULL, NULL);
 }
 
 /* Find a Vendor-Specific Attribute (VSA) in a RADIUS packet.  Note that
@@ -2111,7 +2362,6 @@ static void radius_build_packet(radius_packet_t *packet,
     radius_add_passwd(packet, RADIUS_PASSWORD, passwd, secret);
 
   } else if (packet->code != RADIUS_ACCT_REQUEST) {
-
     /* Add a NULL password if necessary. */
     radius_add_passwd(packet, RADIUS_PASSWORD, (const unsigned char *) "",
       secret);
@@ -2326,21 +2576,24 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
   return 0;
 }
 
-static unsigned char radius_start_accting(void) {
+static int radius_start_accting(void) {
   int sockfd = -1, acct_status = 0, acct_authentic = 0;
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;
 
   /* Check to see if RADIUS accounting should be done. */
-  if (!radius_engine || !radius_acct_server) {
-    return TRUE;
+  if (radius_engine == FALSE ||
+      radius_acct_server == NULL) {
+    return 0;
   }
 
   /* Only do accounting for authenticated users. */
   authenticated = get_param_ptr(main_server->conf, "authenticated", FALSE);
-  if (!authenticated || *authenticated == FALSE)
-    return TRUE;
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
+    return 0;
+  }
 
   /* Allocate a packet. */
   request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
@@ -2348,8 +2601,12 @@ static unsigned char radius_start_accting(void) {
   /* Open a RADIUS socket */
   sockfd = radius_open_socket();
   if (sockfd < 0) {
+    int xerrno = errno;
+
     radius_log("socket open failed");
-    return FALSE;
+
+    errno = xerrno;
+    return -1;
   }
 
   /* Loop through the list of servers, trying each one until the packet is
@@ -2358,7 +2615,7 @@ static unsigned char radius_start_accting(void) {
   acct_server = radius_acct_server;
 
   while (acct_server) {
-    char pid[10] = {'\0'};
+    char pid_str[16];
 
     pr_signals_handle();
 
@@ -2380,13 +2637,19 @@ static unsigned char radius_start_accting(void) {
     radius_add_attrib(request, RADIUS_ACCT_STATUS_TYPE,
       (unsigned char *) &acct_status, sizeof(int));
 
-    snprintf(pid, sizeof(pid), "%08d", (int) getpid());
+    memset(pid_str, '\0', sizeof(pid_str));
+    snprintf(pid_str, sizeof(pid_str), "%08u", (unsigned int) session.pid);
     radius_add_attrib(request, RADIUS_ACCT_SESSION_ID,
-      (const unsigned char *) pid, strlen(pid));
+      (const unsigned char *) pid_str, strlen(pid_str));
 
     acct_authentic = htonl(RADIUS_AUTH_LOCAL);
     radius_add_attrib(request, RADIUS_ACCT_AUTHENTIC,
       (unsigned char *) &acct_authentic, sizeof(int));
+
+    if (radius_class != NULL) {
+      radius_add_attrib(request, RADIUS_CLASS,
+        (const unsigned char *) radius_class, radius_classlen);
+    }
 
     /* Calculate the signature. */
     radius_get_acct_digest(request, acct_server->secret);
@@ -2420,19 +2683,20 @@ static unsigned char radius_start_accting(void) {
 
     /* Verify the response. */
     radius_log("verifying packet");
-    if (radius_verify_packet(request, response, acct_server->secret) < 0)
-      return FALSE;
+    if (radius_verify_packet(request, response, acct_server->secret) < 0) {
+      return -1;
+    }
 
     /* Handle the response. */
     switch (response->code) {
       case RADIUS_ACCT_RESPONSE:
         radius_log("accounting started for user '%s'", session.user);
-        return TRUE;
+        return 0;
 
       default:
         radius_log("notice: server returned unknown response code: %02x",
           response->code);
-        return FALSE;
+        return -1;
     }
 
   } else {
@@ -2440,11 +2704,55 @@ static unsigned char radius_start_accting(void) {
   }
 
   /* Default return value. */
-  return FALSE;
+  return -1;
 }
 
-static unsigned char radius_stop_accting(void) {
+/* Maps the ProFTPD disconnect reason code to the RADIUS Acct-Terminate-Cause
+ * attribute values.
+ */
+static unsigned int radius_get_terminate_cause(void) {
+  unsigned int cause = RADIUS_ACCT_TERMINATE_CAUSE_SERVICE_UNAVAIL;
+
+  switch (session.disconnect_reason) {
+    case PR_SESS_DISCONNECT_CLIENT_QUIT:
+      cause = RADIUS_ACCT_TERMINATE_CAUSE_USER_REQUEST;
+      break;
+
+    case PR_SESS_DISCONNECT_CLIENT_EOF:
+      cause = RADIUS_ACCT_TERMINATE_CAUSE_LOST_SERVICE;
+      break;
+
+    case PR_SESS_DISCONNECT_SIGNAL:
+      cause = RADIUS_ACCT_TERMINATE_CAUSE_ADMIN_RESET;
+      break;
+
+    case PR_SESS_DISCONNECT_SERVER_SHUTDOWN:
+      cause = RADIUS_ACCT_TERMINATE_CAUSE_ADMIN_REBOOT;
+      break;
+
+    case PR_SESS_DISCONNECT_TIMEOUT: {
+      char *details = NULL;
+
+      pr_session_get_disconnect_reason(&details);
+      if (details != NULL) {
+        if (strcasecmp(details, "TimeoutIdle") == 0) {
+          cause = RADIUS_ACCT_TERMINATE_CAUSE_IDLE_TIMEOUT;
+
+        } else if (strcasecmp(details, "TimeoutSession") == 0) {
+          cause = RADIUS_ACCT_TERMINATE_CAUSE_SESSION_TIMEOUT;
+        }
+      }
+
+      break;
+    }
+  }
+
+  return cause;
+}
+
+static int radius_stop_accting(void) {
   int sockfd = -1, acct_status = 0, acct_authentic = 0, now = 0;
+  unsigned int terminate_cause = 0;
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;
@@ -2452,14 +2760,17 @@ static unsigned char radius_stop_accting(void) {
   off_t radius_session_bytes_out = 0;
 
   /* Check to see if RADIUS accounting should be done. */
-  if (!radius_engine || !radius_acct_server) {
-    return TRUE;
+  if (radius_engine == FALSE ||
+      radius_acct_server == NULL) {
+    return 0;
   }
 
   /* Only do accounting for authenticated users. */
   authenticated = get_param_ptr(main_server->conf, "authenticated", FALSE);
-  if (!authenticated || *authenticated == FALSE)
-    return TRUE;
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
+    return 0;
+  }
 
   /* Allocate a packet. */
   request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
@@ -2467,9 +2778,15 @@ static unsigned char radius_stop_accting(void) {
   /* Open a RADIUS socket */
   sockfd = radius_open_socket();
   if (sockfd < 0) {
+    int xerrno = errno;
+
     radius_log("socket open failed");
-    return FALSE;
+
+    errno = xerrno;
+    return -1;
   }
+
+  terminate_cause = radius_get_terminate_cause();
 
   /* Loop through the list of servers, trying each one until the packet is
    * successfully sent.
@@ -2525,6 +2842,14 @@ static unsigned char radius_stop_accting(void) {
     radius_add_attrib(request, RADIUS_ACCT_OUTPUT_OCTETS,
       (unsigned char *) &radius_session_bytes_out, sizeof(int));
 
+    radius_add_attrib(request, RADIUS_ACCT_TERMINATE_CAUSE,
+      (unsigned char *) &terminate_cause, sizeof(int));
+
+    if (radius_class != NULL) {
+      radius_add_attrib(request, RADIUS_CLASS,
+        (const unsigned char *) radius_class, radius_classlen);
+    }
+
     /* Calculate the signature. */
     radius_get_acct_digest(request, acct_server->secret);
 
@@ -2558,19 +2883,20 @@ static unsigned char radius_stop_accting(void) {
 
     /* Verify the response. */
     radius_log("verifying packet");
-    if (radius_verify_packet(request, response, acct_server->secret) < 0)
-      return FALSE;
+    if (radius_verify_packet(request, response, acct_server->secret) < 0) {
+      return -1;
+    }
 
     /* Handle the response. */
     switch (response->code) {
       case RADIUS_ACCT_RESPONSE:
         radius_log("accounting ended for user '%s'", session.user);
-        return TRUE;
+        return 0;
 
       default:
         radius_log("notice: server returned unknown response code: %02x",
           response->code);
-        return FALSE;
+        return -1;
     }
 
   } else {
@@ -2578,7 +2904,7 @@ static unsigned char radius_stop_accting(void) {
   }
 
   /* Default return value. */
-  return FALSE;
+  return -1;
 }
 
 /* Verify the response packet from the server. */
@@ -2891,6 +3217,8 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   auth_server = radius_auth_server;
 
   while (auth_server) {
+    char pid_str[16];
+
     pr_signals_handle();
 
     /* Clear the packet. */
@@ -2905,6 +3233,11 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
 
     radius_add_attrib(request, RADIUS_SERVICE_TYPE, (unsigned char *) &service,
       sizeof(service));
+
+    memset(pid_str, '\0', sizeof(pid_str));
+    snprintf(pid_str, sizeof(pid_str)-1, "%08u", (unsigned int) session.pid);
+    radius_add_attrib(request, RADIUS_ACCT_SESSION_ID,
+      (const unsigned char *) pid_str, strlen(pid_str));
 
     /* Send the request. */
     radius_log("sending auth request packet");
@@ -2932,27 +3265,39 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   (void) close(sockfd);
 
   if (recvd_response) {
+    int res;
 
     /* Verify the response. */
     radius_log("verifying packet");
-    if (radius_verify_packet(request, response, auth_server->secret) < 0)
+    res = radius_verify_packet(request, response, auth_server->secret);
+    if (res < 0) {
       return PR_DECLINED(cmd);
+    }
 
     /* Handle the response */
     switch (response->code) {
       case RADIUS_AUTH_ACCEPT:
         radius_log("authentication successful for user '%s'", user);
-
         radius_session_authtype = htonl(RADIUS_AUTH_RADIUS);
 
         /* Process the packet for custom attributes */
-        radius_process_accpt_packet(response);
+        res = radius_process_accept_packet(response);
+        pr_trace_msg(trace_channel, 9,
+          "processed %d %s in Access-Accept packet", res,
+          res != 1 ? "attributes" : "attribute");
 
         radius_auth_ok = TRUE;
         break;
 
       case RADIUS_AUTH_REJECT:
         radius_log("authentication failed for user '%s'", user);
+
+        /* Process the packet for custom attributes */
+        res = radius_process_reject_packet(response);
+        pr_trace_msg(trace_channel, 9,
+          "processed %d %s in Access-Reject packet", res,
+          res != 1 ? "attributes" : "attribute");
+
         radius_auth_ok = FALSE;
         radius_auth_reject = TRUE;
         radius_reset();
@@ -2990,7 +3335,7 @@ MODRET radius_post_pass(cmd_rec *cmd) {
     radius_passwd.pw_name = session.user;
   }
 
-  if (!radius_start_accting()) {
+  if (radius_start_accting() < 0) {
     radius_log("error: unable to start accounting");
   }
 
@@ -3234,6 +3579,44 @@ MODRET set_radiusnasidentifier(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: RadiusOptions opt1 ... */
+MODRET set_radiusoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "IgnoreReplyMessage") == 0) {
+      opts |= RADIUS_OPT_IGNORE_REPLY_MESSAGE_ATTR;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreClass") == 0) {
+      opts |= RADIUS_OPT_IGNORE_CLASS_ATTR;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreIdleTimeout") == 0) {
+      opts |= RADIUS_OPT_IGNORE_IDLE_TIMEOUT_ATTR;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreSessionTimeout") == 0) {
+      opts |= RADIUS_OPT_IGNORE_SESSION_TIMEOUT_ATTR;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: RadiusQuotaInfo per-sess limit-type bytes-in bytes-out bytes-xfer
  *          files-in files-out files-xfer
  */
@@ -3414,8 +3797,9 @@ MODRET set_radiusvendor(cmd_rec *cmd) {
 
 static void radius_exit_ev(const void *event_data, void *user_data) {
 
-  if (!radius_stop_accting())
+  if (radius_stop_accting() < 0) {
     radius_log("error: unable to stop accounting");
+  }
 
   radius_closelog();
   return;
@@ -3433,7 +3817,6 @@ static void radius_mod_unload_ev(const void *event_data, void *user_data) {
 
     close(radius_logfd);
     radius_logfd = -1;
-    radius_logname = NULL;
   }
 }
 #endif /* PR_SHARED_MODULE */
@@ -3492,6 +3875,18 @@ static int radius_sess_init(void) {
 
   /* Initialize session variables */
   time(&radius_session_start);
+
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    radius_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "RadiusOptions", FALSE);
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "RadiusNASIdentifier", FALSE);
   if (c) {
@@ -3586,8 +3981,9 @@ static int radius_sess_init(void) {
      * TRUE by radius_process_group_info(), unless there was some
      * illegal value.
      */
-    if (!radius_auth_server)
+    if (radius_auth_server == NULL) {
       radius_have_group_info = FALSE;
+    }
   }
 
   /* Prepare any configure quota information. */
@@ -3637,6 +4033,7 @@ static conftable radius_conftab[] = {
   { "RadiusGroupInfo",		set_radiusgroupinfo,	NULL },
   { "RadiusLog",		set_radiuslog,		NULL },
   { "RadiusNASIdentifier",	set_radiusnasidentifier,NULL },
+  { "RadiusOptions",		set_radiusoptions,	NULL },
   { "RadiusQuotaInfo",		set_radiusquotainfo,	NULL },
   { "RadiusRealm",		set_radiusrealm,	NULL },
   { "RadiusUserInfo",		set_radiususerinfo,	NULL },
