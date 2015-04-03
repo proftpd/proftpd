@@ -32,6 +32,8 @@ ChangeLog files.
 
     ExecEnable (Bug#4076)
 
+    FSCachePolicy
+
     LangOptions (Bug#4125)
 
     SQLPasswordSaltEncoding (Bug#4138)
