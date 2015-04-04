@@ -13,6 +13,14 @@ ChangeLog files.
 
   + Changed Modules
 
+    mod_radius supports new attributes (Bug#4059)
+      Acct-Terminate-Cause
+      Event-Timestamp
+      Idle-Timeout
+      Message-Authenticator
+      Reply-Message
+      Session-Timeout
+
     mod_site_misc supports 3-timestamp variant of SITE UTIME (Bug#4130)
 
     mod_sql and 64-bit UID/GID values (Bug#4164)
@@ -35,6 +43,8 @@ ChangeLog files.
     FSCachePolicy
 
     LangOptions (Bug#4125)
+
+    RadiusOptions (Bug#4059)
 
     SQLPasswordSaltEncoding (Bug#4138)
 
