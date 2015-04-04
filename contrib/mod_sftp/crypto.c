@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: crypto.c,v 1.33 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -1080,10 +1078,11 @@ void sftp_crypto_free(int flags) {
    * and other modules want to use OpenSSL, we may be depriving those modules
    * of OpenSSL functionality.
    *
-   * At the moment, the modules known to use OpenSSL are mod_ldap,
+   * At the moment, the modules known to use OpenSSL are mod_ldap, mod_radius,
    * mod_sftp, mod_sql, and mod_sql_passwd, and mod_tls.
    */
   if (pr_module_get("mod_ldap.c") == NULL &&
+      pr_module_get("mod_radius.c") == NULL &&
       pr_module_get("mod_sql.c") == NULL &&
       pr_module_get("mod_sql_passwd.c") == NULL &&
       pr_module_get("mod_tls.c") == NULL) {

@@ -779,7 +779,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
     /* Update the given struct stat pointer with the cached info */
     memcpy(st, &(sc->sc_stat), sizeof(struct stat));
 
-    pr_trace_msg(trace_channel, 8,
+    pr_trace_msg(trace_channel, 18,
       "using cached stat for %s for path '%s' (retval %d, errno %s)",
       op == FSIO_FILE_STAT ? "stat()" : "lstat()", path, sc->sc_retval,
       strerror(sc->sc_errno));
@@ -805,7 +805,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
       "error adding cached stat for '%s': %s", cleaned_path, strerror(errno));
 
   } else if (res > 0) {
-    pr_trace_msg(trace_channel, 8,
+    pr_trace_msg(trace_channel, 18,
       "added cached stat for path '%s' (retval %d, errno %s)", path,
       retval, strerror(xerrno));
   }
