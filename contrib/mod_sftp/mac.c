@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mac.c,v 1.20 2013-12-19 16:32:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -568,7 +566,7 @@ const char *sftp_mac_get_read_algo(void) {
 
 int sftp_mac_set_read_algo(const char *algo) {
   uint32_t mac_len;
-  unsigned int idx = write_mac_idx;
+  unsigned int idx = read_mac_idx;
 
   if (read_macs[idx].key) {
     /* If we have an existing key, it means that we are currently rekeying. */
