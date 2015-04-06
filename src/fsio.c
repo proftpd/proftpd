@@ -4416,6 +4416,10 @@ int pr_fsio_link_canon(const char *target_path, const char *link_path) {
     fs->fs_name, target_path, link_path);
   res = (fs->link)(fs, target_path, link_path);
 
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
+
   return res;
 }
 
@@ -4459,6 +4463,10 @@ int pr_fsio_link(const char *target_path, const char *link_path) {
   pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
     fs->fs_name, target_path, link_path);
   res = (fs->link)(fs, target_path, link_path);
+ 
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
 
   return res;
 }
@@ -4485,6 +4493,10 @@ int pr_fsio_symlink_canon(const char *target_path, const char *link_path) {
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
     fs->fs_name, link_path);
   res = (fs->symlink)(fs, target_path, link_path);
+ 
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
 
   return res;
 }
@@ -4514,6 +4526,10 @@ int pr_fsio_symlink(const char *target_path, const char *link_path) {
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
     fs->fs_name, link_path);
   res = (fs->symlink)(fs, target_path, link_path);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
 
   return res;
 }
