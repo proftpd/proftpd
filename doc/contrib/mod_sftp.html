@@ -573,6 +573,7 @@ of supported MAC algorithms is:
   <li>hmac-md5-96
   <li>hmac-ripemd160
   <li>umac-64@openssh.com
+  <li>umac-128@openssh.com
 </ul>
 By default, all of the above MAC algorithms are presented to the client,
 in the above order, during the key exchange.  <b>Note</b> that some algorithms
@@ -600,13 +601,15 @@ by default are:
   <li>hmac-sha1-96
   <li>hmac-md5-96
   <li>umac-64@openssh.com
+  <li>umac-128@openssh.com
 </ul>
 Thus if you wanted to configure <code>mod_sftp</code> to present the same
 MAC algorithms as OpenSSH, you would use:
 <pre>
   # Make mod_sftp present the MAC ciphers as OpenSSH
   SFTPDigests hmac-md5 hmac-sha1 hmac-sha2-256 hmac-sha2-512 \
-    hmac-ripemd160 hmac-sha1-96 hmac-md5-96 umac-64@openssh.com
+    hmac-ripemd160 hmac-sha1-96 hmac-md5-96 umac-64@openssh.com \
+    umac-128@openssh.com
 </pre>
 
 <p>
