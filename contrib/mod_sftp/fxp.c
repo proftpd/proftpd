@@ -7136,7 +7136,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
   /* Check if the path already exists, to avoid unnecessary work. */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) == 0) {
     const char *reason;
     int xerrno = EEXIST;
