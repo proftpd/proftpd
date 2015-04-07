@@ -36,7 +36,7 @@ ChangeLog files.
 
   + New Configuration Directives:
 
-    CopyEngine
+    CopyEngine (Bug#4169)
 
     DelayOnEvent (Bug#4020)
 
