@@ -9,48 +9,120 @@ ChangeLog files.
 1.3.6rc1
 ---------
 
-  + New Modules
+  + Changed the default SyslogLevel to be NOTICE, rather than DEBUG.
+  + Fixed "stalled" SSL/TLS handshakes for data transfers
+  + ftpwho now supports JSON output format.
 
   + Changed Modules
 
-    mod_radius supports new attributes (Bug#4059)
-      Acct-Terminate-Cause
-      Event-Timestamp
-      Idle-Timeout
-      Message-Authenticator
-      Reply-Message
-      Session-Timeout
+    mod_radius
+      The mod_radius module has added support for the following RADIUS
+      attributes:
 
-    mod_site_misc supports 3-timestamp variant of SITE UTIME (Bug#4130)
+        Acct-Terminate-Cause
+        Event-Timestamp
+        Idle-Timeout
+        Message-Authenticator
+        Reply-Message
+        Session-Timeout
 
-    mod_sql and 64-bit UID/GID values (Bug#4164)
+    mod_site_misc
+      The SITE UTIME command now supports the 3-timestamp variant:
+
+        SITE UTIME path atime mtime ctime
+
+      where each timestamp is expressed as "YYYYMMDDhhmmss".
+
+    mod_sql
+      The mod_sql module would previously only support 32-bit UID/GID
+      values, due to its use of the atoi(3) C library function for parsing
+      result set values into IDs.  This has been fixed; mod_sql now
+      properly supports 64-bit UID/GID values.
 
     mod_tls disables SSLv3 by default (Bug#4114)
-
-      For sites which need to support SSLv3, use:
+      By default, mod_tls will no longer support SSLv3 connections.  In
+      order to support SSLv3 connections (for sites that need to), you must
+      explicitly configure this via the TLSProtocol directive, e.g.:
 
         TLSProtocol SSLv3 TLSv1 ...
 
-    mod_tls no longer supports EXPORT ciphers (Bug#4163)
+      In addition, mod_tls will no longer support EXPORT ciphers.
 
 
   + New Configuration Directives:
 
-    CopyEngine (Bug#4169)
+    CopyEngine
+      The mod_copy module is enabled by default; there may be cases where
+      the module should be disabled, without requiring a rebuild of the
+      server.  Thus mod_copy now supports a CopyEngine directive; see
+      doc/contrib/mod_copy.html#CopyEngine.
 
     DelayOnEvent (Bug#4020)
+      There are sites which wish to use mod_delay for administratively
+      adding delays to connections as e.g. brute force attack deterrents.
+      To support these use cases, the mod_delay module has a new DelayOnEvent
+      directive.  Using this directive, sites can configure something like
+      the following, for forcing a minimum login delay and a failed login
+      delay:
 
-    ExecEnable (Bug#4076)
+        <IfModule mod_delay.c>
+          # Configure successful logins to be delayed by 2 secs
+          DelayOnEvent PASS 2000ms
+
+          # Configure failed logins to be delayed by 5 secs
+          DelayOnEvent FailedLogin 5s
+        </IfModule>
+
+      See doc/modules/mod_delay.html#DelayOnEvent for more information.
+
+    ExecEnable
+      Some sites using mod_exec need to configure a command to be executed,
+      but wish to "blacklist" certain directories where that command should
+      not be executed.  To handle configurations like this, the mod_exec
+      module has a new ExecEnable directive; see
+      doc/contrib/mod_exec.html#ExecEnable for details.
 
     FSCachePolicy
+      ProFTPD has long maintained a cache of the last stat data for a file.
+      However, for performance reasons, this cache size needs to be larger,
+      and to be enhanced to handle expiration, etc.  To tune the size
+      and expiration settings of this filesystem data cache, use the new
+      FSCachePolicy directive; see doc/modules/mod_core.html#FSCachePolicy
+      for details.
 
     LangOptions (Bug#4125)
+      Currently proftpd tries to cope with various filename/character
+      encodings used by FTP clients; if it cannot decode the filename, it
+      will use the sent filename as-is.  This behavior can cause problems
+      for downstream resources that then attempt to deal with these
+      filenames, and fail.  To make proftpd be more strict about the
+      encoding it accepts, use the new LangOption directive:
 
-    RadiusOptions (Bug#4059)
+        LangOptions RequireValidEncoding
 
-    SQLPasswordSaltEncoding (Bug#4138)
+      See doc/modules/mod_lang.html#LangOptions.
 
-    TransferOptions IgnoreASCII (Bug#4159)
+    RadiusOptions
+      The mod_radius module now supports/handles additional RADIUS
+      attributes.  Some of these attribute may need to be ignore for
+      some sites; others may wish to e.g. enforce stronger security by
+      requiring the use of the Message-Authenticator attribute.  Thus
+      mod_radius has a new RadiusOptions directive; see
+      doc/contrib/mod_radius.html#RadiusOptions for details.
+
+    SQLPasswordSaltEncoding
+      In order to handle binary data for salts, the mod_sql_password module
+      now supports handling of this data as base64- or hex-encoded data
+      via the new SQLPasswordSaltEncoding directive; see
+      doc/contrib/mod_sql_passwd.html#SQLPasswordSaltEncoding for details.
+
+    TransferOptions
+      There are some broken (<i>e.g.</i> old/mainframe) FTP clients that
+      will upload files, containing CRLF sequences, as ASCII data, but
+      these clients expect these CRLF sequences to be left as-is by the
+      FTP server.  To handle these broken clients, there is a new
+      TransferOptions directive; see doc/modules/mod_xfer.html#TransferOptions
+      for more information.
 
 
   + Changed Configuration Directives
@@ -58,6 +130,8 @@ ChangeLog files.
     BanOnEvent BadProtocol (Bug#4143)
 
     DelayTable none (Bug#4020)
+
+    DeleteAbortedStores on by default (Bug#4124)
 
     ExtendedLog SSH, SFTP classes, ! notation (Bug#4067)
       Note that existing ExtendedLogs that expect to see the SFTP requests will
@@ -76,14 +150,18 @@ ChangeLog files.
 
     SNMPAgent multiple addresses (Bug#4061)
 
-    SyslogLevel NOTICE default (Bug#3983)
-
 
   + Changed Command Handling
 
-    STAT 211, 212, 213 response codes (Bug#3990)
+    When handling the STAT FTP command, ProFTPD now follows RFC 959 more
+    closely, and will use the 213 response code for STAT commands on files,
+    and the 212 response code for STAT commands on directories.  Previously,
+    ProFTPD would respond to all STAT commands using the 211 response code.
 
 
   + Changed Utilities
 
-    ftpwho -o json (Bug#4031)
+    The ftpwho command-line utility can now emit its data as JSON,
+    for easier parsing/reuse in other utilities.  To request JSON, use:
+
+      $ ftpwho -o json
