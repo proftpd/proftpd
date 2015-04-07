@@ -10,8 +10,9 @@ ChangeLog files.
 ---------
 
   + Changed the default SyslogLevel to be NOTICE, rather than DEBUG.
-  + Fixed "stalled" SSL/TLS handshakes for data transfers
+  + Fixed "stalled" SSL/TLS handshakes for data transfers.
   + ftpwho now supports JSON output format.
+  + Fixed handling of SSH keys with overlong Comment headers in mod_sftp_sql.
   + Changed handling of logging of SFTP sessions to ExtendedLogs; see the
     notes below on the ExtendedLog directive.
 
@@ -41,7 +42,7 @@ ChangeLog files.
       result set values into IDs.  This has been fixed; mod_sql now
       properly supports 64-bit UID/GID values.
 
-    mod_tls disables SSLv3 by default (Bug#4114)
+    mod_tls
       By default, mod_tls will no longer support SSLv3 connections.  In
       order to support SSLv3 connections (for sites that need to), you must
       explicitly configure this via the TLSProtocol directive, e.g.:
@@ -59,7 +60,7 @@ ChangeLog files.
       server.  Thus mod_copy now supports a CopyEngine directive; see
       doc/contrib/mod_copy.html#CopyEngine.
 
-    DelayOnEvent (Bug#4020)
+    DelayOnEvent
       There are sites which wish to use mod_delay for administratively
       adding delays to connections as e.g. brute force attack deterrents.
       To support these use cases, the mod_delay module has a new DelayOnEvent
@@ -92,7 +93,7 @@ ChangeLog files.
       FSCachePolicy directive; see doc/modules/mod_core.html#FSCachePolicy
       for details.
 
-    LangOptions (Bug#4125)
+    LangOptions
       Currently proftpd tries to cope with various filename/character
       encodings used by FTP clients; if it cannot decode the filename, it
       will use the sent filename as-is.  This behavior can cause problems
@@ -153,7 +154,7 @@ ChangeLog files.
       DeleteAbortedStores only when HiddenStores is in effect, has been
       properly implemented now.
 
-    ExtendedLog SSH, SFTP classes, ! notation (Bug#4067)
+    ExtendedLog
       When an ExtendedLog is used for logging mod_sftp requests, the log
       file will contain both the SFTP requests AND the internal FTP commands
       to which mod_sftp will map the SFTP requests; this can lead to some
