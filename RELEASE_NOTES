@@ -12,6 +12,10 @@ ChangeLog files.
   + Delay during TLS handshakes for data connections fixed
   + SSLv3 disabled by default (Bug#4114)
 
+  + New Configuration Directives
+
+    CopyEngine (Bug#4169)
+
 
 1.3.5
 ---------
