@@ -37,13 +37,13 @@ UMAC128_CPPFLAGS=-DUMAC_OUTPUT_LEN=16 -Dumac_alloc=umac128_alloc -Dumac_init=uma
 umac128.o: umac.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(UMAC128_CPPFLAGS) -o umac128.o -c umac.c
 
-%.o: %c
+%.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 umac128.lo: umac.c
 	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) $(UMAC128_CPPFLAGS) -o umac128.lo -c umac.c
 
-%.lo: %c
+%.lo: %.c
 	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $<
 
 shared: $(SHARED_MODULE_OBJS)

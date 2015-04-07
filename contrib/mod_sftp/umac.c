@@ -1095,7 +1095,7 @@ struct umac_ctx {
     uhash_ctx hash;          /* Hash function for message compression    */
     pdf_ctx pdf;             /* PDF for hashed output                    */
     void *free_ptr;          /* Address to free this struct via          */
-} umac_ctx;
+};
 
 /* ---------------------------------------------------------------------- */
 
@@ -1187,7 +1187,7 @@ int umac_update(struct umac_ctx *ctx, unsigned char *input, long len)
 
 struct umac_ctx {
     void *free_ptr;          /* Address to free this struct via          */
-} umac_ctx;
+};
 
 int umac_reset(struct umac_ctx *ctx)
 /* Reset the hash function to begin a new authentication.        */
