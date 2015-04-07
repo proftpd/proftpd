@@ -1773,6 +1773,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
    */
   (void) pr_fsio_fstat(stor_fh, &st);
 
+  /* Block any timers for this section, where we want to prepare the
+   * data connection, then need to reprovision the session.xfer struct,
+   * and do NOT want timers (which may want/need that session.xfer data)
+   * to fire until after the reprovisioning (Bug#4168).
+   */
+  pr_alarms_block();
+
   /* Perform the actual transfer now */
   pr_data_init(cmd->arg, PR_NETIO_IO_RD);
 
@@ -1784,6 +1791,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   session.xfer.path_hidden = pr_table_get(cmd->notes,
     "mod_xfer.store-hidden-path", NULL);
   session.xfer.file_size = curr_pos;
+
+  pr_alarms_unblock();
 
   /* First, make sure the uploaded file has the requested ownership. */
   stor_chown(cmd->tmp_pool);
@@ -2284,11 +2293,20 @@ MODRET xfer_retr(cmd_rec *cmd) {
       sizeof(off_t));
   }
 
+  /* Block any timers for this section, where we want to prepare the
+   * data connection, then need to reprovision the session.xfer struct,
+   * and do NOT want timers (which may want/need that session.xfer data)
+   * to fire until after the reprovisioning (Bug#4168).
+   */
+  pr_alarms_block();
+
   /* Send the data */
   pr_data_init(cmd->arg, PR_NETIO_IO_WR);
 
   session.xfer.path = dir;
   session.xfer.file_size = st.st_size;
+
+  pr_alarms_unblock();
 
   cnt_steps = session.xfer.file_size / 100;
   if (cnt_steps == 0)
@@ -3589,20 +3607,19 @@ MODRET set_usesendfile(cmd_rec *cmd) {
 
 static void xfer_exit_ev(const void *event_data, void *user_data) {
 
+  if (stor_fh != NULL) {
+     /* An upload is occurring... */
+    pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
+    stor_abort();
+  
+  } else if (retr_fh != NULL) {
+    /* A download is occurring... */
+    pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
+    retr_abort();
+  }
+
   if (session.sf_flags & SF_XFER) {
     cmd_rec *cmd;
-
-    if (session.xfer.direction == PR_NETIO_IO_RD) {
-       /* An upload is occurring... */
-      pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
-      stor_abort();
-
-    } else {
-      /* A download is occurring... */
-      pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
-      retr_abort();
-    }
-
     pr_data_abort(0, FALSE);
 
     cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
@@ -3640,11 +3657,11 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 }
 
 static void xfer_timedout(const char *reason) {
-  if (session.xfer.direction == PR_NETIO_IO_RD) {
+  if (stor_fh != NULL) {
     pr_trace_msg(trace_channel, 6, "%s, aborting upload", reason);
     stor_abort();
 
-  } else {
+  } else if (retr_fh != NULL) {
     pr_trace_msg(trace_channel, 6, "%s, aborting download", reason);
     retr_abort();
   }
