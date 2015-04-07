@@ -36,6 +36,8 @@ ChangeLog files.
 
   + New Configuration Directives:
 
+    CopyEngine
+
     DelayOnEvent (Bug#4020)
 
     ExecEnable (Bug#4076)
