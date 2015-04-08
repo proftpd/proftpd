@@ -283,8 +283,9 @@ MODRET site_chmod(cmd_rec *cmd) {
     umask(curumask);
     mode = 0;
 
-    if (pr_fsio_stat(dir, &st) != -1)
+    if (pr_fsio_stat(dir, &st) != -1) {
       curmode = st.st_mode;
+    }
 
     while (TRUE) {
       who = pstrdup(cmd->tmp_pool, cp);
@@ -294,8 +295,9 @@ MODRET site_chmod(cmd_rec *cmd) {
       tmp = strpbrk(who, "+-=");
       if (tmp != NULL) {
         how = pstrdup(cmd->tmp_pool, tmp);
-        if (*how != '=')
+        if (*how != '=') {
           mode = curmode;
+        }
 
         *tmp = '\0';
 
@@ -382,21 +384,21 @@ MODRET site_chmod(cmd_rec *cmd) {
             break;
 
           case 'o':
-            mode_op |= curmode & S_IRWXO;
-            mode_op |= (curmode & S_IRWXO) << 3;
-            mode_op |= (curmode & S_IRWXO) << 6;
+            mode_op |= (curmode & S_IRWXO);
+            mode_op |= ((curmode & S_IRWXO) << 3);
+            mode_op |= ((curmode & S_IRWXO) << 6);
             break;
 
           case 'g':
-            mode_op |= (curmode & S_IRWXG) >> 3;
-            mode_op |= curmode & S_IRWXG;
-            mode_op |= (curmode & S_IRWXG) << 3;
+            mode_op |= ((curmode & S_IRWXG) >> 3);
+            mode_op |= (curmode & S_IRWXG);
+            mode_op |= ((curmode & S_IRWXG) << 3);
             break;
 
           case 'u':
-            mode_op |= (curmode & S_IRWXO) >> 6;
-            mode_op |= (curmode & S_IRWXO) >> 3;
-            mode_op |= curmode & S_IRWXU;
+            mode_op |= ((curmode & S_IRWXO) >> 6);
+            mode_op |= ((curmode & S_IRWXO) >> 3);
+            mode_op |= (curmode & S_IRWXU);
             break;
 
           case '\0':
@@ -418,20 +420,22 @@ MODRET site_chmod(cmd_rec *cmd) {
               cp = what;
               continue;
 
-            } else
+            } else {
               cp = NULL;
-
+            }
             break;
 
           default:
             invalid++;
         }
 
-        if (invalid)
+        if (invalid) {
           break;
+        }
 
-        if (cp)
+        if (cp) {
           cp++;
+        }
       }
       break;
     }

@@ -2484,7 +2484,6 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
 
   while (attrib) {
     unsigned int vendor_id = 0;
-    radius_attrib_t *vsa = NULL;
 
     pr_signals_handle();
 
@@ -2502,8 +2501,10 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     }
 
     /* The first four octets (bytes) of data will contain the Vendor-Id. */
-    memcpy(&vendor_id, attrib->data, sizeof(unsigned int));
-    vendor_id = ntohl(vendor_id);
+    if (attrib->length >= 4) {
+      memcpy(&vendor_id, attrib->data, sizeof(unsigned int));
+      vendor_id = ntohl(vendor_id);
+    }
 
     if (vendor_id != radius_vendor_id) {
       len -= attrib->length;
@@ -2512,16 +2513,20 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     }
 
     /* Parse the data value for this attribute into a VSA structure. */
-    vsa = (radius_attrib_t *) ((char *) attrib->data + sizeof(int));
+    if (attrib->length > 4) {
+      radius_attrib_t *vsa = NULL;
 
-    /* Does this VSA have the type requested? */
-    if (vsa->type != type) {
-      len -= attrib->length;
-      attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
-      continue;
+      vsa = (radius_attrib_t *) ((char *) attrib->data + sizeof(int));
+
+      /* Does this VSA have the type requested? */
+      if (vsa->type != type) {
+        len -= attrib->length;
+        attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
+        continue;
+      }
+
+      return vsa;
     }
-
-    return vsa;
   }
 
   return NULL;

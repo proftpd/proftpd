@@ -185,7 +185,6 @@ static int tpl_mmap_output_file(char *filename, size_t sz, void **text_out);
 static int tpl_cpu_bigendian(void);
 static int tpl_needs_endian_swap(void *);
 static void tpl_byteswap(void *word, int len);
-static void tpl_fatal(char *fmt, ...);
 static int tpl_serlen(tpl_node *r, tpl_node *n, void *dv, size_t *serlen);
 static int tpl_unpackA0(tpl_node *r);
 static int tpl_oops(const char *fmt, ...);
@@ -427,9 +426,10 @@ static tpl_node *tpl_map_va(char *fmt, va_list ap) {
                   }
                   if (num_contig_fxlens >= (sizeof(contig_fxlens)/sizeof(contig_fxlens[0]))) {
                     tpl_hook.fatal("contiguous # exceeds hardcoded limit\n");
+                  } else {
+                    contig_fxlens[num_contig_fxlens++] = pound_num;
+                    pound_prod *= pound_num;
                   }
-                  contig_fxlens[num_contig_fxlens++] = pound_num;
-                  pound_prod *= pound_num;
                 }
                 /* increment c to skip contiguous # so its points to last one */
                 c = peek-1;
@@ -2158,7 +2158,7 @@ static void tpl_byteswap(void *word, int len) {
     }
 }
 
-static void tpl_fatal(char *fmt, ...) {
+void tpl_fatal(char *fmt, ...) {
     va_list ap;
     char exit_msg[100];
 
