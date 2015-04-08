@@ -3909,15 +3909,18 @@ int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
 int pr_fs_glob(const char *pattern, int flags,
     int (*errfunc)(const char *, int), glob_t *pglob) {
 
-  if (pglob) {
-    flags |= GLOB_ALTDIRFUNC;
-
-    pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
-    pglob->gl_readdir = pr_fsio_readdir;
-    pglob->gl_opendir = pr_fsio_opendir;
-    pglob->gl_lstat = pr_fsio_lstat;
-    pglob->gl_stat = pr_fsio_stat;
+  if (pglob == NULL) {
+    errno = EINVAL;
+    return -1;
   }
+
+  flags |= GLOB_ALTDIRFUNC;
+
+  pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
+  pglob->gl_readdir = pr_fsio_readdir;
+  pglob->gl_opendir = pr_fsio_opendir;
+  pglob->gl_lstat = pr_fsio_lstat;
+  pglob->gl_stat = pr_fsio_stat;
 
   return glob(pattern, flags, errfunc, pglob);
 }
