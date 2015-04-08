@@ -311,7 +311,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   }
 
   pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
-    quote_dir(cmd->tmp_pool, dir));
+    quote_dir(cmd->tmp_pool, (char *) dir));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
@@ -1169,7 +1169,14 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* Unix filesystems typically do not allow changing/setting the creation
+   * timestamp.  Thus we parse the timestamp provided by the client, but
+   * do nothing but log it.
+   */
   parsed_ctime = site_misc_mktime(year, month, day, hour, min, sec);
+  pr_trace_msg("command", 9,
+    "SITE UTIME command sent ctime timestamp of %lu secs",
+    (unsigned long) parsed_ctime);
 
   tvs[0].tv_usec = tvs[1].tv_usec = 0;
   tvs[0].tv_sec = parsed_atime;

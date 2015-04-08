@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2010-2011 The ProFTPD Project team
+ * Copyright (c) 2010-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,6 +83,13 @@ START_TEST (stash_add_symbol_test) {
   memset(&hooktab, 0, sizeof(hooktab));
   res = pr_stash_add_symbol(PR_SYM_HOOK, &hooktab);
   fail_unless(res == -1, "Failed to handle null hook name");
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %d (%s)",
+    errno, strerror(errno));
+
+  memset(&conftab, 0, sizeof(conftab));
+  conftab.directive = pstrdup(p, "");
+  res = pr_stash_add_symbol(PR_SYM_CONF, &conftab);
+  fail_unless(res == -1, "Failed to handle empty conf name");
   fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %d (%s)",
     errno, strerror(errno));
 

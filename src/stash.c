@@ -83,7 +83,7 @@ static struct stash *sym_alloc(void) {
 
 static int sym_cmp(struct stash *s1, struct stash *s2) {
   int res;
-  size_t namelen;
+  size_t checked_len = 0, namelen;
 
   if (s1->sym_hash != s2->sym_hash) {
     return s1->sym_hash < s2->sym_hash ? -1 : 1;
@@ -96,7 +96,7 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
   namelen = s1->sym_namelen;
 
   /* Try to avoid strncmp(3) if we can. */
-  if (namelen >= 1) {
+  if (namelen >= 2) {
     char c1, c2;
 
     c1 = s1->sym_name[0];
@@ -106,33 +106,22 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
       return c1 < c2 ? -1 : 1;
     }
 
-    /* Special case (unlikely, but possible) */
-    if (namelen == 1) {
-      if (c1 == '\0' ||
-          c2 == '\0') {
-        return 0;
+    checked_len++;
+
+    if (namelen >= 3) {
+      c1 = s1->sym_name[1];
+      c2 = s2->sym_name[1];
+
+      if (c1 != c2) {
+        return c1 < c2 ? -1 : 1;
       }
+
+      checked_len++;
     }
   }
 
-  if (namelen >= 2) {
-    char c1, c2;
-
-    c1 = s1->sym_name[1];
-    c2 = s2->sym_name[1];
-
-    if (c1 != c2) {
-      return c1 < c2 ? -1 : 1;
-    }
-
-    /* Special case */
-    if (namelen == 2 &&
-        c1 == '\0') {
-      return 0;
-    }
-  }
-
-  res = strncmp(s1->sym_name + 2, s2->sym_name + 2, namelen - 2);
+  res = strncmp(s1->sym_name + checked_len, s2->sym_name + checked_len,
+    namelen - checked_len);
 
   /* Higher priority modules must go BEFORE lower priority in the
    * hash tables.
@@ -223,6 +212,7 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
   unsigned int hash;
   int idx = 0;
   xaset_t **symbol_table;
+  size_t sym_namelen = 0;
 
   if (data == NULL) {
     errno = EINVAL;
@@ -278,8 +268,15 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
     return -1;
   }
 
+  sym_namelen = strlen(sym->sym_name);
+  if (sym_namelen == 0) {
+    destroy_pool(sym->sym_pool);
+    errno = EPERM;
+    return -1;
+  }
+
   /* Don't forget to include one for the terminating NUL. */
-  sym->sym_namelen = strlen(sym->sym_name) + 1;
+  sym->sym_namelen = sym_namelen + 1;
 
   hash = sym_type_hash(sym_type, sym->sym_name, sym->sym_namelen);
   idx = hash % PR_TUNABLE_HASH_TABLE_SIZE;

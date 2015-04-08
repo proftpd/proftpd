@@ -1017,6 +1017,7 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...) {
                 bufv += rc;
             } else if (rc == -1) {
                 if (errno == EINTR || errno == EAGAIN) continue;
+                va_end(ap);
                 tpl_hook.oops("error writing to fd %d: %s\n", fd, strerror(errno));
                 free(buf);
                 return -1;
@@ -1736,8 +1737,8 @@ static int tpl_mmap_output_file(char *filename, size_t sz, void **text_out) {
     }
     if (ftruncate(fd,sz) == -1) {
         tpl_hook.oops("ftruncate failed: %s\n", strerror(errno));
-        munmap( text, sz );
-        close(fd);
+        (void) munmap( text, sz );
+        (void) close(fd);
         return -1;
     }
     *text_out = text;
@@ -2161,8 +2162,9 @@ static void tpl_fatal(char *fmt, ...) {
     va_list ap;
     char exit_msg[100];
 
+    memset(exit_msg, '\0', sizeof(exit_msg));
     va_start(ap,fmt);
-    vsnprintf(exit_msg, 100, fmt, ap);
+    vsnprintf(exit_msg, sizeof(exit_msg)-1, fmt, ap);
     va_end(ap);
 
     tpl_hook.oops("%s", exit_msg);
