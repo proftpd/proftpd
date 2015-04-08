@@ -82,6 +82,9 @@
 /* Define if you have struct sockcred.  */
 #undef HAVE_STRUCT_SOCKCRED
 
+/* Define if you have struct sockpeercred.  */
+#undef HAVE_STRUCT_SOCKPEERCRED
+
 /* Define if your spwd structure has member warn */
 #undef HAVE_SPWD_SP_WARN
 
@@ -248,6 +251,12 @@
 
 /* The number of bytes in a pointer to a void.  */
 #undef SIZEOF_VOID_P
+
+/* The number of bytes in a uid_t.  */
+#undef SIZEOF_UID_T
+
+/* The number of bytes in a gid_t.  */
+#undef SIZEOF_GID_T
 
 /* Define if you have the backtrace function.  */
 #undef HAVE_BACKTRACE
@@ -509,6 +518,9 @@
 
 /* Define if you have the strtol function.  */
 #undef HAVE_STRTOL
+
+/* Define if you have the strtoll function.  */
+#undef HAVE_STRTOLL
 
 /* Define if you have the strtoull function.  */
 #undef HAVE_STRTOULL

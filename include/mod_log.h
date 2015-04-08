@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_log
  *
- * Copyright (c) 2013 TJ Saunders
+ * Copyright (c) 2013-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,5 +75,6 @@
 #define LOGFMT_META_ISO8601		42
 #define LOGFMT_META_GROUP		43
 #define LOGFMT_META_BASENAME		44
+#define LOGFMT_META_FILE_OFFSET		45
 
 #endif /* MOD_LOG_H */

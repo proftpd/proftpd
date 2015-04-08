@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2014 The ProFTPD Project
+ * Copyright (c) 2007-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mod_facts.c,v 1.60 2013-04-16 16:04:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -247,8 +245,8 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_GROUP) {
-    snprintf(ptr, bufsz - buflen, "UNIX.group=%lu;",
-      (unsigned long) info->st.st_gid);
+    snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
+      pr_gid2str(NULL, info->st.st_gid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -261,8 +259,8 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_OWNER) {
-    snprintf(ptr, bufsz - buflen, "UNIX.owner=%lu;",
-      (unsigned long) info->st.st_uid);
+    snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
+      pr_uid2str(NULL, info->st.st_uid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -388,7 +386,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
        * stat in order to ensure that the unique fact values are the same.
        */
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       res = pr_fsio_stat(path, &target_st);
       if (res < 0) {
         int xerrno = errno;
@@ -745,7 +743,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
        * enable the CAP_FOWNER capability for the session, or b) use root
        * privs.
        */
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         errno = xerrno;
         return -1;
@@ -888,7 +886,20 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   path = pstrdup(cmd->tmp_pool, ptr + 1);
 
-  decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      path);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (canon_path == NULL) {
@@ -1103,7 +1114,20 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   path = pstrdup(cmd->tmp_pool, ptr + 1);
 
-  decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      path);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
   if (canon_path == NULL) {
@@ -1200,7 +1224,21 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   if (cmd->argc != 1) {
     path = pstrdup(cmd->tmp_pool, cmd->arg);
-    decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), path);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
 
   } else {
     decoded_path = path = pr_fs_getcwd();
@@ -1318,9 +1356,10 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   if (dirh == NULL) {
     int xerrno = errno;
 
-    pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %lu, GID %lu): "
+    pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %s, GID %s): "
       "error opening directory '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid),
       best_path, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
@@ -1342,7 +1381,6 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   }
   session.sf_flags |= SF_ASCII_OVERRIDE;
 
-  pr_fs_clear_cache();
   facts_mlinfobuf_init();
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
@@ -1441,7 +1479,21 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   if (cmd->argc != 1) {
     path = pstrdup(cmd->tmp_pool, cmd->arg);
-    decoded_path = pr_fs_decode_path(cmd->tmp_pool, path);
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, path,
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", path,
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("%s: Illegal character sequence in filename"), path);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
 
   } else {
     decoded_path = path = pr_fs_getcwd();
@@ -1526,7 +1578,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   info.pool = cmd->tmp_pool;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(decoded_path);
   if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags, fake_uid,
       fake_gid, fake_mode) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);

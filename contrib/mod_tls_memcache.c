@@ -901,14 +901,14 @@ static int tls_mcache_init(void) {
 #ifdef PR_USE_MEMCACHE
   /* Register ourselves with mod_tls. */
   if (tls_sess_cache_register("memcache", &tls_mcache) < 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_MEMCACHE_VERSION
+    pr_log_debug(DEBUG1, MOD_TLS_MEMCACHE_VERSION
       ": notice: error registering 'memcache' SSL session cache: %s",
       strerror(errno));
     return -1;
   }
 #else
-  pr_log_pri(PR_LOG_NOTICE, MOD_TLS_MEMCACHE_VERSION
-    ": notice: unable to register 'memcache' SSL session cache: Memcache support not enabled");
+  pr_log_debug(DEBUG1, MOD_TLS_MEMCACHE_VERSION
+    ": unable to register 'memcache' SSL session cache: Memcache support not enabled");
 #endif /* PR_USE_MEMCACHE */
 
   return 0;

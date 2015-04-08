@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2014 The ProFTPD Project team
+ * Copyright (c) 2006-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * in the source distribution.
  */
 
-/* Trace functions
- * $Id: trace.c,v 1.46 2013-02-25 19:40:43 castaglia Exp $
- */
+/* Trace functions. */
 
 
 #include "conf.h"
@@ -484,6 +482,19 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   int res;
   va_list msg;
 
+  if (channel == NULL ||
+      fmt == NULL ||
+      level <= 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* If no one's listening... */
+  if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0 &&
+      trace_logfd < 0) {
+    return 0;
+  }
+
   va_start(msg, fmt);
   res = pr_trace_vmsg(channel, level, fmt, msg);
   va_end(msg);
@@ -493,7 +504,7 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
 
 int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     va_list msg) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE];
   size_t buflen;
   struct trace_levels *levels;
   int discard = FALSE;
@@ -514,6 +525,12 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
   if (trace_tab == NULL) {
     errno = EPERM;
     return -1;
+  }
+
+  /* If no one's listening... */
+  if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0 &&
+      trace_logfd < 0) {
+    return 0;
   }
 
   levels = trace_get_levels(channel);
@@ -543,6 +560,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     }
   }
 
+  memset(buf, '\0', sizeof(buf));
   buflen = vsnprintf(buf, sizeof(buf), fmt, msg);
 
   /* Always make sure the buffer is NUL-terminated. */

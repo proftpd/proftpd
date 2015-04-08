@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,13 +24,12 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Non-specific support functions.
- * $Id: support.h,v 1.39 2011-11-19 02:40:12 castaglia Exp $
- */
+/* Non-specific support functions. */
 
 #ifndef PR_SUPPORT_H
 #define PR_SUPPORT_H
 
+#include <sys/time.h>
 #include <time.h>
 
 #if defined(NAME_MAX)
@@ -67,6 +66,12 @@ char *dir_canonical_path(pool *, const char *);
 char *dir_canonical_vpath(pool *, const char *);
 char *dir_best_path(pool *, const char *);
 
+/* Per RFC959, directory responses for MKD and PWD should be
+ * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
+ * the add'l quotes must be duplicated.
+ */
+const char *quote_dir(pool *p, char *dir);
+
 /* Schedulables. */
 void schedule(void (*f)(void *, void *, void *, void *), int, void *, void *,
   void *, void *);
@@ -77,6 +82,7 @@ void shutdown_end_session(void *, void *, void *, void *);
 size_t get_name_max(char *, int);
 
 mode_t file_mode(const char *);
+mode_t symlink_mode(const char *);
 int file_exists(const char *);
 int dir_exists(const char *);
 int exists(const char *);
@@ -91,5 +97,8 @@ struct tm *pr_gmtime(pool *, const time_t *);
 struct tm *pr_localtime(pool *, const time_t *);
 const char *pr_strtime(time_t);
 const char *pr_strtime2(time_t, int);
+
+int pr_gettimeofday_millis(uint64_t *);
+int pr_timeval2millis(struct timeval *, uint64_t *);
 
 #endif /* PR_SUPPORT_H */

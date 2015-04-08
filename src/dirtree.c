@@ -82,8 +82,11 @@ static int allow_dyn_config(const char *path) {
     c = find_config_next(c, c->next, CONF_PARAM, "AllowOverride", FALSE);
   }
 
-  /* Print out some nice debugging information. */
-  if (found_config) {
+  /* Print out some nice debugging information, but only if we have a real
+   * path.
+   */
+  if (found_config &&
+      *path) {
     pr_log_debug(DEBUG8, "AllowOverride for path '%s' %s .ftpaccess files",
       path, allow ? "allows" : "denies");
   }
@@ -756,13 +759,17 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
         }
 
         if (file_uid == hide_uid) {
-          if (!inverted)
+          if (!inverted) {
+            pr_trace_msg("hiding", 8,
+              "hiding file '%s' because of HideUser %s", path, hide_user);
             res = FALSE;
-
+          }
           break;
 
         } else {
           if (inverted) {
+            pr_trace_msg("hiding", 8,
+              "hiding file '%s' because of HideUser !%s", path, hide_user);
             res = FALSE;
             break;
           }
@@ -800,7 +807,7 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
                 "HideGroup '%s' is not a known/valid group, ignoring",
                 hide_group);
 
-              c = find_config_next(c, c->next, CONF_PARAM, "HideUser", FALSE);
+              c = find_config_next(c, c->next, CONF_PARAM, "HideGroup", FALSE);
               continue;
             }
 
@@ -809,13 +816,19 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
 
           if (hide_gid != (gid_t) -1) {
             if (file_gid == hide_gid) {
-              if (!inverted)
+              if (!inverted) {
+                pr_trace_msg("hiding", 8,
+                  "hiding file '%s' because of HideGroup %s", path, hide_group);
                 res = FALSE;
+              }
 
               break;
 
             } else {
               if (inverted) {
+                pr_trace_msg("hiding", 8,
+                  "hiding file '%s' because of HideGroup !%s", path,
+                  hide_group);
                 res = FALSE;
                 break;
               }
@@ -827,8 +840,11 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
 
             /* First check to see if the file GID matches the session GID. */
             if (file_gid == session.gid) {
-              if (!inverted)
+              if (!inverted) {
+                pr_trace_msg("hiding", 8,
+                  "hiding file '%s' because of HideGroup %s", path, hide_group);
                 res = FALSE;
+              }
 
               break;
             }
@@ -836,14 +852,20 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
             /* Next, scan the list of supplemental groups for this user. */
             for (i = 0; i < session.gids->nelts; i++) {
               if (file_gid == group_ids[i]) {
-                if (!inverted)
+                if (!inverted) {
+                  pr_trace_msg("hiding", 8,
+                    "hiding file '%s' because of HideGroup %s", path, 
+                    hide_group);
                   res = FALSE;
+                }
 
                 break;
               }
             }
 
             if (inverted) {
+              pr_trace_msg("hiding", 8,
+                "hiding file '%s' because of HideGroup !%s", path, hide_group);
               res = FALSE;
               break;
             }
@@ -870,6 +892,14 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
              */
             res = pr_fsio_access(path, X_OK, session.uid, session.gid,
               session.gids) == 0 ? TRUE : FALSE;
+            if (res == FALSE) {
+              int xerrno = errno;
+
+              pr_trace_msg("hiding", 8,
+                "hiding directory '%s' because of HideNoAccess (errno = %s)",
+                path, strerror(xerrno));
+              errno = xerrno;
+            }
 
           } else {
             /* Check to see if the mode of this file allows the current
@@ -877,6 +907,14 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
              */
             res = pr_fsio_access(path, R_OK, session.uid, session.gid,
               session.gids) == 0 ? TRUE : FALSE;
+            if (res == FALSE) {
+              int xerrno = errno;
+
+              pr_trace_msg("hiding", 8,
+                "hiding file '%s' because of HideNoAccess (errno = %s)", path,
+                strerror(xerrno));
+              errno = xerrno;
+            }
           }
         }
       }
@@ -893,6 +931,9 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
 
       } else if (deny_all &&
                  *deny_all == TRUE) {
+        pr_trace_msg("hiding", 8,
+          "hiding file '%s' because of DenyAll limit for command (errno = %s)",
+          path, strerror(EACCES));
         res = FALSE;
         errno = EACCES;
       }
@@ -1813,7 +1854,7 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   int res = 1, isfile;
   int op_hidden = FALSE, regex_hidden = FALSE;
 
-  if (!path) {
+  if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1823,17 +1864,21 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
 
   fullpath = (char *) path;
 
-  if (session.chroot_path)
+  if (session.chroot_path) {
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
+  }
 
-  pr_log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'.",
-            path, fullpath);
+  if (*path) {
+    /* Only log this debug line if we are dealing with a real path. */
+    pr_log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'",
+      path, fullpath);
+  }
 
   /* Check and build all appropriate dynamic configuration entries */
-  pr_fs_clear_cache();
   isfile = pr_fsio_stat(path, &st);
-  if (isfile == -1)
+  if (isfile < 0) {
     memset(&st, '\0', sizeof(st));
+  }
 
   build_dyn_config(p, path, &st, TRUE);
 
@@ -1849,8 +1894,9 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
       session.dir_config->name, fullpath);
   }
 
-  if (!c && session.anon_config)
+  if (!c && session.anon_config) {
     c = session.anon_config;
+  }
 
   /* Make sure this cmd_rec has a cmd_id. */
   if (cmd->cmd_id == 0) {
@@ -1882,8 +1928,9 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     struct passwd *pw;
 
     pw = pr_auth_getpwnam(p, owner);
-    if (pw != NULL)
+    if (pw != NULL) {
       session.fsuid = pw->pw_uid;
+    }
   }
 
   owner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE);
@@ -1922,8 +1969,9 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit.
      */
-    if (res == 1 && group)
+    if (res == 1 && group) {
       res = dir_check_limits(cmd, c, group, op_hidden || regex_hidden);
+    }
 
     /* If still == 1, no explicit allow so check lowest priority "ALL" group.
      * Note that certain commands are deliberately excluded from the
@@ -1941,15 +1989,17 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   }
 
   if (res &&
-      _umask != (mode_t) -1)
+      _umask != (mode_t) -1) {
     pr_log_debug(DEBUG5,
       "in dir_check_full(): setting umask to %04o (was %04o)",
         (unsigned int) _umask, (unsigned int) umask(_umask));
+  }
 
   destroy_pool(p);
 
-  if (hidden)
+  if (hidden) {
     *hidden = op_hidden || regex_hidden;
+  }
 
   return res;
 }
@@ -1969,7 +2019,7 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   int res = 1, isfile;
   int op_hidden = FALSE, regex_hidden = FALSE;
 
-  if (!path) {
+  if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1979,8 +2029,9 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
 
   fullpath = (char *) path;
 
-  if (session.chroot_path)
+  if (session.chroot_path) {
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
+  }
 
   c = (session.dir_config ? session.dir_config :
         (session.anon_config ? session.anon_config : NULL));
@@ -1991,10 +2042,10 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   }
 
   /* Check and build all appropriate dynamic configuration entries */
-  pr_fs_clear_cache();
   isfile = pr_fsio_stat(path, &st);
-  if (isfile == -1)
+  if (isfile < 0) {
     memset(&st, 0, sizeof(st));
+  }
 
   build_dyn_config(p, path, &st, FALSE);
 
@@ -2010,8 +2061,9 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
       session.dir_config->name, fullpath);
   }
 
-  if (!c && session.anon_config)
+  if (!c && session.anon_config) {
     c = session.anon_config;
+  }
 
   /* Make sure this cmd_rec has a cmd_id. */
   if (cmd->cmd_id == 0) {
@@ -2043,8 +2095,9 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     struct passwd *pw;
 
     pw = pr_auth_getpwnam(p, owner);
-    if (pw != NULL)
+    if (pw != NULL) {
       session.fsuid = pw->pw_uid;
+    }
   }
 
   owner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE);
@@ -2081,8 +2134,9 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit.
      */
-    if (res == 1 && group)
+    if (res == 1 && group) {
       res = dir_check_limits(cmd, c, group, op_hidden || regex_hidden);
+    }
 
     /* If still == 1, no explicit allow so check lowest priority "ALL" group.
      * Note that certain commands are deliberately excluded from the
@@ -2100,14 +2154,16 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   }
 
   if (res &&
-      _umask != (mode_t) -1)
+      _umask != (mode_t) -1) {
     pr_log_debug(DEBUG5, "in dir_check(): setting umask to %04o (was %04o)",
         (unsigned int) _umask, (unsigned int) umask(_umask));
+  }
 
   destroy_pool(p);
 
-  if (hidden)
+  if (hidden) {
     *hidden = op_hidden || regex_hidden;
+  }
 
   return res;
 }
@@ -2541,8 +2597,10 @@ int parse_config_path(pool *p, const char *path) {
 
   have_glob = pr_str_is_fnmatch(path); 
 
-  if (!have_glob && pr_fsio_lstat(path, &st) < 0)
+  if (!have_glob &&
+      pr_fsio_lstat(path, &st) < 0) {
     return -1;
+  }
 
   if (have_glob ||
       (!S_ISLNK(st.st_mode) && S_ISDIR(st.st_mode))) {

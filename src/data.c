@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Data connection management functions
- * $Id: data.c,v 1.152 2013-11-09 23:20:23 castaglia Exp $
- */
+/* Data connection management functions */
 
 #include "conf.h"
 
@@ -39,6 +37,13 @@
 #endif /* HAVE_SYS_UIO_H */
 
 static const char *trace_channel = "data";
+static const char *timing_channel = "timing";
+
+#define PR_DATA_OPT_IGNORE_ASCII	0x0001
+static unsigned long data_opts = 0UL;
+static uint64_t data_start_ms = 0L;
+static int data_first_byte_read = FALSE;
+static int data_first_byte_written = FALSE;
 
 /* local macro */
 
@@ -65,8 +70,7 @@ static int stalled_timeout_cb(CALLBACK_FRAME) {
   pr_session_disconnect(NULL, PR_SESS_DISCONNECT_TIMEOUT,
     "TimeoutStalled during data transfer");
 
-  /* Prevent compiler warning.
-   */
+  /* Prevent compiler warning. */
   return 0;
 }
 
@@ -88,25 +92,29 @@ static RETSIGTYPE data_urgent(int signo) {
 }
 
 static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
-  char *dest = buf,*src = buf;
+  char *dst = buf, *src = buf;
   int thislen = *bufsize;
 
   *adjlen = 0;
   while (thislen--) {
-    if (*src != '\r')
-      *dest++ = *src++;
-    else {
+    if (*src != '\r') {
+      *dst++ = *src++;
+
+    } else {
       if (thislen == 0) {
-	/* copy, but save it for later */
-	*dest++ = *src++;
-	(*adjlen)++;
-	(*bufsize)--;
+        /* copy, but save it for later */
+        *dst++ = *src++;
+        (*adjlen)++;
+        (*bufsize)--;
+
       } else {
-	if (*(src+1) == '\n') { /* skip */
-	  (*bufsize)--;
-	  src++;
-	} else
-	  *dest++ = *src++;
+        if (*(src+1) == '\n') { /* skip */
+          (*bufsize)--;
+          src++;
+
+        } else {
+          *dst++ = *src++;
+        }
       }
     }
   }
@@ -114,17 +122,13 @@ static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
   return *bufsize;
 }
 
-/* this function rewrites the contents of the given buffer, making sure that
+/* This function rewrites the contents of the given buffer, making sure that
  * each LF has a preceding CR, as required by RFC959:
  *
  *  buf = pointer to a buffer
  *  buflen = length of data in buffer
  *  bufsize = total size of buffer
- *  expand = will contain the number of expansion bytes (CRs) added,
- *           and should be the difference between buflen's original
- *           value and its value when this function returns
  */
-
 static int have_dangling_cr = FALSE;
 static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
     unsigned int bufsize) {
@@ -137,12 +141,17 @@ static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
   register unsigned int i = 0;
 
   /* First, determine how many bare LFs are present. */
-  if (!have_dangling_cr && tmpbuf[0] == '\n')
+  if (have_dangling_cr == FALSE &&
+      tmpbuf[0] == '\n') {
     lfcount++;
+  }
 
-  for (i = 1; i < tmplen; i++)
-    if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r')
+  for (i = 1; i < tmplen; i++) {
+    if (tmpbuf[i] == '\n' &&
+        tmpbuf[i-1] != '\r') {
       lfcount++;
+    }
+  }
 
   /* If the last character in the buffer is CR, then we have a dangling CR.
    * The first character in the next buffer could be an LF, and without
@@ -151,9 +160,10 @@ static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
    */
   have_dangling_cr = (tmpbuf[tmplen-1] == '\r') ? TRUE : FALSE;
 
-  if (lfcount == 0)
+  if (lfcount == 0) {
     /* No translation needed. */
     return 0;
+  }
 
   /* Assume that for each LF (including a leading LF), space for another
    * char (a '\r') is needed.  Determine whether there is enough space in
@@ -241,8 +251,10 @@ static int data_pasv_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
 
-  if (!reason && session.xfer.filename)
+  if (reason == NULL &&
+      session.xfer.filename) {
     reason = session.xfer.filename;
+  }
 
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
@@ -322,7 +334,8 @@ static int data_pasv_open(char *reason, off_t size) {
   }
 
   /* Check for error conditions. */
-  if (c && c->mode == CM_ERROR) {
+  if (c != NULL &&
+      c->mode == CM_ERROR) {
     pr_log_pri(PR_LOG_ERR, "error: unable to accept an incoming data "
       "connection: %s", strerror(c->xerrno));
   }
@@ -340,8 +353,10 @@ static int data_active_open(char *reason, off_t size) {
   pr_netaddr_t *bind_addr;
   unsigned char *root_revoke = NULL;
 
-  if (!reason && session.xfer.filename)
+  if (reason == NULL &&
+      session.xfer.filename) {
     reason = session.xfer.filename;
+  }
 
   if (pr_netaddr_get_family(session.c->local_addr) == pr_netaddr_get_family(session.c->remote_addr)) {
     bind_addr = session.c->local_addr;
@@ -557,8 +572,38 @@ void pr_data_reset(void) {
     destroy_pool(session.d->pool);
   }
 
+  /* Clear any leftover state from previous transfers. */
+  have_dangling_cr = FALSE;
+
   session.d = NULL;
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
+}
+
+int pr_data_ignore_ascii(int ignore_ascii) {
+  int res;
+
+  if (ignore_ascii != TRUE && 
+      ignore_ascii != FALSE) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (data_opts & PR_DATA_OPT_IGNORE_ASCII) {
+    if (!ignore_ascii) {
+      data_opts &= ~PR_DATA_OPT_IGNORE_ASCII;
+    }
+
+    res = TRUE;
+
+  } else {
+    if (ignore_ascii) {
+      data_opts |= PR_DATA_OPT_IGNORE_ASCII;
+    }
+
+    res = FALSE;
+  }
+
+  return res;
 }
 
 void pr_data_init(char *filename, int direction) {
@@ -573,6 +618,9 @@ void pr_data_init(char *filename, int direction) {
 
     session.xfer.direction = direction;
   }
+
+  /* Clear any leftover state from previous transfers. */
+  have_dangling_cr = FALSE;
 }
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
@@ -685,6 +733,11 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
         strerror(errno));
     }
 #endif
+
+    /* Reset all of the timing-related variables for data transfers. */
+    pr_gettimeofday_millis(&data_start_ms);
+    data_first_byte_read = FALSE;
+    data_first_byte_written = FALSE;
   }
 
   return res;
@@ -1110,7 +1163,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
   }
 
   /* If we don't have a data connection here (e.g. might have been closed
-   * by an ABOR, then return zero (no data transferred).
+   * by an ABOR), then return zero (no data transferred).
    */
   if (session.d == NULL) {
     int xerrno;
@@ -1138,7 +1191,14 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
     char *buf = session.xfer.buf;
     pr_buffer_t *pbuf;
 
-    if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+    /* We use ASCII translation if:
+     *
+     * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
+     * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
+     */
+    if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
+        ((session.sf_flags & SF_ASCII) &&
+         !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
       int adjlen, buflen;
 
       do {
@@ -1177,6 +1237,22 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         pbuf->buflen = len;
         pbuf->current = pbuf->buf;
         pbuf->remaining = 0;
+
+        if (len > 0 &&
+            data_first_byte_read == FALSE) {
+          if (pr_trace_get_level(timing_channel)) {
+            unsigned long elapsed_ms;
+            uint64_t read_ms;
+
+            pr_gettimeofday_millis(&read_ms);
+            elapsed_ms = (unsigned long) (read_ms - data_start_ms);
+
+            pr_trace_msg(timing_channel, 7,
+              "Time for first data byte read: %lu ms", elapsed_ms);
+          }
+
+          data_first_byte_read = TRUE;
+        }
 
         pr_event_generate("core.data-read", pbuf);
 
@@ -1281,6 +1357,21 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         pbuf->current = pbuf->buf;
         pbuf->remaining = 0;
 
+        if (data_first_byte_read == FALSE) {
+          if (pr_trace_get_level(timing_channel)) {
+            unsigned long elapsed_ms;
+            uint64_t read_ms;
+
+            pr_gettimeofday_millis(&read_ms);
+            elapsed_ms = (unsigned long) (read_ms - data_start_ms);
+
+            pr_trace_msg(timing_channel, 7,
+              "Time for first data byte read: %lu ms", elapsed_ms);
+          }
+
+          data_first_byte_read = TRUE;
+        }
+
         pr_event_generate("core.data-read", pbuf);
 
         /* The event listeners may have changed the data to write out. */
@@ -1314,13 +1405,26 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       /* Fill up our internal buffer. */
       memcpy(session.xfer.buf, cl_buf, buflen);
 
-      if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+      /* We use ASCII translation if:
+       *
+       * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
+      * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
+       */
+      if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
+          ((session.sf_flags & SF_ASCII) &&
+           !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
+        unsigned int added = 0;
+
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in
          * the internal buffer, including any added CRs.
          */
-        xfrm_ascii_write(&session.xfer.buf, &xferbuflen, session.xfer.bufsize);
+        added = xfrm_ascii_write(&session.xfer.buf, &xferbuflen,
+          session.xfer.bufsize);
+        pr_trace_msg(trace_channel, 9,
+          "ASCII transformation added %u CRs; transfer buffer now = %u bytes",
+          added, xferbuflen);
       }
 
       bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf, xferbuflen);
@@ -1344,6 +1448,21 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       }
 
       if (bwrote > 0) {
+        if (data_first_byte_written == FALSE) {
+          if (pr_trace_get_level(timing_channel)) {
+            unsigned long elapsed_ms;
+            uint64_t write_ms;
+
+            pr_gettimeofday_millis(&write_ms);
+            elapsed_ms = (unsigned long) (write_ms - data_start_ms);
+
+            pr_trace_msg(timing_channel, 7,
+              "Time for first data byte written: %lu ms", elapsed_ms);
+          }
+
+          data_first_byte_written = TRUE;
+        }
+
         if (timeout_stalled) {
           pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
         }
@@ -1358,8 +1477,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
   }
 
   if (total &&
-      timeout_idle)
+      timeout_idle) {
     pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+  }
 
   session.xfer.total_bytes += total;
   session.total_bytes += total;

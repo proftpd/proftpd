@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002-2014 The ProFTPD Project team
+ * Copyright (c) 2002-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
  * copyright holders give permission to link this program with OpenSSL, and
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
- *
- * $Id: mod_auth_file.c,v 1.58 2014-01-22 06:39:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,8 +86,8 @@ static int handle_empty_salt = FALSE;
 
 static int authfile_sess_init(void);
 
-static int af_setpwent(void);
-static int af_setgrent(void);
+static int af_setpwent(pool *);
+static int af_setgrent(pool *);
 
 static const char *trace_channel = "auth.file";
 
@@ -172,7 +170,11 @@ static int af_check_file(pool *p, const char *name, const char *path,
     memset(buf, '\0', sizeof(buf));
     res = pr_fsio_readlink(path, buf, sizeof(buf)-1);
     if (res > 0) {
-      path = pstrdup(p, buf);
+
+      /* The path contained in the symlink might itself be relative, thus
+       * we need to make sure that we get an absolute path (Bug#4145).
+       */
+      path = dir_abs_path(p, buf, FALSE);
     }
 
     res = stat(orig_path, &st);
@@ -433,8 +435,8 @@ static struct group *af_getgrp(const char *buf, unsigned int lineno) {
 }
 #endif /* !HAVE_FGETGRENT */
 
-static int af_allow_grent(struct group *grp) {
-  if (!af_group_file) {
+static int af_allow_grent(pool *p, struct group *grp) {
+  if (af_group_file == NULL) {
     errno = EPERM;
     return -1;
   }
@@ -444,18 +446,18 @@ static int af_allow_grent(struct group *grp) {
 
     if (grp->gr_gid < af_group_file->af_min_id.gid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
-        "GID %lu below the minimum allowed (%lu)", grp->gr_name,
-        (unsigned long) grp->gr_gid,
-        (unsigned long) af_group_file->af_min_id.gid);
+        "GID %s below the minimum allowed (%s)", grp->gr_name,
+        pr_gid2str(p, grp->gr_gid),
+        pr_gid2str(p, af_group_file->af_min_id.gid));
       errno = EINVAL;
       return -1;
     }
 
     if (grp->gr_gid > af_group_file->af_max_id.gid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
-        "GID %lu above the maximum allowed (%lu)", grp->gr_name,
-        (unsigned long) grp->gr_gid,
-        (unsigned long) af_group_file->af_max_id.gid);
+        "GID %s above the maximum allowed (%s)", grp->gr_name,
+        pr_gid2str(p, grp->gr_gid),
+        pr_gid2str(p, af_group_file->af_max_id.gid));
       errno = EINVAL;
       return -1;
     }
@@ -494,7 +496,7 @@ static void af_endgrent(void) {
   return;
 }
 
-static struct group *af_getgrent(void) {
+static struct group *af_getgrent(pool *p) {
   struct group *grp = NULL, *res = NULL;
 
   if (!af_group_file ||
@@ -548,7 +550,7 @@ static struct group *af_getgrent(void) {
       break;
     }
 
-    if (af_allow_grent(grp) < 0) {
+    if (af_allow_grent(p, grp) < 0) {
       continue;
     }
 
@@ -559,14 +561,14 @@ static struct group *af_getgrent(void) {
   return res;
 }
 
-static struct group *af_getgrnam(const char *name) {
+static struct group *af_getgrnam(pool *p, const char *name) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0) {
+  if (af_setgrent(p) < 0) {
     return NULL;
   }
 
-  while ((grp = af_getgrent()) != NULL) {
+  while ((grp = af_getgrent(p)) != NULL) {
     pr_signals_handle();
 
     if (strcmp(name, grp->gr_name) == 0) {
@@ -578,14 +580,14 @@ static struct group *af_getgrnam(const char *name) {
   return grp;
 }
 
-static struct group *af_getgrgid(gid_t gid) {
+static struct group *af_getgrgid(pool *p, gid_t gid) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0) {
+  if (af_setgrent(p) < 0) {
     return NULL;
   }
 
-  while ((grp = af_getgrent()) != NULL) {
+  while ((grp = af_getgrent(p)) != NULL) {
     pr_signals_handle();
 
     if (grp->gr_gid == gid) {
@@ -597,7 +599,7 @@ static struct group *af_getgrgid(gid_t gid) {
   return grp;
 }
 
-static int af_setgrent(void) {
+static int af_setgrent(pool *p) {
 
   if (af_group_file != NULL) {
     if (af_group_file->af_file != NULL) {
@@ -619,10 +621,10 @@ static int af_setgrent(void) {
         if (pr_fsio_stat(af_group_file->af_path, &st) == 0) {
           pr_log_pri(PR_LOG_WARNING,
             "error: unable to open AuthGroupFile file '%s' (file owned by "
-            "UID %lu, GID %lu, perms %04o, accessed by UID %lu, GID %lu): %s",
-            af_group_file->af_path, (unsigned long) st.st_uid,
-            (unsigned long) st.st_gid, st.st_mode & ~S_IFMT,
-            (unsigned long) geteuid(), (unsigned long) getegid(),
+            "UID %s, GID %s, perms %04o, accessed by UID %s, GID %s): %s",
+            af_group_file->af_path, pr_uid2str(p, st.st_uid),
+            pr_gid2str(p, st.st_gid), st.st_mode & ~S_IFMT,
+            pr_uid2str(p, geteuid()), pr_gid2str(p, getegid()),
             strerror(xerrno));
 
         } else {
@@ -653,8 +655,8 @@ static int af_setgrent(void) {
   return -1;
 }
 
-static int af_allow_pwent(struct passwd *pwd) {
-  if (!af_user_file) {
+static int af_allow_pwent(pool *p, struct passwd *pwd) {
+  if (af_user_file == NULL) {
     errno = EPERM;
     return -1;
   }
@@ -664,18 +666,18 @@ static int af_allow_pwent(struct passwd *pwd) {
 
     if (pwd->pw_uid < af_user_file->af_min_id.uid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
-        "UID %lu below the minimum allowed (%lu)", pwd->pw_name,
-        (unsigned long) pwd->pw_uid,
-        (unsigned long) af_user_file->af_min_id.uid);
+        "UID %s below the minimum allowed (%s)", pwd->pw_name,
+        pr_uid2str(p, pwd->pw_uid),
+        pr_uid2str(p, af_user_file->af_min_id.uid));
       errno = EINVAL;
       return -1;
     }
 
     if (pwd->pw_uid > af_user_file->af_max_id.gid) {
       pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
-        "UID %lu above the maximum allowed (%lu)", pwd->pw_name,
-        (unsigned long) pwd->pw_uid,
-        (unsigned long) af_user_file->af_max_id.uid);
+        "UID %s above the maximum allowed (%s)", pwd->pw_name,
+        pr_uid2str(p, pwd->pw_uid),
+        pr_uid2str(p, af_user_file->af_max_id.uid));
       errno = EINVAL;
       return -1;
     }
@@ -731,7 +733,7 @@ static void af_endpwent(void) {
   return;
 }
 
-static struct passwd *af_getpwent(void) {
+static struct passwd *af_getpwent(pool *p) {
   struct passwd *pwd = NULL, *res = NULL;
 
   if (af_user_file == NULL ||
@@ -775,7 +777,7 @@ static struct passwd *af_getpwent(void) {
       break;
     }
 
-    if (af_allow_pwent(pwd) < 0) {
+    if (af_allow_pwent(p, pwd) < 0) {
 #ifndef HAVE_FGETPWENT
       memset(buf, '\0', sizeof(buf));
 #endif
@@ -789,14 +791,14 @@ static struct passwd *af_getpwent(void) {
   return res;
 }
 
-static struct passwd *af_getpwnam(const char *name) {
+static struct passwd *af_getpwnam(pool *p, const char *name) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(p) < 0) {
     return NULL;
   }
 
-  while ((pwd = af_getpwent()) != NULL) {
+  while ((pwd = af_getpwent(p)) != NULL) {
     pr_signals_handle();
 
     if (strcmp(name, pwd->pw_name) == 0) {
@@ -808,19 +810,19 @@ static struct passwd *af_getpwnam(const char *name) {
   return pwd;
 }
 
-static char *af_getpwpass(const char *name) {
-  struct passwd *pwd = af_getpwnam(name);
+static char *af_getpwpass(pool *p, const char *name) {
+  struct passwd *pwd = af_getpwnam(p, name);
   return pwd ? pwd->pw_passwd : NULL;
 }
 
-static struct passwd *af_getpwuid(uid_t uid) {
+static struct passwd *af_getpwuid(pool *p, uid_t uid) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(p) < 0) {
     return NULL;
   }
 
-  while ((pwd = af_getpwent()) != NULL) {
+  while ((pwd = af_getpwent(p)) != NULL) {
     pr_signals_handle();
 
     if (pwd->pw_uid == uid) {
@@ -832,7 +834,7 @@ static struct passwd *af_getpwuid(uid_t uid) {
   return pwd;
 }
 
-static int af_setpwent(void) {
+static int af_setpwent(pool *p) {
 
   if (af_user_file != NULL) {
     if (af_user_file->af_file != NULL) {
@@ -854,10 +856,10 @@ static int af_setpwent(void) {
         if (pr_fsio_stat(af_user_file->af_path, &st) == 0) {
           pr_log_pri(PR_LOG_WARNING,
             "error: unable to open AuthUserFile file '%s' (file owned by "
-            "UID %lu, GID %lu, perms %04o, accessed by UID %lu, GID %lu): %s",
-            af_user_file->af_path, (unsigned long) st.st_uid,
-            (unsigned long) st.st_gid, st.st_mode & ~S_IFMT,
-            (unsigned long) geteuid(), (unsigned long) getegid(),
+            "UID %s, GID %s, perms %04o, accessed by UID %s, GID %s): %s",
+            af_user_file->af_path, pr_uid2str(p, st.st_uid),
+            pr_gid2str(p, st.st_gid), st.st_mode & ~S_IFMT,
+            pr_uid2str(p, geteuid()), pr_gid2str(p, getegid()),
             strerror(xerrno));
 
         } else {
@@ -899,7 +901,7 @@ MODRET authfile_endpwent(cmd_rec *cmd) {
 MODRET authfile_getpwent(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
 
-  pwd = af_getpwent();
+  pwd = af_getpwent(cmd->tmp_pool);
 
   return pwd ? mod_create_data(cmd, pwd) : PR_DECLINED(cmd);
 }
@@ -908,12 +910,12 @@ MODRET authfile_getpwnam(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
   const char *name = cmd->argv[0];
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
   /* Ugly -- we iterate through the file.  Time-consuming. */
-  while ((pwd = af_getpwent()) != NULL) {
+  while ((pwd = af_getpwent(cmd->tmp_pool)) != NULL) {
     pr_signals_handle();
 
     if (strcmp(name, pwd->pw_name) == 0) {
@@ -929,11 +931,11 @@ MODRET authfile_getpwuid(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
   uid_t uid = *((uid_t *) cmd->argv[0]);
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  pwd = af_getpwuid(uid);
+  pwd = af_getpwuid(cmd->tmp_pool, uid);
 
   return pwd ? mod_create_data(cmd, pwd) : PR_DECLINED(cmd);
 }
@@ -941,17 +943,17 @@ MODRET authfile_getpwuid(cmd_rec *cmd) {
 MODRET authfile_name2uid(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  pwd = af_getpwnam(cmd->argv[0]);
+  pwd = af_getpwnam(cmd->tmp_pool, cmd->argv[0]);
 
   return pwd ? mod_create_data(cmd, (void *) &pwd->pw_uid) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_setpwent(cmd_rec *cmd) {
-  if (af_setpwent() == 0) {
+  if (af_setpwent(cmd->tmp_pool) == 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -961,11 +963,11 @@ MODRET authfile_setpwent(cmd_rec *cmd) {
 MODRET authfile_uid2name(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  pwd = af_getpwuid(*((uid_t *) cmd->argv[0]));
+  pwd = af_getpwuid(cmd->tmp_pool, *((uid_t *) cmd->argv[0]));
 
   return pwd ? mod_create_data(cmd, pwd->pw_name) : PR_DECLINED(cmd);
 }
@@ -978,7 +980,7 @@ MODRET authfile_endgrent(cmd_rec *cmd) {
 MODRET authfile_getgrent(cmd_rec *cmd) {
   struct group *grp = NULL;
 
-  grp = af_getgrent();
+  grp = af_getgrent(cmd->tmp_pool);
 
   return grp ? mod_create_data(cmd, grp) : PR_DECLINED(cmd);
 }
@@ -987,11 +989,11 @@ MODRET authfile_getgrgid(cmd_rec *cmd) {
   struct group *grp = NULL;
   gid_t gid = *((gid_t *) cmd->argv[0]);
 
-  if (af_setgrent() < 0) {
+  if (af_setgrent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  grp = af_getgrgid(gid);
+  grp = af_getgrgid(cmd->tmp_pool, gid);
 
   return grp ? mod_create_data(cmd, grp) : PR_DECLINED(cmd);
 }
@@ -1000,11 +1002,11 @@ MODRET authfile_getgrnam(cmd_rec *cmd) {
   struct group *grp = NULL;
   const char *name = cmd->argv[0];
 
-  if (af_setgrent() < 0) {
+  if (af_setgrent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  while ((grp = af_getgrent()) != NULL) {
+  while ((grp = af_getgrent(cmd->tmp_pool)) != NULL) {
     pr_signals_handle();
 
     if (strcmp(name, grp->gr_name) == 0) {
@@ -1026,23 +1028,25 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  if (af_setgrent() < 0) {
+  if (af_setgrent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
   /* Check for NULLs */
-  if (cmd->argv[1])
+  if (cmd->argv[1]) {
     gids = (array_header *) cmd->argv[1];
+  }
 
-  if (cmd->argv[2])
+  if (cmd->argv[2]) {
     groups = (array_header *) cmd->argv[2];
+  }
 
   /* Retrieve the necessary info. */
-  pwd = af_getpwnam(name);
+  pwd = af_getpwnam(cmd->tmp_pool, name);
   if (pwd == NULL) {
     return PR_DECLINED(cmd);
   }
@@ -1053,16 +1057,16 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
   }
 
   if (groups &&
-      (grp = af_getgrgid(pwd->pw_gid)) != NULL) {
+      (grp = af_getgrgid(cmd->tmp_pool, pwd->pw_gid)) != NULL) {
     *((char **) push_array(groups)) = pstrdup(session.pool, grp->gr_name);
   }
 
-  af_setgrent();
+  af_setgrent(cmd->tmp_pool);
 
   /* This is where things get slow, expensive, and ugly.  Loop through
    * everything, checking to make sure we haven't already added it.
    */
-  while ((grp = af_getgrent()) != NULL &&
+  while ((grp = af_getgrent(cmd->tmp_pool)) != NULL &&
       grp->gr_mem) {
     char **gr_mems = NULL;
 
@@ -1075,11 +1079,13 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
       if (strcmp(*gr_mems, pwd->pw_name) == 0) {
 
         /* ...add the GID and name */
-        if (gids)
+        if (gids) {
           *((gid_t *) push_array(gids)) = grp->gr_gid;
+        }
 
-        if (groups)
+        if (groups) {
           *((char **) push_array(groups)) = pstrdup(session.pool, grp->gr_name);
+        }
       }
     }
   }
@@ -1097,11 +1103,11 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
 MODRET authfile_gid2name(cmd_rec *cmd) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0) {
+  if (af_setgrent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  grp = af_getgrgid(*((gid_t *) cmd->argv[0]));
+  grp = af_getgrgid(cmd->tmp_pool, *((gid_t *) cmd->argv[0]));
 
   return grp ? mod_create_data(cmd, grp->gr_name) : PR_DECLINED(cmd);
 }
@@ -1109,17 +1115,17 @@ MODRET authfile_gid2name(cmd_rec *cmd) {
 MODRET authfile_name2gid(cmd_rec *cmd) {
   struct group *grp = NULL;
 
-  if (af_setgrent() < 0) {
+  if (af_setgrent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
-  grp = af_getgrnam(cmd->argv[0]);
+  grp = af_getgrnam(cmd->tmp_pool, cmd->argv[0]);
 
   return grp ? mod_create_data(cmd, (void *) &grp->gr_gid) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_setgrent(cmd_rec *cmd) {
-  if (af_setgrent() == 0) {
+  if (af_setgrent(cmd->tmp_pool) == 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -1130,12 +1136,12 @@ MODRET authfile_auth(cmd_rec *cmd) {
   char *tmp = NULL, *cleartxt_pass = NULL;
   const char *name = cmd->argv[0];
 
-  if (af_setpwent() < 0) {
+  if (af_setpwent(cmd->tmp_pool) < 0) {
     return PR_DECLINED(cmd);
   }
 
   /* Lookup the cleartxt password for this user. */
-  tmp = af_getpwpass(name);
+  tmp = af_getpwpass(cmd->tmp_pool, name);
   if (tmp == NULL) {
 
     /* For now, return DECLINED.  Ideally, we could stash an auth module

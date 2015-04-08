@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Data transfer module for ProFTPD
- *
- * $Id: mod_xfer.c,v 1.334 2014-04-28 17:11:18 castaglia Exp $
- */
+/* Data transfer module for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -64,6 +61,7 @@ static int xfer_check_limit(cmd_rec *);
 
 /* TransferOptions */
 #define PR_XFER_OPT_HANDLE_ALLO		0x0001
+#define PR_XFER_OPT_IGNORE_ASCII	0x0002
 static unsigned long xfer_opts = PR_XFER_OPT_HANDLE_ALLO;
 
 /* Transfer priority */
@@ -573,15 +571,15 @@ static int xfer_parse_cmdlist(const char *name, config_rec *c,
   return 0;
 }
 
-static int transmit_normal(char *buf, long bufsz) {
+static int transmit_normal(pool *p, char *buf, size_t bufsz) {
   long sz = pr_fsio_read(retr_fh, buf, bufsz);
 
   if (sz < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "RETR, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "RETR, user '%s' (UID %s, GID %s): "
       "error reading from '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(p, session.uid), pr_gid2str(p, session.gid),
       retr_fh->fh_path, strerror(xerrno));
 
     errno = xerrno;
@@ -731,8 +729,8 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
  * transmit_sendfile(), if sendfile support is enabled.  The transmit_normal()
  * function only needs/uses buf and bufsz.
  */
-static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
-    long bufsz) {
+static long transmit_data(pool *p, off_t data_len, off_t *data_offset,
+    char *buf, size_t bufsz) {
   long res;
   int xerrno = 0;
 
@@ -756,7 +754,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     /* sendfile() should not be used for some reason, fallback to using
      * normal data transmission methods.
      */
-    res = transmit_normal(buf, bufsz);
+    res = transmit_normal(p, buf, bufsz);
     xerrno = errno;
 
   } else {
@@ -768,7 +766,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
     pr_log_debug(DEBUG10, "use of sendfile(2) failed due to %s (%d), "
       "falling back to normal data transmission", strerror(errno),
       errno);
-    res = transmit_normal(buf, bufsz);
+    res = transmit_normal(p, buf, bufsz);
     xerrno = errno;
 
 # else
@@ -782,7 +780,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
   }
 
 #else
-  res = transmit_normal(buf, bufsz);
+  res = transmit_normal(p, buf, bufsz);
   xerrno = errno;
 #endif /* HAVE_SENDFILE */
 
@@ -800,7 +798,7 @@ static long transmit_data(off_t data_len, off_t *data_offset, char *buf,
   return res;
 }
 
-static void stor_chown(void) {
+static void stor_chown(pool *p) {
   struct stat st;
   char *xfer_path = NULL;
 
@@ -829,16 +827,16 @@ static void stor_chown(void) {
 
     } else {
       if (session.fsgid != (gid_t) -1) {
-        pr_log_debug(DEBUG2, "root lchown(%s) to uid %lu, gid %lu successful",
-          xfer_path, (unsigned long) session.fsuid,
-          (unsigned long) session.fsgid);
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %s, GID %s successful",
+          xfer_path, pr_uid2str(p, session.fsuid),
+          pr_gid2str(p, session.fsgid));
 
       } else {
-        pr_log_debug(DEBUG2, "root lchown(%s) to uid %lu successful", xfer_path,
-          (unsigned long) session.fsuid);
+        pr_log_debug(DEBUG2, "root lchown(%s) to UID %s successful", xfer_path,
+          pr_uid2str(p, session.fsuid));
       }
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(xfer_path);
       if (pr_fsio_stat(xfer_path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during root chmod: %s", xfer_path,
@@ -901,11 +899,11 @@ static void stor_chown(void) {
         use_root_privs ? "root " : "", xfer_path, strerror(xerrno));
 
     } else {
-      pr_log_debug(DEBUG2, "%slchown(%s) to gid %lu successful",
+      pr_log_debug(DEBUG2, "%slchown(%s) to GID %s successful",
         use_root_privs ? "root " : "", xfer_path,
-        (unsigned long) session.fsgid);
+        pr_gid2str(p, session.fsgid));
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(xfer_path);
       if (pr_fsio_stat(xfer_path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during %schmod: %s", xfer_path,
@@ -986,7 +984,7 @@ static void stor_abort(void) {
   }
 
   if (session.xfer.path) {
-    if (delete_stores == NULL ||
+    if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
       if (pr_fsio_unlink(session.xfer.path) < 0) {
@@ -1204,7 +1202,7 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
  * the duration of this function.
  */
 MODRET xfer_pre_stor(cmd_rec *cmd) {
-  char *path;
+  char *decoded_path, *path;
   mode_t fmode;
   unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
   config_rec *c;
@@ -1219,8 +1217,22 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = dir_best_path(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_best_path(cmd->tmp_pool, decoded_path);
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
@@ -1365,45 +1377,47 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    /* APPE is not compatible with HiddenStores either (Bug#3598). */
-    if (session.xfer.xfer_type == STOR_APPEND) {
-      pr_log_debug(DEBUG9, "HiddenStore in effect, refusing APPE upload");
-      pr_response_add_err(R_550,
-        _("APPE not compatible with server configuration"));
+    /* For Bug#3598, we rejected any APPE command when HiddenStores are in
+     * effect (for good reasons).
+     *
+     * However, for Bug#4144, we're relaxing that policy.  Instead of rejecing
+     * the APPE command, we accept that command, but we disable the HiddenStores
+     * functionality.
+     */
+    if (session.xfer.xfer_type != STOR_APPEND) {
+      prefix = c->argv[1];
+      suffix = c->argv[2];
 
-      pr_cmd_set_errno(cmd, EPERM);
-      errno = EPERM;
-      return PR_ERROR(cmd);
-    }
+      /* Substitute the %P variable for the PID, if present. */
+      if (strstr(prefix, "%P") != NULL) {
+        char pid_buf[32];
 
-    prefix = c->argv[1];
-    suffix = c->argv[2];
+        memset(pid_buf, '\0', sizeof(pid_buf));
+        snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
+          (unsigned long) session.pid);
+        prefix = sreplace(cmd->pool, prefix, "%P", pid_buf, NULL);
+      }
 
-    /* Substitute the %P variable for the PID, if present. */
-    if (strstr(prefix, "%P") != NULL) {
-      char pid_buf[32];
+      if (strstr(suffix, "%P") != NULL) {
+        char pid_buf[32];
 
-      memset(pid_buf, '\0', sizeof(pid_buf));
-      snprintf(pid_buf, sizeof(pid_buf)-1, "%lu", (unsigned long) session.pid);
+        memset(pid_buf, '\0', sizeof(pid_buf));
+        snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
+          (unsigned long) session.pid);
+        suffix = sreplace(cmd->pool, suffix, "%P", pid_buf, NULL);
+      }
 
-      prefix = sreplace(cmd->pool, prefix, "%P", pid_buf, NULL);
-    }
+      if (get_hidden_store_path(cmd, path, prefix, suffix) < 0) {
+        int xerrno = errno;
 
-    if (strstr(suffix, "%P") != NULL) {
-      char pid_buf[32];
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
+        return PR_ERROR(cmd);
+      }
 
-      memset(pid_buf, '\0', sizeof(pid_buf));
-      snprintf(pid_buf, sizeof(pid_buf)-1, "%lu", (unsigned long) session.pid);
-      
-      suffix = sreplace(cmd->pool, suffix, "%P", pid_buf, NULL);
-    }
-
-    if (get_hidden_store_path(cmd, path, prefix, suffix) < 0) {
-      int xerrno = errno;
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
+    } else {
+      pr_log_debug(DEBUG9,
+        "HiddenStores in effect for APPE, ignoring HiddenStores");
     }
   }
 
@@ -1606,7 +1620,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
-  off_t curr_pos = 0;
+  off_t curr_offset, curr_pos = 0;
 
   memset(&st, 0, sizeof(st));
 
@@ -1651,10 +1665,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (stor_fh == NULL) {
       ferrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path_hidden, strerror(ferrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path_hidden,
+        strerror(ferrno));
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
@@ -1671,10 +1686,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
     } else {
       ferrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, strerror(ferrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path,
+        strerror(ferrno));
     }
 
   } else {
@@ -1684,10 +1700,10 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (stor_fh == NULL) {
       ferrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid, path,
-        strerror(ferrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(ferrno));
     }
   }
 
@@ -1695,12 +1711,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
       session.restart_pos) {
     int xerrno = 0;
 
+    pr_fs_clear_cache2(path);
     if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1) {
       pr_log_debug(DEBUG4, "unable to seek to position %" PR_LU " of '%s': %s",
         (pr_off_t) session.restart_pos, cmd->arg, strerror(errno));
       xerrno = errno;
 
-    } else if (pr_fsio_stat(path, &st) == -1) {
+    } else if (pr_fsio_stat(path, &st) < 0) {
       pr_log_debug(DEBUG4, "unable to stat '%s': %s", cmd->arg,
         strerror(errno));
       xerrno = errno;
@@ -1740,6 +1757,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* Stash the offset at which we're writing to this file. */
+  curr_offset = pr_fsio_lseek(stor_fh, (off_t) 0, SEEK_CUR);
+  if (curr_offset != (off_t) -1) {
+    off_t *file_offset;
+
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) curr_offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
+  }
+
   /* Get the latest stats on the file.  If the file already existed, we
    * want to know its current size.
    */
@@ -1758,7 +1786,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   session.xfer.file_size = curr_pos;
 
   /* First, make sure the uploaded file has the requested ownership. */
-  stor_chown();
+  stor_chown(cmd->tmp_pool);
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
     int xerrno = errno;
@@ -1794,8 +1822,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
   while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
     pr_signals_handle();
 
-    if (XFER_ABORTED)
+    if (XFER_ABORTED) {
       break;
+    }
 
     nbytes_stored += len;
 
@@ -1841,10 +1870,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
         xerrno = errno;
       }
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error writing to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        stor_fh->fh_path, strerror(xerrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), stor_fh->fh_path,
+        strerror(xerrno));
 
       stor_abort();
       pr_data_abort(xerrno, FALSE);
@@ -2017,7 +2047,8 @@ MODRET xfer_rest(cmd_rec *cmd) {
    * clients.
    */
   if ((session.sf_flags & SF_ASCII) &&
-      pos != 0) {
+      pos != 0 &&
+      !(xfer_opts & PR_XFER_OPT_IGNORE_ASCII)) {
     pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
     pr_response_add_err(R_501,
       _("%s: Resuming transfers not allowed in ASCII mode"), cmd->argv[0]);
@@ -2039,7 +2070,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
  * for this, as tmp_pool only lasts for the duration of this function).
  */
 MODRET xfer_pre_retr(cmd_rec *cmd) {
-  char *dir = NULL;
+  char *decoded_path, *dir = NULL;
   mode_t fmode;
   unsigned char *allow_restart = NULL;
   config_rec *c;
@@ -2055,8 +2086,22 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dir = dir_realpath(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  dir = dir_realpath(cmd->tmp_pool, decoded_path);
 
   if (!dir ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
@@ -2148,7 +2193,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
   long bufsz, len = 0;
-  off_t curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
+  off_t curr_offset, curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
   /* Prepare for any potential throttling. */
   pr_throttle_init(cmd);
@@ -2159,10 +2204,10 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (retr_fh == NULL) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error opening '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
-      dir, strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -2171,7 +2216,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (pr_fsio_stat(dir, &st) < 0) {
+  if (pr_fsio_fstat(retr_fh, &st) < 0) {
     /* Error stat'ing the file. */
     int xerrno = errno;
 
@@ -2208,10 +2253,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
       errno = xerrno;
       retr_fh = NULL;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error seeking to byte %" PR_LU " of '%s': %s", cmd->argv[0],
-        session.user, (unsigned long) session.uid, (unsigned long) session.gid,
-        (pr_off_t) session.restart_pos, dir, strerror(xerrno));
+        session.user, pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), (pr_off_t) session.restart_pos,
+        dir, strerror(xerrno));
 
       pr_log_debug(DEBUG0, "error seeking to offset %" PR_LU
         " for file %s: %s", (pr_off_t) session.restart_pos, dir,
@@ -2225,6 +2271,17 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     curr_pos = session.restart_pos;
     session.restart_pos = 0L;
+  }
+
+  /* Stash the offset at which we're writing from this file. */
+  curr_offset = pr_fsio_lseek(retr_fh, (off_t) 0, SEEK_CUR);
+  if (curr_offset != (off_t) -1) {
+    off_t *file_offset;
+
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) curr_offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
   }
 
   /* Send the data */
@@ -2294,12 +2351,14 @@ MODRET xfer_retr(cmd_rec *cmd) {
   while (nbytes_sent != session.xfer.file_size) {
     pr_signals_handle();
 
-    if (XFER_ABORTED)
+    if (XFER_ABORTED) {
       break;
+    }
 
-    len = transmit_data(nbytes_sent, &curr_pos, lbuf, bufsz);
-    if (len == 0)
+    len = transmit_data(cmd->pool, nbytes_sent, &curr_pos, lbuf, bufsz);
+    if (len == 0) {
       break;
+    }
 
     if (len < 0) {
       /* Make sure that the errno value, needed for the pr_data_abort() call,
@@ -2777,6 +2836,23 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
      */
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "TransferOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    xfer_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TransferOptions", FALSE);
+  }
+
+  if (xfer_opts & PR_XFER_OPT_IGNORE_ASCII) {
+    pr_log_debug(DEBUG8, "Ignoring ASCII translation for this session");
+    pr_data_ignore_ascii(TRUE);
+  }
+
   /* Check for TransferPriority. */
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TransferPriority", FALSE);
   if (c) {
@@ -3193,6 +3269,36 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TransferOptions opt1 opt2 ... */
+MODRET set_transferoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcasecmp(cmd->argv[i], "IgnoreASCII") == 0) {
+      opts |= PR_XFER_OPT_IGNORE_ASCII;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TransferOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TransferPriority cmds "low"|"medium"|"high"|number
  */
 MODRET set_transferpriority(cmd_rec *cmd) {
@@ -3254,7 +3360,7 @@ MODRET set_transferpriority(cmd_rec *cmd) {
   *((int *) c->argv[1]) = prio;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"
@@ -3509,23 +3615,25 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
 
 static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 
-  /* Only do this if we're currently involved in a data transfer.
-   * This is a hack put in to support mod_shaper's antics.
-   */
-  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
-      strcmp(session.curr_cmd, C_RETR) == 0 ||
-      strcmp(session.curr_cmd, C_STOR) == 0 ||
-      strcmp(session.curr_cmd, C_STOU) == 0) {
-    pool *p = make_sub_pool(session.pool);
-    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
-
-    /* Rescan the config tree for TransferRates, picking up any possible
-     * changes.
+  if (pr_module_exists("mod_shaper.c")) {
+    /* Only do this if we're currently involved in a data transfer.
+     * This is a hack put in to support mod_shaper's antics.
      */
-    pr_log_debug(DEBUG2, "rechecking TransferRates");
-    pr_throttle_init(cmd);
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_RETR_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
+        session.curr_cmd_id == PR_CMD_STOU_ID) {
+      pool *p = make_sub_pool(session.pool);
+      cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
 
-    destroy_pool(p);
+      /* Rescan the config tree for TransferRates, picking up any possible
+       * changes.
+       */
+      pr_log_debug(DEBUG2, "rechecking TransferRates");
+      pr_throttle_init(cmd);
+
+      destroy_pool(p);
+    }
   }
 
   return;
@@ -3657,6 +3765,7 @@ static conftable xfer_conftab[] = {
   { "StoreUniquePrefix",	set_storeuniqueprefix,		NULL },
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
+  { "TransferOptions",		set_transferoptions,		NULL },
   { "TransferPriority",		set_transferpriority,		NULL },
   { "TransferRate",		set_transferrate,		NULL },
   { "UseSendfile",		set_usesendfile,		NULL },

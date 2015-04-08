@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: fxp.c,v 1.203 2014-01-17 06:11:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -199,6 +197,11 @@ struct fxp_handle {
   /* For supporting the HiddenStores directive */
   char *fh_real_path;
 
+  /* For referencing information about the opened file; NOTE THAT THIS MAY
+   * BE STALE.
+   */
+  struct stat *fh_st;
+ 
   /* For tracking the number of bytes transferred for this file; for
    * better TransferLog tracking.
    */
@@ -1310,6 +1313,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     res = pr_fsio_fstat(fh, &st);
 
   } else {
+    pr_fs_clear_cache2(path);
     res = pr_fsio_lstat(path, &st);
   }
 
@@ -1428,9 +1432,9 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
         int xerrno = errno;
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error changing ownership of '%s' to UID %lu, GID %lu: %s",
-          path, (unsigned long) client_uid, (unsigned long) client_gid,
-          strerror(xerrno));
+          "error changing ownership of '%s' to UID %s, GID %s: %s",
+          path, pr_uid2str(fxp->pool, client_uid),
+          pr_gid2str(fxp->pool, client_gid), strerror(xerrno));
 
         status_code = fxp_errno2status(xerrno, &reason);
 
@@ -1446,8 +1450,9 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "client set ownership of '%s' to UID %lu, GID %lu",
-          path, (unsigned long) client_uid, (unsigned long) client_gid);
+          "client set ownership of '%s' to UID %s, GID %s",
+          path, pr_uid2str(fxp->pool, client_uid),
+          pr_gid2str(fxp->pool, client_gid));
       }
     }
   }
@@ -1725,13 +1730,13 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
   if ((flags & SSH2_FX_ATTR_UIDGID) ||
       (flags & SSH2_FX_ATTR_OWNERGROUP)) {
-    snprintf(ptr, bufsz - buflen, "UNIX.owner=%lu;",
-      (unsigned long) st->st_uid);
+    snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
+      pr_uid2str(NULL, st->st_uid));
     buflen = strlen(buf);
     ptr = buf + buflen;
 
-    snprintf(ptr, bufsz - buflen, "UNIX.group=%lu;",
-      (unsigned long) st->st_gid);
+    snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
+      pr_gid2str(NULL, st->st_gid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -2472,6 +2477,7 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
   struct stat st;
   int hidden = 0, res;
 
+  pr_fs_clear_cache2(real_path);
   if (pr_fsio_lstat(real_path, &st) < 0) {
     return NULL;
   }
@@ -2572,6 +2578,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   struct fxp_handle *fxh;
 
   sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "SFTP file handle pool");
   fxh = pcalloc(sub_pool, sizeof(struct fxp_handle));
   fxh->pool = sub_pool;
 
@@ -2602,6 +2609,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
 
     if (fxp_handle_get(handle) == NULL) {
       fxh->name = handle;
+      fxh->fh_st = pcalloc(fxh->pool, sizeof(struct stat));
       break;
     }
 
@@ -2796,6 +2804,7 @@ static struct fxp_packet *fxp_packet_create(pool *p, uint32_t channel_id) {
   struct fxp_packet *fxp;
 
   sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "SFTP packet pool");
   fxp = pcalloc(sub_pool, sizeof(struct fxp_packet));
   fxp->pool = sub_pool;
   fxp->channel_id = channel_id;
@@ -2816,7 +2825,6 @@ static struct fxp_packet *fxp_packet_get_packet(uint32_t channel_id) {
   }
 
   fxp = fxp_packet_create(fxp_pool, channel_id);
-
   return fxp;
 }
 
@@ -3677,6 +3685,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
+  pr_fs_clear_cache2(path);
   res = pr_fsio_lstat(path, &st);
   if (res < 0) {
     xerrno = errno;
@@ -4154,6 +4163,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
+  pr_fs_clear_cache2(dst);
   res = pr_fsio_stat(dst, &st);
   if (res == 0) {
     unsigned char *allow_overwrite = NULL;
@@ -4278,7 +4288,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   /* No errors. */
   xerrno = errno = 0;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(dst);
   pr_fsio_stat(dst, &st);
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
@@ -4618,9 +4628,9 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     if (errno != EXDEV) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-        "GID %lu): error renaming '%s' to '%s': %s", session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
+      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+        "GID %s): error renaming '%s' to '%s': %s", session.user,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
         src, dst, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4638,9 +4648,10 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       if (res < 0) {
         xerrno = errno;
 
-        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-          "GID %lu): error copying '%s' to '%s': %s", session.user,
-          (unsigned long) session.uid, (unsigned long) session.gid,
+        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+          "GID %s): error copying '%s' to '%s': %s", session.user,
+          pr_uid2str(fxp->pool, session.uid),
+          pr_gid2str(fxp->pool, session.gid),
           src, dst, strerror(xerrno));
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4681,6 +4692,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
    */
 
   session.xfer.p = make_sub_pool(fxp_pool);
+  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
 
@@ -5455,6 +5467,10 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   /* Now re-populate the session.xfer struct, for mod_log's handling of
    * the CLOSE request.
    */
+  if (session.xfer.p) {
+    destroy_pool(session.xfer.p);
+  }
+
   session.xfer.p = fxp->pool;
   session.xfer.direction = xfer_direction;
   session.xfer.filename = xfer_filename;
@@ -6145,7 +6161,6 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  pr_fs_clear_cache();
   if (pr_fsio_fstat(fxh->fh, &st) < 0) {
     uint32_t status_code;
     const char *reason;
@@ -6852,7 +6867,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) < 0) {
     uint32_t status_code;
     const char *reason;
@@ -6915,7 +6930,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
   char *attrs_str, *cmd_name, *path;
-  struct stat *attrs;
+  struct stat *attrs, st;
   int have_error = FALSE, res = 0;
   mode_t dir_mode;
   uint32_t attr_flags, buflen, bufsz, status_code;
@@ -6934,6 +6949,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 
   attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags);
   if (attrs == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "MKDIR request missing required attributes, ignoring");
     return 0;
   }
 
@@ -6963,11 +6980,11 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       "empty path given in MKDIR request, using '%s'", path);
   }
 
-  cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
-  cmd->cmd_class = CL_WRITE|CL_SFTP;
-
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
+  cmd->cmd_class = CL_WRITE|CL_SFTP;
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -7118,15 +7135,53 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
+  /* Check if the path already exists, to avoid unnecessary work. */
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_lstat(path, &st) == 0) {
+    const char *reason;
+    int xerrno = EEXIST;
+
+    (void) pr_trace_msg("fileperms", 1, "MKDIR, user '%s' (UID %s, GID %s): "
+      "error making directory '%s': %s", session.user,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "MKDIR of '%s' failed: %s", path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+      NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   res = pr_fsio_smkdir(fxp->pool, path, dir_mode, (uid_t) -1, (gid_t) -1);
   if (res < 0) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "MKDIR, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "MKDIR, user '%s' (UID %s, GID %s): "
       "error making directory '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "MKDIR of '%s' failed: %s", path, strerror(xerrno));
@@ -7158,7 +7213,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   /* Handle any possible UserOwner/GroupOwner directives for created
    * directories.
    */
-  if (sftp_misc_chown_path(path) < 0) {
+  if (sftp_misc_chown_path(fxp->pool, path) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error changing ownership on path '%s': %s", path, strerror(errno));
   }
@@ -7174,6 +7229,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
 
+  pr_response_add(R_257, "\"%s\" - Directory successfully created",
+    quote_dir(cmd->tmp_pool, path));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -7190,7 +7247,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   uint32_t attr_flags, buflen, bufsz, desired_access = 0, flags;
   int file_existed = FALSE, open_flags, res, timeout_stalled;
   pr_fh_t *fh;
-  struct stat *attrs;
+  struct stat *attrs, st;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2 = NULL;
@@ -7583,9 +7640,9 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "OPEN, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "OPEN, user '%s' (UID %s, GID %s): "
       "error opening '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
       hiddenstore_path ? hiddenstore_path : path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -7616,6 +7673,12 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
+  }
+
+  memset(&st, 0, sizeof(st));
+  if (pr_fsio_fstat(fh, &st) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "fstat error on '%s' (fd %d): %s", path, fh->fh_fd, strerror(errno));
   }
 
   if (pr_fsio_set_block(fh) < 0) {
@@ -7684,7 +7747,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     /* Handle any possible UserOwner/GroupOwner directives for uploaded
      * files.
      */
-    if (sftp_misc_chown_file(fh) < 0) {
+    if (sftp_misc_chown_file(fxp->pool, fh) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error changing ownership on file '%s': %s", fh->fh_path,
         strerror(errno));
@@ -7729,6 +7792,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   fxh->fh = fh;
   fxh->fh_flags = open_flags;
   fxh->fh_existed = file_existed;
+  memcpy(fxh->fh_st, &st, sizeof(struct stat));
 
   if (hiddenstore_path) {
     fxh->fh_real_path = pstrdup(fxh->pool, path);
@@ -7784,6 +7848,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   memset(&session.xfer, 0, sizeof(session.xfer));
 
   session.xfer.p = make_sub_pool(fxp_pool);
+  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
   session.xfer.path = pstrdup(session.xfer.p, orig_path);
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
@@ -8019,10 +8084,10 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "OPENDIR, user '%s' (UID %lu, "
-      "GID %lu): error opening '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+    (void) pr_trace_msg("fileperms", 1, "OPENDIR, user '%s' (UID %s, "
+      "GID %s): error opening '%s': %s", session.user,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error opening '%s': %s", path, strerror(xerrno));
@@ -8144,6 +8209,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     memset(&session.xfer, 0, sizeof(session.xfer));
 
     session.xfer.p = make_sub_pool(fxp_pool);
+    pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
     memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);
     session.xfer.direction = PR_NETIO_IO_WR;
@@ -8169,7 +8235,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 
 static int fxp_handle_read(struct fxp_packet *fxp) {
   unsigned char *buf, *data = NULL, *ptr;
-  char *cmd_name, *name;
+  char *file, *name, *ptr2;
   int res;
   uint32_t buflen, bufsz, datalen;
   uint64_t offset;
@@ -8322,13 +8388,21 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     PR_SCORE_XFER_DONE, (off_t) offset,
     NULL);
 
-  cmd_name = cmd->argv[0];
-  pr_cmd_set_name(cmd, C_RETR);
+  /* Trim the full path to just the filename, for our RETR command. */
+  ptr2 = strrchr(fxh->fh->fh_path, '/');
+  if (ptr2 != NULL &&
+      ptr2 != fxh->fh->fh_path) {
+    file = pstrdup(fxp->pool, ptr2 + 1);
+
+  } else {
+    file = fxh->fh->fh_path;
+  }
+
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, file);
+  cmd2->cmd_class = CL_WRITE|CL_SFTP;
 
   if (!dir_check(fxp->pool, cmd, G_READ, fxh->fh->fh_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
-
-    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "READ of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -8348,7 +8422,6 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  pr_cmd_set_name(cmd, cmd_name);
 
   /* XXX Check MaxRetrieveFileSize */
 
@@ -8402,6 +8475,14 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
       return fxp_packet_write(resp);
 
     } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're reading from this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
+
       /* No error. */
       errno = 0;
     }
@@ -8432,9 +8513,9 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     if (res < 0) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "READ, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "READ, user '%s' (UID %s, GID %s): "
         "error reading from '%s': %s", session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
         fxh->fh->fh_path, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -8833,7 +8914,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 static int fxp_handle_readlink(struct fxp_packet *fxp) {
   char data[PR_TUNABLE_PATH_MAX + 1];
   unsigned char *buf, *ptr;
-  char *path;
+  char *path, *resolved_path;
   int res;
   uint32_t buflen, bufsz;
   struct fxp_packet *resp;
@@ -8891,8 +8972,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
-  if (path == NULL) {
+  resolved_path = dir_best_path(fxp->pool, cmd->arg);
+  if (resolved_path == NULL) {
     int xerrno = EACCES;
     const char *reason;
     uint32_t status_code;
@@ -8918,12 +8999,12 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (!dir_check(fxp->pool, cmd, G_READ, path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_READ, resolved_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "READLINK of '%s' blocked by <Limit %s> configuration", path,
-      cmd->argv[0]);
+      "READLINK of '%s' (resolved to '%s') blocked by <Limit %s> configuration",
+      path, resolved_path, cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -8952,10 +9033,10 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 
     status_code = fxp_errno2status(xerrno, &reason);
 
-    (void) pr_trace_msg("fileperms", 1, "READLINK, user '%s' (UID %lu, "
-      "GID %lu): error using readlink() on  '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+    (void) pr_trace_msg("fileperms", 1, "READLINK, user '%s' (UID %s, "
+      "GID %s): error using readlink() on  '%s': %s", session.user,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
       "('%s' [%d])", (unsigned long) status_code, reason,
@@ -9044,7 +9125,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   cmd_rec *cmd;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > fxp_utf8_protocol_version) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -9088,7 +9169,6 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       if (fxp->payload_sz > 0) {
         composite_path = sftp_msg_read_string(fxp->pool, &fxp->payload,
           &fxp->payload_sz);
-(void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "handle_realpath: have composite-path = '%s'", composite_path);
 
         /* XXX One problem with the most recent SFTP Draft is that it does NOT
          * include a count of the number of composite-paths that the client
@@ -9128,6 +9208,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   
       pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
         path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+      sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+      sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+      sftp_msg_write_int(&buf, &buflen, 1);
       fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
         "nobody");
     }
@@ -9182,6 +9266,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
         pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
           path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+        sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+        sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+        sftp_msg_write_int(&buf, &buflen, 1);
         fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
           "nobody");
       }
@@ -9237,6 +9325,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
         path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+      sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+      sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+      sftp_msg_write_int(&buf, &buflen, 1);
       fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
         "nobody");
     }
@@ -9245,6 +9337,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
   } else {
+    pr_fs_clear_cache2(path);
     if (pr_fsio_lstat(path, &st) < 0) {
       uint32_t status_code;
       const char *reason;
@@ -9278,6 +9371,10 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
         pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
           path, fxp_strattrs(fxp->pool, &st, &attr_flags));
+
+        sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
+        sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+        sftp_msg_write_int(&buf, &buflen, 1);
         fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
           "nobody");
       }
@@ -9387,7 +9484,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 
   path = cmd->arg;
 
-  cmd2 = fxp_cmd_alloc(fxp_pool, C_DELE, path);
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_DELE, path);
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -9509,6 +9606,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  pr_fs_clear_cache2(real_path);
   res = pr_fsio_lstat(real_path, &st);
   if (res < 0) {
     int xerrno = errno;
@@ -9574,10 +9672,10 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "REMOVE, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "REMOVE, user '%s' (UID %s, GID %s): "
       "error deleting '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, real_path,
-      strerror(xerrno));
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      real_path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error unlinking '%s': %s", real_path, strerror(xerrno));
@@ -9970,9 +10068,9 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     if (errno != EXDEV) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-        "GID %lu): error renaming '%s' to '%s': %s", session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
+      (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+        "GID %s): error renaming '%s' to '%s': %s", session.user,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
         old_path, new_path, strerror(xerrno));
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -9989,10 +10087,11 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       if (pr_fs_copy_file(old_path, new_path) < 0) {
         xerrno = errno;
 
-        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %lu, "
-          "GID %lu): error copying '%s' to '%s': %s", session.user,
-          (unsigned long) session.uid, (unsigned long) session.gid,
-          old_path, new_path, strerror(xerrno));
+        (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+          "GID %s): error copying '%s' to '%s': %s", session.user,
+          pr_uid2str(fxp->pool, session.uid),
+          pr_gid2str(fxp->pool, session.gid), old_path, new_path,
+          strerror(xerrno));
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error copying '%s' to '%s': %s", old_path, new_path,
@@ -10033,6 +10132,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
    */
 
   session.xfer.p = make_sub_pool(fxp_pool);
+  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
   memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
   gettimeofday(&session.xfer.start_time, NULL);
 
@@ -10253,10 +10353,10 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "RMDIR, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "RMDIR, user '%s' (UID %s, GID %s): "
       "error removing directory '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error removing directory '%s': %s", path, strerror(xerrno));
@@ -10517,7 +10617,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   const char *fake_user = NULL, *fake_group = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  if (fxp_session->client_version > fxp_utf8_protocol_version) {
+  if (fxp_session->client_version >= fxp_utf8_protocol_version) {
     path = sftp_utf8_decode_str(fxp->pool, path);
   }
 
@@ -10635,7 +10735,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) < 0) {
     uint32_t status_code;
     const char *reason;
@@ -10950,11 +11050,10 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
 static int fxp_handle_write(struct fxp_packet *fxp) {
   unsigned char *buf, *data, *ptr;
-  char cmd_arg[256], *cmd_name, *name;
+  char cmd_arg[256], *file, *name, *ptr2;
   int res;
   uint32_t buflen, bufsz, datalen, status_code;
   uint64_t offset;
-  struct stat st;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
@@ -11038,32 +11137,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
   fxh->fh_bytes_xferred += datalen;
 
-  if (pr_fsio_fstat(fxh->fh, &st) < 0) {
-    const char *reason;
-    int xerrno = errno;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error checking '%s' for WRITE: %s", fxh->fh->fh_path, strerror(xerrno));
-
-    status_code = fxp_errno2status(xerrno, &reason);
-
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
-
-    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
-      NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
-  
-    return fxp_packet_write(resp);
-  }
-
   /* It would be nice to check the requested offset against the size of
    * the file.  However, the protocol specifically allows for sparse files,
    * where the requested offset is far beyond the end of the file.
@@ -11098,13 +11171,21 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   }
 #endif
 
-  cmd_name = cmd->argv[0];
-  pr_cmd_set_name(cmd, C_STOR);
+  /* Trim the full path to just the filename, for our STOR command. */
+  ptr2 = strrchr(fxh->fh->fh_path, '/');
+  if (ptr2 != NULL &&
+      ptr2 != fxh->fh->fh_path) {
+    file = pstrdup(fxp->pool, ptr2 + 1);
 
-  if (!dir_check(fxp->pool, cmd, G_WRITE, fxh->fh->fh_path, NULL)) {
+  } else {
+    file = fxh->fh->fh_path;
+  }
+ 
+  cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, file);
+  cmd2->cmd_class = CL_WRITE|CL_SFTP;
+
+  if (!dir_check(fxp->pool, cmd2, G_WRITE, fxh->fh->fh_path, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
-
-    pr_cmd_set_name(cmd, cmd_name);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "WRITE of '%s' blocked by <Limit> configuration", fxh->fh->fh_path);
@@ -11124,7 +11205,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
     return fxp_packet_write(resp);
   }
-  pr_cmd_set_name(cmd, cmd_name);
 
   if (fxp_path_pass_regex_filters(fxp->pool, "WRITE", fxh->fh->fh_path) < 0) {
     status_code = fxp_errno2status(errno, NULL);
@@ -11145,7 +11225,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (S_ISREG(st.st_mode)) {
+  if (S_ISREG(fxh->fh_st->st_mode)) {
     if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
       const char *reason;
       int xerrno = errno;
@@ -11171,6 +11251,15 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
       resp->payload_sz = (bufsz - buflen);
   
       return fxp_packet_write(resp);
+
+    } else {
+      off_t *file_offset;
+
+      /* Stash the offset at which we're writing to this file. */
+      file_offset = palloc(cmd->pool, sizeof(off_t));
+      *file_offset = (off_t) offset;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+        sizeof(off_t));
     }
   }
 
@@ -11188,6 +11277,25 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   
   res = pr_fsio_write(fxh->fh, (char *) data, datalen);
 
+  /* Increment the "on-disk" file size with the number of bytes written.
+   * We do this, rather than using fstat(2), to avoid performance penalties
+   * associated with fstat(2) on network filesystems such as NFS.  And we
+   * want to track the on-disk size for enforcing limits such as
+   * MaxStoreFileSize.
+   *
+   * Note that we only want to increment the file size if the chunk we
+   * just wrote is PAST the current end of the file; we could be just
+   * overwriting a chunk of the file.
+   */
+  if (res > 0) {
+    size_t new_size;
+
+    new_size = offset + res;
+    if (new_size > fxh->fh_st->st_size) {
+      fxh->fh_st->st_size = new_size;
+    }
+  }
+
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
   }
@@ -11202,9 +11310,9 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "WRITE, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "WRITE, user '%s' (UID %s, GID %s): "
       "error writing to '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
       fxh->fh->fh_path, strerror(xerrno));
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -11229,7 +11337,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (pr_fsio_fstat(fxh->fh, &st) == 0) {
+  if (fxh->fh_st->st_size > 0) {
     config_rec *c;
     off_t nbytes_max_store = 0;
 
@@ -11241,7 +11349,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     }
 
     if (nbytes_max_store > 0) {
-      if (st.st_size > nbytes_max_store) {
+      if (fxh->fh_st->st_size > nbytes_max_store) {
         const char *reason;
 #if defined(EFBIG)
         int xerrno = EFBIG;
@@ -11737,11 +11845,13 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unhandled SFTP request type %d", fxp->request_type);
         destroy_pool(fxp->pool);
+        fxp_packet_set_packet(NULL);
         fxp_session = NULL;
         return -1;
     }
 
     destroy_pool(fxp->pool);
+    fxp_packet_set_packet(NULL);
 
     if (res < 0) {
       fxp_session = NULL;

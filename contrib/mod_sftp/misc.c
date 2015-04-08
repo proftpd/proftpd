@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp miscellaneous
- * Copyright (c) 2010-2014 TJ Saunders
+ * Copyright (c) 2010-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "mod_sftp.h"
 #include "misc.h"
 
-int sftp_misc_chown_file(pr_fh_t *fh) {
+int sftp_misc_chown_file(pool *p, pr_fh_t *fh) {
   struct stat st;
   int res, xerrno;
  
@@ -50,16 +50,15 @@ int sftp_misc_chown_file(pr_fh_t *fh) {
     } else {
       if (session.fsgid != (gid_t) -1) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "root chown(%s) to UID %lu, GID %lu successful", fh->fh_path,
-          (unsigned long) session.fsuid, (unsigned long) session.fsgid);
+          "root chown(%s) to UID %s, GID %s successful", fh->fh_path,
+          pr_uid2str(p, session.fsuid), pr_gid2str(p, session.fsgid));
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "root chown(%s) to UID %lu successful", fh->fh_path,
-          (unsigned long) session.fsuid);
+          "root chown(%s) to UID %s successful", fh->fh_path,
+          pr_uid2str(NULL, session.fsuid));
       }
 
-      pr_fs_clear_cache();
       if (pr_fsio_fstat(fh, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' fstat(2) error for root chmod: %s", fh->fh_path,
@@ -124,11 +123,10 @@ int sftp_misc_chown_file(pr_fh_t *fh) {
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "%schown(%s) to GID %lu successful",
+        "%schown(%s) to GID %s successful",
         use_root_privs ? "root " : "", fh->fh_path,
-        (unsigned long) session.fsgid);
+        pr_gid2str(NULL, session.fsgid));
 
-      pr_fs_clear_cache();
       if (pr_fsio_fstat(fh, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' fstat(2) error for %sfchmod: %s", fh->fh_path,
@@ -157,7 +155,7 @@ int sftp_misc_chown_file(pr_fh_t *fh) {
   return 0;
 }
 
-int sftp_misc_chown_path(const char *path) {
+int sftp_misc_chown_path(pool *p, const char *path) {
   struct stat st;
   int res, xerrno;
 
@@ -183,16 +181,16 @@ int sftp_misc_chown_path(const char *path) {
     } else {
       if (session.fsgid != (gid_t) -1) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "root lchown(%s) to UID %lu, GID %lu successful", path,
-          (unsigned long) session.fsuid, (unsigned long) session.fsgid);
+          "root lchown(%s) to UID %s, GID %s successful", path,
+          pr_uid2str(p, session.fsuid), pr_gid2str(p, session.fsgid));
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "root lchown(%s) to UID %lu successful", path,
-          (unsigned long) session.fsuid);
+          "root lchown(%s) to UID %s successful", path,
+          pr_uid2str(NULL, session.fsuid));
       }
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error for root chmod: %s", path, strerror(errno));
@@ -256,11 +254,11 @@ int sftp_misc_chown_path(const char *path) {
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "%slchown(%s) to GID %lu successful",
+        "%slchown(%s) to GID %s successful",
         use_root_privs ? "root " : "", path,
-        (unsigned long) session.fsgid);
+        pr_gid2str(NULL, session.fsgid));
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error for %schmod: %s", path,

@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2014 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2015 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -519,7 +519,6 @@ static int tls_get_passphrase(server_rec *, const char *, const char *,
 static char *tls_get_subj_name(SSL *);
 
 static int tls_openlog(void);
-static RSA *tls_rsa_cb(SSL *, int, int);
 static int tls_seed_prng(void);
 static void tls_setup_environ(SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
@@ -554,6 +553,7 @@ static int tls_ctrl_need_init_handshake = TRUE;
 static int tls_data_need_init_handshake = TRUE;
 
 static const char *trace_channel = "tls";
+static const char *timing_channel = "timing";
 
 static void tls_diags_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
@@ -1593,17 +1593,20 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   sigemptyset(&sa_ignore.sa_mask);
   sa_ignore.sa_flags = 0;
 
-  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0)
+  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0)
+  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0) {
     return -1;
+  }
 
   sigemptyset(&set_chldmask);
   sigaddset(&set_chldmask, SIGCHLD);
 
-  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0)
+  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0) {
     return -1;
+  }
 
   tls_prepare_provider_pipes(stdout_pipe, stderr_pipe);
 
@@ -1759,8 +1762,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
       fds = select(maxfd + 1, &readfds, NULL, NULL, &tv);
 
       if (fds == -1 &&
-          errno == EINTR)
+          errno == EINTR) {
         pr_signals_handle();
+      }
 
       if (fds > 0) {
         /* The child sent us something.  How thoughtful. */
@@ -1768,12 +1772,16 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         if (FD_ISSET(stdout_pipe[0], &readfds)) {
           res = read(stdout_pipe[0], buf, buflen);
           if (res > 0) {
-              while (res && (buf[res-1] == '\r' || buf[res-1] == '\n'))
-                res--;
-              buf[res] = '\0';
+            while (res &&
+                   (buf[res-1] == '\r' ||
+                    buf[res-1] == '\n')) {
+              res--;
+            }
+            buf[res] = '\0';
+            buf[buflen-1] = '\0';
 
-              pr_trace_msg(trace_channel, 18,
-                "read passphrase from '%s'", tls_passphrase_provider);
+            pr_trace_msg(trace_channel, 18, "read passphrase from '%s'",
+              tls_passphrase_provider);
 
           } else if (res < 0) {
             int xerrno = errno;
@@ -1800,8 +1808,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
           if (stderrlen > 0) {
             while (stderrlen &&
                    (stderrbuf[stderrlen-1] == '\r' ||
-                    stderrbuf[stderrlen-1] == '\n'))
+                    stderrbuf[stderrlen-1] == '\n')) {
               stderrlen--;
+            }
             stderrbuf[stderrlen] = '\0';
 
             pr_log_debug(DEBUG5, MOD_TLS_VERSION
@@ -1824,14 +1833,17 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   }
 
   /* Restore the previous signal actions. */
-  if (sigaction(SIGINT, &sa_intr, NULL) < 0)
+  if (sigaction(SIGINT, &sa_intr, NULL) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0)
+  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0) {
     return -1; 
+  }
 
-  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0)
+  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0) {
     return -1;
+  }
 
   if (WIFSIGNALED(status)) {
     pr_log_debug(DEBUG2, MOD_TLS_VERSION
@@ -1848,7 +1860,7 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
   static int need_banner = TRUE;
   struct tls_pkey_data *pdata = d;
 
-  if (!tls_passphrase_provider) {
+  if (tls_passphrase_provider == NULL) {
     register unsigned int attempt;
     int pwlen = 0;
 
@@ -1877,10 +1889,12 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
        * means a system error occurred, and 1 means user interaction problems.
        */
       if (res != 0) {
-         fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
-         continue;
+        fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
+        continue;
       }
 
+      /* Ensure that the buffer is NUL-terminated. */
+      buf[buflen-1] = '\0';
       pwlen = strlen(buf);
       if (pwlen < 1) {
         fprintf(stderr, "Error: passphrase must be at least one character\n");
@@ -1926,9 +1940,10 @@ static void set_prompt_fds(void) {
    * to the general stderr logfile.
    */
   prompt_fd = open("/dev/null", O_WRONLY);
-  if (prompt_fd == -1)
+  if (prompt_fd == -1) {
     /* This is an arbitrary, meaningless placeholder number. */
     prompt_fd = 76;
+  }
 
   dup2(STDERR_FILENO, prompt_fd);
   dup2(STDOUT_FILENO, STDERR_FILENO);
@@ -2153,8 +2168,9 @@ static int tls_get_passphrase(server_rec *s, const char *path,
   /* Restore the normal stderr logging. */
   restore_prompt_fds();
 
-  if (pkey == NULL)
+  if (pkey == NULL) {
     return -1;
+  }
 
   EVP_PKEY_free(pkey);
 
@@ -3061,7 +3077,6 @@ static int tls_init_server(void) {
       return -1;
     }
 
-    SSL_CTX_set_tmp_rsa_callback(ssl_ctx, tls_rsa_cb);
     server_rsa_cert = cert;
   }
 
@@ -3678,15 +3693,15 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
         pr_trace_msg(trace_channel, 17,
-          "SSL_accept() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_READ encountered while accepting %s conn on fd %d, "
+          "waiting to read data", on_data ? "data" : "ctrl", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
         pr_trace_msg(trace_channel, 17,
-          "SSL_accept() returned WANT_WRITE, waiting for more to "
-          "write on fd %d", conn->rfd);
+          "WANT_WRITE encountered while accepting %s conn on fd %d, "
+          "waiting to send data", on_data ? "data" : "ctrl", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -4110,15 +4125,15 @@ static int tls_connect(conn_t *conn) {
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
         pr_trace_msg(trace_channel, 17,
-          "SSL_connect() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_READ encountered while connecting on fd %d, "
+          "waiting to read data", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
         pr_trace_msg(trace_channel, 17,
-          "SSL_connect() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_WRITE encountered while connecting on fd %d, "
+          "waiting to read data", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -4916,8 +4931,8 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "SSL_read() returned WANT_READ, waiting for more to "
-          "read on fd %d", fd);
+          "WANT_READ encountered while reading SSL data on fd %d, "
+          "waiting to read data", fd);
         err = tls_readmore(fd);
         if (err > 0) {
           goto retry;
@@ -4939,8 +4954,8 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * block, so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "SSL_read() returned WANT_WRITE, waiting for more to "
-          "write on fd %d", fd);
+          "WANT_WRITE encountered while writing SSL data on fd %d, "
+          "waiting to send data", fd);
         err = tls_writemore(fd);
         if (err > 0) {
           goto retry;
@@ -4968,40 +4983,6 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   }
 
   return count;
-}
-
-static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylength) {
-  BIGNUM *e = NULL;
-
-  if (tls_tmp_rsa) {
-    return tls_tmp_rsa;
-  }
-
-#if OPENSSL_VERSION_NUMBER > 0x000908000L
-  e = BN_new();
-  if (e == NULL) {
-    return NULL;
-  }
-
-  if (BN_set_word(e, RSA_F4) != 1) {
-    BN_free(e);
-    return NULL;
-  }
-
-  if (RSA_generate_key_ex(tls_tmp_rsa, keylength, e, NULL) != 1) {
-    BN_free(e);
-    return NULL;
-  }
-
-#else
-  tls_tmp_rsa = RSA_generate_key(keylength, RSA_F4, NULL, NULL);
-#endif /* OpenSSL version 0.9.8 and later */
-
-  if (e != NULL) {
-    BN_free(e);
-  }
-
-  return tls_tmp_rsa;
 }
 
 static int tls_seed_prng(void) {
@@ -7029,6 +7010,11 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           session.curr_cmd_id == PR_CMD_NLST_ID ||
           tls_sscn_mode == TLS_SSCN_MODE_SERVER) {
         X509 *ctrl_cert = NULL, *data_cert = NULL;
+        uint64_t start_ms;
+
+        if (pr_trace_get_level(timing_channel) > 0) {
+          pr_gettimeofday_millis(&start_ms);
+        }
 
         tls_log("%s", "starting TLS negotiation on data connection");
         tls_data_need_init_handshake = TRUE;
@@ -7038,6 +7024,17 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           session.d->xerrno = EPERM;
           return -1;
         }
+
+        if (pr_trace_get_level(timing_channel)) {
+          unsigned long elapsed_ms;
+          uint64_t finish_ms;
+
+          pr_gettimeofday_millis(&finish_ms);
+          elapsed_ms = (unsigned long) (finish_ms - start_ms);
+
+          pr_trace_msg(timing_channel, 4,
+            "TLS data handshake duration: %lu ms", elapsed_ms);
+        } 
 
         /* Make sure that the certificate used, if any, for this data channel
          * handshake is the same as that used for the control channel handshake.
@@ -7681,9 +7678,15 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   if (strncmp(cmd->argv[1], "TLS", 4) == 0 ||
       strncmp(cmd->argv[1], "TLS-C", 6) == 0) {
-    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
+    uint64_t start_ms;
 
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
+
     pr_event_generate("mod_tls.ctrl-handshake", session.c);
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
@@ -7712,11 +7715,32 @@ MODRET tls_auth(cmd_rec *cmd) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
 
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
+    }
+
   } else if (strncmp(cmd->argv[1], "SSL", 4) == 0 ||
              strncmp(cmd->argv[1], "TLS-P", 6) == 0) {
-    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
+    uint64_t start_ms;
 
+    pr_response_send(R_234, _("AUTH %s successful"), cmd->argv[1]);
     tls_log("%s", "SSL/TLS-P requested, starting TLS handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
+
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "SSL/TLS-P negotiation failed on control channel");
 
@@ -7744,6 +7768,21 @@ MODRET tls_auth(cmd_rec *cmd) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
+    }
 
   } else {
     tls_log("AUTH %s unsupported, declining", cmd->argv[1]);
@@ -8266,10 +8305,18 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
 
 /* usage: TLSCipherSuite string */
 MODRET set_tlsciphersuite(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  char *ciphersuite = NULL;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  ciphersuite = cmd->argv[1];
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
+  c->argv[0] = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+
   return PR_HANDLED(cmd);
 }
 
@@ -9727,8 +9774,9 @@ static int tls_sess_init(void) {
 
   tls_cipher_suite = get_param_ptr(main_server->conf, "TLSCipherSuite",
     FALSE);
-  if (tls_cipher_suite == NULL)
+  if (tls_cipher_suite == NULL) {
     tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
+  }
 
   tls_crl_file = get_param_ptr(main_server->conf, "TLSCARevocationFile", FALSE);
   tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);
@@ -10063,8 +10111,14 @@ static int tls_sess_init(void) {
   pr_help_add(C_PROT, _("<sp> protection code"), TRUE);
 
   if (tls_opts & TLS_OPT_USE_IMPLICIT_SSL) {
+    uint64_t start_ms;
+
     tls_log("%s", "TLSOption UseImplicitSSL in effect, starting SSL/TLS "
       "handshake");
+
+    if (pr_trace_get_level(timing_channel) > 0) {
+      pr_gettimeofday_millis(&start_ms);
+    }
 
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "implicit SSL/TLS negotiation failed on control channel");
@@ -10077,6 +10131,21 @@ static int tls_sess_init(void) {
 
     if (tls_required_on_data != -1) {
       tls_flags |= TLS_SESS_NEED_DATA_PROT;
+    }
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+      pr_trace_msg(timing_channel, 4,
+        "Time before TLS ctrl handshake: %lu ms", elapsed_ms);
+
+      elapsed_ms = (unsigned long) (finish_ms - start_ms);
+      pr_trace_msg(timing_channel, 4,
+        "TLS ctrl handshake duration: %lu ms", elapsed_ms);
     }
 
     pr_session_set_protocol("ftps");

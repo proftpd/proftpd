@@ -51,21 +51,21 @@ to FTPS for secure transfer of data.
 <b>SSH2 RFCs and SFTP Drafts</b><br>
 For those wishing to learn more about the SSH2 and SFTP protocols, see:
 <ul>
-  <li><a href="http://www.faqs.org/rfcs/rfc4250.html">SSH Assigned Numbers (RFC4250)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4251.html">SSH Architecture (RFC4251)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4252.html">SSH Authentication (RFC4252)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4253.html">SSH Transport Layer (RFC4253)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4254.html">SSH Connection (RFC4254)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4256.html">SSH Keyboard-Interactive Authentication (RFC4256)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4335.html">SSH Channel "Break" Extension (RFC4335)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4344.html">SSH Transport Encryption Modes (RFC4344)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4345.html">SSH Improved Arcfour Modes (RFC4345)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4419.html">SSH Diffie-Hellman Group Exchange Protocol (RFC4419)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4432.html">SSH RSA Key Exchange Protocol (RFC4432)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4716.html">SSH Public Key File Format (RFC4716)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4250.html">SSH Assigned Numbers (RFC 4250)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4251.html">SSH Architecture (RFC 4251)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4252.html">SSH Authentication (RFC 4252)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4253.html">SSH Transport Layer (RFC 4253)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4254.html">SSH Connection (RFC 4254)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4256.html">SSH Keyboard-Interactive Authentication (RFC 4256)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4335.html">SSH Channel "Break" Extension (RFC 4335)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4344.html">SSH Transport Encryption Modes (RFC 4344)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4345.html">SSH Improved Arcfour Modes (RFC 4345)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4419.html">SSH Diffie-Hellman Group Exchange Protocol (RFC 4419)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4432.html">SSH RSA Key Exchange Protocol (RFC 4432)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4716.html">SSH Public Key File Format (RFC 4716)</a>
   <li><a href="http://www.vandyke.com/technology/draft-ietf-secsh-filexfer.txt">SFTP Draft</a>
   <li><a href="http://tools.ietf.org/html/draft-ietf-secsh-filexfer-extensions-00">SFTP Extensions Draft</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc5656.html">SSH Elliptic Curve Algorithms (RFC5656)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc5656.html">SSH Elliptic Curve Algorithms (RF C5656)</a>
 </ul>
 
 <p>
@@ -531,7 +531,7 @@ may be used to list all of the engine drivers supported by OpenSSL.
 The <code>SFTPDHParamFile</code> directive is used to configure the path
 to a file containing pre-computed Diffie-Hellman (DH) group parameters.
 These parameters will be used by <code>mod_sftp</code> when handling the
-Diffie-Hellman group exchange (see RFC4419) portion of the key exchange.
+Diffie-Hellman group exchange (see RFC 4419) portion of the key exchange.
 
 <p>
 The <code>SFTPDHParamFile</code> is produced using OpenSSL, which uses
@@ -573,6 +573,7 @@ of supported MAC algorithms is:
   <li>hmac-md5-96
   <li>hmac-ripemd160
   <li>umac-64@openssh.com
+  <li>umac-128@openssh.com
 </ul>
 By default, all of the above MAC algorithms are presented to the client,
 in the above order, during the key exchange.  <b>Note</b> that some algorithms
@@ -600,13 +601,15 @@ by default are:
   <li>hmac-sha1-96
   <li>hmac-md5-96
   <li>umac-64@openssh.com
+  <li>umac-128@openssh.com
 </ul>
 Thus if you wanted to configure <code>mod_sftp</code> to present the same
 MAC algorithms as OpenSSH, you would use:
 <pre>
   # Make mod_sftp present the MAC ciphers as OpenSSH
   SFTPDigests hmac-md5 hmac-sha1 hmac-sha2-256 hmac-sha2-512 \
-    hmac-ripemd160 hmac-sha1-96 hmac-md5-96 umac-64@openssh.com
+    hmac-ripemd160 hmac-sha1-96 hmac-md5-96 umac-64@openssh.com \
+    umac-128@openssh.com
 </pre>
 
 <p>
@@ -681,7 +684,7 @@ to disable the extension, use a '-' (minus) character prefix.  For example:
 <p>
 <hr>
 <h2><a name="SFTPHostKey">SFTPHostKey</a></h2>
-<strong>Syntax:</strong> SFTPHostKey <em>file</em>|agent:<em>/path</em><br>
+<strong>Syntax:</strong> SFTPHostKey <em>file</em>|agent:<em>/path</em>|"NoRSA"|"NoDSA"|"NoECDSA"<br>
 <strong>Default:</strong> <em>None</em><br>
 <strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
 <strong>Module:</strong> mod_sftp<br>
@@ -721,6 +724,28 @@ OpenSSH's <code>ssh-agent</code>.  For example:
 Using an SSH agent for storing host keys allows for configurations where
 the host keys are not stored on files on the server system, <i>e.g.</i>
 the keys can be loaded into the SSH agent from a PKCS#11 token.
+
+<p>
+The <code>SFTPHostKey</code> directive, as of <code>proftpd-1.3.6rc1</code>
+and later, can be used to <em>disable</em> host keys configured via
+<code>&lt;Global&gt;</code>.  For example, if you have a global RSA key that
+you wish to disable in all vhosts, you might use the "NoRSA" flag, <i>e.g.</i>:
+<pre>
+  &lt;Global&gt;
+    SFTPHostKey /path/to/ssh_rsa_host_key
+    ...
+  &lt;/Global&gt;
+
+  &lt;VirtualHost a.b.c.d&gt;
+    ...
+    # Configure our per-vhost DSA host key
+    SFTPHostKey /path/to/ssh_dsa_host_key
+
+    # ...and disable the global RSA host key
+    SFTPHostKey NoRSA
+    ...
+  &lt;/VirtualHost&gt;
+</pre>
 
 <p>
 <hr>
@@ -1048,7 +1073,7 @@ By default, <code>mod_sftp</code> will only <b>require</b> rekeying when
 the packet sequence number (for sent <i>or</i> received SSH2 packets) reaches
 a rather high limit.  The digest algorithm used, for example, might begin
 to leak cryptographically sensitive information if used for too many
-packets (see RFC4344).  Outside of these sequence number limits, however,
+packets (see RFC 4344).  Outside of these sequence number limits, however,
 <code>mod_sftp</code> will not attempt to initiate rekeying.
 
 <p>
@@ -1382,6 +1407,12 @@ values), once the client has successfully exchanged keys with
   <li><code>SFTP_SERVER_CIPHER_ALGO</code>
   <li><code>SFTP_SERVER_COMPRESSION_ALGO</code>
   <li><code>SFTP_SERVER_MAC_ALGO</code>
+</ul>
+And after the client has successfully authenticated, the following variables
+<i>may</i> be set, depending on the authentication mechanism used:
+<ul>
+  <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT</code>
+  <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO</code>
 </ul>
 
 <p>
@@ -1870,7 +1901,7 @@ that is too long.  Simply delete that "Comment: " line; the
 SSH is insecure?<br>
 <font color=blue>Answer</font>: It is true that there are a couple of published
 <i>theoretical</i> attacks against the SSH protocol when CBC ciphers are
-used, including Rogaway, Wai, and Bellare (see RFC4251, Section 9.3.1) and
+used, including Rogaway, Wai, and Bellare (see RFC 4251, Section 9.3.1) and
 <a href="http://www.cpni.gov.uk/Docs/Vulnerability_Advisory_SSH.txt">"Plaintext Recovery Attacks Against SSH"</a> (CPNI-957037).
 
 <p>
@@ -2164,16 +2195,28 @@ module, or configure it to preserve the SGID bit (<i>e.g.</i> via the
 <a href="../modules/mod_cap.html#CapabilitiesSet"><code>CAP_FSETID</code></a>
 capability).
 
+<p><a name="SFTPWarnings">
+<font color=red>Question</font>: In my SFTP logs, I see these warnings:
+<pre>
+  WARNING: unable to read SFTPDHParamFile '<i>path</i>': Permission denied
+  unable to open SFTPKeyBlacklist '<i>path</i>': Permission denied
+<pre>
+What can I do to fix this?<br>
+<font color=blue>Answer</font>: This indicates that the files are not
+readable (usually <i>world</i>-readable) by the users logging in,
+<b>or</b> that the directories containing the files are not readable
+by the users.
+
+<p>
+Fortunately <code>mod_sftp</code> will function without issue if it
+cannot read either the <code>SFTPDHParamFile</code> or the
+<code>SFTPKeyBlacklist</code> files.
+
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-03-03 05:40:13 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2008-2014 TJ Saunders<br>
+&copy; Copyright 2008-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

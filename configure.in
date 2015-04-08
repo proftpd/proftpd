@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2014 The ProFTPD Project team
+dnl Copyright (c) 2001-2015 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -164,7 +164,7 @@ dnl problems for certain builds of proftpd, e.g. ProFTPD and MySQL (which
 dnl itself similarly bundles a getopt implementation).  Thus, we need to
 dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
-LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o json.o"
 
 AC_ARG_WITH(getopt,
   [AC_HELP_STRING(
@@ -1548,6 +1548,8 @@ AC_CHECK_SIZEOF(size_t, 0)
 AC_CHECK_SIZEOF(time_t, 0)
 AC_CHECK_SIZEOF(char *, 0)
 AC_CHECK_SIZEOF(void *, 0)
+AC_CHECK_SIZEOF(uid_t, 0)
+AC_CHECK_SIZEOF(gid_t, 0)
 
 dnl Check for generic typedefs
 AC_CHECK_TYPE(mode_t, mode_t)
@@ -1764,7 +1766,7 @@ AC_CHECK_FUNCS(gettimeofday hstrerror inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(loginrestrictions)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
 AC_CHECK_FUNCS(pathconf putenv regcomp rmdir select setgroups socket statfs strchr strcoll strerror)
-AC_CHECK_FUNCS(strlcat strlcpy strsep strtod strtof strtol strtoull setprotoent setspent endprotoent)
+AC_CHECK_FUNCS(strlcat strlcpy strsep strtod strtof strtol strtoll strtoull setprotoent setspent endprotoent)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)
 if test x"$ac_cv_func_vsnprintf" != xyes || test x"$ac_cv_func_snprintf" != xyes
@@ -1816,6 +1818,22 @@ AC_CHECK_MEMBER(struct cmsgcred.cmcred_uid,
 
 AC_CHECK_MEMBER(struct sockcred.sc_uid,
   [AC_DEFINE(HAVE_STRUCT_SOCKCRED, 1, [Define if you have struct sockcred])],,
+  [
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
+    #endif
+    #if HAVE_SYS_UIO_H
+    # include <sys/uio.h>
+    #endif
+  ])
+
+# See:
+#   https://github.com/proftpd/proftpd/issues/75
+AC_CHECK_MEMBER(struct sockpeercred.uid,
+  [AC_DEFINE(HAVE_STRUCT_SOCKPEERCRED, 1, [Define if you have struct sockpeercred])],,
   [
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>

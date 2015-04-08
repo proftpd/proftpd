@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -423,7 +423,7 @@ static int snmp_mkdir(const char *dir, uid_t uid, gid_t gid, mode_t mode) {
   struct stat st;
   int res = -1;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
 
   if (res == -1 &&
@@ -461,7 +461,7 @@ static int snmp_mkpath(pool *p, const char *path, uid_t uid, gid_t gid,
   char *currpath = NULL, *tmppath = NULL;
   struct stat st;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) == 0) {
     /* Path already exists, nothing to be done. */
     errno = EEXIST;
@@ -1693,13 +1693,15 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
 
   if (agent_chroot != NULL) {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "SNMP agent process running with UID %lu, GID %lu, restricted to '%s'",
-      (unsigned long) getuid(), (unsigned long) getgid(), agent_chroot);
+      "SNMP agent process running with UID %s, GID %s, restricted to '%s'",
+      pr_uid2str(snmp_pool, getuid()), pr_gid2str(snmp_pool, getgid()),
+      agent_chroot);
 
   } else {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "SNMP agent process running with UID %lu, GID %lu, located in '%s'",
-      (unsigned long) getuid(), (unsigned long) getgid(), getcwd(NULL, 0));
+      "SNMP agent process running with UID %s, GID %s, located in '%s'",
+      pr_uid2str(snmp_pool, getuid()), pr_gid2str(snmp_pool, getgid()),
+      getcwd(NULL, 0));
   }
 
   /* Once we have chrooted, and dropped root privs completely, we can now

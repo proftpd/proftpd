@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* String manipulation functions
- * $Id: str.c,v 1.21 2013-11-24 00:45:30 castaglia Exp $
- */
+/* String manipulation functions. */
 
 #include "conf.h"
 
@@ -472,6 +470,142 @@ char *pr_str_strip_end(char *s, char *ch) {
   }
 
   return s;
+}
+
+#ifdef HAVE_STRTOULL
+static int parse_ull(const char *val, unsigned long long *num) {
+  char *endp = NULL;
+  unsigned long long res;
+
+  res = strtoull(val, &endp, 10);
+  if (endp && *endp) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  *num = res;
+  return 0;
+}
+#endif /* HAVE_STRTOULL */
+
+static int parse_ul(const char *val, unsigned long *num) {
+  char *endp = NULL;
+  unsigned long res;
+
+  res = strtoul(val, &endp, 10);
+  if (endp && *endp) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  *num = res;
+  return 0;
+}
+
+int pr_str2uid(const char *val, uid_t *uid) {
+#ifdef HAVE_STRTOULL
+  unsigned long long ull = 0ULL;
+#endif /* HAVE_STRTOULL */
+  unsigned long ul = 0UL;
+
+  if (val == NULL ||
+      uid == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+#if SIZEOF_UID_T == SIZEOF_LONG_LONG
+# ifdef HAVE_STRTOULL
+  if (parse_ull(val, &ull) < 0) {
+    return -1;
+  }
+  *uid = ull; 
+
+# else
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *uid = ul;
+# endif /* HAVE_STRTOULL */
+#else
+  (void) ull;
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *uid = ul;
+#endif /* sizeof(uid_t) != sizeof(long long) */
+
+  return 0;
+}
+
+int pr_str2gid(const char *val, gid_t *gid) {
+#ifdef HAVE_STRTOULL
+  unsigned long long ull = 0ULL;
+#endif /* HAVE_STRTOULL */
+  unsigned long ul = 0UL;
+
+  if (val == NULL ||
+      gid == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+#if SIZEOF_GID_T == SIZEOF_LONG_LONG
+# ifdef HAVE_STRTOULL
+  if (parse_ull(val, &ull) < 0) {
+    return -1;
+  }
+  *gid = ull; 
+
+# else
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *gid = ul;
+# endif /* HAVE_STRTOULL */
+#else
+  (void) ull;
+  if (parse_ul(val, &ul) < 0) {
+    return -1;
+  }
+  *gid = ul;
+#endif /* sizeof(gid_t) != sizeof(long long) */
+
+  return 0;
+}
+
+const char *pr_uid2str(pool *p, uid_t uid) {
+  static char buf[64];
+
+  memset(&buf, 0, sizeof(buf));
+#if SIZEOF_UID_T == SIZEOF_LONG_LONG
+  snprintf(buf, sizeof(buf)-1, "%llu", (unsigned long long) uid);
+#else
+  snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) uid);
+#endif /* sizeof(uid_t) != sizeof(long long) */
+
+  if (p != NULL) {
+    return pstrdup(p, buf);
+  }
+
+  return buf;
+}
+
+const char *pr_gid2str(pool *p, gid_t gid) {
+  static char buf[64];
+
+  memset(&buf, 0, sizeof(buf));
+#if SIZEOF_GID_T == SIZEOF_LONG_LONG
+  snprintf(buf, sizeof(buf)-1, "%llu", (unsigned long long) gid);
+#else
+  snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) gid);
+#endif /* sizeof(gid_t) != sizeof(long long) */
+
+  if (p != NULL) {
+    return pstrdup(p, buf);
+  }
+
+  return buf;
 }
 
 /* NOTE: Update mod_ban's ban_parse_timestr() to use this function. */

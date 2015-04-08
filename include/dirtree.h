@@ -129,6 +129,14 @@ typedef struct cmd_struc {
   pr_table_t *notes;		/* Private data for passing/retaining between handlers */
 
   int cmd_id;			/* Index into commands list, for faster comparisons */
+
+  /* If we detect that the client sent commands for a protocol OTHER than
+   * FTP, then this field will be FALSE; the protocol field will identify
+   * the detected protocol.
+   */
+  int is_ftp;
+  const char *protocol;
+
 } cmd_rec;
 
 /* Operation codes for dir_* funcs */

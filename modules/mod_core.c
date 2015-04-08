@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Core FTPD module
- * $Id: mod_core.c,v 1.461 2014-05-03 22:18:12 castaglia Exp $
- */
+/* Core FTPD module */
 
 #include "conf.h"
 #include "privs.h"
@@ -1340,6 +1338,71 @@ MODRET add_from(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: FSCachePolicy on|off|size {count} [maxAge {age}] */
+MODRET set_fscachepolicy(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc != 2 &&
+      cmd->argc != 5) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  if (cmd->argc == 2) {
+    int engine;
+
+    engine = get_boolean(cmd, 1);
+    if (engine == -1) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = engine;
+    c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = PR_TUNABLE_FS_STATCACHE_SIZE;
+    c->argv[2] = palloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[2]) = PR_TUNABLE_FS_STATCACHE_MAX_AGE;
+
+    return PR_HANDLED(cmd);
+  }
+
+  c = add_config_param_str(cmd->argv[0], 3, NULL, NULL, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = TRUE;
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strncasecmp(cmd->argv[i], "size", 5) == 0) {
+      int size;
+
+      size = atoi(cmd->argv[i++]);
+      if (size < 1) {
+        CONF_ERROR(cmd, "size parameter must be greater than 1");
+      }
+
+      c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+      *((unsigned int *) c->argv[1]) = size;
+
+    } else if (strncasecmp(cmd->argv[i], "maxAge", 7) == 0) {
+      int max_age;
+
+      max_age = atoi(cmd->argv[i++]);
+      if (max_age < 1) {
+        CONF_ERROR(cmd, "maxAge parameter must be greater than 1");
+      }
+
+      c->argv[2] = palloc(c->pool, sizeof(unsigned int));
+      *((unsigned int *) c->argv[2]) = max_age;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown FSCachePolicy: ",
+        cmd->argv[i], NULL));
+    }
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_group(cmd_rec *cmd) {
   struct group *grp = NULL;
 
@@ -1935,7 +1998,7 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, pre);
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
@@ -3222,9 +3285,6 @@ MODRET core_pre_any(cmd_rec *cmd) {
   unsigned long cmd_delay = 0;
   char *rnfr_path = NULL;
 
-  /* Make sure any FS caches are clear before each command. */
-  pr_fs_clear_cache();
-
   /* Check for an exceeded MaxCommandRate. */
   cmd_delay = core_exceeded_cmd_rate(cmd);
   if (cmd_delay > 0) {
@@ -3343,14 +3403,6 @@ MODRET core_log_quit(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Per RFC959, directory responses for MKD and PWD should be
- * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
- * the add'l quotes must be duplicated.
- */
-static const char *quote_dir(cmd_rec *cmd, char *dir) {
-  return sreplace(cmd->tmp_pool, dir, "\"", "\"\"", NULL);
-}
-
 MODRET core_pwd(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
 
@@ -3365,7 +3417,7 @@ MODRET core_pwd(cmd_rec *cmd) {
   }
 
   pr_response_add(R_257, _("\"%s\" is the current directory"),
-    quote_dir(cmd, pr_fs_encode_path(cmd->tmp_pool, session.vwd)));
+    quote_dir(cmd->tmp_pool, pr_fs_encode_path(cmd->tmp_pool, session.vwd)));
 
   return PR_HANDLED(cmd);
 }
@@ -4661,18 +4713,17 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
   unsigned char show_symlinks = TRUE, *tmp = NULL;
 
   odir = ndir;
-  pr_fs_clear_cache();
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     show_symlinks = *tmp;
+  }
 
   if (show_symlinks) {
     int use_cdpath = FALSE;
 
     dir = dir_realpath(cmd->tmp_pool, ndir);
-
-    if (!dir) {
+    if (dir == NULL) {
       use_cdpath = TRUE;
     }
 
@@ -4681,8 +4732,9 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
       allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
         NULL);
-      if (!allowed_access)
+      if (!allowed_access) {
         use_cdpath = TRUE;
+      }
     }
 
     if (!use_cdpath &&
@@ -4845,11 +4897,26 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
 MODRET core_rmd(cmd_rec *cmd) {
   int res;
-  char *dir;
+  char *decoded_path, *dir;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  dir = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, dir);
   switch (res) {
@@ -4902,10 +4969,10 @@ MODRET core_rmd(cmd_rec *cmd) {
   if (pr_fsio_rmdir(dir) < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error removing directory '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, dir,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -4920,7 +4987,7 @@ MODRET core_rmd(cmd_rec *cmd) {
 
 MODRET core_mkd(cmd_rec *cmd) {
   int res;
-  char *dir;
+  char *decoded_path, *dir;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -4935,7 +5002,22 @@ MODRET core_mkd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  dir = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, dir);
   switch (res) {
@@ -4987,10 +5069,10 @@ MODRET core_mkd(cmd_rec *cmd) {
       session.fsgid) < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error making directory '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, dir,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
  
@@ -5000,17 +5082,31 @@ MODRET core_mkd(cmd_rec *cmd) {
   }
 
   pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
-    quote_dir(cmd, dir));
+    quote_dir(cmd->tmp_pool, dir));
 
   return PR_HANDLED(cmd);
 }
 
 MODRET core_cwd(cmd_rec *cmd) {
-  char *dir;
+  char *decoded_path;
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
-  return _chdir(cmd, dir);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  return _chdir(cmd, decoded_path);
 }
 
 MODRET core_cdup(cmd_rec *cmd) {
@@ -5021,13 +5117,27 @@ MODRET core_cdup(cmd_rec *cmd) {
 /* Returns the modification time of a file, as per RFC3659.
  */
 MODRET core_mdtm(cmd_rec *cmd) {
-  char *path;
+  char *decoded_path, *path;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = dir_realpath(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_realpath(cmd->tmp_pool, decoded_path);
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
@@ -5072,7 +5182,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
 }
 
 MODRET core_size(cmd_rec *cmd) {
-  char *path;
+  char *decoded_path, *path;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
@@ -5087,12 +5197,27 @@ MODRET core_size(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = dir_realpath(cmd->tmp_pool,
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
 
-  pr_fs_clear_cache();
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
 
-  if (!path ||
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (path != NULL) {
+    pr_fs_clear_cache2(path);
+  }
+
+  if (path == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       pr_fsio_stat(path, &st) == -1) {
     int xerrno = errno;
@@ -5121,12 +5246,27 @@ MODRET core_size(cmd_rec *cmd) {
 
 MODRET core_dele(cmd_rec *cmd) {
   int res;
-  char *path, *fullpath;
+  char *decoded_path, *path, *fullpath;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
   switch (res) {
@@ -5180,7 +5320,7 @@ MODRET core_dele(cmd_rec *cmd) {
    * so we need to use lstat(), not stat(), lest we log the wrong size.
    */
   memset(&st, 0, sizeof(st));
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) < 0) {
     int xerrno = errno;
 
@@ -5199,10 +5339,10 @@ MODRET core_dele(cmd_rec *cmd) {
   if (S_ISDIR(st.st_mode)) {
     int xerrno = EISDIR;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error deleting '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
 
     pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
@@ -5216,10 +5356,10 @@ MODRET core_dele(cmd_rec *cmd) {
   if (pr_fsio_unlink(path) < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error deleting '%s': %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid, path,
-      strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
 
     pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
@@ -5248,7 +5388,7 @@ MODRET core_dele(cmd_rec *cmd) {
 
 MODRET core_rnto(cmd_rec *cmd) {
   int res;
-  char *path;
+  char *decoded_path, *path;
   unsigned char *allow_overwrite = NULL;
   struct stat st;
 
@@ -5267,7 +5407,22 @@ MODRET core_rnto(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
   switch (res) {
@@ -5300,7 +5455,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   /* Deny the rename if AllowOverwrites are not allowed, and the destination
    * rename file already exists.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if ((!allow_overwrite || *allow_overwrite == FALSE) &&
       pr_fsio_stat(path, &st) == 0) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", path);
@@ -5326,10 +5481,10 @@ MODRET core_rnto(cmd_rec *cmd) {
        * client.
        */
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error copying '%s' to '%s': %s (previous error was '%s')",
-        cmd->argv[0], session.user, (unsigned long) session.uid,
-        (unsigned long) session.gid, session.xfer.path, path,
+        cmd->argv[0], session.user, pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
         strerror(xerrno), strerror(EXDEV));
 
       pr_log_debug(DEBUG4,
@@ -5350,10 +5505,11 @@ MODRET core_rnto(cmd_rec *cmd) {
     }
 
     if (xerrno != EXDEV) {
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(xerrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
+        strerror(xerrno));
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));
@@ -5369,10 +5525,11 @@ MODRET core_rnto(cmd_rec *cmd) {
     if (pr_fs_copy_file(session.xfer.path, path) < 0) {
       xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error copying '%s' to '%s': %s", cmd->argv[0], session.user,
-        (unsigned long) session.uid, (unsigned long) session.gid,
-        session.xfer.path, path, strerror(xerrno));
+        pr_uid2str(cmd->tmp_pool, session.uid),
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
+        strerror(xerrno));
 
       pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
         strerror(xerrno));
@@ -5408,11 +5565,26 @@ MODRET core_rnto_cleanup(cmd_rec *cmd) {
 
 MODRET core_rnfr(cmd_rec *cmd) {
   int res;
-  char *path;
+  char *decoded_path, *path;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  path = decoded_path;
 
   res = pr_filter_allow_path(CURRENT_CONF, path);
   switch (res) {
@@ -5663,6 +5835,30 @@ MODRET core_post_pass(cmd_rec *cmd) {
     core_max_cmd_ts = 0;
   }
 
+  /* Configure the statcache to start caching for the authenticated session. */
+  pr_fs_statcache_reset();
+  c = find_config(main_server->conf, CONF_PARAM, "FSCachePolicy", FALSE);
+  if (c != NULL) {
+    int engine;
+    unsigned int size, max_age;
+
+    engine = *((int *) c->argv[0]);
+    size = *((unsigned int *) c->argv[1]);
+    max_age = *((unsigned int *) c->argv[2]);
+
+    if (engine) {
+      pr_fs_statcache_set_policy(size, max_age, 0);
+
+    } else {
+      pr_fs_statcache_set_policy(0, 0, 0);
+    }
+
+  } else {
+    /* Set the default statcache policy. */
+    pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
+      PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  }
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -5743,6 +5939,7 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
  */
 
 static void core_restart_ev(const void *event_data, void *user_data) {
+  pr_fs_statcache_reset();
   pr_scoreboard_scrub();
 
 #ifdef PR_USE_TRACE
@@ -6280,6 +6477,7 @@ static conftable core_conftab[] = {
   { "DisplayConnect",		set_displayconnect,		NULL },
   { "DisplayQuit",		set_displayquit,		NULL },
   { "From",			add_from,			NULL },
+  { "FSCachePolicy",		set_fscachepolicy,		NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "HideFiles",		set_hidefiles,			NULL },

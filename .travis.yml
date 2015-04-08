@@ -1,3 +1,4 @@
+env: TRAVIS_CI=true
 language: c
 
 compiler:

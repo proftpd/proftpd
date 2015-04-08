@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2014 TJ Saunders
+ * Copyright (c) 2009-2015 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,15 +20,13 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
- *
- * $Id: mod_sql_passwd.c,v 1.22 2014-05-05 16:15:02 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.7"
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -47,17 +45,22 @@ module sql_passwd_module;
 
 static int sql_passwd_engine = FALSE;
 
-#define SQL_PASSWD_USE_BASE64		1
-#define SQL_PASSWD_USE_HEX_LC		2
-#define SQL_PASSWD_USE_HEX_UC		3
-static unsigned int sql_passwd_encoding = SQL_PASSWD_USE_HEX_LC;
+#define SQL_PASSWD_ENC_USE_BASE64		1
+#define SQL_PASSWD_ENC_USE_HEX_LC		2
+#define SQL_PASSWD_ENC_USE_HEX_UC		3
+#define SQL_PASSWD_ENC_USE_NONE			4
+static unsigned int sql_passwd_encoding = SQL_PASSWD_ENC_USE_HEX_LC;
+static unsigned int sql_passwd_salt_encoding = SQL_PASSWD_ENC_USE_NONE;
 
-static char *sql_passwd_salt = NULL;
-static size_t sql_passwd_salt_len = 0;
+static unsigned char *sql_passwd_file_salt = NULL;
+static size_t sql_passwd_file_salt_len = 0;
+static unsigned char *sql_passwd_user_salt = NULL;
+static size_t sql_passwd_user_salt_len = 0;
 
 #define SQL_PASSWD_SALT_FL_APPEND	0x0001
 #define SQL_PASSWD_SALT_FL_PREPEND	0x0002
-static unsigned long sql_passwd_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
+static unsigned long sql_passwd_file_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
+static unsigned long sql_passwd_user_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
 
 #define SQL_PASSWD_OPT_HASH_SALT		0x0001
 #define SQL_PASSWD_OPT_ENCODE_SALT		0x0002
@@ -172,7 +175,7 @@ static int get_pbkdf2_config(char *algo, const EVP_MD **md,
     char *iter_str, int *iter, char *len_str, int *len) {
 
   *md = EVP_get_digestbyname(algo);
-  if (md == NULL) {
+  if (*md == NULL) {
     return SQL_PASSWD_ERR_PBKDF2_UNKNOWN_DIGEST;
   }
 
@@ -198,8 +201,107 @@ static int get_pbkdf2_config(char *algo, const EVP_MD **md,
   return 0;
 }
 
-static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
-  EVP_ENCODE_CTX base64_ctxt;
+static unsigned char *sql_passwd_decode(pool *p, unsigned int encoding,
+    char *text, size_t text_len, size_t *data_len) {
+  unsigned char *data = NULL;
+
+  switch (encoding) {
+    case SQL_PASSWD_ENC_USE_NONE:
+      *data_len = text_len;
+      data = (unsigned char *) pstrndup(p, text, text_len);
+      break;
+
+    case SQL_PASSWD_ENC_USE_BASE64: {
+      int have_padding = FALSE, res;
+
+      /* Due to Base64's padding, we need to detect if the last block was
+       * padded with zeros; we do this by looking for '=' characters at the
+       * end of the text being decoded.  If we see these characters, then we
+       * will "trim" off any trailing zero values in the decoded data, on the
+       * ASSUMPTION that they are the auto-added padding bytes.
+       */
+      if (text[text_len-1] == '=') {
+        have_padding = TRUE;
+      }
+
+      data = pcalloc(p, text_len);
+      res = EVP_DecodeBlock((unsigned char *) data, (unsigned char *) text,
+        (int) text_len);
+      if (res <= 0) {
+        /* Base64-decoding error. */
+        errno = EINVAL;
+        return NULL;
+      }
+
+      if (have_padding) {
+        /* Assume that only one or two zero bytes of padding were added. */
+        if (data[res-1] == '\0') {
+          res -= 1;
+
+          if (data[res-1] == '\0') {
+            res -= 1;
+          }
+        }
+      }
+
+      *data_len = (size_t) res;
+      break;
+    }
+
+    case SQL_PASSWD_ENC_USE_HEX_LC: {
+      register unsigned int i, j;
+      unsigned int len = 0;
+
+      data = pcalloc(p, text_len);
+      for (i = 0, j = 0; i < text_len; i += 2) {
+        int res;
+
+        res = sscanf(text + i, "%02hhx", &(data[j++]));
+        if (res == 0) {
+          /* hex decoding error. */
+          errno = EINVAL;
+          return NULL;
+        }
+
+        len += res;
+      }
+
+      *data_len = len;
+      break;
+    }
+
+    case SQL_PASSWD_ENC_USE_HEX_UC: {
+      register unsigned int i, j;
+      unsigned int len = 0;
+
+      data = pcalloc(p, text_len);
+      for (i = 0, j = 0; i < text_len; i += 2) {
+        int res;
+
+        res = sscanf(text + i, "%02hhX", &(data[j++]));
+        if (res == 0) {
+          /* hex decoding error. */
+          errno = EINVAL;
+          return NULL;
+        }
+
+        len += res;
+      }
+
+      *data_len = len;
+      break;
+    }
+
+    default:
+      errno = EPERM;
+      return NULL;
+  }
+
+  return data;
+}
+
+static char *sql_passwd_encode(pool *p, unsigned int encoding,
+    unsigned char *data, size_t data_len) {
   char *buf;
 
   /* According to RATS, the output buffer for EVP_EncodeBlock() needs to be
@@ -209,13 +311,13 @@ static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
    */
   buf = pcalloc(p, (2 * data_len) + 1);
 
-  switch (sql_passwd_encoding) {
-    case SQL_PASSWD_USE_BASE64:
-      EVP_EncodeInit(&base64_ctxt);
+  switch (encoding) {
+    case SQL_PASSWD_ENC_USE_BASE64: {
       EVP_EncodeBlock((unsigned char *) buf, data, (int) data_len);
       break;
+    }
 
-    case SQL_PASSWD_USE_HEX_LC: {
+    case SQL_PASSWD_ENC_USE_HEX_LC: {
       register unsigned int i;
 
       for (i = 0; i < data_len; i++) {
@@ -225,7 +327,7 @@ static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
       break;
     }
 
-    case SQL_PASSWD_USE_HEX_UC: {
+    case SQL_PASSWD_ENC_USE_HEX_UC: {
       register unsigned int i;
 
       for (i = 0; i < data_len; i++) {
@@ -236,7 +338,7 @@ static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
     }
 
     default:
-      errno = EINVAL;
+      errno = EPERM;
       return NULL;
   }
 
@@ -361,34 +463,66 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
    * suffix?
    */
 
-  if (sql_passwd_salt_len > 0 &&
-      (sql_passwd_salt_flags & SQL_PASSWD_SALT_FL_PREPEND)) {
+  if (sql_passwd_file_salt_len > 0 &&
+      (sql_passwd_file_salt_flags & SQL_PASSWD_SALT_FL_PREPEND)) {
 
     /* If we have salt data, add it to the mix. */
 
     if (!(sql_passwd_opts & SQL_PASSWD_OPT_HASH_SALT)) {
-      prefix = (unsigned char *) sql_passwd_salt;
-      prefix_len = sql_passwd_salt_len;
+      prefix = (unsigned char *) sql_passwd_file_salt;
+      prefix_len = sql_passwd_file_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        "prepending %lu bytes of salt data", (unsigned long) prefix_len);
+        "prepending %lu bytes of file salt data", (unsigned long) prefix_len);
 
     } else {
       unsigned int salt_hashlen = 0;
 
       prefix = sql_passwd_hash(cmd->tmp_pool, md,
-        (unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
+        (unsigned char *) sql_passwd_file_salt, sql_passwd_file_salt_len,
         NULL, 0, NULL, 0, &salt_hashlen);
       prefix_len = salt_hashlen;
 
       if (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_SALT) {
         prefix = (unsigned char *) sql_passwd_encode(cmd->tmp_pool,
-          (unsigned char *) prefix, prefix_len);
+          sql_passwd_encoding, (unsigned char *) prefix, prefix_len);
         prefix_len = strlen((char *) prefix);
       }
 
       pr_trace_msg(trace_channel, 9,
-        "prepending %lu bytes of %s-hashed salt data (%s)",
+        "prepending %lu bytes of %s-hashed file salt data (%s)",
+        (unsigned long) prefix_len, digest, prefix);
+    }
+  }
+
+  if (sql_passwd_user_salt_len > 0 &&
+      (sql_passwd_user_salt_flags & SQL_PASSWD_SALT_FL_PREPEND)) {
+
+    /* If we have user salt data, add it to the mix. */
+
+    if (!(sql_passwd_opts & SQL_PASSWD_OPT_HASH_SALT)) {
+      prefix = (unsigned char *) sql_passwd_user_salt;
+      prefix_len = sql_passwd_user_salt_len;
+
+      pr_trace_msg(trace_channel, 9,
+        "prepending %lu bytes of user salt data", (unsigned long) prefix_len);
+
+    } else {
+      unsigned int salt_hashlen = 0;
+
+      prefix = sql_passwd_hash(cmd->tmp_pool, md,
+        (unsigned char *) sql_passwd_user_salt, sql_passwd_user_salt_len,
+        NULL, 0, NULL, 0, &salt_hashlen);
+      prefix_len = salt_hashlen;
+
+      if (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_SALT) {
+        prefix = (unsigned char *) sql_passwd_encode(cmd->tmp_pool,
+          sql_passwd_encoding, (unsigned char *) prefix, prefix_len);
+        prefix_len = strlen((char *) prefix);
+      }
+
+      pr_trace_msg(trace_channel, 9,
+        "prepending %lu bytes of %s-hashed user salt data (%s)",
         (unsigned long) prefix_len, digest, prefix);
     }
   }
@@ -402,7 +536,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
      * also salt data present.  Otherwise, it is equivalent to another
      * round of processing, which defeats the principle of least surprise.
      */
-    if (sql_passwd_salt_len == 0 &&
+    if ((sql_passwd_file_salt_len == 0 &&
+         sql_passwd_user_salt_len == 0) &&
         (sql_passwd_opts & SQL_PASSWD_OPT_HASH_PASSWORD) &&
         (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_PASSWORD)) {
       pr_trace_msg(trace_channel, 4, "%s",
@@ -420,39 +555,70 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
 
       if (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_PASSWORD) {
         data = (unsigned char *) sql_passwd_encode(cmd->tmp_pool,
-          (unsigned char *) data, data_len);
+          sql_passwd_encoding, (unsigned char *) data, data_len);
         data_len = strlen((char *) data);
       }
     }
   }
 
-  if (sql_passwd_salt_len > 0 &&
-      (sql_passwd_salt_flags & SQL_PASSWD_SALT_FL_APPEND)) {
-    /* If we have salt data, add it to the mix. */
+  if (sql_passwd_file_salt_len > 0 &&
+      (sql_passwd_file_salt_flags & SQL_PASSWD_SALT_FL_APPEND)) {
+    /* If we have file salt data, add it to the mix. */
 
     if (!(sql_passwd_opts & SQL_PASSWD_OPT_HASH_SALT)) {
-      suffix = (unsigned char *) sql_passwd_salt;
-      suffix_len = sql_passwd_salt_len;
+      suffix = (unsigned char *) sql_passwd_file_salt;
+      suffix_len = sql_passwd_file_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        "appending %lu bytes of salt data", (unsigned long) suffix_len);
+        "appending %lu bytes of file salt data", (unsigned long) suffix_len);
 
     } else {
       unsigned int salt_hashlen = 0;
 
       suffix = sql_passwd_hash(cmd->tmp_pool, md,
-        (unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
+        (unsigned char *) sql_passwd_file_salt, sql_passwd_file_salt_len,
         NULL, 0, NULL, 0, &salt_hashlen);
       suffix_len = salt_hashlen;
 
       if (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_SALT) {
         suffix = (unsigned char *) sql_passwd_encode(cmd->tmp_pool,
-          (unsigned char *) suffix, suffix_len);
+          sql_passwd_encoding, (unsigned char *) suffix, suffix_len);
         suffix_len = strlen((char *) suffix);
       }
 
       pr_trace_msg(trace_channel, 9, 
-        "appending %lu bytes of %s-hashed salt data",
+        "appending %lu bytes of %s-hashed file salt data",
+        (unsigned long) suffix_len, digest);
+    }
+  }
+
+  if (sql_passwd_user_salt_len > 0 &&
+      (sql_passwd_user_salt_flags & SQL_PASSWD_SALT_FL_APPEND)) {
+    /* If we have user salt data, add it to the mix. */
+
+    if (!(sql_passwd_opts & SQL_PASSWD_OPT_HASH_SALT)) {
+      suffix = (unsigned char *) sql_passwd_user_salt;
+      suffix_len = sql_passwd_user_salt_len;
+
+      pr_trace_msg(trace_channel, 9,
+        "appending %lu bytes of user salt data", (unsigned long) suffix_len);
+
+    } else {
+      unsigned int salt_hashlen = 0;
+
+      suffix = sql_passwd_hash(cmd->tmp_pool, md,
+        (unsigned char *) sql_passwd_user_salt, sql_passwd_user_salt_len,
+        NULL, 0, NULL, 0, &salt_hashlen);
+      suffix_len = salt_hashlen;
+
+      if (sql_passwd_opts & SQL_PASSWD_OPT_ENCODE_SALT) {
+        suffix = (unsigned char *) sql_passwd_encode(cmd->tmp_pool,
+          sql_passwd_encoding, (unsigned char *) suffix, suffix_len);
+        suffix_len = strlen((char *) suffix);
+      }
+
+      pr_trace_msg(trace_channel, 9, 
+        "appending %lu bytes of %s-hashed user salt data",
         (unsigned long) suffix_len, digest);
     }
   }
@@ -465,7 +631,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  encodedtext = sql_passwd_encode(cmd->tmp_pool, hash, hash_len);
+  encodedtext = sql_passwd_encode(cmd->tmp_pool, sql_passwd_encoding, hash,
+    hash_len);
   if (encodedtext == NULL) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": unsupported SQLPasswordEncoding configured");
@@ -489,7 +656,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
 
       hash = sql_passwd_hash(cmd->tmp_pool, md, (unsigned char *) encodedtext,
         strlen(encodedtext), NULL, 0, NULL, 0, &hash_len);
-      encodedtext = sql_passwd_encode(cmd->tmp_pool, hash, hash_len);
+      encodedtext = sql_passwd_encode(cmd->tmp_pool, sql_passwd_encoding,
+        hash, hash_len);
 
       pr_trace_msg(trace_channel, 15, "data after round %u: '%s'", i + 1,
         encodedtext);
@@ -534,6 +702,8 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
   unsigned char *derived_key;
   const char *encodedtext;
+  char *pbkdf2_salt = NULL;
+  size_t pbkdf2_salt_len = 0;
   int res;
 
   if (!sql_passwd_engine) {
@@ -547,7 +717,8 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   }
 
   /* PBKDF2 requires a salt; if no salt is configured, it is an error. */
-  if (sql_passwd_salt == NULL) {
+  if (sql_passwd_file_salt == NULL &&
+      sql_passwd_user_salt == NULL) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": no salt configured (PBKDF2 requires salt)");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
@@ -555,17 +726,27 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
 
   derived_key = palloc(cmd->tmp_pool, sql_passwd_pbkdf2_len);
 
+  /* Prefer user salts over global salts. */
+  if (sql_passwd_user_salt_len > 0) {
+    pbkdf2_salt = (char *) sql_passwd_user_salt;
+    pbkdf2_salt_len = sql_passwd_user_salt_len;
+
+  } else {
+    pbkdf2_salt = (char *) sql_passwd_file_salt;
+    pbkdf2_salt_len = sql_passwd_file_salt_len;
+  }
+
 #if OPENSSL_VERSION_NUMBER >= 0x1000003f
   /* For digests other than SHA1, the necesary OpenSSL support
    * (via PKCS5_PBKDF2_HMAC) appeared in 1.0.0c.
    */
   res = PKCS5_PBKDF2_HMAC(plaintext, -1,
-    (const unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
+    (const unsigned char *) pbkdf2_salt, pbkdf2_salt_len,
     sql_passwd_pbkdf2_iter, sql_passwd_pbkdf2_digest, sql_passwd_pbkdf2_len,
     derived_key);
 #else
   res = PKCS5_PBKDF2_HMAC_SHA1(plaintext, -1,
-    (const unsigned char *) sql_passwd_salt, sql_passwd_salt_len,
+    (const unsigned char *) pbkdf2_salt, pbkdf2_salt_len,
     sql_passwd_pbkdf2_iter, sql_passwd_pbkdf2_len, derived_key);
 #endif /* OpenSSL-1.0.0b and earlier */
 
@@ -575,7 +756,8 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  encodedtext = sql_passwd_encode(cmd->tmp_pool, derived_key,
+  encodedtext = sql_passwd_encode(cmd->tmp_pool, sql_passwd_encoding,
+    derived_key,
     sql_passwd_pbkdf2_len);
   if (encodedtext == NULL) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
@@ -741,8 +923,8 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       char *user;
 
       user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-      sql_passwd_salt = user;
-      sql_passwd_salt_len = strlen(user);
+      sql_passwd_user_salt = (unsigned char *) user;
+      sql_passwd_user_salt_len = strlen(user);
 
     } else if (strncasecmp(key, "sql:/", 5) == 0) {
       char *named_query, *ptr, *user, **values;
@@ -750,6 +932,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       cmd_rec *sql_cmd;
       modret_t *sql_res;
       array_header *sql_data;
+      size_t value_len;
 
       ptr = key + 5;
       named_query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", ptr, NULL);
@@ -793,14 +976,27 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       }
 
       values = sql_data->elts;
-      sql_passwd_salt = pstrdup(session.pool, values[0]);
-      sql_passwd_salt_len = strlen(values[0]);
+
+      /* Note: this ASSUMES that the value coming from the database is a 
+       * string.
+       */ 
+      value_len = strlen(values[0]);
+
+      sql_passwd_user_salt = sql_passwd_decode(session.pool,
+        sql_passwd_salt_encoding, values[0], value_len,
+        &sql_passwd_user_salt_len);
+      if (sql_passwd_user_salt == NULL) {
+        pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+          ": error decoding salt from SQLNamedQuery '%s': %s", ptr,
+          strerror(errno));
+        return PR_DECLINED(cmd);
+      }
 
     } else {
       return PR_DECLINED(cmd);
     }
 
-    sql_passwd_salt_flags = salt_flags;
+    sql_passwd_user_salt_flags = salt_flags;
   }
 
   return PR_DECLINED(cmd);
@@ -817,14 +1013,17 @@ MODRET set_sqlpasswdencoding(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strcmp(cmd->argv[1], "base64") == 0) {
-    encoding = SQL_PASSWD_USE_BASE64;
+  if (strcasecmp(cmd->argv[1], "none") == 0) {
+    encoding = SQL_PASSWD_ENC_USE_NONE;
+
+  } else if (strcasecmp(cmd->argv[1], "base64") == 0) {
+    encoding = SQL_PASSWD_ENC_USE_BASE64;
 
   } else if (strcmp(cmd->argv[1], "hex") == 0) {
-    encoding = SQL_PASSWD_USE_HEX_LC;
+    encoding = SQL_PASSWD_ENC_USE_HEX_LC;
 
   } else if (strcmp(cmd->argv[1], "HEX") == 0) {
-    encoding = SQL_PASSWD_USE_HEX_UC;
+    encoding = SQL_PASSWD_ENC_USE_HEX_UC;
 
   } else {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported encoding '",
@@ -977,6 +1176,12 @@ MODRET set_sqlpasswdrounds(cmd_rec *cmd) {
   *((unsigned int *) c->argv[0]) = nrounds;
 
   return PR_HANDLED(cmd);
+}
+
+/* usage: SQLPasswordSaltEncoding "base64"|"hex"|"HEX"|"none" */
+MODRET set_sqlpasswdsaltencoding(cmd_rec *cmd) {
+  /* Reuse the parsing code for the SQLPasswordEncoding directive. */
+  return set_sqlpasswdencoding(cmd);
 }
 
 /* usage: SQLPasswordSaltFile path|"none" [flags] */
@@ -1144,6 +1349,12 @@ static int sql_passwd_sess_init(void) {
     c = find_config_next(c, c->next, CONF_PARAM, "SQLPasswordOptions", FALSE);
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordSaltEncoding",
+    FALSE);
+  if (c != NULL) {
+    sql_passwd_salt_encoding = *((unsigned int *) c->argv[0]);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordSaltFile", FALSE);
   if (c) {
     char *path;
@@ -1153,7 +1364,7 @@ static int sql_passwd_sess_init(void) {
     salt_flags = *((unsigned long *) c->argv[1]);
 
     if (strcasecmp(path, "none") != 0) {
-      int fd, xerrno = 0;;
+      int fd, xerrno = 0;
 
       PRIVS_ROOT
       fd = open(path, O_RDONLY|O_NONBLOCK);
@@ -1163,7 +1374,13 @@ static int sql_passwd_sess_init(void) {
       PRIVS_RELINQUISH
 
       if (fd >= 0) {
+        char *file_salt = NULL;
+        size_t file_salt_len = 0;
         int flags;
+
+        /* XXX Rather than using a fixed size, this should be a dynamically
+         * allocated buffer, of st.st_blksize bytes, for optimal disk IO.
+         */
         char buf[512];
         ssize_t nread;
   
@@ -1179,34 +1396,28 @@ static int sql_passwd_sess_init(void) {
         while (nread > 0) {
           pr_signals_handle();
 
-          if (sql_passwd_salt == NULL) {
-
+          if (file_salt == NULL) {
             /* If the very last byte in the buffer is a newline, trim it. */
             if (buf[nread-1] == '\n') {
               buf[nread-1] = '\0';
               nread--;
             }
 
-            sql_passwd_salt_len = nread;
-            sql_passwd_salt = palloc(session.pool, sql_passwd_salt_len);
-            memcpy(sql_passwd_salt, buf, nread);
+            file_salt_len = nread;
+            file_salt = palloc(session.pool, file_salt_len);
+            memcpy(file_salt, buf, nread);
 
           } else {
             char *ptr, *tmp;
 
             /* Allocate a larger buffer for the salt. */
-            ptr = tmp = palloc(session.pool, sql_passwd_salt_len + nread);
-            memcpy(tmp, sql_passwd_salt, sql_passwd_salt_len);
-            tmp += sql_passwd_salt_len;
+            ptr = tmp = palloc(session.pool, file_salt_len + nread);
+            memcpy(tmp, file_salt, file_salt_len);
+            tmp += file_salt_len;
 
             memcpy(tmp, buf, nread);
-            sql_passwd_salt_len += nread;
-
-            /* XXX Yes, this is a minor memory leak; we are overwriting the
-             * previously allocated memory for the salt.  But it's per-session,
-             * so it's not a great concern at this point.
-             */
-            sql_passwd_salt = ptr;
+            file_salt_len += nread;
+            file_salt = ptr;
           }
 
           nread = read(fd, buf, sizeof(buf));
@@ -1216,23 +1427,33 @@ static int sql_passwd_sess_init(void) {
           pr_log_debug(DEBUG1, MOD_SQL_PASSWD_VERSION
             ": error reading salt data from SQLPasswordSaltFile '%s': %s",
             path, strerror(errno));
-          sql_passwd_salt = NULL;
+          file_salt = NULL;
         }
 
         (void) close(fd);
 
-        if (sql_passwd_salt != NULL) {
+        if (file_salt != NULL) {
           /* If the very last byte in the buffer is a newline, trim it.  This
            * is to deal with cases where the SaltFile may have been written
            * with an editor (e.g. vi) which automatically adds a trailing
            * newline.
            */
-          if (sql_passwd_salt[sql_passwd_salt_len-1] == '\n') {
-            sql_passwd_salt[sql_passwd_salt_len-1] = '\0';
-            sql_passwd_salt_len--;
+          if (file_salt[file_salt_len-1] == '\n') {
+            file_salt[file_salt_len-1] = '\0';
+            file_salt_len--;
           }
 
-          sql_passwd_salt_flags = salt_flags;
+          sql_passwd_file_salt = sql_passwd_decode(session.pool,
+            sql_passwd_salt_encoding, file_salt, file_salt_len,
+            &sql_passwd_file_salt_len);
+          if (sql_passwd_file_salt == NULL) {
+            pr_log_debug(DEBUG0, MOD_SQL_PASSWD_VERSION
+              ": error decoding salt from SQLPasswordSaltFile '%s': %s", path,
+              strerror(errno));
+
+          } else {
+            sql_passwd_file_salt_flags = salt_flags;
+          }
         }
 
       } else {
@@ -1250,13 +1471,14 @@ static int sql_passwd_sess_init(void) {
  */
 
 static conftable sql_passwd_conftab[] = {
-  { "SQLPasswordEncoding",	set_sqlpasswdencoding,	NULL },
-  { "SQLPasswordEngine",	set_sqlpasswdengine,	NULL },
-  { "SQLPasswordOptions",	set_sqlpasswdoptions,	NULL },
-  { "SQLPasswordPBKDF2",	set_sqlpasswdpbkdf2,	NULL },
-  { "SQLPasswordRounds",	set_sqlpasswdrounds,	NULL },
-  { "SQLPasswordSaltFile",	set_sqlpasswdsaltfile,	NULL },
-  { "SQLPasswordUserSalt",	set_sqlpasswdusersalt,	NULL },
+  { "SQLPasswordEncoding",	set_sqlpasswdencoding,		NULL },
+  { "SQLPasswordEngine",	set_sqlpasswdengine,		NULL },
+  { "SQLPasswordOptions",	set_sqlpasswdoptions,		NULL },
+  { "SQLPasswordPBKDF2",	set_sqlpasswdpbkdf2,		NULL },
+  { "SQLPasswordRounds",	set_sqlpasswdrounds,		NULL },
+  { "SQLPasswordSaltEncoding",	set_sqlpasswdsaltencoding,	NULL },
+  { "SQLPasswordSaltFile",	set_sqlpasswdsaltfile,		NULL },
+  { "SQLPasswordUserSalt",	set_sqlpasswdusersalt,		NULL },
 
   { NULL, NULL, NULL }
 };
