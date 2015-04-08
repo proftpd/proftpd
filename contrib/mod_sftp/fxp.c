@@ -128,7 +128,7 @@
 #define SSH2_FXF_ACCESS_WRITE_LOCK		0x00000080
 #define SSH2_FXF_ACCESS_DELETE_LOCK		0x00000100
 
-/* FXP_REALPATH control flags */
+/* FXP_REALPATH control values */
 #define SSH2_FXRP_NO_CHECK		0x00000001
 #define SSH2_FXRP_STAT_IF		0x00000002
 #define SSH2_FXRP_STAT_ALWAYS		0x00000003
@@ -9050,19 +9050,18 @@ static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags) {
     return;
   }
 
-  if (flags & SSH2_FXRP_NO_CHECK) {
-    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
-      "FX_REALPATH_NO_CHECK", NULL);
-  }
+  switch (flags) {
+    case SSH2_FXRP_NO_CHECK:
+      flags_str = "FX_REALPATH_NO_CHECK";
+      break;
 
-  if (flags & SSH2_FXRP_STAT_IF) {
-    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
-      "FX_REALPATH_STAT_IF", NULL);
-  }
+    case SSH2_FXRP_STAT_IF:
+      flags_str = "FX_REALPATH_STAT_IF";
+      break;
 
-  if (flags & SSH2_FXRP_STAT_ALWAYS) {
-    flags_str = pstrcat(p, flags_str, *flags_str ? "|" : "",
-      "FX_REALPATH_STAT_ALWAYS", NULL);
+    case SSH2_FXRP_STAT_ALWAYS:
+      flags_str = "FX_REALPATH_STAT_ALWAYS";
+      break;
   }
 
   pr_trace_msg(trace_channel, trace_level, "REALPATH flags = %s", flags_str);
@@ -9144,7 +9143,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
     if (fxp_session->client_version <= 5 ||
         (fxp_session->client_version >= 6 &&
-         !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
+         realpath_flags != SSH2_FXRP_NO_CHECK)) {
       pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
         (unsigned long) status_code, fxp_strerror(status_code));
 
@@ -9201,7 +9200,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       if (fxp_session->client_version <= 5 ||
           (fxp_session->client_version >= 6 &&
-           !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
+           realpath_flags != SSH2_FXRP_NO_CHECK)) {
         pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
           "('%s' [%d])", (unsigned long) status_code, reason,
           xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
@@ -9259,7 +9258,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
     if (fxp_session->client_version <= 5 ||
         (fxp_session->client_version >= 6 &&
-         !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
+         realpath_flags != SSH2_FXRP_NO_CHECK)) {
 
       pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
         "('%s' [%d])", (unsigned long) status_code, reason,
@@ -9305,7 +9304,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       if (fxp_session->client_version <= 5 ||
           (fxp_session->client_version >= 6 &&
-           !(realpath_flags & SSH2_FXRP_NO_CHECK))) {
+           realpath_flags != SSH2_FXRP_NO_CHECK)) {
 
         pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
           "('%s' [%d])", (unsigned long) status_code, reason,
