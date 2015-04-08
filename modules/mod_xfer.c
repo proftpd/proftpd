@@ -1376,6 +1376,13 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       errno = EPERM;
       return PR_ERROR(cmd);
     }
+    if ((session.xfer.xfer_type == STOR_APPEND) && fmode) {
+      pr_log_pri(PR_LOG_NOTICE, "HiddenStore in effect, refusing APPE upload existing file");
+      pr_response_add_err(R_550,
+        _("APPE not compatible with server configuration"));
+      errno = EINVAL;
+      return PR_ERROR(cmd);
+    }
 
     /* For Bug#3598, we rejected any APPE command when HiddenStores are in
      * effect (for good reasons).
@@ -1384,7 +1391,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
      * the APPE command, we accept that command, but we disable the HiddenStores
      * functionality.
      */
-    if (session.xfer.xfer_type != STOR_APPEND) {
+    if ((session.xfer.xfer_type != STOR_APPEND) ||
+      ((session.xfer.xfer_type == STOR_APPEND) && (fmode == 0 ))) {
       prefix = c->argv[1];
       suffix = c->argv[2];
 
