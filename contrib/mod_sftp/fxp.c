@@ -9177,6 +9177,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
          * implies that multiple such composite-path elements could be supplied.
          * Sigh.  I'll need to provide feedback on this, I see.
          */
+        pr_trace_msg(trace_channel, 13,
+          "REALPATH request set composite-path: '%s'", composite_path);
       }
     }
   }

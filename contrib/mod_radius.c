@@ -1421,6 +1421,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo per-session value: '%s'", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo per-session value: %s", param);
     }
   }
 
@@ -1437,6 +1441,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo limit type value: '%s'", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo limit type value: %s", param);
     }
   }
 
@@ -1458,6 +1466,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo bytes in value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo bytes in value: %s", param);
     }
 
     radius_quota_bytes_in = param;
@@ -1481,6 +1493,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo bytes out value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo bytes out value: %s", param);
     }
 
     radius_quota_bytes_out = param;
@@ -1504,6 +1520,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo bytes xfer value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo bytes xfer value: %s", param);
     }
 
     radius_quota_bytes_xfer = param;
@@ -1524,6 +1544,10 @@ static void radius_process_quota_info(config_rec *c) {
         "illegal RadiusQuotaInfo files in value: '%s' not a number",
         param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo files in value: %lu", res);
     }
 
     radius_quota_files_in = param;
@@ -1543,6 +1567,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo files out value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo files out value: %lu", res);
     }
 
     radius_quota_files_out = param;
@@ -1562,6 +1590,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo files xfer value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo files xfer value: %lu", res);
     }
 
     radius_quota_files_xfer = param;
@@ -2161,7 +2193,7 @@ static radius_attrib_t *radius_add_attrib(radius_packet_t *packet,
 static void radius_set_auth_mac(radius_packet_t *pkt,
    const unsigned char *secret, size_t secret_len) {
 #ifdef PR_USE_OPENSSL
-  EVP_MD *md;
+  const EVP_MD *md;
   unsigned char digest[EVP_MAX_MD_SIZE];
   unsigned int digest_len = 0, mac_len = 16;
   radius_attrib_t *attrib = NULL;
@@ -2205,7 +2237,7 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
     attrib_len = RADIUS_ATTRIB_LEN(attrib);
     if (attrib_len != expected_len) {
 #ifdef PR_USE_OPENSSL
-      EVP_MD *md;
+      const EVP_MD *md;
       unsigned char digest[EVP_MAX_MD_SIZE], replied[EVP_MAX_MD_SIZE];
       unsigned int digest_len = 0;
 
@@ -2241,7 +2273,7 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
     } else {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "%s packet has incorrect Message-Authenticator attribute length "
-        "(%u != %u), rejecting", attrib_len, expected_len, pkt_type);
+        "(%u != %u), rejecting", pkt_type, attrib_len, expected_len);
       errno = EINVAL;
       return -1;
     }
