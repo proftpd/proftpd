@@ -2,7 +2,7 @@
  * ProFTPD: mod_copy -- a module supporting copying of files on the server
  *                      without transferring the data to the client and back
  *
- * Copyright (c) 2009-2012 TJ Saunders
+ * Copyright (c) 2009-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
  *
  * This is mod_copy, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_copy.c,v 1.8 2012-12-27 22:31:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -501,7 +499,7 @@ MODRET set_copyengine(cmd_rec *cmd) {
 
 MODRET copy_copy(cmd_rec *cmd) {
   if (copy_engine == FALSE) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (cmd->argc < 2) {

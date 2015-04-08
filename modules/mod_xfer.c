@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Data transfer module for ProFTPD
- *
- * $Id: mod_xfer.c,v 1.334 2014-04-28 17:11:18 castaglia Exp $
- */
+/* Data transfer module for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -3051,7 +3048,7 @@ MODRET set_transferpriority(cmd_rec *cmd) {
   *((int *) c->argv[1]) = prio;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"
