@@ -427,9 +427,10 @@ static tpl_node *tpl_map_va(char *fmt, va_list ap) {
                   }
                   if (num_contig_fxlens >= (sizeof(contig_fxlens)/sizeof(contig_fxlens[0]))) {
                     tpl_hook.fatal("contiguous # exceeds hardcoded limit\n");
+                  } else {
+                    contig_fxlens[num_contig_fxlens++] = pound_num;
+                    pound_prod *= pound_num;
                   }
-                  contig_fxlens[num_contig_fxlens++] = pound_num;
-                  pound_prod *= pound_num;
                 }
                 /* increment c to skip contiguous # so its points to last one */
                 c = peek-1;
