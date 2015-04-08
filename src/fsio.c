@@ -1166,6 +1166,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    * to its target, and what we really want to know here is whether the
    * ultimate destination file exists or not.
    */
+  pr_fs_clear_cache2(dst);
   if (pr_fsio_stat(dst, &dst_st) == 0) {
     dst_existed = TRUE;
     pr_fs_clear_cache2(dst);
@@ -1187,7 +1188,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  pr_fsio_set_block(dst_fh);
+  if (pr_fsio_set_block(dst_fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error putting '%s' into blocking mode: %s", dst, strerror(errno));
+  }
 
   /* Stat the source file to find its optimal copy block size. */
   if (pr_fsio_fstat(src_fh, &src_st) < 0) {
@@ -1196,12 +1200,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     pr_log_pri(PR_LOG_WARNING, "error checking source file '%s' "
       "for copying: %s", src, strerror(xerrno));
 
-    pr_fsio_close(src_fh);
-    pr_fsio_close(dst_fh);
+    (void) pr_fsio_close(src_fh);
+    (void) pr_fsio_close(dst_fh);
 
+    /* Don't unlink the destination file if it already existed. */
     if (!dst_existed) {
-      /* Don't unlink the destination file if it already existed. */
-      pr_fsio_unlink(dst);
+      (void) pr_fsio_unlink(dst);
     }
 
     errno = xerrno;
@@ -1222,8 +1226,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         src_st.st_size == dst_st.st_size &&
         src_st.st_mtime == dst_st.st_mtime) {
 
-      pr_fsio_close(src_fh);
-      pr_fsio_close(dst_fh);
+      (void) pr_fsio_close(src_fh);
+      (void) pr_fsio_close(dst_fh);
 
       /* No need to copy the same file. */
       return 0;
@@ -1265,12 +1269,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
           continue;
         }
 
-        pr_fsio_close(src_fh);
-        pr_fsio_close(dst_fh);
+        (void) pr_fsio_close(src_fh);
+        (void) pr_fsio_close(dst_fh);
 
+        /* Don't unlink the destination file if it already existed. */
         if (!dst_existed) {
-          /* Don't unlink the destination file if it already existed. */
-          pr_fsio_unlink(dst);
+          (void) pr_fsio_unlink(dst);
         }
 
         pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
@@ -1300,23 +1304,27 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     int have_facl = FALSE, have_dup = FALSE;
 
     facl = acl_get_fd(PR_FH_FD(src_fh));
-    if (facl)
+    if (facl) {
       have_facl = TRUE;
+    }
 
-    if (have_facl)
-        facl_dup = acl_dup(facl);
+    if (have_facl) {
+      facl_dup = acl_dup(facl);
+    }
 
-    if (facl_dup)
+    if (facl_dup) {
       have_dup = TRUE;
+    }
 
     if (have_dup &&
-        acl_set_fd(PR_FH_FD(dst_fh), facl_dup) < 0)
+        acl_set_fd(PR_FH_FD(dst_fh), facl_dup) < 0) {
       pr_log_debug(DEBUG3, "error applying ACL to destination file: %s",
         strerror(errno));
+    }
 
-    if (have_dup)
+    if (have_dup) {
       acl_free(facl_dup);
-
+    }
 # elif defined(HAVE_LINUX_POSIX_ACL)
 
 #  if defined(HAVE_PERM_COPY_FD)
@@ -1380,7 +1388,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   }
 #endif /* HAVE_POSIX_ACL */
 
-  pr_fsio_close(src_fh);
+  (void) pr_fsio_close(src_fh);
 
   res = pr_fsio_close(dst_fh);
   if (res < 0) {
