@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,4 +39,8 @@ int setenv(const char *key, const char *value, int overwrite) {
 
 char *strerror(int errnum) {
   /* ignore */
+}
+
+void tpl_fatal(char *fmt, ...) {
+  __coverity_panic__();
 }
