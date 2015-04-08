@@ -3922,7 +3922,14 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
   pr_fs_t *from_fs, *to_fs, *fs;
 
   from_fs = lookup_file_canon_fs(rfrom, NULL, FSIO_FILE_RENAME);
+  if (from_fs == NULL) {
+    return -1;
+  }
+
   to_fs = lookup_file_canon_fs(rto, NULL, FSIO_FILE_RENAME);
+  if (to_fs == NULL) {
+    return -1;
+  }
 
   if (from_fs->allow_xdev_rename == FALSE ||
       to_fs->allow_xdev_rename == FALSE) {
@@ -3937,12 +3944,18 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
   /* Find the first non-NULL custom rename handler.  If there are none,
    * use the system rename.
    */
-  while (fs && fs->fs_next && !fs->rename)
+  while (fs && fs->fs_next && !fs->rename) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s rename() for paths '%s', '%s'",
     fs->fs_name, rfrom, rto);
   res = (fs->rename)(fs, rfrom, rto);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(rfrom);
+    pr_fs_clear_cache2(rto);
+  }
 
   return res;
 }
@@ -3980,6 +3993,11 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
   pr_trace_msg(trace_channel, 8, "using %s rename() for paths '%s', '%s'",
     fs->fs_name, rnfm, rnto);
   res = (fs->rename)(fs, rnfm, rnto);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(rnfm);
+    pr_fs_clear_cache2(rnto);
+  }
 
   return res;
 }
