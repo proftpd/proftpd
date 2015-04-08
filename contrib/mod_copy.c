@@ -502,7 +502,7 @@ MODRET set_copyengine(cmd_rec *cmd) {
 
 MODRET copy_copy(cmd_rec *cmd) {
   if (copy_engine == FALSE) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (cmd->argc < 2) {
