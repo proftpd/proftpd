@@ -293,7 +293,7 @@ static unsigned char radius_parse_gids_str(pool *, char *, gid_t **,
   unsigned int *);
 static unsigned char radius_parse_groups_str(pool *, char *, char ***,
   unsigned int *);
-static void radius_parse_var(char *, int *, char **);
+static int radius_parse_var(char *, int *, char **);
 static int radius_process_accept_packet(radius_packet_t *,
   const unsigned char *, size_t);
 static int radius_process_reject_packet(radius_packet_t *,
@@ -399,17 +399,24 @@ static unsigned char radius_have_var(char *var) {
 /* Separate the given "$(attribute-id:default)" string into its constituent
  * custom attribute ID (int) and default (string) components.
  */
-static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
-  pool *tmp_pool = make_sub_pool(radius_pool);
-  char *var_cpy = pstrdup(tmp_pool, var), *ptr = NULL;
-  size_t var_cpylen;
+static int radius_parse_var(char *var, int *attr_id, char **attr_default) {
+  pool *tmp_pool;
+  char *var_cpy, *ptr = NULL;
+  size_t var_len, var_cpylen;
 
-  var_cpylen = strlen(var_cpy);
-  if (var_cpylen == 0) {
-    /* Empty string; nothing to do. */
-    destroy_pool(tmp_pool);
-    return;
+  if (var == NULL) {
+    errno = EINVAL;
+    return -1;
   }
+
+  var_len = var_cpylen = strlen(var);
+  if (var_len == 0) {
+    /* Empty string; nothing to do. */
+    return 0;
+  }
+  
+  tmp_pool = make_sub_pool(radius_pool);
+  var_cpy = pstrdup(tmp_pool, var);
 
   /* First, strip off the "$()" variable characters. */
   var_cpy[var_cpylen-1] = '\0';
@@ -417,8 +424,9 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
 
   /* Find the delimiting ':' */
   ptr = strchr(var_cpy, ':');
-
-  *ptr++ = '\0';
+  if (ptr != NULL) {
+    *ptr++ = '\0';
+  }
 
   if (attr_id) {
     *attr_id = atoi(var_cpy);
@@ -432,13 +440,18 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
      * a NULL for this portion, so that the string stored in the config_rec
      * is not actually manipulated, as is done here.
      */
-    var[strlen(var)-1] = '\0';
+    if (var_len > 0) {
+      var[var_len-1] = '\0';
+    }
 
-    *attr_default = ++ptr;
+    if (ptr != NULL) {
+      *attr_default = ++ptr;
+    }
   }
 
   /* Clean up. */
   destroy_pool(tmp_pool);
+  return 0;
 }
 
 static unsigned char radius_parse_gids_str(pool *p, char *gids_str, 
