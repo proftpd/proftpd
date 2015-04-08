@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: auth.c,v 1.53 2014-03-04 07:54:12 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -275,6 +273,17 @@ static int setup_env(pool *p, char *user) {
   session.hide_password = TRUE;
 
   pw = pr_auth_getpwnam(p, user);
+  if (pw == NULL) {
+    xerrno = errno;
+
+    /* This is highly unlikely to happen...*/
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): Unable to retrieve user information: %s", user,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
 
   pw = dup_passwd(p, pw);
 
