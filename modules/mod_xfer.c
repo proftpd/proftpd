@@ -3360,7 +3360,7 @@ MODRET set_transferpriority(cmd_rec *cmd) {
   *((int *) c->argv[1]) = prio;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"

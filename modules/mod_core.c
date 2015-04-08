@@ -1998,7 +1998,7 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, pre);
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
