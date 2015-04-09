@@ -2298,6 +2298,10 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     char **argv = cmd->argv + 2;
 
     acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+    if (acl == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating expression: ",
+        strerror(errno), NULL));
+    }
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 4;
@@ -2330,7 +2334,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
     /* now, copy in the expression arguments */
     if (argc && acl) {
-      while (argc--) {
+      while (argc-- > 0) {
         *argv++ = pstrdup(c->pool, *((char **) acl->elts));
         acl->elts = ((char **) acl->elts) + 1;
       }
@@ -2741,7 +2745,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   config_rec *c;
   char **argv;
   int argc, eval_type;
-  array_header *acl;
+  array_header *acl = NULL;
  
   CHECK_CONF(cmd, CONF_LIMIT);
 
@@ -2781,8 +2785,9 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       pr_regex_t *pre;
       int res;
 
-      if (cmd->argc != 3)
+      if (cmd->argc != 3) {
         CONF_ERROR(cmd, "wrong number of parameters");
+      }
 
       pre = pr_regexp_alloc(&core_module);
 
@@ -2821,6 +2826,10 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+  if (acl == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating expression: ",
+      strerror(errno), NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 0);
 
@@ -2832,11 +2841,11 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
 
   argv = (char **) c->argv + 1;
 
-  if (acl) {
-    while (acl->nelts--) {
-      *argv++ = pstrdup(c->pool, *((char **) acl->elts));
-      acl->elts = ((char **) acl->elts) + 1;
-    }
+  while (acl->nelts-- > 0) {
+    pr_signals_handle();
+
+    *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+    acl->elts = ((char **) acl->elts) + 1;
   }
 
   *argv = NULL;
