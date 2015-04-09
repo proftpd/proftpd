@@ -2515,7 +2515,7 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
 
     /* The first four octets (bytes) of data will contain the Vendor-Id. */
     if (attrib->length >= 4) {
-      memcpy(&vendor_id, attrib->data, sizeof(unsigned int));
+      memcpy(&vendor_id, attrib->data, 4);
       vendor_id = ntohl(vendor_id);
     }
 
