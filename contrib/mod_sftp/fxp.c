@@ -9116,6 +9116,7 @@ static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags) {
 }
 
 static int fxp_handle_realpath(struct fxp_packet *fxp) {
+  int res, xerrno;
   unsigned char *buf, *ptr, realpath_flags = 0;
   char *path;
   uint32_t buflen, bufsz;
@@ -9159,7 +9160,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     realpath_flags = SSH2_FXRP_NO_CHECK;
 
     if (fxp->payload_sz >= sizeof(char)) {
-      char *composite_path;
+      char *composite_path = NULL;
 
       realpath_flags = sftp_msg_read_byte(fxp->pool, &fxp->payload,
         &fxp->payload_sz);
@@ -9174,7 +9175,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
          * may send.  The format of the REALPATH request, currently, only allows
          * for one composite-path element; the description of this feature
          * implies that multiple such composite-path elements could be supplied.
-         * Sigh.  I'll need to provide feedback on this, I see.
+         * Sigh.  Maybe it's meant to a blob of strings?  Or we keep reading
+         * a string until the remaining payload size is zero?
          */
         pr_trace_msg(trace_channel, 13,
           "REALPATH request set composite-path: '%s'", composite_path);
@@ -9185,7 +9187,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   buflen = bufsz = PR_TUNABLE_PATH_MAX + 32;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+  res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
+  if (res < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -9241,7 +9244,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     if (vpath == NULL) {
       uint32_t status_code;
       const char *reason;
-      int xerrno = errno;
+
+      xerrno = errno;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error resolving '%s': %s", path, strerror(xerrno));
@@ -9252,8 +9256,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
           (fxp_session->client_version >= 6 &&
            realpath_flags != SSH2_FXRP_NO_CHECK)) {
         pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-          "('%s' [%d])", (unsigned long) status_code, reason,
-          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+          "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+          xerrno);
 
         fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
           NULL);
@@ -9291,10 +9295,12 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   }
 
   /* Force a full lookup. */
+  pr_fs_clear_cache2(path);
   if (!dir_check_full(fxp->pool, cmd, G_DIRS, path, NULL)) {
     uint32_t status_code;
     const char *reason;
-    int xerrno = errno;
+
+    xerrno = errno;
 
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -9311,8 +9317,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
          realpath_flags != SSH2_FXRP_NO_CHECK)) {
 
       pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+        "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+        xerrno);
 
       fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
         NULL);
@@ -9339,10 +9345,38 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
   } else {
     pr_fs_clear_cache2(path);
-    if (pr_fsio_lstat(path, &st) < 0) {
+
+   /* draft-ietf-secsh-filexfer-13 says:
+    *
+    *  SSH_FXP_REALPATH_NO_CHECK:
+    *    NOT resolve symbolic links (thus use lstat(2))
+    *
+    *  SSH_FXP_REALPATH_STAT_IF:
+    *    stat(2) the file, but if the stat(2) fails, do NOT fail the request,
+    *    but send a NAME with type UNKNOWN.
+    *
+    *  SSH_FXP_REALPATH_STAT_ALWAYS:
+    *   stat(2) the file, and return any error.
+    */
+
+    switch (realpath_flags) {
+      case SSH2_FXRP_NO_CHECK:
+        res = pr_fsio_lstat(path, &st);
+        xerrno = errno;
+        break;
+
+      case SSH2_FXRP_STAT_IF:
+      case SSH2_FXRP_STAT_ALWAYS:
+        res = pr_fsio_stat(path, &st);
+        xerrno = errno;
+        break;
+    }
+
+    if (res < 0) {
       uint32_t status_code;
       const char *reason;
-      int xerrno = errno;
+
+      xerrno = errno;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error checking '%s' for REALPATH: %s", path, strerror(xerrno));
@@ -9354,11 +9388,11 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       if (fxp_session->client_version <= 5 ||
           (fxp_session->client_version >= 6 &&
-           realpath_flags != SSH2_FXRP_NO_CHECK)) {
+           realpath_flags == SSH2_FXRP_STAT_ALWAYS)) {
 
         pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-          "('%s' [%d])", (unsigned long) status_code, reason,
-          xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+          "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+          xerrno);
 
         fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
           NULL);
