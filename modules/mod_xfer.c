@@ -3360,7 +3360,7 @@ MODRET set_transferpriority(cmd_rec *cmd) {
   *((int *) c->argv[1]) = prio;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"
@@ -3615,23 +3615,25 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
 
 static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 
-  /* Only do this if we're currently involved in a data transfer.
-   * This is a hack put in to support mod_shaper's antics.
-   */
-  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
-      strcmp(session.curr_cmd, C_RETR) == 0 ||
-      strcmp(session.curr_cmd, C_STOR) == 0 ||
-      strcmp(session.curr_cmd, C_STOU) == 0) {
-    pool *p = make_sub_pool(session.pool);
-    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
-
-    /* Rescan the config tree for TransferRates, picking up any possible
-     * changes.
+  if (pr_module_exists("mod_shaper.c")) {
+    /* Only do this if we're currently involved in a data transfer.
+     * This is a hack put in to support mod_shaper's antics.
      */
-    pr_log_debug(DEBUG2, "rechecking TransferRates");
-    pr_throttle_init(cmd);
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_RETR_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
+        session.curr_cmd_id == PR_CMD_STOU_ID) {
+      pool *p = make_sub_pool(session.pool);
+      cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
 
-    destroy_pool(p);
+      /* Rescan the config tree for TransferRates, picking up any possible
+       * changes.
+       */
+      pr_log_debug(DEBUG2, "rechecking TransferRates");
+      pr_throttle_init(cmd);
+
+      destroy_pool(p);
+    }
   }
 
   return;

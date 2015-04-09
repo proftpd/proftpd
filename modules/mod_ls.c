@@ -223,7 +223,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     use_canon = TRUE;
   }
 
-  if (fullpath) {
+  if (fullpath == NULL) {
     fullpath = pstrdup(p, path);
   }
  

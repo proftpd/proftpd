@@ -492,6 +492,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         pr_signals_handle();
         c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
       }
+
+    } else {
+      /* Make sure that env is at least a NULL-terminated array. */
+      env = pcalloc(tmp_pool, sizeof(char **));
     }
 
     /* Restore previous signal actions. */

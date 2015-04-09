@@ -791,8 +791,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   }
 
   pr_trace_msg(trace_channel, 8, "using %s %s for path '%s'",
-    fs ? fs->fs_name : "system",
-    op == FSIO_FILE_STAT ? "stat()" : "lstat()", path);
+    fs->fs_name, op == FSIO_FILE_STAT ? "stat()" : "lstat()", path);
   retval = mystat(fs, cleaned_path, st);
   if (retval < 0) {
     xerrno = errno;
@@ -1167,6 +1166,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
    * to its target, and what we really want to know here is whether the
    * ultimate destination file exists or not.
    */
+  pr_fs_clear_cache2(dst);
   if (pr_fsio_stat(dst, &dst_st) == 0) {
     dst_existed = TRUE;
     pr_fs_clear_cache2(dst);
@@ -1188,7 +1188,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  pr_fsio_set_block(dst_fh);
+  if (pr_fsio_set_block(dst_fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error putting '%s' into blocking mode: %s", dst, strerror(errno));
+  }
 
   /* Stat the source file to find its optimal copy block size. */
   if (pr_fsio_fstat(src_fh, &src_st) < 0) {
@@ -1197,12 +1200,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     pr_log_pri(PR_LOG_WARNING, "error checking source file '%s' "
       "for copying: %s", src, strerror(xerrno));
 
-    pr_fsio_close(src_fh);
-    pr_fsio_close(dst_fh);
+    (void) pr_fsio_close(src_fh);
+    (void) pr_fsio_close(dst_fh);
 
+    /* Don't unlink the destination file if it already existed. */
     if (!dst_existed) {
-      /* Don't unlink the destination file if it already existed. */
-      pr_fsio_unlink(dst);
+      (void) pr_fsio_unlink(dst);
     }
 
     errno = xerrno;
@@ -1223,8 +1226,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         src_st.st_size == dst_st.st_size &&
         src_st.st_mtime == dst_st.st_mtime) {
 
-      pr_fsio_close(src_fh);
-      pr_fsio_close(dst_fh);
+      (void) pr_fsio_close(src_fh);
+      (void) pr_fsio_close(dst_fh);
 
       /* No need to copy the same file. */
       return 0;
@@ -1266,12 +1269,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
           continue;
         }
 
-        pr_fsio_close(src_fh);
-        pr_fsio_close(dst_fh);
+        (void) pr_fsio_close(src_fh);
+        (void) pr_fsio_close(dst_fh);
 
+        /* Don't unlink the destination file if it already existed. */
         if (!dst_existed) {
-          /* Don't unlink the destination file if it already existed. */
-          pr_fsio_unlink(dst);
+          (void) pr_fsio_unlink(dst);
         }
 
         pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
@@ -1301,23 +1304,27 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     int have_facl = FALSE, have_dup = FALSE;
 
     facl = acl_get_fd(PR_FH_FD(src_fh));
-    if (facl)
+    if (facl) {
       have_facl = TRUE;
+    }
 
-    if (have_facl)
-        facl_dup = acl_dup(facl);
+    if (have_facl) {
+      facl_dup = acl_dup(facl);
+    }
 
-    if (facl_dup)
+    if (facl_dup) {
       have_dup = TRUE;
+    }
 
     if (have_dup &&
-        acl_set_fd(PR_FH_FD(dst_fh), facl_dup) < 0)
+        acl_set_fd(PR_FH_FD(dst_fh), facl_dup) < 0) {
       pr_log_debug(DEBUG3, "error applying ACL to destination file: %s",
         strerror(errno));
+    }
 
-    if (have_dup)
+    if (have_dup) {
       acl_free(facl_dup);
-
+    }
 # elif defined(HAVE_LINUX_POSIX_ACL)
 
 #  if defined(HAVE_PERM_COPY_FD)
@@ -1381,7 +1388,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   }
 #endif /* HAVE_POSIX_ACL */
 
-  pr_fsio_close(src_fh);
+  (void) pr_fsio_close(src_fh);
 
   res = pr_fsio_close(dst_fh);
   if (res < 0) {
@@ -2966,16 +2973,17 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   /* Find the first non-NULL custom chdir handler.  If there are none,
    * use the system chdir.
    */
-  while (fs && fs->fs_next && !fs->chdir)
+  while (fs && fs->fs_next && !fs->chdir) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s chdir() for path '%s'", fs->fs_name,
     path);
   res = (fs->chdir)(fs, resbuf);
 
-  if (res != -1) {
+  if (res == 0) {
     /* chdir succeeded, so we set fs_cwd for future references. */
-     fs_cwd = fs ? fs : root_fs;
+     fs_cwd = fs;
 
      if (hidesymlink) {
        pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
@@ -3901,15 +3909,18 @@ int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
 int pr_fs_glob(const char *pattern, int flags,
     int (*errfunc)(const char *, int), glob_t *pglob) {
 
-  if (pglob) {
-    flags |= GLOB_ALTDIRFUNC;
-
-    pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
-    pglob->gl_readdir = pr_fsio_readdir;
-    pglob->gl_opendir = pr_fsio_opendir;
-    pglob->gl_lstat = pr_fsio_lstat;
-    pglob->gl_stat = pr_fsio_stat;
+  if (pglob == NULL) {
+    errno = EINVAL;
+    return -1;
   }
+
+  flags |= GLOB_ALTDIRFUNC;
+
+  pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
+  pglob->gl_readdir = pr_fsio_readdir;
+  pglob->gl_opendir = pr_fsio_opendir;
+  pglob->gl_lstat = pr_fsio_lstat;
+  pglob->gl_stat = pr_fsio_stat;
 
   return glob(pattern, flags, errfunc, pglob);
 }
@@ -3923,7 +3934,14 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
   pr_fs_t *from_fs, *to_fs, *fs;
 
   from_fs = lookup_file_canon_fs(rfrom, NULL, FSIO_FILE_RENAME);
+  if (from_fs == NULL) {
+    return -1;
+  }
+
   to_fs = lookup_file_canon_fs(rto, NULL, FSIO_FILE_RENAME);
+  if (to_fs == NULL) {
+    return -1;
+  }
 
   if (from_fs->allow_xdev_rename == FALSE ||
       to_fs->allow_xdev_rename == FALSE) {
@@ -3938,12 +3956,18 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
   /* Find the first non-NULL custom rename handler.  If there are none,
    * use the system rename.
    */
-  while (fs && fs->fs_next && !fs->rename)
+  while (fs && fs->fs_next && !fs->rename) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s rename() for paths '%s', '%s'",
     fs->fs_name, rfrom, rto);
   res = (fs->rename)(fs, rfrom, rto);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(rfrom);
+    pr_fs_clear_cache2(rto);
+  }
 
   return res;
 }
@@ -3981,6 +4005,11 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
   pr_trace_msg(trace_channel, 8, "using %s rename() for paths '%s', '%s'",
     fs->fs_name, rnfm, rnto);
   res = (fs->rename)(fs, rnfm, rnto);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(rnfm);
+    pr_fs_clear_cache2(rnto);
+  }
 
   return res;
 }
@@ -4416,6 +4445,10 @@ int pr_fsio_link_canon(const char *target_path, const char *link_path) {
     fs->fs_name, target_path, link_path);
   res = (fs->link)(fs, target_path, link_path);
 
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
+
   return res;
 }
 
@@ -4459,6 +4492,10 @@ int pr_fsio_link(const char *target_path, const char *link_path) {
   pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
     fs->fs_name, target_path, link_path);
   res = (fs->link)(fs, target_path, link_path);
+ 
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
 
   return res;
 }
@@ -4485,6 +4522,10 @@ int pr_fsio_symlink_canon(const char *target_path, const char *link_path) {
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
     fs->fs_name, link_path);
   res = (fs->symlink)(fs, target_path, link_path);
+ 
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
 
   return res;
 }
@@ -4514,6 +4555,10 @@ int pr_fsio_symlink(const char *target_path, const char *link_path) {
   pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
     fs->fs_name, link_path);
   res = (fs->symlink)(fs, target_path, link_path);
+
+  if (res == 0) {
+    pr_fs_clear_cache2(link_path);
+  }
 
   return res;
 }

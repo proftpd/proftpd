@@ -2128,7 +2128,10 @@ static void shaper_shutdown_ev(const void *event_data, void *user_data) {
     }
 
     if (shaper_tab_path) {
-      pr_fsio_unlink(shaper_tab_path);
+      if (pr_fsio_unlink(shaper_tab_path) < 0) {
+        pr_log_debug(DEBUG9, MOD_SHAPER_VERSION
+          ": error unlinking '%s': %s", shaper_tab_path, strerror(errno));
+      }
     }
   }
 

@@ -1017,7 +1017,12 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     sp->hiddenstore = TRUE;
   }
 
-  pr_fsio_set_block(sp->fh);
+  if (pr_fsio_set_block(sp->fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", sp->fh->fh_fd,
+      sp->fh->fh_path, strerror(errno));
+  }
+
   sftp_misc_chown_file(p, sp->fh);
 
   write_confirm(p, channel_id, 0, NULL);
@@ -2056,7 +2061,11 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     }
   }
 
-  pr_fsio_set_block(sp->fh);
+  if (pr_fsio_set_block(sp->fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting fd %d (file '%s') as blocking: %s", sp->fh->fh_fd,
+      sp->fh->fh_path, strerror(errno));
+  }
 
   if (session.xfer.p == NULL) {
     session.xfer.p = pr_pool_create_sz(scp_pool, 64);

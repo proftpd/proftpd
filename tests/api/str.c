@@ -785,6 +785,9 @@ START_TEST (is_fnmatch_test) {
   int res;
   char *str;
 
+  res = pr_str_is_fnmatch(NULL);
+  fail_unless(res == FALSE, "Expected false for NULL");
+
   str = "foo";
   res = pr_str_is_fnmatch(str);
   fail_if(res != FALSE, "Expected false for string '%s'", str);

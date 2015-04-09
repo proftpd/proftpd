@@ -93,6 +93,9 @@ Git
   tables.
 - Bug 4157 - LIST/NLST of 1000s of files is slow on some platforms.
 - Bug 4059 - Implement additional RADIUS attributes.
+- Bug 4166 - mod_sftp sessions consume large amounts of memory due to rekeying.
+- Bug 4169 - Unauthenticated copying of files via SITE CPFR/CPTO allowed by
+  mod_copy.
 
 1.3.5 - Released 15-May-2014
 --------------------------------

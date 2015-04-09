@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,14 @@ void pr_session_disconnect(module *m, int reason_code, const char *details) {
 }
 
 /* libc functions */
+int rand(void) {
+  /* ignore */
+}
+
+long random(void) {
+  /* ignore */
+}
+
 int setenv(const char *key, const char *value, int overwrite) {
   __coverity_tainted_data_sink__(key);
   __coverity_tainted_data_sink__(value);
@@ -39,4 +47,8 @@ int setenv(const char *key, const char *value, int overwrite) {
 
 char *strerror(int errnum) {
   /* ignore */
+}
+
+void tpl_fatal(char *fmt, ...) {
+  __coverity_panic__();
 }

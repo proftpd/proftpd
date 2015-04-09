@@ -293,7 +293,7 @@ static unsigned char radius_parse_gids_str(pool *, char *, gid_t **,
   unsigned int *);
 static unsigned char radius_parse_groups_str(pool *, char *, char ***,
   unsigned int *);
-static void radius_parse_var(char *, int *, char **);
+static int radius_parse_var(char *, int *, char **);
 static int radius_process_accept_packet(radius_packet_t *,
   const unsigned char *, size_t);
 static int radius_process_reject_packet(radius_packet_t *,
@@ -399,17 +399,24 @@ static unsigned char radius_have_var(char *var) {
 /* Separate the given "$(attribute-id:default)" string into its constituent
  * custom attribute ID (int) and default (string) components.
  */
-static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
-  pool *tmp_pool = make_sub_pool(radius_pool);
-  char *var_cpy = pstrdup(tmp_pool, var), *ptr = NULL;
-  size_t var_cpylen;
+static int radius_parse_var(char *var, int *attr_id, char **attr_default) {
+  pool *tmp_pool;
+  char *var_cpy, *ptr = NULL;
+  size_t var_len, var_cpylen;
 
-  var_cpylen = strlen(var_cpy);
-  if (var_cpylen == 0) {
-    /* Empty string; nothing to do. */
-    destroy_pool(tmp_pool);
-    return;
+  if (var == NULL) {
+    errno = EINVAL;
+    return -1;
   }
+
+  var_len = var_cpylen = strlen(var);
+  if (var_len == 0) {
+    /* Empty string; nothing to do. */
+    return 0;
+  }
+  
+  tmp_pool = make_sub_pool(radius_pool);
+  var_cpy = pstrdup(tmp_pool, var);
 
   /* First, strip off the "$()" variable characters. */
   var_cpy[var_cpylen-1] = '\0';
@@ -417,8 +424,9 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
 
   /* Find the delimiting ':' */
   ptr = strchr(var_cpy, ':');
-
-  *ptr++ = '\0';
+  if (ptr != NULL) {
+    *ptr++ = '\0';
+  }
 
   if (attr_id) {
     *attr_id = atoi(var_cpy);
@@ -432,13 +440,18 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
      * a NULL for this portion, so that the string stored in the config_rec
      * is not actually manipulated, as is done here.
      */
-    var[strlen(var)-1] = '\0';
+    if (var_len > 0) {
+      var[var_len-1] = '\0';
+    }
 
-    *attr_default = ++ptr;
+    if (ptr != NULL) {
+      *attr_default = ++ptr;
+    }
   }
 
   /* Clean up. */
   destroy_pool(tmp_pool);
+  return 0;
 }
 
 static unsigned char radius_parse_gids_str(pool *p, char *gids_str, 
@@ -1421,6 +1434,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo per-session value: '%s'", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo per-session value: %s", param);
     }
   }
 
@@ -1437,6 +1454,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo limit type value: '%s'", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo limit type value: %s", param);
     }
   }
 
@@ -1458,6 +1479,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo bytes in value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo bytes in value: %s", param);
     }
 
     radius_quota_bytes_in = param;
@@ -1481,6 +1506,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo bytes out value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo bytes out value: %s", param);
     }
 
     radius_quota_bytes_out = param;
@@ -1504,6 +1533,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo bytes xfer value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo bytes xfer value: %s", param);
     }
 
     radius_quota_bytes_xfer = param;
@@ -1524,6 +1557,10 @@ static void radius_process_quota_info(config_rec *c) {
         "illegal RadiusQuotaInfo files in value: '%s' not a number",
         param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo files in value: %lu", res);
     }
 
     radius_quota_files_in = param;
@@ -1543,6 +1580,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo files out value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo files out value: %lu", res);
     }
 
     radius_quota_files_out = param;
@@ -1562,6 +1603,10 @@ static void radius_process_quota_info(config_rec *c) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "illegal RadiusQuotaInfo files xfer value: '%s' not a number", param);
       have_illegal_value = TRUE;
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "found RadiusQuotaInfo files xfer value: %lu", res);
     }
 
     radius_quota_files_xfer = param;
@@ -2161,7 +2206,7 @@ static radius_attrib_t *radius_add_attrib(radius_packet_t *packet,
 static void radius_set_auth_mac(radius_packet_t *pkt,
    const unsigned char *secret, size_t secret_len) {
 #ifdef PR_USE_OPENSSL
-  EVP_MD *md;
+  const EVP_MD *md;
   unsigned char digest[EVP_MAX_MD_SIZE];
   unsigned int digest_len = 0, mac_len = 16;
   radius_attrib_t *attrib = NULL;
@@ -2205,7 +2250,7 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
     attrib_len = RADIUS_ATTRIB_LEN(attrib);
     if (attrib_len != expected_len) {
 #ifdef PR_USE_OPENSSL
-      EVP_MD *md;
+      const EVP_MD *md;
       unsigned char digest[EVP_MAX_MD_SIZE], replied[EVP_MAX_MD_SIZE];
       unsigned int digest_len = 0;
 
@@ -2241,7 +2286,7 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
     } else {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
         "%s packet has incorrect Message-Authenticator attribute length "
-        "(%u != %u), rejecting", attrib_len, expected_len, pkt_type);
+        "(%u != %u), rejecting", pkt_type, attrib_len, expected_len);
       errno = EINVAL;
       return -1;
     }
@@ -2452,7 +2497,6 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
 
   while (attrib) {
     unsigned int vendor_id = 0;
-    radius_attrib_t *vsa = NULL;
 
     pr_signals_handle();
 
@@ -2470,8 +2514,10 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     }
 
     /* The first four octets (bytes) of data will contain the Vendor-Id. */
-    memcpy(&vendor_id, attrib->data, sizeof(unsigned int));
-    vendor_id = ntohl(vendor_id);
+    if (attrib->length >= 4) {
+      memcpy(&vendor_id, attrib->data, 4);
+      vendor_id = ntohl(vendor_id);
+    }
 
     if (vendor_id != radius_vendor_id) {
       len -= attrib->length;
@@ -2480,16 +2526,20 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     }
 
     /* Parse the data value for this attribute into a VSA structure. */
-    vsa = (radius_attrib_t *) ((char *) attrib->data + sizeof(int));
+    if (attrib->length > 4) {
+      radius_attrib_t *vsa = NULL;
 
-    /* Does this VSA have the type requested? */
-    if (vsa->type != type) {
-      len -= attrib->length;
-      attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
-      continue;
+      vsa = (radius_attrib_t *) ((char *) attrib->data + sizeof(int));
+
+      /* Does this VSA have the type requested? */
+      if (vsa->type != type) {
+        len -= attrib->length;
+        attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
+        continue;
+      }
+
+      return vsa;
     }
-
-    return vsa;
   }
 
   return NULL;
