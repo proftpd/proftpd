@@ -1445,11 +1445,9 @@ static int snmp_agent_handle_packet(int sockfd, pr_netaddr_t *agent_addr) {
     return -1;
   }
 
-  if (pkt->req_pdu != NULL) {
-    /* We're done with the request PDU here. */
-    destroy_pool(pkt->req_pdu->pool);
-    pkt->req_pdu = NULL;
-  }
+  /* We're done with the request PDU here. */
+  destroy_pool(pkt->req_pdu->pool);
+  pkt->req_pdu = NULL;
 
   (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
     "writing SNMP message for %s, community = '%s', request ID %ld, "
