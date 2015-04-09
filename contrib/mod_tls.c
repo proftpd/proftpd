@@ -9483,7 +9483,7 @@ static void tls_get_passphrases(void) {
           ": error reading EC passphrase: %s", tls_get_errors());
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
-          "EC certificate key '%s', exiting", (char *) dsa->argv[0]);
+          "EC certificate key '%s', exiting", (char *) ec->argv[0]);
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
           NULL);
       }
