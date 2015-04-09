@@ -2973,16 +2973,17 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   /* Find the first non-NULL custom chdir handler.  If there are none,
    * use the system chdir.
    */
-  while (fs && fs->fs_next && !fs->chdir)
+  while (fs && fs->fs_next && !fs->chdir) {
     fs = fs->fs_next;
+  }
 
   pr_trace_msg(trace_channel, 8, "using %s chdir() for path '%s'", fs->fs_name,
     path);
   res = (fs->chdir)(fs, resbuf);
 
-  if (res != -1) {
+  if (res == 0) {
     /* chdir succeeded, so we set fs_cwd for future references. */
-     fs_cwd = fs ? fs : root_fs;
+     fs_cwd = fs;
 
      if (hidesymlink) {
        pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
@@ -3908,15 +3909,18 @@ int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
 int pr_fs_glob(const char *pattern, int flags,
     int (*errfunc)(const char *, int), glob_t *pglob) {
 
-  if (pglob) {
-    flags |= GLOB_ALTDIRFUNC;
-
-    pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
-    pglob->gl_readdir = pr_fsio_readdir;
-    pglob->gl_opendir = pr_fsio_opendir;
-    pglob->gl_lstat = pr_fsio_lstat;
-    pglob->gl_stat = pr_fsio_stat;
+  if (pglob == NULL) {
+    errno = EINVAL;
+    return -1;
   }
+
+  flags |= GLOB_ALTDIRFUNC;
+
+  pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
+  pglob->gl_readdir = pr_fsio_readdir;
+  pglob->gl_opendir = pr_fsio_opendir;
+  pglob->gl_lstat = pr_fsio_lstat;
+  pglob->gl_stat = pr_fsio_stat;
 
   return glob(pattern, flags, errfunc, pglob);
 }

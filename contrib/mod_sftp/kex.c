@@ -1075,7 +1075,7 @@ static const char *get_preferred_name(pool *p, const char *names) {
 
   /* This should never happen. */
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "unable to find preferred name in '%s'", names ? names : "(null)");
+    "unable to find preferred name in '%s'", names);
   return NULL;
 }
 

@@ -958,6 +958,10 @@ int pr_str_is_boolean(const char *str) {
 int pr_str_is_fnmatch(const char *str) {
   int have_bracket = 0;
 
+  if (str == NULL) {
+    return FALSE;
+  }
+
   while (*str) {
     switch (*str) {
       case '?':

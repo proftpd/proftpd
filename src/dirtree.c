@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.292 2013-10-13 18:06:57 castaglia Exp $
- */
+/* Read configuration file(s), and manage server/configuration structures. */
 
 #include "conf.h"
 #include "privs.h"
@@ -2590,12 +2588,13 @@ int parse_config_path(pool *p, const char *path) {
   struct stat st;
   int have_glob;
   
-  if (!path) {
+  if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   have_glob = pr_str_is_fnmatch(path); 
+  pr_fs_clear_cache2(path);
 
   if (!have_glob &&
       pr_fsio_lstat(path, &st) < 0) {
@@ -2621,9 +2620,20 @@ int parse_config_path(pool *p, const char *path) {
       }
 
       /* Check the directory component. */
-      pr_fsio_lstat(dup_path, &st);
+      pr_fs_clear_cache2(dup_path);
+      if (pr_fsio_lstat(dup_path, &st) < 0) {
+        int xerrno = errno;
 
-      if (S_ISLNK(st.st_mode) || !S_ISDIR(st.st_mode)) {
+        pr_log_pri(PR_LOG_WARNING,
+          "error: failed to check configuration path '%s': %s", dup_path,
+          strerror(xerrno));
+
+        errno = xerrno;
+        return -1;
+      }
+
+      if (S_ISLNK(st.st_mode) ||
+          !S_ISDIR(st.st_mode)) {
         pr_log_pri(PR_LOG_WARNING,
           "error: cannot read configuration path '%s': Not a directory",
           dup_path);

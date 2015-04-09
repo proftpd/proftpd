@@ -275,28 +275,28 @@ MODRET site_chmod(cmd_rec *cmd) {
   if (endp && *endp) {
     /* It's not an absolute number, try symbolic */
     char *cp = cmd->argv[1];
-    int mask = 0, mode_op = 0, curmode = 0, curumask = umask(0);
+    int mask = 0, mode_op = 0, curr_mode = 0, curr_umask = umask(0);
     int invalid = 0;
     char *who, *how, *what;
     struct stat st;
 
-    umask(curumask);
+    umask(curr_umask);
     mode = 0;
 
     if (pr_fsio_stat(dir, &st) != -1) {
-      curmode = st.st_mode;
+      curr_mode = st.st_mode;
     }
 
     while (TRUE) {
-      who = pstrdup(cmd->tmp_pool, cp);
-
       pr_signals_handle();
+
+      who = pstrdup(cmd->tmp_pool, cp);
 
       tmp = strpbrk(who, "+-=");
       if (tmp != NULL) {
         how = pstrdup(cmd->tmp_pool, tmp);
         if (*how != '=') {
-          mode = curmode;
+          mode = curr_mode;
         }
 
         *tmp = '\0';
@@ -336,7 +336,7 @@ MODRET site_chmod(cmd_rec *cmd) {
             break;
 
           case '\0':
-            mask = curumask;
+            mask = curr_umask;
             break;
 
           default:
@@ -368,6 +368,7 @@ MODRET site_chmod(cmd_rec *cmd) {
           case 'w':
             mode_op |= (S_IWUSR|S_IWGRP|S_IWOTH);
             break;
+
           case 'x':
             mode_op |= (S_IXUSR|S_IXGRP|S_IXOTH);
             break;
@@ -384,21 +385,21 @@ MODRET site_chmod(cmd_rec *cmd) {
             break;
 
           case 'o':
-            mode_op |= (curmode & S_IRWXO);
-            mode_op |= ((curmode & S_IRWXO) << 3);
-            mode_op |= ((curmode & S_IRWXO) << 6);
+            mode_op |= (curr_mode & S_IRWXO);
+            mode_op |= ((curr_mode & S_IRWXO) << 3);
+            mode_op |= ((curr_mode & S_IRWXO) << 6);
             break;
 
           case 'g':
-            mode_op |= ((curmode & S_IRWXG) >> 3);
-            mode_op |= (curmode & S_IRWXG);
-            mode_op |= ((curmode & S_IRWXG) << 3);
+            mode_op |= ((curr_mode & S_IRWXG) >> 3);
+            mode_op |= (curr_mode & S_IRWXG);
+            mode_op |= ((curr_mode & S_IRWXG) << 3);
             break;
 
           case 'u':
-            mode_op |= ((curmode & S_IRWXO) >> 6);
-            mode_op |= ((curmode & S_IRWXO) >> 3);
-            mode_op |= (curmode & S_IRWXU);
+            mode_op |= ((curr_mode & S_IRWXU) >> 6);
+            mode_op |= ((curr_mode & S_IRWXU) >> 3);
+            mode_op |= (curr_mode & S_IRWXU);
             break;
 
           case '\0':

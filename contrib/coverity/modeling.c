@@ -32,6 +32,14 @@ void pr_session_disconnect(module *m, int reason_code, const char *details) {
 }
 
 /* libc functions */
+int rand(void) {
+  /* ignore */
+}
+
+long random(void) {
+  /* ignore */
+}
+
 int setenv(const char *key, const char *value, int overwrite) {
   __coverity_tainted_data_sink__(key);
   __coverity_tainted_data_sink__(value);

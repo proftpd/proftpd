@@ -1575,7 +1575,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
     fd = c->listen_fd;
   }
 
-  if (rfd != -1) {
+  if (rfd > -1) {
     if (fd != rfd) {
       dup2(fd, rfd);
 
@@ -1587,7 +1587,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
     rfd = dup(fd);
   }
 
-  if (wfd != -1) {
+  if (wfd > -1) {
     if (fd != wfd) {
       if (wfd == STDOUT_FILENO) {
         fflush(stdout);
@@ -1604,8 +1604,8 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   }
 
   /* Now discard the original socket */
-  if (rfd != -1 &&
-      wfd != -1 &&
+  if (rfd > -1 &&
+      wfd > -1 &&
       close_fd) {
     (void) close(fd);
   }

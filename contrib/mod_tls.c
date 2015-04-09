@@ -1772,13 +1772,15 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         if (FD_ISSET(stdout_pipe[0], &readfds)) {
           res = read(stdout_pipe[0], buf, buflen);
           if (res > 0) {
+            buf[buflen-1] = '\0';
+
             while (res &&
                    (buf[res-1] == '\r' ||
                     buf[res-1] == '\n')) {
+              pr_signals_handle();
               res--;
             }
             buf[res] = '\0';
-            buf[buflen-1] = '\0';
 
             pr_trace_msg(trace_channel, 18, "read passphrase from '%s'",
               tls_passphrase_provider);
@@ -9481,7 +9483,7 @@ static void tls_get_passphrases(void) {
           ": error reading EC passphrase: %s", tls_get_errors());
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
-          "EC certificate key '%s', exiting", (char *) dsa->argv[0]);
+          "EC certificate key '%s', exiting", (char *) ec->argv[0]);
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
           NULL);
       }
