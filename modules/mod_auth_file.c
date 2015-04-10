@@ -1168,18 +1168,109 @@ MODRET authfile_auth(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Per Bug#4171, if we see EINVAL (or EPERM, as documented in same man pages),
+ * check the /proc/sys/crypto/fips_enabled setting and the salt string, to see
+ * if an unsupported algorithm in FIPS mode, e.g. DES or MD5, was used to
+ * generate this salt string.
+ *
+ * There's not much we can do at this point other than log a message for the
+ * admin that this is the case, and let them know how to fix things (if they
+ * can).  Ultimately this breakage comes from those kind folks distributing
+ * glibc.  Sigh.
+ */
+static void check_unsupported_algo(const char *user,
+    const char *ciphertxt_pass, size_t ciphertxt_passlen) {
+  FILE *fp = NULL;
+  char fips_enabled[256];
+  size_t len = 0, sz = 0;
+
+  /* First, read in /proc/sys/crypto/fips_enabled. */
+  fp = fopen("/proc/sys/crypto/fips_enabled", "r");
+  if (fp == NULL) {
+    pr_trace_msg(trace_channel, 4,
+      "unable to open /proc/sys/crypto/fips_enabled: %s", strerror(errno));
+    return;
+  }
+
+  memset(fips_enabled, '\0', sizeof(fips_enabled));
+  sz = sizeof(fips_enabled)-1;
+  len = fread(fips_enabled, 1, sz, fp);
+  if (len == 0) {
+    if (feof(fp)) {
+      /* An empty /proc/sys/crypto/fips_enabled?  Weird. */
+      pr_trace_msg(trace_channel, 4,
+        "/proc/sys/crypto/fips_enabled is unexpectedly empty!");
+
+    } else if (ferror(fp)) {
+      pr_trace_msg(trace_channel, 4,
+        "error reading /proc/sys/crypto/fips_enabled: %s", strerror(errno));
+    }
+
+    fclose(fp);
+    return;
+  }
+
+  fclose(fp);
+
+  /* Trim any newline. */
+  if (fips_enabled[len-1] == '\n') {
+    fips_enabled[len-1] = '\0';
+  }
+
+  if (strcmp(fips_enabled, "0") != 0) {
+    /* FIPS mode enabled on this system.  If our salt string doesn't start
+     * with a '$', it uses DES; if it starts wit '$1$', it uses MD5.  Either
+     * way, on a FIPS-enabled system, those algorithms aren't supported.
+     */
+    if (ciphertxt_pass[0] != '$') {
+      /* DES */
+      pr_log_pri(PR_LOG_ERR, MOD_AUTH_FILE_VERSION
+        ": AuthUserFile entry for user '%s' uses DES, which is not supported "
+        "on a FIPS-enabled system (see /proc/sys/crypto/fips_enabled)", user);
+      pr_log_pri(PR_LOG_ERR, MOD_AUTH_FILE_VERSION
+        ": recommend updating user '%s' entry to use SHA256/SHA512 "
+        "(using ftpasswd --sha256/--sha512)", user);
+
+    } else if (ciphertxt_passlen >= 3 &&
+               strncmp(ciphertxt_pass, "$1$", 3) == 0) {
+      /* MD5 */
+      pr_log_pri(PR_LOG_ERR, MOD_AUTH_FILE_VERSION
+        ": AuthUserFile entry for user '%s' uses MD5, which is not supported "
+        "on a FIPS-enabled system (see /proc/sys/crypto/fips_enabled)", user);
+      pr_log_pri(PR_LOG_ERR, MOD_AUTH_FILE_VERSION
+        ": recommend updating user '%s' entry to use SHA256/SHA512 "
+        "(using ftpasswd --sha256/--sha512)", user);
+
+    } else {
+      pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+        ": possible illegal salt characters in AuthUserFile entry "
+        "for user '%s'?", user);
+    }
+
+  } else {
+    /* The only other time crypt(3) would return EINVAL/EPERM, on a system
+     * with procfs, is if the salt characters were illegal.  Right?
+     */
+    pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
+      ": possible illegal salt characters in AuthUserFile entry for "
+      "user '%s'?", user);
+  }
+}
+
 MODRET authfile_chkpass(cmd_rec *cmd) {
   const char *ciphertxt_pass = cmd->argv[0];
   const char *cleartxt_pass = cmd->argv[2];
   char *crypted_pass = NULL;
+  size_t ciphertxt_passlen = 0;
+  int xerrno;
 
-  if (!ciphertxt_pass) {
+  if (ciphertxt_pass == NULL) {
     pr_log_debug(DEBUG2, MOD_AUTH_FILE_VERSION
       ": missing ciphertext password for comparison");
     return PR_DECLINED(cmd);
   }
 
-  if (!cleartxt_pass) {
+  if (cleartxt_pass == NULL) {
     pr_log_debug(DEBUG2, MOD_AUTH_FILE_VERSION
       ": missing client-provided password for comparison");
     return PR_DECLINED(cmd);
@@ -1190,18 +1281,32 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
    * Otherwise, it could be checking a password retrieved by some other
    * auth module.
    */
-  if (!af_user_file)
+  if (af_user_file == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   crypted_pass = crypt(cleartxt_pass, ciphertxt_pass);
+  xerrno = errno;
+
+  ciphertxt_passlen = strlen(ciphertxt_pass);
   if (handle_empty_salt == TRUE &&
-      strlen(ciphertxt_pass) == 0) {
+      ciphertxt_passlen == 0) {
     crypted_pass = "";
   }
 
   if (crypted_pass == NULL) {
+    const char *user;
+
+    user = cmd->argv[1];
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
-      ": error using crypt(3): %s", strerror(errno));
+      ": error using crypt(3) for user '%s': %s", user, strerror(xerrno));
+
+    if (ciphertxt_passlen > 0 &&
+        (xerrno == EINVAL ||
+         xerrno == EPERM)) {
+      check_unsupported_algo(user, ciphertxt_pass, ciphertxt_passlen);
+    }
+
     return PR_DECLINED(cmd);
   }
 
