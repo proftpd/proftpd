@@ -1906,7 +1906,14 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     if (S_ISDIR(st.st_mode) ||
         pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
         pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0) {
-      mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+      mode_t *dir_umask = NULL;
+
+      dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+      if (dir_umask) {
+        pr_trace_msg("directory", 2, "found DirUmask %04o for directory '%s'",
+          *dir_umask, path);
+      }
+
       _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
 
@@ -2073,7 +2080,14 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     if (S_ISDIR(st.st_mode) ||
         pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
         pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0) {
-      mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+      mode_t *dir_umask = NULL;
+
+      dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+      if (dir_umask) {
+        pr_trace_msg("directory", 2, "found DirUmask %04o for directory '%s'",
+          *dir_umask, path);
+      }
+
       _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
 

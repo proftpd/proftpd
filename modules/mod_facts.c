@@ -355,6 +355,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   char *perm = "";
   int res;
 
+  pr_fs_clear_cache2(path);
   res = pr_fsio_lstat(path, &(info->st));
   if (res < 0) {
     int xerrno = errno;
