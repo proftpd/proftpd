@@ -9048,7 +9048,7 @@ EOC
         die("PROT failed unexpectedly: " . $client->last_message());
       }
 
-      my $res = $client->list();
+      $res = $client->list();
       unless ($res) {
         die("LIST failed unexpectedly: " . $client->last_message());
       }

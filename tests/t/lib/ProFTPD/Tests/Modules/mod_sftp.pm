@@ -2494,8 +2494,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -2744,8 +2744,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -2994,8 +2994,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -3776,8 +3776,8 @@ sub ssh2_hostkey_dss_bug3634 {
           $res = 0;
 
         } else {
+          $errstr = join('', <$sftp_eh>);
           if ($ENV{TEST_VERBOSE}) {
-            $errstr = join('', <$sftp_eh>);
             print STDERR "Stderr: $errstr\n";
           }
 
@@ -4150,8 +4150,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -4399,8 +4399,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -4648,8 +4648,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -8631,8 +8631,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -11207,8 +11207,8 @@ sub ssh2_ext_auth_publickey_ecdsa256 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -11437,8 +11437,8 @@ sub ssh2_ext_auth_publickey_ecdsa384 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -11667,8 +11667,8 @@ sub ssh2_ext_auth_publickey_ecdsa521 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -18812,8 +18812,8 @@ sub sftp_ext_upload_bug3550 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -20015,8 +20015,8 @@ sub sftp_ext_download_bug3550 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -20272,8 +20272,8 @@ sub sftp_ext_download_server_rekey {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -36484,9 +36484,6 @@ sub sftp_log_extlog_write_close {
   my $uid = 500;
   my $gid = 500;
 
-  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
-  my $write_sz = 32;
-
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -41762,6 +41759,11 @@ sub scp_ext_upload_recursive_dir_bug3447 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42055,6 +42057,11 @@ sub scp_ext_upload_recursive_dir_bug3792 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42363,6 +42370,11 @@ sub scp_ext_upload_recursive_dir_bug4004 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42616,6 +42628,11 @@ sub scp_ext_upload_different_name_bug3425 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42810,6 +42827,11 @@ sub scp_ext_upload_recursive_empty_dir {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -43025,6 +43047,11 @@ sub scp_ext_upload_shorter_file_bug4013 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -43235,6 +43262,11 @@ sub scp_ext_upload_file_with_timestamp_bug4026 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -44216,8 +44248,8 @@ sub scp_ext_download_bug3544 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$scp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -44608,8 +44640,8 @@ sub scp_ext_download_glob_single_match_bug3904 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$scp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -44834,8 +44866,8 @@ sub scp_ext_download_glob_multiple_matches_bug3904 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$scp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -45123,6 +45155,11 @@ sub scp_ext_download_recursive_dir_bug3456 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -45344,6 +45381,11 @@ sub scp_ext_download_recursive_empty_dir {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
