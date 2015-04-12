@@ -9864,7 +9864,7 @@ EOC
   unlink($log_file);
 }
 
-sub ftps_data_xfer_cb {
+sub ftps_data_xfer_cancelled_cb {
   my $func_name = shift;
   my $data = shift;
   my $data_len = shift;
@@ -10023,7 +10023,7 @@ EOC
         die("Can't set transfer mode to binary: " . $client->last_message());
       }
 
-      $client->set_callback(\&ftps_data_xfer_cb, \&ftps_data_close_cb, $client);
+      $client->set_callback(\&ftps_data_xfer_cancelled_cb, \&ftps_data_close_cb, $client);
 
       unless ($client->get('test.txt', '/dev/null')) {
         die("Can't download 'test.txt': " .  $client->last_message());
@@ -10104,7 +10104,7 @@ EOC
   unlink($log_file);
 }
 
-sub ftps_data_xfer_cb {
+sub ftps_data_xfer_failed_cb {
   my $func_name = shift;
   my $data = shift;
   my $data_len = shift;
@@ -10264,7 +10264,7 @@ EOC
         die("Can't set transfer mode to binary: " . $client->last_message());
       }
 
-      $client->set_callback(\&ftps_data_xfer_cb, \&ftps_data_close_cb, $client);
+      $client->set_callback(\&ftps_data_xfer_failed_cb, \&ftps_data_close_cb, $client);
 
       if ($client->get('test.txt', '/dev/null')) {
         die("Download of 'test.txt' succeeded unexpectedly");

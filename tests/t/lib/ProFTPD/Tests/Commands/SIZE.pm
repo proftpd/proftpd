@@ -426,7 +426,7 @@ sub size_symlink_dir {
         test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "test.lnk: not a regular file";
-      $self->assert($expected == $resp_msg,
+      $self->assert($expected eq $resp_msg,
         test_msg("Expected response messsage $expected, got $resp_msg"));
     };
 
