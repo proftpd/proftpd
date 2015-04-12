@@ -554,28 +554,35 @@ struct fs_statcache {
 struct fs_statcache_evict_data {
   time_t now;
   time_t max_age;
+  pr_table_t *cache_tab;
 };
 
 static const char *statcache_channel = "fs.statcache";
 static pool *statcache_pool = NULL;
-static pr_table_t *statcache_tab = NULL;
 static unsigned int statcache_size = 0;
 static unsigned int statcache_max_age = 0;
 static unsigned int statcache_flags = 0;
 
+/* We need to maintain two different caches: one for stat(2) data, and one
+ * for lstat(2) data.  For some files (e.g. symlinks), the struct stat data
+ * for the same path will be different for the two system calls.
+ */
+static pr_table_t *stat_statcache_tab = NULL;
+static pr_table_t *lstat_statcache_tab = NULL;
+
 #define fs_cache_lstat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_LSTAT)
 #define fs_cache_stat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_STAT)
 
-static struct fs_statcache *fs_statcache_get(const char *path,
-    size_t path_len, time_t now) {
+static struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
+    const char *path, size_t path_len, time_t now) {
   struct fs_statcache *sc = NULL;
 
-  if (pr_table_count(statcache_tab) == 0) {
+  if (pr_table_count(cache_tab) == 0) {
     errno = EPERM;
     return NULL;
   }
 
-  sc = pr_table_get(statcache_tab, path, NULL);
+  sc = pr_table_get(cache_tab, path, NULL);
   if (sc != NULL) {
     time_t age;
 
@@ -592,7 +599,7 @@ static struct fs_statcache *fs_statcache_get(const char *path,
       "entry for '%s' expired (age %lu %s > max age %lu), removing", path,
       (unsigned long) age, age != 1 ? "secs" : "sec",
       (unsigned long) statcache_max_age);
-    (void) pr_table_remove(statcache_tab, path, NULL);
+    (void) pr_table_remove(cache_tab, path, NULL);
   }
 
   errno = ENOENT;
@@ -604,23 +611,25 @@ static int fs_statcache_evict_expired(const void *key_data, size_t key_datasz,
   struct fs_statcache *sc;
   struct fs_statcache_evict_data *evict_data;
   time_t age;
+  pr_table_t *cache_tab = NULL;
 
   sc = value_data;
   evict_data = user_data;
 
+  cache_tab = evict_data->cache_tab;
   age = evict_data->now - sc->sc_cached_ts;
   if (age > evict_data->max_age) {
     pr_trace_msg(statcache_channel, 14,
       "entry for '%s' expired (age %lu %s > max age %lu), evicting",
       (char *) key_data, (unsigned long) age, age != 1 ? "secs" : "sec",
       (unsigned long) evict_data->max_age);
-    (void) pr_table_kremove(statcache_tab, key_data, key_datasz, NULL);
+    (void) pr_table_kremove(cache_tab, key_data, key_datasz, NULL);
   }
 
   return 0;
 }
 
-static int fs_statcache_evict(time_t now) {
+static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
   int res;
   struct fs_statcache_evict_data evict_data;
 
@@ -632,22 +641,23 @@ static int fs_statcache_evict(time_t now) {
  
   evict_data.now = now; 
   evict_data.max_age = statcache_max_age;
+  evict_data.cache_tab = cache_tab;
 
-  res = pr_table_do(statcache_tab, fs_statcache_evict_expired, &evict_data,
+  res = pr_table_do(cache_tab, fs_statcache_evict_expired, &evict_data,
     PR_TABLE_DO_FL_ALL);
   if (res < 0) {
     pr_trace_msg(statcache_channel, 4,
       "error evicting expired items: %s", strerror(errno));
   }
 
-  if (pr_table_count(statcache_tab) < statcache_size) {
+  if (pr_table_count(cache_tab) < statcache_size) {
     return 0;
   }
 
   /* Try for a shorter max age. */
   if (statcache_max_age > 10) {
     evict_data.max_age = (statcache_max_age - 10);
-    res = pr_table_do(statcache_tab, fs_statcache_evict_expired, &evict_data,
+    res = pr_table_do(cache_tab, fs_statcache_evict_expired, &evict_data,
       PR_TABLE_DO_FL_ALL);
     if (res < 0) {
       pr_trace_msg(statcache_channel, 4,
@@ -655,13 +665,13 @@ static int fs_statcache_evict(time_t now) {
     }
   }
 
-  if (pr_table_count(statcache_tab) < statcache_size) {
+  if (pr_table_count(cache_tab) < statcache_size) {
     return 0;
   }
 
   pr_trace_msg(statcache_channel, 14,
     "still not enough room in cache (size %d >= max %d)",
-    pr_table_count(statcache_tab), statcache_size);
+    pr_table_count(cache_tab), statcache_size);
   errno = EPERM;
   return -1;
 }
@@ -669,8 +679,8 @@ static int fs_statcache_evict(time_t now) {
 /* Returns 1 if we successfully added a cache entry, 0 if not, and -1 if
  * there was an error.
  */
-static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
-    int xerrno, int retval, time_t now) {
+static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
+    size_t path_len, struct stat *st, int xerrno, int retval, time_t now) {
   int res;
   pool *sc_pool;
   struct fs_statcache *sc;
@@ -681,9 +691,9 @@ static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
     return 0;
   }
 
-  if (pr_table_count(statcache_tab) >= statcache_size) {
+  if (pr_table_count(cache_tab) >= statcache_size) {
     /* We've reached capacity, and need to evict some items to make room. */
-    if (fs_statcache_evict(now) < 0) {
+    if (fs_statcache_evict(cache_tab, now) < 0) {
       pr_trace_msg(statcache_channel, 8,
         "unable to evict enough items from the cache: %s", strerror(errno));
     }
@@ -698,7 +708,7 @@ static int fs_statcache_add(const char *path, size_t path_len, struct stat *st,
   sc->sc_retval = retval;
   sc->sc_cached_ts = now;
 
-  res = pr_table_add(statcache_tab, pstrndup(sc_pool, path, path_len), sc,
+  res = pr_table_add(cache_tab, pstrndup(sc_pool, path, path_len), sc,
     sizeof(struct fs_statcache *));
   if (res < 0 &&
       errno == EEXIST) {
@@ -714,6 +724,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   char cleaned_path[PR_TUNABLE_PATH_MAX+1], pathbuf[PR_TUNABLE_PATH_MAX+1];
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
   size_t path_len;
+  pr_table_t *cache_tab = NULL; 
   struct fs_statcache *sc = NULL;
   time_t now;
 
@@ -766,14 +777,16 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   /* Determine which filesystem function to use, stat() or lstat() */
   if (op == FSIO_FILE_STAT) {
     mystat = fs->stat ? fs->stat : sys_stat;
+    cache_tab = stat_statcache_tab;
 
   } else {
     mystat = fs->lstat ? fs->lstat : sys_lstat;
+    cache_tab = lstat_statcache_tab;
   }
 
   path_len = strlen(cleaned_path);
 
-  sc = fs_statcache_get(cleaned_path, path_len, now);
+  sc = fs_statcache_get(cache_tab, cleaned_path, path_len, now);
   if (sc != NULL) {
 
     /* Update the given struct stat pointer with the cached info */
@@ -798,7 +811,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   }
 
   /* Update the cache */
-  res = fs_statcache_add(cleaned_path, path_len, st, xerrno, retval, now);
+  res = fs_statcache_add(cache_tab, cleaned_path, path_len, st, xerrno, retval,     now);
   if (res < 0) {
     pr_trace_msg(trace_channel, 8,
       "error adding cached stat for '%s': %s", cleaned_path, strerror(errno));
@@ -1037,20 +1050,33 @@ static void statcache_dumpf(const char *fmt, ...) {
 }
 
 void pr_fs_statcache_dump(void) {
-  pr_table_dump(statcache_dumpf, statcache_tab);
+  pr_table_dump(statcache_dumpf, stat_statcache_tab);
+  pr_table_dump(statcache_dumpf, lstat_statcache_tab);
 }
 
 void pr_fs_statcache_reset(void) {
-  if (statcache_tab != NULL) {
+  if (stat_statcache_tab != NULL) {
     int size;
 
-    size = pr_table_count(statcache_tab);
+    size = pr_table_count(stat_statcache_tab);
     pr_trace_msg(statcache_channel, 11,
-      "resetting statcache (clearing %d %s)", size,
+      "resetting stat(2) statcache (clearing %d %s)", size,
       size != 1 ? "entries" : "entry");
-    pr_table_empty(statcache_tab);
-    pr_table_free(statcache_tab);
-    statcache_tab = NULL;
+    pr_table_empty(stat_statcache_tab);
+    pr_table_free(stat_statcache_tab);
+    stat_statcache_tab = NULL;
+  }
+
+  if (lstat_statcache_tab != NULL) {
+    int size;
+
+    size = pr_table_count(lstat_statcache_tab);
+    pr_trace_msg(statcache_channel, 11,
+      "resetting lstat(2) statcache (clearing %d %s)", size,
+      size != 1 ? "entries" : "entry");
+    pr_table_empty(lstat_statcache_tab);
+    pr_table_free(lstat_statcache_tab);
+    lstat_statcache_tab = NULL;
   }
 
   if (statcache_pool != NULL) {
@@ -1059,7 +1085,8 @@ void pr_fs_statcache_reset(void) {
     pr_pool_tag(statcache_pool, "FS Statcache Pool");
   }
 
-  statcache_tab = pr_table_alloc(statcache_pool, 0);
+  stat_statcache_tab = pr_table_alloc(statcache_pool, 0);
+  lstat_statcache_tab = pr_table_alloc(statcache_pool, 0);
 }
 
 int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age, 
@@ -1075,26 +1102,35 @@ int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
 int pr_fs_clear_cache2(const char *path) {
   int res;
 
-  if (pr_table_count(statcache_tab) == 0) {
+  if (pr_table_count(stat_statcache_tab) == 0 &&
+      pr_table_count(lstat_statcache_tab) == 0) {
     return 0;
   }
 
   if (path != NULL) {
-    int count;
+    int lstat_count, stat_count;
 
-    count = pr_table_exists(statcache_tab, path);
-    if (count == 0) {
-      return 0;
+    stat_count = pr_table_exists(stat_statcache_tab, path);
+    if (stat_count > 0) {
+      pr_table_remove(stat_statcache_tab, path, NULL);
+      pr_trace_msg(statcache_channel, 17, "cleared stat(2) entry for '%s'",
+        path);
     }
 
-    pr_table_remove(statcache_tab, path, NULL);
-    pr_trace_msg(statcache_channel, 17, "cleared entry for '%s'", path);
-    res = count;
+    lstat_count = pr_table_exists(lstat_statcache_tab, path);
+    if (lstat_count > 0) {
+      pr_table_remove(lstat_statcache_tab, path, NULL);
+      pr_trace_msg(statcache_channel, 17, "cleared lstat(2) entry for '%s'",
+        path);
+    }
+
+    res = stat_count + lstat_count;
 
   } else {
     /* Caller is requesting that we empty the entire cache. */
 
-    (void) pr_table_empty(statcache_tab);
+    (void) pr_table_empty(stat_statcache_tab);
+    (void) pr_table_empty(lstat_statcache_tab);
     res = 0;
   }
 
@@ -5761,7 +5797,8 @@ int init_fs(void) {
   /* Prepare the stat cache as well. */
   statcache_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(statcache_pool, "FS Statcache Pool");
-  statcache_tab = pr_table_alloc(statcache_pool, 0);
+  stat_statcache_tab = pr_table_alloc(statcache_pool, 0);
+  lstat_statcache_tab = pr_table_alloc(statcache_pool, 0);
 
   return 0;
 }
