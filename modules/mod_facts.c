@@ -387,7 +387,6 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
        * stat in order to ensure that the unique fact values are the same.
        */
 
-      pr_fs_clear_cache2(path);
       res = pr_fsio_stat(path, &target_st);
       if (res < 0) {
         int xerrno = errno;
