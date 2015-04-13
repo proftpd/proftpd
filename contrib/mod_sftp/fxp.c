@@ -8972,7 +8972,10 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  resolved_path = dir_best_path(fxp->pool, cmd->arg);
+  path = cmd->arg;
+  pr_fs_clear_cache2(path);
+
+  resolved_path = dir_best_path(fxp->pool, path);
   if (resolved_path == NULL) {
     int xerrno = EACCES;
     const char *reason;
@@ -9022,6 +9025,12 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  memset(data, '\0', sizeof(data));
+
+  /* Note: do NOT use the resolved_path variable here, as it will have
+   * resolved by following any symlinks; readlink(2) would then return EINVAL
+   * for reading a non-symlink path.
+   */
   res = pr_fsio_readlink(path, data, sizeof(data) - 1);
   if (res < 0) {
     uint32_t status_code;
