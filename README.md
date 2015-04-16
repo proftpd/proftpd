@@ -1,6 +1,11 @@
 ProFTPD 1.3.x README
 ==================
 
+Status
+------
+[![Build Status](https://travis-ci.org/proftpd/proftpd.svg?branch=master)](https://travis-ci.org/proftpd/proftpd)
+[![Coverity Scan Status](https://scan.coverity.com/projects/198/badge.svg)](https://scan.coverity.com/projects/198)
+
 Introduction
 ------------
 
