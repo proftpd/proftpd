@@ -1,6 +1,3 @@
-<!-- $Id: mod_core.html,v 1.43 2014-01-30 16:50:10 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_core</title>
@@ -20,6 +17,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <h2>Directives</h2>
 <ul>
   <li><a href="#AllowFilter">AllowFilter</a>
+  <li><a href="#AllowOverride">AllowOverride</a>
   <li><a href="#AuthOrder">AuthOrder</a>
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DefaultAddress">DefaultAddress</a>
@@ -64,6 +62,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a>
 </ul>
 
+<p>
 <hr>
 <h2><a name="AllowFilter">AllowFilter</a></h2>
 <strong>Syntax:</strong> AllowFilter <em>pattern [flags]</em><br>
@@ -74,10 +73,11 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <strong>Compatibility:</strong> 1.2.0pre7 and later
 
 <p>
-The <code>AllowFilter</code> allows the configuration of a regular expression
-<em>pattern</em> that must be matched for all command arguments sent to
-ProFTPD.  It is extremely useful in controlling what characters may be sent in
-a command to ProFTPD, preventing some possible types of attacks against ProFTPD.
+The <code>AllowFilter</code> directive allows the configuration of a regular
+expression <em>pattern</em> that must be matched for all command arguments sent
+to ProFTPD.  It is extremely useful in controlling what characters may be sent
+in a command to ProFTPD, preventing some possible types of attacks against
+ProFTPD.
 
 <p>
 The regular expression <em>pattern</em> is applied against the arguments to the
@@ -110,6 +110,22 @@ greater detail.
 
 <p>
 See also: <a href="#DenyFilter"><code>DenyFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
+
+<p>
+<hr>
+<h2><a name="AllowOverride">AllowOverride</a></h2>
+<strong>Syntax:</strong> AllowOverride <em>on|off</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+Normally, the <code>proftpd</code> server will look for, and parse, any files
+named <code>.ftpaccess</code> in the encountered directories.  These files
+provide functionality similar to Apache's <code>.htaccess</code> files --
+mini-configuration files.  This <code>AllowOverride</code> directive controls
+when/if these <code>.ftpaccess</code> files will be parsed.
 
 <p>
 <hr>
