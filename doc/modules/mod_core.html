@@ -17,6 +17,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <h2>Directives</h2>
 <ul>
   <li><a href="#AllowFilter">AllowFilter</a>
+  <li><a href="#AllowForeignAddress">AllowForeignAddress</a>
   <li><a href="#AllowOverride">AllowOverride</a>
   <li><a href="#AuthOrder">AuthOrder</a>
   <li><a href="#DebugLevel">DebugLevel</a>
@@ -110,6 +111,35 @@ greater detail.
 
 <p>
 See also: <a href="#DenyFilter"><code>DenyFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
+
+<p>
+<hr>
+<h2><a name="AllowForeignAddress">AllowForeignAddress</a></h2>
+<strong>Syntax:</strong> AllowForeignAddress <em>on|off</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+Normally, <code>proftpd</code> disallows clients from using the FTP
+<code>PORT</code> or <code>EPRT</code> command with anything other than their
+own IP address (<i>i.e.</i> the source IP address of the FTP control
+connection), as well as preventing the use of <code>PORT</code> or
+<code>EPRT</code> to specify a low-numbered (<i>i.e.</i> less than 1024) port
+number.  In either case, the client is sent an "Invalid port" response error
+and a message is logged indicating either "address mismatch" or "bounce attack".
+
+<p>
+By enabling the <code>AllowForeignAddress</code> directive, <code>proftpd</code>
+will allow clients to transmit foreign data connection addresses that do not
+match the client's IP address.  This allows such tricks as permitting a client
+to transfer a file between two FTP servers without involving itself in the
+actual data connection.  However, allowing this functionality is generally
+considered a bad idea, security-wise.  The <code>AllowForeignAddress</code>
+directive only affects FTP data connection addresses; not TCP ports.  There is
+no way (and no valid reason) to allow a client to use a low-numbered port in
+its <code>PORT</code> or <code>EPRT</code> command.
 
 <p>
 <hr>
