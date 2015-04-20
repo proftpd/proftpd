@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2010-2014 The ProFTPD Project team
+ * Copyright (c) 2010-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Stash API tests
- * $Id: stash.c,v 1.2 2011-05-23 20:50:31 castaglia Exp $
- */
+/* Stash API tests */
 
 #include "tests.h"
 
@@ -370,6 +368,164 @@ START_TEST (stash_remove_symbol_test) {
 }
 END_TEST
 
+START_TEST (stash_remove_conf_test) {
+  int res;
+  conftable conftab;
+
+  res = pr_stash_remove_conf(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  res = pr_stash_remove_conf("foo", NULL);
+  fail_unless(res == 0, "Expected %d, got %d", 0, res);
+
+  memset(&conftab, 0, sizeof(conftab));
+  conftab.directive = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_CONF, &conftab);
+  fail_unless(res == 0, "Failed to add CONF symbol: %s", strerror(errno));
+
+  res = pr_stash_add_symbol(PR_SYM_CONF, &conftab);
+  fail_unless(res == 0, "Failed to add CONF symbol: %s", strerror(errno));
+
+  res = pr_stash_remove_conf("foo", NULL);
+  fail_unless(res == 2, "Expected %d, got %d", 2, res);
+}
+END_TEST
+
+START_TEST (stash_remove_cmd_test) {
+  int res;
+  cmdtable cmdtab, cmdtab2;
+
+  res = pr_stash_remove_cmd(NULL, NULL, 0, NULL, -1);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  res = pr_stash_remove_cmd("foo", NULL, 0, NULL, -1);
+  fail_unless(res == 0, "Expected %d, got %d", 0, res);
+
+  memset(&cmdtab, 0, sizeof(cmdtab));
+  cmdtab.command = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  memset(&cmdtab2, 0, sizeof(cmdtab2));
+  cmdtab2.command = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab2);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  res = pr_stash_remove_cmd("foo", NULL, 0, NULL, -1);
+  fail_unless(res == 2, "Expected %d, got %d", 2, res);
+
+  /* Remove only the PRE_CMD cmd handlers */
+  mark_point();
+  memset(&cmdtab, 0, sizeof(cmdtab));
+  cmdtab.command = pstrdup(p, "foo");
+  cmdtab.cmd_type = PRE_CMD;
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  memset(&cmdtab2, 0, sizeof(cmdtab2));
+  cmdtab2.command = pstrdup(p, "foo");
+  cmdtab2.cmd_type = CMD;
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab2);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  mark_point();
+  res = pr_stash_remove_cmd("foo", NULL, PRE_CMD, NULL, -1);
+  fail_unless(res == 1, "Expected %d, got %d", 1, res);
+  (void) pr_stash_remove_symbol(PR_SYM_CMD, "foo", NULL);
+
+  /* Remove only the G_WRITE cmd handlers */
+  mark_point();
+  memset(&cmdtab, 0, sizeof(cmdtab));
+  cmdtab.command = pstrdup(p, "foo");
+  cmdtab.group = G_WRITE;
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  memset(&cmdtab2, 0, sizeof(cmdtab2));
+  cmdtab2.command = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab2);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  mark_point();
+  res = pr_stash_remove_cmd("foo", NULL, 0, G_WRITE, -1);
+  fail_unless(res == 1, "Expected %d, got %d", 1, res);
+  (void) pr_stash_remove_symbol(PR_SYM_CMD, "foo", NULL);
+
+  /* Remove only the CL_SFTP cmd handlers */
+  mark_point();
+  memset(&cmdtab, 0, sizeof(cmdtab));
+  cmdtab.command = pstrdup(p, "foo");
+  cmdtab.cmd_class = CL_SFTP;
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  memset(&cmdtab2, 0, sizeof(cmdtab2));
+  cmdtab2.command = pstrdup(p, "foo");
+  cmdtab2.cmd_class = CL_MISC;
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab2);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  mark_point();
+  res = pr_stash_remove_cmd("foo", NULL, 0, NULL, CL_SFTP);
+  fail_unless(res == 1, "Expected %d, got %d", 1, res);
+  (void) pr_stash_remove_symbol(PR_SYM_CMD, "foo", NULL);
+}
+END_TEST
+
+START_TEST (stash_remove_auth_test) {
+  int res;
+  authtable authtab;
+
+  res = pr_stash_remove_auth(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  res = pr_stash_remove_auth("foo", NULL);
+  fail_unless(res == 0, "Expected %d, got %d", 0, res);
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add AUTH symbol: %s", strerror(errno));
+
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add AUTH symbol: %s", strerror(errno));
+
+  res = pr_stash_remove_auth("foo", NULL);
+  fail_unless(res == 2, "Expected %d, got %d", 2, res);
+}
+END_TEST
+
+START_TEST (stash_remove_hook_test) {
+  int res;
+  cmdtable hooktab;
+
+  res = pr_stash_remove_hook(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  res = pr_stash_remove_hook("foo", NULL);
+  fail_unless(res == 0, "Expected %d, got %d", 0, res);
+
+  memset(&hooktab, 0, sizeof(hooktab));
+  hooktab.command = pstrdup(p, "foo");
+  res = pr_stash_add_symbol(PR_SYM_HOOK, &hooktab);
+  fail_unless(res == 0, "Failed to add HOOK symbol: %s", strerror(errno));
+
+  res = pr_stash_add_symbol(PR_SYM_HOOK, &hooktab);
+  fail_unless(res == 0, "Failed to add HOOK symbol: %s", strerror(errno));
+
+  res = pr_stash_remove_hook("foo", NULL);
+  fail_unless(res == 2, "Expected %d, got %d", 2, res);
+}
+END_TEST
+
 Suite *tests_get_stash_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -383,6 +539,11 @@ Suite *tests_get_stash_suite(void) {
   tcase_add_test(testcase, stash_get_symbol_test);
   tcase_add_test(testcase, stash_get_symbol2_test);
   tcase_add_test(testcase, stash_remove_symbol_test);
+
+  tcase_add_test(testcase, stash_remove_conf_test);
+  tcase_add_test(testcase, stash_remove_cmd_test);
+  tcase_add_test(testcase, stash_remove_auth_test);
+  tcase_add_test(testcase, stash_remove_hook_test);
 
   suite_add_tcase(suite, testcase);
 

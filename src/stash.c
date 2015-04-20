@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2014 The ProFTPD Project team
+ * Copyright (c) 2010-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source distribution.
  */
 
-/* Symbol table hashes
- * $Id: stash.c,v 1.12 2014-02-11 15:17:04 castaglia Exp $
- */
+/* Symbol table hashes */
 
 #include "conf.h"
 
@@ -590,159 +588,219 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
   return pr_stash_get_symbol2(sym_type, name, prev, idx_cache, NULL);
 }
 
-int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
-    module *sym_module) {
-  int count = 0, symtab_idx = 0;
-  size_t sym_namelen = 0;
+int pr_stash_remove_conf(const char *directive_name, module *m) {
+  int count = 0, prev_idx, symtab_idx = 0;
+  size_t directive_namelen = 0;
   unsigned int hash;
-  xaset_t **symbol_table = NULL;
+  conftable *tab = NULL;
 
-  switch (sym_type) {
-    case PR_SYM_CONF:
-      symbol_table = conf_symbol_table;
-      break;
-
-    case PR_SYM_CMD:
-      symbol_table = cmd_symbol_table;
-      break;
-
-    case PR_SYM_AUTH:
-      symbol_table = auth_symbol_table;
-      break;
-
-    case PR_SYM_HOOK:
-      symbol_table = hook_symbol_table;
-      break;
-
-    default:
-      errno = EINVAL;
-      return -1;
-  }
-
-  if (sym_name == NULL) {
+  if (directive_name == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   /* Don't forget to include one for the terminating NUL. */
-  sym_namelen = strlen(sym_name) + 1;
+  directive_namelen = strlen(directive_name) + 1;
 
-  hash = sym_type_hash(sym_type, sym_name, sym_namelen);
+  hash = sym_type_hash(PR_SYM_CONF, directive_name, directive_namelen);
   symtab_idx = hash % PR_TUNABLE_HASH_TABLE_SIZE;
+  prev_idx = -1;
+
+  tab = pr_stash_get_symbol2(PR_SYM_CONF, directive_name, NULL, &prev_idx,
+    &hash);
+  while (tab) {
+    pr_signals_handle();
+
+    /* Note: this works because of a hack: the symbol lookup functions set a
+     * static pointer, conf_curr_sym, to point to the struct stash just looked
+     * up.  conf_curr_sym will not be NULL if pr_stash_get_symbol2() returns
+     * non-NULL.
+     */
+
+    if (m == NULL ||
+        conf_curr_sym->sym_module == m) {
+      xaset_remove(conf_symbol_table[symtab_idx],
+        (xasetmember_t *) conf_curr_sym);
+      destroy_pool(conf_curr_sym->sym_pool);
+      conf_curr_sym = NULL;
+      tab = NULL;
+      count++;
+    }
+
+    tab = pr_stash_get_symbol2(PR_SYM_CONF, directive_name, tab, &prev_idx,
+      &hash);
+  }
+
+  return count;
+}
+
+/* Sentinel values:
+ *
+ *  cmd_type = 0
+ *  cmd_group = NULL
+ *  cmd_class = -1
+ */
+int pr_stash_remove_cmd(const char *cmd_name, module *m,
+    unsigned char cmd_type, const char *cmd_group, int cmd_class) {
+  int count = 0, prev_idx, symtab_idx = 0;
+  size_t cmd_namelen = 0;
+  unsigned int hash;
+  cmdtable *tab = NULL;
+
+  if (cmd_name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Don't forget to include one for the terminating NUL. */
+  cmd_namelen = strlen(cmd_name) + 1;
+
+  hash = sym_type_hash(PR_SYM_CMD, cmd_name, cmd_namelen);
+  symtab_idx = hash % PR_TUNABLE_HASH_TABLE_SIZE;
+  prev_idx = -1;
+
+  tab = pr_stash_get_symbol2(PR_SYM_CMD, cmd_name, NULL, &prev_idx, &hash);
+  while (tab) {
+    cmdtable *cmd_sym;
+
+    pr_signals_handle();
+
+    /* Note: this works because of a hack: the symbol lookup functions set a
+     * static pointer, cmd_curr_sym, to point to the struct stash just looked
+     * up.  cmd_curr_sym will not be NULL if pr_stash_get_symbol2() returns
+     * non-NULL.
+     */
+
+    cmd_sym = cmd_curr_sym->ptr.sym_cmd;
+    if ((m == NULL || cmd_curr_sym->sym_module == m) &&
+        (cmd_type == 0 || cmd_sym->cmd_type == cmd_type) &&
+        (cmd_group == NULL ||
+         (cmd_group != NULL &&
+          cmd_sym->group != NULL &&
+          strcmp(cmd_sym->group, cmd_group) == 0)) &&
+        (cmd_class == -1 || cmd_sym->cmd_class == cmd_class)) {
+      xaset_remove(cmd_symbol_table[symtab_idx],
+        (xasetmember_t *) cmd_curr_sym);
+      destroy_pool(cmd_curr_sym->sym_pool);
+      cmd_curr_sym = NULL;
+      tab = NULL;
+      count++;
+    }
+
+    tab = pr_stash_get_symbol2(PR_SYM_CMD, cmd_name, tab, &prev_idx, &hash);
+  }
+
+  return count;
+}
+
+int pr_stash_remove_auth(const char *api_name, module *m) {
+  int count = 0, prev_idx, symtab_idx = 0;
+  size_t api_namelen = 0;
+  unsigned int hash;
+  authtable *tab = NULL;
+
+  if (api_name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Don't forget to include one for the terminating NUL. */
+  api_namelen = strlen(api_name) + 1;
+
+  hash = sym_type_hash(PR_SYM_AUTH, api_name, api_namelen);
+  symtab_idx = hash % PR_TUNABLE_HASH_TABLE_SIZE;
+  prev_idx = -1;
+
+  tab = pr_stash_get_symbol2(PR_SYM_AUTH, api_name, NULL, &prev_idx, &hash);
+  while (tab) {
+    pr_signals_handle();
+
+    /* Note: this works because of a hack: the symbol lookup functions set a
+     * static pointer, auth_curr_sym, to point to the struct stash just looked
+     * up.  auth_curr_sym will not be NULL if pr_stash_get_symbol2() returns
+     * non-NULL.
+     */
+
+    if (m == NULL ||
+        auth_curr_sym->sym_module == m) {
+      xaset_remove(auth_symbol_table[symtab_idx],
+        (xasetmember_t *) auth_curr_sym);
+      destroy_pool(auth_curr_sym->sym_pool);
+      auth_curr_sym = NULL;
+      tab = NULL;
+      count++;
+    }
+
+    tab = pr_stash_get_symbol2(PR_SYM_AUTH, api_name, tab, &prev_idx, &hash);
+  }
+
+  return count;
+}
+
+int pr_stash_remove_hook(const char *hook_name, module *m) {
+  int count = 0, prev_idx, symtab_idx = 0;
+  size_t hook_namelen = 0;
+  unsigned int hash;
+  cmdtable *tab = NULL;
+
+  if (hook_name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Don't forget to include one for the terminating NUL. */
+  hook_namelen = strlen(hook_name) + 1;
+
+  hash = sym_type_hash(PR_SYM_HOOK, hook_name, hook_namelen);
+  symtab_idx = hash % PR_TUNABLE_HASH_TABLE_SIZE;
+  prev_idx = -1;
+
+  tab = pr_stash_get_symbol2(PR_SYM_HOOK, hook_name, NULL, &prev_idx, &hash);
+  while (tab) {
+    pr_signals_handle();
+
+    /* Note: this works because of a hack: the symbol lookup functions set a
+     * static pointer, hook_curr_sym, to point to the struct stash just looked
+     * up.  hook_curr_sym will not be NULL if pr_stash_get_symbol2() returns
+     * non-NULL.
+     */
+
+    if (m == NULL ||
+        hook_curr_sym->sym_module == m) {
+      xaset_remove(hook_symbol_table[symtab_idx],
+        (xasetmember_t *) hook_curr_sym);
+      destroy_pool(hook_curr_sym->sym_pool);
+      hook_curr_sym = NULL;
+      tab = NULL;
+      count++;
+    }
+
+    tab = pr_stash_get_symbol2(PR_SYM_HOOK, hook_name, tab, &prev_idx, &hash);
+  }
+
+  return count;
+}
+
+int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
+    module *sym_module) {
+  int count = 0;
 
   switch (sym_type) {
-    case PR_SYM_CONF: {
-      int idx = -1;
-      conftable *tab;
-
-      tab = pr_stash_get_symbol2(PR_SYM_CONF, sym_name, NULL, &idx, &hash);
-
-      while (tab) {
-        pr_signals_handle();
-
-        /* Note: this works because of a hack: the symbol lookup functions
-         * set a static pointer, conf_curr_sym, to point to the struct stash
-         * just looked up.  conf_curr_sym will not be NULL if
-         * pr_stash_get_symbol2() returns non-NULL.
-         */
-
-        if (sym_module == NULL ||
-            conf_curr_sym->sym_module == sym_module) {
-          xaset_remove(symbol_table[symtab_idx],
-            (xasetmember_t *) conf_curr_sym);
-          destroy_pool(conf_curr_sym->sym_pool);
-          conf_curr_sym = NULL;
-          tab = NULL;
-          count++;
-        }
-
-        tab = pr_stash_get_symbol2(PR_SYM_CONF, sym_name, tab, &idx, &hash);
-      }
-
+    case PR_SYM_CONF:
+      count = pr_stash_remove_conf(sym_name, sym_module);
       break;
-    }
 
-    case PR_SYM_CMD: {
-      int idx = -1;
-      cmdtable *tab;
-
-      tab = pr_stash_get_symbol2(PR_SYM_CMD, sym_name, NULL, &idx, &hash);
-
-      while (tab) {
-        pr_signals_handle();
-
-        /* Note: this works because of a hack: the symbol lookup functions
-         * set a static pointer, cmd_curr_sym, to point to the struct stash
-         * just looked up.  
-         */
-
-        if (sym_module == NULL ||
-            cmd_curr_sym->sym_module == sym_module) {
-          xaset_remove(symbol_table[symtab_idx],
-            (xasetmember_t *) cmd_curr_sym);
-          destroy_pool(cmd_curr_sym->sym_pool);
-          tab = NULL;
-          count++;
-        }
-
-        tab = pr_stash_get_symbol2(PR_SYM_CMD, sym_name, tab, &idx, &hash);
-      }
-
+    case PR_SYM_CMD:
+      count = pr_stash_remove_cmd(sym_name, sym_module, 0, NULL, -1);
       break;
-    }
 
-    case PR_SYM_AUTH: {
-      int idx = -1;
-      authtable *tab;
-
-      tab = pr_stash_get_symbol2(PR_SYM_AUTH, sym_name, NULL, &idx, &hash);
-
-      while (tab) {
-        pr_signals_handle();
-
-        /* Note: this works because of a hack: the symbol lookup functions
-         * set a static pointer, auth_curr_sym, to point to the struct stash
-         * just looked up.  
-         */
-
-        if (sym_module == NULL ||
-            auth_curr_sym->sym_module == sym_module) {
-          xaset_remove(symbol_table[symtab_idx],
-            (xasetmember_t *) auth_curr_sym);
-          destroy_pool(auth_curr_sym->sym_pool);
-          tab = NULL;
-          count++;
-        }
-
-        tab = pr_stash_get_symbol2(PR_SYM_AUTH, sym_name, tab, &idx, &hash);
-      }
-
+    case PR_SYM_AUTH:
+      count = pr_stash_remove_auth(sym_name, sym_module);
       break;
-    }
 
-    case PR_SYM_HOOK: {
-      int idx = -1;
-      cmdtable *tab;
-
-      tab = pr_stash_get_symbol2(PR_SYM_HOOK, sym_name, NULL, &idx, &hash);
-
-      while (tab) {
-        pr_signals_handle();
-
-        if (sym_module == NULL ||
-            hook_curr_sym->sym_module == sym_module) {
-          xaset_remove(symbol_table[symtab_idx],
-            (xasetmember_t *) hook_curr_sym);
-          destroy_pool(hook_curr_sym->sym_pool);
-          tab = NULL;
-          count++;
-        }
-
-        tab = pr_stash_get_symbol2(PR_SYM_HOOK, sym_name, tab, &idx, &hash);
-      }
-
+    case PR_SYM_HOOK:
+      count = pr_stash_remove_hook(sym_name, sym_module);
       break;
-    }
 
     default:
       errno = EINVAL;
