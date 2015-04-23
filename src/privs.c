@@ -90,13 +90,17 @@ int pr_privs_setup(uid_t uid, gid_t gid, const char *file, int lineno) {
     session.gid = getgid();
 
     if (setgid(session.gid) < 0) {
-      pr_log_pri(PR_LOG_ERR, "SETUP PRIVS: unable to setgid(): %s",
+      int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+      pr_log_pri(priority, "SETUP PRIVS: unable to setgid(): %s",
         strerror(errno));
     }
 
 #if defined(HAVE_SETEUID)
     if (setuid(session.uid) < 0) {
-      pr_log_pri(PR_LOG_ERR, "SETUP PRIVS: unable to setuid(): %s", 
+      int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+      pr_log_pri(priority, "SETUP PRIVS: unable to setuid(): %s", 
         strerror(errno));
     }
 
@@ -122,12 +126,16 @@ int pr_privs_setup(uid_t uid, gid_t gid, const char *file, int lineno) {
 
 #if defined(HAVE_SETEUID)
     if (setuid(PR_ROOT_UID) < 0) {
-      pr_log_pri(PR_LOG_ERR, "SETUP PRIVS: unable to setuid(): %s", 
+      int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+      pr_log_pri(priority, "SETUP PRIVS: unable to setuid(): %s", 
         strerror(errno));
     }
 
     if (setgid(gid) < 0) {
-      pr_log_pri(PR_LOG_ERR, "SETUP PRIVS: unable to setgid(): %s", 
+      int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+      pr_log_pri(priority, "SETUP PRIVS: unable to setgid(): %s", 
         strerror(errno));
     }
 
@@ -139,7 +147,9 @@ int pr_privs_setup(uid_t uid, gid_t gid, const char *file, int lineno) {
     }
 #else
     if (setgid(session.gid) < 0) {
-      pr_log_pri(PR_LOG_ERR, "SETUP PRIVS: unable to setgid(): %s", 
+      int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+      pr_log_pri(priority, "SETUP PRIVS: unable to setgid(): %s", 
         strerror(errno));
     }
 
@@ -436,12 +446,16 @@ int pr_privs_revoke(const char *file, int lineno) {
   }
 
   if (setgid(session.gid) < 0) {
-    pr_log_pri(PR_LOG_ERR, "REVOKE PRIVS: unable to setgid(): %s",
+    int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+    pr_log_pri(priority, "REVOKE PRIVS: unable to setgid(): %s",
       strerror(errno));
   }
 
   if (setuid(session.uid) < 0) {
-    pr_log_pri(PR_LOG_ERR, "REVOKE PRIVS: unable to setuid(): %s",
+    int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+    pr_log_pri(priority, "REVOKE PRIVS: unable to setuid(): %s",
       strerror(errno));
   }
 #else
@@ -453,12 +467,16 @@ int pr_privs_revoke(const char *file, int lineno) {
   }
 
   if (setgid(session.gid) < 0) {
-    pr_log_pri(PR_LOG_ERR, "REVOKE PRIVS: unable to setgid(): %s",
+    int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+    pr_log_pri(priority, "REVOKE PRIVS: unable to setgid(): %s",
       strerror(errno));
   }
 
   if (setuid(session.uid) < 0) {
-    pr_log_pri(PR_LOG_ERR, "REVOKE PRIVS: unable to setuid(): %s",
+    int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
+
+    pr_log_pri(priority, "REVOKE PRIVS: unable to setuid(): %s",
       strerror(errno));
   }
 #endif /* !HAVE_SETEUID */
