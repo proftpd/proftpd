@@ -116,7 +116,6 @@ int pr_cmd_is_http(cmd_rec *c);
  */
 int pr_cmd_is_smtp(cmd_rec *c);
 
-int pr_cmd_set_errno(cmd_rec *, int);
 int pr_cmd_set_name(cmd_rec *, const char *);
 
 /* Implemented in main.c */

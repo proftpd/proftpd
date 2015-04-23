@@ -582,7 +582,6 @@ MODRET copy_cpfr(cmd_rec *cmd) {
       *authenticated == FALSE) {
     pr_response_add_err(R_530, _("Please login with USER and PASS"));
   
-    pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
@@ -652,7 +651,6 @@ MODRET copy_cpto(cmd_rec *cmd) {
       *authenticated == FALSE) {
     pr_response_add_err(R_530, _("Please login with USER and PASS"));
 
-    pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
