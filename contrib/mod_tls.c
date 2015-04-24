@@ -452,7 +452,6 @@ static unsigned int tls_sscn_mode = TLS_SSCN_MODE_SERVER;
 
 static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
-static char *tls_dhparam_file = NULL;
 static char *tls_ec_cert_file = NULL, *tls_ec_key_file = NULL;
 static char *tls_dsa_cert_file = NULL, *tls_dsa_key_file = NULL;
 static char *tls_pkcs12_file = NULL;
@@ -2437,8 +2436,33 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 }
 #endif
 
-static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
+static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   DH *dh = NULL;
+  EVP_PKEY *pkey;
+
+  /* OpenSSL will only ever call us (currently) with a keylen of 512 or 1024;
+   * see the SSL_EXPORT_PKEYLENGTH macro in ssl_locl.h.  Sigh.
+   *
+   * Thus we adjust the DH parameter length according to the size of the
+   * RSA/DSA private key used for the current connection.
+   *
+   * NOTE: This MAY cause interoperability issues with some clients, notably
+   * Java 7 (and earlier) clients, since Java 7 and earlier supports
+   * Diffie-Hellman only up to 1024 bits.  More sighs.  To deal with these
+   * clients, then, you need to configure a certificate/key of 1024 bits.
+   */
+  pkey = SSL_get_privatekey(ssl);
+  if (pkey != NULL) {
+    if (EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA ||
+        EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA) {
+      int pkeylen;
+
+      pkeylen = EVP_PKEY_bits(pkey);
+      pr_trace_msg(trace_channel, 13,
+        "adjusted DH parameter length from %d to %d bits", keylen, pkeylen);
+      keylen = pkeylen;
+    }
+  }
 
   if (tls_tmp_dhs != NULL &&
       tls_tmp_dhs->nelts > 0) {
@@ -2447,16 +2471,19 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
 
     dhs = tls_tmp_dhs->elts;
     for (i = 0; i < tls_tmp_dhs->nelts; i++) {
-      /* Note: the keylength argument is in BITS, but DH_size() returns
+      int dhlen;
+
+      /* Note: the keylen argument is in BITS, but DH_size() returns
        * the number of BYTES.
        */
-      if (DH_size(dhs[i]) == (keylength / 8)) {
+      dhlen = DH_size(dhs[i]) * 8;
+      if (dhlen == keylen) {
         return dhs[i];
       }
     }
   }
 
-  switch (keylength) {
+  switch (keylen) {
     case 512:
       dh = get_dh512();
       break;
@@ -2465,23 +2492,23 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
       dh = get_dh768();
       break;
 
-     case 1024:
-       dh = get_dh1024();
-       break;
+    case 1024:
+      dh = get_dh1024();
+      break;
 
-     case 1536:
-       dh = get_dh1536();
-       break;
+    case 1536:
+      dh = get_dh1536();
+      break;
 
-     case 2048:
-       dh = get_dh2048();
-       break;
+    case 2048:
+      dh = get_dh2048();
+      break;
 
-     default:
-       tls_log("unsupported DH key length %d requested, returning 1024 bits",
-         keylength);
-       dh = get_dh1024();
-       break;
+    default:
+      tls_log("unsupported DH key length %d requested, returning 1024 bits",
+        keylen);
+      dh = get_dh1024();
+      break;
   }
 
   /* Add this DH to the list, so that it can be freed properly later. */
@@ -2490,12 +2517,11 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
   }
 
   *((DH **) push_array(tls_tmp_dhs)) = dh;
-
   return dh;
 }
 
-#ifdef PR_USE_OPENSSL_ECC
-static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylength) {
+#if defined(PR_USE_OPENSSL_ECC) && !defined(SSL_CTX_set_ecdh_auto)
+static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
   static EC_KEY *ecdh = NULL;
   static int init = 0;
 
@@ -2771,7 +2797,14 @@ static int tls_init_ctx(void) {
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 #ifdef PR_USE_OPENSSL_ECC
+  /* If using OpenSSL 1.0.2 or later, let it automatically choose the
+   * correct/best curve, rather than having to hardcode a fallback.
+   */
+# if defined(SSL_CTX_set_ecdh_auto)
+  SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
+# else
   SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+# endif
 #endif /* PR_USE_OPENSSL_ECC */
 
   if (tls_seed_prng() < 0) {
@@ -9781,14 +9814,19 @@ static int tls_sess_init(void) {
   tls_crl_file = get_param_ptr(main_server->conf, "TLSCARevocationFile", FALSE);
   tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);
 
-  tls_dhparam_file = get_param_ptr(main_server->conf, "TLSDHParamFile", FALSE);
-  if (tls_dhparam_file != NULL) {
+  c = find_config(main_server->conf, CONF_PARAM, "TLSDHParamFile", FALSE);
+  while (c != NULL) {
+    const char *path;
     FILE *fp;
     int xerrno;
 
+    pr_signals_handle();
+
+    path = c->argv[0];
+
     /* Load the DH params from the file. */
     PRIVS_ROOT
-    fp = fopen(tls_dhparam_file, "r");
+    fp = fopen(path, "r");
     xerrno = errno;
     PRIVS_RELINQUISH
 
@@ -9797,7 +9835,9 @@ static int tls_sess_init(void) {
 
       dh = PEM_read_DHparams(fp, NULL, NULL, NULL);
       if (dh != NULL) {
-        tls_tmp_dhs = make_array(session.pool, 1, sizeof(DH *));
+        if (tls_tmp_dhs == NULL) {
+          tls_tmp_dhs = make_array(session.pool, 1, sizeof(DH *));
+        }
       }
 
       while (dh != NULL) {
@@ -9810,9 +9850,10 @@ static int tls_sess_init(void) {
 
     } else {
       pr_log_debug(DEBUG3, MOD_TLS_VERSION
-        ": unable to open TLSDHParamFile '%s': %s", tls_dhparam_file,
-          strerror(xerrno));
+        ": unable to open TLSDHParamFile '%s': %s", path, strerror(xerrno));
     }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSDHParamFile", FALSE);
   }
 
   tls_dsa_cert_file = get_param_ptr(main_server->conf, "TLSDSACertificateFile",
