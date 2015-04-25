@@ -27,7 +27,7 @@
 
 #include "conf.h"
 
-#define MOD_FACL_VERSION		"mod_facl/0.4"
+#define MOD_FACL_VERSION		"mod_facl/0.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
@@ -50,12 +50,12 @@ static const char *trace_channel = "facl";
 # include <acl/libacl.h>
 #endif
 
-static int is_errno_eperm(void) {
-  if (errno == EPERM)
+static int is_errno_eperm(int xerrno) {
+  if (xerrno == EPERM)
     return 1;
 
 #ifdef EOPNOTSUPP
-  if (errno == EOPNOTSUPP)
+  if (xerrno == EOPNOTSUPP)
     return 1;
 #endif /* !EOPNOTSUPP */
 
@@ -88,8 +88,9 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
    */
   mask = S_IROTH|S_IWOTH|S_IXOTH;
 
-  if (st.st_uid == uid)
+  if (st.st_uid == uid) {
     mask |= S_IRUSR|S_IWUSR|S_IXUSR;
+  }
 
   /* Check the current group, as well as all supplementary groups.
    * Fortunately, we have this information cached, so accessing it is
@@ -150,25 +151,28 @@ static acl_perm_t get_facl_perm_for_mode(int mode) {
 
   memset(&res, 0, sizeof(acl_perm_t));
 
-  if (mode & R_OK)
+  if (mode & R_OK) {
     res |= ACL_READ;
+  }
 
-  if (mode & W_OK)
+  if (mode & W_OK) {
     res |= ACL_WRITE;
+  }
 
-  if (mode & X_OK)
+  if (mode & X_OK) {
     res |= ACL_EXECUTE;
+  }
 
   return res;
 }
-#endif
 
-static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
-    struct stat *st, uid_t uid, gid_t gid, array_header *suppl_gids) {
-# if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL)
+static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
+    int nents, struct stat *st, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
   register unsigned int i;
   int have_access_entry = FALSE, res = -1;
   pool *acl_pool;
+  char *acl_text;
   acl_t facl = acl;
   acl_entry_t ae;
   acl_tag_t ae_type;
@@ -178,6 +182,13 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   acl_entry_t acl_mask_entry = NULL;
   array_header *acl_groups;
   array_header *acl_users;
+
+  acl_text = acl_to_text(facl, NULL);
+  if (acl_text != NULL) {
+    pr_trace_msg(trace_channel, 8,
+      "checking path '%s', ACL '%s'", path, acl_text);
+    acl_free(acl_text);
+  }
 
   /* Iterate through all of the ACL entries, sorting them for later
    * checking.
@@ -203,6 +214,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   acl_users = make_array(acl_pool, 1, sizeof(acl_entry_t));
 
   while (res > 0) {
+    pr_signals_handle();
+
     if (acl_get_tag_type(ae, &ae_type) < 0) {
       pr_trace_msg(trace_channel, 5,
         "error retrieving type of ACL entry for '%s': %s", path,
@@ -296,7 +309,6 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
     ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
-
     if (ret == 1) {
       ae = acl_group_entry;
       ae_type = ACL_GROUP_OBJ;
@@ -307,8 +319,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
         pr_gid2str(NULL, gid));
 
     } else if (ret < 0) {
+      int xerrno = errno;
+
       pr_trace_msg(trace_channel, 5,
-        "error checking permissions in permission set: %s", strerror(errno));
+        "error checking permissions in permission set: %s", strerror(xerrno));
+      errno = xerrno;
     }
   }
 
@@ -333,7 +348,6 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
         ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
-
         if (ret == 1) {
           ae = acl_group_entry;
           ae_type = ACL_GROUP_OBJ;
@@ -346,9 +360,12 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
           break;
 
         } else if (ret < 0) {
+          int xerrno = errno;
+
           pr_trace_msg(trace_channel, 5,
             "error checking permissions in permission set: %s",
-            strerror(errno));
+            strerror(xerrno));
+          errno = xerrno;
         }
       }
     }
@@ -378,7 +395,6 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
       ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
-
       if (ret == 1) {
         ae = e;
         ae_type = ACL_GROUP;
@@ -391,8 +407,11 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
         break;
 
       } else if (ret < 0) {
+        int xerrno = errno;
+
         pr_trace_msg(trace_channel, 5,
           "error checking permissions in permission set: %s", strerror(errno));
+        errno = xerrno;
       }
     }
 
@@ -419,7 +438,6 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
           ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
-
           if (ret == 1) {
             ae = e;
             ae_type = ACL_GROUP;
@@ -432,9 +450,12 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
             break;
 
           } else if (ret < 0) {
+            int xerrno = errno;
+
             pr_trace_msg(trace_channel, 5,
               "error checking permissions in permission set: %s",
-              strerror(errno));
+              strerror(xerrno));
+            errno = xerrno;
           }
         }
       }
@@ -486,13 +507,15 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
       ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
-
-     if (ret == 1) {
+      if (ret == 1) {
         res = 0;
 
       } else if (ret < 0) {
+        int xerrno = errno;
+
         pr_trace_msg(trace_channel, 5,
-          "error checking permissions in permission set: %s", strerror(errno));
+          "error checking permissions in permission set: %s", strerror(xerrno));
+        errno = xerrno;
       }
 
       break;
@@ -535,15 +558,21 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
       } else {
         if (ret1 < 0) {
+          int xerrno = errno;
+
           pr_trace_msg(trace_channel, 5,
             "error checking permissions in entry permission set: %s",
-            strerror(errno));
+            strerror(xerrno));
+          errno = xerrno;
         }
 
         if (ret2 < 0) {
+          int xerrno = errno;
+
           pr_trace_msg(trace_channel, 5,
             "error checking permissions in mask permission set: %s",
-            strerror(errno));
+            strerror(xerrno));
+          errno = xerrno;
         }
       }
 
@@ -554,15 +583,126 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   destroy_pool(acl_pool);
 
   if (res < 0) {
-    errno = EACCES;
     pr_trace_msg(trace_channel, 3,
       "returning EACCES for path '%s', user ID %s", path,
       pr_uid2str(NULL, uid));
+    errno = EACCES;
   }
 
   return res;
+}
+#endif /* BSD/Linux POSIX ACL */
 
-# elif defined(HAVE_SOLARIS_POSIX_ACL)
+#if defined(HAVE_MACOSX_POSIX_ACL)
+static acl_perm_t get_facl_perm_for_mode(int mode) {
+  acl_perm_t res;
+
+  memset(&res, 0, sizeof(acl_perm_t));
+
+  if (mode & R_OK) {
+    res |= ACL_READ_DATA;
+  }
+
+  if (mode & W_OK) {
+    res |= ACL_WRITE_DATA;
+  }
+
+  if (mode & X_OK) {
+    res |= ACL_EXECUTE;
+  }
+
+  return res;
+}
+
+static int check_macosx_facl(pool *p, const char *path, int mode, void *acl,
+    int nents, struct stat *st, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
+  int have_access = FALSE, res = -1;
+  char *acl_text;
+  acl_t facl = acl;
+  acl_entry_t ae;
+
+  acl_text = acl_to_text(facl, NULL);
+  if (acl_text != NULL) {
+    pr_trace_msg(trace_channel, 8,
+      "checking path '%s', ACL '%s'", path, acl_text);
+    acl_free(acl_text);
+  }
+
+  /* Iterate through all of the ACL entries, sorting them for later
+   * checking.
+   */
+  res = acl_get_entry(facl, ACL_FIRST_ENTRY, &ae);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 8,
+      "unable to retrieve first ACL entry for '%s': [%d] %s", path,
+      errno, strerror(errno));
+    errno = EACCES;
+    return -1;
+  }
+
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 3, "ill-formed ACL for '%s' has no entries",
+      path);
+    errno = EACCES;
+    return -1;
+  }
+
+  while (res > 0) {
+    acl_tag_t ae_type;
+
+    pr_signals_handle();
+
+    if (acl_get_tag_type(ae, &ae_type) < 0) {
+      pr_trace_msg(trace_channel, 5,
+        "error retrieving type of ACL entry for '%s': %s", path,
+        strerror(errno));
+      res = acl_get_entry(facl, ACL_NEXT_ENTRY, &ae);
+      continue;
+    }
+
+    if (ae_type & ACL_TYPE_EXTENDED) {
+      int ret;
+
+      acl_permset_t perms;
+      if (acl_get_permset(ae, &perms) < 0) {
+        pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+          strerror(errno));
+      }
+
+      ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
+      if (ret == 1) {
+        have_access = TRUE;
+        break;
+
+      } else if (ret < 0) {
+        int xerrno = errno;
+
+        pr_trace_msg(trace_channel, 5,
+          "error checking permissions in permission set: %s", strerror(xerrno));
+        errno = xerrno;
+      }
+    }
+
+    res = acl_get_entry(facl, ACL_NEXT_ENTRY, &ae);
+  }
+
+  if (!have_access) {
+    pr_trace_msg(trace_channel, 3,
+      "returning EACCES for path '%s', user ID %s", path,
+      pr_uid2str(NULL, uid));
+    errno = EACCES;
+    return -1;
+  }
+
+  return 0;
+}
+#endif /* MacOSX POSIX ACL */
+
+#if defined(HAVE_SOLARIS_POSIX_ACL)
+static int check_solaris_facl(pool *p, const char *path, int mode, void *acl,
+    int nents, struct stat *st, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
   register unsigned int i;
   int have_access_entry = FALSE, have_mask_entry = FALSE, idx, res = -1;
   pool *acl_pool;
@@ -834,21 +974,24 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   switch (ae_type) {
     case USER_OBJ:
     case OTHER_OBJ:
-      if (ae.a_perm & mode)
+      if (ae.a_perm & mode) {
         res = 0;
+      }
       break;
 
     default: 
       if (have_mask_entry) {
         if ((ae.a_perm & mode) &&
-            (acl_mask_entry.a_perm & mode))
+            (acl_mask_entry.a_perm & mode)) {
           res = 0;
+        }
 
       } else {
 
         /* If there is no mask entry, then access should be granted. */
-        if (ae.a_perm & mode)
+        if (ae.a_perm & mode) {
           res = 0;
+        }
       }
 
       break;
@@ -857,14 +1000,31 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   destroy_pool(acl_pool);
 
   if (res < 0) {
-    errno = EACCES;
     pr_trace_msg(trace_channel, 3,
       "returning EACCES for path '%s', user ID %s", path,
       pr_uid2str(NULL, uid));
+    errno = EACCES;
   }
 
   return res;
-# endif /* HAVE_SOLARIS_POSIX_ACL */
+}
+#endif /* Solaris POSIX ACL */
+
+static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
+    struct stat *st, uid_t uid, gid_t gid, array_header *suppl_gids) {
+  int res = -1;
+
+# if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL)
+  res = check_bsd_facl(p, path, mode, acl, nents, st, uid, gid, suppl_gids);
+
+# elif defined(HAVE_MACOSX_POSIX_ACL)
+  res = check_macosx_facl(p, path, mode, acl, nents, st, uid, gid, suppl_gids);
+
+# elif defined(HAVE_SOLARIS_POSIX_ACL)
+  res = check_solaris_facl(p, path, mode, acl, nents, st, uid, gid, suppl_gids);
+# endif
+
+  return res;
 }
 
 # if defined(PR_USE_FACL)
@@ -884,14 +1044,15 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   }
 
   /* Look up the acl for this path. */
-# if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL)
+# if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL) || defined(HAVE_MACOSX_POSIX_ACL)
   acls = acl_get_file(path, ACL_TYPE_ACCESS);
+  if (acls == NULL) {
+    int xerrno = errno;
 
-  if (!acls) {
     pr_trace_msg(trace_channel, 5, "unable to retrieve ACL for '%s': [%d] %s",
-      path, errno, strerror(errno));
+      path, xerrno, strerror(xerrno));
 
-    if (is_errno_eperm()) {
+    if (is_errno_eperm(xerrno)) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
@@ -901,8 +1062,10 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
        * arrangement can be found.
        */
       if (sys_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
+        xerrno = errno;
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
-          "failed: %s", path, strerror(errno));
+          "failed: %s", path, strerror(xerrno));
+        errno = xerrno;
         return -1;
       }
 
@@ -917,17 +1080,21 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   nents = acl(path, GETACLCNT, 0, NULL);
   if (nents < 0) {
-    pr_trace_msg(trace_channel, 5,
-      "unable to retrieve ACL count for '%s': [%d] %s", path, errno,
-      strerror(errno));
+    int xerrno = errno;
 
-    if (is_errno_eperm()) {
+    pr_trace_msg(trace_channel, 5,
+      "unable to retrieve ACL count for '%s': [%d] %s", path, xerrno,
+      strerror(xerrno));
+
+    if (is_errno_eperm(xerrno)) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
       if (sys_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
+        xerrno = errno;
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
-          "failed: %s", path, strerror(errno));
+          "failed: %s", path, strerror(xerrno));
+        errno = xerrno;
         return -1;
       }   
 
@@ -945,17 +1112,21 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   nents = acl(path, GETACL, nents, acls);
   if (nents < 0) {
-    pr_trace_msg(trace_channel, 5,
-      "unable to retrieve ACL for '%s': [%d] %s", path, errno,
-      strerror(errno));
+    int xerrno = errno;
 
-    if (is_errno_eperm()) {
+    pr_trace_msg(trace_channel, 5,
+      "unable to retrieve ACL for '%s': [%d] %s", path, xerrno,
+      strerror(xerrno));
+
+    if (is_errno_eperm(xerrno)) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
       if (sys_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
+        xerrno = errno;
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
-          "failed: %s", path, strerror(errno));
+          "failed: %s", path, strerror(xerrno));
+        errno = xerrno;
         return -1;
       }   
 
@@ -982,15 +1153,16 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   }
 
   /* Look up the acl for this fd. */
-# if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL)
+# if defined(HAVE_BSD_POSIX_ACL) || defined(HAVE_LINUX_POSIX_ACL) || defined(HAVE_MACOSX_POSIX_ACL)
   acls = acl_get_fd(PR_FH_FD(fh));
+  if (acls == NULL) {
+    int xerrno = errno;
 
-  if (!acls) {
     pr_trace_msg(trace_channel, 10,
-      "unable to retrieve ACL for '%s': [%d] %s", fh->fh_path, errno,
-      strerror(errno));
+      "unable to retrieve ACL for '%s': [%d] %s", fh->fh_path, xerrno,
+      strerror(xerrno));
 
-    if (is_errno_eperm()) {
+    if (is_errno_eperm(xerrno)) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
@@ -1000,8 +1172,10 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
        * arrangement can be found.
        */
       if (sys_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
+        xerrno = errno;
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
-          "failed: %s", fh->fh_path, strerror(errno));
+          "failed: %s", fh->fh_path, strerror(xerrno));
+        errno = xerrno;
         return -1;
       }   
 
@@ -1016,19 +1190,23 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   nents = facl(PR_FH_FD(fh), GETACLCNT, 0, NULL);
   if (nents < 0) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 10,
       "unable to retrieve ACL count for '%s': [%d] %s", fh->fh_path,
-      errno, strerror(errno));
+      xerrno, strerror(xerrno));
 
-    if (is_errno_eperm()) {
+    if (is_errno_eperm(xerrno)) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
       if (sys_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
+        xerrno = errno;
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
-          "failed: %s", fh->fh_path, strerror(errno));
+          "failed: %s", fh->fh_path, strerror(xerrno));
+        errno = xerrno;
         return -1;
-      }   
+      }
 
       return 0;
 
@@ -1041,19 +1219,23 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   nents = facl(PR_FH_FD(fh), GETACL, nents, acls);
   if (nents < 0) {
-    pr_trace_msg(trace_channel, 10,
-      "unable to retrieve ACL for '%s': [%d] %s", fh->fh_path, errno,
-      strerror(errno));
+    int xerrno = errno;
 
-    if (is_errno_eperm()) {
+    pr_trace_msg(trace_channel, 10,
+      "unable to retrieve ACL for '%s': [%d] %s", fh->fh_path, xerrno,
+      strerror(xerrno));
+
+    if (is_errno_eperm(xerrno)) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
       if (sys_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
+        xerrno = errno;
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
-          "failed: %s", fh->fh_path, strerror(errno));
+          "failed: %s", fh->fh_path, strerror(xerrno));
+        errno = xerrno;
         return -1;
-      }   
+      }
 
       return 0;
 
@@ -1090,8 +1272,9 @@ static int facl_init(void) {
   pr_fs_t *fs;
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
 
-  if (!facl_engine)
+  if (facl_engine == FALSE) {
     return 0;
+  }
 
 #if defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
   fs = pr_register_fs(permanent_pool, "facl", "/");
@@ -1124,16 +1307,17 @@ static int facl_init(void) {
 
 /* usage: FACLEngine on|off */
 MODRET set_faclengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
-  facl_engine = bool;
+  facl_engine = engine;
   return PR_HANDLED(cmd);
 }
 
