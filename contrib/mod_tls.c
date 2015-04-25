@@ -2458,9 +2458,11 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
       int pkeylen;
 
       pkeylen = EVP_PKEY_bits(pkey);
-      pr_trace_msg(trace_channel, 13,
-        "adjusted DH parameter length from %d to %d bits", keylen, pkeylen);
-      keylen = pkeylen;
+      if (pkeylen != keylen) {
+        pr_trace_msg(trace_channel, 13,
+          "adjusted DH parameter length from %d to %d bits", keylen, pkeylen);
+        keylen = pkeylen;
+      }
     }
   }
 
