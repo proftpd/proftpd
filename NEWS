@@ -100,6 +100,7 @@ Git
   bitmask rather than enumeration for SFTP protocol version 6.
 - Bug 4168 - Race condition with HiddenStores and TimeoutIdle timeout, causing
   hidden file not to be cleaned up properly.
+- Bug 3125 - Support for Mac OS X implementation of POSIX ACLs.
 
 1.3.5 - Released 15-May-2014
 --------------------------------

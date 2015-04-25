@@ -18,6 +18,9 @@ ChangeLog files.
 
   + Changed Modules
 
+    mod_facl
+      The mod_facl module now supports the MacOSX flavour of POSIX ACLs.
+
     mod_radius
       The mod_radius module has added support for the following RADIUS
       attributes:
