@@ -1,6 +1,3 @@
-<!-- $Id: mod_tls.html,v 1.43 2013-12-09 23:15:16 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_tls</title>
@@ -57,6 +54,7 @@ is based.  His module can be found here:
   <li><a href="#TLSDSACertificateKeyFile">TLSDSACertificateKeyFile</a>
   <li><a href="#TLSECCertificateFile">TLSECACertificateFile</a>
   <li><a href="#TLSECCertificateKeyFile">TLSECCertificateKeyFile</a>
+  <li><a href="#TLSECDHCurve">TLSECDHCurve</a>
   <li><a href="#TLSEngine">TLSEngine</a>
   <li><a href="#TLSLog">TLSLog</a>
   <li><a href="#TLSMasqueradeAddress">TLSMasqueradeAddress</a>
@@ -366,7 +364,7 @@ All algorithms including ADH and export but excluding patented algorithms:
 <p>
 The OpenSSL command
 <pre>
-  openssl ciphers -v <em>&lt;list of ciphers&gt;</em>
+  $ openssl ciphers -v <em>&lt;list of ciphers&gt;</em>
 </pre>
 may be used to list all of the ciphers and the order described by a specific
 <em>&lt;list of ciphers&gt;</em>.
@@ -438,7 +436,7 @@ the default engine to use, specify the engine name, <i>e.g.</i>:
 <p>
 The OpenSSL command
 <pre>
-  openssl engine
+  $ openssl engine
 </pre>
 may be used to list all of the engine drivers supported by OpenSSL.
 
@@ -465,14 +463,22 @@ stored in a <code>TLSDHParamFile</code>.  The <code>dhparam</code> utility
 that comes with OpenSSL may be used to generate an appropriate file for this
 directive:
 <pre>
-  # openssl dhparam -outform PEM -2 <i>nbits</i> &gt;&gt; dhparams.pem
-  # openssl dhparam -outform PEM -5 <i>nbits</i> &gt;&gt; dhparams.pem
+  $ openssl dhparam -outform PEM -2 <i>nbits</i> &gt;&gt; dhparams.pem
+  $ openssl dhparam -outform PEM -5 <i>nbits</i> &gt;&gt; dhparams.pem
 </pre>
 Using either -2 or -5 as the generator is fine. The <em>nbits</em> value used
 should vary between 512 and 4096, inclusive.
 
 <p>
 The <em>file</em> parameter must be an absolute path.
+
+<p>
+<b>Note<b> that as of <code>proftpd-1.3.6rc1</code> and later, for
+Diffie-Hellman key exchanges, <code>mod_tls</code> will generate DH parameters
+that match the size of the server certificate's RSA/DSA key.  Some clients,
+such as Java 7 (and earlier) code, cannot handle DH parameter lengths greater
+than 1024 bits; see this <a href="#TLSJavaDH">FAQ</a> for a workaround for such
+clients.
 
 <p>
 <hr>
@@ -584,6 +590,23 @@ is restarted.
 Example: 
 <pre>
   TLSECCertificateKeyFile /etc/ftpd/server-ec-key.pem
+</pre>
+
+<p>
+<hr>
+<h2><a name="TLSECDHCurve">TLSECDHCurve</a></h2>
+<strong>Syntax:</strong> TLSECDHCurve <em>curve</em><br>
+<strong>Default:</strong> TLSECDHCurve prime256v1<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>TLSECDHCurve/code> directive specifies the EC curve to use for
+ECDHE ciphers.  To see the full list of curves supported by your OpenSSL
+library, use:
+<pre>
+  $ openssl ecparam -list_curves
 </pre>
 
 <p>
@@ -807,6 +830,18 @@ The currently implemented options are:
         <td>PEM-encoded certificates in client certificate chain</td>
       </tr>
     </table>
+
+  <p>
+  <li><code>NoAutoECDH</code><br>
+    <p>
+    If OpenSSL-1.0.2 or later is used, then <code>mod_tls</code> will
+    attempt to automatically negotiate the best EC curve to use, when needed.
+    Use this option to disable that automatic behavior for any reason.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
 
   <p>
   <li><code>NoCertRequest</code><br>
@@ -1792,7 +1827,7 @@ See also: <a href="#TLSSessionCache"><code>TLSSessionCache</code></a>
 Much of the documentation for Apache's <code>mod_ssl</code>, concerning
 certificates, OpenSSL usage, <i>etc</i> applies to this module as well:
 <pre>
-  <a href="http://www.modssl.org/docs/2.7/">http://www.modssl.org/docs/2.7/</a>
+  <a href="http://httpd.apache.org/docs/2.4/mod/mod_ssl.html">http://httpd.apache.org/docs/2.4/mod/mod_ssl.html</a>
 </pre>
 The OpenSSL documentation, and its
 <a href="http://www.openssl.org/support/faq.cgi">FAQ</a>, are recommended as
@@ -1826,6 +1861,44 @@ your <code>proftpd.conf</code>:
 </pre>
 This trace logging can generate large files; it is intended for debugging use
 only, and should be removed from any production configuration.
+
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="TLSJavaDH">
+<font color=red>Question</font>: When I use a Java client to connect to my
+<code>proftpd</code> server using FTPS, it fails with exceptions such as:
+<pre>
+  java.lang.RuntimeException: Could not generate DH keypair and java.security.InvalidAlgorithmParameterException: Prime size must be multiple of 64, and can only range from 512 to 1024 (inclusive)
+</pre>
+How can I fix this?<br>
+<font color=blue>Answer</font>: This happens because <code>mod_tls</code> tries
+to use longer DH parameter lengths when it can, but not all clients support
+longer DH parameter lengths.
+
+<p>
+To address this, you need to configure a custom 1024-bit DH parameter via the
+<a href="#TLSDHParamFile"><code>TLSDHParamFile</code></a> directive.  You
+can generate a custom DH parameter using <code>openssl dhparam</code>,
+<i>e.g.</i>:
+<pre>
+  $ openssl dhparam -outform PEM -5 1024 &gt; dh1024.pem
+</pre>
+Alternatively, you can append the following standard 1024-bit DH parameters
+from <a href="http://www.faqs.org/rfcs/rfc2409">RFC 2409</a>, section 6.2,
+into a <code>dh1024.pem</code> file:
+<pre>
+-----BEGIN DH PARAMETERS-----
+MIGHAoGBAP//////////yQ/aoiFowjTExmKLgNwc0SkCTgiKZ8x0Agu+pjsTmyJR
+Sgh5jjQE3e+VGbPNOkMbMCsKbfJfFDdP4TVtbVHCReSFtXZiXn7G9ExC6aY37WsL
+/1y29Aa37e44a/taiZ+lrp8kEXxLH+ZJKGZR7OZTgf//////////AgEC
+-----END DH PARAMETERS-----
+</pre>
+Then tell <code>mod_tls</code> to use that DH parameter:
+<pre>
+  # Use 1024-bit DH parameters for the Java clients
+  TLSDHParamFile /path/to/dh1024.pem
+</pre>
 
 <p>
 <hr>
@@ -1863,7 +1936,7 @@ Last Updated: <i>$Date: 2013-12-09 23:15:16 $</i><br>
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2014 TJ Saunders<br>
+&copy; Copyright 2002-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
