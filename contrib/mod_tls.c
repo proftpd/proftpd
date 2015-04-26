@@ -438,6 +438,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_USE_IMPLICIT_SSL			0x0200
 #define TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS		0x0400
 #define TLS_OPT_VERIFY_CERT_CN				0x0800
+#define TLS_OPT_NO_AUTO_ECDH				0x1000
 
 /* mod_tls SSCN modes */
 #define TLS_SSCN_MODE_SERVER				0
@@ -2826,19 +2827,23 @@ static int tls_init_ctx(void) {
    * correct/best curve, rather than having to hardcode a fallback.
    */
 # if defined(SSL_CTX_set_ecdh_auto)
-  SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-# else
-  c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
-  if (c != NULL) {
-    const EC_GROUP *group;
-
-    group = c->argv[0];
-    SSL_CTX_set_tmp_ecdh(ssl_ctx, group);
-
+  if (!(tls_opts & TLS_OPT_NO_AUTO_ECDH)) {
+    SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
   } else {
-    SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
-  }
+# else
+  if (TRUE) {
 # endif
+    c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
+    if (c != NULL) {
+      const EC_GROUP *group;
+
+      group = c->argv[0];
+      SSL_CTX_set_tmp_ecdh(ssl_ctx, group);
+
+    } else {
+      SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+    }
+  }
 #endif /* PR_USE_OPENSSL_ECC */
 
   if (tls_seed_prng() < 0) {
@@ -8598,7 +8603,7 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
     curve_nid = OBJ_sn2nid(curve_name);
     if (curve_nid == 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to create '", curve_name,
-        "' EC curve: ", tls_get_errors(), NULL));
+        "' EC curve: unknown/unsupported curve", NULL));
     }
   }
 
@@ -8681,8 +8686,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
   register unsigned int i = 0;
   unsigned long opts = 0UL;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -8737,6 +8743,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "CommonNameRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_CN;
+
+    } else if (strcmp(cmd->argv[i], "NoAutoECDH") == 0) {
+      opts |= TLS_OPT_NO_AUTO_ECDH;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
