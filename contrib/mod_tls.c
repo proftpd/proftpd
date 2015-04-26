@@ -2439,6 +2439,7 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   DH *dh = NULL;
   EVP_PKEY *pkey;
+  int pkeylen = 0;
 
   /* OpenSSL will only ever call us (currently) with a keylen of 512 or 1024;
    * see the SSL_EXPORT_PKEYLENGTH macro in ssl_locl.h.  Sigh.
@@ -2455,13 +2456,10 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   if (pkey != NULL) {
     if (EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA ||
         EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA) {
-      int pkeylen;
-
       pkeylen = EVP_PKEY_bits(pkey);
       if (pkeylen != keylen) {
         pr_trace_msg(trace_channel, 13,
           "adjusted DH parameter length from %d to %d bits", keylen, pkeylen);
-        keylen = pkeylen;
       }
     }
   }
@@ -2472,18 +2470,43 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
     DH **dhs;
 
     dhs = tls_tmp_dhs->elts;
+
+    /* Search the configured list of DH parameters twice: once for any sizes
+     * matching the actual requested size (usually 1024), and once for any
+     * matching the certificate private key size (pkeylen).
+     *
+     * This behavior allows site admins to configure a TLSDHParamFile that
+     * contains 1024-bit parameters, for e.g. Java 7 (and earlier) clients.
+     */
+
+    /* Note: the keylen argument is in BITS, but DH_size() returns the number
+     * of BYTES.
+     */
     for (i = 0; i < tls_tmp_dhs->nelts; i++) {
       int dhlen;
 
-      /* Note: the keylen argument is in BITS, but DH_size() returns
-       * the number of BYTES.
-       */
       dhlen = DH_size(dhs[i]) * 8;
       if (dhlen == keylen) {
+        pr_trace_msg(trace_channel, 11,
+          "found matching DH parameter for key length %d", keylen);
+        return dhs[i];
+      }
+    }
+
+    for (i = 0; i < tls_tmp_dhs->nelts; i++) {
+      int dhlen;
+
+      dhlen = DH_size(dhs[i]) * 8;
+      if (dhlen == pkeylen) {
+        pr_trace_msg(trace_channel, 11,
+          "found matching DH parameter for certificate private key length %d",
+          pkeylen);
         return dhs[i];
       }
     }
   }
+
+  /* Still no DH parameters found?  Use the built-in ones. */
 
   switch (keylen) {
     case 512:
@@ -2805,7 +2828,16 @@ static int tls_init_ctx(void) {
 # if defined(SSL_CTX_set_ecdh_auto)
   SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
 # else
-  SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+  c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
+  if (c != NULL) {
+    const EC_GROUP *group;
+
+    group = c->argv[0];
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, group);
+
+  } else {
+    SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+  }
 # endif
 #endif /* PR_USE_OPENSSL_ECC */
 
@@ -8507,7 +8539,7 @@ MODRET set_tlseccertfile(cmd_rec *cmd) {
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
     "does have EC support", NULL));
-#endif /* PR_USE_OPENSSL_ ECC */
+#endif /* PR_USE_OPENSSL_ECC */
 }
 
 /* usage: TLSECCertificateKeyFile file */
@@ -8537,24 +8569,74 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
     "does have EC support", NULL));
-#endif /* PR_USE_OPENSSL_ ECC */
+#endif /* PR_USE_OPENSSL_ECC */
+}
+
+/* usage: TLSECDHCurve name */
+MODRET set_tlsecdhcurve(cmd_rec *cmd) {
+#ifdef PR_USE_OPENSSL_ECC
+  char *curve_name = NULL;
+  int curve_nid = -1;
+  EC_GROUP *group = NULL;
+  
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  curve_name = cmd->argv[1];
+
+  /* The special-case handling of these curve names is copied from OpenSSL's
+   * apps/ecparam.c code.
+   */
+
+  if (strcmp(curve_name, "secp192r1") == 0) {
+    curve_nid = NID_X9_62_prime192v1;
+
+  } else if (strcmp(curve_name, "secp256r1") == 0) {
+    curve_nid = NID_X9_62_prime256v1;
+
+  } else {
+    curve_nid = OBJ_sn2nid(curve_name);
+    if (curve_nid == 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to create '", curve_name,
+        "' EC curve: ", tls_get_errors(), NULL));
+    }
+  }
+
+  group = EC_GROUP_new_by_curve_name(curve_nid);
+  if (group == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to create '", curve_name,
+      "' EC curve: ", tls_get_errors(), NULL));
+  }
+
+  EC_GROUP_set_asn1_flag(group, OPENSSL_EC_NAMED_CURVE);
+  EC_GROUP_set_point_conversion_form(group, POINT_CONVERSION_UNCOMPRESSED);
+
+  (void) add_config_param(cmd->argv[1], 1, group);
+  return PR_HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does have EC support", NULL));
+#endif /* PR_USE_OPENSSL_ECC */
 }
 
 /* usage: TLSEngine on|off */
 MODRET set_tlsengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }
@@ -10227,6 +10309,7 @@ static conftable tls_conftab[] = {
   { "TLSDSACertificateKeyFile",	set_tlsdsakeyfile,	NULL },
   { "TLSECCertificateFile",	set_tlseccertfile,	NULL },
   { "TLSECCertificateKeyFile",	set_tlseckeyfile,	NULL },
+  { "TLSECDHCurve",		set_tlsecdhcurve,	NULL },
   { "TLSEngine",		set_tlsengine,		NULL },
   { "TLSLog",			set_tlslog,		NULL },
   { "TLSMasqueradeAddress",	set_tlsmasqaddr,	NULL },

@@ -122,6 +122,13 @@ ChangeLog files.
       via the new SQLPasswordSaltEncoding directive; see
       doc/contrib/mod_sql_passwd.html#SQLPasswordSaltEncoding for details.
 
+    TLSECDHCurve
+      When an FTPS client uses an ECDHE cipher, mod_tls currently will use
+      the X9.62 <code>prime256v1</code> curve.  Some sites may, however,
+      wish to use other curves for ECDHE ciphers.  These sites may now use
+      the new TLSECDHCurve directive to configure the curve; see
+      doc/contrib/mod_tls.html#TLSECDHCurve for details.
+
     TransferOptions
       There are some broken (<i>e.g.</i> old/mainframe) FTP clients that
       will upload files, containing CRLF sequences, as ASCII data, but
