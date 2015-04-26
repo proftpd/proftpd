@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * DO NOT EDIT BELOW THIS LINE
+ * -----DO NOT EDIT BELOW THIS LINE-----
  * $Archive: mod_snmp.a $
  */
 
@@ -362,6 +362,8 @@ static int snmp_limits_allow(xaset_t *set, struct snmp_packet *pkt) {
       switch (snmp_check_limit(c, pkt)) {
         case 1:
           ok = TRUE;
+          found++;
+          break;
 
         case -1:
         case -2:
@@ -421,7 +423,7 @@ static int snmp_mkdir(const char *dir, uid_t uid, gid_t gid, mode_t mode) {
   struct stat st;
   int res = -1;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
 
   if (res == -1 &&
@@ -459,7 +461,7 @@ static int snmp_mkpath(pool *p, const char *path, uid_t uid, gid_t gid,
   char *currpath = NULL, *tmppath = NULL;
   struct stat st;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) == 0) {
     /* Path already exists, nothing to be done. */
     errno = EEXIST;
@@ -1443,11 +1445,9 @@ static int snmp_agent_handle_packet(int sockfd, pr_netaddr_t *agent_addr) {
     return -1;
   }
 
-  if (pkt->req_pdu != NULL) {
-    /* We're done with the request PDU here. */
-    destroy_pool(pkt->req_pdu->pool);
-    pkt->req_pdu = NULL;
-  }
+  /* We're done with the request PDU here. */
+  destroy_pool(pkt->req_pdu->pool);
+  pkt->req_pdu = NULL;
 
   (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
     "writing SNMP message for %s, community = '%s', request ID %ld, "
@@ -1492,6 +1492,7 @@ static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
       family == AF_INET ? "IPv4" : "IPv6",
       pr_netaddr_get_ipstr(agent_addr),
       ntohs(pr_netaddr_get_port(agent_addr)), strerror(errno));
+    (void) close(sockfd);
     exit(1);
 
   } else {
@@ -1501,7 +1502,7 @@ static int snmp_agent_listen(pr_netaddr_t *agent_addr) {
       ntohs(pr_netaddr_get_port(agent_addr)));
   }
 
-  return 0;
+  return sockfd;
 }
 
 static void snmp_agent_loop(array_header *sockfds, array_header *addrs) {
@@ -1690,13 +1691,15 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
 
   if (agent_chroot != NULL) {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "SNMP agent process running with UID %lu, GID %lu, restricted to '%s'",
-      (unsigned long) getuid(), (unsigned long) getgid(), agent_chroot);
+      "SNMP agent process running with UID %s, GID %s, restricted to '%s'",
+      pr_uid2str(snmp_pool, getuid()), pr_gid2str(snmp_pool, getgid()),
+      agent_chroot);
 
   } else {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "SNMP agent process running with UID %lu, GID %lu, located in '%s'",
-      (unsigned long) getuid(), (unsigned long) getgid(), getcwd(NULL, 0));
+      "SNMP agent process running with UID %s, GID %s, located in '%s'",
+      pr_uid2str(snmp_pool, getuid()), pr_gid2str(snmp_pool, getgid()),
+      getcwd(NULL, 0));
   }
 
   /* Once we have chrooted, and dropped root privs completely, we can now
@@ -3221,7 +3224,7 @@ static void ev_incr_value(unsigned int field_id, const char *field_str,
 
 static void snmp_auth_code_ev(const void *event_data, void *user_data) {
   int auth_code, res;
-  unsigned int field_id, is_ftps = FALSE, notify_id = 0;
+  unsigned int field_id = SNMP_DB_ID_UNKNOWN, is_ftps = FALSE, notify_id = 0;
   const char *notify_str = NULL, *proto;
 
   if (snmp_engine == FALSE) {
@@ -3912,23 +3915,14 @@ static void snmp_ssh2_scp_sess_closed_ev(const void *event_data,
 
 /* mod_ban-generated events */
 static void snmp_ban_ban_user_ev(const void *event_data, void *user_data) {
-  const char *ban_name = NULL;
-
-  ban_name = (const char *) event_data;
-
   ev_incr_value(SNMP_DB_BAN_BANS_F_USER_BAN_COUNT, "ban.bans.userBanCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_USER_BAN_TOTAL, "ban.bans.userBanTotal", 1);
 
   ev_incr_value(SNMP_DB_BAN_BANS_F_BAN_COUNT, "ban.bans.banCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_BAN_TOTAL, "ban.bans.banTotal", 1);
-
 }
 
 static void snmp_ban_ban_host_ev(const void *event_data, void *user_data) {
-  const char *ban_name = NULL;
-
-  ban_name = (const char *) event_data;
-
   ev_incr_value(SNMP_DB_BAN_BANS_F_HOST_BAN_COUNT, "ban.bans.hostBanCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_HOST_BAN_TOTAL, "ban.bans.hostBanTotal", 1);
 
@@ -3937,10 +3931,6 @@ static void snmp_ban_ban_host_ev(const void *event_data, void *user_data) {
 }
 
 static void snmp_ban_ban_class_ev(const void *event_data, void *user_data) {
-  const char *ban_name = NULL;
-
-  ban_name = (const char *) event_data;
-
   ev_incr_value(SNMP_DB_BAN_BANS_F_CLASS_BAN_COUNT,
     "ban.bans.classBanCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_CLASS_BAN_TOTAL,

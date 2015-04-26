@@ -61,7 +61,7 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  appe_hiddenstores_bug3598 => {
+  appe_hiddenstores_bug4144 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -1260,7 +1260,7 @@ sub appe_fails_eperm {
   unlink($log_file);
 }
 
-sub appe_hiddenstores_bug3598 {
+sub appe_hiddenstores_bug4144 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -1333,12 +1333,12 @@ sub appe_hiddenstores_bug3598 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->appe_raw('bar');
-      if ($conn) {
-        die("APPE succeeded unexpectedly");
+      unless ($conn) {
+        die("APPE failed: " . $client->response_code() . " " .
+          $client->response_msg());
       }
 
       my $resp_code = $client->response_code();
@@ -1346,13 +1346,19 @@ sub appe_hiddenstores_bug3598 {
 
       my $expected;
 
-      $expected = 550;
+      $expected = 150;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "APPE not compatible with server configuration";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      my $buf = "Foo!\n";
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
     };
 
     if ($@) {

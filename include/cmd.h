@@ -107,6 +107,16 @@ int pr_cmd_get_id(const char *name_name);
 #define PR_CMD_MIN_NAMELEN	3
 #define PR_CMD_MAX_NAMELEN	4
 
+/* Returns TRUE if the given command is a known HTTP method, FALSE if not
+ * a known HTTP method, and -1 if there is an error.
+ */
+int pr_cmd_is_http(cmd_rec *c);
+
+/* Returns TRUE if the given command is a known SMTP method, FALSE if not
+ * a known SMTP method, and -1 if there is an error.
+ */
+int pr_cmd_is_smtp(cmd_rec *c);
+
 int pr_cmd_set_errno(cmd_rec *, int);
 int pr_cmd_set_name(cmd_rec *, const char *);
 

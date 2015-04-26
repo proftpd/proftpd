@@ -69,11 +69,6 @@ int pr_ctrls_unregister(module *m, const char *action) {
   return 0;
 }
 
-int pr_inet_getservport(pool *p, const char *serv, const char *proto) {
-  errno = ENOSYS;
-  return -1;
-}
-
 struct tm *pr_localtime(pool *p, const time_t *t) {
   return localtime(t);
 }
@@ -119,6 +114,9 @@ void pr_log_pri(int prio, const char *fmt, ...) {
 int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   *log_fd = STDERR_FILENO;
   return 0;
+}
+
+void pr_session_disconnect(module *m, int reason_code, const char *details) {
 }
 
 void pr_signals_handle(void) {

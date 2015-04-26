@@ -41,7 +41,7 @@ module log_forensic_module;
 static pool *forensic_pool = NULL;
 static int forensic_engine = FALSE;
 static int forensic_logfd = -1;
-static struct timeval forensic_tv;
+static uint64_t forensic_ms = 0L;
 
 /* Criteria for flushing out the "forensic" logs. */
 #define FORENSIC_CRIT_FAILED_LOGIN		0x00001
@@ -244,8 +244,8 @@ static void forensic_write_metadata(void) {
    */
   struct iovec iov[64];
   int niov = 0, res;
-  struct timeval now;
-  unsigned long elapsed;
+  uint64_t now;
+  unsigned long elapsed_ms;
 
   /* Write session metadata in key/value message headers:
    *
@@ -303,12 +303,11 @@ static void forensic_write_metadata(void) {
   iov[niov].iov_len = 9;
   niov++;
 
-  gettimeofday(&now, NULL);
-  elapsed = (((now.tv_sec - forensic_tv.tv_sec) * 1000L) +
-    ((now.tv_usec - forensic_tv.tv_usec) / 1000L));
+  pr_gettimeofday_millis(&now);
+  elapsed_ms = (unsigned long) (now - session.connect_time_ms);
 
   memset(elapsed_str, '\0', sizeof(elapsed_str));
-  res = snprintf(elapsed_str, sizeof(elapsed_str)-1, "%lu\n", elapsed);
+  res = snprintf(elapsed_str, sizeof(elapsed_str)-1, "%lu\n", elapsed_ms);
   iov[niov].iov_base = (void *) elapsed_str;
   iov[niov].iov_len = res;
   niov++;
@@ -924,8 +923,6 @@ static int forensic_sess_init(void) {
     forensic_engine = FALSE;
     return 0;
   }
-
-  gettimeofday(&forensic_tv, NULL);
 
   /* Are there any log types for which we shouldn't be listening? */
   c = find_config(main_server->conf, CONF_PARAM, "ForensicLogCapture", FALSE);

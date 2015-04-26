@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
  * holders give permission to link this program with OpenSSL, and distribute
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
- *
- * $Id: mod_sql.c,v 1.247 2014-02-15 08:31:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1229,7 +1227,7 @@ static void show_group(pool *p, struct group *g) {
   }
 
   sql_log(DEBUG_INFO, "+ grp.gr_name : %s", g->gr_name);
-  sql_log(DEBUG_INFO, "+ grp.gr_gid  : %lu", (unsigned long) g->gr_gid);
+  sql_log(DEBUG_INFO, "+ grp.gr_gid  : %s", pr_gid2str(NULL, g->gr_gid));
   sql_log(DEBUG_INFO, "+ grp.gr_mem  : %s", members);
 
   return;
@@ -1242,8 +1240,8 @@ static void show_passwd(struct passwd *p) {
   }
 
   sql_log(DEBUG_INFO, "+ pwd.pw_name  : %s", p->pw_name);
-  sql_log(DEBUG_INFO, "+ pwd.pw_uid   : %lu", (unsigned long) p->pw_uid);
-  sql_log(DEBUG_INFO, "+ pwd.pw_gid   : %lu", (unsigned long) p->pw_gid);
+  sql_log(DEBUG_INFO, "+ pwd.pw_uid   : %s", pr_uid2str(NULL, p->pw_uid));
+  sql_log(DEBUG_INFO, "+ pwd.pw_gid   : %s", pr_gid2str(NULL, p->pw_gid));
   sql_log(DEBUG_INFO, "+ pwd.pw_dir   : %s", p->pw_dir ?
     p->pw_dir : "(null)");
   sql_log(DEBUG_INFO, "+ pwd.pw_shell : %s", p->pw_shell ?
@@ -1517,7 +1515,6 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
   struct passwd *pwd = NULL;
-  char uidstr[MOD_SQL_BUFSIZE];
   char *usrwhere, *where;
   char *realname = NULL;
   int i = 0;
@@ -1629,8 +1626,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
   } else {
     /* Assume we have a UID */
-    memset(uidstr, '\0', sizeof(uidstr));
-    snprintf(uidstr, sizeof(uidstr)-1, "%lu", (unsigned long) p->pw_uid);
+    const char *uidstr;
+
+    uidstr = pr_uid2str(cmd->tmp_pool, p->pw_uid);
     sql_log(DEBUG_WARN, "cache miss for UID '%s'", uidstr);
 
     if (!cmap.usercustombyid) {
@@ -1710,7 +1708,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   uid = cmap.defaultuid;
   if (cmap.uidfield) {
     if (sd->data[i]) {
-      uid = atoi(sd->data[i++]);
+      if (pr_str2uid(sd->data[i++], &uid) < 0) {
+        uid = cmap.defaultuid;
+      }
 
     } else {
       i++;
@@ -1720,7 +1720,9 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   gid = cmap.defaultgid;
   if (cmap.gidfield) {
     if (sd->data[i]) {
-      gid = atoi(sd->data[i++]);
+      if (pr_str2gid(sd->data[i++], &gid) < 0) {
+        gid = cmap.defaultgid;
+      }
 
     } else {
       i++;
@@ -1759,16 +1761,18 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   }
 
   if (uid < cmap.minuseruid) {
-    sql_log(DEBUG_INFO, "user UID %lu below SQLMinUserUID %lu, using "
-      "SQLDefaultUID %lu", (unsigned long) uid, (unsigned long) cmap.minuseruid,
-      (unsigned long) cmap.defaultuid);
+    sql_log(DEBUG_INFO, "user UID %s below SQLMinUserUID %s, using "
+      "SQLDefaultUID %s", pr_uid2str(cmd->tmp_pool, uid),
+      pr_uid2str(cmd->tmp_pool, cmap.minuseruid),
+      pr_uid2str(cmd->tmp_pool, cmap.defaultuid));
     uid = cmap.defaultuid;
   }
 
   if (gid < cmap.minusergid) {
-    sql_log(DEBUG_INFO, "user GID %lu below SQLMinUserGID %lu, using "
-      "SQLDefaultGID %lu", (unsigned long) gid, (unsigned long) cmap.minusergid,
-      (unsigned long) cmap.defaultgid);
+    sql_log(DEBUG_INFO, "user GID %s below SQLMinUserGID %s, using "
+      "SQLDefaultGID %s", pr_gid2str(cmd->tmp_pool, gid),
+      pr_gid2str(cmd->tmp_pool, cmap.minusergid),
+      pr_gid2str(cmd->tmp_pool, cmap.defaultgid));
     gid = cmap.defaultgid;
   }
 
@@ -1845,7 +1849,6 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
   int cnt = 0;
   sql_data_t *sd = NULL;
   char *groupname = NULL;
-  char gidstr[MOD_SQL_BUFSIZE] = {'\0'};
   char **rows = NULL;
   int numrows = 0;
   array_header *ah = NULL;
@@ -1882,8 +1885,10 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
     sql_log(DEBUG_WARN, "cache miss for group '%s'", groupname);
 
   } else {
+    const char *gidstr = NULL;
+
     /* Get groupname from GID */
-    snprintf(gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) g->gr_gid);
+    gidstr = pr_gid2str(NULL, g->gr_gid);
 
     sql_log(DEBUG_WARN, "cache miss for GID '%s'", gidstr);
 
@@ -2195,10 +2200,14 @@ static int sql_getgroups(cmd_rec *cmd) {
   numrows = sd->rnum;
 
   for (i = 0; i < numrows; i++) {
+    gid_t gid;
     char *groupname = sd->data[(i * 3)];
-    gid_t gid = (gid_t) atoi(sd->data[(i * 3) +1]);
     char *memberstr = sd->data[(i * 3) + 2], *member = NULL;
     array_header *members = make_array(cmd->tmp_pool, 2, sizeof(char *));
+
+    if (pr_str2gid(sd->data[(i * 3) +1], &gid) < 0) {
+      gid = (gid_t) -1;
+    }
 
     *((gid_t *) push_array(gids)) = gid;
     *((char **) push_array(groups)) = pstrdup(permanent_pool, groupname);
@@ -2252,13 +2261,14 @@ MODRET sql_pre_dele(cmd_rec *cmd) {
     /* Briefly cache the size of the file being deleted, so that it can be
      * logged properly using %b.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(path);
     if (pr_fsio_stat(path, &st) < 0) {
       sql_log(DEBUG_INFO, "%s: unable to stat '%s': %s", cmd->argv[0],
         path, strerror(errno));
     
-    } else
+    } else {
       sql_dele_filesz = st.st_size;
+    }
   }
 
   return PR_DECLINED(cmd);
@@ -2345,22 +2355,43 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   size_t taglen;
 
   if (strncmp(tag, "uid", 4) == 0) {
-    char buf[64];
-
-    memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.login_uid);
-    
-    long_tag = pstrdup(cmd->tmp_pool, buf);
+    long_tag = pr_uid2str(cmd->tmp_pool, session.login_uid); 
   }
 
   if (long_tag == NULL &&
       strncmp(tag, "gid", 4) == 0) {
-    char buf[64];
+    long_tag = pr_gid2str(cmd->tmp_pool, session.login_gid); 
+  }
 
-    memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) session.login_gid);
-    
-    long_tag = pstrdup(cmd->tmp_pool, buf);
+  if (long_tag == NULL &&
+      strncasecmp(tag, "file-modified", 14) == 0) {
+    char *modified;
+
+    modified = pr_table_get(cmd->notes, "mod_xfer.file-modified", NULL);
+    if (modified) {
+      long_tag = pstrdup(cmd->tmp_pool, modified);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "false");
+    }
+  }
+
+  if (long_tag == NULL &&
+      strncasecmp(tag, "file-offset", 12) == 0) {
+    off_t *offset;
+
+    offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
+    if (offset) {
+      char offset_str[1024];
+
+      memset(offset_str, '\0', sizeof(offset_str));
+      snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
+        (pr_off_t) *offset);
+      long_tag = pstrdup(cmd->tmp_pool, offset_str);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
   }
 
   if (long_tag == NULL &&
@@ -3348,7 +3379,7 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
            * space.
            */
           sql_log(DEBUG_FUNC, "insufficient statement buffer size "
-            "(%lu of %lu bytes) for tag (%Lu bytes) when processing named "
+            "(%lu of %lu bytes) for tag (%lu bytes) when processing named "
             "query '%s', ignoring tag", (unsigned long) outs_remain,
             (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) arglen, name);
         }
@@ -3750,7 +3781,7 @@ MODRET info_master(cmd_rec *cmd) {
            * space.
            */
           sql_log(DEBUG_FUNC, "insufficient statement buffer size "
-            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "(%lu of %lu bytes) for tag (%lu bytes) when processing "
             "SQLShowInfo query '%s', ignoring tag",
             (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
             (unsigned long) arglen, name);
@@ -3890,7 +3921,7 @@ MODRET info_master(cmd_rec *cmd) {
            * space.
            */
           sql_log(DEBUG_FUNC, "insufficient statement buffer size "
-            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "(%lu of %lu bytes) for tag (%lu bytes) when processing "
             "SQLShowInfo query '%s', ignoring tag",
             (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
             (unsigned long) arglen, name);
@@ -4057,7 +4088,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
            * space.
            */
           sql_log(DEBUG_FUNC, "insufficient statement buffer size "
-            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "(%lu of %lu bytes) for tag (%lu bytes) when processing "
             "SQLShowInfo query '%s', ignoring tag",
             (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
             (unsigned long) arglen, name);
@@ -4214,7 +4245,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
            * space.
            */
           sql_log(DEBUG_FUNC, "insufficient statement buffer size "
-            "(%lu of %lu bytes) for tag (%Lu bytes) when processing "
+            "(%lu of %lu bytes) for tag (%lu bytes) when processing "
             "SQLShowInfo query '%s', ignoring tag",
             (unsigned long) outs_remain, (unsigned long) SQL_MAX_STMT_LEN,
             (unsigned long) arglen, name);
@@ -4568,7 +4599,10 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
         uid = cmap.defaultuid;
         if (cmap.uidfield) {
           if (sd->data[i]) {
-            uid = atoi(sd->data[i++]);
+            if (pr_str2uid(sd->data[i++], &uid) < 0) {
+              uid = cmap.defaultuid;
+            }
+
           } else {
             i++;
           }
@@ -4577,7 +4611,10 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
         gid = cmap.defaultgid;
         if (cmap.gidfield) {
           if (sd->data[i]) {
-            gid = atoi(sd->data[i++]);
+            if (pr_str2gid(sd->data[i++], &gid) < 0) {
+              gid = cmap.defaultgid;
+            }
+
           } else {
             i++;
           }
@@ -4603,16 +4640,18 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
         }
 
         if (uid < cmap.minuseruid) {
-          sql_log(DEBUG_INFO, "user UID %lu below SQLMinUserUID %lu, using "
-            "SQLDefaultUID %lu", (unsigned long) uid,
-            (unsigned long) cmap.minuseruid, (unsigned long) cmap.defaultuid);
+          sql_log(DEBUG_INFO, "user UID %s below SQLMinUserUID %s, using "
+            "SQLDefaultUID %s", pr_uid2str(cmd->tmp_pool, uid),
+            pr_uid2str(cmd->tmp_pool, cmap.minuseruid),
+            pr_uid2str(cmd->tmp_pool, cmap.defaultuid));
           uid = cmap.defaultuid;
         }
       
         if (gid < cmap.minusergid) {
-          sql_log(DEBUG_INFO, "user GID %lu below SQLMinUserGID %lu, using "
-            "SQLDefaultGID %lu", (unsigned long) gid,
-            (unsigned long) cmap.minusergid, (unsigned long) cmap.defaultgid);
+          sql_log(DEBUG_INFO, "user GID %s below SQLMinUserGID %s, using "
+            "SQLDefaultGID %s", pr_gid2str(cmd->tmp_pool, gid),
+            pr_gid2str(cmd->tmp_pool, cmap.minusergid),
+            pr_gid2str(cmd->tmp_pool, cmap.defaultgid));
           gid = cmap.defaultgid;
         }
 
@@ -5148,11 +5187,11 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
   char *uid_name = NULL;
   struct passwd *pw;
   struct passwd lpw;
-  char uidstr[MOD_SQL_BUFSIZE] = {'\0'};
 
   if (!SQL_USERS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_uid2name");
 
@@ -5171,8 +5210,9 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_uid2name");
 
-  if (pw == NULL)
+  if (pw == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   /* In the case of a lookup of a negatively cached UID, the pw_name
    * member will be NULL, which causes an undesired handling by
@@ -5182,8 +5222,10 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     uid_name = pw->pw_name;
 
   } else {
-    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
-    uid_name = uidstr;
+    const char *uidstr = NULL;
+
+    uidstr = pr_uid2str(cmd->pool, *((uid_t *) cmd->argv[0]));
+    uid_name = (char *) uidstr;
   }
 
   return mod_create_data(cmd, uid_name);
@@ -5193,11 +5235,11 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
   char *gid_name = NULL;
   struct group *gr;
   struct group lgr;
-  char gidstr[MOD_SQL_BUFSIZE];
 
   if (!SQL_GROUPS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_gid2name");
 
@@ -5207,8 +5249,9 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_gid2name");
 
-  if (gr == NULL)
+  if (gr == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   /* In the case of a lookup of a negatively cached GID, the gr_name
    * member will be NULL, which causes an undesired handling by
@@ -5218,9 +5261,10 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
     gid_name = gr->gr_name;
 
   } else {
-    memset(gidstr, '\0', sizeof(gidstr));
-    snprintf(gidstr, sizeof(gidstr)-1, "%lu", (unsigned long) cmd->argv[0]);
-    gid_name = gidstr;
+    const char *gidstr = NULL;
+
+    gidstr = pr_gid2str(cmd->pool, *((gid_t *) cmd->argv[0]));
+    gid_name = (char *) gidstr;
   }
 
   return mod_create_data(cmd, gid_name);
@@ -6277,134 +6321,103 @@ MODRET set_sqlbackend(cmd_rec *cmd) {
 
 MODRET set_sqlminid(cmd_rec *cmd) {
   config_rec *c;
-  unsigned long val;
-  char *endptr = NULL;
+  uid_t uid;
+  gid_t gid;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
-  val = strtoul(cmd->argv[1], &endptr, 10);
-
-  if (*endptr != '\0')
-    CONF_ERROR(cmd, "requires a numeric argument");
-
-  /* Whee! need to check if in the legal range for uid_t and gid_t. */
-  if (val == ULONG_MAX &&
-      errno == ERANGE) {
-    CONF_ERROR(cmd, "the value given is outside the legal range");
+  if (pr_str2uid(cmd->argv[1], &uid) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid UID value '",
+      cmd->argv[1], "'", NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
-  *((unsigned long *) c->argv[0]) = val;
+  if (pr_str2gid(cmd->argv[1], &gid) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid GID value '",
+      cmd->argv[1], "'", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
+  *((uid_t *) c->argv[0]) = uid;
+  c->argv[1] = pcalloc(c->pool, sizeof(gid_t));
+  *((gid_t *) c->argv[1]) = gid;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_sqlminuseruid(cmd_rec *cmd) {
   config_rec *c = NULL;
-  unsigned long val;
-  char *endptr = NULL;
+  uid_t uid;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
-  val = strtoul(cmd->argv[1], &endptr, 10);
-
-  if (*endptr != '\0')
-    CONF_ERROR(cmd, "requires a numeric argument");
-
-  /* Whee! need to check if in the legal range for uid_t. */
-  if (val == ULONG_MAX &&
-      errno == ERANGE) {
-    CONF_ERROR(cmd, "the value given is outside the legal range");
+  if (pr_str2uid(cmd->argv[1], &uid) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid UID value '",
+      cmd->argv[1], "'", NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
-  *((uid_t *) c->argv[0]) = val;
+  *((uid_t *) c->argv[0]) = uid;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_sqlminusergid(cmd_rec *cmd) {
   config_rec *c = NULL;
-  unsigned long val;
-  char *endptr = NULL;
+  gid_t gid;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
-  val = strtoul(cmd->argv[1], &endptr, 10);
-
-  if (*endptr != '\0')
-    CONF_ERROR(cmd, "requires a numeric argument");
-
-  /* Whee! need to check if in the legal range for gid_t. */
-  if (val == ULONG_MAX &&
-      errno == ERANGE) {
-    CONF_ERROR(cmd, "the value given is outside the legal range");
+  if (pr_str2gid(cmd->argv[1], &gid) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid GID value '",
+      cmd->argv[1], "'", NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
-  *((gid_t *) c->argv[0]) = val;
+  *((gid_t *) c->argv[0]) = gid;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_sqldefaultuid(cmd_rec *cmd) {
-  int xerrno;
   config_rec *c;
-  uid_t val;
-  char *endptr = NULL;
+  uid_t uid;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
-  errno = 0;
-  val = strtoul(cmd->argv[1], &endptr, 10);
-  xerrno = errno;
-
-  if (*endptr != '\0')
-    CONF_ERROR(cmd, "requires a numeric argument");
-
-  /* Whee! need to check is in the legal range for uid_t. */
-  if (xerrno == ERANGE) {
-    CONF_ERROR(cmd, "the value given is outside the legal range");
+  if (pr_str2uid(cmd->argv[1], &uid) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid UID value '",
+      cmd->argv[1], "'", NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
-  *((uid_t *) c->argv[0]) = val;
+  *((uid_t *) c->argv[0]) = uid;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_sqldefaultgid(cmd_rec *cmd) {
-  int xerrno;
   config_rec *c;
-  gid_t val;
-  char *endptr = NULL;
+  gid_t gid;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
-  errno = 0;
-  val = strtoul(cmd->argv[1], &endptr, 10);
-  xerrno = errno;
-
-  if (*endptr != '\0')
-    CONF_ERROR(cmd, "requires a numeric argument");
-
-  /* Whee! need to check is in the legal range for gid_t. */
-  if (xerrno == ERANGE) {
-    CONF_ERROR(cmd, "the value given is outside the legal range");
+  if (pr_str2gid(cmd->argv[1], &gid) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid GID value '",
+      cmd->argv[1], "'", NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
-  *((gid_t *) c->argv[0]) = val;
+  *((gid_t *) c->argv[0]) = gid;
 
   return PR_HANDLED(cmd);
 }
@@ -6895,9 +6908,10 @@ static int sql_sess_init(void) {
     sql_log(DEBUG_INFO, "%s", "error: no SQLAuthTypes configured");
   }
 
-  ptr = get_param_ptr(main_server->conf, "SQLMinID", FALSE);
-  if (ptr != NULL) {
-    cmap.minuseruid = cmap.minusergid = *((unsigned long *) ptr);
+  c = find_config(main_server->conf, CONF_PARAM, "SQLMinID", FALSE);
+  if (c != NULL) {
+    cmap.minuseruid = *((uid_t *) c->argv[0]);
+    cmap.minusergid = *((gid_t *) c->argv[1]);
 
   } else {
     ptr = get_param_ptr(main_server->conf, "SQLMinUserUID", FALSE);
@@ -7141,10 +7155,8 @@ static int sql_sess_init(void) {
     sql_log(DEBUG_INFO, "SQLMinUserGID      : %u", cmap.minusergid);
   }
    
-  if (SQL_GROUPS) {
-    sql_log(DEBUG_INFO, "SQLDefaultUID      : %u", cmap.defaultuid);
-    sql_log(DEBUG_INFO, "SQLDefaultGID      : %u", cmap.defaultgid);
-  }
+  sql_log(DEBUG_INFO, "SQLDefaultUID      : %u", cmap.defaultuid);
+  sql_log(DEBUG_INFO, "SQLDefaultGID      : %u", cmap.defaultgid);
 
   if (cmap.sql_fstor) {
     sql_log(DEBUG_INFO, "sql_fstor          : %s", cmap.sql_fstor);

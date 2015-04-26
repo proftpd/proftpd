@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,15 +22,14 @@
  * OpenSSL in the source distribution.
  */
 
-/* FSIO API tests
- * $Id: fsio.c,v 1.3 2014-01-20 19:36:27 castaglia Exp $
- */
+/* FSIO API tests */
 
 #include "tests.h"
 
 static pool *p = NULL;
 
 static const char *fsio_link_path = "/tmp/prt-fsio-symlink.lnk";
+static const char *fsio_access_dir_path = "/tmp/prt-fsio-access.d";
 
 /* Fixtures */
 
@@ -40,6 +39,12 @@ static void set_up(void) {
   }
 
   init_fs();
+  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
+    PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("fs.statcache", 1, 20);
+  }
 }
 
 static void tear_down(void) {
@@ -49,7 +54,14 @@ static void tear_down(void) {
     permanent_pool = NULL;
   }
 
+  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
+    PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("fs.statcache", 0, 0);
+  }
+
   (void) unlink(fsio_link_path);
+  (void) rmdir(fsio_access_dir_path);
 }
 
 /* Tests */
@@ -181,6 +193,18 @@ START_TEST (fs_dircat_test) {
 }
 END_TEST
 
+START_TEST (fs_setcwd_test) {
+  int res;
+
+  /* Make sure that we don't segfault if we call pr_fs_setcwd() on the
+   * buffer that it is already using.
+   */
+  res = pr_fs_setcwd(pr_fs_getcwd());
+  fail_unless(res == 0, "Failed to set cwd to '%s': %s", pr_fs_getcwd(),
+    strerror(errno));
+}
+END_TEST
+
 START_TEST (fsio_symlink_test) {
   int res;
   const char *target_path, *link_path;
@@ -262,6 +286,194 @@ START_TEST (fsio_readlink_test) {
 }
 END_TEST
 
+START_TEST (fsio_access_dir_test) {
+  int res;
+  uid_t uid = getuid(), other_uid = 1000;
+  gid_t gid = getgid(), other_gid = 1000;
+  mode_t perms;
+
+  res = pr_fsio_access(NULL, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Make the directory to check; we want it to have perms 771.*/
+  perms = (mode_t) 0771;
+  if (mkdir(fsio_access_dir_path, perms) < 0) {
+    fail("unable to create directory '%s': %s", fsio_access_dir_path,
+      strerror(errno));
+  }
+
+  /* Use chmod(2) to ensure that the directory has the perms we want,
+   * regardless of any umask settings.
+   */
+  if (chmod(fsio_access_dir_path, perms) < 0) {
+    fail("unable to set perms %04o on directory '%s': %s", perms,
+      fsio_access_dir_path, strerror(errno));
+  }
+
+  /* First, check that we ourselves can access our own directory. */
+
+  pr_fs_clear_cache2(fsio_access_dir_path);
+  res = pr_fsio_access(fsio_access_dir_path, F_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for file access on directory: %s",
+    strerror(errno));
+
+  pr_fs_clear_cache2(fsio_access_dir_path);
+  res = pr_fsio_access(fsio_access_dir_path, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for read access on directory: %s",
+    strerror(errno));
+
+  pr_fs_clear_cache2(fsio_access_dir_path);
+  res = pr_fsio_access(fsio_access_dir_path, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for read access on directory: %s",
+    strerror(errno));
+
+  pr_fs_clear_cache2(fsio_access_dir_path);
+  res = pr_fsio_access(fsio_access_dir_path, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for execute access on directory: %s",
+    strerror(errno));
+
+  if (getenv("TRAVIS_CI") == NULL) {
+    /* Next, check that others can access the directory. */
+    pr_fs_clear_cache2(fsio_access_dir_path);
+    res = pr_fsio_access(fsio_access_dir_path, F_OK, other_uid, other_gid,
+      NULL);
+    fail_unless(res == 0,
+      "Failed to check for other file access on directory: %s",
+      strerror(errno));
+
+    pr_fs_clear_cache2(fsio_access_dir_path);
+    res = pr_fsio_access(fsio_access_dir_path, R_OK, other_uid, other_gid,
+      NULL);
+    fail_unless(res < 0,
+      "other read access on directory succeeded unexpectedly");
+    fail_unless(errno == EACCES, "Expected EACCES, got %s (%d)",
+      strerror(errno), errno);
+
+    pr_fs_clear_cache2(fsio_access_dir_path);
+    res = pr_fsio_access(fsio_access_dir_path, W_OK, other_uid, other_gid,
+      NULL);
+    fail_unless(res < 0,
+      "other write access on directory succeeded unexpectedly");
+    fail_unless(errno == EACCES, "Expected EACCES, got %s (%d)",
+      strerror(errno), errno);
+
+    pr_fs_clear_cache2(fsio_access_dir_path);
+    res = pr_fsio_access(fsio_access_dir_path, X_OK, other_uid, other_gid,
+      NULL);
+    fail_unless(res == 0, "Failed to check for execute access on directory: %s",
+      strerror(errno));
+  }
+
+  (void) rmdir(fsio_access_dir_path);
+}
+END_TEST
+
+START_TEST (fsio_stat_test) {
+  int res;
+  struct stat st;
+  unsigned int cache_size = 3, max_age = 1, policy_flags = 0;
+
+  res = pr_fsio_stat(NULL, &st);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_stat("/", NULL);
+  fail_unless(res < 0, "Failed to handle null struct stat");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_stat("/", &st);
+  fail_unless(res == 0, "Unexpected stat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  /* Now, do the stat(2) again, and make sure we get the same information
+   * from the cache.
+   */
+  res = pr_fsio_stat("/", &st);
+  fail_unless(res == 0, "Unexpected stat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  pr_fs_statcache_reset();
+  res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
+  fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
+
+  res = pr_fsio_stat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_stat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Now wait for longer than 1 second (our configured max age) */
+  sleep(max_age + 1);
+
+  res = pr_fsio_stat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+}
+END_TEST
+
+START_TEST (fsio_lstat_test) {
+  int res;
+  struct stat st;
+  unsigned int cache_size = 3, max_age = 1, policy_flags = 0;
+
+  res = pr_fsio_lstat(NULL, &st);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_lstat("/", NULL);
+  fail_unless(res < 0, "Failed to handle null struct stat");
+  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_lstat("/", &st);
+  fail_unless(res == 0, "Unexpected lstat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  /* Now, do the lstat(2) again, and make sure we get the same information
+   * from the cache.
+   */
+  res = pr_fsio_lstat("/", &st);
+  fail_unless(res == 0, "Unexpected lstat(2) error on '/': %s",
+    strerror(errno));
+  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
+
+  pr_fs_statcache_reset();
+  res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
+  fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
+
+  res = pr_fsio_lstat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  res = pr_fsio_lstat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+
+  /* Now wait for longer than 1 second (our configured max age) */
+  sleep(max_age + 1);
+
+  res = pr_fsio_lstat("/foo/bar/baz/quxx", &st);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
+    errno);
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -275,9 +487,14 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_clean_path_test);
   tcase_add_test(testcase, fs_clean_path2_test);
   tcase_add_test(testcase, fs_dircat_test);
+  tcase_add_test(testcase, fs_setcwd_test);
 
   tcase_add_test(testcase, fsio_symlink_test);
   tcase_add_test(testcase, fsio_readlink_test);
+  tcase_add_test(testcase, fsio_access_dir_test);
+
+  tcase_add_test(testcase, fsio_stat_test);
+  tcase_add_test(testcase, fsio_lstat_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

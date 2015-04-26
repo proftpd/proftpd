@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.155 2013-11-11 01:34:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -114,6 +113,7 @@ static xaset_t *log_set = NULL;
    %w                   - RNFR path ("whence" a rename comes, i.e. the source)
    %{file-modified}     - Indicates whether a file is being modified
                           (i.e. already exists) or not.
+   %{file-offset}       - Contains the offset at which the file is read/written
    %{iso8601}           - ISO-8601 timestamp: YYYY-MM-dd HH:mm:ss,SSS
                             for example: "1999-11-27 15:49:37,459"
    %{microsecs}         - 6 digits of microseconds of current time
@@ -195,6 +195,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
         if (strncmp(tmp, "{file-modified}", 15) == 0) {
           add_meta(&outs, LOGFMT_META_FILE_MODIFIED, 0);
           tmp += 15;
+          continue;
+        }
+
+        if (strncmp(tmp, "{file-offset}", 13) == 0) {
+          add_meta(&outs, LOGFMT_META_FILE_OFFSET, 0);
+          tmp += 13;
           continue;
         }
 
@@ -1501,13 +1507,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case LOGFMT_META_UID:
       argp = arg;
-      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_uid);
+      snprintf(argp, sizeof(arg), "%s", pr_uid2str(NULL, session.login_uid));
       m++;
       break;
 
     case LOGFMT_META_GID:
       argp = arg;
-      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_gid);
+      snprintf(argp, sizeof(arg), "%s", pr_gid2str(NULL, session.login_gid));
       m++;
       break;
 
@@ -1685,6 +1691,28 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
       } else {
         sstrncpy(argp, "false", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
+
+    case LOGFMT_META_FILE_OFFSET: {
+      off_t *offset;
+
+      argp = arg;
+
+      offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
+      if (offset) {
+        char offset_str[1024];
+
+        memset(offset_str, '\0', sizeof(offset_str));
+        snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
+          (pr_off_t) *offset);
+        sstrncpy(argp, offset_str, sizeof(arg));
+
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
       }
 
       m++;
@@ -2024,9 +2052,10 @@ MODRET log_pre_dele(cmd_rec *cmd) {
     /* Briefly cache the size of the file being deleted, so that it can be
      * logged properly using %b.
      */
-    pr_fs_clear_cache();
-    if (pr_fsio_stat(path, &st) == 0)
+    pr_fs_clear_cache2(path);
+    if (pr_fsio_stat(path, &st) == 0) {
       log_dele_filesz = st.st_size;
+    }
   }
 
   return PR_DECLINED(cmd);

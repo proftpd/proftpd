@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- *
- * $Id: support.c,v 1.120 2013-08-07 16:35:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,6 +114,16 @@ void pr_signals_unblock(void) {
   }
 
   sigs_nblocked--;
+}
+
+const char *quote_dir(pool *p, char *path) {
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  return sreplace(p, path, "\"", "\"\"", NULL);
 }
 
 void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
@@ -428,6 +436,7 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
     return (mode_t)0;
   buf[i] = '\0';
 
+  pr_fs_clear_cache2(buf);
   if (pr_fsio_lstat(buf, &sbuf) != -1) {
     if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
       errno = ELOOP;
@@ -444,11 +453,23 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
   return 0;
 }
 
+mode_t symlink_mode(const char *path) {
+  if (path == NULL) {
+    return 0;
+  }
+
+  return _symlink(path, (ino_t) 0, 0);
+}
+
 mode_t file_mode(const char *path) {
   struct stat sbuf;
   mode_t res = 0;
 
-  pr_fs_clear_cache();
+  if (path == NULL) {
+    return res;
+  }
+
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &sbuf) != -1) {
     if (S_ISLNK(sbuf.st_mode)) {
       res = _symlink(path, (ino_t) 0, 0);
@@ -783,5 +804,38 @@ const char *pr_strtime2(time_t t, int use_gmtime) {
   buf[sizeof(buf)-1] = '\0';
 
   return buf;
+}
+
+int pr_timeval2millis(struct timeval *tv, uint64_t *millis) {
+  if (tv == NULL ||
+      millis == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Make sure to use 64-bit multiplication to avoid overflow errors,
+   * as much as we can.
+   */
+  *millis = (tv->tv_sec * (uint64_t) 1000) + (tv->tv_usec / (uint64_t) 1000);
+  return 0;
+}
+
+int pr_gettimeofday_millis(uint64_t *millis) {
+  struct timeval tv;
+
+  if (millis == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (gettimeofday(&tv, NULL) < 0) {
+    return -1;
+  }
+
+  if (pr_timeval2millis(&tv, millis) < 0) {
+    return -1;
+  }
+
+  return 0;
 }
 

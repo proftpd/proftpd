@@ -185,7 +185,6 @@ static int tpl_mmap_output_file(char *filename, size_t sz, void **text_out);
 static int tpl_cpu_bigendian(void);
 static int tpl_needs_endian_swap(void *);
 static void tpl_byteswap(void *word, int len);
-static void tpl_fatal(char *fmt, ...);
 static int tpl_serlen(tpl_node *r, tpl_node *n, void *dv, size_t *serlen);
 static int tpl_unpackA0(tpl_node *r);
 static int tpl_oops(const char *fmt, ...);
@@ -427,9 +426,10 @@ static tpl_node *tpl_map_va(char *fmt, va_list ap) {
                   }
                   if (num_contig_fxlens >= (sizeof(contig_fxlens)/sizeof(contig_fxlens[0]))) {
                     tpl_hook.fatal("contiguous # exceeds hardcoded limit\n");
+                  } else {
+                    contig_fxlens[num_contig_fxlens++] = pound_num;
+                    pound_prod *= pound_num;
                   }
-                  contig_fxlens[num_contig_fxlens++] = pound_num;
-                  pound_prod *= pound_num;
                 }
                 /* increment c to skip contiguous # so its points to last one */
                 c = peek-1;
@@ -1017,6 +1017,7 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...) {
                 bufv += rc;
             } else if (rc == -1) {
                 if (errno == EINTR || errno == EAGAIN) continue;
+                va_end(ap);
                 tpl_hook.oops("error writing to fd %d: %s\n", fd, strerror(errno));
                 free(buf);
                 return -1;
@@ -1029,6 +1030,7 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...) {
           pa_addr = (void*)va_arg(ap, void*);
           pa_sz = va_arg(ap, size_t);
           if (pa_sz < sz) {
+              va_end(ap);
               tpl_hook.oops("tpl_dump: buffer too small, need %d bytes\n", sz);
               return -1;
           }
@@ -1475,6 +1477,7 @@ TPL_API int tpl_load(tpl_node *r, int mode, ...) {
     } else if (mode & TPL_FD) {
         fd = va_arg(ap,int);
     } else {
+        va_end(ap);
         tpl_hook.oops("unsupported tpl_load mode %d\n", mode);
         return -1;
     }
@@ -1734,8 +1737,8 @@ static int tpl_mmap_output_file(char *filename, size_t sz, void **text_out) {
     }
     if (ftruncate(fd,sz) == -1) {
         tpl_hook.oops("ftruncate failed: %s\n", strerror(errno));
-        munmap( text, sz );
-        close(fd);
+        (void) munmap( text, sz );
+        (void) close(fd);
         return -1;
     }
     *text_out = text;
@@ -2155,12 +2158,13 @@ static void tpl_byteswap(void *word, int len) {
     }
 }
 
-static void tpl_fatal(char *fmt, ...) {
+void tpl_fatal(char *fmt, ...) {
     va_list ap;
     char exit_msg[100];
 
+    memset(exit_msg, '\0', sizeof(exit_msg));
     va_start(ap,fmt);
-    vsnprintf(exit_msg, 100, fmt, ap);
+    vsnprintf(exit_msg, sizeof(exit_msg)-1, fmt, ap);
     va_end(ap);
 
     tpl_hook.oops("%s", exit_msg);

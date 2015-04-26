@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.58 2013-10-07 05:51:30 castaglia Exp $
- */
+/* "SITE" commands module for ProFTPD. */
 
 #include "conf.h"
 
@@ -82,9 +80,26 @@ MODRET site_chgrp(cmd_rec *cmd) {
   /* Construct the target file name by concatenating all the parameters after
    * the mode, separating them with spaces.
    */
-  for (i = 2; i <= cmd->argc-1; i++)
-    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "",
-      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+  for (i = 2; i <= cmd->argc-1; i++) {
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[i],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("SITE %s: Illegal character sequence in command"), cmd->argv[1]);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", decoded_path, NULL);
+  }
 
 #ifdef PR_USE_REGEX
   pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
@@ -149,10 +164,11 @@ MODRET site_chgrp(cmd_rec *cmd) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
-      "error chown'ing '%s' to GID %lu: %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
-      path, (unsigned long) gid, strerror(xerrno));
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
+      "error chown'ing '%s' to GID %s: %s", cmd->argv[0], session.user,
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), path,
+      pr_gid2str(cmd->tmp_pool, gid), strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
 
@@ -186,8 +202,24 @@ MODRET site_chmod(cmd_rec *cmd) {
    * the mode, separating them with spaces.
    */
   for (i = 2; i <= cmd->argc-1; i++) {
-    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "",
-      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->argv[i],
+      FSIO_DECODE_FL_TELL_ERRORS);
+    if (decoded_path == NULL) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
+        strerror(xerrno));
+      pr_response_add_err(R_550,
+        _("SITE %s: Illegal character sequence in command"), cmd->argv[1]);
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", decoded_path, NULL);
   }
 
 #ifdef PR_USE_REGEX
@@ -243,27 +275,29 @@ MODRET site_chmod(cmd_rec *cmd) {
   if (endp && *endp) {
     /* It's not an absolute number, try symbolic */
     char *cp = cmd->argv[1];
-    int mask = 0, mode_op = 0, curmode = 0, curumask = umask(0);
+    int mask = 0, mode_op = 0, curr_mode = 0, curr_umask = umask(0);
     int invalid = 0;
     char *who, *how, *what;
     struct stat st;
 
-    umask(curumask);
+    umask(curr_umask);
     mode = 0;
 
-    if (pr_fsio_stat(dir, &st) != -1)
-      curmode = st.st_mode;
+    if (pr_fsio_stat(dir, &st) != -1) {
+      curr_mode = st.st_mode;
+    }
 
     while (TRUE) {
-      who = pstrdup(cmd->tmp_pool, cp);
-
       pr_signals_handle();
+
+      who = pstrdup(cmd->tmp_pool, cp);
 
       tmp = strpbrk(who, "+-=");
       if (tmp != NULL) {
         how = pstrdup(cmd->tmp_pool, tmp);
-        if (*how != '=')
-          mode = curmode;
+        if (*how != '=') {
+          mode = curr_mode;
+        }
 
         *tmp = '\0';
 
@@ -302,7 +336,7 @@ MODRET site_chmod(cmd_rec *cmd) {
             break;
 
           case '\0':
-            mask = curumask;
+            mask = curr_umask;
             break;
 
           default:
@@ -334,6 +368,7 @@ MODRET site_chmod(cmd_rec *cmd) {
           case 'w':
             mode_op |= (S_IWUSR|S_IWGRP|S_IWOTH);
             break;
+
           case 'x':
             mode_op |= (S_IXUSR|S_IXGRP|S_IXOTH);
             break;
@@ -350,21 +385,21 @@ MODRET site_chmod(cmd_rec *cmd) {
             break;
 
           case 'o':
-            mode_op |= curmode & S_IRWXO;
-            mode_op |= (curmode & S_IRWXO) << 3;
-            mode_op |= (curmode & S_IRWXO) << 6;
+            mode_op |= (curr_mode & S_IRWXO);
+            mode_op |= ((curr_mode & S_IRWXO) << 3);
+            mode_op |= ((curr_mode & S_IRWXO) << 6);
             break;
 
           case 'g':
-            mode_op |= (curmode & S_IRWXG) >> 3;
-            mode_op |= curmode & S_IRWXG;
-            mode_op |= (curmode & S_IRWXG) << 3;
+            mode_op |= ((curr_mode & S_IRWXG) >> 3);
+            mode_op |= (curr_mode & S_IRWXG);
+            mode_op |= ((curr_mode & S_IRWXG) << 3);
             break;
 
           case 'u':
-            mode_op |= (curmode & S_IRWXO) >> 6;
-            mode_op |= (curmode & S_IRWXO) >> 3;
-            mode_op |= curmode & S_IRWXU;
+            mode_op |= ((curr_mode & S_IRWXU) >> 6);
+            mode_op |= ((curr_mode & S_IRWXU) >> 3);
+            mode_op |= (curr_mode & S_IRWXU);
             break;
 
           case '\0':
@@ -386,20 +421,22 @@ MODRET site_chmod(cmd_rec *cmd) {
               cp = what;
               continue;
 
-            } else
+            } else {
               cp = NULL;
-
+            }
             break;
 
           default:
             invalid++;
         }
 
-        if (invalid)
+        if (invalid) {
           break;
+        }
 
-        if (cp)
+        if (cp) {
           cp++;
+        }
       }
       break;
     }
@@ -417,10 +454,11 @@ MODRET site_chmod(cmd_rec *cmd) {
   if (res < 0) {
     int xerrno = errno;
 
-    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %lu, GID %lu): "
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error chmod'ing '%s' to %04o: %s", cmd->argv[0], session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
-      dir, (unsigned int) mode, strerror(xerrno));
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), dir, (unsigned int) mode,
+      strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 

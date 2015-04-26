@@ -1,6 +1,3 @@
-<!-- $Id: mod_xfer.html,v 1.10 2013-03-13 18:08:28 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_xfer.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_xfer</title>
@@ -33,6 +30,7 @@ file transfers.
   <li><a href="#StoreUniquePrefix">StoreUniquePrefix</a>
   <li><a href="#TimeoutNoTransfer">TimeoutNoTransfer</a>
   <li><a href="#TimeoutStalled">TimeoutStalled</a>
+  <li><a href="#TransferOptions">TransferOptions</a>
   <li><a href="#TransferPriority">TransferPriority</a>
   <li><a href="#TransferRate">TransferRate</a>
   <li><a href="#UseSendfile">UseSendfile</a>
@@ -435,6 +433,36 @@ The maximum allowed <em>seconds</em> value is 65535 (108 minutes).
 
 <p>
 <hr>
+<h2><a name="TransferOptions">TransferOptions</a></h2>
+<strong>Syntax:</strong> TransferOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>TransferOptions</code> directive to configure various optional data
+transfer behaviors.
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>IgnoreASCII</code><br>
+    <p>
+    This option causes proftpd to silently ignore any client requests to
+    perform ASCII translations via the <code>TYPE</code> command.  That is,
+    FTP clients can request ASCII translations, and proftpd will respond
+    as the client expects, but will <b>not</b> actually perform the translation
+    for either uploads <i>or</i> downloads.  This behavior can be useful in
+    circumstances involving older/mainframe clients and EBCDIC files.
+
+    <p>
+    <b>Note</b> that this option first appeared in 
+    <code>proftpd-1.3.6rc1</code>.
+</ul>
+
+<p>
+<hr>
 <h2><a name="TransferPriority">TransferPriority</a></h2>
 <strong>Syntax:</strong> TransferPriority <em>cmd-list "low"|"medium"|"high"|number</em><br>
 <strong>Default:</strong> None<br>
@@ -554,13 +582,8 @@ only, and should be removed from any production configuration.
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-03-13 18:08:28 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2000-2014 The ProFTPD Project<br>
+&copy; Copyright 2000-2015 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 

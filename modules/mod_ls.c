@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.207 2014-01-20 19:36:27 castaglia Exp $
- */
+/* Directory listing module for ProFTPD. */
 
 #include "conf.h"
 
@@ -99,6 +97,7 @@ static int
     opt_r = 0,
     opt_S = 0,
     opt_t = 0,
+    opt_U = 0,
     opt_u = 0,
     opt_STAT = 0;
 
@@ -214,21 +213,21 @@ static void pop_cwd(char *_cwd, unsigned char *symhold) {
 }
 
 static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
-  int res, canon = 0;
+  int res, use_canon = FALSE;
   char *fullpath;
   mode_t *fake_mode = NULL;
 
   fullpath = dir_realpath(p, path);
-
-  if (!fullpath) {
+  if (fullpath == NULL) {
     fullpath = dir_canonical_path(p, path);
-    canon = 1;
+    use_canon = TRUE;
   }
 
-  if (!fullpath)
+  if (fullpath == NULL) {
     fullpath = pstrdup(p, path);
-
-  if (canon) {
+  }
+ 
+  if (use_canon) {
     res = dir_check_canon(p, cmd, cmd->group, fullpath, hidden);
 
   } else {
@@ -261,11 +260,13 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   mode_t *fake_mode = NULL;
 
   /* No need to process dotdirs. */
-  if (is_dotdir(path))
+  if (is_dotdir(path)) {
     return 1;
+  }
 
-  if (*path == '~')
+  if (*path == '~') {
     return ls_perms_full(p, cmd, path, hidden);
+  }
 
   if (*path != '/') {
     pr_fs_clean_path(pdircat(p, pr_fs_getcwd(), path, NULL), fullpath,
@@ -307,9 +308,11 @@ static size_t listbufsz = 0;
 
 static int sendline(int flags, char *fmt, ...) {
   va_list msg;
-  char buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE+1];
   int res = 0;
   size_t buflen, listbuflen;
+
+  memset(buf, '\0', sizeof(buf));
 
   if (listbuf == NULL) {
     listbufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
@@ -322,10 +325,17 @@ static int sendline(int flags, char *fmt, ...) {
     listbuflen = (listbuf_ptr - listbuf) + strlen(listbuf_ptr);
 
     if (listbuflen > 0) {
+      int using_ascii = FALSE;
+
       /* Make sure the ASCII flags are cleared from the session flags,
        * so that the pr_data_xfer() function does not try to perform
        * ASCII translation on this data.
        */
+      if (session.sf_flags & SF_ASCII) {
+        using_ascii = TRUE;
+      }
+
+      session.sf_flags &= ~SF_ASCII;
       session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
       res = pr_data_xfer(listbuf, listbuflen);
@@ -341,13 +351,16 @@ static int sendline(int flags, char *fmt, ...) {
           strerror(xerrno));
       }
 
+      if (using_ascii) {
+        session.sf_flags |= SF_ASCII;
+      }
       session.sf_flags |= SF_ASCII_OVERRIDE;
 
       memset(listbuf, '\0', listbufsz);
       listbuf_ptr = listbuf;
-      listbuflen = 0;
       pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
         (unsigned long) listbuflen);
+      listbuflen = 0;
     }
 
     return res;
@@ -388,9 +401,9 @@ static int sendline(int flags, char *fmt, ...) {
 
     memset(listbuf, '\0', listbufsz);
     listbuf_ptr = listbuf;
-    listbuflen = 0;
     pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
       (unsigned long) listbuflen);
+    listbuflen = 0;
   }
 
   sstrcat(listbuf_ptr, buf, listbufsz - listbuflen);
@@ -457,9 +470,11 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
   }
   list_nfiles.curr++;
 
-  if (!p)
+  if (p == NULL) {
     p = cmd->tmp_pool;
+  }
 
+  pr_fs_clear_cache2(name);
   if (pr_fsio_lstat(name, &st) == 0) {
     char *display_name = NULL;
 
@@ -511,7 +526,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       /* Attempt to fully dereference symlink */
       struct stat l_st;
 
-      pr_fs_clear_cache();
       if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
@@ -561,11 +575,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       }
 
       len = pr_fsio_readlink(name, l, sizeof(l) - 1);
-      if (len < 0)
+      if (len < 0) {
         return 0;
+      }
 
-      if (len >= sizeof(l))
+      if (len >= sizeof(l)) {
         return 0;
+      }
 
       l[len] = '\0';
 
@@ -584,11 +600,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
     /* Skip dotfiles, unless requested not to via -a or -A. */
     if (*name == '.' &&
-        (!opt_a && (!opt_A || is_dotdir(name))))
+        (!opt_a && (!opt_A || is_dotdir(name)))) {
       return 0;
+    }
 
-    if (hidden)
+    if (hidden) {
       return 0;
+    }
 
     switch (ls_sort_by) {
       case LS_SORT_BY_MTIME:
@@ -734,16 +752,18 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           char *buf = nameline + strlen(nameline);
 
           suffix[0] = '\0';
-          if (opt_F && pr_fsio_stat(name, &st) == 0) {
-            if (S_ISLNK(st.st_mode)) {
-              suffix[0] = '@';
+          if (opt_F) {
+            if (pr_fsio_stat(name, &st) == 0) {
+              if (S_ISLNK(st.st_mode)) {
+                suffix[0] = '@';
 
-            } else if (S_ISDIR(st.st_mode)) {
-              suffix[0] = '/';
+              } else if (S_ISDIR(st.st_mode)) {
+                suffix[0] = '/';
 
-            } else if (st.st_mode & 0111) {
-              suffix[0] = '*';
-            }
+              } else if (st.st_mode & 0111) {
+                suffix[0] = '*';
+              }
+           }
           }
 
           if (!opt_L && list_show_symlinks) {
@@ -771,8 +791,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       if (S_ISREG(st.st_mode) ||
           S_ISDIR(st.st_mode) ||
           S_ISLNK(st.st_mode)) {
-           addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix,
-             sort_time, st.st_size);
+        addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix, sort_time,
+          st.st_size);
       }
     }
   }
@@ -807,19 +827,32 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   struct filename *p;
   size_t l;
 
-  if (!name || !suffix)
+  if (name == NULL ||
+      suffix == NULL) {
     return;
+  }
 
-  if (!fpool) {
+  /* If we are not sorting (-U is in effect), then we have no need to buffer
+   * up the line, and can send it immediately.  This can provide quite a bit
+   * of memory/CPU savings, especially for LIST commands on wide/deep
+   * directories (Bug#4060).
+   */
+  if (opt_U == 1) {
+    (void) sendline(0, "%s%s\r\n", name, suffix);
+    return;
+  }
+
+  if (fpool == NULL) {
     fpool = make_sub_pool(cmd->tmp_pool);
-    pr_pool_tag(fpool, "mod_ls: addfile() fpool");
+    pr_pool_tag(fpool, "mod_ls addfile pool");
   }
 
   if (opt_S || opt_t) {
     struct sort_filename *s;
 
-    if (!sort_arr)
+    if (sort_arr == NULL) {
       sort_arr = make_array(fpool, 50, sizeof(struct sort_filename));
+    }
 
     s = (struct sort_filename *) push_array(sort_arr);
     s->sort_time = sort_time;
@@ -831,18 +864,20 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   }
 
   l = strlen(name) + strlen(suffix);
-  if (l > colwidth)
+  if (l > colwidth) {
     colwidth = l;
+  }
 
   p = (struct filename *) pcalloc(fpool, sizeof(struct filename));
   p->line = pcalloc(fpool, l + 2);
   snprintf(p->line, l + 1, "%s%s", name, suffix);
 
-  if (tail)
+  if (tail) {
     tail->down = p;
 
-  else
+  } else {
     head = p;
+  }
 
   tail = p;
   filenames++;
@@ -935,21 +970,37 @@ static int outputfiles(cmd_rec *cmd) {
   int n, res = 0;
   struct filename *p = NULL, *q = NULL;
 
-  if (opt_S || opt_t)
+  if (opt_S || opt_t) {
     sortfiles(cmd);
+  }
 
-  if (!head)		/* nothing to display */
-    return 0;
+  if (head == NULL) {
+    /* Nothing to display. */
+    if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
+      res = -1;
+    }
+
+    destroy_pool(fpool);
+    fpool = NULL;
+    sort_arr = NULL;
+    head = tail = NULL;
+    colwidth = 0;
+    filenames = 0;
+
+    return res;
+  }
 
   tail->down = NULL;
   tail = NULL;
   colwidth = (colwidth | 7) + 1;
-  if (opt_l || !opt_C)
+  if (opt_l || !opt_C) {
     colwidth = 75;
+  }
 
   /* avoid division by 0 if colwidth > 75 */
-  if (colwidth > 75)
+  if (colwidth > 75) {
     colwidth = 75;
+  }
 
   if (opt_C) {
     p = head;
@@ -960,8 +1011,9 @@ static int outputfiles(cmd_rec *cmd) {
       pr_signals_handle();
 
       p = p->down;
-      if (p)
+      if (p) {
         p->top = 0;
+      }
       n--;
     }
 
@@ -988,8 +1040,9 @@ static int outputfiles(cmd_rec *cmd) {
       p = p->down;
     }
 
-    if (p && p->down)
+    if (p && p->down) {
       p->down = NULL;
+    }
   }
 
   p = head;
@@ -1042,8 +1095,9 @@ static int outputfiles(cmd_rec *cmd) {
 }
 
 static void discard_output(void) {
-  if (fpool)
+  if (fpool) {
     destroy_pool(fpool);
+  }
   fpool = NULL;
 
   head = tail = NULL;
@@ -1067,8 +1121,10 @@ static char **sreaddir(const char *dirname, const int sort) {
   char **p;
   size_t ssize, dsize;
 
-  if (pr_fsio_stat(dirname, &st) < 0)
+  pr_fs_clear_cache2(dirname);
+  if (pr_fsio_stat(dirname, &st) < 0) {
     return NULL;
+  }
 
   if (!S_ISDIR(st.st_mode)) {
     errno = ENOTDIR;
@@ -1076,8 +1132,9 @@ static char **sreaddir(const char *dirname, const int sort) {
   }
 
   d = pr_fsio_opendir(dirname);
-  if (d == NULL)
+  if (d == NULL) {
     return NULL;
+  }
 
   /* It doesn't matter if the following guesses are wrong, but it slows
    * the system a bit and wastes some memory if they are wrong, so
@@ -1212,10 +1269,11 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
   }
   list_ndirs.curr++;
 
-  if (XFER_ABORTED)
+  if (XFER_ABORTED) {
     return -1;
+  }
 
-  if (!workp) {
+  if (workp == NULL) {
     workp = make_sub_pool(cmd->tmp_pool);
     pr_pool_tag(workp, "mod_ls: listdir(): workp (from cmd->tmp_pool)");
     dest_workp++;
@@ -1226,8 +1284,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
     dest_workp++;
   }
 
-  PR_DEVEL_CLOCK(dir = sreaddir(".", TRUE));
-
+  PR_DEVEL_CLOCK(dir = sreaddir(".", opt_U ? FALSE : TRUE));
   if (dir) {
     char **s;
     char **r;
@@ -1258,22 +1315,25 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
         **s = '.';
         *(*s + 1) = '\0';
 
-      } else if (d == 2)
+      } else if (d == 2) {
         break;
+      }
 
       s++;
     }
 
     if (outputfiles(cmd) < 0) {
-      if (dest_workp)
+      if (dest_workp) {
         destroy_pool(workp);
+      }
 
       /* Explicitly free the memory allocated for containing the list of
        * filenames.
        */
       i = 0;
-      while (dir[i] != NULL)
+      while (dir[i] != NULL) {
         free(dir[i++]);
+      }
       free(dir);
 
       return -1;
@@ -1338,7 +1398,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
             pr_fs_encode_path(cmd->tmp_pool, subdir));
 
         } else if (sendline(0, "\r\n%s:\r\n",
-                     pr_fs_encode_path(cmd->tmp_pool, subdir)) < 0 ||
+                   pr_fs_encode_path(cmd->tmp_pool, subdir)) < 0 ||
             sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
           pop_cwd(cwd_buf, &symhold);
 
@@ -1376,6 +1436,10 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
       }
       r++;
     }
+
+  } else {
+    pr_trace_msg("fsio", 9,
+      "sreaddir() error on '.': %s", strerror(errno));
   }
 
   if (dest_workp) {
@@ -1402,11 +1466,13 @@ static void ls_terminate(void) {
 
     if (!XFER_ABORTED) {
       /* An error has occured, other than client ABOR */
-      if (ls_errno)
+      if (ls_errno) {
         pr_data_abort(ls_errno,FALSE);
-      else
+
+      } else {
         pr_data_abort((session.d && session.d->outstrm ?
-                   PR_NETIO_ERRNO(session.d->outstrm) : errno),FALSE);
+                      PR_NETIO_ERRNO(session.d->outstrm) : errno), FALSE);
+      }
     }
     ls_errno = 0;
 
@@ -1441,7 +1507,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     while ((*opt)++ && PR_ISALNUM(**opt)) {
       switch (**opt) {
         case '1':
-          if (strcmp(session.curr_cmd, C_STAT) != 0) {
+          if (session.curr_cmd_id != PR_CMD_STAT_ID) {
             opt_1 = 1;
             opt_l = opt_C = 0;
           }
@@ -1460,7 +1526,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'C':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_l = 0;
             opt_C = 1;
           }
@@ -1476,13 +1542,13 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'F':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_F = 1;
           }
           break;
 
         case 'h':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_h = 1;
           }
           break;
@@ -1492,7 +1558,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'l':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_l = 1;
             opt_C = 0;
             opt_1 = 0;
@@ -1500,7 +1566,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'n':
-          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
             opt_n = 1;
           }
           break;
@@ -1519,15 +1585,20 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
         case 't':
           opt_t = 1;
-          if (glob_flags)
+          if (glob_flags) {
             *glob_flags |= GLOB_NOSORT;
+          }
+          break;
+
+        case 'U':
+          opt_U = 1;
+          opt_c = opt_S = opt_t = 0;
           break;
 
         case 'u':
           opt_u = 1;
           ls_sort_by = LS_SORT_BY_ATIME;
           break;
-
       }
     }
 
@@ -1543,7 +1614,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else if (*(*opt + 1) == ' ') {
+    } else if (**opt && *(*opt + 1) == ' ') {
       /* If the next character is a blank space, advance just one character. */
       (*opt)++;
       break;
@@ -1554,8 +1625,9 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
     }
   }
 
-  if (!handle_plus_opts)
+  if (!handle_plus_opts) {
     return;
+  }
 
   /* Check for non-standard options */
   while (*opt && **opt == '+') {
@@ -1632,6 +1704,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
             *glob_flags &= GLOB_NOSORT;
           break;
 
+        case 'U':
+          opt_U = 0;
+          break;
+
         case 'u':
           opt_u = 0;
 
@@ -1653,7 +1729,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
       /* Options are found; skip past the leading whitespace. */
       *opt = ptr;
 
-    } else if (*(*opt + 1) == ' ') {
+    } else if (**opt && *(*opt + 1) == ' ') {
       /* If the next character is a blank space, advance just one character. */
       (*opt)++;
       break;
@@ -1683,8 +1759,9 @@ static int have_options(cmd_rec *cmd, const char *arg) {
    * options.
    */
 
-  if (cmd->argc > 2)
+  if (cmd->argc > 2) {
     return TRUE;
+  }
 
   /* Now we need to determine if the given string (arg) should be handled
    * as options (as when the target path is implied, e.g. "LIST -al") or
@@ -1692,11 +1769,12 @@ static int have_options(cmd_rec *cmd, const char *arg) {
    * then it's a path.
    */
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(arg);
   res = pr_fsio_stat(arg, &st);
 
-  if (res == 0)
+  if (res == 0) {
     return FALSE;
+  }
 
   return TRUE;
 }
@@ -1828,7 +1906,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
     if (pr_str_is_fnmatch(target) == FALSE) {
       struct stat st;
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(target);
       if (pr_fsio_stat(target, &st) < 0) {
         int xerrno = errno;
 
@@ -1900,16 +1978,20 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
         pr_signals_handle();
 
+        pr_fs_clear_cache2(*path);
         if (pr_fsio_lstat(*path, &st) == 0) {
           mode_t target_mode, lmode;
           target_mode = st.st_mode;
 
           if (S_ISLNK(st.st_mode) &&
-              (lmode = file_mode((char *) *path)) != 0) {
-            if (opt_L || !list_show_symlinks)
+              (lmode = symlink_mode((char *) *path)) != 0) {
+            if (opt_L || !list_show_symlinks) {
               st.st_mode = lmode;
+            }
 
-            target_mode = lmode;
+            if (lmode != 0) {
+              target_mode = lmode;
+            }
           }
 
           /* If the -d option is used or the file is not a directory, OR
@@ -1923,8 +2005,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
             if (listfile(cmd, cmd->tmp_pool, resp_code, *path) < 0) {
               ls_terminate();
-              if (use_globbing && globbed)
+              if (use_globbing && globbed) {
                 pr_fs_globfree(&g);
+              }
               return -1;
             }
 
@@ -1991,8 +2074,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
             } else if (res < 0) {
               ls_terminate();
-              if (use_globbing && globbed)
+              if (use_globbing && globbed) {
                 pr_fs_globfree(&g);
+              }
               return -1;
             }
           }
@@ -2000,8 +2084,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
         if (XFER_ABORTED) {
           discard_output();
-          if (use_globbing && globbed)
+          if (use_globbing && globbed) {
             pr_fs_globfree(&g);
+          }
           return -1;
         }
 
@@ -2031,8 +2116,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
       }
     }
 
-    if (!skiparg && use_globbing && globbed)
+    if (!skiparg && use_globbing && globbed) {
       pr_fs_globfree(&g);
+    }
 
     if (XFER_ABORTED) {
       discard_output();
@@ -2233,8 +2319,12 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   PR_DEVEL_CLOCK(list = sreaddir(".", FALSE));
   if (list == NULL) {
-    if (!curdir)
+    pr_trace_msg("fsio", 9,
+      "sreaddir() error on '.': %s", strerror(errno));
+
+    if (!curdir) {
       pop_cwd(cwd_buf, &symhold);
+    }
 
     destroy_pool(workp);
     return 0;
@@ -2347,16 +2437,18 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   sendline(LS_SENDLINE_FL_FLUSH, " ");
 
-  if (!curdir)
+  if (!curdir) {
     pop_cwd(cwd_buf, &symhold);
+  }
   destroy_pool(workp);
 
   /* Explicitly free the memory allocated for containing the list of
    * filenames.
    */
   i = 0;
-  while (list[i] != NULL)
+  while (list[i] != NULL) {
     free(list[i++]);
+  }
   free(list);
 
   return count;
@@ -2365,6 +2457,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 /* The LIST command.  */
 MODRET genericlist(cmd_rec *cmd) {
   int res = 0;
+  char *decoded_path = NULL;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
@@ -2442,7 +2535,22 @@ MODRET genericlist(cmd_rec *cmd) {
     list_times_gmt = *tmp;
   }
 
-  res = dolist(cmd, pr_fs_decode_path(cmd->tmp_pool, cmd->arg), R_211, TRUE);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  res = dolist(cmd, decoded_path, R_211, TRUE);
 
   if (XFER_ABORTED) {
     pr_data_abort(0, 0);
@@ -2470,7 +2578,7 @@ MODRET ls_err_nlst(cmd_rec *cmd) {
 MODRET ls_stat(cmd_rec *cmd) {
   struct stat st;
   int res;
-  char *arg = cmd->arg, *resp_code = NULL;
+  char *arg = cmd->arg, *decoded_path, *resp_code = NULL;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
@@ -2501,8 +2609,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     }
 
     if (session.sf_flags & SF_XFER) {
-      /* Report on the data transfer attributes.
-       */
+      /* Report on the data transfer attributes. */
 
       pr_response_add(R_DUP, _("%s from %s port %u"),
         (session.sf_flags & SF_PASSIVE) ?
@@ -2532,7 +2639,22 @@ MODRET ls_stat(cmd_rec *cmd) {
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
-  arg = pr_fs_decode_path(cmd->tmp_pool, arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  arg = decoded_path;
 
   /* Get to the actual argument. */
   if (*arg == '-') {
@@ -2628,7 +2750,7 @@ MODRET ls_stat(cmd_rec *cmd) {
   opt_C = opt_d = opt_F = opt_R = 0;
   opt_a = opt_l = opt_STAT = 1;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(arg && *arg ? arg : ".");
   res = pr_fsio_stat(arg && *arg ? arg : ".", &st);
   if (res < 0) {
     int xerrno = errno;
@@ -2669,7 +2791,7 @@ MODRET ls_list(cmd_rec *cmd) {
  * ls(1)), it only sends a list of all files/directories matching the glob(s).
  */
 MODRET ls_nlst(cmd_rec *cmd) {
-  char *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char *decoded_path, *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   size_t targetlen = 0;
   config_rec *c = NULL;
   int res = 0, hidden = 0;
@@ -2684,8 +2806,22 @@ MODRET ls_nlst(cmd_rec *cmd) {
     list_show_symlinks = *tmp;
   }
 
-  target = cmd->argc == 1 ? "." :
-    pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
+    FSIO_DECODE_FL_TELL_ERRORS);
+  if (decoded_path == NULL) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
+      strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: Illegal character sequence in filename"),
+      cmd->arg);
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  target = cmd->argc == 1 ? "." : decoded_path;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
   while (c != NULL) {
@@ -2756,8 +2892,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       while (target && *target == '-') {
         /* Advance to the next whitespace */
-        while (*target != '\0' && !PR_ISSPACE(*target))
+        while (*target != '\0' && !PR_ISSPACE(*target)) {
           target++;
+        }
 
         ptr = target;
 
@@ -2771,7 +2908,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
           /* Options are found; skip past the leading whitespace. */
           target = ptr;
 
-        } else if (*(target + 1) == ' ') {
+        } else if (*target && *(target + 1) == ' ') {
           /* If the next character is a blank space, advance just one
            * character.
            */
@@ -2838,6 +2975,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (res == GLOB_NOMATCH) {
         struct stat st;
 
+        pr_fs_clear_cache2(target);
         if (pr_fsio_stat(target, &st) == 0) {
           pr_log_debug(DEBUG10, "NLST: glob(3) returned GLOB_NOMATCH for '%s', "
             "handling as literal path", target);
@@ -2918,9 +3056,11 @@ MODRET ls_nlst(cmd_rec *cmd) {
       p = *path;
       path++;
 
-      if (*p == '.' && (!opt_A || is_dotdir(p)))
+      if (*p == '.' && (!opt_A || is_dotdir(p))) {
         continue;
+      }
 
+      pr_fs_clear_cache2(p);
       if (pr_fsio_stat(p, &st) == 0) {
         /* If it's a directory... */
         if (S_ISDIR(st.st_mode)) {
@@ -2936,8 +3076,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
         } else if (S_ISREG(st.st_mode) &&
             ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
           /* Don't display hidden files */
-          if (hidden)
+          if (hidden) {
             continue;
+          }
 
           res = nlstfile(cmd, p);
         }
@@ -3051,7 +3192,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Make sure the target is a file or directory, and that we have access
      * to it.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(target);
     if (pr_fsio_stat(target, &st) < 0) {
       int xerrno = errno;
 

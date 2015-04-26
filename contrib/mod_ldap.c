@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013-2014 The ProFTPD Project
+ * Copyright (c) 2013-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
  * source code for OpenSSL in the source distribution.
  *
  * -----DO NOT EDIT BELOW THIS LINE-----
- * $Id: mod_ldap.c,v 1.107 2013-11-24 00:45:28 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -43,6 +42,7 @@
 #include <ldap.h>
 
 static int ldap_logfd = -1;
+static const char *trace_channel = "ldap";
 
 #if LDAP_API_VERSION >= 2000
 # define HAS_LDAP_SASL_BIND_S
@@ -91,14 +91,14 @@ static void pr_ldap_set_sizelimit(LDAP *limit_ld, int limit) {
       limit, ldap_err2string(res));
 
   } else {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+    pr_trace_msg(trace_channel, 5,
       "set search query size limit to %d entries", limit);
   }
 
 #else
   limit_ld->ld_sizelimit = limit;
 
-  (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+  pr_trace_msg(trace_channel, 5,
     "set search query size limit to %d entries", limit);
 #endif
 }
@@ -172,8 +172,8 @@ static void pr_ldap_unbind(void) {
   int res;
 
   if (ld == NULL) {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-     "not unbinding to an already unbound connection");
+    pr_trace_msg(trace_channel, 13,
+      "not unbinding to an already unbound connection");
     return;
   }
 
@@ -183,7 +183,7 @@ static void pr_ldap_unbind(void) {
       "error unbinding connection: %s", ldap_err2string(res));
 
   } else {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+    pr_trace_msg(trace_channel, 8,
       "connection successfully unbound");
   }
 
@@ -553,7 +553,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
         ++i;
 
         (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-          "using LDAPDefaultUID %lu", (unsigned long) pw->pw_uid);
+          "using LDAPDefaultUID %s", pr_uid2str(NULL, pw->pw_uid));
         continue;
       }
 
@@ -572,7 +572,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
         ++i;
 
         (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-          "using LDAPDefaultGID %lu", (unsigned long) pw->pw_gid);
+          "using LDAPDefaultGID %s", pr_gid2str(NULL, pw->pw_gid));
         continue;
       }
 
@@ -730,8 +730,8 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
   ldap_msgfree(result);
 
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-    "found user %s, UID %lu, GID %lu, homedir %s, shell %s",
-    pw->pw_name, (unsigned long) pw->pw_uid, (unsigned long) pw->pw_gid,
+    "found user %s, UID %s, GID %s, homedir %s, shell %s",
+    pw->pw_name, pr_uid2str(p, pw->pw_uid), pr_gid2str(p, pw->pw_gid),
     pw->pw_dir, pw->pw_shell);
   return pw;
 }
@@ -826,7 +826,7 @@ static struct group *pr_ldap_group_lookup(pool *p, char *filter_template,
   ldap_msgfree(result);
 
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-    "found group %s, GID %lu", gr->gr_name, (unsigned long) gr->gr_gid);
+    "found group %s, GID %s", gr->gr_name, pr_gid2str(NULL, gr->gr_gid));
   for (i = 0; i < value_count; ++i) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
       "+ member: %s", gr->gr_mem[i]);
@@ -924,8 +924,8 @@ static unsigned char pr_ldap_quota_lookup(pool *p, char *filter_template,
 
     } else {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "no entries for filter %s, using default quota %s",
-        filter ? filter : "(null)", ldap_default_quota);
+        "no entries for filter %s, using default quota %s", filter,
+        ldap_default_quota);
     }
 
     parse_quota(p, replace, pstrdup(p, ldap_default_quota));
@@ -1051,15 +1051,13 @@ static struct group *pr_ldap_getgrnam(pool *p, const char *group_name) {
 }
 
 static struct group *pr_ldap_getgrgid(pool *p, gid_t gid) {
-  char gidstr[PR_TUNABLE_BUFFER_SIZE] = {'\0'},
-       *group_attrs[] = {
-         ldap_attr_cn, ldap_attr_gidnumber, ldap_attr_memberuid, NULL,
-       };
+  const char *gidstr;
+  char *group_attrs[] = {
+    ldap_attr_cn, ldap_attr_gidnumber, ldap_attr_memberuid, NULL,
+  };
 
-  snprintf(gidstr, sizeof(gidstr), "%lu", (unsigned long) gid);
-
-  return pr_ldap_group_lookup(p, ldap_group_gid_filter, (const char *) gidstr,
-    group_attrs);
+  gidstr = pr_gid2str(p, gid);
+  return pr_ldap_group_lookup(p, ldap_group_gid_filter, gidstr, group_attrs);
 }
 
 static struct passwd *pr_ldap_getpwnam(pool *p, const char *username) {
@@ -1101,15 +1099,14 @@ static struct passwd *pr_ldap_getpwnam(pool *p, const char *username) {
 }
 
 static struct passwd *pr_ldap_getpwuid(pool *p, uid_t uid) {
-  char uidstr[PR_TUNABLE_BUFFER_SIZE] = {'\0'},
-       *uid_attrs[] = {
-         ldap_attr_uid, ldap_attr_uidnumber, ldap_attr_gidnumber,
-         ldap_attr_homedirectory, ldap_attr_loginshell, NULL,
-       };
+  const char *uidstr;
+  char *uid_attrs[] = {
+    ldap_attr_uid, ldap_attr_uidnumber, ldap_attr_gidnumber,
+    ldap_attr_homedirectory, ldap_attr_loginshell, NULL,
+  };
 
-  snprintf(uidstr, sizeof(uidstr), "%lu", (unsigned long) uid);
-
-  return pr_ldap_user_lookup(p, ldap_user_uid_filter, (const char *) uidstr,
+  uidstr = pr_uid2str(p, uid);
+  return pr_ldap_user_lookup(p, ldap_user_uid_filter, uidstr,
     ldap_user_basedn, uid_attrs, ldap_authbinds ? &ldap_authbind_dn : NULL);
 }
 
@@ -1267,15 +1264,15 @@ MODRET ldap_auth_getgroups(cmd_rec *cmd) {
     gr = pr_ldap_getgrgid(cmd->tmp_pool, pw->pw_gid);
     if (gr != NULL) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "adding user %s primary group %s/%lu", pw->pw_name, gr->gr_name,
-        (unsigned long) pw->pw_gid);
+        "adding user %s primary group %s/%s", pw->pw_name, gr->gr_name,
+        pr_gid2str(NULL, pw->pw_gid));
       *((gid_t *) push_array(gids)) = pw->pw_gid;
       *((char **) push_array(groups)) = pstrdup(session.pool, gr->gr_name);
 
     } else {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "unable to determine group name for user %s primary GID %lu, skipping",
-        pw->pw_name, (unsigned long) pw->pw_gid);
+        "unable to determine group name for user %s primary GID %s, skipping",
+        pw->pw_name, pr_gid2str(NULL, pw->pw_gid));
     }
   }
 
@@ -1851,7 +1848,8 @@ MODRET set_ldapattr(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_ldapuserlookups(cmd_rec *cmd) {
+/* usage: LDAPUsers base-dn [name-filter-template [uid-filter-template]] */
+MODRET set_ldapusers(cmd_rec *cmd) {
   config_rec *c;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1865,41 +1863,46 @@ MODRET set_ldapuserlookups(cmd_rec *cmd) {
   if (cmd->argc > 2) {
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
   }
+  if (cmd->argc > 3) {
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+  }
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_ldapdefaultuid(cmd_rec *cmd) {
-  char *endptr;
   config_rec *c;
+  uid_t uid;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
-  *((uid_t *) c->argv[0]) = strtoul(cmd->argv[1], &endptr, 10);
-  if (*endptr != '\0') {
+
+  if (pr_str2uid(cmd->argv[1], &uid) < 0) {
     CONF_ERROR(cmd, "LDAPDefaultUID: UID argument must be numeric");
   }
 
+  *((uid_t *) c->argv[0]) = uid;
   return PR_HANDLED(cmd);
 }
 
 MODRET set_ldapdefaultgid(cmd_rec *cmd) {
-  char *endptr;
   config_rec *c;
+  gid_t gid;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
-  *((gid_t *) c->argv[0]) = strtoul(cmd->argv[1], &endptr, 10);
-  if (*endptr != '\0') {
+
+  if (pr_str2gid(cmd->argv[1], &gid) < 0) {
     CONF_ERROR(cmd, "LDAPDefaultGID: GID argument must be numeric");
   }
 
+  *((gid_t *) c->argv[0]) = gid;
   return PR_HANDLED(cmd);
 }
 
@@ -2316,7 +2319,7 @@ static conftable ldap_conftab[] = {
   { "LDAPQueryTimeout",		set_ldapquerytimeout,		NULL },
   { "LDAPSearchScope",		set_ldapsearchscope,		NULL },
   { "LDAPServer",		set_ldapserver,			NULL },
-  { "LDAPUsers",		set_ldapuserlookups,		NULL },
+  { "LDAPUsers",		set_ldapusers,			NULL },
   { "LDAPUseTLS",		set_ldapusetls,			NULL },
 
   { NULL, NULL, NULL },

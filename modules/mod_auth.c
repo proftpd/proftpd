@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
  */
 
 /* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.317 2013-12-29 20:17:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,11 +41,14 @@ static unsigned char lastlog = FALSE;
 static unsigned char mkhome = FALSE;
 static unsigned char authenticated_without_pass = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
-static int logged_in = 0;
+static int logged_in = FALSE;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
 static pr_fh_t *displaylogin_fh = NULL;
 static int TimeoutSession = 0;
+
+static int saw_first_user_cmd = FALSE;
+static const char *timing_channel = "timing";
 
 static int auth_scan_scoreboard(void);
 static int auth_count_scoreboard(cmd_rec *, char *);
@@ -766,7 +768,7 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
           path[pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(path);
         res = pr_fsio_lstat(path, &st);
         if (res < 0) {
           xerrno = errno;
@@ -1260,7 +1262,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
           chroot_path[chroot_pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(chroot_path);
         res = pr_fsio_lstat(chroot_path, &st);
         if (res < 0) {
           int xerrno = errno;
@@ -2178,8 +2180,23 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
 MODRET auth_pre_user(cmd_rec *cmd) {
 
-  if (logged_in)
+  if (saw_first_user_cmd == FALSE) {
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+
+      pr_trace_msg(timing_channel, 4, "Time before first USER: %lu ms",
+        elapsed_ms);
+    }
+    saw_first_user_cmd = TRUE;
+  }
+
+  if (logged_in) {
     return PR_DECLINED(cmd);
+  }
 
   /* Close the passwd and group databases, because libc won't let us see new
    * entries to these files without this (only in PersistentPasswd mode).
@@ -2208,11 +2225,13 @@ MODRET auth_user(cmd_rec *cmd) {
   int failnopwprompt = 0, aclp, i;
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
-  if (logged_in)
+  if (logged_in) {
     return PR_ERROR_MSG(cmd, R_500, _("Bad sequence of commands"));
+  }
 
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
+  }
 
   user = cmd->arg;
 
@@ -2413,11 +2432,12 @@ MODRET auth_pass(cmd_rec *cmd) {
   char *user = NULL;
   int res = 0;
 
-  if (logged_in)
+  if (logged_in) {
     return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
+  }
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-  if (!user) {
+  if (user == NULL) {
     (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
     (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
@@ -2449,7 +2469,20 @@ MODRET auth_pass(cmd_rec *cmd) {
       }
     }
 
-    logged_in = 1;
+    logged_in = TRUE;
+
+    if (pr_trace_get_level(timing_channel)) {
+      unsigned long elapsed_ms;
+      uint64_t finish_ms;
+
+      pr_gettimeofday_millis(&finish_ms);
+      elapsed_ms = (unsigned long) (finish_ms - session.connect_time_ms);
+
+      pr_trace_msg(timing_channel, 4,
+        "Time before successful login (via '%s'): %lu ms", session.auth_mech,
+        elapsed_ms);
+    }
+
     return PR_HANDLED(cmd);
   }
 
@@ -2743,12 +2776,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           uid_t uid;
 
-          uid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2uid(cmd->argv[++i], &uid) < 0) { 
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
               cmd->argv[i], "'", NULL));
           }
@@ -2767,12 +2797,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           gid_t gid;
 
-          gid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2gid(cmd->argv[++i], &gid) < 0) {
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
               cmd->argv[i], "'", NULL));
           }

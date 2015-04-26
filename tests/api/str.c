@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* String API tests
- * $Id: str.c,v 1.12 2014-01-27 18:34:44 castaglia Exp $
- */
+/* String API tests. */
 
 #include "tests.h"
 
@@ -65,6 +63,11 @@ START_TEST (sstrncpy_test) {
 
   ok = "Therefore, all progress depends on the unreasonable man";
 
+  mark_point();
+  res = sstrncpy(ok, ok, 1);
+  fail_unless(res == 1, "Expected result 1, got %d", len, res);
+
+  mark_point();
   memset(dst, 'A', sz);
   len = 1;
 
@@ -782,6 +785,9 @@ START_TEST (is_fnmatch_test) {
   int res;
   char *str;
 
+  res = pr_str_is_fnmatch(NULL);
+  fail_unless(res == FALSE, "Expected false for NULL");
+
   str = "foo";
   res = pr_str_is_fnmatch(str);
   fail_if(res != FALSE, "Expected false for string '%s'", str);
@@ -1171,6 +1177,38 @@ START_TEST (strnrstr_test) {
 }
 END_TEST
 
+START_TEST (str2uid_test) {
+  int res;
+
+  res = pr_str2uid(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+}
+END_TEST
+
+START_TEST (str2gid_test) {
+  int res;
+
+  res = pr_str2gid(NULL, NULL);
+  fail_unless(res == -1, "Failed to handle null arguments");
+}
+END_TEST
+
+START_TEST (uid2str_test) {
+  const char *res;
+
+  res = pr_uid2str(NULL, (uid_t) 1);
+  fail_unless(strcmp(res, "1") == 0);
+}
+END_TEST
+
+START_TEST (gid2str_test) {
+  const char *res;
+
+  res = pr_gid2str(NULL, (gid_t) 1);
+  fail_unless(strcmp(res, "1") == 0);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1201,6 +1239,10 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, get_nbytes_test);
   tcase_add_test(testcase, get_duration_test);
   tcase_add_test(testcase, strnrstr_test);
+  tcase_add_test(testcase, str2uid_test);
+  tcase_add_test(testcase, str2gid_test);
+  tcase_add_test(testcase, uid2str_test);
+  tcase_add_test(testcase, gid2str_test);
 
   suite_add_tcase(suite, testcase);
 

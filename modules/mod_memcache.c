@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_memcache -- a module for managing memcache data
  *
- * Copyright (c) 2010-2013 The ProFTPD Project
+ * Copyright (c) 2010-2014 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -418,16 +418,19 @@ static int mcache_sess_init(void) {
           pr_log_pri(PR_LOG_NOTICE, MOD_MEMCACHE_VERSION
             ": notice: unable to open MemcacheLog '%s': %s", path,
             strerror(xerrno));
+          break;
 
         case PR_LOG_WRITABLE_DIR:
           pr_log_pri(PR_LOG_WARNING, MOD_MEMCACHE_VERSION
             ": notice: unable to use MemcacheLog '%s': parent directory is "
               "world-writable", path);
+          break;
 
         case PR_LOG_SYMLINK:
           pr_log_pri(PR_LOG_WARNING, MOD_MEMCACHE_VERSION
             ": notice: unable to use MemcacheLog '%s': cannot log to a symlink",
             path);
+          break;
       }
     }
   }

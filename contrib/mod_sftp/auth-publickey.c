@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: auth-publickey.c,v 1.13 2012-07-10 00:52:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -80,7 +78,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   enum sftp_key_type_e pubkey_type;
   unsigned char *pubkey_data;
   char *pubkey_algo = NULL;
-  const char *fp = NULL;
+  const char *fp = NULL, *fp_algo = NULL;
   uint32_t pubkey_len;
   struct passwd *pw;
 
@@ -175,8 +173,9 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     fp = sftp_keys_get_fingerprint(pkt->pool, pubkey_data, pubkey_len,
       SFTP_KEYS_FP_DIGEST_SHA1);
     if (fp != NULL) {
+      fp_algo = "SHA1";
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "public key SHA1 fingerprint: %s", fp);
+        "public key %s fingerprint: %s", fp_algo, fp);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -188,8 +187,9 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     fp = sftp_keys_get_fingerprint(pkt->pool, pubkey_data, pubkey_len,
       SFTP_KEYS_FP_DIGEST_MD5);
     if (fp != NULL) {
+      fp_algo = "MD5";
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "public key MD5 fingerprint: %s", fp);
+        "public key %s fingerprint: %s", fp_algo, fp);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -198,6 +198,24 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 #ifdef OPENSSL_FIPS
   }
 #endif /* OPENSSL_FIPS */
+
+  if (fp != NULL) {
+    const char *k, *v;
+
+    /* Log the fingerprint (and fingerprinting algorithm used), for
+     * debugging/auditing; make it available via environment variable as well.
+     */
+      
+    k = pstrdup(session.pool, "SFTP_USER_PUBLICKEY_FINGERPRINT");
+    v = pstrdup(session.pool, fp);
+    pr_env_unset(session.pool, k);
+    pr_env_set(session.pool, k, v);
+      
+    k = pstrdup(session.pool, "SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO");
+    v = pstrdup(session.pool, fp_algo);
+    pr_env_unset(session.pool, k);
+    pr_env_set(session.pool, k, v);
+  }
 
   pw = pr_auth_getpwnam(pkt->pool, user);
   if (pw == NULL) {

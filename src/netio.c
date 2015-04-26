@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* NetIO routines
- * $Id: netio.c,v 1.63 2014-01-06 06:57:16 castaglia Exp $
- */
+/* NetIO routines */
 
 #include "conf.h"
 
@@ -88,6 +86,7 @@ static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   }
 
   netio_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(netio_pool, "netio stream pool");
   nstrm = pcalloc(netio_pool, sizeof(pr_netio_stream_t));
 
   nstrm->strm_pool = netio_pool;
@@ -341,7 +340,8 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
       FD_SET(nstrm->strm_fd, &rfds);
 
       pr_trace_msg(trace_channel, 8,
-        "lingering %lu secs before closing fd %d", (unsigned long) tv.tv_sec,
+        "lingering %lu %s before closing fd %d",
+        (unsigned long) tv.tv_sec, tv.tv_sec != 1 ? "secs" : "sec",
         nstrm->strm_fd);
 
       res = select(nstrm->strm_fd+1, &rfds, NULL, NULL, &tv);
@@ -923,11 +923,12 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
     if (bwritten < 0) {
       nstrm->strm_errno = errno;
-      fcntl(nstrm->strm_fd, F_SETFL, flags);
+      (void) fcntl(nstrm->strm_fd, F_SETFL, flags);
 
-      if (nstrm->strm_errno == EWOULDBLOCK)
+      if (nstrm->strm_errno == EWOULDBLOCK) {
         /* Give up ... */
         return total;
+      }
 
       return -1;
     }

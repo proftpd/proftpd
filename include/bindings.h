@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
  */
 
 /* ProFTPD bindings support routines.
- * $Id: bindings.h,v 1.14 2012-04-15 18:04:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -149,41 +148,36 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
 conn_t *pr_ipbind_get_listening_conn(server_rec *server, pr_netaddr_t *addr,
   unsigned int port);
 
-/* Close the pr_namebind_t with the given name.
- */
-int pr_namebind_close(const char *name, pr_netaddr_t *addr, unsigned int port);
+/* Close the pr_namebind_t with the given name. */
+int pr_namebind_close(const char *name, pr_netaddr_t *addr);
 
 /* Create a pr_namebind_t, similar to a pr_ipbind_t, which maps the name (usu.
- * DNS hostname) to the server_rec.  The given addr and port are used to
- * associate this pr_namebind_t with the given IP address (to which the DNS
- * hostname should resolve).
+ * DNS hostname) to the server_rec.  The given addr is used to associate this
+ * pr_namebind_t with the given IP address (to which the DNS hostname should
+ * resolve).
  */
 int pr_namebind_create(server_rec *server, const char *name,
-  pr_netaddr_t *addr, unsigned int port);
+  pr_netaddr_t *addr);
 
 /* Search the Bindings layer, and return the pr_namebind_t associated with
  * the given addr, port, and name.  If requested, skip over inactive
  * bindings while searching.
  */
 pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
-  unsigned int port, unsigned char skip_inactive);
+  unsigned char skip_inactive);
 
 /* Find the server_rec associated with the given name.  If none are found,
  * default to the server_rec of the containing pr_ipbind_t.
  */
-server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
-  unsigned int port);
+server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr);
 
-/* Opens the pr_namebind_t with the given name.
- */
-int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port);
+/* Opens the pr_namebind_t with the given name. */
+int pr_namebind_open(const char *name, pr_netaddr_t *addr);
 
-/* Initialize the Bindings layer.
- */
+/* Initialize the Bindings layer. */
 void init_bindings(void);
 
-/* Free the Bindings layer.
- */
+/* Free the Bindings layer. */
 void free_bindings(void);
 
 /* Macro error-handling wrappers */

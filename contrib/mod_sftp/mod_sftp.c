@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,6 +58,13 @@ unsigned int sftp_services = SFTP_SERVICE_DEFAULT;
 static int sftp_engine = 0;
 static const char *sftp_client_version = NULL;
 static const char *sftp_server_version = SFTP_ID_DEFAULT_STRING;
+
+/* Flags for changing how hostkeys are handled. */
+#define SFTP_HOSTKEY_FL_CLEAR_RSA_KEY		0x001
+#define SFTP_HOSTKEY_FL_CLEAR_DSA_KEY		0x002
+#define SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY		0x004
+
+static const char *trace_channel = "ssh2";
 
 static int sftp_have_authenticated(cmd_rec *cmd) {
   return (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH);
@@ -1067,34 +1074,49 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SFTPHostKey path|"agent:/..." */
+/* usage: SFTPHostKey path|"agent:/..."|"NoRSA"|"NoDSA"|"NoECDSA"" */
 MODRET set_sftphostkey(cmd_rec *cmd) {
   struct stat st;
+  int flags = 0;
+  config_rec *c;
+  const char *path = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strncmp(cmd->argv[1], "agent:", 6) != 0) {
+  if (strncasecmp(cmd->argv[1], "NoRSA", 6) == 0) {
+    flags |= SFTP_HOSTKEY_FL_CLEAR_RSA_KEY;
+
+  } else if (strncasecmp(cmd->argv[1], "NoDSA", 6) == 0) {
+    flags |= SFTP_HOSTKEY_FL_CLEAR_DSA_KEY;
+
+  } else if (strncasecmp(cmd->argv[1], "NoECDSA", 8) == 0) {
+    flags |= SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY;
+  }
+
+  if (strncmp(cmd->argv[1], "agent:", 6) != 0 &&
+      flags == 0) {
     int res, xerrno;
 
-    if (*cmd->argv[1] != '/') {
-      CONF_ERROR(cmd, "must be an absolute path");
+    path = cmd->argv[1];
+    if (*path != '/') {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be an absolute path: ",
+        path, NULL));
     }
 
     PRIVS_ROOT
-    res = stat(cmd->argv[1], &st);
+    res = stat(path, &st);
     xerrno = errno;
     PRIVS_RELINQUISH
 
     if (res < 0) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to check '", cmd->argv[1],
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to check '", path,
         "': ", strerror(xerrno), NULL));
     }
 
     if ((st.st_mode & S_IRWXG) ||
         (st.st_mode & S_IRWXO)) {
       int insecure_hostkey_perms = FALSE;
-      config_rec *c;
 
       /* Check for the InsecureHostKeyPerms SFTPOption. */
       c = find_config(cmd->server->conf, CONF_PARAM, "SFTPOptions", FALSE);
@@ -1112,16 +1134,19 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
 
       if (insecure_hostkey_perms) {
         pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION ": unable to use '%s' "
-          "as host key, as it is group- or world-accessible", cmd->argv[1]);
+          "as host key, as it is group- or world-accessible", path);
 
       } else {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path,
           "' as host key, as it is group- or world-accessible", NULL));
       }
     }
   }
 
-  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, path);
+  c->argv[1] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = flags;
   return PR_HANDLED(cmd);
 }
 
@@ -1563,6 +1588,36 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   }
 }
 
+#ifdef PR_USE_DEVEL
+static void pool_printf(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf));
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", buf);
+}
+
+static void sftp_sigusr2_ev(const void *event_data, void *user_data) {
+  /* Note: the mod_shaper module deliberately uses the SIGUSR2 signal
+   * for handling shaping.  Thus we only want to dump out the pools
+   * IFF mod_shaper is NOT present.
+   */
+  if (pr_module_exists("mod_shaper.c") == FALSE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "-----BEGIN POOL DUMP-----");
+    pr_pool_debug_memory(pool_printf);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "-----END POOL DUMP-----");
+  }
+}
+#endif /* PR_USE_DEVEL */
+
 static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
   const char *proto;
 
@@ -1574,12 +1629,17 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
 
     msg = get_param_ptr(main_server->conf, "WrapDenyMsg", FALSE);
     if (msg != NULL) {
+      char *user;
+
+      user = session.user;
+      if (user == NULL) {
+        user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+      }
+ 
       /* If the client has authenticated, we can interpolate any '%u'
        * variable in the configured deny message.
        */
-      if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
-        msg = sreplace(sftp_pool, msg, "%u", session.user, NULL);
-      }
+      msg = sreplace(sftp_pool, msg, "%u", user, NULL);
 
     } else {
       /* XXX This needs to be properly localized.  However, trying to use
@@ -1691,6 +1751,9 @@ static int sftp_sess_init(void) {
     return 0;
 
   pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
+#ifdef PR_USE_DEVEL
+  pr_event_register(&sftp_module, "core.signal.USR2", sftp_sigusr2_ev, NULL);
+#endif /* PR_USE_DEVEL */
   pr_event_register(&sftp_module, "mod_auth.max-clients",
     sftp_max_conns_ev, NULL);
   pr_event_register(&sftp_module, "mod_auth.max-clients-per-class",
@@ -1787,27 +1850,76 @@ static int sftp_sess_init(void) {
   sftp_pool = make_sub_pool(session.pool);
   pr_pool_tag(sftp_pool, MOD_SFTP_VERSION);
 
+  /* We do two passes through the configured hostkeys.  On the first pass,
+   * we focus on loading all of the configured keys.  On the second pass,
+   * we focus on handling any of the hostkey flags that would e.g. clear the
+   * previously loaded keys.
+   */
+
   c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKey", FALSE);
   while (c) {
     const char *path = c->argv[0];
+    int flags = *((int *) c->argv[1]);
 
-    /* This pool needs to have the lifetime of the session, since the hostkey
-     * data is needed for rekeying, and rekeying can happen at any time
-     * during the session.
-     */
-    if (sftp_keys_get_hostkey(sftp_pool, path) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error loading hostkey '%s', skipping key", path);
+    if (path != NULL &&
+        flags == 0) {
+      /* This pool needs to have the lifetime of the session, since the hostkey
+       * data is needed for rekeying, and rekeying can happen at any time
+       * during the session.
+       */
+      if (sftp_keys_get_hostkey(sftp_pool, path) < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error loading hostkey '%s', skipping key", path);
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
   }
 
-  /* Support having either an RSA hostkey, a DSA hostkey, or both.  But
-   * we have to have at least one hostkey.
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKey", FALSE);
+  while (c) {
+    int flags = *((int *) c->argv[1]);
+
+    if (flags != 0) {
+      /* Handle any flags, such as for clearing previous host keys. */
+      if (flags & SFTP_HOSTKEY_FL_CLEAR_RSA_KEY) {
+        if (sftp_keys_clear_rsa_hostkey() < 0) {
+          pr_trace_msg(trace_channel, 13,
+            "error clearing RSA hostkey: %s", strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 9, "cleared RSA hostkey");
+        }
+
+      } else if (flags & SFTP_HOSTKEY_FL_CLEAR_DSA_KEY) {
+        if (sftp_keys_clear_dsa_hostkey() < 0) {
+          pr_trace_msg(trace_channel, 13,
+            "error clearing DSA hostkey: %s", strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 9, "cleared DSA hostkey");
+        }
+
+      } else if (flags & SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY) {
+        if (sftp_keys_clear_ecdsa_hostkey() < 0) {
+          pr_trace_msg(trace_channel, 13,
+            "error clearing ECDSA hostkey(s): %s", strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 9, "cleared ECDSA hostkey(s)");
+        }
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostKey", FALSE);
+  }
+
+  /* Support having either an RSA hostkey, a DSA hostkey, an ECDSA hostkey,
+   * or any combination thereof.  But we have to have at least one hostkey.
    */
   if (sftp_keys_have_dsa_hostkey() < 0 &&
-      sftp_keys_have_rsa_hostkey() < 0) {
+      sftp_keys_have_rsa_hostkey() < 0 &&
+      sftp_keys_have_ecdsa_hostkey(sftp_pool, NULL) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no available host keys, unable to handle session");
     errno = EACCES;

@@ -710,7 +710,7 @@ sub rnfr_limit_bug3698 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      eval { $client->rnfr($test_file) };
+      eval { $client->rnfr('sub.d/foo') };
       unless ($@) {
         die("RNFR succeeded unexpectedly");
       }
@@ -722,11 +722,11 @@ sub rnfr_limit_bug3698 {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$test_file: Operation not permitted";
+      $expected = "sub.d/foo: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {

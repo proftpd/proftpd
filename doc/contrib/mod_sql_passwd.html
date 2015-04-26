@@ -59,6 +59,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SQLPasswordOptions">SQLPasswordOptions</a>
   <li><a href="#SQLPasswordPBKDF2">SQLPasswordPBKDF2</a>
   <li><a href="#SQLPasswordRounds">SQLPasswordRounds</a>
+  <li><a href="#SQLPasswordSaltEncoding">SQLPasswordSaltEncoding</a>
   <li><a href="#SQLPasswordSaltFile">SQLPasswordSaltFile</a>
   <li><a href="#SQLPasswordUserSalt">SQLPasswordUserSalt</a>
 </ul>
@@ -208,6 +209,32 @@ and encoded.  The <em>count</em> parameter must be greater than 1.
 See the <a href="#Transformations">transformations</a> section for a fuller
 description of how <code>mod_sql_passwd</code> operates on the password and
 salt data.
+
+<hr>
+<h2><a name="SQLPasswordSaltEncoding">SQLPasswordSaltEncoding</a></h2>
+<strong>Syntax:</strong> SQLPasswordSaltEncoding <em>encoding</em><br>
+<strong>Default:</strong> <em>none</em><br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><em></em><br>
+<strong>Module:</strong> mod_sql_passwd<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>SQLPasswordSaltEncoding</code> directive configures the encoding that
+<code>mod_sql_passwd</code> expects when handling <b><i>salt</i></b> values
+retrieved either from a SQL database, <i>or</i> from a file.
+
+<p>
+The following <em>encoding</em> values are currently supported:
+<ul>
+  <li>base64
+  <li>hex (<i>for lowercase hex values</i>)
+  <li>HEX (<i>for uppercase hex values</i>)
+  <li>none (use salt value as is)
+</ul>
+
+<p>
+If no <code>SQLPasswordSaltEncoding</code> directive is configured,
+<code>mod_sql_passwd</code> will use "none" by default.
 
 <hr>
 <h2><a name="SQLPasswordSaltFile">SQLPasswordSaltFile</a></h2>

@@ -24,8 +24,6 @@
  *
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_ban.c,v 1.75 2014-04-30 17:33:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -136,6 +134,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_TLS_HANDSHAKE		15
 #define BAN_EV_TYPE_ROOT_LOGIN			16
 #define BAN_EV_TYPE_USER_DEFINED		17
+#define BAN_EV_TYPE_BAD_PROTOCOL		18
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ + BAN_LIST_HEADROOMSZ];
@@ -212,6 +211,7 @@ static unsigned long ban_cache_opts = 0UL;
 static int ban_lock_shm(int);
 
 static void ban_anonrejectpasswords_ev(const void *, void *);
+static void ban_badprotocol_ev(const void *, void *);
 static void ban_clientconnectrate_ev(const void *, void *);
 static void ban_maxclientsperclass_ev(const void *, void *);
 static void ban_maxclientsperhost_ev(const void *, void *);
@@ -1135,6 +1135,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
     case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
       return "AnonRejectPasswords";
 
+    case BAN_EV_TYPE_BAD_PROTOCOL:
+      return "BadProtocol";
+
     case BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS:
       return "MaxClientsPerClass";
 
@@ -1552,6 +1555,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
         switch (type) {
           case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
+          case BAN_EV_TYPE_BAD_PROTOCOL:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_HOST:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_USER:
@@ -2340,6 +2344,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
     pr_event_register(&ban_module, "mod_auth.anon-reject-passwords",
       ban_anonrejectpasswords_ev, bee);
 
+  } else if (strcasecmp(cmd->argv[1], "BadProtocol") == 0) {
+    bee->bee_type = BAN_EV_TYPE_BAD_PROTOCOL;
+    pr_event_register(&ban_module, "core.bad-protocol", ban_badprotocol_ev,
+      bee);
+
   } else if (strcasecmp(cmd->argv[1], "ClientConnectRate") == 0) {
     bee->bee_type = BAN_EV_TYPE_CLIENT_CONNECT_RATE;
     pr_event_register(&ban_module, "mod_ban.client-connect-rate",
@@ -2633,6 +2642,22 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
   ipstr = pr_netaddr_get_ipstr(c->remote_addr);
   ban_handle_event(BAN_EV_TYPE_ANON_REJECT_PASSWORDS, BAN_TYPE_HOST,
     ipstr, tmpl);
+}
+
+static void ban_badprotocol_ev(const void *event_data, void *user_data) {
+
+  /* For this event, event_data is the client. */
+  conn_t *c = (conn_t *) event_data;
+  const char *ipstr;
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  ban_handle_event(BAN_EV_TYPE_BAD_PROTOCOL, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {

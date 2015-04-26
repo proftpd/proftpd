@@ -880,7 +880,6 @@ END_TEST
 
 START_TEST (auth_getgroups_test) {
   int res;
-  const char *name; 
   array_header *gids = NULL;
   authtable authtab;
   char *sym_name = "getgroups";
