@@ -1199,6 +1199,8 @@ would be:
 <pre>
   TLSPreSharedKey psk-name hex:/path/to/psk.key
 </pre>
+The configured file <b>cannot be world-readable or world-writable</b>; the
+<code>mod_tls</code> module will skip/ignore such insecure permissions.
 
 <p>
 To generate this shared key (which is just a randomly generated bit of data),
