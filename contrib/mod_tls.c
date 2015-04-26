@@ -2546,18 +2546,15 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   return dh;
 }
 
-#if defined(PR_USE_OPENSSL_ECC) && !defined(SSL_CTX_set_ecdh_auto)
+#if defined(PR_USE_OPENSSL_ECC)
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
   static EC_KEY *ecdh = NULL;
   static int init = 0;
-
-  /* XXX Uses 256-bit key for now. TODO: support other sizes. */
 
   if (init == 0) {
     ecdh = EC_KEY_new();
 
     if (ecdh != NULL) {
-      /* ecdh->group = EC_GROUP_new_by_nid(NID_secp160r2); */
       EC_KEY_set_group(ecdh,
         EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
     }
