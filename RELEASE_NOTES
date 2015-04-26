@@ -129,6 +129,13 @@ ChangeLog files.
       the new TLSECDHCurve directive to configure the curve; see
       doc/contrib/mod_tls.html#TLSECDHCurve for details.
 
+    TLSPreSharedKey
+      Some sites may find that using pre-shared keys (PSK) is preferable
+      for their TLS needs.  TLS clients in embedded or low power environments
+      may find PSK to be less computationally expensive.  The mod_tls module
+      now supports pre-shared keys via its TLSPreSharedKey directive; see
+      doc/contrib/mod_tls.html#TLSPreSharedKey for details.
+
     TransferOptions
       There are some broken (<i>e.g.</i> old/mainframe) FTP clients that
       will upload files, containing CRLF sequences, as ASCII data, but

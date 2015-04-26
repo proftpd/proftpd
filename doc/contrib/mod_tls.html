@@ -61,6 +61,7 @@ is based.  His module can be found here:
   <li><a href="#TLSOptions">TLSOptions</a>
   <li><a href="#TLSPKCS12File">TLSPKCS12File</a>
   <li><a href="#TLSPassPhraseProvider">TLSPassPhraseProvider</a>
+  <li><a href="#TLSPreSharedKey">TLSPreSharedKey</a>
   <li><a href="#TLSProtocol">TLSProtocol</a>
   <li><a href="#TLSRandomSeed">TLSRandomSeed</a>
   <li><a href="#TLSRenegotiate">TLSRenegotiate</a>
@@ -1171,6 +1172,49 @@ Example:
 <pre>
   TLSPassPhraseProvider /etc/ftpd/tls/get-passphrase
 </pre>
+
+<p>
+<hr>
+<h2><a name="TLSPreSharedKey">TLSPreSharedKey</a></h2>
+<strong>Syntax:</strong> TLSPreSharedKey <em>identity</em> <em>key-info</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>TLSPreSharedKey</code> directive is used to configure a <em>pre-shared
+key</em> (PSK), for use in
+<a href="http://en.wikipedia.org/wiki/TLS-PSK">TLS-PSK</a> ciphersuites.  Each
+PSK has an <em>identity</em> (a string/name used by clients to request the use
+of that PSK), and the actual key data.  The key data may be encoded in different
+ways; the <code>TLSPreSharedKey</code> directive requires that the data be
+hex-encoded, as indicated in the <em>key-info</em> parameter.
+
+<p>
+The <em>key-info</em> parameter is comprised of: the type of encoding used for
+the key data, and the full path to the key file.  Only "hex" encoding is
+supported right now.  Thus an example <code>TLSPreSharedKey</code> directive
+would be:
+<pre>
+  TLSPreSharedKey psk-name hex:/path/to/psk.key
+</pre>
+
+<p>
+To generate this shared key (which is just a randomly generated bit of data),
+you can use:
+<pre>
+  $ openssl rand 80 -out /path/to/identity.key -hex
+</pre>
+Note that <code>TLSPreSharedKey</code> requires at least 20 bytes of key data.
+Have generated the random key data, tell <code>mod_tls</code> to use it via:
+<pre>
+  TLSPreSharedKey identity hex:/path/to/identity.key
+</pre>
+
+<p>
+Multiple <code>TLSPreSharedKey</code> directives can be used to configure
+different PSKs for different identity names.
 
 <p>
 <hr>
