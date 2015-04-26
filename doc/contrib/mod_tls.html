@@ -603,7 +603,11 @@ Example:
 
 <p>
 The <code>TLSECDHCurve/code> directive specifies the EC curve to use for
-ECDHE ciphers.
+ECDHE ciphers.  To see the full list of curves supported by your OpenSSL
+library, use:
+<pre>
+  $ openssl ecparam -list_curves
+</pre>
 
 <p>
 <hr>
