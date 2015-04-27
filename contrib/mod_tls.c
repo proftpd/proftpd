@@ -9548,6 +9548,18 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
 
 static void tls_exit_ev(const void *event_data, void *user_data) {
 
+  if (ssl_ctx != NULL) {
+    time_t now;
+
+    /* Help out with the SSL session cache grooming by flushing any
+     * expired sessions out right now.  The client is closing its
+     * connection to us anyway, so some additional latency here shouldn't
+     * be noticed.  Right?
+     */
+    now = time(NULL);
+    SSL_CTX_flush_sessions(ssl_ctx, (long) now);
+  }
+
   /* If diags are enabled, log some OpenSSL stats. */
   if (ssl_ctx != NULL && 
       (tls_opts & TLS_OPT_ENABLE_DIAGS)) {
