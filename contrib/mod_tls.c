@@ -6939,6 +6939,22 @@ static void tls_sess_cache_delete_sess_cb(SSL_CTX *ctx, SSL_SESSION *sess) {
 #if defined(PSK_MAX_PSK_LEN)
 /* PSK callbacks */
 
+static int set_random_bn(unsigned char *psk, unsigned int max_psklen) {
+  BIGNUM *bn = NULL;
+  int res = 0;
+
+  bn = BN_new();
+  if (BN_pseudo_rand(bn, max_psklen, 0, 0) != 1) {
+    tls_log("error generating pseudo-random number: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+  }
+
+  res = BN_bn2bin(bn, psk);
+  BN_free(bn);
+
+  return res;
+}
+
 static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
     unsigned char *psk, unsigned int max_psklen) {
   void *v = NULL;
@@ -6949,15 +6965,7 @@ static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
     tls_log("%s", "error: client did not provide PSK identity name, providing "
       "random fake PSK");
 
-    bn = BN_new();
-    if (BN_pseudo_rand(bn, max_psklen, 0, 0) != 1) {
-      tls_log("error generating pseudo-random number: %s",
-        ERR_error_string(ERR_get_error(), NULL));
-    }
-
-    res = BN_bn2bin(bn, psk);
-    BN_free(bn);
-
+    res = set_random_bn(psk, max_psklen);
     return res;
   }
 
@@ -6968,15 +6976,7 @@ static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
     tls_log("warning: no pre-shared keys configured, providing random fake "
       "PSK for identity '%s'", identity);
 
-    bn = BN_new();
-    if (BN_pseudo_rand(bn, max_psklen, 0, 0) != 1) {
-      tls_log("error generating pseudo-random number: %s",
-        ERR_error_string(ERR_get_error(), NULL));
-    }
-
-    res = BN_bn2bin(bn, psk);
-    BN_free(bn);
-
+    res = set_random_bn(psk, max_psklen);
     return res;
   }
 
@@ -6985,15 +6985,7 @@ static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
     tls_log("warning: requested PSK identity '%s' not configured, providing "
       "random fake PSK", identity);
 
-    bn = BN_new();
-    if (BN_pseudo_rand(bn, max_psklen, 0, 0) != 1) {
-      tls_log("error generating pseudo-random number: %s",
-        ERR_error_string(ERR_get_error(), NULL));
-    }
-
-    res = BN_bn2bin(bn, psk);
-    BN_free(bn);
-
+    res = set_random_bn(psk, max_psklen);
     return res;
   }
 
@@ -7005,15 +6997,7 @@ static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
       "too small for key (%d bytes), providing random fake PSK", identity,
       max_psklen, bn_len);
 
-    bn = BN_new();
-    if (BN_pseudo_rand(bn, max_psklen, 0, 0) != 1) {
-      tls_log("error generating pseudo-random number: %s",
-        ERR_error_string(ERR_get_error(), NULL));
-    }
-
-    res = BN_bn2bin(bn, psk);
-    BN_free(bn);
-
+    res = set_random_bn(psk, max_psklen);
     return res;
   }
 
