@@ -3989,8 +3989,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
       reused = SSL_session_reused(ssl);
       if (reused != 1) {
-        tls_log("client did not reuse SSL session, rejecting data connection "
-          "(see the NoSessionReuseRequired TLSOptions parameter)");
+        tls_log("%s", "client did not reuse SSL session, rejecting data "
+          "connection (see the NoSessionReuseRequired TLSOptions parameter)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
         pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -4064,16 +4064,20 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
               remaining = (unsigned long) ((sess_created + sess_expires) - now);
 
               if (remaining <= 60) {
-                tls_log("control channel SSL session expires in %lu secs (%lu session cache expiration)", remaining, sess_expires);
-                tls_log("%s","Consider using 'TLSSessionCache internal:' to increase the session cache expiration if necessary, or renegotiate the control channel SSL session");
+                tls_log("control channel SSL session expires in %lu secs "
+                  "(%lu session cache expiration)", remaining, sess_expires);
+                tls_log("%s", "Consider using 'TLSSessionCache internal:' to "
+                  "increase the session cache expiration if necessary, or "
+                  "renegotiate the control channel SSL session");
               }
             }
           }
 
         } else {
           /* This should never happen, so log if it does. */
-          tls_log("BUG: unable to determine whether client reused SSL session: SSL_get_session() for control connection return NULL");
-          tls_log("rejecting data connection (see TLSOption NoSessionReuseRequired)");
+          tls_log("%s", "BUG: unable to determine whether client reused SSL "
+            "session: SSL_get_session() for data connection returned NULL");
+          tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
           tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
           pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
           pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -4082,8 +4086,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
       } else {
         /* This should never happen, so log if it does. */
-        tls_log("BUG: unable to determine whether client reused SSL session: SSL_get_session() for control connection return NULL");
-        tls_log("rejecting data connection (see TLSOption NoSessionReuseRequired)");
+        tls_log("%s", "BUG: unable to determine whether client reused SSL "
+          "session: SSL_get_session() for control connection returned NULL!");
+        tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
         pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
