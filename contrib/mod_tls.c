@@ -2820,29 +2820,16 @@ static int tls_init_ctx(void) {
     SSL_CTX_set_timeout(ssl_ctx, timeout);
   }
 
+  SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_DH_USE);
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
+
 #ifdef PR_USE_OPENSSL_ECC
   /* If using OpenSSL 1.0.2 or later, let it automatically choose the
    * correct/best curve, rather than having to hardcode a fallback.
    */
 # if defined(SSL_CTX_set_ecdh_auto)
-  if (!(tls_opts & TLS_OPT_NO_AUTO_ECDH)) {
-    SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-  } else {
-# else
-  if (TRUE) {
+  SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
 # endif
-    c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
-    if (c != NULL) {
-      const EC_GROUP *group;
-
-      group = c->argv[0];
-      SSL_CTX_set_tmp_ecdh(ssl_ctx, group);
-
-    } else {
-      SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
-    }
-  }
 #endif /* PR_USE_OPENSSL_ECC */
 
   if (tls_seed_prng() < 0) {
@@ -8684,7 +8671,7 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
 #ifdef PR_USE_OPENSSL_ECC
   char *curve_name = NULL;
   int curve_nid = -1;
-  EC_GROUP *group = NULL;
+  EC_KEY *ec_key = NULL;
   
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -8705,8 +8692,8 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
     curve_nid = OBJ_sn2nid(curve_name);
   }
 
-  group = EC_GROUP_new_by_curve_name(curve_nid);
-  if (group == NULL) {
+  ec_key = EC_KEY_new_by_curve_name(curve_nid);
+  if (ec_key == NULL) {
     char *err_str = "unknown/unsupported curve";
 
     if (curve_nid > 0) {
@@ -8717,10 +8704,7 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
       "' EC curve: ", err_str, NULL));
   }
 
-  EC_GROUP_set_asn1_flag(group, OPENSSL_EC_NAMED_CURVE);
-  EC_GROUP_set_point_conversion_form(group, POINT_CONVERSION_UNCOMPRESSED);
-
-  (void) add_config_param(cmd->argv[1], 1, group);
+  (void) add_config_param(cmd->argv[0], 1, ec_key);
   return PR_HANDLED(cmd);
 
 #else
@@ -10288,6 +10272,26 @@ static int tls_sess_init(void) {
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
   }
 #endif
+
+#ifdef PR_USE_OPENSSL_ECC
+# if defined(SSL_CTX_set_ecdh_auto)
+  if (tls_opts & TLS_OPT_NO_AUTO_ECDH) {
+    SSL_CTX_set_ecdh_auto(ssl_ctx, 0);
+  }
+# endif
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
+  if (c != NULL) {
+    const EC_KEY *ec_key;
+
+    ec_key = c->argv[0];
+
+    SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_ECDH_USE);
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, ec_key);
+  } else {
+    SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+  }
+#endif /* PR_USE_OPENSSL_ECC */
 
   tmp = get_param_ptr(main_server->conf, "TLSVerifyClient", FALSE);
   if (tmp != NULL &&
