@@ -1,3 +1,4 @@
+.deps/
 config.log
 config.h
 config.cache
@@ -19,6 +20,7 @@ Make.modules
 lib/libcap/_makenames
 lib/libcap/cap_names.h
 lib/libcap/cap_names.sed
+lib/libltdl/stamp-h1
 modules/module_glue.c
 src/prxs
 src/*.[0-9]
@@ -28,6 +30,7 @@ tests/api-tests.log
 utils/*.[0-9]
 *.a
 *.la
+*.log
 *.o
 *.orig
 *.patch
