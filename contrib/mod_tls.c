@@ -2693,8 +2693,13 @@ static int tls_init_ctx(void) {
   ssl_opts |= SSL_OP_NO_COMPRESSION;
 #endif /* SSL_OP_NO_COMPRESSION */
 
-#if defined(SSL_OP_SINGLE_ECDH_USE) && defined(PR_USE_OPENSSL_ECC)
+#if defined(PR_USE_OPENSSL_ECC)
+# if defined(SSL_OP_SINGLE_ECDH_USE)
   ssl_opts |= SSL_OP_SINGLE_ECDH_USE;
+# endif
+# if defined(SSL_OP_SAFARI_ECDHE_ECDSA_BUG)
+  ssl_opts |= SSL_OP_SAFARI_ECDHE_ECDSA_BUG;
+# endif
 #endif /* ECC support */
 
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
@@ -2820,7 +2825,6 @@ static int tls_init_ctx(void) {
     SSL_CTX_set_timeout(ssl_ctx, timeout);
   }
 
-  SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_DH_USE);
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
 #ifdef PR_USE_OPENSSL_ECC
