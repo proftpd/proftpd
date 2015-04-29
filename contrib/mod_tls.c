@@ -3675,6 +3675,7 @@ static int tls_get_block(conn_t *conn) {
 
 static int tls_accept(conn_t *conn, unsigned char on_data) {
   int blocking, res = 0, xerrno = 0;
+  long cache_mode = 0;
   char *subj = NULL;
   static unsigned char logged_data = FALSE;
   SSL *ssl = NULL;
@@ -3704,6 +3705,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   }
 
   if (on_data) {
+
     /* Make sure that TCP_NODELAY is enabled for the handshake. */
     (void) pr_inet_set_proto_nodelay(conn->pool, conn, 1);
 
@@ -3712,6 +3714,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      * in mod_core, upon handling the PASV/EPSV command.
      */
     (void) pr_inet_set_proto_cork(conn->wfd, 0);
+
+    cache_mode = SSL_CTX_get_session_cache_mode(ssl_ctx);
+    if (!(cache_mode & SSL_SESS_CACHE_OFF)) {
+      /* Disable STORING of any new session IDs in the session cache. We DO
+       * want to allow LOOKUP of session IDs in the session cache, however.
+       */
+      long data_cache_mode;
+      data_cache_mode = SSL_SESS_CACHE_SERVER|SSL_SESS_CACHE_NO_INTERNAL_STORE;
+      SSL_CTX_set_session_cache_mode(ssl_ctx, data_cache_mode);
+    }
   }
 
   retry:
@@ -3825,6 +3837,11 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     /* Reenable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
     (void) pr_inet_set_proto_cork(conn->wfd, 1);
+
+    if (!(cache_mode & SSL_SESS_CACHE_OFF)) {
+      /* Restore the previous session cache mode. */
+      SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
+    }
   }
  
   /* Disable the handshake timer. */
@@ -4010,11 +4027,14 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
         data_sess = SSL_get_session(ssl);
         if (data_sess != NULL) {
+          int matching_sess_id = -1;
+
 #if OPENSSL_VERSION_NUMBER < 0x000907000L
           /* In the OpenSSL source code, SSL_SESSION_cmp() ultimately uses
            * memcmp(3) to check, and thus returns memcmp(3)'s return value.
            */
-          if (SSL_SESSION_cmp(ctrl_sess, data_sess) != 0) {
+          matching_sess_id = SSL_SESSION_cmp(ctrl_sess, data_sess);
+          if (matching_sess_id != 0) {
 #else
           unsigned char *sess_id;
           unsigned int sess_id_len;
@@ -4028,8 +4048,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
           sess_id_len = data_sess->session_id_length;
 # endif
  
-          if (SSL_has_matching_session_id(ctrl_ssl, sess_id,
-              sess_id_len) == 0) {
+          matching_sess_id = SSL_has_matching_session_id(ctrl_ssl, sess_id,
+            sess_id_len);
+          if (matching_sess_id == 0) {
 #endif
             tls_log("Client did not reuse SSL session from control channel, "
               "rejecting data connection (see the NoSessionReuseRequired "
