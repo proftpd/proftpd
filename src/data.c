@@ -626,6 +626,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
+      errno = session.d->xerrno;
       session.d = NULL;
       return -1;
     }
@@ -634,6 +635,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
+      errno = session.d->xerrno;
       session.d = NULL;
       return -1;
     }
