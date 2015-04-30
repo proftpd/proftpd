@@ -2649,7 +2649,8 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
      }
     }
 
-    if (pr_table_add_dup(session.notes, "mod_tls.sni", server_name, 0) < 0) {
+    if (pr_table_add_dup(session.notes, "mod_tls.sni",
+        (char *) server_name, 0) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error stashing 'mod_tls.sni' in session.notes: %s", strerror(errno));
     }
@@ -10152,8 +10153,9 @@ static int tls_sess_init(void) {
   if (tmp != NULL &&
       *tmp == TRUE) {
     tls_engine = TRUE;
+  }
 
-  } else {
+  if (tls_engine == FALSE) {
     /* If we have no ServerAlias vhosts at all, then it is OK to clean up
      * all of the TLS/OpenSSL-related code from this process.  Otherwise,
      * a client MIGHT send a HOST command for a TLS-enabled vhost; if we
@@ -10161,7 +10163,8 @@ static int tls_sess_init(void) {
      * lead to a problem.
      */
 
-    if (pr_namebind_count(main_server) == 0) {
+    res = pr_namebind_count(main_server);
+    if (res == 0) {
       /* No need for this modules's control channel NetIO handlers
        * anymore.
        */
