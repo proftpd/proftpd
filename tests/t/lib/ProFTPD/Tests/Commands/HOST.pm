@@ -81,12 +81,10 @@ my $TESTS = {
     test_class => [qw(forking mod_tls)],
   },
 
-  # XXX Implicit FTPS sets rfc2228_mech; HOST after connect of implicit FTPS
-  # should be rejected with a 503 Bad sequence of commands.
-
   # Various config situations
 
   # 2-vhost config, 2 vhost (same addr, different DNS) config,
+
   host_config_limit_denied => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -110,6 +108,8 @@ sub host_after_login_fails {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
