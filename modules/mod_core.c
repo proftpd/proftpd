@@ -4500,6 +4500,12 @@ MODRET core_host(cmd_rec *cmd) {
       }
     }
 
+    (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+    if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+      pr_trace_msg("command", 3,
+        "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+    }
+
     /* No need to send the banner information again, since we didn't actually
      * change the virtual host used by the client.
      */
@@ -4540,6 +4546,12 @@ MODRET core_host(cmd_rec *cmd) {
       }
     }
 
+    (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+    if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+      pr_trace_msg("command", 3,
+        "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+    }
+
     /* No need to send the banner information again, since we didn't actually
      * change the virtual host used by the client.
      */
@@ -4560,8 +4572,7 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  named_server = pr_namebind_get_server(host, main_server->addr,
-    main_server->ServerPort);
+  named_server = pr_namebind_get_server(host, main_server->addr);
   if (named_server == NULL) {
     pr_log_debug(DEBUG0, "Unknown host '%s' requested on %s#%d, "
       "refusing HOST command", host, local_ipstr, main_server->ServerPort);
@@ -4572,6 +4583,35 @@ MODRET core_host(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, ENOENT);
     errno = ENOENT;
     return PR_ERROR(cmd);
+  }
+
+  if (session.rfc2228_mech != NULL &&
+      strncmp(session.rfc2228_mech, "TLS", 4) == 0) {
+    const char *sni = NULL;
+
+    /* If the TLS client used the SNI extension, ensure that the SNI name
+     * matches the HOST name, per RFC 7151, Section 3.2.2.  Otherwise, we
+     * reject the HOST command.
+     */
+    sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
+    if (sni != NULL) {
+      if (strcasecmp(sni, host) != 0) {
+        pr_log_debug(DEBUG0, "HOST '%s' requested, but client connected via "
+          "TLS to SNI '%s', refusing HOST command", host, sni);
+        pr_response_add_err(R_504, _("%s: Unknown hostname provided"),
+          cmd->argv[1]);
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
+        return PR_ERROR(cmd);
+      }
+    }
+  }
+
+  (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+  if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+    pr_trace_msg("command", 3,
+      "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
   }
 
   if (named_server != main_server) {
