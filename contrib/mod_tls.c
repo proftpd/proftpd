@@ -331,6 +331,12 @@ extern int ServerUseReverseDNS;
 
 module tls_module;
 
+struct tls_next_proto {
+  const char *proto;
+  unsigned char *encoded_proto;
+  unsigned int encoded_protolen;
+};
+
 typedef struct tls_pkey_obj {
   struct tls_pkey_obj *next;
 
@@ -368,6 +374,7 @@ static tls_pkey_t *tls_pkey_list = NULL;
 static unsigned int tls_npkeys = 0;
 
 #define TLS_DEFAULT_CIPHER_SUITE	"DEFAULT:!ADH:!EXPORT:!DES"
+#define TLS_DEFAULT_NEXT_PROTO		"ftp"
 
 /* Module variables */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -458,8 +465,10 @@ static char *tls_pkcs12_file = NULL;
 static char *tls_rsa_cert_file = NULL, *tls_rsa_key_file = NULL;
 static char *tls_rand_file = NULL;
 
+#if defined(PSK_MAX_PSK_LEN)
 static pr_table_t *tls_psks = NULL;
 # define TLS_MIN_PSK_LEN	20
+#endif /* PSK support */
 
 /* Timeout given for TLS handshakes.  The default is 5 minutes. */
 static unsigned int tls_handshake_timeout = 300;
@@ -2568,6 +2577,57 @@ static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
+#if defined(PR_USE_OPENSSL_ALPN)
+static int tls_alpn_select_cb(SSL *ssl,
+    const unsigned char **selected_proto, unsigned char *selected_protolen, 
+    const unsigned char *advertised_proto, unsigned int advertised_protolen,
+    void *user_data) {
+  register unsigned int i;
+  struct tls_next_proto *next_proto;
+
+  pr_trace_msg(trace_channel, 9, "%s",
+    "ALPN protocols advertised by client:");
+  for (i = 0; i < advertised_protolen; i++) {
+    pr_trace_msg(trace_channel, 9,
+      " %*s", advertised_proto[i], &(advertised_proto[i+1])); 
+    i += advertised_proto[i] + 1;
+  }
+
+  next_proto = user_data;
+
+  if (SSL_select_next_proto(
+      (unsigned char **) selected_proto, selected_protolen,
+      next_proto->encoded_proto, next_proto->encoded_protolen,
+      advertised_proto, advertised_protolen) != OPENSSL_NPN_NEGOTIATED) {
+    pr_trace_msg(trace_channel, 9,
+      "no common ALPN protocols found (no '%s' in ALPN protocols)",
+      next_proto->proto);
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  pr_trace_msg(trace_channel, 9,
+    "selected ALPN protocol '%*s'", *selected_protolen, *selected_proto);
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* ALPN */
+
+#if defined(PR_USE_OPENSSL_NPN)
+static int tls_npn_advertised_cb(SSL *ssl,
+    const unsigned char **advertise_proto, unsigned int *advertise_protolen,
+    void *user_data) {
+  struct tls_next_proto *next_proto;
+
+  next_proto = user_data;
+
+  pr_trace_msg(trace_channel, 9,
+    "advertising NPN protocol '%s'", next_proto->proto);
+  *advertise_proto = next_proto->encoded_proto;
+  *advertise_protolen = next_proto->encoded_protolen;
+
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* NPN */
+
 /* Post 0.9.7a, RSA blinding is turned on by default, so there is no need to
  * do this manually.
  */
@@ -3846,6 +3906,41 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
  
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
+
+#if defined(PR_USE_OPENSSL_NPN)
+  /* Which NPN protocol was selected, if any? */
+  {
+    const unsigned char *npn = NULL;
+    unsigned int npn_len = 0;
+
+    SSL_get0_next_proto_negotiated(ssl, &npn, &npn_len);
+    if (npn != NULL &&
+        npn_len > 0) {
+      pr_trace_msg(trace_channel, 9,
+        "negotiated NPN '%*s'", npn_len, npn);
+
+    } else {
+      pr_trace_msg(trace_channel, 9, "%s", "no NPN negotiated");
+    }
+  }
+#endif /* NPN */
+
+#if defined(PR_USE_OPENSSL_ALPN)
+  /* Which ALPN protocol was selected, if any? */
+  {
+    const unsigned char *alpn = NULL;
+    unsigned int alpn_len = 0;
+
+    SSL_get0_alpn_selected(ssl, &alpn, &alpn_len);
+    if (alpn != NULL &&
+        alpn_len > 0) {
+      pr_trace_msg(trace_channel, 9,
+        "selected ALPN '%*s'", alpn_len, alpn);
+    } else {
+      pr_trace_msg(trace_channel, 9, "%s", "no ALPN selected");
+    }
+  }
+#endif /* ALPN */
 
   /* Manually update the raw bytes counters with the network IO from the
    * SSL handshake.
@@ -8782,6 +8877,32 @@ MODRET set_tlsmasqaddr(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSNextProtocol on|off */
+MODRET set_tlsnextprotocol(cmd_rec *cmd) {
+#if !defined(OPENSSL_NO_TLSEXT)
+  config_rec *c;
+  int use_next_protocol = FALSE;
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+
+  use_next_protocol = get_boolean(cmd, 1);
+  if (use_next_protocol == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = use_next_protocol;
+  return PR_HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does have NPN/ALPN support", NULL));
+#endif /* !OPENSSL_NO_TLSEXT */
+}
+
 /* usage: TLSOptions opt1 opt2 ... */
 MODRET set_tlsoptions(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -10028,6 +10149,40 @@ static int tls_init(void) {
   return 0;
 }
 
+#if !defined(OPENSSL_NO_TLSEXT)
+static int set_next_protocol(void) {
+  register unsigned int i;
+  const char *proto = TLS_DEFAULT_NEXT_PROTO;
+  size_t encoded_protolen, proto_len;
+  unsigned char *encoded_proto;
+  struct tls_next_proto *next_proto;
+
+  proto_len = strlen(proto);
+  encoded_protolen = proto_len + 1;
+  encoded_proto = palloc(session.pool, encoded_protolen);
+  encoded_proto[0] = proto_len;
+  for (i = 0; i < proto_len; i++) {
+    encoded_proto[i+1] = proto[i];
+  }
+
+  next_proto = palloc(session.pool, sizeof(struct tls_next_proto));
+  next_proto->proto = pstrdup(session.pool, proto);
+  next_proto->encoded_proto = encoded_proto;
+  next_proto->encoded_protolen = encoded_protolen;
+
+# if defined(PR_USE_OPENSSL_NPN)
+  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, tls_npn_advertised_cb,
+    next_proto);
+# endif /* NPN */
+
+# if defined(PR_USE_OPENSSL_ALPN)
+  SSL_CTX_set_alpn_select_cb(ssl_ctx, tls_alpn_select_cb, next_proto);
+# endif /* ALPN */
+
+  return 0;
+}
+#endif /* !OPENSSL_NO_TLSEXT */
+
 static int tls_sess_init(void) {
   int res = 0;
   unsigned char *tmp = NULL;
@@ -10271,6 +10426,21 @@ static int tls_sess_init(void) {
     SSL_CTX_set_psk_server_callback(ssl_ctx, tls_lookup_psk);
   }
 #endif /* PSK_MAX_PSK_LEN */
+
+#if !defined(OPENSSL_NO_TLSEXT)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSNextProtocol", FALSE);
+  if (c != NULL) {
+    int use_next_protocol = TRUE;
+
+    use_next_protocol = *((int *) c->argv[0]);
+    if (use_next_protocol) {
+      set_next_protocol();
+    }
+
+  } else {
+    set_next_protocol();
+  }
+#endif /* !OPENSSL_NO_TLSEXT */
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
   while (c != NULL) {
@@ -10648,6 +10818,7 @@ static conftable tls_conftab[] = {
   { "TLSEngine",		set_tlsengine,		NULL },
   { "TLSLog",			set_tlslog,		NULL },
   { "TLSMasqueradeAddress",	set_tlsmasqaddr,	NULL },
+  { "TLSNextProtocol",		set_tlsnextprotocol,	NULL },
   { "TLSOptions",		set_tlsoptions,		NULL },
   { "TLSPassPhraseProvider",	set_tlspassphraseprovider, NULL },
   { "TLSPKCS12File", 		set_tlspkcs12file,	NULL },

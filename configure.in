@@ -2687,6 +2687,56 @@ if test x"$pr_use_openssl" = xyes; then
   )
   LIBS="$saved_libs"
 
+  AC_MSG_CHECKING([whether linking with OpenSSL has ALPN support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_alpn_select_cb(ctx, NULL, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_ALPN, 1, [Define if your OpenSSL supports ALPN])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether linking with OpenSSL has NPN support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_next_protos_advertised_cb(ctx, NULL, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_NPN, 1, [Define if your OpenSSL supports NPN])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
   if test x"$openssl_cmdline" != xno; then
     if `$openssl_cmdline version 2>/dev/null 1>&2`; then
       openssl_cflags=`$openssl_cmdline version -f 2>/dev/null`
