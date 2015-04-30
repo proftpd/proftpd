@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -124,7 +124,7 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
   pool *sub_pool = NULL;
 
   sub_pool = make_sub_pool(p);
-  pr_pool_tag(sub_pool, "pr_inet_copy_conn() subpool");
+  pr_pool_tag(sub_pool, "inet_copy_conn pool");
 
   res = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
 
@@ -191,7 +191,7 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
   pr_netaddr_clear(&na);
 
   sub_pool = make_sub_pool(p);
-  pr_pool_tag(sub_pool, "init_conn() subpool");
+  pr_pool_tag(sub_pool, "init_conn pool");
 
   c = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
   c->pool = sub_pool;
@@ -774,7 +774,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
   }
 #endif /* IP_TOS */
 
-#ifdef IPV6_TCLASS
+#if defined(PR_USE_IPV6) && defined(IPV6_TCLASS)
   if (pr_netaddr_use_ipv6()) {
     /* Only set TCLASS flags on IPv6 sockets; IPv4 sockets use TOS. */
     if (pr_netaddr_get_family(c->local_addr) == AF_INET6) {
@@ -1575,7 +1575,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
     fd = c->listen_fd;
   }
 
-  if (rfd != -1) {
+  if (rfd > -1) {
     if (fd != rfd) {
       dup2(fd, rfd);
 
@@ -1587,7 +1587,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
     rfd = dup(fd);
   }
 
-  if (wfd != -1) {
+  if (wfd > -1) {
     if (fd != wfd) {
       if (wfd == STDOUT_FILENO) {
         fflush(stdout);
@@ -1604,8 +1604,8 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   }
 
   /* Now discard the original socket */
-  if (rfd != -1 &&
-      wfd != -1 &&
+  if (rfd > -1 &&
+      wfd > -1 &&
       close_fd) {
     (void) close(fd);
   }

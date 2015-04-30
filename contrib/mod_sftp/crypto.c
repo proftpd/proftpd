@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: crypto.c,v 1.33 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -160,6 +158,7 @@ static struct sftp_digest digests[] = {
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	TRUE, FALSE },
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
+  { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
 #endif /* OpenSSL-0.9.7 or later */
   { "none",		"null",		EVP_md_null,	0,	FALSE, TRUE },
   { NULL, NULL, NULL, 0, FALSE, FALSE }
@@ -652,7 +651,7 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
   return &aes_ctr_cipher;
 }
 
-static int update_umac(EVP_MD_CTX *ctx, const void *data, size_t len) {
+static int update_umac64(EVP_MD_CTX *ctx, const void *data, size_t len) {
   int res;
 
   if (ctx->md_data == NULL) {
@@ -671,7 +670,26 @@ static int update_umac(EVP_MD_CTX *ctx, const void *data, size_t len) {
   return res;
 }
 
-static int final_umac(EVP_MD_CTX *ctx, unsigned char *md) {
+static int update_umac128(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  int res;
+
+  if (ctx->md_data == NULL) {
+    struct umac_ctx *umac;
+
+    umac = umac128_new((unsigned char *) data);
+    if (umac == NULL) {
+      return 0;
+    }
+
+    ctx->md_data = umac;
+    return 1;
+  }
+
+  res = umac128_update(ctx->md_data, (unsigned char *) data, (long) len);
+  return res;
+}
+
+static int final_umac64(EVP_MD_CTX *ctx, unsigned char *md) {
   unsigned char nonce[8];
   int res;
 
@@ -679,7 +697,15 @@ static int final_umac(EVP_MD_CTX *ctx, unsigned char *md) {
   return res;
 }
 
-static int delete_umac(EVP_MD_CTX *ctx) {
+static int final_umac128(EVP_MD_CTX *ctx, unsigned char *md) {
+  unsigned char nonce[8];
+  int res;
+
+  res = umac128_final(ctx->md_data, md, nonce);
+  return res;
+}
+
+static int delete_umac64(EVP_MD_CTX *ctx) {
   struct umac_ctx *umac;
 
   umac = ctx->md_data;
@@ -689,21 +715,48 @@ static int delete_umac(EVP_MD_CTX *ctx) {
   return 1;
 }
 
-static const EVP_MD *get_umac_digest(void) {
-  static EVP_MD umac_digest;
+static int delete_umac128(EVP_MD_CTX *ctx) {
+  struct umac_ctx *umac;
 
-  memset(&umac_digest, 0, sizeof(EVP_MD));
+  umac = ctx->md_data;
+  umac128_delete(umac);
+  ctx->md_data = NULL;
 
-  umac_digest.type = NID_undef;
-  umac_digest.pkey_type = NID_undef;
-  umac_digest.md_size = 8;
-  umac_digest.flags = 0UL;
-  umac_digest.update = update_umac;
-  umac_digest.final = final_umac;
-  umac_digest.cleanup = delete_umac;
-  umac_digest.block_size = 32;
+  return 1;
+}
 
-  return &umac_digest;
+static const EVP_MD *get_umac64_digest(void) {
+  static EVP_MD umac64_digest;
+
+  memset(&umac64_digest, 0, sizeof(EVP_MD));
+
+  umac64_digest.type = NID_undef;
+  umac64_digest.pkey_type = NID_undef;
+  umac64_digest.md_size = 8;
+  umac64_digest.flags = 0UL;
+  umac64_digest.update = update_umac64;
+  umac64_digest.final = final_umac64;
+  umac64_digest.cleanup = delete_umac64;
+  umac64_digest.block_size = 32;
+
+  return &umac64_digest;
+}
+
+static const EVP_MD *get_umac128_digest(void) {
+  static EVP_MD umac128_digest;
+
+  memset(&umac128_digest, 0, sizeof(EVP_MD));
+
+  umac128_digest.type = NID_undef;
+  umac128_digest.pkey_type = NID_undef;
+  umac128_digest.md_size = 16;
+  umac128_digest.flags = 0UL;
+  umac128_digest.update = update_umac128;
+  umac128_digest.final = final_umac128;
+  umac128_digest.cleanup = delete_umac128;
+  umac128_digest.block_size = 64;
+
+  return &umac128_digest;
 }
 #endif /* OpenSSL older than 0.9.7 */
 
@@ -770,7 +823,10 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
       if (strncmp(name, "umac-64@openssh.com", 12) == 0) {
-        digest = get_umac_digest();
+        digest = get_umac64_digest();
+
+      } else if (strncmp(name, "umac-128@openssh.com", 13) == 0) {
+        digest = get_umac128_digest();
 #else
       if (FALSE) {
 #endif /* OpenSSL older than 0.9.7 */
@@ -927,7 +983,7 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
    */
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPDigests", FALSE);
-  if (c) {
+  if (c != NULL) {
     register unsigned int i;
 
     for (i = 0; i < c->argc; i++) {
@@ -956,8 +1012,9 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
                 pstrdup(p, digests[j].name), NULL);
 
             } else {
-              /* The umac-64 digest is a special case. */
-              if (strncmp(digests[j].name, "umac-64@openssh.com", 12) == 0) {
+              /* The umac-64/umac-128 digests are special cases. */
+              if (strncmp(digests[j].name, "umac-64@openssh.com", 12) == 0 ||
+                  strncmp(digests[j].name, "umac-128@openssh.com", 13) == 0) {
                 res = pstrcat(p, res, *res ? "," : "",
                   pstrdup(p, digests[j].name), NULL);
 
@@ -1002,8 +1059,9 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
               pstrdup(p, digests[i].name), NULL);
 
           } else {
-            /* The umac-64 digest is a special case. */
-            if (strncmp(digests[i].name, "umac-64@openssh.com", 12) == 0) {
+            /* The umac-64/umac-128 digests are special cases. */
+            if (strncmp(digests[i].name, "umac-64@openssh.com", 12) == 0 ||
+                strncmp(digests[i].name, "umac-128@openssh.com", 13) == 0) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, digests[i].name), NULL);
 
@@ -1080,10 +1138,11 @@ void sftp_crypto_free(int flags) {
    * and other modules want to use OpenSSL, we may be depriving those modules
    * of OpenSSL functionality.
    *
-   * At the moment, the modules known to use OpenSSL are mod_ldap,
+   * At the moment, the modules known to use OpenSSL are mod_ldap, mod_radius,
    * mod_sftp, mod_sql, and mod_sql_passwd, and mod_tls.
    */
   if (pr_module_get("mod_ldap.c") == NULL &&
+      pr_module_get("mod_radius.c") == NULL &&
       pr_module_get("mod_sql.c") == NULL &&
       pr_module_get("mod_sql_passwd.c") == NULL &&
       pr_module_get("mod_tls.c") == NULL) {

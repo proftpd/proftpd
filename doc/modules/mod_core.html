@@ -1,6 +1,3 @@
-<!-- $Id: mod_core.html,v 1.43 2014-01-30 16:50:10 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_core.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_core</title>
@@ -20,6 +17,8 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <h2>Directives</h2>
 <ul>
   <li><a href="#AllowFilter">AllowFilter</a>
+  <li><a href="#AllowForeignAddress">AllowForeignAddress</a>
+  <li><a href="#AllowOverride">AllowOverride</a>
   <li><a href="#AuthOrder">AuthOrder</a>
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DefaultAddress">DefaultAddress</a>
@@ -27,6 +26,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#DisplayChdir">DisplayChdir</a>
   <li><a href="#DisplayConnect">DisplayConnect</a>
   <li><a href="#DisplayQuit">DisplayQuit</a>
+  <li><a href="#FSCachePolicy">FSCachePolicy</a>
   <li><a href="#GroupOwner">GroupOwner</a>
   <li><a href="#HideGroup">HideGroup</a>
   <li><a href="#HideNoAccess">HideNoAccess</a>
@@ -63,6 +63,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a>
 </ul>
 
+<p>
 <hr>
 <h2><a name="AllowFilter">AllowFilter</a></h2>
 <strong>Syntax:</strong> AllowFilter <em>pattern [flags]</em><br>
@@ -73,10 +74,11 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <strong>Compatibility:</strong> 1.2.0pre7 and later
 
 <p>
-The <code>AllowFilter</code> allows the configuration of a regular expression
-<em>pattern</em> that must be matched for all command arguments sent to
-ProFTPD.  It is extremely useful in controlling what characters may be sent in
-a command to ProFTPD, preventing some possible types of attacks against ProFTPD.
+The <code>AllowFilter</code> directive allows the configuration of a regular
+expression <em>pattern</em> that must be matched for all command arguments sent
+to ProFTPD.  It is extremely useful in controlling what characters may be sent
+in a command to ProFTPD, preventing some possible types of attacks against
+ProFTPD.
 
 <p>
 The regular expression <em>pattern</em> is applied against the arguments to the
@@ -109,6 +111,51 @@ greater detail.
 
 <p>
 See also: <a href="#DenyFilter"><code>DenyFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
+
+<p>
+<hr>
+<h2><a name="AllowForeignAddress">AllowForeignAddress</a></h2>
+<strong>Syntax:</strong> AllowForeignAddress <em>on|off</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+Normally, <code>proftpd</code> disallows clients from using the FTP
+<code>PORT</code> or <code>EPRT</code> command with anything other than their
+own IP address (<i>i.e.</i> the source IP address of the FTP control
+connection), as well as preventing the use of <code>PORT</code> or
+<code>EPRT</code> to specify a low-numbered (<i>i.e.</i> less than 1024) port
+number.  In either case, the client is sent an "Invalid port" response error
+and a message is logged indicating either "address mismatch" or "bounce attack".
+
+<p>
+By enabling the <code>AllowForeignAddress</code> directive, <code>proftpd</code>
+will allow clients to transmit foreign data connection addresses that do not
+match the client's IP address.  This allows such tricks as permitting a client
+to transfer a file between two FTP servers without involving itself in the
+actual data connection.  However, allowing this functionality is generally
+considered a bad idea, security-wise.  The <code>AllowForeignAddress</code>
+directive only affects FTP data connection addresses; not TCP ports.  There is
+no way (and no valid reason) to allow a client to use a low-numbered port in
+its <code>PORT</code> or <code>EPRT</code> command.
+
+<p>
+<hr>
+<h2><a name="AllowOverride">AllowOverride</a></h2>
+<strong>Syntax:</strong> AllowOverride <em>on|off</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+Normally, the <code>proftpd</code> server will look for, and parse, any files
+named <code>.ftpaccess</code> in the encountered directories.  These files
+provide functionality similar to Apache's <code>.htaccess</code> files --
+mini-configuration files.  This <code>AllowOverride</code> directive controls
+when/if these <code>.ftpaccess</code> files will be parsed.
 
 <p>
 <hr>
@@ -361,6 +408,47 @@ more information on the variables that can be used in a
 <p>
 See also: <a href="#DisplayChdir"><code>DisplayChdir</code></a>,
 <a href="#DisplayConnect"><code>DisplayConnect</code></a>
+
+<hr>
+<h2><a name="FSCachePolicy">FSCachePolicy</a></h2>
+<strong>Syntax:</strong> FSCachePolicy <em>on|off|size count [maxAge <em>secs]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>FSCachePolicy</code> directive configures the internal
+filesystem-related cache, used for performance optimizations on <i>e.g.</i>
+network filesystems.  This directive can be used to disable this internal
+cache, or to tune the caching policy.
+
+<p>
+To disable the cache altogether, use:
+<pre>
+  FSCachePolicy off
+</pre>
+
+<p>
+To configure the maximum number of entries in the cache before eviction happens:
+<pre>
+  FSCachePolicy size 64
+</pre>
+
+<p>
+To configure the maximum age (in seconds) of a cached entry before it is
+evicted:
+<pre>
+  FSCachePolicy maxAge 60
+</pre>
+
+<p>
+The <em>size</em> and <em>maxAge</em> parameters can be combined/set in the
+same directive, <i>e.g.</i>:
+<pre>
+  # Set the maximum cache size at 128, and the max age at 120 seconds
+  FSCachePolicy size 128 maxAge 120
+</pre>
 
 <hr>
 <h2><a name="GroupOwner">GroupOwner</a></h2>
@@ -1721,13 +1809,8 @@ addresses.
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-01-30 16:50:10 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2000-2014 The ProFTPD Project<br>
+&copy; Copyright 2000-2015 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 

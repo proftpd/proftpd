@@ -15740,7 +15740,7 @@ LIB_DEPS="\"\""
 
 
 
-LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o json.o"
 
 
 # Check whether --with-getopt was given.
@@ -30625,6 +30625,816 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+{ echo "$as_me:$LINENO: checking for uid_t" >&5
+echo $ECHO_N "checking for uid_t... $ECHO_C" >&6; }
+if test "${ac_cv_type_uid_t+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+typedef uid_t ac__type_new_;
+int
+main ()
+{
+if ((ac__type_new_ *) 0)
+  return 0;
+if (sizeof (ac__type_new_))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_type_uid_t=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_type_uid_t=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_type_uid_t" >&5
+echo "${ECHO_T}$ac_cv_type_uid_t" >&6; }
+
+# The cast to long int works around a bug in the HP C Compiler
+# version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
+# declarations like `int a3[[(sizeof (unsigned char)) >= 0]];'.
+# This bug is HP SR number 8606223364.
+{ echo "$as_me:$LINENO: checking size of uid_t" >&5
+echo $ECHO_N "checking size of uid_t... $ECHO_C" >&6; }
+if test "${ac_cv_sizeof_uid_t+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test "$cross_compiling" = yes; then
+  # Depending upon the size, compute the lo and hi bounds.
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef uid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) >= 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=0 ac_mid=0
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef uid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr $ac_mid + 1`
+			if test $ac_lo -le $ac_mid; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef uid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) < 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=-1 ac_mid=-1
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef uid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) >= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_hi=`expr '(' $ac_mid ')' - 1`
+			if test $ac_mid -le $ac_hi; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo= ac_hi=
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+# Binary search between lo and hi bounds.
+while test "x$ac_lo" != "x$ac_hi"; do
+  ac_mid=`expr '(' $ac_hi - $ac_lo ')' / 2 + $ac_lo`
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef uid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr '(' $ac_mid ')' + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+case $ac_lo in
+?*) ac_cv_sizeof_uid_t=$ac_lo;;
+'') if test "$ac_cv_type_uid_t" = yes; then
+     { { echo "$as_me:$LINENO: error: cannot compute sizeof (uid_t)
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (uid_t)
+See \`config.log' for more details." >&2;}
+   { (exit 77); exit 77; }; }
+   else
+     ac_cv_sizeof_uid_t=0
+   fi ;;
+esac
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef uid_t ac__type_sizeof_;
+static long int longval () { return (long int) (sizeof (ac__type_sizeof_)); }
+static unsigned long int ulongval () { return (long int) (sizeof (ac__type_sizeof_)); }
+#include <stdio.h>
+#include <stdlib.h>
+int
+main ()
+{
+
+  FILE *f = fopen ("conftest.val", "w");
+  if (! f)
+    return 1;
+  if (((long int) (sizeof (ac__type_sizeof_))) < 0)
+    {
+      long int i = longval ();
+      if (i != ((long int) (sizeof (ac__type_sizeof_))))
+	return 1;
+      fprintf (f, "%ld\n", i);
+    }
+  else
+    {
+      unsigned long int i = ulongval ();
+      if (i != ((long int) (sizeof (ac__type_sizeof_))))
+	return 1;
+      fprintf (f, "%lu\n", i);
+    }
+  return ferror (f) || fclose (f) != 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_sizeof_uid_t=`cat conftest.val`
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+if test "$ac_cv_type_uid_t" = yes; then
+     { { echo "$as_me:$LINENO: error: cannot compute sizeof (uid_t)
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (uid_t)
+See \`config.log' for more details." >&2;}
+   { (exit 77); exit 77; }; }
+   else
+     ac_cv_sizeof_uid_t=0
+   fi
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f conftest.val
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_sizeof_uid_t" >&5
+echo "${ECHO_T}$ac_cv_sizeof_uid_t" >&6; }
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_UID_T $ac_cv_sizeof_uid_t
+_ACEOF
+
+
+{ echo "$as_me:$LINENO: checking for gid_t" >&5
+echo $ECHO_N "checking for gid_t... $ECHO_C" >&6; }
+if test "${ac_cv_type_gid_t+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+typedef gid_t ac__type_new_;
+int
+main ()
+{
+if ((ac__type_new_ *) 0)
+  return 0;
+if (sizeof (ac__type_new_))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_type_gid_t=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_type_gid_t=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_type_gid_t" >&5
+echo "${ECHO_T}$ac_cv_type_gid_t" >&6; }
+
+# The cast to long int works around a bug in the HP C Compiler
+# version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
+# declarations like `int a3[[(sizeof (unsigned char)) >= 0]];'.
+# This bug is HP SR number 8606223364.
+{ echo "$as_me:$LINENO: checking size of gid_t" >&5
+echo $ECHO_N "checking size of gid_t... $ECHO_C" >&6; }
+if test "${ac_cv_sizeof_gid_t+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test "$cross_compiling" = yes; then
+  # Depending upon the size, compute the lo and hi bounds.
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef gid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) >= 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=0 ac_mid=0
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef gid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr $ac_mid + 1`
+			if test $ac_lo -le $ac_mid; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef gid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) < 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=-1 ac_mid=-1
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef gid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) >= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_hi=`expr '(' $ac_mid ')' - 1`
+			if test $ac_mid -le $ac_hi; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo= ac_hi=
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+# Binary search between lo and hi bounds.
+while test "x$ac_lo" != "x$ac_hi"; do
+  ac_mid=`expr '(' $ac_hi - $ac_lo ')' / 2 + $ac_lo`
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef gid_t ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr '(' $ac_mid ')' + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+case $ac_lo in
+?*) ac_cv_sizeof_gid_t=$ac_lo;;
+'') if test "$ac_cv_type_gid_t" = yes; then
+     { { echo "$as_me:$LINENO: error: cannot compute sizeof (gid_t)
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (gid_t)
+See \`config.log' for more details." >&2;}
+   { (exit 77); exit 77; }; }
+   else
+     ac_cv_sizeof_gid_t=0
+   fi ;;
+esac
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef gid_t ac__type_sizeof_;
+static long int longval () { return (long int) (sizeof (ac__type_sizeof_)); }
+static unsigned long int ulongval () { return (long int) (sizeof (ac__type_sizeof_)); }
+#include <stdio.h>
+#include <stdlib.h>
+int
+main ()
+{
+
+  FILE *f = fopen ("conftest.val", "w");
+  if (! f)
+    return 1;
+  if (((long int) (sizeof (ac__type_sizeof_))) < 0)
+    {
+      long int i = longval ();
+      if (i != ((long int) (sizeof (ac__type_sizeof_))))
+	return 1;
+      fprintf (f, "%ld\n", i);
+    }
+  else
+    {
+      unsigned long int i = ulongval ();
+      if (i != ((long int) (sizeof (ac__type_sizeof_))))
+	return 1;
+      fprintf (f, "%lu\n", i);
+    }
+  return ferror (f) || fclose (f) != 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_sizeof_gid_t=`cat conftest.val`
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+if test "$ac_cv_type_gid_t" = yes; then
+     { { echo "$as_me:$LINENO: error: cannot compute sizeof (gid_t)
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (gid_t)
+See \`config.log' for more details." >&2;}
+   { (exit 77); exit 77; }; }
+   else
+     ac_cv_sizeof_gid_t=0
+   fi
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f conftest.val
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_sizeof_gid_t" >&5
+echo "${ECHO_T}$ac_cv_sizeof_gid_t" >&6; }
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_GID_T $ac_cv_sizeof_gid_t
+_ACEOF
+
+
 
 { echo "$as_me:$LINENO: checking for mode_t" >&5
 echo $ECHO_N "checking for mode_t... $ECHO_C" >&6; }
@@ -32929,7 +33739,8 @@ done
 
 
 
-for ac_func in strlcat strlcpy strsep strtod strtof strtol strtoull setprotoent setspent endprotoent
+
+for ac_func in strlcat strlcpy strsep strtod strtof strtol strtoll strtoull setprotoent setspent endprotoent
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -34003,6 +34814,132 @@ _ACEOF
 fi
 
 
+# See:
+#   https://github.com/proftpd/proftpd/issues/75
+{ echo "$as_me:$LINENO: checking for struct sockpeercred.uid" >&5
+echo $ECHO_N "checking for struct sockpeercred.uid... $ECHO_C" >&6; }
+if test "${ac_cv_member_struct_sockpeercred_uid+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
+    #endif
+    #if HAVE_SYS_UIO_H
+    # include <sys/uio.h>
+    #endif
+
+
+int
+main ()
+{
+static struct sockpeercred ac_aggr;
+if (ac_aggr.uid)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_member_struct_sockpeercred_uid=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
+    #endif
+    #if HAVE_SYS_UIO_H
+    # include <sys/uio.h>
+    #endif
+
+
+int
+main ()
+{
+static struct sockpeercred ac_aggr;
+if (sizeof ac_aggr.uid)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_member_struct_sockpeercred_uid=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_member_struct_sockpeercred_uid=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_member_struct_sockpeercred_uid" >&5
+echo "${ECHO_T}$ac_cv_member_struct_sockpeercred_uid" >&6; }
+if test $ac_cv_member_struct_sockpeercred_uid = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_STRUCT_SOCKPEERCRED 1
+_ACEOF
+
+fi
+
+
 { echo "$as_me:$LINENO: checking for struct sockaddr_in.sin_len" >&5
 echo $ECHO_N "checking for struct sockaddr_in.sin_len... $ECHO_C" >&6; }
 if test "${ac_cv_member_struct_sockaddr_in_sin_len+set}" = set; then
@@ -34953,6 +35890,59 @@ int
 main ()
 {
  acl_entry_t ae;
+        acl_perm_t p = ACL_READ_DATA;
+        (void)acl_get_qualifier(ae);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  pr_cv_func_facl="MacOSX"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+  fi
+
+    if test "$pr_cv_func_facl" = "none"; then
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+ #include <sys/types.h>
+        #ifdef HAVE_SYS_ACL_H
+        # include <sys/acl.h>
+        #endif
+
+int
+main ()
+{
+ acl_entry_t ae;
         (void)acl_get_qualifier(ae);
 
   ;
@@ -35198,6 +36188,14 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 fi
+
+      ;;
+
+    "MacOSX")
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_MACOSX_POSIX_ACL 1
+_ACEOF
 
       ;;
 
@@ -35506,7 +36504,7 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest$ac_exeext &&
        $as_test_x conftest$ac_exeext; then
-  pr_cv_func_sendfile="Mac OSX"
+  pr_cv_func_sendfile="MacOSX"
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
@@ -35849,7 +36847,7 @@ _ACEOF
       ac_build_addl_libs="-lsendfile $ac_build_addl_libs"
       ;;
 
-    "Mac OSX")
+    "MacOSX")
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_MACOSX_SENDFILE 1
@@ -38207,7 +39205,6 @@ LDFLAGS="$ac_orig_ldflags"
 
 INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"
-
 LIBRARIES="$ac_build_addl_libs"
 SHARED_MODULE_DIRS="$ac_shared_module_dirs"
 if test ! -z "$ac_shared_modules" ; then

@@ -92,11 +92,15 @@ void sftp_disconnect_send(uint32_t reason, const char *explain,
       if (explanations[i].code == reason) {
         explain = explanations[i].explain;
         lang = explanations[i].lang;
-        if (lang == NULL)
+        if (lang == NULL) {
           lang = "en-US";
-
+        }
         break;
       }
+    }
+
+    if (explain == NULL) {
+      explain = "Unknown reason";
     }
 
   } else {

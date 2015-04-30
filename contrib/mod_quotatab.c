@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2014 TJ Saunders
+ * Copyright (c) 2001-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@
  * the ideas in Eric Estabrook's mod_quota, available from
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
- *
- * $Id: mod_quotatab.c,v 1.87 2013-12-09 19:16:13 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1892,7 +1890,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being appended to, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -1925,7 +1923,7 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
    * in file size as the increment.  Make sure that no caching effects 
    * mess with the stat.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     append_bytes = st.st_size - quotatab_disk_nbytes;
 
@@ -2034,7 +2032,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
    * in file size as the increment.  Make sure that no caching effects 
    * mess with the stat.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     append_bytes = st.st_size - quotatab_disk_nbytes;
 
@@ -2190,7 +2188,7 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being overwritten, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->argv[2]);
   if (pr_fsio_stat(cmd->argv[2], &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -2265,7 +2263,7 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->argv[2]);
   if (pr_fsio_stat(cmd->argv[2], &st) == 0) {
     if (quotatab_disk_nfiles == 0) {
 
@@ -2462,7 +2460,7 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
     /* Briefly cache the size (in bytes) of the file to be deleted, so that
      * if successful, the byte counts can be adjusted correctly.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(path);
     if (pr_fsio_lstat(path, &quotatab_dele_st) < 0) {
       quotatab_disk_nbytes = 0;
 
@@ -2522,11 +2520,11 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
       user_owner = pr_auth_uid2name(cmd->tmp_pool, quotatab_dele_st.st_uid);
       group_owner = pr_auth_gid2name(cmd->tmp_pool, quotatab_dele_st.st_gid);
 
-      quotatab_log("deleted file '%s' belongs to user '%s' (UID %lu), "
-        "not the current user '%s' (UID %lu); attempting to credit user '%s' "
+      quotatab_log("deleted file '%s' belongs to user '%s' (UID %s), "
+        "not the current user '%s' (UID %s); attempting to credit user '%s' "
         "for the deleted bytes", path, user_owner,
-        (unsigned long) quotatab_dele_st.st_uid, session.user,
-        (unsigned long) session.uid, user_owner);
+        pr_uid2str(cmd->tmp_pool, quotatab_dele_st.st_uid), session.user,
+        pr_uid2str(cmd->tmp_pool, session.uid), user_owner);
 
       quotatab_mutex_lock(F_WRLCK);
 
@@ -3310,7 +3308,7 @@ MODRET quotatab_pre_rmd(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the directory to be deleted, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -3358,7 +3356,7 @@ MODRET quotatab_pre_rnto(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being overwritten, so that
    * if successful, the byte counts can be adjusted correctly.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
     quotatab_disk_nfiles = 0;
@@ -3489,7 +3487,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
    * stat fails, it means that a new file is being uploaded, so set the
    * disk_nbytes to be zero. 
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
     quotatab_disk_nbytes = 0;
 
@@ -3539,7 +3537,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
    * in file size as the increment.  Make sure that no caching effects
    * mess with the stat.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
     store_bytes = st.st_size - quotatab_disk_nbytes;
 
@@ -3709,7 +3707,7 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
      * in file size as the increment.  Make sure that no caching effects 
      * mess with the stat.
      */
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(cmd->arg);
     if (pr_fsio_lstat(cmd->arg, &st) >= 0) {
       store_bytes = st.st_size - quotatab_disk_nbytes;
 

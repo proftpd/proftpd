@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,8 @@
 static const char *trace_channel = "data";
 static const char *timing_channel = "timing";
 
+#define PR_DATA_OPT_IGNORE_ASCII	0x0001
+static unsigned long data_opts = 0UL;
 static uint64_t data_start_ms = 0L;
 static int data_first_byte_read = FALSE;
 static int data_first_byte_written = FALSE;
@@ -120,17 +122,13 @@ static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
   return *bufsize;
 }
 
-/* this function rewrites the contents of the given buffer, making sure that
+/* This function rewrites the contents of the given buffer, making sure that
  * each LF has a preceding CR, as required by RFC959:
  *
  *  buf = pointer to a buffer
  *  buflen = length of data in buffer
  *  bufsize = total size of buffer
- *  expand = will contain the number of expansion bytes (CRs) added,
- *           and should be the difference between buflen's original
- *           value and its value when this function returns
  */
-
 static int have_dangling_cr = FALSE;
 static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
     unsigned int bufsize) {
@@ -574,8 +572,38 @@ void pr_data_reset(void) {
     destroy_pool(session.d->pool);
   }
 
+  /* Clear any leftover state from previous transfers. */
+  have_dangling_cr = FALSE;
+
   session.d = NULL;
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
+}
+
+int pr_data_ignore_ascii(int ignore_ascii) {
+  int res;
+
+  if (ignore_ascii != TRUE && 
+      ignore_ascii != FALSE) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (data_opts & PR_DATA_OPT_IGNORE_ASCII) {
+    if (!ignore_ascii) {
+      data_opts &= ~PR_DATA_OPT_IGNORE_ASCII;
+    }
+
+    res = TRUE;
+
+  } else {
+    if (ignore_ascii) {
+      data_opts |= PR_DATA_OPT_IGNORE_ASCII;
+    }
+
+    res = FALSE;
+  }
+
+  return res;
 }
 
 void pr_data_init(char *filename, int direction) {
@@ -590,6 +618,9 @@ void pr_data_init(char *filename, int direction) {
 
     session.xfer.direction = direction;
   }
+
+  /* Clear any leftover state from previous transfers. */
+  have_dangling_cr = FALSE;
 }
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
@@ -638,8 +669,8 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
-      session.d = NULL;
       errno = session.d->xerrno;
+      session.d = NULL;
       return -1;
     }
 
@@ -647,8 +678,8 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       destroy_pool(session.d->pool);
-      session.d = NULL;
       errno = session.d->xerrno;
+      session.d = NULL;
       return -1;
     }
 
@@ -1160,7 +1191,14 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
     char *buf = session.xfer.buf;
     pr_buffer_t *pbuf;
 
-    if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+    /* We use ASCII translation if:
+     *
+     * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
+     * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
+     */
+    if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
+        ((session.sf_flags & SF_ASCII) &&
+         !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
       int adjlen, buflen;
 
       do {
@@ -1367,13 +1405,26 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       /* Fill up our internal buffer. */
       memcpy(session.xfer.buf, cl_buf, buflen);
 
-      if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+      /* We use ASCII translation if:
+       *
+       * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
+      * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
+       */
+      if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
+          ((session.sf_flags & SF_ASCII) &&
+           !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
+        unsigned int added = 0;
+
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in
          * the internal buffer, including any added CRs.
          */
-        xfrm_ascii_write(&session.xfer.buf, &xferbuflen, session.xfer.bufsize);
+        added = xfrm_ascii_write(&session.xfer.buf, &xferbuflen,
+          session.xfer.bufsize);
+        pr_trace_msg(trace_channel, 9,
+          "ASCII transformation added %u CRs; transfer buffer now = %u bytes",
+          added, xferbuflen);
       }
 
       bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf, xferbuflen);

@@ -36,7 +36,7 @@
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
 static int logstderr = TRUE;
-static int debug_level = DEBUG0;	/* Default is no debug logging */
+static int debug_level = DEBUG0;
 static int default_level = PR_LOG_NOTICE;
 static int facility = LOG_DAEMON;
 static int set_facility = -1;

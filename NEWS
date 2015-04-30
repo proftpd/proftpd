@@ -71,6 +71,39 @@ Git
 - Bug 4125 - mod_lang should provide way to reject illegally-encoded filenames.
 - Bug 4060 - Support unsorted LIST entries (-U) to decrease memory/CPU usage
   for large directory listings.
+- Bug 4133 - LDAPUsers directive does not honor uid-number-filter-template
+  parameter.
+- Bug 4137 - GeoIPDenyFilter incorrectly takes precedence over GeoIPAllowFilter.
+- Bug 4138 - Support for hex-encoded salts in mod_sql_passwd.
+- Bug 4140 - SFTP READLINK requests to symlinks to directories fail.
+- Bug 4143 - HTTPS/FTPS protocol confusion leads to XSS.
+- Bug 4144 - Support APPE when HiddenStores are enabled.
+- Bug 4031 - Support JSON output format for ftpwho.
+- Bug 4145 - Segfault if AuthUserFile is a relative symlink.
+- Bug 4152 - Reduce logging of non-fatal "unable to open incoming connection"
+  errors.
+- Bug 4155 - SSH keys with too-long Comment headers aren't recognized by
+  mod_sftp_sql.
+- Bug 4159 - Support ability to disable ASCII translation transparently to FTP
+  clients.
+- Bug 4156 - Segfault handling LIST/NLST FTP command on Mac OS X.
+- Bug 4160 - Malformed response to SSH_FXP_REALPATH with SFTP version 6.
+- Bug 4163 - Remove support for EXPORT grade ciphers.
+- Bug 4164 - mod_sql fails to read UID/GID values larger than 32 bits from SQL
+  tables.
+- Bug 4157 - LIST/NLST of 1000s of files is slow on some platforms.
+- Bug 4059 - Implement additional RADIUS attributes.
+- Bug 4166 - mod_sftp sessions consume large amounts of memory due to rekeying.
+- Bug 4169 - Unauthenticated copying of files via SITE CPFR/CPTO allowed by
+  mod_copy.
+- Bug 4170 - Incorrect handling of control-byte field of SSH_FXP_REALPATH as
+  bitmask rather than enumeration for SFTP protocol version 6.
+- Bug 4168 - Race condition with HiddenStores and TimeoutIdle timeout, causing
+  hidden file not to be cleaned up properly.
+- Bug 3125 - Support for Mac OS X implementation of POSIX ACLs.
+- Bug 4174 - Support for TLS-PSK (pre-shared keys).
+- Bug 4178 - TLS session reuse requirement for data connections not properly
+  enforced.
 
 1.3.5 - Released 15-May-2014
 --------------------------------
@@ -140,7 +173,6 @@ Git
 - Bug 3981 - Null pointer dereference in mod_exec with ExecOption useStdin.
 - Bug 3982 - Normalize log messages and levels.
 - Bug 3888 - Add LDAPLog directive to mod_ldap.
-- Bug 3982 - Normalize log messages and levels.
 - Bug 3986 - Support filesystems which do not support chmod(2)/chown(2),
   e.g. FAT/ExFAT.
 - Bug 3991 - SSL session caching modules use incorrect OpenSSL cache mode flags,

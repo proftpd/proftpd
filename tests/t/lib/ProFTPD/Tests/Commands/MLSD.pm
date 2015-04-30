@@ -1973,6 +1973,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2021,7 +2022,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2057,7 +2058,6 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw('foo');
@@ -2068,6 +2068,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -2082,7 +2083,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
         die("MLSD returned wrong number of entries (expected 4, got $count)");
       }
 
-      # test.lnk is a symlink to test.txt.  According to RFC3659, the unique
+      # test.lnk is a symlink to test.txt.  According to RFC 3659, the unique
       # fact for both of these should thus be the same, since they are the
       # same underlying object.
 
@@ -2139,6 +2140,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2187,7 +2189,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2223,7 +2225,6 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw('foo');

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -803,7 +803,7 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
           path[pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(path);
         res = pr_fsio_lstat(path, &st);
         if (res < 0) {
           xerrno = errno;
@@ -1297,7 +1297,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
           chroot_path[chroot_pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(chroot_path);
         res = pr_fsio_lstat(chroot_path, &st);
         if (res < 0) {
           int xerrno = errno;
@@ -2811,12 +2811,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           uid_t uid;
 
-          uid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2uid(cmd->argv[++i], &uid) < 0) { 
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
               cmd->argv[i], "'", NULL));
           }
@@ -2835,12 +2832,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           gid_t gid;
 
-          gid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2gid(cmd->argv[++i], &gid) < 0) {
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
               cmd->argv[i], "'", NULL));
           }
