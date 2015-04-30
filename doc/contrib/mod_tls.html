@@ -58,6 +58,7 @@ is based.  His module can be found here:
   <li><a href="#TLSEngine">TLSEngine</a>
   <li><a href="#TLSLog">TLSLog</a>
   <li><a href="#TLSMasqueradeAddress">TLSMasqueradeAddress</a>
+  <li><a href="#TLSNextProtocol">TLSNextProtocol</a>
   <li><a href="#TLSOptions">TLSOptions</a>
   <li><a href="#TLSPKCS12File">TLSPKCS12File</a>
   <li><a href="#TLSPassPhraseProvider">TLSPassPhraseProvider</a>
@@ -704,6 +705,29 @@ sessions, since the device cannot rewrite FTPS responses.
 For these situations, then, the <code>TLSMasqueradeAddress</code> directive
 can/should be used: it provides <code>MasqueradeAddress</code> functionality,
 but only for FTPS sessions.
+
+<p>
+<hr>
+<h2><a name="TLSNextProtocol">TLSNextProtocol</a></h2>
+<strong>Syntax:</strong> TLSNextProtocol <em>on|off</em><br>
+<strong>Default:</strong> TLSNextProtocol on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc1 and later
+
+<p>
+The <code>TLSNextProtocol</code> directive toggles <code>mod_tls</code>' support
+for the <a href="http://en.wikipedia.org/wiki/Application-Layer_Protocol_Negotiation">ALPN</a> (and NPN) TLS extensions.  These extensions are used to negotiate
+the "next protocol" that will be once the SSL/TLS session is established; in
+the case of <code>mod_tls</code>, that "next protocol" is <b>always</b> "ftp".
+
+<p>
+Some FTPS clients use the support of ALPN/NPN as a heuristic for knowing when
+to use <a href="https://technotes.googlecode.com/git/falsestart.html">TLS False Start</a>, which can reduce the SSL/TLS handshake network latency.  Initially
+TLS clients used TLS False Start for any/all sites, but encountered
+<a href="https://www.imperialviolet.org/2012/04/11/falsestart.html">issues</a>;
+these clients (<i>e.g.</i> Chrome, Firefox, perhaps others) now only use
+the TLS False Start optimization for ALPN/NPN-enabled SSL/TLS servers.
 
 <p>
 <hr>
