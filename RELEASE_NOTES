@@ -129,6 +129,16 @@ ChangeLog files.
       the new TLSECDHCurve directive to configure the curve; see
       doc/contrib/mod_tls.html#TLSECDHCurve for details.
 
+    TLSNextProtocol
+      Newer TLS clients use the ALPN (Application Layer Protocol Negotiation)
+      extension (or its earlier incarnation NPN (Next Protocol Negotiation)
+      for determining the protocol that will be used over the SSL/TLS
+      session.  The support for these extensions can be used by clients for
+      enabling other behaviors/optimizations, such as TLS False Start.
+      This directive can be used to disable mod_tls' use of the ALPN/NPN
+      extensions as needed; see doc/contrib/mod_tls.html#TLSNextProtocol
+      for more details.
+
     TLSPreSharedKey
       Some sites may find that using pre-shared keys (PSK) is preferable
       for their TLS needs.  TLS clients in embedded or low power environments
