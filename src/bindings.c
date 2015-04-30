@@ -1005,7 +1005,7 @@ server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
 
   /* Basically, just a wrapper around pr_namebind_find() */
-  namebind = pr_namebind_find(name, addr, port, TRUE);
+  namebind = pr_namebind_find(name, addr, TRUE);
   if (namebind == NULL) {
     return NULL;
   }
@@ -1025,7 +1025,7 @@ unsigned int pr_namebind_count(server_rec *srv) {
   return count;
 }
 
-int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port) {
+int pr_namebind_open(const char *name, pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
 
   if (name == NULL ||
