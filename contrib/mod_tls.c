@@ -376,6 +376,10 @@ static unsigned int tls_npkeys = 0;
 #define TLS_DEFAULT_CIPHER_SUITE	"DEFAULT:!ADH:!EXPORT:!DES"
 #define TLS_DEFAULT_NEXT_PROTO		"ftp"
 
+/* SSL record/buffer sizes */
+#define TLS_DATA_WRITE_BUFFER_SIZE	(16 * 1024)
+#define TLS_HANDSHAKE_WRITE_BUFFER_SIZE	1400
+
 /* Module variables */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 static const char *tls_crypto_device = NULL;
@@ -3734,10 +3738,10 @@ static int tls_get_block(conn_t *conn) {
 }
 
 static int tls_accept(conn_t *conn, unsigned char on_data) {
+  static unsigned char logged_data = FALSE;
   int blocking, res = 0, xerrno = 0;
   long cache_mode = 0;
   char *subj = NULL;
-  static unsigned char logged_data = FALSE;
   SSL *ssl = NULL;
   BIO *rbio = NULL, *wbio = NULL;
 
@@ -3756,6 +3760,18 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   /* This works with either rfd or wfd (I hope). */
   rbio = BIO_new_socket(conn->rfd, FALSE);
   wbio = BIO_new_socket(conn->wfd, FALSE);
+
+  /* During handshakes, set the write buffer size smaller, so that we do not
+   * overflow the (new) connection's TCP CWND size and force another round
+   * trip.
+   *
+   * Then, later, we set a larger buffer size, but ONLY if we are doing a data
+   * transfer.  For the control connection, the interactions/messages are
+   * assumed to be small, thus there's no need for the larger buffer size.
+   * Right?
+   */
+  BIO_set_write_buf_size(wbio, TLS_HANDSHAKE_WRITE_BUFFER_SIZE);
+
   SSL_set_bio(ssl, rbio, wbio);
 
   /* If configured, set a timer for the handshake. */
@@ -3765,7 +3781,6 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   }
 
   if (on_data) {
-
     /* Make sure that TCP_NODELAY is enabled for the handshake. */
     (void) pr_inet_set_proto_nodelay(conn->pool, conn, 1);
 
@@ -3902,6 +3917,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       /* Restore the previous session cache mode. */
       SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
     }
+
+    BIO_set_write_buf_size(wbio, TLS_DATA_WRITE_BUFFER_SIZE);
   }
  
   /* Disable the handshake timer. */
