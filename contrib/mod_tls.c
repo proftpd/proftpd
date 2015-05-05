@@ -583,13 +583,11 @@ static void tls_reset_state(void) {
   if (tls_logfd >= 0) {
     (void) close(tls_logfd);
     tls_logfd = -1;
-    tls_logname = NULL;
   }
 
   tls_cipher_suite = NULL;
   tls_crl_file = NULL;
   tls_crl_path = NULL;
-  tls_dhparam_file = NULL;
   tls_ec_cert_file = NULL;
   tls_ec_key_file = NULL;
   tls_dsa_cert_file = NULL;
@@ -2617,6 +2615,63 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   *((DH **) push_array(tls_tmp_dhs)) = dh;
   return dh;
 }
+
+#if !defined(OPENSSL_NO_TLSEXT) && defined(TLSEXT_MAXLEN_host_name)
+static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
+  const char *server_name = NULL;
+
+  server_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+  if (server_name != NULL) {
+    const char *host = NULL;
+
+    pr_trace_msg(trace_channel, 5, "received SNI '%s", server_name);
+
+    /* If we have already received a HOST command, then we need to
+     * check that the SNI value matches that of the HOST.  Otherwise,
+     * we stash the SNI, so that if/when a HOST command is received,
+     * we can check the HOST name against the SNI.
+     *
+     * RFC 7151, Section 3.2.2, does not mandate whether HOST must be
+     * sent before e.g. AUTH TLS or not; the only example the RFC provides
+     * shows AUTH TLS being used before HOST.  Section 4 of that RFC goes
+     * on to recommend using HOST before AUTH, in general, unless the SNI
+     * extension will be used, in which case, clients should use AUTH TLS
+     * before HOST.  We need to be ready for either case.
+     */
+
+    host = pr_table_get(session.notes, "mod_core.host", NULL);
+    if (host != NULL) {
+      /* If the requested HOST does not match the SNI, it's a fatal error.
+       *
+       * Bear in mind, however, that the HOST command might have used an
+       * IPv4/IPv6 address, NOT a name.  If that is the case, we do NOT want
+       * compare that with SNI.  Do we?
+       */
+
+      if (pr_netaddr_is_v4(host) != TRUE &&
+          pr_netaddr_is_v6(host) != TRUE) {
+        if (strcasecmp(host, server_name) != 0) {
+          tls_log("warning: SNI '%s' does not match HOST '%s', rejecting "
+            "SSL/TLS connection", server_name, host);
+          pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+            ": SNI '%s' does not match HOST '%s', rejecting SSL/TLS connection",
+            server_name, host);
+          *alert_desc = SSL_AD_ACCESS_DENIED;
+          return SSL_TLSEXT_ERR_ALERT_FATAL;
+        }
+     }
+    }
+
+    if (pr_table_add_dup(session.notes, "mod_tls.sni",
+        (char *) server_name, 0) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error stashing 'mod_tls.sni' in session.notes: %s", strerror(errno));
+    }
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* !OPENSSL_NO_TLSEXT */
 
 #if defined(PR_USE_OPENSSL_ECC)
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
@@ -10270,8 +10325,9 @@ static int tls_sess_init(void) {
   if (tmp != NULL &&
       *tmp == TRUE) {
     tls_engine = TRUE;
+  }
 
-  } else {
+  if (tls_engine == FALSE) {
     /* If we have no ServerAlias vhosts at all, then it is OK to clean up
      * all of the TLS/OpenSSL-related code from this process.  Otherwise,
      * a client MIGHT send a HOST command for a TLS-enabled vhost; if we
@@ -10279,7 +10335,8 @@ static int tls_sess_init(void) {
      * lead to a problem.
      */
 
-    if (pr_namebind_count(main_server) == 0) {
+    res = pr_namebind_count(main_server);
+    if (res == 0) {
       /* No need for this modules's control channel NetIO handlers
        * anymore.
        */
@@ -10553,6 +10610,11 @@ static int tls_sess_init(void) {
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
   }
 #endif
+
+#if !defined(OPENSSL_NO_TLSEXT) && defined(TLSEXT_MAXLEN_host_name)
+  SSL_CTX_set_tlsext_servername_callback(ssl_ctx, tls_sni_cb);
+  SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
+#endif /* !OPENSSL_NO_TLSEXT */
 
 #ifdef PR_USE_OPENSSL_ECC
 # if defined(SSL_CTX_set_ecdh_auto)

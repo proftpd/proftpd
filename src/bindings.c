@@ -469,9 +469,16 @@ pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
   register unsigned int i;
   pr_ipbind_t *ipbind = NULL;
 
+  if (addr == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   i = ipbind_hash_addr(addr);
 
   for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
+    pr_signals_handle();
+
     if (skip_inactive &&
         !ipbind->ib_isactive) {
       continue;
@@ -486,6 +493,7 @@ pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
     }
   }
 
+  errno = ENOENT;
   return NULL;
 }
 
@@ -1017,8 +1025,13 @@ unsigned int pr_namebind_count(server_rec *srv) {
   unsigned int count = 0;
   pr_ipbind_t *ipbind = NULL;
 
+  if (srv == NULL) {
+    return 0;
+  }
+
   ipbind = pr_ipbind_find(srv->addr, srv->ServerPort, FALSE); 
-  if (ipbind != NULL) {
+  if (ipbind != NULL &&
+      ipbind->ib_namebinds != NULL) {
     count = ipbind->ib_namebinds->nelts; 
   }
 
