@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
  *
- * Copyright (c) 2002-2014 TJ Saunders
+ * Copyright (c) 2002-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * This is mod_ifsession, contrib software for proftpd 1.2 and above.
+ * This is mod_ifsession, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  */
 
@@ -546,6 +546,10 @@ MODRET start_ifctxt(cmd_rec *cmd) {
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+  if (acl == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating regex expression: ",
+      strerror(errno), NULL));
+  }
 
   c = add_config_param(name, 0);
 

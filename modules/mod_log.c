@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1508,13 +1508,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
     case LOGFMT_META_UID:
       argp = arg;
-      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_uid);
+      snprintf(argp, sizeof(arg), "%s", pr_uid2str(NULL, session.login_uid));
       m++;
       break;
 
     case LOGFMT_META_GID:
       argp = arg;
-      snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.login_gid);
+      snprintf(argp, sizeof(arg), "%s", pr_gid2str(NULL, session.login_gid));
       m++;
       break;
 
@@ -2084,9 +2084,10 @@ MODRET log_pre_dele(cmd_rec *cmd) {
     /* Briefly cache the size of the file being deleted, so that it can be
      * logged properly using %b.
      */
-    pr_fs_clear_cache();
-    if (pr_fsio_stat(path, &st) == 0)
+    pr_fs_clear_cache2(path);
+    if (pr_fsio_stat(path, &st) == 0) {
       log_dele_filesz = st.st_size;
+    }
   }
 
   return PR_DECLINED(cmd);

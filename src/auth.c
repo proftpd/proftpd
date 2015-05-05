@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.102 2013-11-10 01:56:49 castaglia Exp $
- */
+/* Authentication front-end for ProFTPD. */
 
 #include "conf.h"
 #include "privs.h"
@@ -140,13 +138,13 @@ static void uidcache_add(uid_t uid, const char *name) {
           pstrndup(auth_pool, name, namelen), namelen + 1) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
-          "error adding name '%s' for UID %lu to the uidcache: %s", name,
-          (unsigned long) uid, strerror(errno));
+          "error adding name '%s' for UID %s to the uidcache: %s", name,
+          pr_uid2str(NULL, uid), strerror(errno));
 
       } else {
         pr_trace_msg(trace_channel, 5,
-          "stashed name '%s' for UID %lu in the uidcache", name,
-          (unsigned long) uid);
+          "stashed name '%s' for UID %s in the uidcache", name,
+          pr_uid2str(NULL, uid));
       }
     }
   }
@@ -162,12 +160,12 @@ static int uidcache_get(uid_t uid, char *name, size_t namesz) {
       sstrncpy(name, v, namesz);
 
       pr_trace_msg(trace_channel, 8,
-       "using name '%s' from uidcache for UID %lu", name, (unsigned long) uid);
+       "using name '%s' from uidcache for UID %s", name, pr_uid2str(NULL, uid));
       return 0;
     }
 
    pr_trace_msg(trace_channel, 9,
-      "no value found in uidcache for UID %lu: %s", (unsigned long) uid,
+      "no value found in uidcache for UID %s: %s", pr_uid2str(NULL, uid),
       strerror(errno));
   }
 
@@ -231,13 +229,13 @@ static void gidcache_add(gid_t gid, const char *name) {
           pstrndup(auth_pool, name, namelen), namelen + 1) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
-          "error adding name '%s' for GID %lu to the gidcache: %s", name,
-          (unsigned long) gid, strerror(errno));
+          "error adding name '%s' for GID %s to the gidcache: %s", name,
+          pr_gid2str(NULL, gid), strerror(errno));
 
       } else {
         pr_trace_msg(trace_channel, 5,
-          "stashed name '%s' for GID %lu in the gidcache", name,
-          (unsigned long) gid);
+          "stashed name '%s' for GID %s in the gidcache", name,
+          pr_gid2str(NULL, gid));
       }
     }
   }
@@ -253,12 +251,12 @@ static int gidcache_get(gid_t gid, char *name, size_t namesz) {
       sstrncpy(name, v, namesz);
 
       pr_trace_msg(trace_channel, 8,
-       "using name '%s' from gidcache for GID %lu", name, (unsigned long) gid);
+       "using name '%s' from gidcache for GID %s", name, pr_gid2str(NULL, gid));
       return 0;
     }
 
    pr_trace_msg(trace_channel, 9,
-      "no value found in gidcache for GID %lu: %s", (unsigned long) gid,
+      "no value found in gidcache for GID %s: %s", pr_gid2str(NULL, gid),
       strerror(errno));
   }
 
@@ -295,13 +293,13 @@ static void usercache_add(const char *name, uid_t uid) {
       if (pr_table_add(user_tab, cache_name, cache_key, sizeof(uid_t)) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
-          "error adding UID %lu for user '%s' to the usercache: %s",
-          (unsigned long) uid, name, strerror(errno));
+          "error adding UID %s for user '%s' to the usercache: %s",
+          pr_uid2str(NULL, uid), name, strerror(errno));
 
       } else {
         pr_trace_msg(trace_channel, 5,
-          "stashed UID %lu for user '%s' in the usercache",
-          (unsigned long) uid, name);
+          "stashed UID %s for user '%s' in the usercache",
+          pr_uid2str(NULL, uid), name);
       }
     }
   }
@@ -316,7 +314,7 @@ static int usercache_get(const char *name, uid_t *uid) {
       *uid = *((uid_t *) v);
 
       pr_trace_msg(trace_channel, 8,
-       "using UID %lu for user '%s' from usercache", (unsigned long) *uid,
+       "using UID %s for user '%s' from usercache", pr_uid2str(NULL, *uid),
        name);
       return 0;
     }
@@ -358,13 +356,13 @@ static void groupcache_add(const char *name, gid_t gid) {
       if (pr_table_add(group_tab, cache_name, cache_key, sizeof(gid_t)) < 0 &&
           errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
-          "error adding GID %lu for group '%s' to the groupcache: %s",
-          (unsigned long) gid, name, strerror(errno));
+          "error adding GID %s for group '%s' to the groupcache: %s",
+          pr_gid2str(NULL, gid), name, strerror(errno));
 
       } else {
         pr_trace_msg(trace_channel, 5,
-          "stashed GID %lu for group '%s' in the groupcache",
-          (unsigned long) gid, name);
+          "stashed GID %s for group '%s' in the groupcache",
+          pr_gid2str(NULL, gid), name);
       }
     }
   }
@@ -379,7 +377,7 @@ static int groupcache_get(const char *name, gid_t *gid) {
       *gid = *((gid_t *) v);
 
       pr_trace_msg(trace_channel, 8,
-       "using GID %lu for group '%s' from groupcache", (unsigned long) *gid,
+       "using GID %s for group '%s' from groupcache", pr_gid2str(NULL, *gid),
        name);
       return 0;
     }
@@ -742,8 +740,8 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   /* Get the (possibly rewritten) home directory. */
   res->pw_dir = pr_auth_get_home(p, res->pw_dir);
 
-  pr_log_debug(DEBUG10, "retrieved UID %lu for user '%s'",
-    (unsigned long) res->pw_uid, name);
+  pr_log_debug(DEBUG10, "retrieved UID %s for user '%s'",
+    pr_uid2str(NULL, res->pw_uid), name);
   return res;
 }
 
@@ -787,8 +785,8 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
     return NULL;
   }
 
-  pr_log_debug(DEBUG10, "retrieved user '%s' for UID %lu",
-    res->pw_name, (unsigned long) uid);
+  pr_log_debug(DEBUG10, "retrieved user '%s' for UID %s",
+    res->pw_name, pr_uid2str(NULL, uid));
   return res;
 }
 
@@ -836,8 +834,8 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
     groupcache_add(name, res->gr_gid);
   }
 
-  pr_log_debug(DEBUG10, "retrieved GID %lu for group '%s'",
-    (unsigned long) res->gr_gid, name);
+  pr_log_debug(DEBUG10, "retrieved GID %s for group '%s'",
+    pr_gid2str(NULL, res->gr_gid), name);
   return res;
 }
 
@@ -1028,7 +1026,7 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   module *m = NULL;
   int res = PR_AUTH_BADPWD;
 
-  /* Note: it's poassible for cpw to be NULL (mod_ldap might do this, for
+  /* Note: it's possible for cpw to be NULL (mod_ldap might do this, for
    * example), so we cannot enforce that it be non-NULL.
    */
 
@@ -1186,6 +1184,7 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
   }
 
   if (!have_name) {
+    /* TODO: This conversion is data type sensitive, per Bug#4164. */
     snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) uid);
     res = namebuf;
 
@@ -1241,6 +1240,7 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
   }
 
   if (!have_name) {
+    /* TODO: This conversion is data type sensitive, per Bug#4164. */
     snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) gid);
     res = namebuf;
 
@@ -1413,12 +1413,9 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
       gid_t *gids = (*group_ids)->elts;
 
       for (i = 0; i < (*group_ids)->nelts; i++) {
-        char buf[64];
-        snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) gids[i]);
-        buf[sizeof(buf)-1] = '\0';
-
         pr_signals_handle();
-        strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);
+        strgids = pstrcat(p, strgids, i != 0 ? ", " : "",
+          pr_gid2str(NULL, gids[i]), NULL);
       }
 
       pr_log_debug(DEBUG10, "retrieved group %s: %s",
@@ -1711,8 +1708,10 @@ int pr_auth_chroot(const char *path) {
   int res, xerrno = 0;
   time_t now;
 
-#if defined(HAVE_SETENV) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
-  __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
+#if defined(HAVE_SETENV) && \
+    defined(__GLIBC__) && \
+    defined(__GLIBC_MINOR__) && \
+    __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
   char *tz;
 
   tz = pr_env_get(session.pool, "TZ"); 
@@ -1725,6 +1724,8 @@ int pr_auth_chroot(const char *path) {
     } else {
       pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
     }
+  } else {
+    pr_log_debug(DEBUG10, "TZ environment variable already set to '%s'", tz);
   }
 #endif
 

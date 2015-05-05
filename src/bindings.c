@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,18 +22,9 @@
  * OpenSSL in the source distribution.
  */
 
-/* Routines to work with ProFTPD bindings
- * $Id: bindings.c,v 1.52 2013-11-09 23:34:34 castaglia Exp $
- */
+/* Routines to work with ProFTPD bindings. */
 
 #include "conf.h"
-
-/* Some convenience macros */
-#define PR_CLOSE_NAMEBIND(n, a, p) \
-  if ((res = pr_namebind_close((n), (a), (p))) < 0) \
-    pr_log_pri(PR_LOG_NOTICE, \
-      "%s:%d: notice, unable to close namebind '%s': %s", \
-      __FILE__, __LINE__, (n), strerror(errno))
 
 /* From src/dirtree.c */
 extern xaset_t *server_list;
@@ -280,7 +271,6 @@ int pr_ipbind_add_binds(server_rec *serv) {
 
 int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
     unsigned char close_namebinds) {
-  int res = 0;
   register unsigned int i = 0;
 
   if (addr) {
@@ -347,8 +337,12 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
       for (j = 0; j < ipbind->ib_namebinds->nelts; j++) {
         pr_namebind_t *nb = namebinds[j];
 
-        PR_CLOSE_NAMEBIND(nb->nb_name, nb->nb_server->addr,
-          nb->nb_server->ServerPort);
+        if (pr_namebind_close(nb->nb_name, nb->nb_server->addr) < 0) {
+          pr_trace_msg(trace_channel, 7,
+            "notice: error closing namebind '%s' for address %s: %s",
+            nb->nb_name, pr_netaddr_get_ipstr(nb->nb_server->addr),
+            strerror(errno));
+        }
       }
     }
 
@@ -377,8 +371,12 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
           for (j = 0; j < ipbind->ib_namebinds->nelts; j++) {
             pr_namebind_t *nb = namebinds[j];
 
-            PR_CLOSE_NAMEBIND(nb->nb_name, nb->nb_server->addr,
-              nb->nb_server->ServerPort);
+            if (pr_namebind_close(nb->nb_name, nb->nb_server->addr) < 0) {
+              pr_trace_msg(trace_channel, 7,
+                "notice: error closing namebind '%s' for address %s: %s",
+                nb->nb_name, pr_netaddr_get_ipstr(nb->nb_server->addr),
+               strerror(errno));
+            }
           }
         }
       }
@@ -468,19 +466,24 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr,
 
 pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
     unsigned char skip_inactive) {
+  register unsigned int i;
   pr_ipbind_t *ipbind = NULL;
-  register unsigned int i = ipbind_hash_addr(addr);
+
+  i = ipbind_hash_addr(addr);
 
   for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
-
     if (skip_inactive &&
         !ipbind->ib_isactive) {
       continue;
     }
 
-    if (pr_netaddr_cmp(ipbind->ib_addr, addr) == 0 &&
-        (!ipbind->ib_port || ipbind->ib_port == port))
-      return ipbind;
+    if (pr_netaddr_cmp(ipbind->ib_addr, addr) == 0) {
+      if (ipbind->ib_port == 0 ||
+          port == 0 ||
+          ipbind->ib_port == port) {
+        return ipbind;
+      }
+    }
   }
 
   return NULL;
@@ -492,14 +495,17 @@ pr_ipbind_t *pr_ipbind_get(pr_ipbind_t *prev) {
   if (prev) {
 
     /* If there's another ipbind in this chain, simply return that. */
-    if (prev->ib_next)
+    if (prev->ib_next) {
       return prev->ib_next;
+    }
 
     /* If the increment is at the maximum size, return NULL (no more chains
      * to be examined).
      */
-    if (i == PR_BINDINGS_TABLE_SIZE)
+    if (i == PR_BINDINGS_TABLE_SIZE) {
+      errno = ENOENT;
       return NULL;
+    }
 
     /* Increment the index. At this point, we know that the given pointer is
      * the last in the chain, and that there are more chains in the table
@@ -507,16 +513,19 @@ pr_ipbind_t *pr_ipbind_get(pr_ipbind_t *prev) {
      */
     i++;
 
-  } else
+  } else {
     /* Reset the index if prev is NULL. */
     i = 0;
+  }
 
   /* Search for the next non-empty chain in the table. */
   for (; i < PR_BINDINGS_TABLE_SIZE; i++) {
-    if (ipbind_table[i])
+    if (ipbind_table[i]) {
       return ipbind_table[i];
+    }
   }
 
+  errno = ENOENT;
   return NULL;
 }
 
@@ -725,12 +734,11 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
     for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
       pr_namebind_t *nb = namebinds[i];
 
-      res = pr_namebind_open(nb->nb_name, nb->nb_server->addr,
-        nb->nb_server->ServerPort);
+      res = pr_namebind_open(nb->nb_name, nb->nb_server->addr);
       if (res < 0) {
-        pr_log_pri(PR_LOG_NOTICE,
-          "%s:%d: notice: unable to open namebind '%s': %s", __FILE__,
-          __LINE__, nb->nb_name, strerror(errno));
+        pr_trace_msg(trace_channel, 2,
+          "notice: unable to open namebind '%s': %s", nb->nb_name,
+          strerror(errno));
       }
     }
   }
@@ -741,17 +749,16 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   return 0;
 }
 
-int pr_namebind_close(const char *name, pr_netaddr_t *addr,
-    unsigned int port) {
+int pr_namebind_close(const char *name, pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
 
-  if (!name ||
-      !addr) {
+  if (name == NULL||
+      addr == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  namebind = pr_namebind_find(name, addr, port, FALSE);
+  namebind = pr_namebind_find(name, addr, FALSE);
   if (namebind == NULL) {
     errno = ENOENT;
     return -1;
@@ -762,9 +769,10 @@ int pr_namebind_close(const char *name, pr_netaddr_t *addr,
 }
 
 int pr_namebind_create(server_rec *server, const char *name,
-    pr_netaddr_t *addr, unsigned int port) {
+    pr_netaddr_t *addr) {
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL, **namebinds = NULL;
+  unsigned int port;
 
   if (server == NULL ||
       name == NULL) {
@@ -772,7 +780,11 @@ int pr_namebind_create(server_rec *server, const char *name,
     return -1;
   }
 
-  /* First, find the ipbind to hold this namebind. */
+  /* First, find the ipbind to hold this namebind.  Note that namebinds are,
+   * by definition, name-specific; the port number (for lookup) is not as
+   * important.
+   */
+  port = 0;
   ipbind = pr_ipbind_find(addr, port, FALSE);
 
   if (ipbind == NULL) {
@@ -890,9 +902,10 @@ int pr_namebind_create(server_rec *server, const char *name,
 }
 
 pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
-    unsigned int port, unsigned char skip_inactive) {
+    unsigned char skip_inactive) {
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL;
+  unsigned int port;
 
   if (name == NULL ||
       addr == NULL) {
@@ -900,9 +913,10 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
     return NULL;
   }
 
-  /* First, find an active ipbind for the given addr/port */
-  ipbind = pr_ipbind_find(addr, port, skip_inactive);
+  port = 0;
 
+  /* First, find an active ipbind for the given address. */
+  ipbind = pr_ipbind_find(addr, port, skip_inactive);
   if (ipbind == NULL) {
     pr_netaddr_t wildcard_addr;
     int addr_family;
@@ -987,12 +1001,11 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
   return NULL;
 }
 
-server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
-    unsigned int port) {
+server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
 
   /* Basically, just a wrapper around pr_namebind_find() */
-  namebind = pr_namebind_find(name, addr, port, TRUE);
+  namebind = pr_namebind_find(name, addr, TRUE);
   if (namebind == NULL) {
     return NULL;
   }
@@ -1012,7 +1025,7 @@ unsigned int pr_namebind_count(server_rec *srv) {
   return count;
 }
 
-int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port) {
+int pr_namebind_open(const char *name, pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
 
   if (name == NULL ||
@@ -1021,7 +1034,7 @@ int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port) {
     return -1;
   }
 
-  namebind = pr_namebind_find(name, addr, port, FALSE);
+  namebind = pr_namebind_find(name, addr, FALSE);
   if (namebind == NULL) {
     errno = ENOENT;
     return -1;
@@ -1193,19 +1206,19 @@ static int init_standalone_bindings(void) {
     while (c != NULL) {
       pr_signals_handle();
 
-      res = pr_namebind_create(serv, c->argv[0], serv->addr, serv->ServerPort);
+      res = pr_namebind_create(serv, c->argv[0], serv->addr);
       if (res == 0) {
         is_namebind = TRUE;
 
-        res = pr_namebind_open(c->argv[0], serv->addr, serv->ServerPort);
+        res = pr_namebind_open(c->argv[0], serv->addr);
         if (res < 0) {
-          pr_log_pri(PR_LOG_NOTICE,
-            "%s:%d: notice: unable to open namebind '%s': %s", __FILE__,
-            __LINE__, (char *) c->argv[0], strerror(errno));
+          pr_trace_msg(trace_channel, 2,
+            "notice: unable to open namebind '%s': %s", (char *) c->argv[0],
+            strerror(errno));
         }
 
       } else {
-        pr_log_pri(PR_LOG_NOTICE,
+        pr_trace_msg(trace_channel, 3,
           "unable to create namebind for '%s' to %s#%u: %s",
           (char *) c->argv[0], pr_netaddr_get_ipstr(serv->addr),
           serv->ServerPort, strerror(errno));

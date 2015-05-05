@@ -45,6 +45,7 @@ sub feat_ok {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -63,7 +64,7 @@ sub feat_ok {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -80,8 +81,8 @@ sub feat_ok {
     },
   };
 
-  # By default, we expect to see 9 lines in the FEAT response
-  my $expected_nfeat = 9;
+  # By default, we expect to see 11 lines in the FEAT response
+  my $expected_nfeat = 11;
 
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
@@ -128,7 +129,7 @@ sub feat_ok {
 
       $expected = 211;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       my $nfeat = scalar(@$resp_msgs);
       $self->assert($expected_nfeat == $nfeat,
@@ -136,6 +137,8 @@ sub feat_ok {
 
       my $feats = { 
         'Features:' => 1,
+        ' EPRT' => 1,
+        ' EPSV' => 1,
         ' MDTM' => 1,
         ' MFMT' => 1,
         ' TVFS' => 1,

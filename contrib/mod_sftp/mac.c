@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mac.c,v 1.20 2013-12-19 16:32:32 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -54,6 +52,7 @@ struct sftp_mac {
 
 #define SFTP_MAC_ALGO_TYPE_HMAC		1
 #define SFTP_MAC_ALGO_TYPE_UMAC64	2
+#define SFTP_MAC_ALGO_TYPE_UMAC128	3
 
 #define SFTP_MAC_FL_READ_MAC	1
 #define SFTP_MAC_FL_WRITE_MAC	2
@@ -89,15 +88,17 @@ static unsigned int write_mac_idx = 0;
 static void clear_mac(struct sftp_mac *);
 
 static unsigned int get_next_read_index(void) {
-  if (read_mac_idx == 1)
+  if (read_mac_idx == 1) {
     return 0;
+  }
 
   return 1;
 }
 
 static unsigned int get_next_write_index(void) {
-  if (write_mac_idx == 1)
+  if (write_mac_idx == 1) {
     return 0;
+  }
 
   return 1;
 }
@@ -111,7 +112,12 @@ static void switch_read_mac(void) {
 #else
     HMAC_cleanup(&(hmac_read_ctxs[read_mac_idx]));
 #endif
-    umac_reset(umac_read_ctxs[read_mac_idx]);
+    if (read_macs[read_mac_idx].algo_type == SFTP_MAC_ALGO_TYPE_UMAC64) {
+      umac_reset(umac_read_ctxs[read_mac_idx]);
+
+    } else if (read_macs[read_mac_idx].algo_type == SFTP_MAC_ALGO_TYPE_UMAC128) {
+      umac128_reset(umac_read_ctxs[read_mac_idx]);
+    }
 
     mac_blockszs[read_mac_idx] = 0; 
 
@@ -134,7 +140,12 @@ static void switch_write_mac(void) {
 #else
     HMAC_cleanup(&(hmac_write_ctxs[write_mac_idx]));
 #endif
-    umac_reset(umac_write_ctxs[write_mac_idx]);
+    if (write_macs[write_mac_idx].algo_type == SFTP_MAC_ALGO_TYPE_UMAC64) {
+      umac_reset(umac_write_ctxs[write_mac_idx]);
+
+    } else if (write_macs[write_mac_idx].algo_type == SFTP_MAC_ALGO_TYPE_UMAC128) {
+      umac128_reset(umac_write_ctxs[write_mac_idx]);
+    }
 
     /* Now we can switch the index. */
     if (write_mac_idx == 1) {
@@ -167,7 +178,6 @@ static int init_mac(pool *p, struct sftp_mac *mac, HMAC_CTX *hmac_ctx,
   /* Reset the HMAC context. */
   HMAC_Init(hmac_ctx, NULL, 0, NULL);
 #endif
-  umac_reset(umac_ctx);
 
   if (mac->algo_type == SFTP_MAC_ALGO_TYPE_HMAC) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -189,7 +199,12 @@ static int init_mac(pool *p, struct sftp_mac *mac, HMAC_CTX *hmac_ctx,
 #endif
 
   } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC64) {
+    umac_reset(umac_ctx);
     umac_init(umac_ctx, mac->key);
+
+  } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC128) {
+    umac128_reset(umac_ctx);
+    umac128_init(umac_ctx, mac->key);
   }
 
   return 0;
@@ -250,7 +265,8 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
     HMAC_Final(hmac_ctx, mac_data, &mac_len);
 #endif /* OpenSSL-1.0.0 and later */
 
-  } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC64) {
+  } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC64 ||
+             mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC128) {
     unsigned char nonce[8], *nonce_ptr;
     uint32_t nonce_len = 0;
 
@@ -269,10 +285,18 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
     nonce_len = sizeof(nonce);
     sftp_msg_write_long(&nonce_ptr, &nonce_len, pkt->seqno);
 
-    umac_reset(umac_ctx);
-    umac_update(umac_ctx, ptr, (bufsz - buflen));
-    umac_final(umac_ctx, mac_data, nonce);
-    mac_len = 8;
+    if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC64) {
+      umac_reset(umac_ctx);
+      umac_update(umac_ctx, ptr, (bufsz - buflen));
+      umac_final(umac_ctx, mac_data, nonce);
+      mac_len = 8;
+
+    } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC128) {
+      umac128_reset(umac_ctx);
+      umac128_update(umac_ctx, ptr, (bufsz - buflen));
+      umac128_final(umac_ctx, mac_data, nonce);
+      mac_len = 16;
+    }
   }
 
   if (mac_len == 0) {
@@ -537,7 +561,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
   if (mac->algo_type == SFTP_MAC_ALGO_TYPE_HMAC) {
     mac->key_len = EVP_MD_size(mac->digest);
 
-  } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC64) {
+  } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC64 ||
+             mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC128) {
     mac->key_len = EVP_MD_block_size(mac->digest);
   }
 
@@ -568,11 +593,26 @@ const char *sftp_mac_get_read_algo(void) {
 
 int sftp_mac_set_read_algo(const char *algo) {
   uint32_t mac_len;
-  unsigned int idx = write_mac_idx;
+  unsigned int idx = read_mac_idx;
 
   if (read_macs[idx].key) {
     /* If we have an existing key, it means that we are currently rekeying. */
     idx = get_next_read_index();
+  }
+
+  /* Clear any potential UMAC contexts at this index. */
+  if (umac_read_ctxs[idx] != NULL) {
+    switch (read_macs[idx].algo_type) {
+      case SFTP_MAC_ALGO_TYPE_UMAC64:
+        umac_delete(umac_read_ctxs[idx]);
+        umac_read_ctxs[idx] = NULL;
+        break;
+
+      case SFTP_MAC_ALGO_TYPE_UMAC128:
+        umac128_delete(umac_read_ctxs[idx]);
+        umac_read_ctxs[idx] = NULL;
+        break;
+    }
   }
 
   read_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len);
@@ -583,6 +623,11 @@ int sftp_mac_set_read_algo(const char *algo) {
   read_macs[idx].algo = algo;
   if (strncmp(read_macs[idx].algo, "umac-64@openssh.com", 12) == 0) {
     read_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_UMAC64;
+    umac_read_ctxs[idx] = umac_alloc();
+
+  } else if (strncmp(read_macs[idx].algo, "umac-128@openssh.com", 13) == 0) {
+    read_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_UMAC128;
+    umac_read_ctxs[idx] = umac128_alloc();
 
   } else {
     read_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_HMAC;
@@ -679,6 +724,21 @@ int sftp_mac_set_write_algo(const char *algo) {
     idx = get_next_write_index();
   }
 
+  /* Clear any potential UMAC contexts at this index. */
+  if (umac_write_ctxs[idx] != NULL) {
+    switch (write_macs[idx].algo_type) {
+      case SFTP_MAC_ALGO_TYPE_UMAC64:
+        umac_delete(umac_write_ctxs[idx]);
+        umac_write_ctxs[idx] = NULL;
+        break;
+
+      case SFTP_MAC_ALGO_TYPE_UMAC128:
+        umac128_delete(umac_write_ctxs[idx]);
+        umac_write_ctxs[idx] = NULL;
+        break;
+    }
+  }
+
   write_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len);
   if (write_macs[idx].digest == NULL) {
     return -1;
@@ -687,6 +747,11 @@ int sftp_mac_set_write_algo(const char *algo) {
   write_macs[idx].algo = algo;
   if (strncmp(write_macs[idx].algo, "umac-64@openssh.com", 12) == 0) {
     write_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_UMAC64;
+    umac_write_ctxs[idx] = umac_alloc();
+
+  } else if (strncmp(write_macs[idx].algo, "umac-128@openssh.com", 13) == 0) {
+    write_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_UMAC128;
+    umac_write_ctxs[idx] = umac128_alloc();
 
   } else {
     write_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_HMAC;
@@ -758,29 +823,9 @@ int sftp_mac_write_data(struct ssh2_packet *pkt) {
 }
 
 int sftp_mac_init(void) {
-
-  umac_read_ctxs[0] = umac_alloc();
-  umac_read_ctxs[1] = umac_alloc();
-
-  umac_write_ctxs[0] = umac_alloc();
-  umac_write_ctxs[1] = umac_alloc();
-
   return 0;
 }
 
 int sftp_mac_free(void) {
-
-  umac_delete(umac_read_ctxs[0]);
-  umac_read_ctxs[0] = NULL;
-
-  umac_delete(umac_read_ctxs[1]);
-  umac_read_ctxs[1] = NULL;
-
-  umac_delete(umac_write_ctxs[0]);
-  umac_write_ctxs[0] = NULL;
-
-  umac_delete(umac_write_ctxs[1]);
-  umac_write_ctxs[1] = NULL;
-
   return 0;
 }

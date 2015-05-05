@@ -52,9 +52,6 @@ int sftp_keys_get_hostkey(pool *p, const char *);
 const unsigned char *sftp_keys_get_hostkey_data(pool *, enum sftp_key_type_e,
   uint32_t *);
 void sftp_keys_get_passphrases(void);
-int sftp_keys_have_dsa_hostkey(void);
-int sftp_keys_have_ecdsa_hostkey(pool *, int **);
-int sftp_keys_have_rsa_hostkey(void);
 int sftp_keys_set_passphrase_provider(const char *);
 const unsigned char *sftp_keys_sign_data(pool *, enum sftp_key_type_e,
   const unsigned char *, size_t, size_t *);
@@ -66,5 +63,12 @@ int sftp_keys_verify_pubkey_type(pool *, unsigned char *, uint32_t,
 int sftp_keys_verify_signed_data(pool *, const char *,
   unsigned char *, uint32_t, unsigned char *, uint32_t,
   unsigned char *, size_t);
+
+int sftp_keys_clear_dsa_hostkey(void);
+int sftp_keys_clear_ecdsa_hostkey(void);
+int sftp_keys_clear_rsa_hostkey(void);
+int sftp_keys_have_dsa_hostkey(void);
+int sftp_keys_have_ecdsa_hostkey(pool *, int **);
+int sftp_keys_have_rsa_hostkey(void);
 
 #endif

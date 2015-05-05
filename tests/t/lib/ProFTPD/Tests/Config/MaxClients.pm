@@ -472,7 +472,8 @@ sub maxclients_one_anon_bug4068 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my $port;
+  ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message

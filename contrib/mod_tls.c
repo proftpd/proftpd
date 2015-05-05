@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2014 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2015 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -331,6 +331,12 @@ extern int ServerUseReverseDNS;
 
 module tls_module;
 
+struct tls_next_proto {
+  const char *proto;
+  unsigned char *encoded_proto;
+  unsigned int encoded_protolen;
+};
+
 typedef struct tls_pkey_obj {
   struct tls_pkey_obj *next;
 
@@ -368,6 +374,11 @@ static tls_pkey_t *tls_pkey_list = NULL;
 static unsigned int tls_npkeys = 0;
 
 #define TLS_DEFAULT_CIPHER_SUITE	"DEFAULT:!ADH:!EXPORT:!DES"
+#define TLS_DEFAULT_NEXT_PROTO		"ftp"
+
+/* SSL record/buffer sizes */
+#define TLS_DATA_WRITE_BUFFER_SIZE	(16 * 1024)
+#define TLS_HANDSHAKE_WRITE_BUFFER_SIZE	1400
 
 /* Module variables */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -377,7 +388,6 @@ static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
-static char *tls_logname = NULL;
 
 static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_TIMEOUT		10
@@ -438,6 +448,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_USE_IMPLICIT_SSL			0x0200
 #define TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS		0x0400
 #define TLS_OPT_VERIFY_CERT_CN				0x0800
+#define TLS_OPT_NO_AUTO_ECDH				0x1000
 
 /* mod_tls SSCN modes */
 #define TLS_SSCN_MODE_SERVER				0
@@ -452,12 +463,16 @@ static unsigned int tls_sscn_mode = TLS_SSCN_MODE_SERVER;
 
 static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
-static char *tls_dhparam_file = NULL;
 static char *tls_ec_cert_file = NULL, *tls_ec_key_file = NULL;
 static char *tls_dsa_cert_file = NULL, *tls_dsa_key_file = NULL;
 static char *tls_pkcs12_file = NULL;
 static char *tls_rsa_cert_file = NULL, *tls_rsa_key_file = NULL;
 static char *tls_rand_file = NULL;
+
+#if defined(PSK_MAX_PSK_LEN)
+static pr_table_t *tls_psks = NULL;
+# define TLS_MIN_PSK_LEN	20
+#endif /* PSK support */
 
 /* Timeout given for TLS handshakes.  The default is 5 minutes. */
 static unsigned int tls_handshake_timeout = 300;
@@ -520,7 +535,6 @@ static int tls_get_passphrase(server_rec *, const char *, const char *,
 static char *tls_get_subj_name(SSL *);
 
 static int tls_openlog(void);
-static RSA *tls_rsa_cb(SSL *, int, int);
 static int tls_seed_prng(void);
 static void tls_setup_environ(SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
@@ -1651,17 +1665,20 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   sigemptyset(&sa_ignore.sa_mask);
   sa_ignore.sa_flags = 0;
 
-  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0)
+  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0)
+  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0) {
     return -1;
+  }
 
   sigemptyset(&set_chldmask);
   sigaddset(&set_chldmask, SIGCHLD);
 
-  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0)
+  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0) {
     return -1;
+  }
 
   tls_prepare_provider_pipes(stdout_pipe, stderr_pipe);
 
@@ -1817,8 +1834,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
       fds = select(maxfd + 1, &readfds, NULL, NULL, &tv);
 
       if (fds == -1 &&
-          errno == EINTR)
+          errno == EINTR) {
         pr_signals_handle();
+      }
 
       if (fds > 0) {
         /* The child sent us something.  How thoughtful. */
@@ -1826,12 +1844,18 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         if (FD_ISSET(stdout_pipe[0], &readfds)) {
           res = read(stdout_pipe[0], buf, buflen);
           if (res > 0) {
-              while (res && (buf[res-1] == '\r' || buf[res-1] == '\n'))
-                res--;
-              buf[res] = '\0';
+            buf[buflen-1] = '\0';
 
-              pr_trace_msg(trace_channel, 18,
-                "read passphrase from '%s'", tls_passphrase_provider);
+            while (res &&
+                   (buf[res-1] == '\r' ||
+                    buf[res-1] == '\n')) {
+              pr_signals_handle();
+              res--;
+            }
+            buf[res] = '\0';
+
+            pr_trace_msg(trace_channel, 18, "read passphrase from '%s'",
+              tls_passphrase_provider);
 
           } else if (res < 0) {
             int xerrno = errno;
@@ -1858,8 +1882,9 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
           if (stderrlen > 0) {
             while (stderrlen &&
                    (stderrbuf[stderrlen-1] == '\r' ||
-                    stderrbuf[stderrlen-1] == '\n'))
+                    stderrbuf[stderrlen-1] == '\n')) {
               stderrlen--;
+            }
             stderrbuf[stderrlen] = '\0';
 
             pr_log_debug(DEBUG5, MOD_TLS_VERSION
@@ -1882,14 +1907,17 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   }
 
   /* Restore the previous signal actions. */
-  if (sigaction(SIGINT, &sa_intr, NULL) < 0)
+  if (sigaction(SIGINT, &sa_intr, NULL) < 0) {
     return -1;
+  }
 
-  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0)
+  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0) {
     return -1; 
+  }
 
-  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0)
+  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0) {
     return -1;
+  }
 
   if (WIFSIGNALED(status)) {
     pr_log_debug(DEBUG2, MOD_TLS_VERSION
@@ -1906,7 +1934,7 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
   static int need_banner = TRUE;
   struct tls_pkey_data *pdata = d;
 
-  if (!tls_passphrase_provider) {
+  if (tls_passphrase_provider == NULL) {
     register unsigned int attempt;
     int pwlen = 0;
 
@@ -1935,10 +1963,12 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
        * means a system error occurred, and 1 means user interaction problems.
        */
       if (res != 0) {
-         fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
-         continue;
+        fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
+        continue;
       }
 
+      /* Ensure that the buffer is NUL-terminated. */
+      buf[buflen-1] = '\0';
       pwlen = strlen(buf);
       if (pwlen < 1) {
         fprintf(stderr, "Error: passphrase must be at least one character\n");
@@ -1984,9 +2014,10 @@ static void set_prompt_fds(void) {
    * to the general stderr logfile.
    */
   prompt_fd = open("/dev/null", O_WRONLY);
-  if (prompt_fd == -1)
+  if (prompt_fd == -1) {
     /* This is an arbitrary, meaningless placeholder number. */
     prompt_fd = 76;
+  }
 
   dup2(STDERR_FILENO, prompt_fd);
   dup2(STDOUT_FILENO, STDERR_FILENO);
@@ -2211,8 +2242,9 @@ static int tls_get_passphrase(server_rec *s, const char *path,
   /* Restore the normal stderr logging. */
   restore_prompt_fds();
 
-  if (pkey == NULL)
+  if (pkey == NULL) {
     return -1;
+  }
 
   EVP_PKEY_free(pkey);
 
@@ -2477,8 +2509,33 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 }
 #endif
 
-static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
+static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   DH *dh = NULL;
+  EVP_PKEY *pkey;
+  int pkeylen = 0;
+
+  /* OpenSSL will only ever call us (currently) with a keylen of 512 or 1024;
+   * see the SSL_EXPORT_PKEYLENGTH macro in ssl_locl.h.  Sigh.
+   *
+   * Thus we adjust the DH parameter length according to the size of the
+   * RSA/DSA private key used for the current connection.
+   *
+   * NOTE: This MAY cause interoperability issues with some clients, notably
+   * Java 7 (and earlier) clients, since Java 7 and earlier supports
+   * Diffie-Hellman only up to 1024 bits.  More sighs.  To deal with these
+   * clients, then, you need to configure a certificate/key of 1024 bits.
+   */
+  pkey = SSL_get_privatekey(ssl);
+  if (pkey != NULL) {
+    if (EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA ||
+        EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA) {
+      pkeylen = EVP_PKEY_bits(pkey);
+      if (pkeylen != keylen) {
+        pr_trace_msg(trace_channel, 13,
+          "adjusted DH parameter length from %d to %d bits", keylen, pkeylen);
+      }
+    }
+  }
 
   if (tls_tmp_dhs != NULL &&
       tls_tmp_dhs->nelts > 0) {
@@ -2486,17 +2543,45 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
     DH **dhs;
 
     dhs = tls_tmp_dhs->elts;
+
+    /* Search the configured list of DH parameters twice: once for any sizes
+     * matching the actual requested size (usually 1024), and once for any
+     * matching the certificate private key size (pkeylen).
+     *
+     * This behavior allows site admins to configure a TLSDHParamFile that
+     * contains 1024-bit parameters, for e.g. Java 7 (and earlier) clients.
+     */
+
+    /* Note: the keylen argument is in BITS, but DH_size() returns the number
+     * of BYTES.
+     */
     for (i = 0; i < tls_tmp_dhs->nelts; i++) {
-      /* Note: the keylength argument is in BITS, but DH_size() returns
-       * the number of BYTES.
-       */
-      if (DH_size(dhs[i]) == (keylength / 8)) {
+      int dhlen;
+
+      dhlen = DH_size(dhs[i]) * 8;
+      if (dhlen == keylen) {
+        pr_trace_msg(trace_channel, 11,
+          "found matching DH parameter for key length %d", keylen);
+        return dhs[i];
+      }
+    }
+
+    for (i = 0; i < tls_tmp_dhs->nelts; i++) {
+      int dhlen;
+
+      dhlen = DH_size(dhs[i]) * 8;
+      if (dhlen == pkeylen) {
+        pr_trace_msg(trace_channel, 11,
+          "found matching DH parameter for certificate private key length %d",
+          pkeylen);
         return dhs[i];
       }
     }
   }
 
-  switch (keylength) {
+  /* Still no DH parameters found?  Use the built-in ones. */
+
+  switch (keylen) {
     case 512:
       dh = get_dh512();
       break;
@@ -2505,23 +2590,23 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
       dh = get_dh768();
       break;
 
-     case 1024:
-       dh = get_dh1024();
-       break;
+    case 1024:
+      dh = get_dh1024();
+      break;
 
-     case 1536:
-       dh = get_dh1536();
-       break;
+    case 1536:
+      dh = get_dh1536();
+      break;
 
-     case 2048:
-       dh = get_dh2048();
-       break;
+    case 2048:
+      dh = get_dh2048();
+      break;
 
-     default:
-       tls_log("unsupported DH key length %d requested, returning 1024 bits",
-         keylength);
-       dh = get_dh1024();
-       break;
+    default:
+      tls_log("unsupported DH key length %d requested, returning 1024 bits",
+        keylen);
+      dh = get_dh1024();
+      break;
   }
 
   /* Add this DH to the list, so that it can be freed properly later. */
@@ -2530,22 +2615,18 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
   }
 
   *((DH **) push_array(tls_tmp_dhs)) = dh;
-
   return dh;
 }
 
-#ifdef PR_USE_OPENSSL_ECC
-static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylength) {
+#if defined(PR_USE_OPENSSL_ECC)
+static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
   static EC_KEY *ecdh = NULL;
   static int init = 0;
-
-  /* XXX Uses 256-bit key for now. TODO: support other sizes. */
 
   if (init == 0) {
     ecdh = EC_KEY_new();
 
     if (ecdh != NULL) {
-      /* ecdh->group = EC_GROUP_new_by_nid(NID_secp160r2); */
       EC_KEY_set_group(ecdh,
         EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
     }
@@ -2556,6 +2637,57 @@ static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylength) {
   return ecdh;
 }
 #endif /* PR_USE_OPENSSL_ECC */
+
+#if defined(PR_USE_OPENSSL_ALPN)
+static int tls_alpn_select_cb(SSL *ssl,
+    const unsigned char **selected_proto, unsigned char *selected_protolen, 
+    const unsigned char *advertised_proto, unsigned int advertised_protolen,
+    void *user_data) {
+  register unsigned int i;
+  struct tls_next_proto *next_proto;
+
+  pr_trace_msg(trace_channel, 9, "%s",
+    "ALPN protocols advertised by client:");
+  for (i = 0; i < advertised_protolen; i++) {
+    pr_trace_msg(trace_channel, 9,
+      " %*s", advertised_proto[i], &(advertised_proto[i+1])); 
+    i += advertised_proto[i] + 1;
+  }
+
+  next_proto = user_data;
+
+  if (SSL_select_next_proto(
+      (unsigned char **) selected_proto, selected_protolen,
+      next_proto->encoded_proto, next_proto->encoded_protolen,
+      advertised_proto, advertised_protolen) != OPENSSL_NPN_NEGOTIATED) {
+    pr_trace_msg(trace_channel, 9,
+      "no common ALPN protocols found (no '%s' in ALPN protocols)",
+      next_proto->proto);
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  pr_trace_msg(trace_channel, 9,
+    "selected ALPN protocol '%*s'", *selected_protolen, *selected_proto);
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* ALPN */
+
+#if defined(PR_USE_OPENSSL_NPN)
+static int tls_npn_advertised_cb(SSL *ssl,
+    const unsigned char **advertise_proto, unsigned int *advertise_protolen,
+    void *user_data) {
+  struct tls_next_proto *next_proto;
+
+  next_proto = user_data;
+
+  pr_trace_msg(trace_channel, 9,
+    "advertising NPN protocol '%s'", next_proto->proto);
+  *advertise_proto = next_proto->encoded_proto;
+  *advertise_protolen = next_proto->encoded_protolen;
+
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* NPN */
 
 /* Post 0.9.7a, RSA blinding is turned on by default, so there is no need to
  * do this manually.
@@ -2682,8 +2814,13 @@ static int tls_init_ctx(void) {
   ssl_opts |= SSL_OP_NO_COMPRESSION;
 #endif /* SSL_OP_NO_COMPRESSION */
 
-#if defined(SSL_OP_SINGLE_ECDH_USE) && defined(PR_USE_OPENSSL_ECC)
+#if defined(PR_USE_OPENSSL_ECC)
+# if defined(SSL_OP_SINGLE_ECDH_USE)
   ssl_opts |= SSL_OP_SINGLE_ECDH_USE;
+# endif
+# if defined(SSL_OP_SAFARI_ECDHE_ECDSA_BUG)
+  ssl_opts |= SSL_OP_SAFARI_ECDHE_ECDSA_BUG;
+# endif
 #endif /* ECC support */
 
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
@@ -2810,8 +2947,14 @@ static int tls_init_ctx(void) {
   }
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
+
 #ifdef PR_USE_OPENSSL_ECC
-  SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+  /* If using OpenSSL 1.0.2 or later, let it automatically choose the
+   * correct/best curve, rather than having to hardcode a fallback.
+   */
+# if defined(SSL_CTX_set_ecdh_auto)
+  SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
+# endif
 #endif /* PR_USE_OPENSSL_ECC */
 
   if (tls_seed_prng() < 0) {
@@ -3119,7 +3262,6 @@ static int tls_init_server(void) {
       return -1;
     }
 
-    SSL_CTX_set_tmp_rsa_callback(ssl_ctx, tls_rsa_cb);
     server_rsa_cert = cert;
   }
 
@@ -3653,9 +3795,10 @@ static int tls_get_block(conn_t *conn) {
 }
 
 static int tls_accept(conn_t *conn, unsigned char on_data) {
-  int blocking, res = 0, xerrno = 0;
-  char *subj = NULL;
   static unsigned char logged_data = FALSE;
+  int blocking, res = 0, xerrno = 0;
+  long cache_mode = 0;
+  char *subj = NULL;
   SSL *ssl = NULL;
   BIO *rbio = NULL, *wbio = NULL;
 
@@ -3674,6 +3817,18 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   /* This works with either rfd or wfd (I hope). */
   rbio = BIO_new_socket(conn->rfd, FALSE);
   wbio = BIO_new_socket(conn->wfd, FALSE);
+
+  /* During handshakes, set the write buffer size smaller, so that we do not
+   * overflow the (new) connection's TCP CWND size and force another round
+   * trip.
+   *
+   * Then, later, we set a larger buffer size, but ONLY if we are doing a data
+   * transfer.  For the control connection, the interactions/messages are
+   * assumed to be small, thus there's no need for the larger buffer size.
+   * Right?
+   */
+  BIO_set_write_buf_size(wbio, TLS_HANDSHAKE_WRITE_BUFFER_SIZE);
+
   SSL_set_bio(ssl, rbio, wbio);
 
   /* If configured, set a timer for the handshake. */
@@ -3691,6 +3846,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      * in mod_core, upon handling the PASV/EPSV command.
      */
     (void) pr_inet_set_proto_cork(conn->wfd, 0);
+
+    cache_mode = SSL_CTX_get_session_cache_mode(ssl_ctx);
+    if (!(cache_mode & SSL_SESS_CACHE_OFF)) {
+      /* Disable STORING of any new session IDs in the session cache. We DO
+       * want to allow LOOKUP of session IDs in the session cache, however.
+       */
+      long data_cache_mode;
+      data_cache_mode = SSL_SESS_CACHE_SERVER|SSL_SESS_CACHE_NO_INTERNAL_STORE;
+      SSL_CTX_set_session_cache_mode(ssl_ctx, data_cache_mode);
+    }
   }
 
   retry:
@@ -3736,15 +3901,15 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
         pr_trace_msg(trace_channel, 17,
-          "SSL_accept() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_READ encountered while accepting %s conn on fd %d, "
+          "waiting to read data", on_data ? "data" : "ctrl", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
         pr_trace_msg(trace_channel, 17,
-          "SSL_accept() returned WANT_WRITE, waiting for more to "
-          "write on fd %d", conn->rfd);
+          "WANT_WRITE encountered while accepting %s conn on fd %d, "
+          "waiting to send data", on_data ? "data" : "ctrl", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -3804,10 +3969,52 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     /* Reenable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
     (void) pr_inet_set_proto_cork(conn->wfd, 1);
+
+    if (!(cache_mode & SSL_SESS_CACHE_OFF)) {
+      /* Restore the previous session cache mode. */
+      SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
+    }
+
+    BIO_set_write_buf_size(wbio, TLS_DATA_WRITE_BUFFER_SIZE);
   }
  
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
+
+#if defined(PR_USE_OPENSSL_NPN)
+  /* Which NPN protocol was selected, if any? */
+  {
+    const unsigned char *npn = NULL;
+    unsigned int npn_len = 0;
+
+    SSL_get0_next_proto_negotiated(ssl, &npn, &npn_len);
+    if (npn != NULL &&
+        npn_len > 0) {
+      pr_trace_msg(trace_channel, 9,
+        "negotiated NPN '%*s'", npn_len, npn);
+
+    } else {
+      pr_trace_msg(trace_channel, 9, "%s", "no NPN negotiated");
+    }
+  }
+#endif /* NPN */
+
+#if defined(PR_USE_OPENSSL_ALPN)
+  /* Which ALPN protocol was selected, if any? */
+  {
+    const unsigned char *alpn = NULL;
+    unsigned int alpn_len = 0;
+
+    SSL_get0_alpn_selected(ssl, &alpn, &alpn_len);
+    if (alpn != NULL &&
+        alpn_len > 0) {
+      pr_trace_msg(trace_channel, 9,
+        "selected ALPN '%*s'", alpn_len, alpn);
+    } else {
+      pr_trace_msg(trace_channel, 9, "%s", "no ALPN selected");
+    }
+  }
+#endif /* ALPN */
 
   /* Manually update the raw bytes counters with the network IO from the
    * SSL handshake.
@@ -3972,8 +4179,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
       reused = SSL_session_reused(ssl);
       if (reused != 1) {
-        tls_log("client did not reuse SSL session, rejecting data connection "
-          "(see the NoSessionReuseRequired TLSOptions parameter)");
+        tls_log("%s", "client did not reuse SSL session, rejecting data "
+          "connection (see the NoSessionReuseRequired TLSOptions parameter)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
         pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -3989,11 +4196,14 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
         data_sess = SSL_get_session(ssl);
         if (data_sess != NULL) {
+          int matching_sess_id = -1;
+
 #if OPENSSL_VERSION_NUMBER < 0x000907000L
           /* In the OpenSSL source code, SSL_SESSION_cmp() ultimately uses
            * memcmp(3) to check, and thus returns memcmp(3)'s return value.
            */
-          if (SSL_SESSION_cmp(ctrl_sess, data_sess) != 0) {
+          matching_sess_id = SSL_SESSION_cmp(ctrl_sess, data_sess);
+          if (matching_sess_id != 0) {
 #else
           unsigned char *sess_id;
           unsigned int sess_id_len;
@@ -4007,8 +4217,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
           sess_id_len = data_sess->session_id_length;
 # endif
  
-          if (SSL_has_matching_session_id(ctrl_ssl, sess_id,
-              sess_id_len) == 0) {
+          matching_sess_id = SSL_has_matching_session_id(ctrl_ssl, sess_id,
+            sess_id_len);
+          if (matching_sess_id == 0) {
 #endif
             tls_log("Client did not reuse SSL session from control channel, "
               "rejecting data connection (see the NoSessionReuseRequired "
@@ -4047,16 +4258,20 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
               remaining = (unsigned long) ((sess_created + sess_expires) - now);
 
               if (remaining <= 60) {
-                tls_log("control channel SSL session expires in %lu secs (%lu session cache expiration)", remaining, sess_expires);
-                tls_log("%s","Consider using 'TLSSessionCache internal:' to increase the session cache expiration if necessary, or renegotiate the control channel SSL session");
+                tls_log("control channel SSL session expires in %lu secs "
+                  "(%lu session cache expiration)", remaining, sess_expires);
+                tls_log("%s", "Consider using 'TLSSessionCache internal:' to "
+                  "increase the session cache expiration if necessary, or "
+                  "renegotiate the control channel SSL session");
               }
             }
           }
 
         } else {
           /* This should never happen, so log if it does. */
-          tls_log("BUG: unable to determine whether client reused SSL session: SSL_get_session() for control connection return NULL");
-          tls_log("rejecting data connection (see TLSOption NoSessionReuseRequired)");
+          tls_log("%s", "BUG: unable to determine whether client reused SSL "
+            "session: SSL_get_session() for data connection returned NULL");
+          tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
           tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
           pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
           pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -4065,8 +4280,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
       } else {
         /* This should never happen, so log if it does. */
-        tls_log("BUG: unable to determine whether client reused SSL session: SSL_get_session() for control connection return NULL");
-        tls_log("rejecting data connection (see TLSOption NoSessionReuseRequired)");
+        tls_log("%s", "BUG: unable to determine whether client reused SSL "
+          "session: SSL_get_session() for control connection returned NULL!");
+        tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
         tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
         pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -4168,15 +4384,15 @@ static int tls_connect(conn_t *conn) {
     switch (errcode) {
       case SSL_ERROR_WANT_READ:
         pr_trace_msg(trace_channel, 17,
-          "SSL_connect() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_READ encountered while connecting on fd %d, "
+          "waiting to read data", conn->rfd);
         tls_readmore(conn->rfd);
         goto retry;
 
       case SSL_ERROR_WANT_WRITE:
         pr_trace_msg(trace_channel, 17,
-          "SSL_connect() returned WANT_READ, waiting for more to "
-          "read on fd %d", conn->rfd);
+          "WANT_WRITE encountered while connecting on fd %d, "
+          "waiting to read data", conn->rfd);
         tls_writemore(conn->rfd);
         goto retry;
 
@@ -4974,8 +5190,8 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "SSL_read() returned WANT_READ, waiting for more to "
-          "read on fd %d", fd);
+          "WANT_READ encountered while reading SSL data on fd %d, "
+          "waiting to read data", fd);
         err = tls_readmore(fd);
         if (err > 0) {
           goto retry;
@@ -4997,8 +5213,8 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * block, so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "SSL_read() returned WANT_WRITE, waiting for more to "
-          "write on fd %d", fd);
+          "WANT_WRITE encountered while writing SSL data on fd %d, "
+          "waiting to send data", fd);
         err = tls_writemore(fd);
         if (err > 0) {
           goto retry;
@@ -5026,40 +5242,6 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   }
 
   return count;
-}
-
-static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylength) {
-  BIGNUM *e = NULL;
-
-  if (tls_tmp_rsa) {
-    return tls_tmp_rsa;
-  }
-
-#if OPENSSL_VERSION_NUMBER > 0x000908000L
-  e = BN_new();
-  if (e == NULL) {
-    return NULL;
-  }
-
-  if (BN_set_word(e, RSA_F4) != 1) {
-    BN_free(e);
-    return NULL;
-  }
-
-  if (RSA_generate_key_ex(tls_tmp_rsa, keylength, e, NULL) != 1) {
-    BN_free(e);
-    return NULL;
-  }
-
-#else
-  tls_tmp_rsa = RSA_generate_key(keylength, RSA_F4, NULL, NULL);
-#endif /* OpenSSL version 0.9.8 and later */
-
-  if (e != NULL) {
-    BN_free(e);
-  }
-
-  return tls_tmp_rsa;
 }
 
 static int tls_seed_prng(void) {
@@ -6825,6 +7007,9 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 }
 #endif
 
+/* TLSSessionCache callbacks
+ */
+
 static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
   unsigned char *sess_id;
   unsigned int sess_id_len;
@@ -6942,6 +7127,92 @@ static void tls_sess_cache_delete_sess_cb(SSL_CTX *ctx, SSL_SESSION *sess) {
 
   return;
 }
+
+/* Ideally we would use the OPENSSL_NO_PSK macro.  However, to use this, we
+ * would need to say "if !defined(OPENSSL_NO_PSK)".  And that does not work
+ * as well for older OpenSSL installations, where that macro would not be
+ * defined anyway.  So instead, we use the presence of another PSK-related
+ * macro as a more reliable sentinel.
+ */
+
+#if defined(PSK_MAX_PSK_LEN)
+/* PSK callbacks */
+
+static int set_random_bn(unsigned char *psk, unsigned int max_psklen) {
+  BIGNUM *bn = NULL;
+  int res = 0;
+
+  bn = BN_new();
+  if (BN_pseudo_rand(bn, max_psklen, 0, 0) != 1) {
+    tls_log("error generating pseudo-random number: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+  }
+
+  res = BN_bn2bin(bn, psk);
+  BN_free(bn);
+
+  return res;
+}
+
+static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
+    unsigned char *psk, unsigned int max_psklen) {
+  void *v = NULL;
+  BIGNUM *bn = NULL;
+  int bn_len = -1, res;
+
+  if (identity == NULL) {
+    tls_log("%s", "error: client did not provide PSK identity name, providing "
+      "random fake PSK");
+
+    res = set_random_bn(psk, max_psklen);
+    return res;
+  }
+
+  pr_trace_msg(trace_channel, 5,
+    "PSK lookup: identity '%s' requested", identity);
+
+  if (tls_psks == NULL) {
+    tls_log("warning: no pre-shared keys configured, providing random fake "
+      "PSK for identity '%s'", identity);
+
+    res = set_random_bn(psk, max_psklen);
+    return res;
+  }
+
+  v = pr_table_get(tls_psks, identity, NULL);
+  if (v == NULL) {
+    tls_log("warning: requested PSK identity '%s' not configured, providing "
+      "random fake PSK", identity);
+
+    res = set_random_bn(psk, max_psklen);
+    return res;
+  }
+
+  bn = v;
+  bn_len = BN_num_bytes(bn);
+
+  if (bn_len > (int) max_psklen) {
+    tls_log("warning: unable to use '%s' PSK: max buffer size (%u bytes) "
+      "too small for key (%d bytes), providing random fake PSK", identity,
+      max_psklen, bn_len);
+
+    res = set_random_bn(psk, max_psklen);
+    return res;
+  }
+
+  res = BN_bn2bin(bn, psk); 
+  if (res == 0) {
+    tls_log("error converting PSK for identity '%s' to binary: %s",
+      identity, tls_get_errors());
+    return 0;
+  }
+
+  pr_trace_msg(trace_channel, 5,
+    "found PSK (%d bytes) for identity '%s'", res, identity);
+  return res;
+}
+
+#endif /* PSK_MAX_PSK_LEN */
 
 /* NetIO callbacks
  */
@@ -7089,9 +7360,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
         X509 *ctrl_cert = NULL, *data_cert = NULL;
         uint64_t start_ms;
 
-        if (pr_trace_get_level(timing_channel) > 0) {
-          pr_gettimeofday_millis(&start_ms);
-        }
+        pr_gettimeofday_millis(&start_ms);
 
         tls_log("%s", "starting TLS negotiation on data connection");
         tls_data_need_init_handshake = TRUE;
@@ -7420,7 +7689,6 @@ static void tls_closelog(void) {
   if (tls_logfd != -1) {
     close(tls_logfd);
     tls_logfd = -1;
-    tls_logname = NULL;
   }
 
   return;
@@ -7431,8 +7699,9 @@ int tls_log(const char *fmt, ...) {
   int res;
 
   /* Sanity check */
-  if (!tls_logname)
+  if (tls_logfd < 0) {
     return 0;
+  }
 
   va_start(msg, fmt);
   res = pr_log_vwritefile(tls_logfd, MOD_TLS_VERSION, fmt, msg);
@@ -7443,20 +7712,18 @@ int tls_log(const char *fmt, ...) {
 
 static int tls_openlog(void) {
   int res = 0, xerrno;
+  char *path;
 
   /* Sanity checks */
-  tls_logname = get_param_ptr(main_server->conf, "TLSLog", FALSE);
-  if (tls_logname == NULL)
-    return 0;
-
-  if (strncasecmp(tls_logname, "none", 5) == 0) {
-    tls_logname = NULL;
+  path = get_param_ptr(main_server->conf, "TLSLog", FALSE);
+  if (path == NULL ||
+      strncasecmp(path, "none", 5) == 0) {
     return 0;
   }
 
   pr_signals_block();
   PRIVS_ROOT
-  res = pr_log_openfile(tls_logname, &tls_logfd, PR_LOG_SYSTEM_MODE);
+  res = pr_log_openfile(path, &tls_logfd, PR_LOG_SYSTEM_MODE);
   xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
@@ -8385,10 +8652,18 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
 
 /* usage: TLSCipherSuite string */
 MODRET set_tlsciphersuite(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  char *ciphersuite = NULL;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  ciphersuite = cmd->argv[1];
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
+  c->argv[0] = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+
   return PR_HANDLED(cmd);
 }
 
@@ -8544,7 +8819,7 @@ MODRET set_tlseccertfile(cmd_rec *cmd) {
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
     "does have EC support", NULL));
-#endif /* PR_USE_OPENSSL_ ECC */
+#endif /* PR_USE_OPENSSL_ECC */
 }
 
 /* usage: TLSECCertificateKeyFile file */
@@ -8574,24 +8849,73 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
     "does have EC support", NULL));
-#endif /* PR_USE_OPENSSL_ ECC */
+#endif /* PR_USE_OPENSSL_ECC */
+}
+
+/* usage: TLSECDHCurve name */
+MODRET set_tlsecdhcurve(cmd_rec *cmd) {
+#ifdef PR_USE_OPENSSL_ECC
+  char *curve_name = NULL;
+  int curve_nid = -1;
+  EC_KEY *ec_key = NULL;
+  
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  curve_name = cmd->argv[1];
+
+  /* The special-case handling of these curve names is copied from OpenSSL's
+   * apps/ecparam.c code.
+   */
+
+  if (strcmp(curve_name, "secp192r1") == 0) {
+    curve_nid = NID_X9_62_prime192v1;
+
+  } else if (strcmp(curve_name, "secp256r1") == 0) {
+    curve_nid = NID_X9_62_prime256v1;
+
+  } else {
+    curve_nid = OBJ_sn2nid(curve_name);
+  }
+
+  ec_key = EC_KEY_new_by_curve_name(curve_nid);
+  if (ec_key == NULL) {
+    char *err_str = "unknown/unsupported curve";
+
+    if (curve_nid > 0) {
+      err_str = ERR_error_string(ERR_get_error(), NULL);
+    }
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to create '", curve_name,
+      "' EC curve: ", err_str, NULL));
+  }
+
+  (void) add_config_param(cmd->argv[0], 1, ec_key);
+  return PR_HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does have EC support", NULL));
+#endif /* PR_USE_OPENSSL_ECC */
 }
 
 /* usage: TLSEngine on|off */
 MODRET set_tlsengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }
@@ -8630,14 +8954,41 @@ MODRET set_tlsmasqaddr(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSNextProtocol on|off */
+MODRET set_tlsnextprotocol(cmd_rec *cmd) {
+#if !defined(OPENSSL_NO_TLSEXT)
+  config_rec *c;
+  int use_next_protocol = FALSE;
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+
+  use_next_protocol = get_boolean(cmd, 1);
+  if (use_next_protocol == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = use_next_protocol;
+  return PR_HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does have NPN/ALPN support", NULL));
+#endif /* !OPENSSL_NO_TLSEXT */
+}
+
 /* usage: TLSOptions opt1 opt2 ... */
 MODRET set_tlsoptions(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
   unsigned long opts = 0UL;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -8692,6 +9043,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "CommonNameRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_CN;
+
+    } else if (strcmp(cmd->argv[i], "NoAutoECDH") == 0) {
+      opts |= TLS_OPT_NO_AUTO_ECDH;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
@@ -8749,6 +9103,47 @@ MODRET set_tlspkcs12file(cmd_rec *cmd) {
   }
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* usage: TLSPreSharedKey name path */
+MODRET set_tlspresharedkey(cmd_rec *cmd) {
+#if defined(PSK_MAX_PSK_LEN)
+  size_t identity_len, path_len;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  identity_len = strlen(cmd->argv[1]);
+  if (identity_len > PSK_MAX_IDENTITY_LEN) {
+    char buf[32];
+
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "%d", (int) PSK_MAX_IDENTITY_LEN);
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "TLSPreSharedKey identity '", cmd->argv[1], "' exceed maximum length ",
+      buf, cmd->argv[2], NULL))
+  }
+
+  /* Ensure that the given path starts with "hex:", denoting the
+   * format of the key at the given path.  Support for other formats, e.g.
+   * bcrypt or somesuch, will be added later.
+   */
+  path_len = strlen(cmd->argv[2]);
+  if (path_len < 5 ||
+      strncmp(cmd->argv[2], "hex:", 4) != 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "unsupported TLSPreSharedKey format: ", cmd->argv[2], NULL))
+  }
+
+  (void) add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+#else
+  pr_log_debug(DEBUG0,
+    "%s is not supported by this build/version of OpenSSL, ignoring",
+    cmd->argv[0]);
+#endif /* PSK_MAX_PSK_LEN */
+
   return PR_HANDLED(cmd);
 }
 
@@ -9376,6 +9771,18 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
 
 static void tls_exit_ev(const void *event_data, void *user_data) {
 
+  if (ssl_ctx != NULL) {
+    time_t now;
+
+    /* Help out with the SSL session cache grooming by flushing any
+     * expired sessions out right now.  The client is closing its
+     * connection to us anyway, so some additional latency here shouldn't
+     * be noticed.  Right?
+     */
+    now = time(NULL);
+    SSL_CTX_flush_sessions(ssl_ctx, (long) now);
+  }
+
   /* If diags are enabled, log some OpenSSL stats. */
   if (ssl_ctx != NULL && 
       (tls_opts & TLS_OPT_ENABLE_DIAGS)) {
@@ -9555,7 +9962,7 @@ static void tls_get_passphrases(void) {
           ": error reading EC passphrase: %s", tls_get_errors());
 
         pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
-          "EC certificate key '%s', exiting", (char *) dsa->argv[0]);
+          "EC certificate key '%s', exiting", (char *) ec->argv[0]);
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
           NULL);
       }
@@ -9794,6 +10201,7 @@ static int tls_init(void) {
    * handling some algorithms (e.g. PKCS12 files) which are NOT added by
    * just calling SSL_library_init().
    */
+  ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
 
 #ifdef PR_USE_CTRLS
@@ -9817,6 +10225,40 @@ static int tls_init(void) {
 
   return 0;
 }
+
+#if !defined(OPENSSL_NO_TLSEXT)
+static int set_next_protocol(void) {
+  register unsigned int i;
+  const char *proto = TLS_DEFAULT_NEXT_PROTO;
+  size_t encoded_protolen, proto_len;
+  unsigned char *encoded_proto;
+  struct tls_next_proto *next_proto;
+
+  proto_len = strlen(proto);
+  encoded_protolen = proto_len + 1;
+  encoded_proto = palloc(session.pool, encoded_protolen);
+  encoded_proto[0] = proto_len;
+  for (i = 0; i < proto_len; i++) {
+    encoded_proto[i+1] = proto[i];
+  }
+
+  next_proto = palloc(session.pool, sizeof(struct tls_next_proto));
+  next_proto->proto = pstrdup(session.pool, proto);
+  next_proto->encoded_proto = encoded_proto;
+  next_proto->encoded_protolen = encoded_protolen;
+
+# if defined(PR_USE_OPENSSL_NPN)
+  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, tls_npn_advertised_cb,
+    next_proto);
+# endif /* NPN */
+
+# if defined(PR_USE_OPENSSL_ALPN)
+  SSL_CTX_set_alpn_select_cb(ssl_ctx, tls_alpn_select_cb, next_proto);
+# endif /* ALPN */
+
+  return 0;
+}
+#endif /* !OPENSSL_NO_TLSEXT */
 
 static int tls_sess_init(void) {
   int res = 0;
@@ -9861,14 +10303,19 @@ static int tls_sess_init(void) {
   tls_crl_file = get_param_ptr(main_server->conf, "TLSCARevocationFile", FALSE);
   tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);
 
-  tls_dhparam_file = get_param_ptr(main_server->conf, "TLSDHParamFile", FALSE);
-  if (tls_dhparam_file != NULL) {
+  c = find_config(main_server->conf, CONF_PARAM, "TLSDHParamFile", FALSE);
+  while (c != NULL) {
+    const char *path;
     FILE *fp;
     int xerrno;
 
+    pr_signals_handle();
+
+    path = c->argv[0];
+
     /* Load the DH params from the file. */
     PRIVS_ROOT
-    fp = fopen(tls_dhparam_file, "r");
+    fp = fopen(path, "r");
     xerrno = errno;
     PRIVS_RELINQUISH
 
@@ -9877,7 +10324,9 @@ static int tls_sess_init(void) {
 
       dh = PEM_read_DHparams(fp, NULL, NULL, NULL);
       if (dh != NULL) {
-        tls_tmp_dhs = make_array(session.pool, 1, sizeof(DH *));
+        if (tls_tmp_dhs == NULL) {
+          tls_tmp_dhs = make_array(session.pool, 1, sizeof(DH *));
+        }
       }
 
       while (dh != NULL) {
@@ -9890,9 +10339,10 @@ static int tls_sess_init(void) {
 
     } else {
       pr_log_debug(DEBUG3, MOD_TLS_VERSION
-        ": unable to open TLSDHParamFile '%s': %s", tls_dhparam_file,
-          strerror(xerrno));
+        ": unable to open TLSDHParamFile '%s': %s", path, strerror(xerrno));
     }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSDHParamFile", FALSE);
   }
 
   tls_dsa_cert_file = get_param_ptr(main_server->conf, "TLSDSACertificateFile",
@@ -9911,6 +10361,171 @@ static int tls_sess_init(void) {
     FALSE);
   tls_rsa_key_file = get_param_ptr(main_server->conf,
     "TLSRSACertificateKeyFile", FALSE);
+
+#if defined(PSK_MAX_PSK_LEN)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSPreSharedKey", FALSE);
+  while (c != NULL) {
+    register unsigned int i;
+    char key_buf[PR_TUNABLE_BUFFER_SIZE], *identity, *path;
+    int fd, key_len, valid_hex = TRUE, xerrno;
+    struct stat st;
+    BIGNUM *bn = NULL;
+
+    pr_signals_handle();
+
+    identity = c->argv[0];
+    path = c->argv[1];
+
+    /* Advance path the "hex:" format prefix. */
+    path += 4;
+
+    PRIVS_ROOT
+    fd = open(path, O_RDONLY); 
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (fd < 0) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": error opening TLSPreSharedKey file '%s': %s", path,
+        strerror(xerrno));
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    if (fstat(fd, &st) < 0) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": error checking TLSPreSharedKey file '%s': %s", path,
+        strerror(errno));
+      (void) close(fd);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    /* Check on the permissions of the file; skip it if the permissions
+     * are too permissive, e.g. file is world-read/writable.
+     */
+    if (st.st_mode & S_IROTH) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": unable to use TLSPreSharedKey file '%s': file is world-readable",
+        path);
+      (void) close(fd);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    if (st.st_mode & S_IWOTH) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": unable to use TLSPreSharedKey file '%s': file is world-writable",
+        path);
+      (void) close(fd);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    /* Read the entire key into memory. */
+    key_len = read(fd, key_buf, sizeof(key_buf)-1);
+    (void) close(fd);
+
+    if (key_len < 0) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": error reading TLSPreSharedKey file '%s': %s", path,
+        strerror(xerrno));
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+
+    } else if (key_len == 0) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": read zero bytes from TLSPreSharedKey file '%s', ignoring", path);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+
+    } else if (key_len < TLS_MIN_PSK_LEN) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": read %d bytes from TLSPreSharedKey file '%s', need at least %d "
+        "bytes of key data, ignoring", TLS_MIN_PSK_LEN, path, key_len);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    key_buf[key_len] = '\0';
+    key_buf[sizeof(key_buf)-1] = '\0';
+
+    /* Ignore any trailing newlines. */
+    if (key_buf[key_len-1] == '\n') {
+      key_buf[key_len-1] = '\0';
+      key_len--;
+    }
+
+    if (key_buf[key_len-1] == '\r') {
+      key_buf[key_len-1] = '\0';
+      key_len--;
+    }
+
+    /* Ensure that it is all hex encoded data */
+    for (i = 0; i < key_len; i++) {
+      if (isxdigit((int) key_buf[i]) == 0) {
+        valid_hex = FALSE;
+        break;
+      }
+    }
+ 
+    if (valid_hex == FALSE) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": unable to use '%s': not a hex number", key_buf);
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    res = BN_hex2bn(&bn, key_buf);
+    if (res == 0) {
+      pr_log_debug(DEBUG2, MOD_TLS_VERSION
+        ": failed to convert '%s' to BIGNUM: %s", key_buf,
+        tls_get_errors());
+
+      if (bn != NULL) {
+        BN_free(bn);
+      }
+
+      c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+      continue;
+    }
+
+    if (tls_psks == NULL) {
+      tls_psks = pr_table_nalloc(session.pool, 0, 2);
+    }
+
+    if (pr_table_add(tls_psks, identity, bn, sizeof(BIGNUM *)) < 0) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": error stashing key for identity '%s': %s", identity,
+        strerror(errno));
+      BN_free(bn);
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
+  }
+
+  if (tls_psks != NULL &&
+      pr_table_count(tls_psks) > 0) {
+    pr_trace_msg(trace_channel, 9,
+      "enabling support for PSK identities (%d)", pr_table_count(tls_psks));
+    SSL_CTX_set_psk_server_callback(ssl_ctx, tls_lookup_psk);
+  }
+#endif /* PSK_MAX_PSK_LEN */
+
+#if !defined(OPENSSL_NO_TLSEXT)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSNextProtocol", FALSE);
+  if (c != NULL) {
+    int use_next_protocol = TRUE;
+
+    use_next_protocol = *((int *) c->argv[0]);
+    if (use_next_protocol) {
+      set_next_protocol();
+    }
+
+  } else {
+    set_next_protocol();
+  }
+#endif /* !OPENSSL_NO_TLSEXT */
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
   while (c != NULL) {
@@ -9938,6 +10553,26 @@ static int tls_sess_init(void) {
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
   }
 #endif
+
+#ifdef PR_USE_OPENSSL_ECC
+# if defined(SSL_CTX_set_ecdh_auto)
+  if (tls_opts & TLS_OPT_NO_AUTO_ECDH) {
+    SSL_CTX_set_ecdh_auto(ssl_ctx, 0);
+  }
+# endif
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
+  if (c != NULL) {
+    const EC_KEY *ec_key;
+
+    ec_key = c->argv[0];
+
+    SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_ECDH_USE);
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, ec_key);
+  } else {
+    SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+  }
+#endif /* PR_USE_OPENSSL_ECC */
 
   tmp = get_param_ptr(main_server->conf, "TLSVerifyClient", FALSE);
   if (tmp != NULL &&
@@ -10264,12 +10899,15 @@ static conftable tls_conftab[] = {
   { "TLSDSACertificateKeyFile",	set_tlsdsakeyfile,	NULL },
   { "TLSECCertificateFile",	set_tlseccertfile,	NULL },
   { "TLSECCertificateKeyFile",	set_tlseckeyfile,	NULL },
+  { "TLSECDHCurve",		set_tlsecdhcurve,	NULL },
   { "TLSEngine",		set_tlsengine,		NULL },
   { "TLSLog",			set_tlslog,		NULL },
   { "TLSMasqueradeAddress",	set_tlsmasqaddr,	NULL },
+  { "TLSNextProtocol",		set_tlsnextprotocol,	NULL },
   { "TLSOptions",		set_tlsoptions,		NULL },
   { "TLSPassPhraseProvider",	set_tlspassphraseprovider, NULL },
   { "TLSPKCS12File", 		set_tlspkcs12file,	NULL },
+  { "TLSPreSharedKey",		set_tlspresharedkey,	NULL },
   { "TLSProtocol",		set_tlsprotocol,	NULL },
   { "TLSRandomSeed",		set_tlsrandseed,	NULL },
   { "TLSRenegotiate",		set_tlsrenegotiate,	NULL },

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project
+ * Copyright (c) 2001-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -312,9 +312,30 @@ int pr_insert_fs_match(pr_fs_match_t *);
 int pr_unregister_fs_match(const char *);
 #endif /* PR_USE_REGEX and PR_FS_MATCH */
 
+/* FS Statcache API */
 void pr_fs_clear_cache(void);
+int pr_fs_clear_cache2(const char *path);
+
+/* Dump the current contents of the statcache via trace logging, to the
+ * "fs.statcache" trace channel.
+ */
+void pr_fs_statcache_dump(void);
+
+/* Clears the entire statcache and re-creates the memory pool. */
+void pr_fs_statcache_reset(void);
+
+/* Tune the statcache policy: max number of items in the cache at any
+ * one time, the max age (in seconds) for items in the cache, and the policy
+ * flags.
+ *
+ * Note that setting a size of zero, OR setting a max age of zero, effectively
+ * disables the statcache.
+ */
+int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
+  unsigned int flags);
+
 int pr_fs_copy_file(const char *, const char *);
-void pr_fs_setcwd(const char *);
+int pr_fs_setcwd(const char *);
 const char *pr_fs_getcwd(void);
 const char *pr_fs_getvwd(void);
 int pr_fs_dircat(char *, int, const char *, const char *);

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004-2013 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2015 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,8 +24,6 @@
  *
  * This is mod_dso, contrib software for proftpd 1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_dso.c,v 1.33 2013-10-13 23:46:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -677,6 +675,7 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
   /* Re-register the control handlers */
   for (i = 0; dso_acttab[i].act_action; i++) {
     pool *sub_pool = make_sub_pool(dso_pool);
+    pr_pool_tag(sub_pool, "DSO control action pool");
 
     /* Allocate and initialize the ACL for this control. */
     dso_acttab[i].act_acl = pcalloc(sub_pool, sizeof(ctrls_acl_t));
@@ -756,6 +755,7 @@ static int dso_init(void) {
   /* Register ctrls handlers. */
   for (i = 0; dso_acttab[i].act_action; i++) {
     pool *sub_pool = make_sub_pool(dso_pool);
+    pr_pool_tag(sub_pool, "DSO control action pool");
 
     /* Allocate and initialize the ACL for this control. */
     dso_acttab[i].act_acl = pcalloc(sub_pool, sizeof(ctrls_acl_t));
