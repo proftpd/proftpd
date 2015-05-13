@@ -2624,7 +2624,7 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
   if (server_name != NULL) {
     const char *host = NULL;
 
-    pr_trace_msg(trace_channel, 5, "received SNI '%s", server_name);
+    pr_trace_msg(trace_channel, 5, "received SNI '%s'", server_name);
 
     /* If we have already received a HOST command, then we need to
      * check that the SNI value matches that of the HOST.  Otherwise,
