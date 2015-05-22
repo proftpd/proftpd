@@ -1130,8 +1130,9 @@ To do this, you would use a combination of
 <p>
 <font color=red>Question</font>: I have configured my <code>proftpd</code>
 server for FTPS.  When I use FileZilla to try to connect to it, though, I
-see this error in the FileZilla logs:
+see one of these errors in the FileZilla logs:
 <pre>
+  GnuTLS error -8: A record packet with illegal version was received
   GnuTLS error -9: A TLS packet with unexpected length was received
 </pre>
 Is there a ProFTPD directive to fix this error?<br>
@@ -1170,8 +1171,8 @@ What is going wrong?<br>
 using SSL/TLS is <i>allowed</i> when talking to an FTP server:
 <pre>
   $ lftp pc
-  lftp> set ftp:ssl-allow yes
-  lftp> user <i>user</i>
+  lftp&gt; set ftp:ssl-allow yes
+  lftp&gt; user <i>user</i>
   ...
 </pre>
 <b>or</b> put the above setting in your <code>~/.lftprc</code> file.
