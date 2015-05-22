@@ -174,6 +174,11 @@ server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr);
 /* Opens the pr_namebind_t with the given name. */
 int pr_namebind_open(const char *name, pr_netaddr_t *addr);
 
+/* Provides a count of the number of namebinds associated with this
+ * server_rec.
+ */
+unsigned int pr_namebind_count(server_rec *);
+
 /* Initialize the Bindings layer. */
 void init_bindings(void);
 

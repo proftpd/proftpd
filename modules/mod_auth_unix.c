@@ -25,7 +25,6 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.61 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -97,21 +96,20 @@ extern void cygwin_set_impersonation_token (const HANDLE);
 
 #include "privs.h"
 
-static const char *pwdfname = "/etc/passwd";
-static const char *grpfname = "/etc/group";
-
 #ifdef HAVE__PW_STAYOPEN
 extern int _pw_stayopen;
 #endif
 
 module auth_unix_module;
 
-static const char *trace_channel = "auth.unix";
-
+static const char *pwdfname = "/etc/passwd";
 static FILE *pwdf = NULL;
+
+static const char *grpfname = "/etc/group";
 static FILE *grpf = NULL;
 
 static int unix_persistent_passwd = FALSE;
+static const char *trace_channel = "auth.unix";
 
 #undef PASSWD
 #define PASSWD		pwdfname
@@ -1254,30 +1252,6 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-/* Command handlers
- */
-
-MODRET auth_unix_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    pr_event_unregister(&auth_unix_module, "core.exit", auth_unix_exit_ev);
-    auth_unix_opts = 0UL;
-
-    res = auth_unix_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&auth_unix_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 /* Configuration handlers
  */
 
@@ -1342,8 +1316,24 @@ MODRET set_persistentpasswd(cmd_rec *cmd) {
 static void auth_unix_exit_ev(const void *event_data, void *user_data) {
   pr_auth_endpwent(session.pool);
   pr_auth_endgrent(session.pool);
+}
 
-  return;
+static void auth_unix_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&auth_unix_module, "core.exit", auth_unix_exit_ev);
+  pr_event_unregister(&auth_unix_module, "core.session-reinit",
+    auth_unix_sess_reinit_ev);
+  auth_unix_opts = 0UL;
+  unix_persistent_passwd = FALSE;
+
+  res = auth_unix_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&auth_unix_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
 }
 
 /* Initialization routines
@@ -1362,6 +1352,8 @@ static int auth_unix_sess_init(void) {
   config_rec *c;
 
   pr_event_register(&auth_unix_module, "core.exit", auth_unix_exit_ev, NULL);
+  pr_event_register(&auth_unix_module, "core.session-reinit",
+    auth_unix_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "AuthUnixOptions", FALSE);
   if (c) {
@@ -1383,11 +1375,6 @@ static conftable auth_unix_conftab[] = {
   { "AuthUnixOptions",		set_authunixoptions,		NULL },
   { "PersistentPasswd",		set_persistentpasswd,		NULL },
   { NULL,			NULL,				NULL }
-};
-
-static cmdtable auth_unix_cmdtab[] = {
-  { POST_CMD,	C_HOST,	G_NONE,	auth_unix_post_host,	FALSE, FALSE },
-  { 0, NULL }
 };
 
 static authtable auth_unix_authtab[] = {
@@ -1425,7 +1412,7 @@ module auth_unix_module = {
   auth_unix_conftab,
 
   /* Module command handler table */
-  auth_unix_cmdtab,
+  NULL,
 
   /* Module authentication handler table */
   auth_unix_authtab,

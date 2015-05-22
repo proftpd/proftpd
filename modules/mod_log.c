@@ -128,6 +128,7 @@ static xaset_t *log_set = NULL;
 
 /* Necessary prototypes */
 static int log_sess_init(void);
+static void log_xfer_stalled_ev(const void *, void *);
 
 static void add_meta(unsigned char **s, unsigned char meta, int args, ...) {
   int arglen;
@@ -1927,6 +1928,37 @@ static void log_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void log_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+  logfile_t *lf = NULL;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&log_module, "core.exit", log_exit_ev);
+  pr_event_unregister(&log_module, "core.session-reinit", log_sess_reinit_ev);
+  pr_event_unregister(&log_module, "core.timeout-stalled", log_xfer_stalled_ev);
+
+  /* XXX If ServerLog configured, close/reopen syslog? */
+
+  /* XXX Close all ExtendedLog files, to prevent duplicate fds. */
+  for (lf = logs; lf; lf = lf->next) {
+    if (lf->lf_fd > -1) {
+      /* No need to close the special EXTENDED_LOG_SYSLOG (i.e. fake) fd. */
+      if (lf->lf_fd != EXTENDED_LOG_SYSLOG) {
+        (void) close(lf->lf_fd);
+      }
+
+      lf->lf_fd = -1;
+    }
+  }
+
+  res = log_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&log_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 static void log_xfer_stalled_ev(const void *event_data, void *user_data) {
   if (session.curr_cmd_rec != NULL) {
     /* Automatically dispatch the current command, at the LOG_CMD_ERR phase,
@@ -2061,43 +2093,6 @@ MODRET log_pre_dele(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-MODRET log_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-    logfile_t *lf = NULL;
-
-    pr_event_unregister(&log_module, "core.exit", log_exit_ev);
-    pr_event_unregister(&log_module, "core.timeout-stalled",
-      log_xfer_stalled_ev);
-
-    /* XXX If ServerLog configured, close/reopen syslog? */
-
-    /* XXX Close all ExtendedLog files, to prevent duplicate fds. */
-    for (lf = logs; lf; lf = lf->next) {
-      if (lf->lf_fd > -1) {
-        /* No need to close the special EXTENDED_LOG_SYSLOG (i.e. fake) fd. */
-        if (lf->lf_fd != EXTENDED_LOG_SYSLOG) {
-          (void) close(lf->lf_fd);
-        }
-
-        lf->lf_fd = -1;
-      }
-    }
-
-    res = log_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&log_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 MODRET log_post_pass(cmd_rec *cmd) {
   logfile_t *lf;
 
@@ -2176,6 +2171,9 @@ MODRET log_post_pass(cmd_rec *cmd) {
 static int log_sess_init(void) {
   char *serverlog_name = NULL;
   logfile_t *lf = NULL;
+
+  pr_event_register(&log_module, "core.session-reinit", log_sess_reinit_ev,
+    NULL);
 
   /* Open the ServerLog, if present. */
   serverlog_name = get_param_ptr(main_server->conf, "ServerLog", FALSE);
@@ -2329,7 +2327,6 @@ static cmdtable log_cmdtab[] = {
   { PRE_CMD,		C_DELE,	G_NONE,	log_pre_dele,	FALSE, FALSE },
   { LOG_CMD,		C_ANY,	G_NONE,	log_any,	FALSE, FALSE },
   { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_any,	FALSE, FALSE },
-  { POST_CMD,		C_HOST,	G_NONE,	log_post_host,	FALSE, FALSE },
   { POST_CMD,		C_PASS,	G_NONE,	log_post_pass,	FALSE, FALSE },
   { 0, NULL }
 };

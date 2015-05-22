@@ -782,7 +782,6 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 
 /* usage: ServerAlias hostname [hostname ...] */
 MODRET set_serveralias(cmd_rec *cmd) {
-#ifdef PR_USE_HOST
   register unsigned int i;
 
   if (cmd->argc < 2) {
@@ -796,9 +795,6 @@ MODRET set_serveralias(cmd_rec *cmd) {
   }
 
   return PR_HANDLED(cmd);
-#else
-  CONF_ERROR(cmd, "not yet implemented");
-#endif /* PR_USE_HOST */
 }
 
 /* usage: ServerIdent off|on [name] */
@@ -4379,7 +4375,6 @@ MODRET core_help(cmd_rec *cmd) {
 }
 
 MODRET core_host(cmd_rec *cmd) {
-#ifdef PR_USE_HOST
   const char *local_ipstr;
   char *host;
   size_t hostlen;
@@ -4407,21 +4402,31 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* XXX Need checking of a <Limit> for HOST commands, so that HOST can be
-   * denied via configuration if need be.
-   */
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
+    int xerrno = EACCES;
 
-  /* XXX Should there be a limit on the number of HOST commands that a client
+    pr_response_add_err(R_504, "%s: %s", cmd->argv[1], strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  /* Should there be a limit on the number of HOST commands that a client
    * can send?
+   *
+   * In practice, this will be limited by the TimeoutLogin time interval;
+   * a client can send as many HOST commands as it wishes, as long as it
+   * successfully authenticates in that time.
    */
 
-#if 0
   /* If the user has already authenticated or negotiated a RFC2228 mechanism,
    * then the HOST command is too late.
    */
   if (session.rfc2228_mech != NULL) {
     pr_log_debug(DEBUG0, "HOST '%s' command received after client has "
-      "requested RFC2228 protection, refusing HOST command", cmd->argv[1]);
+      "requested RFC2228 protection (%s), refusing HOST command", cmd->argv[1],
+      session.rfc2228_mech);
 
     pr_response_add_err(R_503, _("Bad sequence of commands"));
 
@@ -4429,7 +4434,6 @@ MODRET core_host(cmd_rec *cmd) {
     errno = EPERM;
     return PR_ERROR(cmd);
   }
-#endif
 
   host = cmd->argv[1];
   hostlen = strlen(host);
@@ -4496,6 +4500,12 @@ MODRET core_host(cmd_rec *cmd) {
       }
     }
 
+    (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+    if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+      pr_trace_msg("command", 3,
+        "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+    }
+
     /* No need to send the banner information again, since we didn't actually
      * change the virtual host used by the client.
      */
@@ -4536,6 +4546,12 @@ MODRET core_host(cmd_rec *cmd) {
       }
     }
 
+    (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+    if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+      pr_trace_msg("command", 3,
+        "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+    }
+
     /* No need to send the banner information again, since we didn't actually
      * change the virtual host used by the client.
      */
@@ -4556,8 +4572,7 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  named_server = pr_namebind_get_server(host, main_server->addr,
-    main_server->ServerPort);
+  named_server = pr_namebind_get_server(host, main_server->addr);
   if (named_server == NULL) {
     pr_log_debug(DEBUG0, "Unknown host '%s' requested on %s#%d, "
       "refusing HOST command", host, local_ipstr, main_server->ServerPort);
@@ -4570,6 +4585,35 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  if (session.rfc2228_mech != NULL &&
+      strncmp(session.rfc2228_mech, "TLS", 4) == 0) {
+    const char *sni = NULL;
+
+    /* If the TLS client used the SNI extension, ensure that the SNI name
+     * matches the HOST name, per RFC 7151, Section 3.2.2.  Otherwise, we
+     * reject the HOST command.
+     */
+    sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
+    if (sni != NULL) {
+      if (strcasecmp(sni, host) != 0) {
+        pr_log_debug(DEBUG0, "HOST '%s' requested, but client connected via "
+          "TLS to SNI '%s', refusing HOST command", host, sni);
+        pr_response_add_err(R_504, _("%s: Unknown hostname provided"),
+          cmd->argv[1]);
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
+        return PR_ERROR(cmd);
+      }
+    }
+  }
+
+  (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+  if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+    pr_trace_msg("command", 3,
+      "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+  }
+
   if (named_server != main_server) {
     /* Set a session flag indicating that the main_server pointer changed. */
     pr_log_debug(DEBUG0,
@@ -4577,6 +4621,8 @@ MODRET core_host(cmd_rec *cmd) {
       named_server->ServerName, host);
     session.prev_server = main_server;
     main_server = named_server;
+
+    pr_event_generate("core.session-reinit", named_server);
   }
 
   /* XXX Ultimately, if HOST is successful, we change the main_server pointer
@@ -4588,6 +4634,59 @@ MODRET core_host(cmd_rec *cmd) {
    * AuthOrder, timeouts, etc etc.  (Unfortunately, POST_CMD handlers cannot
    * fail the given command; for modules which then need to end the
    * connection, they'll need to use pr_session_disconnect().)
+   *
+   * Modules implementing post_host handlers:
+   *   mod_core
+   *   mod_tls
+   *
+   * Modules implementing 'sess-reinit' event handlers:
+   *   mod_auth
+   *   mod_auth_file
+   *   mod_auth_unix
+   *   mod_ban
+   *   mod_cap
+   *   mod_copy
+   *   mod_deflate
+   *   mod_delay
+   *   mod_dnsbl
+   *   mod_exec
+   *   mod_facts
+   *   mod_ident
+   *   mod_log
+   *   mod_log_forensic
+   *   mod_memcache
+   *   mod_qos
+   *   mod_site_misc
+   *   mod_xfer
+   *
+   * Modules that MIGHT need post_host handlers:
+   *   mod_ratio
+   *   mod_snmp
+   *
+   * Modules that NEED a post_host handler:
+   *   mod_ldap
+   *   mod_quotatab et al
+   *   mod_radius
+   *   mod_rewrite
+   *   mod_shaper
+   *   mod_sql et al
+   *   mod_sql_passwd
+   *   mod_wrap
+   *   mod_wrap2 et al
+   *
+   * Modules that do NOT need a post_host handler:
+   *   mod_ctrls_admin
+   *   mod_dynmasq
+   *   mod_ifversion
+   *   mod_ifsession
+   *   mod_load
+   *   mod_readme
+   *   mod_sftp (HOST command is FTP only)
+   *   mod_sftp_pam
+   *   mod_sftp_sql
+   *   mod_tls_memcache
+   *   mod_tls_shmcache
+   *   mod_unique_id
    */
 
   /* XXX Will this function need to use pr_response_add(), rather than
@@ -4599,9 +4698,6 @@ MODRET core_host(cmd_rec *cmd) {
 
   pr_session_send_banner(main_server, 0);
   return PR_HANDLED(cmd);
-#else
-  return PR_DECLINED(cmd);
-#endif /* PR_USE_HOST */
 }
 
 MODRET core_post_host(cmd_rec *cmd) {
@@ -6028,9 +6124,7 @@ static int core_init(void) {
   pr_help_add(C_NOOP, _("(no operation)"), TRUE);
   pr_help_add(C_FEAT, _("(returns feature list)"), TRUE);
   pr_help_add(C_OPTS, _("<sp> command [<sp> options]"), TRUE);
-#ifdef PR_USE_HOST
   pr_help_add(C_HOST, _("<cp> hostname"), TRUE);
-#endif /* PR_USE_HOST */
   pr_help_add(C_AUTH, _("<sp> base64-data"), FALSE);
   pr_help_add(C_CCC, _("(clears protection level)"), FALSE);
   pr_help_add(C_CONF, _("<sp> base64-data"), FALSE);
@@ -6047,9 +6141,7 @@ static int core_init(void) {
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
-#ifdef PR_USE_HOST
   pr_feat_add(C_HOST);
-#endif /* PR_USE_HOST */
 
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
@@ -6577,6 +6669,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
   { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_OPTS, G_NONE,  core_opts,    FALSE,	FALSE,	CL_MISC },
+  { CMD, C_HOST, G_NONE,  core_host,    FALSE,	FALSE,	CL_MISC },
   { POST_CMD, C_PASS, G_NONE, core_post_pass, FALSE, FALSE },
   { CMD, C_HOST, G_NONE,  core_host,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD, C_HOST, G_NONE, core_post_host, FALSE, FALSE },

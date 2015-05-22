@@ -269,28 +269,6 @@ MODRET set_capengine(cmd_rec *cmd) {
 /* Command handlers
  */
 
-MODRET cap_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    have_capabilities = FALSE;
-    use_capabilities = TRUE;
-    cap_flags = 0;
-
-    res = cap_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&cap_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 /* The POST_CMD handler for "PASS" is only called after PASS has
  * successfully completed, which means authentication is successful,
  * so we can "tweak" our root access down to almost nothing.
@@ -539,10 +517,34 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void cap_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&cap_module, "core.session-reinit", cap_sess_reinit_ev);
+
+  have_capabilities = FALSE;
+  use_capabilities = TRUE;
+  cap_flags = 0;
+
+  res = cap_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&cap_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization routines
  */
 
 static int cap_sess_init(void) {
+  pr_event_register(&cap_module, "core.session-reinit", cap_sess_reinit_ev,
+    NULL);
+
   /* Check to see if the lowering of capabilities has been disabled in the
    * configuration file.
    */
@@ -652,7 +654,6 @@ static conftable cap_conftab[] = {
 };
 
 static cmdtable cap_cmdtab[] = {
-  { POST_CMD,	C_HOST,	G_NONE,	cap_post_host,	FALSE, FALSE },
   { POST_CMD,	C_PASS,	G_NONE,	cap_post_pass,	FALSE, FALSE },
   { 0, NULL }
 };

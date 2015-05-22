@@ -2,7 +2,7 @@
  * mod_log_forensic - a buffering log module for aiding in server behavior
  *                    forensic analysis
  *
- * Copyright (c) 2011-2013 TJ Saunders
+ * Copyright (c) 2011-2014 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -108,6 +108,9 @@ static const char *forensic_log_levels[] = {
   "30", "31", "32", "33", "34", "35", "36", "37", "38", "39",
   "40", "41", "42", "43", "44", "45", "46", "47", "48", "49"
 };
+
+/* Necessary prototypes */
+static int forensic_sess_init(void);
 
 static void forensic_add_msg(unsigned int log_type, int log_level,
     const char *log_msg, size_t log_msglen) {
@@ -849,6 +852,46 @@ static void forensic_mod_unload_ev(const void *event_data, void *user_data) {
 }
 #endif /* PR_SHARED_MODULE */
 
+static void forensic_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&log_forensic_module, "core.exit", forensic_exit_ev);
+  pr_event_unregister(&log_forensic_module, "core.log.unspec", forensic_log_ev);
+  pr_event_unregister(&log_forensic_module, "core.log.xferlog",
+    forensic_log_ev);
+  pr_event_unregister(&log_forensic_module, "core.log.syslog", forensic_log_ev);
+  pr_event_unregister(&log_forensic_module, "core.log.systemlog",
+    forensic_log_ev);
+  pr_event_unregister(&log_forensic_module, "core.log.extlog", forensic_log_ev);
+  pr_event_unregister(&log_forensic_module, "core.log.tracelog",
+    forensic_log_ev);
+  pr_event_unregister(&log_forensic_module, "core.session-reinit",
+    forensic_sess_reinit_ev);
+
+  forensic_engine = FALSE;
+  (void) close(forensic_logfd);
+  forensic_logfd = -1;
+  forensic_criteria = FORENSIC_CRIT_DEFAULT;
+  forensic_msgs = NULL;
+  forensic_nmsgs = FORENSIC_DEFAULT_NMSGS;
+  forensic_msg_idx = 0;
+
+  if (forensic_subpool != NULL) {
+    destroy_pool(forensic_subpool);
+    forensic_subpool = NULL;
+  }
+
+  forensic_subpool_msgno = 1;
+
+  res = forensic_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&log_forensic_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Module Initialization
  */
 
@@ -870,6 +913,9 @@ static int forensic_sess_init(void) {
   int extlog_listen = TRUE;
   int tracelog_listen = TRUE;
   int res, xerrno;
+
+  pr_event_register(&log_forensic_module, "core.session-reinit",
+    forensic_sess_reinit_ev, NULL);
 
   /* Is this module enabled? */
   c = find_config(main_server->conf, CONF_PARAM, "ForensicLogEngine", FALSE);
@@ -941,8 +987,10 @@ static int forensic_sess_init(void) {
     forensic_criteria = *((unsigned long *) c->argv[0]);
   }
 
-  forensic_pool = make_sub_pool(session.pool);
-  pr_pool_tag(forensic_pool, MOD_LOG_FORENSIC_VERSION);
+  if (forensic_pool == NULL) {
+    forensic_pool = make_sub_pool(session.pool);
+    pr_pool_tag(forensic_pool, MOD_LOG_FORENSIC_VERSION);
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "ForensicLogBufferSize",
     FALSE);

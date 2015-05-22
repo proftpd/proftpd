@@ -147,6 +147,12 @@ struct ban_data {
   struct ban_event_list events;
 };
 
+/* Tracks whether we have already seen the client connect, so that we only
+ * generate the 'client-connect-rate' event once, even in the face of multiple
+ * HOST commands.
+ */
+static int ban_client_connected = FALSE;
+
 static struct ban_data *ban_lists = NULL;
 static int ban_engine = -1;
 
@@ -209,6 +215,7 @@ static unsigned long ban_cache_opts = 0UL;
 #define BAN_CACHE_OPT_MATCH_SERVER	0x001
 
 static int ban_lock_shm(int);
+static int ban_sess_init(void);
 
 static void ban_anonrejectpasswords_ev(const void *, void *);
 static void ban_badprotocol_ev(const void *, void *);
@@ -2990,6 +2997,27 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void ban_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  ban_cache_opts = 0UL;
+
+  if (mcache != NULL) {
+    (void) pr_memcache_conn_set_namespace(mcache, &ban_module, NULL);
+    mcache = NULL;
+  }
+
+  pr_event_unregister(&ban_module, "core.session-reinit", ban_sess_reinit_ev);
+
+  res = ban_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_SESSION_INIT_FAILED,
+      NULL);
+  }
+}
+
 static void ban_rootlogin_ev(const void *event_data, void *user_data) {
   const char *ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
 
@@ -3119,8 +3147,12 @@ static int ban_sess_init(void) {
   const char *remote_ip;
   char *rule_mesg = NULL;
 
-  if (ban_engine != TRUE)
+  pr_event_register(&ban_module, "core.session-reinit", ban_sess_reinit_ev,
+    NULL);
+
+  if (ban_engine != TRUE) {
     return 0;
+  }
 
   /* Check to see if the BanEngine directive is set to 'off'. */
   c = find_config(main_server->conf, CONF_PARAM, "BanEngine", FALSE);
@@ -3204,7 +3236,10 @@ static int ban_sess_init(void) {
     }
   }
 
-  pr_event_generate("mod_ban.client-connect-rate", session.c);
+  if (!ban_client_connected) {
+    pr_event_generate("mod_ban.client-connect-rate", session.c);
+    ban_client_connected = TRUE;
+  }
 
   pr_event_unregister(&ban_module, "core.restart", ban_restart_ev);
 

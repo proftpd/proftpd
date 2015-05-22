@@ -2799,36 +2799,6 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-MODRET xfer_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
-    pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
-    pr_event_unregister(&xfer_module, "core.timeout-session",
-      xfer_timeout_session_ev);
-    pr_event_unregister(&xfer_module, "core.timeout-stalled",
-      xfer_timeout_stalled_ev);
-
-    if (displayfilexfer_fh != NULL) {
-      (void) pr_fsio_close(displayfilexfer_fh);
-      displayfilexfer_fh = NULL;
-    }
-
-    res = xfer_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&xfer_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 MODRET xfer_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
@@ -3630,6 +3600,29 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void xfer_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
+  pr_event_unregister(&xfer_module, "core.session-reinit", xfer_sess_reinit_ev);
+  pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
+  pr_event_unregister(&xfer_module, "core.timeout-stalled",
+    xfer_timeout_stalled_ev);
+
+  if (displayfilexfer_fh != NULL) {
+    (void) pr_fsio_close(displayfilexfer_fh);
+    displayfilexfer_fh = NULL;
+  }
+
+  res = xfer_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&xfer_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 
   if (pr_module_exists("mod_shaper.c")) {
@@ -3708,6 +3701,8 @@ static int xfer_sess_init(void) {
 
   /* Exit handlers for HiddenStores cleanup */
   pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
+  pr_event_register(&xfer_module, "core.session-reinit", xfer_sess_reinit_ev,
+    NULL);
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
   pr_event_register(&xfer_module, "core.timeout-session",
@@ -3819,7 +3814,6 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
   { POST_CMD,C_PASS,	G_NONE,	 xfer_post_pass,	FALSE, FALSE },
-  { POST_CMD,C_HOST,	G_NONE,	 xfer_post_host,	FALSE, FALSE },
   { 0, NULL }
 };
 

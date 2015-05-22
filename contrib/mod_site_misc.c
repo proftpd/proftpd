@@ -29,7 +29,12 @@
 
 extern pr_response_t *resp_list, *resp_err_list;
 
+module site_misc_module;
+
 static unsigned int site_misc_engine = TRUE;
+
+/* Necessary prototypes */
+static int site_misc_sess_init(void);
 
 static int site_misc_check_filters(cmd_rec *cmd, const char *path) {
 #ifdef PR_USE_REGEX
@@ -1250,11 +1255,38 @@ MODRET site_misc_utime(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void site_misc_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&site_misc_module, "core.session-reinit",
+    site_misc_sess_reinit_ev);
+
+  site_misc_engine = TRUE;
+  pr_feat_remove("SITE MKDIR");
+  pr_feat_remove("SITE RMDIR");
+  pr_feat_remove("SITE SYMLINK");
+  pr_feat_remove("SITE UTIME");
+
+  res = site_misc_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&site_misc_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization functions
  */
 
 static int site_misc_sess_init(void) {
   config_rec *c;
+
+  pr_event_register(&site_misc_module, "core.session-reinit",
+    site_misc_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "SiteMiscEngine", FALSE);
   if (c) {

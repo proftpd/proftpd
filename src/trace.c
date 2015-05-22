@@ -58,6 +58,7 @@ static const char *trace_channels[] = {
   "inet",
   "lock",
   "log",
+  "module",
   "netacl",
   "netio",
   "pam",

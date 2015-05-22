@@ -42,6 +42,7 @@ static unsigned char mkhome = FALSE;
 static unsigned char authenticated_without_pass = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = FALSE;
+static int auth_client_connected = FALSE;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
 static pr_fh_t *displaylogin_fh = NULL;
@@ -50,8 +51,9 @@ static int TimeoutSession = 0;
 static int saw_first_user_cmd = FALSE;
 static const char *timing_channel = "timing";
 
-static int auth_scan_scoreboard(void);
 static int auth_count_scoreboard(cmd_rec *, char *);
+static int auth_scan_scoreboard(void);
+static int auth_sess_init(void);
 
 /* auth_cmd_chk_cb() is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
@@ -123,10 +125,48 @@ static void auth_exit_ev(const void *event_data, void *user_data) {
   (void) pr_close_scoreboard(FALSE);
 }
 
+static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&auth_module, "core.exit", auth_exit_ev);
+  pr_event_unregister(&auth_module, "core.session-reinit", auth_sess_reinit_ev);
+
+#if defined(PR_USE_LASTLOG)
+  lastlog = FALSE;
+#endif /* PR_USE_LASTLOG */
+  mkhome = FALSE;
+
+  res = auth_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&auth_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
+/* Initialization functions
+ */
+
+static int auth_init(void) {
+  /* Add the commands handled by this module to the HELP list. */ 
+  pr_help_add(C_USER, _("<sp> username"), TRUE);
+  pr_help_add(C_PASS, _("<sp> password"), TRUE);
+  pr_help_add(C_ACCT, _("is not implemented"), FALSE);
+  pr_help_add(C_REIN, _("is not implemented"), FALSE);
+
+  /* By default, enable auth checking */
+  set_auth_check(auth_cmd_chk_cb);
+
+  return 0;
+}
+
 static int auth_sess_init(void) {
   config_rec *c = NULL;
   unsigned char *tmp = NULL;
-  int res = 0;
+
+  pr_event_register(&auth_module, "core.session-reinit", auth_sess_reinit_ev,
+    NULL);
 
   /* Check for a server-specific TimeoutLogin */
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin", FALSE);
@@ -141,52 +181,60 @@ static int auth_sess_init(void) {
       auth_login_timeout_cb, "TimeoutLogin");
   }
 
-  PRIVS_ROOT
-  res = pr_open_scoreboard(O_RDWR);
-  PRIVS_RELINQUISH
+  if (auth_client_connected == FALSE) {
+    int res = 0;
 
-  if (res < 0) {
-    switch (res) {
-      case PR_SCORE_ERR_BAD_MAGIC:
-        pr_log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
-        break;
+    PRIVS_ROOT
+    res = pr_open_scoreboard(O_RDWR);
+    PRIVS_RELINQUISH
 
-      case PR_SCORE_ERR_OLDER_VERSION:
-        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
-        break;
+    if (res < 0) {
+      switch (res) {
+        case PR_SCORE_ERR_BAD_MAGIC:
+          pr_log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
+          break;
 
-      case PR_SCORE_ERR_NEWER_VERSION:
-        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
-        break;
+        case PR_SCORE_ERR_OLDER_VERSION:
+          pr_log_debug(DEBUG0,
+            "error opening scoreboard: bad version (too old)");
+          break;
 
-      default:
-        pr_log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
-        break;
+        case PR_SCORE_ERR_NEWER_VERSION:
+          pr_log_debug(DEBUG0,
+            "error opening scoreboard: bad version (too new)");
+          break;
+
+        default:
+          pr_log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+          break;
+      }
     }
   }
 
   pr_event_register(&auth_module, "core.exit", auth_exit_ev, NULL);
 
-  /* Create an entry in the scoreboard for this session, if we don't already
-   * have one.
-   */
-  if (pr_scoreboard_entry_get(PR_SCORE_CLIENT_ADDR) == NULL) {
-    if (pr_scoreboard_entry_add() < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
-        strerror(errno));
-    }
+  if (auth_client_connected == FALSE) {
+    /* Create an entry in the scoreboard for this session, if we don't already
+     * have one.
+     */
+    if (pr_scoreboard_entry_get(PR_SCORE_CLIENT_ADDR) == NULL) {
+      if (pr_scoreboard_entry_add() < 0) {
+        pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
+          strerror(errno));
+      }
 
-    pr_scoreboard_entry_update(session.pid,
-      PR_SCORE_USER, "(none)",
-      PR_SCORE_SERVER_PORT, main_server->ServerPort,
-      PR_SCORE_SERVER_ADDR, session.c->local_addr, session.c->local_port,
-      PR_SCORE_SERVER_LABEL, main_server->ServerName,
-      PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
-      PR_SCORE_CLIENT_NAME, session.c->remote_name,
-      PR_SCORE_CLASS, session.conn_class ? session.conn_class->cls_name : "",
-      PR_SCORE_PROTOCOL, "ftp",
-      PR_SCORE_BEGIN_SESSION, time(NULL),
-      NULL);
+      pr_scoreboard_entry_update(session.pid,
+        PR_SCORE_USER, "(none)",
+        PR_SCORE_SERVER_PORT, main_server->ServerPort,
+        PR_SCORE_SERVER_ADDR, session.c->local_addr, session.c->local_port,
+        PR_SCORE_SERVER_LABEL, main_server->ServerName,
+        PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
+        PR_SCORE_CLIENT_NAME, session.c->remote_name,
+        PR_SCORE_CLASS, session.conn_class ? session.conn_class->cls_name : "",
+        PR_SCORE_PROTOCOL, "ftp",
+        PR_SCORE_BEGIN_SESSION, time(NULL),
+        NULL);
+    }
 
   } else {
     /* We're probably handling a HOST comand, and the server changed; just
@@ -225,20 +273,7 @@ static int auth_sess_init(void) {
    */
   auth_scan_scoreboard();
 
-  return 0;
-}
-
-static int auth_init(void) {
-
-  /* Add the commands handled by this module to the HELP list. */ 
-  pr_help_add(C_USER, _("<sp> username"), TRUE);
-  pr_help_add(C_PASS, _("<sp> password"), TRUE);
-  pr_help_add(C_ACCT, _("is not implemented"), FALSE);
-  pr_help_add(C_REIN, _("is not implemented"), FALSE);
-
-  /* By default, enable auth checking */
-  set_auth_check(auth_cmd_chk_cb);
-
+  auth_client_connected = TRUE;
   return 0;
 }
 

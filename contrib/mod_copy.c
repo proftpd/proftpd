@@ -38,9 +38,12 @@
 
 extern pr_response_t *resp_list, *resp_err_list;
 
+module copy_module;
 static int copy_engine = TRUE;
 
 static const char *trace_channel = "copy";
+
+static int copy_sess_init(void);
 
 /* These are copied largely from src/mkhome.c */
 

@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Module handling routines
- * $Id: modules.c,v 1.64 2013-10-07 05:51:30 castaglia Exp $
- */
+/* Module handling routines */
 
 #include "conf.h"
 
@@ -37,6 +35,8 @@ module *curr_module = NULL;
   
 /* Used to track the priority for loaded modules. */
 static unsigned int curr_module_pri = 0;
+
+static const char *trace_channel = "module";
   
 modret_t *pr_module_call(module *m, modret_t *(*func)(cmd_rec *),
     cmd_rec *cmd) {
@@ -111,6 +111,9 @@ int modules_session_init(void) {
   for (m = loaded_modules; m; m = m->next) {
     if (m && m->sess_init) {
       curr_module = m;
+
+      pr_trace_msg(trace_channel, 12,
+        "invoking sess_init callback on mod_%s.c", m->name);
       if (m->sess_init() < 0) {
         pr_log_pri(PR_LOG_WARNING, "mod_%s.c: error initializing session: %s",
           m->name, strerror(errno));
