@@ -117,6 +117,12 @@ ChangeLog files.
       mod_radius has a new RadiusOptions directive; see
       doc/contrib/mod_radius.html#RadiusOptions for details.
 
+    ServerAlias
+      Supporting true name-based virtual hosting means needing to associate
+      names with the IP-based virtual hosts.  The ServerAlias directive is
+      used to do this association; see doc/modules/mod_core.html#ServerAlias
+      for details.
+
     SQLPasswordSaltEncoding
       In order to handle binary data for salts, the mod_sql_password module
       now supports handling of this data as base64- or hex-encoded data
