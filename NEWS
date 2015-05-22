@@ -104,6 +104,8 @@ Git
 - Bug 4174 - Support for TLS-PSK (pre-shared keys).
 - Bug 4178 - TLS session reuse requirement for data connections not properly
   enforced.
+- Bug 4184 - Remove support for "weak" Diffie-Hellman groups.
+- Bug 3289 - Support the HOST command.
 
 1.3.5 - Released 15-May-2014
 --------------------------------

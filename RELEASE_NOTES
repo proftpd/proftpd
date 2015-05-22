@@ -9,6 +9,7 @@ ChangeLog files.
 1.3.6rc1
 ---------
 
+  + Support the HOST command (see RFC 7151).
   + Changed the default SyslogLevel to be NOTICE, rather than DEBUG.
   + Fixed "stalled" SSL/TLS handshakes for data transfers.
   + ftpwho now supports JSON output format.
