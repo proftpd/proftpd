@@ -421,6 +421,13 @@ static int tls_required_on_ctrl = 0;
 static int tls_required_on_data = 0;
 static unsigned char *tls_authenticated = NULL;
 
+/* Define the minimum DH group length we allow (unless the AllowWeakDH
+ * TLSOption is used).  Ideally this would be 2048, per https://weakdh.org,
+ * but for compatibility with older Java versions, which only support up to
+ * 1024, we'll use 1024.  For now.
+ */
+#define TLS_DH_MIN_LEN				1024
+
 /* mod_tls session flags */
 #define	TLS_SESS_ON_CTRL			0x0001
 #define TLS_SESS_ON_DATA			0x0002
@@ -449,6 +456,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS		0x0400
 #define TLS_OPT_VERIFY_CERT_CN				0x0800
 #define TLS_OPT_NO_AUTO_ECDH				0x1000
+#define TLS_OPT_ALLOW_WEAK_DH				0x2000
 
 /* mod_tls SSCN modes */
 #define TLS_SSCN_MODE_SERVER				0
@@ -2528,6 +2536,17 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
     if (EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA ||
         EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA) {
       pkeylen = EVP_PKEY_bits(pkey);
+
+      if (pkeylen < TLS_DH_MIN_LEN) {
+        if (!(tls_opts & TLS_OPT_ALLOW_WEAK_DH)) {
+          pr_trace_msg(trace_channel, 11,
+            "certificate private key length %d less than %d bits, using %d "
+            "(see AllowWeakDH TLSOption)", pkeylen, TLS_DH_MIN_LEN,
+            TLS_DH_MIN_LEN);
+          pkeylen = TLS_DH_MIN_LEN;
+        }
+      }
+
       if (pkeylen != keylen) {
         pr_trace_msg(trace_channel, 13,
           "adjusted DH parameter length from %d to %d bits", keylen, pkeylen);
@@ -2578,6 +2597,15 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   }
 
   /* Still no DH parameters found?  Use the built-in ones. */
+
+  if (keylen < TLS_DH_MIN_LEN) {
+    if (!(tls_opts & TLS_OPT_ALLOW_WEAK_DH)) {
+      pr_trace_msg(trace_channel, 11,
+        "requested key length %d less than %d bits, using %d "
+        "(see AllowWeakDH TLSOption)", keylen, TLS_DH_MIN_LEN, TLS_DH_MIN_LEN);
+      keylen = TLS_DH_MIN_LEN;
+    }
+  }
 
   switch (keylen) {
     case 512:
@@ -9055,6 +9083,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "AllowPerUser") == 0) {
       opts |= TLS_OPT_ALLOW_PER_USER;
+
+    } else if (strcmp(cmd->argv[i], "AllowWeakDH") == 0) {
+      opts |= TLS_OPT_ALLOW_WEAK_DH;
 
     } else if (strcmp(cmd->argv[i], "AllowClientRenegotiation") == 0 ||
                strcmp(cmd->argv[i], "AllowClientRenegotiations") == 0) {
