@@ -39,6 +39,11 @@
 
 #define SFTP_DH_PRIV_KEY_RANDOM_BITS	2048
 
+/* Define the minimum DH group length we allow (unless the AllowWeakDH
+ * SFTPOption is used).
+ */
+#define SFTP_DH_MIN_LEN			2048
+
 extern module sftp_module;
 
 /* For managing the kexinit process */
@@ -1118,6 +1123,15 @@ static const char *get_shared_name(pool *p, const char *c2s_names,
   return name;
 }
 
+/* Note that in this default list of key exchange algorithms, one of the
+ * REQUIRED algorithms is conspicuously absent:
+ *
+ *   diffie-hellman-group1-sha1
+ *
+ * This exchange has a weak hardcoded DH group, and will thus only be used
+ * if explicitly requested via SFTPKeyExchanges, or if the AllowWeakDH
+ * SFTPOption is used.
+ */
 static const char *kex_exchanges[] = {
 #ifdef PR_USE_OPENSSL_ECC
   "ecdh-sha2-nistp256",
@@ -1131,7 +1145,6 @@ static const char *kex_exchanges[] = {
 #endif
   "diffie-hellman-group-exchange-sha1",
   "diffie-hellman-group14-sha1",
-  "diffie-hellman-group1-sha1",
 
 #if 0
 /* We cannot currently support rsa2048-sha256, since it requires support
@@ -1162,6 +1175,16 @@ static const char *get_kexinit_exchange_list(pool *p) {
 
     for (i = 0; kex_exchanges[i]; i++) {
       res = pstrcat(p, res, *res ? "," : "", pstrdup(p, kex_exchanges[i]),
+        NULL);
+    }
+
+    if (sftp_opts & SFTP_OPT_ALLOW_WEAK_DH) {
+      /* The hardcoded group for this exchange is rather weak in the face of
+       * the "Logjam" vulnerability (see https://weakdh.org).  Thus it is
+       * only appended to the end of the default exchanges if the AllowWeakDH
+       * SFTPOption is in effect.
+       */
+      res = pstrcat(p, res, ",", pstrdup(p, "diffie-hellman-group1-sha1"),
         NULL);
     }
   }
@@ -2392,6 +2415,20 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
   c = find_config(main_server->conf, CONF_PARAM, "SFTPDHParamFile", FALSE);
   if (c) {
     dhparam_path = c->argv[0];
+  }
+
+  /* If the preferred DH is less than SFTP_DH_MIN_LEN, AND the AllowWeakDH
+   * SFTPOption is not used, then use a pref of SFTP_DH_MIN_LEN (Bug#4184).
+   */
+  if (pref < SFTP_DH_MIN_LEN) {
+    if (!(sftp_opts & SFTP_OPT_ALLOW_WEAK_DH)) {
+      pref = SFTP_DH_MIN_LEN;
+
+    } else {
+      pr_trace_msg(trace_channel, 14,
+       "client prefers relatively weak DH group size (%lu) but AllowWeakDH "
+       "SFTPOption in effect", (unsigned long) pref);
+    }
   }
 
   if (dhparam_path) {

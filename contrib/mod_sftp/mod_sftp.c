@@ -1303,6 +1303,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[1], "InsecureHostKeyPerms") == 0) {
       opts |= SFTP_OPT_INSECURE_HOSTKEY_PERMS;
 
+    } else if (strcmp(cmd->argv[1], "AllowWeakDH") == 0) {
+      opts |= SFTP_OPT_ALLOW_WEAK_DH;
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
         cmd->argv[i], "'", NULL));

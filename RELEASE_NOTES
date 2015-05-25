@@ -262,6 +262,12 @@ ChangeLog files.
 
       See doc/contrib/mod_sftp.html#SFTPOptions for details.
 
+      Small Diffie-Hellman groups are subject to cryptographic weaknesses;
+      see https://weakdh.org.  Thus mod_sftp now avoids the use of weak
+      DH groups by default; the AllowWeakDH SFTPOption is used to re-enable
+      such support for clients that require it.
+      See doc/contrib/mod_sftp.html#SFTPOptions.
+
     SNMPAgent
       Some sites may wish to have mod_snmp listening on multiple
       addresses (e.g. on multi-homed servers), including IPv6 addresses.
@@ -272,6 +278,13 @@ ChangeLog files.
         </IfModule>
 
       See doc/contrib/mod_snmp.html#SNMPAgent for more information.
+
+    TLSOptions
+      Small Diffie-Hellman groups are subject to cryptographic weaknesses;
+      see https://weakdh.org.  Thus mod_tls now avoids the use of weak
+      DH groups by default; the AllowWeakDH TLSOption is used to re-enable
+      such support for clients that require it.
+      See doc/contrib/mod_tls.html#TLSOptions.
 
 
   + Changed Command Handling
