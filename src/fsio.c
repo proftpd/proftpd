@@ -3299,7 +3299,7 @@ int pr_fsio_set_use_mkdtemp(int value) {
  * its permissions.
  */
 static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
-  int flags, fd, ignore_eacces = FALSE, res, xerrno = 0;
+  int flags, fd, ignore_eacces = FALSE, ignore_eperm = FALSE, res, xerrno = 0;
   struct stat st;
   mode_t dir_mode;
 
@@ -3363,7 +3363,7 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
    */
   dir_mode = (st.st_mode & ~S_IFMT);
   if (dir_mode != 0700) {
-    ignore_eacces = TRUE;
+    ignore_eacces = ignore_eperm = TRUE;
 
     pr_trace_msg(trace_channel, 3,
       "schmod: path '%s' has mode %04o, expected 0700", path, dir_mode);
@@ -3381,6 +3381,18 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
   res = fchmod(fd, perms);
   xerrno = errno;
 
+  /* Using fchmod(2) on a directory descriptor is not really kosher
+   * behavior, but appears to work on most filesystems.  Still, if we
+   * get an ENOENT back (as seen on some CIFS mounts, per Bug#4134), try
+   * using chmod(2) on the path.
+   */
+  if (res < 0 &&
+      xerrno == ENOENT) {
+    ignore_eacces = TRUE;
+    res = chmod(path, perms);
+    xerrno = errno;
+  }
+
   if (use_root) {
     PRIVS_RELINQUISH
   }
@@ -3394,24 +3406,23 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
      * filesystems).  In such cases, chmod(2) et al will return ENOSYS
      * (see Bug#3986).
      *
+     * Other filesystem implementations (e.g. CIFS, depending on the mount
+     * options) will a chmod(2) that returns ENOENT (see Bug#4134).
+     *
      * Should this fail the entire operation?  I'm of two minds about this.
      * On the one hand, such filesystem behavior can undermine wider site
      * security policies; on the other, prohibiting a MKD/MKDIR operation
      * on such filesystems, deliberately used by the site admin, is not
      * useful/friendly behavior.
      *
-     * Maybe this exception for ENOSYS here should be made configurable?
+     * Maybe these exceptions for ENOSYS/ENOENT here should be made
+     * configurable?
      */
 
-    if (xerrno == ENOSYS) {
-      pr_log_debug(DEBUG0, "schmod: unable to set perms %04o on "
-        "path '%s': %s (chmod(2) not supported by underlying filesystem?)",
-        perms, path, strerror(xerrno));
-      return 0;
-    }
-
-    if (xerrno == EACCES &&
-        ignore_eacces == TRUE) {
+    if (xerrno == ENOSYS ||
+        xerrno == ENOENT ||
+        (xerrno == EACCES && ignore_eacces == TRUE) ||
+        (xerrno == EPERM && ignore_eperm == TRUE)) {
       pr_log_debug(DEBUG0, "schmod: unable to set perms %04o on "
         "path '%s': %s (chmod(2) not supported by underlying filesystem?)",
         perms, path, strerror(xerrno));
