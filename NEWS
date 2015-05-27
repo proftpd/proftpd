@@ -9,7 +9,7 @@ $Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-Git
+1.3.6rc1 - Released 27-May-2015
 --------------------------------
 - Bug 4055 - "error setting listen fd IPV6_TCLASS: Protocol not available" log
   message.
