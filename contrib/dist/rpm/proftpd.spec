@@ -50,7 +50,7 @@
 #
 # NOTE: rpmbuild is really bloody stupid, and CANNOT handle a leading '#'
 # character followed by a '%' character.  
-%global release_cand_version      rc1
+%global release_cand_version      rc2
 
 %global usecvsversion             0%{?_with_cvs:1}
 
