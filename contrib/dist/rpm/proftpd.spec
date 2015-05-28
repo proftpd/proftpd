@@ -55,7 +55,7 @@
 %global usecvsversion             0%{?_with_cvs:1}
 
 %global proftpd_cvs_version_main  1.3.5
-%global proftpd_cvs_version_date  20140515
+%global proftpd_cvs_version_date  20150527
 
 # Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
 # release candidates and stable/maint releases are all available in that form;
