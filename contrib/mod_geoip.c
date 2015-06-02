@@ -126,6 +126,10 @@ typedef enum {
 
 } geoip_policy_e;
 
+/* GeoIPSatisfy values */
+#define GEOIP_SATISFY_ANY		2
+#define GEOIP_SATISFY_ALL		3
+
 static geoip_policy_e geoip_policy = GEOIP_POLICY_ALLOW_DENY;
 
 static const char *trace_channel = "geoip";
@@ -135,9 +139,15 @@ static const char *get_geoip_filter_value(int);
 
 static int check_geoip_filters(geoip_policy_e policy) {
   int allow_conn = 0, matched_allow_filter = -1, matched_deny_filter = -1;
-#if PR_USE_REGEX
+  int satisfy = GEOIP_SATISFY_ANY;
   config_rec *c;
 
+  c = find_config(main_server->conf, CONF_PARAM, "GeoIPSatisfy", FALSE);
+  if (c != NULL) {
+    satisfy = *((int *) c->argv[0]);
+  }
+
+#if PR_USE_REGEX
   c = find_config(main_server->conf, CONF_PARAM, "GeoIPAllowFilter", FALSE);
   while (c != NULL) {
     int filter_id, res;
@@ -173,12 +183,19 @@ static int check_geoip_filters(geoip_policy_e policy) {
         "%s filter value '%s' matched GeoIPAllowFilter pattern '%s'",
         filter_name, filter_value, filter_pattern);
       matched_allow_filter = TRUE;
-      break;
+
+      if (satisfy == GEOIP_SATISFY_ANY) {
+        break;
+      }
     }
 
     (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
       "%s filter value '%s' did not match GeoIPAllowFilter pattern '%s'",
       filter_name, filter_value, filter_pattern);
+    if (satisfy == GEOIP_SATISFY_ALL) {
+      matched_allow_filter = FALSE;
+      break;
+    }
 
     c = find_config_next(c, c->next, CONF_PARAM, "GeoIPAllowFilter", FALSE);
   }
@@ -218,12 +235,19 @@ static int check_geoip_filters(geoip_policy_e policy) {
         "%s filter value '%s' matched GeoIPDenyFilter pattern '%s'",
         filter_name, filter_value, filter_pattern);
       matched_deny_filter = TRUE;
-      break;
+
+      if (satisfy == GEOIP_SATISFY_ANY) {
+        break;
+      }
     }
 
     (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
       "%s filter value '%s' did not match GeoIPDenyFilter pattern '%s'",
       filter_name, filter_value, filter_pattern);
+    if (satisfy == GEOIP_SATISFY_ALL) {
+      matched_deny_filter = FALSE;
+      break;
+    }
 
     c = find_config_next(c, c->next, CONF_PARAM, "GeoIPDenyFilter", FALSE);
   }
@@ -1093,6 +1117,32 @@ MODRET set_geoippolicy(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: GeoIPSatisfy any|all */
+MODRET set_geoipsatisfy(cmd_rec *cmd) {
+  int satisfy = -1;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "all") == 0) {
+    satisfy = GEOIP_SATISFY_ANY;
+
+  } else if (strcasecmp(cmd->argv[1], "any") == 0) {
+    satisfy = GEOIP_SATISFY_ALL;
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", cmd->argv[1],
+      "' is not one of the approved GeoIPSatisfy settings", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = satisfy;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: GeoIPTable path [flags] */
 MODRET set_geoiptable(cmd_rec *cmd) {
   config_rec *c;
@@ -1350,6 +1400,7 @@ static conftable geoip_conftab[] = {
   { "GeoIPEngine",	set_geoipengine,	NULL },
   { "GeoIPLog",		set_geoiplog,		NULL },
   { "GeoIPPolicy",	set_geoippolicy,	NULL },
+  { "GeoIPSatisfy",	set_geoipsatisfy,	NULL },
   { "GeoIPTable",	set_geoiptable,		NULL },
   { NULL }
 };
