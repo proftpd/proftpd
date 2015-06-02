@@ -1,6 +1,3 @@
-<!-- $Id: mod_geoip.html,v 1.6 2013-12-12 16:52:28 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_geoip.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_geoip</title>
@@ -47,6 +44,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#GeoIPEngine">GeoIPEngine</a>
   <li><a href="#GeoIPLog">GeoIPLog</a>
   <li><a href="#GeoIPPolicy">GeoIPPolicy</a>
+  <li><a href="#GeoIPSatisfy">GeoIPSatisfy</a>
   <li><a href="#GeoIPTable">GeoIPTable</a>
 </ul>
 
@@ -184,6 +182,42 @@ If <code>GeoIPPolicy</code> is configured using <em>"deny,allow"</em>, then
 the <code>mod_geoip</code> module will <b>reject</b> any connection,
 <i>unless</i> the connecting client matches any configured
 <a href="#GeoIPAllowFilter"><code>GeoIPAllowFilter</code></a> rules.
+
+<p>
+<hr>
+<h2><a name="GeoIPSatisfy">GeoIPSatisfy</a></h2>
+<strong>Syntax:</strong> GeoIPSatisfy <em>any|all</em><br>
+<strong>Default:</strong> GeoIPSatisfy <em>any</em><br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Module:</strong> mod_geoip<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>GeoIPSatisfy</code> directive affects the <code>mod_geoip</code>
+behavior when it is checking the <code>GeoIPAllowFilter</code> and
+<code>GeoIPDenyFilter</code> directives; the <code>GeoIPSatisfy</code> directive
+allows for requiring that multiple <code>GeoIPAllowFilter</code> rules
+<b>must</b>, for example.
+
+<p>
+If the <em>all<em> parameter is used, then <b>all</b>
+<code>GeoIPAllowFilter</code> rules must be met (or all
+<code>GeoIPDenyFilter</code> rules), depending on the <code>GeoIPPolicy</code>.
+If the <em>any</em> parameter is used, then any matching rule is used.
+
+<p>
+Thus, for example, to require that a connection meet a region code <b>and</b>
+a country code rule, you would use:
+<pre>
+  # Deny connections unless they are explicitly allowed
+  GeoIPPolicy deny,allow
+
+  # All connections must match all rules
+  GeoIPSatisfy all
+
+  GeoIPAllowFilter RegionCode TX
+  GeoIPAllowFilter CountryCode US
+</pre>
 
 <p>
 <hr>
@@ -441,13 +475,8 @@ according to need, demand, inclination, and time:
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-12-12 16:52:28 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2010-2014 TJ Saunders<br>
+&copy; Copyright 2010-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
