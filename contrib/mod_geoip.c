@@ -36,7 +36,7 @@
  * module for Apache.
  */
 
-#define MOD_GEOIP_VERSION		"mod_geoip/0.7"
+#define MOD_GEOIP_VERSION		"mod_geoip/0.8"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -119,6 +119,15 @@ static struct geoip_filter_key geoip_filter_keys[] = {
   { NULL, -1 }
 };
 
+#if PR_USE_REGEX
+/* GeoIP filter */
+struct geoip_filter {
+  int filter_id;
+  const char *filter_pattern;
+  pr_regex_t *filter_re;
+};
+#endif /* PR_USE_REGEX */
+
 /* GeoIP policies */
 typedef enum {
   GEOIP_POLICY_ALLOW_DENY,
@@ -140,9 +149,9 @@ static int check_geoip_filters(geoip_policy_e policy) {
 
   c = find_config(main_server->conf, CONF_PARAM, "GeoIPAllowFilter", FALSE);
   while (c != NULL) {
-    int filter_id, res;
-    pr_regex_t *filter_re;
-    const char *filter_name, *filter_pattern, *filter_value;
+    register unsigned int i;
+    int matched = TRUE;
+    array_header *filters;
 
     pr_signals_handle();
 
@@ -150,44 +159,59 @@ static int check_geoip_filters(geoip_policy_e policy) {
       matched_allow_filter = FALSE;
     }
 
-    filter_id = *((int *) c->argv[0]);
-    filter_pattern = c->argv[1];
-    filter_re = c->argv[2];
+    filters = c->argv[0];
 
-    filter_value = get_geoip_filter_value(filter_id);
-    if (filter_value == NULL) {
-      c = find_config_next(c, c->next, CONF_PARAM, "GeoIPAllowFilter", FALSE);
-      continue;
+    for (i = 0; i < filters->nelts; i++) {
+      int filter_id, res;
+      struct geoip_filter *filter;
+      pr_regex_t *filter_re;
+      const char *filter_name, *filter_pattern, *filter_value;
+
+      filter = ((struct geoip_filter **) filters->elts)[i]; 
+      filter_id = filter->filter_id;
+      filter_pattern = filter->filter_pattern;
+      filter_re = filter->filter_re;
+
+      filter_value = get_geoip_filter_value(filter_id);
+      if (filter_value == NULL) {
+        matched = FALSE;
+        break;
+      }
+
+      filter_name = get_geoip_filter_name(filter_id);
+
+      res = pr_regexp_exec(filter_re, filter_value, 0, NULL, 0, 0, 0);
+      pr_trace_msg(trace_channel, 12,
+        "%s filter value %s %s GeoIPAllowFilter pattern '%s'",
+        filter_name, filter_value, res == 0 ? "matched" : "did not match",
+        filter_pattern);
+      if (res == 0) {
+        (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+          "%s filter value '%s' matched GeoIPAllowFilter pattern '%s'",
+          filter_name, filter_value, filter_pattern);
+
+      } else {
+        (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+          "%s filter value '%s' did not match GeoIPAllowFilter pattern '%s'",
+          filter_name, filter_value, filter_pattern);
+          matched = FALSE;
+          break;
+      }
     }
 
-    filter_name = get_geoip_filter_name(filter_id);
-
-    res = pr_regexp_exec(filter_re, filter_value, 0, NULL, 0, 0, 0);
-    pr_trace_msg(trace_channel, 12,
-      "%s filter value %s %s GeoIPAllowFilter pattern '%s'",
-      filter_name, filter_value, res == 0 ? "matched" : "did not match",
-      filter_pattern);
-
-    if (res == 0) {
-      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-        "%s filter value '%s' matched GeoIPAllowFilter pattern '%s'",
-        filter_name, filter_value, filter_pattern);
+    if (matched == TRUE) {
       matched_allow_filter = TRUE;
       break;
     }
-
-    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-      "%s filter value '%s' did not match GeoIPAllowFilter pattern '%s'",
-      filter_name, filter_value, filter_pattern);
 
     c = find_config_next(c, c->next, CONF_PARAM, "GeoIPAllowFilter", FALSE);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "GeoIPDenyFilter", FALSE);
   while (c != NULL) {
-    int filter_id, res;
-    pr_regex_t *filter_re;
-    const char *filter_name, *filter_pattern, *filter_value;
+    register unsigned int i;
+    int matched = TRUE;
+    array_header *filters;
 
     pr_signals_handle();
 
@@ -195,35 +219,49 @@ static int check_geoip_filters(geoip_policy_e policy) {
       matched_deny_filter = FALSE;
     }
 
-    filter_id = *((int *) c->argv[0]);
-    filter_pattern = c->argv[1];
-    filter_re = c->argv[2];
+    filters = c->argv[0];
 
-    filter_value = get_geoip_filter_value(filter_id);
-    if (filter_value == NULL) {
-      c = find_config_next(c, c->next, CONF_PARAM, "GeoIPDenyFilter", FALSE);
-      continue;
+    for (i = 0; i < filters->nelts; i++) {
+      int filter_id, res;
+      struct geoip_filter *filter;
+      pr_regex_t *filter_re;
+      const char *filter_name, *filter_pattern, *filter_value;
+
+      filter = ((struct geoip_filter **) filters->elts)[i];
+      filter_id = filter->filter_id;
+      filter_pattern = filter->filter_pattern;
+      filter_re = filter->filter_re;
+
+      filter_value = get_geoip_filter_value(filter_id);
+      if (filter_value == NULL) {
+        matched = FALSE;
+        break;
+      }
+
+      filter_name = get_geoip_filter_name(filter_id);
+
+      res = pr_regexp_exec(filter_re, filter_value, 0, NULL, 0, 0, 0);
+      pr_trace_msg(trace_channel, 12,
+        "%s filter value %s %s GeoIPDenyFilter pattern '%s'",
+        filter_name, filter_value, res == 0 ? "matched" : "did not match",
+        filter_pattern);
+      if (res == 0) {
+        (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+          "%s filter value '%s' matched GeoIPDenyFilter pattern '%s'",
+          filter_name, filter_value, filter_pattern);
+      } else {
+        (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+          "%s filter value '%s' did not match GeoIPDenyFilter pattern '%s'",
+          filter_name, filter_value, filter_pattern);
+        matched = FALSE;
+        break;
+      }
     }
 
-    filter_name = get_geoip_filter_name(filter_id);
-
-    res = pr_regexp_exec(filter_re, filter_value, 0, NULL, 0, 0, 0);
-    pr_trace_msg(trace_channel, 12,
-      "%s filter value %s %s GeoIPDenyFilter pattern '%s'",
-      filter_name, filter_value, res == 0 ? "matched" : "did not match",
-      filter_pattern);
-
-    if (res == 0) {
-      (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-        "%s filter value '%s' matched GeoIPDenyFilter pattern '%s'",
-        filter_name, filter_value, filter_pattern);
+    if (matched == TRUE) {
       matched_deny_filter = TRUE;
       break;
     }
-
-    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
-      "%s filter value '%s' did not match GeoIPDenyFilter pattern '%s'",
-      filter_name, filter_value, filter_pattern);
 
     c = find_config_next(c, c->next, CONF_PARAM, "GeoIPDenyFilter", FALSE);
   }
@@ -984,52 +1022,66 @@ static void set_geoip_values(void) {
  */
 
 /* usage:
- *  GeoIPAllowFilter key regex
- *  GeoIPDenyFilter key regex
+ *  GeoIPAllowFilter key1 regex1 [key2 regex2 ...]
+ *  GeoIPDenyFilter key1 regex1 [key2 regex2 ...]
  */
 MODRET set_geoipfilter(cmd_rec *cmd) {
 #if PR_USE_REGEX
   register unsigned int i;
   config_rec *c;
-  pr_regex_t *pre;
-  int filter_id = -1, res;
+  array_header *filters;
 
-  CHECK_ARGS(cmd, 2);
+  if ((cmd->argc-1) % 2 != 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  /* Make sure a supported filter key was configured. */
-  for (i = 0; geoip_filter_keys[i].filter_name != NULL; i++) {
-    if (strcasecmp(cmd->argv[1], geoip_filter_keys[i].filter_name) == 0) {
-      filter_id = geoip_filter_keys[i].filter_id;
-      break;
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  filters = make_array(c->pool, 0, sizeof(struct geoip_filter *));
+
+  for (i = 1; i < cmd->argc; i += 2) {
+    register unsigned int j;
+    pr_regex_t *pre;
+    int filter_id = -1, res;
+    struct geoip_filter *filter;
+
+    /* Make sure a supported filter key was configured. */
+    for (j = 0; geoip_filter_keys[j].filter_name != NULL; j++) {
+      if (strcasecmp(cmd->argv[i], geoip_filter_keys[j].filter_name) == 0) {
+        filter_id = geoip_filter_keys[j].filter_id;
+        break;
+      }
     }
+
+    if (filter_id == -1) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown GeoIP filter name '",
+        cmd->argv[1], "'", NULL));
+    }
+
+    pre = pr_regexp_alloc(&geoip_module);
+
+    res = pr_regexp_compile(pre, cmd->argv[i+1],
+      REG_EXTENDED|REG_NOSUB|REG_ICASE);
+    if (res != 0) {
+      char errstr[256];
+
+      memset(errstr, '\0', sizeof(errstr));
+      pr_regexp_error(res, pre, errstr, sizeof(errstr)-1);
+      pr_regexp_free(&geoip_module, pre);
+
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "pattern '", cmd->argv[i+1],
+        "' failed regex compilation: ", errstr, NULL));
+    }
+
+    filter = pcalloc(c->pool, sizeof(struct geoip_filter));
+    filter->filter_id = filter_id;
+    filter->filter_pattern = pstrdup(c->pool, cmd->argv[i+1]);
+    filter->filter_re = pre;
+
+    *((struct geoip_filter **) push_array(filters)) = filter;
   }
 
-  if (filter_id == -1) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown GeoIP filter name '",
-      cmd->argv[1], "'", NULL));
-  }
-
-  pre = pr_regexp_alloc(&geoip_module);
-
-  res = pr_regexp_compile(pre, cmd->argv[2], REG_EXTENDED|REG_NOSUB|REG_ICASE);
-  if (res != 0) {
-    char errstr[256];
-
-    memset(errstr, '\0', sizeof(errstr));
-    pr_regexp_error(res, pre, errstr, sizeof(errstr)-1);
-    pr_regexp_free(&geoip_module, pre);
-
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "pattern '", cmd->argv[2],
-      "' failed regex compilation: ", errstr, NULL));
-  }
-
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
-  c->argv[0] = palloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = filter_id;
-  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-  c->argv[2] = pre;
-
+  c->argv[0] = filters;
   return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
