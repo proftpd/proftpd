@@ -128,31 +128,36 @@ static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
  *  buf = pointer to a buffer
  *  buflen = length of data in buffer
  *  bufsize = total size of buffer
+ *
+ * The previous incarnations of this functions used memcpy(3), which moves
+ * data around in memory quite a bit; this incarnation does everything in
+ * a single byte-by-byte pass, resulting in significant performance
+ * improvements (due to less redundant copying).
  */
 static int have_dangling_cr = FALSE;
 static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
     unsigned int bufsize) {
-  char *tmpbuf = *buf;
+  register unsigned int i = 0, j = 0;
+  char *copybuf = NULL, *tmpbuf = *buf;
   unsigned int tmplen = *buflen;
-  unsigned int lfcount = 0;
-  unsigned int added = 0;
+  unsigned int lf_pos = tmplen;
 
-  int res = 0;
-  register unsigned int i = 0;
-
-  /* First, determine how many bare LFs are present. */
+  /* First, determine the position of the first bare LF. */
   if (have_dangling_cr == FALSE &&
       tmpbuf[0] == '\n') {
-    lfcount++;
+    lf_pos = 0;
+    goto found_lf;
   }
 
   for (i = 1; i < tmplen; i++) {
     if (tmpbuf[i] == '\n' &&
         tmpbuf[i-1] != '\r') {
-      lfcount++;
+      lf_pos = i;
+      break;
     }
   }
 
+found_lf:
   /* If the last character in the buffer is CR, then we have a dangling CR.
    * The first character in the next buffer could be an LF, and without
    * this flag, that LF would be treated as a bare LF, thus resulting in
@@ -160,75 +165,60 @@ static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
    */
   have_dangling_cr = (tmpbuf[tmplen-1] == '\r') ? TRUE : FALSE;
 
-  if (lfcount == 0) {
+  if (lf_pos == tmplen) {
     /* No translation needed. */
     return 0;
   }
-
-  /* Assume that for each LF (including a leading LF), space for another
-   * char (a '\r') is needed.  Determine whether there is enough space in
-   * the buffer for the adjusted data.  If not, allocate a new buffer that is
-   * large enough.  The new buffer is allocated from session.xfer.p, which is
-   * fine; this pool has a lifetime only for this current data transfer, and
-   * will be cleared after the transfer is done, either having succeeded or
-   * failed.
-   *
-   * Note: the res variable is needed in order to force signedness of the
-   * resulting difference.  Without it, this condition would never evaluate
-   * to true, as C's promotion rules would ensure that the resulting value
-   * would be of the same type as the operands: an unsigned int (which will
-   * never be less than zero).
+ 
+  /* Assume the worst: a block containing only LF characters, needing twice
+   * the size for holding the corresponding CRs.
    */
-  if ((res = (bufsize - tmplen - lfcount)) <= 0) {
-    char *copybuf = malloc(tmplen);
-    if (copybuf == NULL) {
-      pr_log_pri(PR_LOG_ALERT, "Out of memory!");
-      exit(1);
+  copybuf = malloc(tmplen * 2);
+  if (copybuf == NULL) {
+    pr_log_pri(PR_LOG_ALERT, "Out of memory!");
+    exit(1);
+  }
+
+  if (lf_pos > 0) {
+    memcpy(copybuf, tmpbuf, lf_pos);
+    i = j = lf_pos;
+
+  } else {
+    copybuf[0] = '\r';
+    copybuf[1] = '\n';
+    i = 2;
+    j = 1;
+  }
+
+  while (j < tmplen) {
+    pr_signals_handle();
+
+    if (tmpbuf[j] == '\n' &&
+        tmpbuf[j-1] != '\r') {
+      copybuf[i++] = '\r';
     }
 
-    memcpy(copybuf, tmpbuf, tmplen);
-
-    /* Allocate a new session.xfer.buf of the needed size. */
-    session.xfer.bufsize = tmplen + lfcount + 1;
-    session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize);
-
-    memcpy(session.xfer.buf, copybuf, tmplen);
-
-    free(copybuf);
-    copybuf = NULL;
-
-    tmpbuf = session.xfer.buf;
-    bufsize = session.xfer.bufsize;
+    copybuf[i++] = tmpbuf[j++];
   }
 
-  if (tmpbuf[0] == '\n') {
+  /* A new buffer of the needed size is allocated from session.xfer.p,
+   * which is fine; this pool has a lifetime only for the current data
+   * transfer, and will be cleared after the transfer is done, either
+   * having succeeded or failed.
+   */
+  session.xfer.bufsize = i;
+  session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize);
+  memcpy(session.xfer.buf, copybuf, i);
 
-    /* Shift everything in the buffer to the right one character, making
-     * space for a '\r'
-     */
-    memmove(&(tmpbuf[1]), &(tmpbuf[0]), tmplen);
-    tmpbuf[0] = '\r';
+  free(copybuf);
+  copybuf = NULL;
 
-    /* Increment the number of added characters, and decrement the number
-     * of bare LFs.
-     */
-    added++;
-    lfcount--;
-  }
-
-  for (i = 1; i < bufsize && (lfcount > 0); i++) {
-    if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r') {
-      memmove(&(tmpbuf[i+1]), &(tmpbuf[i]), bufsize - i - 1);
-      tmpbuf[i] = '\r';
-      added++;
-      lfcount--;
-    }
-  }
+  tmpbuf = session.xfer.buf;
 
   *buf = tmpbuf;
-  *buflen = tmplen + added;
+  *buflen = i;
 
-  return added;
+  return i - j;
 }
 
 static void data_new_xfer(char *filename, int direction) {
