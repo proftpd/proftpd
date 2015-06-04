@@ -1324,7 +1324,7 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
        */
       if (*(bp-1) == '\r') {
         /* We already decrement the buffer length for the CR; no need to
-         * do it we are overwriting that CR.
+         * do it again since we are overwriting that CR.
          */
         *(bp-1) = *pbuf->current++;
 
