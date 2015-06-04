@@ -830,19 +830,22 @@ char *pr_str_get_word(char **cp, int flags) {
 
   if (!(flags & PR_STR_FL_PRESERVE_WHITESPACE)) {
     while (**cp && PR_ISSPACE(**cp)) {
+      pr_signals_handle();
       (*cp)++;
     }
   }
 
-  if (!**cp)
+  if (!**cp) {
     return NULL;
+  }
 
   res = dst = *cp;
 
   if (!(flags & PR_STR_FL_PRESERVE_COMMENTS)) {
     /* Stop processing at start of an inline comment. */
-    if (**cp == '#')
+    if (**cp == '#') {
       return NULL;
+    }
   }
 
   if (**cp == '\"') {
@@ -851,21 +854,25 @@ char *pr_str_get_word(char **cp, int flags) {
   }
 
   while (**cp && (quote_mode ? (**cp != '\"') : !PR_ISSPACE(**cp))) {
+    pr_signals_handle();
+
     if (**cp == '\\' && quote_mode) {
 
       /* Escaped char */
-      if (*((*cp)+1))
+      if (*((*cp)+1)) {
         *dst = *(++(*cp));
+      }
     }
 
     *dst++ = **cp;
     ++(*cp);
   }
 
-  if (**cp)
+  if (**cp) {
     (*cp)++;
-  *dst = '\0';
+  }
 
+  *dst = '\0';
   return res;
 }
 

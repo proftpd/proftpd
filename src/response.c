@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Command response routines
- * $Id: response.c,v 1.22 2011-08-13 19:24:06 castaglia Exp $
- */
+/* Command response routines. */
 
 #include "conf.h"
 

@@ -86,7 +86,7 @@ static int syntax_check = 0;
 /* Command handling */
 static void cmd_loop(server_rec *, conn_t *);
 
-static cmd_rec *make_ftp_cmd(pool *, char *, int);
+static cmd_rec *make_ftp_cmd(pool *, char *, size_t, int);
 
 static const char *config_filename = PR_CONFIG_FILE_PATH;
 
@@ -452,8 +452,8 @@ static size_t get_max_cmd_sz(void) {
 int pr_cmd_read(cmd_rec **res) {
   static long cmd_bufsz = -1;
   static char *cmd_buf = NULL;
-  char *cp;
-  size_t cmd_buflen;
+  int cmd_buflen;
+  char *ptr;
 
   if (res == NULL) {
     errno = EINVAL;
@@ -473,9 +473,9 @@ int pr_cmd_read(cmd_rec **res) {
 
     memset(cmd_buf, '\0', cmd_bufsz);
 
-    if (pr_netio_telnet_gets(cmd_buf, cmd_bufsz, session.c->instrm,
-        session.c->outstrm) == NULL) {
-
+    cmd_buflen = pr_netio_telnet_gets2(cmd_buf, cmd_bufsz, session.c->instrm,
+      session.c->outstrm);
+    if (cmd_buflen < 0) {
       if (errno == E2BIG) {
         /* The client sent a too-long command which was ignored; give
          * them another chance?
@@ -494,39 +494,34 @@ int pr_cmd_read(cmd_rec **res) {
     break;
   }
 
-  /* This strlen(3) is guaranteed to terminate; the last byte of buf is
-   * always NUL, since pr_netio_telnet_gets() is told that the buf size is
-   * one byte less than it really is.
-   *
-   * If the strlen(3) says that the length is less than the cmd_bufsz, then
-   * there is no need to truncate the buffer by inserting a NUL.
+  /* If the read length is less than the cmd_bufsz, then there is no need to
+   * truncate the buffer by inserting a NUL.
    */
-  cmd_buflen = strlen(cmd_buf);
   if (cmd_buflen > cmd_bufsz) {
-    pr_log_debug(DEBUG0, "truncating incoming command length (%lu bytes) to "
+    pr_log_debug(DEBUG0, "truncating incoming command length (%d bytes) to "
       "CommandBufferSize %lu; use the CommandBufferSize directive to increase "
-      "the allowed command length", (unsigned long) cmd_buflen,
-      (unsigned long) cmd_bufsz);
+      "the allowed command length", cmd_buflen, (unsigned long) cmd_bufsz);
     cmd_buf[cmd_bufsz-1] = '\0';
   }
 
-  if (cmd_buflen &&
+  if (cmd_buflen > 0 &&
       (cmd_buf[cmd_buflen-1] == '\n' || cmd_buf[cmd_buflen-1] == '\r')) {
     cmd_buf[cmd_buflen-1] = '\0';
     cmd_buflen--;
 
-    if (cmd_buflen &&
+    if (cmd_buflen > 0 &&
         (cmd_buf[cmd_buflen-1] == '\n' || cmd_buf[cmd_buflen-1] =='\r')) {
       cmd_buf[cmd_buflen-1] = '\0';
       cmd_buflen--;
     }
   }
 
-  cp = cmd_buf;
-  if (*cp == '\r')
-    cp++;
+  ptr = cmd_buf;
+  if (*ptr == '\r') {
+    ptr++;
+  }
 
-  if (*cp) {
+  if (*ptr) {
     int flags = 0;
     cmd_rec *cmd;
 
@@ -536,11 +531,11 @@ int pr_cmd_read(cmd_rec **res) {
      * command handlers themselves, via cmd->arg.  This small hack
      * reduces the burden on SITE module developers, however.
      */
-    if (strncasecmp(cp, C_SITE, 4) == 0) {
+    if (strncasecmp(ptr, C_SITE, 4) == 0) {
       flags |= PR_STR_FL_PRESERVE_WHITESPACE;
     }
 
-    cmd = make_ftp_cmd(session.pool, cp, flags);
+    cmd = make_ftp_cmd(session.pool, ptr, cmd_buflen, flags);
     if (cmd) {
       *res = cmd;
 
@@ -736,23 +731,31 @@ int pr_cmd_dispatch(cmd_rec *cmd) {
     PR_CMD_DISPATCH_FL_SEND_RESPONSE|PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
 }
 
-static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
-  char *cp = buf, *wrd;
+static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
+  register unsigned int i, j;
+  char *arg, *ptr, *wrd;
+  size_t arg_len;
   cmd_rec *cmd;
   pool *subpool;
   array_header *tarr;
-  int str_flags = PR_STR_FL_PRESERVE_COMMENTS|flags;
+  int have_crnul = FALSE, str_flags = PR_STR_FL_PRESERVE_COMMENTS|flags;
 
   /* Be pedantic (and RFC-compliant) by not allowing leading whitespace
    * in an issued FTP command.  Will this cause troubles with many clients?
    */
   if (PR_ISSPACE(buf[0])) {
+    pr_trace_msg("ctrl", 5,
+      "command '%s' has illegal leading whitespace, rejecting", buf);
+    errno = EINVAL;
     return NULL;
   }
 
-  /* Nothing there...bail out. */
-  wrd = pr_str_get_word(&cp, str_flags);
+  ptr = buf;
+  wrd = pr_str_get_word(&ptr, str_flags);
   if (wrd == NULL) {
+    /* Nothing there...bail out. */
+    pr_trace_msg("ctrl", 5, "command '%s' is empty, ignoring", buf);
+    errno = ENOENT;
     return NULL;
   }
 
@@ -767,9 +770,48 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
 
   *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
   cmd->argc++;
-  cmd->arg = pstrdup(cmd->pool, cp);
 
-  while ((wrd = pr_str_get_word(&cp, str_flags)) != NULL) {
+  /* Make a copy of the command argument; we need to scan through it,
+   * looking for any CR+NUL sequences, per RFC 2460, Section 3.1.
+   *
+   * Note for future readers that this scanning may cause problems for
+   * commands such as ADAT, ENC, and MIC.  Per RFC 2228, the arguments for
+   * these commands are base64-encoded Telnet strings, thus there is no
+   * chance of them containing CRNUL sequences.  Any modules which implement
+   * the translating of those arguments, e.g. mod_gss, will need to ensure
+   * it does the proper handling of CRNUL sequences itself.
+   */
+  arg_len = buflen - strlen(wrd);
+  arg = pcalloc(cmd->pool, arg_len + 1);
+
+  for (i = 0, j = 0; i < arg_len; i++) {
+    pr_signals_handle();
+    if (i > 1 &&
+        ptr[i] == '\0' &&
+        ptr[i-1] == '\r') {
+
+      /* Strip out the NUL by simply not copying it into the new buffer. */
+      have_crnul = TRUE;
+  
+    } else {
+      arg[j++] = ptr[i];
+    }
+  }
+
+  cmd->arg = arg;
+
+  if (have_crnul) {
+    char *dup_arg;
+
+    /* Now make a copy of the stripped argument; this is what we need to
+     * tokenize into words, for further command dispatching/processing.
+     */
+    dup_arg = pstrdup(cmd->pool, arg);
+    ptr = dup_arg;
+  }
+
+  while ((wrd = pr_str_get_word(&ptr, str_flags)) != NULL) {
+    pr_signals_handle();
     *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
     cmd->argc++;
   }
