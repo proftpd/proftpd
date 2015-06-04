@@ -1732,12 +1732,17 @@ static void inetd_main(void) {
         pr_log_pri(PR_LOG_ERR, "error opening scoreboard: wrong version, "
           "writing new scoreboard");
 
-        /* Delete the scoreboard, then open it again (and assume that the
-         * open succeeds).
-         */
+        /* Delete the scoreboard, then open it again. */
         PRIVS_ROOT
         pr_delete_scoreboard();
-        pr_open_scoreboard(O_RDWR);
+        if (pr_open_scoreboard(O_RDWR) < 0) {
+          int xerrno = errno;
+
+          PRIVS_RELINQUISH
+          pr_log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
+            strerror(xerrno));
+          return;
+        }
         break;
 
       default:

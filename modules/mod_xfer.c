@@ -836,7 +836,7 @@ static void stor_chown(pool *p) {
           pr_uid2str(p, session.fsuid));
       }
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(xfer_path);
       if (pr_fsio_stat(xfer_path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during root chmod: %s", xfer_path,
@@ -903,7 +903,7 @@ static void stor_chown(pool *p) {
         use_root_privs ? "root " : "", xfer_path,
         pr_gid2str(p, session.fsgid));
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(xfer_path);
       if (pr_fsio_stat(xfer_path, &st) < 0) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during %schmod: %s", xfer_path,
@@ -1711,12 +1711,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
       session.restart_pos) {
     int xerrno = 0;
 
+    pr_fs_clear_cache2(path);
     if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1) {
       pr_log_debug(DEBUG4, "unable to seek to position %" PR_LU " of '%s': %s",
         (pr_off_t) session.restart_pos, cmd->arg, strerror(errno));
       xerrno = errno;
 
-    } else if (pr_fsio_stat(path, &st) == -1) {
+    } else if (pr_fsio_stat(path, &st) < 0) {
       pr_log_debug(DEBUG4, "unable to stat '%s': %s", cmd->arg,
         strerror(errno));
       xerrno = errno;
@@ -1772,6 +1773,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
    */
   (void) pr_fsio_fstat(stor_fh, &st);
 
+  /* Block any timers for this section, where we want to prepare the
+   * data connection, then need to reprovision the session.xfer struct,
+   * and do NOT want timers (which may want/need that session.xfer data)
+   * to fire until after the reprovisioning (Bug#4168).
+   */
+  pr_alarms_block();
+
   /* Perform the actual transfer now */
   pr_data_init(cmd->arg, PR_NETIO_IO_RD);
 
@@ -1783,6 +1791,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   session.xfer.path_hidden = pr_table_get(cmd->notes,
     "mod_xfer.store-hidden-path", NULL);
   session.xfer.file_size = curr_pos;
+
+  pr_alarms_unblock();
 
   /* First, make sure the uploaded file has the requested ownership. */
   stor_chown(cmd->tmp_pool);
@@ -1821,8 +1831,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
   while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
     pr_signals_handle();
 
-    if (XFER_ABORTED)
+    if (XFER_ABORTED) {
       break;
+    }
 
     nbytes_stored += len;
 
@@ -2214,7 +2225,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (pr_fsio_stat(dir, &st) < 0) {
+  if (pr_fsio_fstat(retr_fh, &st) < 0) {
     /* Error stat'ing the file. */
     int xerrno = errno;
 
@@ -2282,11 +2293,20 @@ MODRET xfer_retr(cmd_rec *cmd) {
       sizeof(off_t));
   }
 
+  /* Block any timers for this section, where we want to prepare the
+   * data connection, then need to reprovision the session.xfer struct,
+   * and do NOT want timers (which may want/need that session.xfer data)
+   * to fire until after the reprovisioning (Bug#4168).
+   */
+  pr_alarms_block();
+
   /* Send the data */
   pr_data_init(cmd->arg, PR_NETIO_IO_WR);
 
   session.xfer.path = dir;
   session.xfer.file_size = st.st_size;
+
+  pr_alarms_unblock();
 
   cnt_steps = session.xfer.file_size / 100;
   if (cnt_steps == 0)
@@ -2349,12 +2369,14 @@ MODRET xfer_retr(cmd_rec *cmd) {
   while (nbytes_sent != session.xfer.file_size) {
     pr_signals_handle();
 
-    if (XFER_ABORTED)
+    if (XFER_ABORTED) {
       break;
+    }
 
     len = transmit_data(cmd->pool, nbytes_sent, &curr_pos, lbuf, bufsz);
-    if (len == 0)
+    if (len == 0) {
       break;
+    }
 
     if (len < 0) {
       /* Make sure that the errno value, needed for the pr_data_abort() call,
@@ -2775,36 +2797,6 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
     "TimeoutNoTransfer");
 
   return 0;
-}
-
-MODRET xfer_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
-    pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
-    pr_event_unregister(&xfer_module, "core.timeout-session",
-      xfer_timeout_session_ev);
-    pr_event_unregister(&xfer_module, "core.timeout-stalled",
-      xfer_timeout_stalled_ev);
-
-    if (displayfilexfer_fh != NULL) {
-      (void) pr_fsio_close(displayfilexfer_fh);
-      displayfilexfer_fh = NULL;
-    }
-
-    res = xfer_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&xfer_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
 }
 
 MODRET xfer_post_pass(cmd_rec *cmd) {
@@ -3356,7 +3348,7 @@ MODRET set_transferpriority(cmd_rec *cmd) {
   *((int *) c->argv[1]) = prio;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"
@@ -3585,20 +3577,19 @@ MODRET set_usesendfile(cmd_rec *cmd) {
 
 static void xfer_exit_ev(const void *event_data, void *user_data) {
 
+  if (stor_fh != NULL) {
+     /* An upload is occurring... */
+    pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
+    stor_abort();
+  
+  } else if (retr_fh != NULL) {
+    /* A download is occurring... */
+    pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
+    retr_abort();
+  }
+
   if (session.sf_flags & SF_XFER) {
     cmd_rec *cmd;
-
-    if (session.xfer.direction == PR_NETIO_IO_RD) {
-       /* An upload is occurring... */
-      pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
-      stor_abort();
-
-    } else {
-      /* A download is occurring... */
-      pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
-      retr_abort();
-    }
-
     pr_data_abort(0, FALSE);
 
     cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
@@ -3609,36 +3600,61 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void xfer_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&xfer_module, "core.exit", xfer_exit_ev);
+  pr_event_unregister(&xfer_module, "core.session-reinit", xfer_sess_reinit_ev);
+  pr_event_unregister(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev);
+  pr_event_unregister(&xfer_module, "core.timeout-stalled",
+    xfer_timeout_stalled_ev);
+
+  if (displayfilexfer_fh != NULL) {
+    (void) pr_fsio_close(displayfilexfer_fh);
+    displayfilexfer_fh = NULL;
+  }
+
+  res = xfer_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&xfer_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 
-  /* Only do this if we're currently involved in a data transfer.
-   * This is a hack put in to support mod_shaper's antics.
-   */
-  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
-      strcmp(session.curr_cmd, C_RETR) == 0 ||
-      strcmp(session.curr_cmd, C_STOR) == 0 ||
-      strcmp(session.curr_cmd, C_STOU) == 0) {
-    pool *p = make_sub_pool(session.pool);
-    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
-
-    /* Rescan the config tree for TransferRates, picking up any possible
-     * changes.
+  if (pr_module_exists("mod_shaper.c")) {
+    /* Only do this if we're currently involved in a data transfer.
+     * This is a hack put in to support mod_shaper's antics.
      */
-    pr_log_debug(DEBUG2, "rechecking TransferRates");
-    pr_throttle_init(cmd);
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_RETR_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
+        session.curr_cmd_id == PR_CMD_STOU_ID) {
+      pool *p = make_sub_pool(session.pool);
+      cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
 
-    destroy_pool(p);
+      /* Rescan the config tree for TransferRates, picking up any possible
+       * changes.
+       */
+      pr_log_debug(DEBUG2, "rechecking TransferRates");
+      pr_throttle_init(cmd);
+
+      destroy_pool(p);
+    }
   }
 
   return;
 }
 
 static void xfer_timedout(const char *reason) {
-  if (session.xfer.direction == PR_NETIO_IO_RD) {
+  if (stor_fh != NULL) {
     pr_trace_msg(trace_channel, 6, "%s, aborting upload", reason);
     stor_abort();
 
-  } else {
+  } else if (retr_fh != NULL) {
     pr_trace_msg(trace_channel, 6, "%s, aborting download", reason);
     retr_abort();
   }
@@ -3685,6 +3701,8 @@ static int xfer_sess_init(void) {
 
   /* Exit handlers for HiddenStores cleanup */
   pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
+  pr_event_register(&xfer_module, "core.session-reinit", xfer_sess_reinit_ev,
+    NULL);
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
   pr_event_register(&xfer_module, "core.timeout-session",
@@ -3796,7 +3814,6 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
   { POST_CMD,C_PASS,	G_NONE,	 xfer_post_pass,	FALSE, FALSE },
-  { POST_CMD,C_HOST,	G_NONE,	 xfer_post_host,	FALSE, FALSE },
   { 0, NULL }
 };
 

@@ -89,6 +89,7 @@ static int exec_log(const char *, ...)
 #else
       ;
 #endif
+static int exec_sess_init(void);
 
 /* Support routines
  */
@@ -492,6 +493,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         pr_signals_handle();
         c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
       }
+
+    } else {
+      /* Make sure that env is at least a NULL-terminated array. */
+      env = pcalloc(tmp_pool, sizeof(char **));
     }
 
     /* Restore previous signal actions. */
@@ -1790,7 +1795,6 @@ static void exec_exit_ev(const void *event_data, void *user_data) {
     return;
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOnExit", FALSE);
-
   while (c) {
     int res;
 
@@ -1885,6 +1889,29 @@ static void exec_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void exec_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&exec_module, "core.exit", exec_exit_ev);
+  pr_event_unregister(&exec_module, "core.session-reinit", exec_sess_reinit_ev);
+
+  exec_engine = FALSE;
+  exec_opts = 0U;
+  exec_timeout = 0;
+
+  (void) close(exec_logfd);
+  exec_logfd = -1;
+  exec_logname = NULL;
+
+  res = exec_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&exec_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -1892,6 +1919,9 @@ static int exec_sess_init(void) {
   int *use_exec = NULL;
   config_rec *c = NULL;
   const char *proto;
+
+  pr_event_register(&exec_module, "core.session-reinit", exec_sess_reinit_ev,
+    NULL);
 
   use_exec = get_param_ptr(main_server->conf, "ExecEngine", FALSE);
   if (use_exec != NULL &&
@@ -1903,7 +1933,6 @@ static int exec_sess_init(void) {
     return 0;
   }
 
-  /* Register a "core.exit" event handler. */
   pr_event_register(&exec_module, "core.exit", exec_exit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOptions", FALSE);
@@ -1949,7 +1978,6 @@ static int exec_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOnConnect", FALSE);
-
   while (c) {
     int res;
 

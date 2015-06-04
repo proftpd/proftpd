@@ -662,6 +662,11 @@ my $TESTS = {
     test_class => [qw(forking sftp ssh2)],
   },
 
+  sftp_mkdir_eexist => {
+    order => ++$order,
+    test_class => [qw(forking sftp ssh2)],
+  },
+
   sftp_mkdir_readdir_bug3481 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
@@ -2489,8 +2494,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -2739,8 +2744,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -2989,8 +2994,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -3771,8 +3776,8 @@ sub ssh2_hostkey_dss_bug3634 {
           $res = 0;
 
         } else {
+          $errstr = join('', <$sftp_eh>);
           if ($ENV{TEST_VERBOSE}) {
-            $errstr = join('', <$sftp_eh>);
             print STDERR "Stderr: $errstr\n";
           }
 
@@ -4145,8 +4150,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -4394,8 +4399,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -4643,8 +4648,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -8626,8 +8631,8 @@ EOC
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -11202,8 +11207,8 @@ sub ssh2_ext_auth_publickey_ecdsa256 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -11432,8 +11437,8 @@ sub ssh2_ext_auth_publickey_ecdsa384 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -11662,8 +11667,8 @@ sub ssh2_ext_auth_publickey_ecdsa521 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -18807,8 +18812,8 @@ sub sftp_ext_upload_bug3550 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -20010,8 +20015,8 @@ sub sftp_ext_download_bug3550 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -20267,8 +20272,8 @@ sub sftp_ext_download_server_rekey {
         $res = 0;
 
       } else {
+        $errstr = join('', <$sftp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$sftp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -21494,6 +21499,160 @@ sub sftp_mkdir {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't mkdir testdir: [$err_name] ($err_code)");
       }
+
+      $sftp = undef;
+      $ssh2->disconnect();
+
+      unless (-d $test_dir) {
+        die("$test_dir directory does not exist as expected");
+      }
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sftp_mkdir_eexist {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sftp.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/testdir");
+  mkpath($test_dir);
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir, $test_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir, $test_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $log_file",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($user, $passwd)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $res = $sftp->mkdir('testdir');
+      if ($res) {
+        die("MKDIR testdir succeeded unexpectedly");
+      }
+
+      my ($err_code, $err_name) = $sftp->error();
+      $self->assert($err_name eq 'SSH_FX_FAILURE',
+        test_msg("Expected error name 'SSH_FX_FAILURE', got '$err_name'"));
 
       $sftp = undef;
       $ssh2->disconnect();
@@ -36325,9 +36484,6 @@ sub sftp_log_extlog_write_close {
   my $uid = 500;
   my $gid = 500;
 
-  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
-  my $write_sz = 32;
-
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -41603,6 +41759,11 @@ sub scp_ext_upload_recursive_dir_bug3447 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -41896,6 +42057,11 @@ sub scp_ext_upload_recursive_dir_bug3792 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42204,6 +42370,11 @@ sub scp_ext_upload_recursive_dir_bug4004 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42457,6 +42628,11 @@ sub scp_ext_upload_different_name_bug3425 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42651,6 +42827,11 @@ sub scp_ext_upload_recursive_empty_dir {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -42866,6 +43047,11 @@ sub scp_ext_upload_shorter_file_bug4013 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -43076,6 +43262,11 @@ sub scp_ext_upload_file_with_timestamp_bug4026 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -44057,8 +44248,8 @@ sub scp_ext_download_bug3544 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$scp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -44449,8 +44640,8 @@ sub scp_ext_download_glob_single_match_bug3904 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$scp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -44675,8 +44866,8 @@ sub scp_ext_download_glob_multiple_matches_bug3904 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
         if ($ENV{TEST_VERBOSE}) {
-          $errstr = join('', <$scp_eh>);
           print STDERR "Stderr: $errstr\n";
         }
 
@@ -44964,6 +45155,11 @@ sub scp_ext_download_recursive_dir_bug3456 {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -45185,6 +45381,11 @@ sub scp_ext_download_recursive_empty_dir {
         $res = 0;
 
       } else {
+        $errstr = join('', <$scp_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
         $res = 1;
       }
 
@@ -46883,6 +47084,11 @@ sub scp_log_extlog_var_f_upload {
       # Due to the way that Net::SSH2's scp support works, the full path is
       # sent to the server.  Note that the OpenSSH command-line scp tool
       # does not do this, so the %F value will not always be the full path.
+      if ($^O eq 'darwin') {
+        # Mac OSX hack
+        $upload_file = '/private' . $upload_file;
+      }
+
       my $expected = "$upload_file $upload_file";
       $self->assert($expected eq $line,
         test_msg("Expected '$expected', got '$line'"));
@@ -47264,6 +47470,11 @@ sub scp_log_xferlog_download {
           test_msg("Expected $expected, got $nbytes"));
 
         $expected = File::Spec->rel2abs($config_file);
+        if ($^O eq 'darwin') {
+          # Mac OSX hack
+          $expected = '/private' . $expected;
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -47502,6 +47713,11 @@ sub scp_log_xferlog_upload {
           test_msg("Expected $expected, got $nbytes"));
 
         $expected = $upload_file;
+        if ($^O eq 'darwin') {
+          # Mac OSX hack
+          $expected = '/private' . $expected;
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 

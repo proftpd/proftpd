@@ -398,13 +398,15 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
         if (FD_ISSET(stdout_pipe[0], &readfds)) {
           res = read(stdout_pipe[0], buf, buflen);
           if (res > 0) {
+            buf[buflen-1] = '\0';
+
             while (res &&
                    (buf[res-1] == '\r' ||
                     buf[res-1] == '\n')) {
+              pr_signals_handle();
               res--;
             }
             buf[res] = '\0';
-            buf[buflen-1] = '\0';
 
           } else if (res < 0) {
             pr_log_debug(DEBUG2, MOD_SFTP_VERSION

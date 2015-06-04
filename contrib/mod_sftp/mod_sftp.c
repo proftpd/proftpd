@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1303,6 +1303,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[1], "InsecureHostKeyPerms") == 0) {
       opts |= SFTP_OPT_INSECURE_HOSTKEY_PERMS;
 
+    } else if (strcmp(cmd->argv[1], "AllowWeakDH") == 0) {
+      opts |= SFTP_OPT_ALLOW_WEAK_DH;
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
         cmd->argv[i], "'", NULL));
@@ -1588,6 +1591,36 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   }
 }
 
+#ifdef PR_USE_DEVEL
+static void pool_printf(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf));
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", buf);
+}
+
+static void sftp_sigusr2_ev(const void *event_data, void *user_data) {
+  /* Note: the mod_shaper module deliberately uses the SIGUSR2 signal
+   * for handling shaping.  Thus we only want to dump out the pools
+   * IFF mod_shaper is NOT present.
+   */
+  if (pr_module_exists("mod_shaper.c") == FALSE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "-----BEGIN POOL DUMP-----");
+    pr_pool_debug_memory(pool_printf);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",
+      "-----END POOL DUMP-----");
+  }
+}
+#endif /* PR_USE_DEVEL */
+
 static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
   const char *proto;
 
@@ -1721,6 +1754,9 @@ static int sftp_sess_init(void) {
     return 0;
 
   pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
+#ifdef PR_USE_DEVEL
+  pr_event_register(&sftp_module, "core.signal.USR2", sftp_sigusr2_ev, NULL);
+#endif /* PR_USE_DEVEL */
   pr_event_register(&sftp_module, "mod_auth.max-clients",
     sftp_max_conns_ev, NULL);
   pr_event_register(&sftp_module, "mod_auth.max-clients-per-class",

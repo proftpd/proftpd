@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * DO NOT EDIT BELOW THIS LINE
+ * -----DO NOT EDIT BELOW THIS LINE-----
  * $Archive: mod_snmp.a $
  */
 
@@ -423,7 +423,7 @@ static int snmp_mkdir(const char *dir, uid_t uid, gid_t gid, mode_t mode) {
   struct stat st;
   int res = -1;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
 
   if (res == -1 &&
@@ -461,7 +461,7 @@ static int snmp_mkpath(pool *p, const char *path, uid_t uid, gid_t gid,
   char *currpath = NULL, *tmppath = NULL;
   struct stat st;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) == 0) {
     /* Path already exists, nothing to be done. */
     errno = EEXIST;
@@ -1445,11 +1445,9 @@ static int snmp_agent_handle_packet(int sockfd, pr_netaddr_t *agent_addr) {
     return -1;
   }
 
-  if (pkt->req_pdu != NULL) {
-    /* We're done with the request PDU here. */
-    destroy_pool(pkt->req_pdu->pool);
-    pkt->req_pdu = NULL;
-  }
+  /* We're done with the request PDU here. */
+  destroy_pool(pkt->req_pdu->pool);
+  pkt->req_pdu = NULL;
 
   (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
     "writing SNMP message for %s, community = '%s', request ID %ld, "
@@ -3917,23 +3915,14 @@ static void snmp_ssh2_scp_sess_closed_ev(const void *event_data,
 
 /* mod_ban-generated events */
 static void snmp_ban_ban_user_ev(const void *event_data, void *user_data) {
-  const char *ban_name = NULL;
-
-  ban_name = (const char *) event_data;
-
   ev_incr_value(SNMP_DB_BAN_BANS_F_USER_BAN_COUNT, "ban.bans.userBanCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_USER_BAN_TOTAL, "ban.bans.userBanTotal", 1);
 
   ev_incr_value(SNMP_DB_BAN_BANS_F_BAN_COUNT, "ban.bans.banCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_BAN_TOTAL, "ban.bans.banTotal", 1);
-
 }
 
 static void snmp_ban_ban_host_ev(const void *event_data, void *user_data) {
-  const char *ban_name = NULL;
-
-  ban_name = (const char *) event_data;
-
   ev_incr_value(SNMP_DB_BAN_BANS_F_HOST_BAN_COUNT, "ban.bans.hostBanCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_HOST_BAN_TOTAL, "ban.bans.hostBanTotal", 1);
 
@@ -3942,10 +3931,6 @@ static void snmp_ban_ban_host_ev(const void *event_data, void *user_data) {
 }
 
 static void snmp_ban_ban_class_ev(const void *event_data, void *user_data) {
-  const char *ban_name = NULL;
-
-  ban_name = (const char *) event_data;
-
   ev_incr_value(SNMP_DB_BAN_BANS_F_CLASS_BAN_COUNT,
     "ban.bans.classBanCount", 1);
   ev_incr_value(SNMP_DB_BAN_BANS_F_CLASS_BAN_TOTAL,

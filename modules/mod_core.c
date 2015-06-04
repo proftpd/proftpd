@@ -782,7 +782,6 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 
 /* usage: ServerAlias hostname [hostname ...] */
 MODRET set_serveralias(cmd_rec *cmd) {
-#ifdef PR_USE_HOST
   register unsigned int i;
 
   if (cmd->argc < 2) {
@@ -796,9 +795,6 @@ MODRET set_serveralias(cmd_rec *cmd) {
   }
 
   return PR_HANDLED(cmd);
-#else
-  CONF_ERROR(cmd, "not yet implemented");
-#endif /* PR_USE_HOST */
 }
 
 /* usage: ServerIdent off|on [name] */
@@ -1332,6 +1328,71 @@ MODRET add_from(cmd_rec *cmd) {
             "': ", strerror(errno), NULL));
         }
       }
+    }
+  }
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: FSCachePolicy on|off|size {count} [maxAge {age}] */
+MODRET set_fscachepolicy(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc != 2 &&
+      cmd->argc != 5) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  if (cmd->argc == 2) {
+    int engine;
+
+    engine = get_boolean(cmd, 1);
+    if (engine == -1) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = engine;
+    c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = PR_TUNABLE_FS_STATCACHE_SIZE;
+    c->argv[2] = palloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[2]) = PR_TUNABLE_FS_STATCACHE_MAX_AGE;
+
+    return PR_HANDLED(cmd);
+  }
+
+  c = add_config_param_str(cmd->argv[0], 3, NULL, NULL, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = TRUE;
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strncasecmp(cmd->argv[i], "size", 5) == 0) {
+      int size;
+
+      size = atoi(cmd->argv[i++]);
+      if (size < 1) {
+        CONF_ERROR(cmd, "size parameter must be greater than 1");
+      }
+
+      c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+      *((unsigned int *) c->argv[1]) = size;
+
+    } else if (strncasecmp(cmd->argv[i], "maxAge", 7) == 0) {
+      int max_age;
+
+      max_age = atoi(cmd->argv[i++]);
+      if (max_age < 1) {
+        CONF_ERROR(cmd, "maxAge parameter must be greater than 1");
+      }
+
+      c->argv[2] = palloc(c->pool, sizeof(unsigned int));
+      *((unsigned int *) c->argv[2]) = max_age;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown FSCachePolicy: ",
+        cmd->argv[i], NULL));
     }
   }
 
@@ -1933,7 +1994,7 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, pre);
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
@@ -2233,6 +2294,10 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     char **argv = cmd->argv + 2;
 
     acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+    if (acl == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating expression: ",
+        strerror(errno), NULL));
+    }
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 4;
@@ -2265,7 +2330,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
     /* now, copy in the expression arguments */
     if (argc && acl) {
-      while (argc--) {
+      while (argc-- > 0) {
         *argv++ = pstrdup(c->pool, *((char **) acl->elts));
         acl->elts = ((char **) acl->elts) + 1;
       }
@@ -2676,7 +2741,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   config_rec *c;
   char **argv;
   int argc, eval_type;
-  array_header *acl;
+  array_header *acl = NULL;
  
   CHECK_CONF(cmd, CONF_LIMIT);
 
@@ -2716,8 +2781,9 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       pr_regex_t *pre;
       int res;
 
-      if (cmd->argc != 3)
+      if (cmd->argc != 3) {
         CONF_ERROR(cmd, "wrong number of parameters");
+      }
 
       pre = pr_regexp_alloc(&core_module);
 
@@ -2756,6 +2822,10 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+  if (acl == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating expression: ",
+      strerror(errno), NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 0);
 
@@ -2767,11 +2837,11 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
 
   argv = (char **) c->argv + 1;
 
-  if (acl) {
-    while (acl->nelts--) {
-      *argv++ = pstrdup(c->pool, *((char **) acl->elts));
-      acl->elts = ((char **) acl->elts) + 1;
-    }
+  while (acl->nelts-- > 0) {
+    pr_signals_handle();
+
+    *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+    acl->elts = ((char **) acl->elts) + 1;
   }
 
   *argv = NULL;
@@ -3220,9 +3290,6 @@ MODRET core_pre_any(cmd_rec *cmd) {
   unsigned long cmd_delay = 0;
   char *rnfr_path = NULL;
 
-  /* Make sure any FS caches are clear before each command. */
-  pr_fs_clear_cache();
-
   /* Check for an exceeded MaxCommandRate. */
   cmd_delay = core_exceeded_cmd_rate(cmd);
   if (cmd_delay > 0) {
@@ -3341,14 +3408,6 @@ MODRET core_log_quit(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Per RFC 959, directory responses for MKD and PWD should be
- * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
- * the additional quotes MUST be duplicated.
- */
-static const char *quote_dir(cmd_rec *cmd, char *dir) {
-  return sreplace(cmd->tmp_pool, dir, "\"", "\"\"", NULL);
-}
-
 MODRET core_pwd(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
 
@@ -3363,7 +3422,7 @@ MODRET core_pwd(cmd_rec *cmd) {
   }
 
   pr_response_add(R_257, _("\"%s\" is the current directory"),
-    quote_dir(cmd, pr_fs_encode_path(cmd->tmp_pool, session.vwd)));
+    quote_dir(cmd->tmp_pool, pr_fs_encode_path(cmd->tmp_pool, session.vwd)));
 
   return PR_HANDLED(cmd);
 }
@@ -4316,7 +4375,6 @@ MODRET core_help(cmd_rec *cmd) {
 }
 
 MODRET core_host(cmd_rec *cmd) {
-#ifdef PR_USE_HOST
   const char *local_ipstr;
   char *host;
   size_t hostlen;
@@ -4344,21 +4402,31 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* XXX Need checking of a <Limit> for HOST commands, so that HOST can be
-   * denied via configuration if need be.
-   */
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
+    int xerrno = EACCES;
 
-  /* XXX Should there be a limit on the number of HOST commands that a client
+    pr_response_add_err(R_504, "%s: %s", cmd->argv[1], strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
+  /* Should there be a limit on the number of HOST commands that a client
    * can send?
+   *
+   * In practice, this will be limited by the TimeoutLogin time interval;
+   * a client can send as many HOST commands as it wishes, as long as it
+   * successfully authenticates in that time.
    */
 
-#if 0
   /* If the user has already authenticated or negotiated a RFC2228 mechanism,
    * then the HOST command is too late.
    */
   if (session.rfc2228_mech != NULL) {
     pr_log_debug(DEBUG0, "HOST '%s' command received after client has "
-      "requested RFC2228 protection, refusing HOST command", cmd->argv[1]);
+      "requested RFC2228 protection (%s), refusing HOST command", cmd->argv[1],
+      session.rfc2228_mech);
 
     pr_response_add_err(R_503, _("Bad sequence of commands"));
 
@@ -4366,7 +4434,6 @@ MODRET core_host(cmd_rec *cmd) {
     errno = EPERM;
     return PR_ERROR(cmd);
   }
-#endif
 
   host = cmd->argv[1];
   hostlen = strlen(host);
@@ -4433,6 +4500,12 @@ MODRET core_host(cmd_rec *cmd) {
       }
     }
 
+    (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+    if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+      pr_trace_msg("command", 3,
+        "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+    }
+
     /* No need to send the banner information again, since we didn't actually
      * change the virtual host used by the client.
      */
@@ -4473,6 +4546,12 @@ MODRET core_host(cmd_rec *cmd) {
       }
     }
 
+    (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+    if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+      pr_trace_msg("command", 3,
+        "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+    }
+
     /* No need to send the banner information again, since we didn't actually
      * change the virtual host used by the client.
      */
@@ -4493,8 +4572,7 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  named_server = pr_namebind_get_server(host, main_server->addr,
-    main_server->ServerPort);
+  named_server = pr_namebind_get_server(host, main_server->addr);
   if (named_server == NULL) {
     pr_log_debug(DEBUG0, "Unknown host '%s' requested on %s#%d, "
       "refusing HOST command", host, local_ipstr, main_server->ServerPort);
@@ -4507,6 +4585,35 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  if (session.rfc2228_mech != NULL &&
+      strncmp(session.rfc2228_mech, "TLS", 4) == 0) {
+    const char *sni = NULL;
+
+    /* If the TLS client used the SNI extension, ensure that the SNI name
+     * matches the HOST name, per RFC 7151, Section 3.2.2.  Otherwise, we
+     * reject the HOST command.
+     */
+    sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
+    if (sni != NULL) {
+      if (strcasecmp(sni, host) != 0) {
+        pr_log_debug(DEBUG0, "HOST '%s' requested, but client connected via "
+          "TLS to SNI '%s', refusing HOST command", host, sni);
+        pr_response_add_err(R_504, _("%s: Unknown hostname provided"),
+          cmd->argv[1]);
+
+        pr_cmd_set_errno(cmd, EPERM);
+        errno = EPERM;
+        return PR_ERROR(cmd);
+      }
+    }
+  }
+
+  (void) pr_table_remove(session.notes, "mod_core.host", NULL);
+  if (pr_table_add_dup(session.notes, "mod_core.host", host, 0) < 0) {
+    pr_trace_msg("command", 3,
+      "error stashing 'mod_core.host' in session.notes: %s", strerror(errno));
+  }
+
   if (named_server != main_server) {
     /* Set a session flag indicating that the main_server pointer changed. */
     pr_log_debug(DEBUG0,
@@ -4514,6 +4621,8 @@ MODRET core_host(cmd_rec *cmd) {
       named_server->ServerName, host);
     session.prev_server = main_server;
     main_server = named_server;
+
+    pr_event_generate("core.session-reinit", named_server);
   }
 
   /* XXX Ultimately, if HOST is successful, we change the main_server pointer
@@ -4525,6 +4634,59 @@ MODRET core_host(cmd_rec *cmd) {
    * AuthOrder, timeouts, etc etc.  (Unfortunately, POST_CMD handlers cannot
    * fail the given command; for modules which then need to end the
    * connection, they'll need to use pr_session_disconnect().)
+   *
+   * Modules implementing post_host handlers:
+   *   mod_core
+   *   mod_tls
+   *
+   * Modules implementing 'sess-reinit' event handlers:
+   *   mod_auth
+   *   mod_auth_file
+   *   mod_auth_unix
+   *   mod_ban
+   *   mod_cap
+   *   mod_copy
+   *   mod_deflate
+   *   mod_delay
+   *   mod_dnsbl
+   *   mod_exec
+   *   mod_facts
+   *   mod_ident
+   *   mod_log
+   *   mod_log_forensic
+   *   mod_memcache
+   *   mod_qos
+   *   mod_site_misc
+   *   mod_xfer
+   *
+   * Modules that MIGHT need post_host handlers:
+   *   mod_ratio
+   *   mod_snmp
+   *
+   * Modules that NEED a post_host handler:
+   *   mod_ldap
+   *   mod_quotatab et al
+   *   mod_radius
+   *   mod_rewrite
+   *   mod_shaper
+   *   mod_sql et al
+   *   mod_sql_passwd
+   *   mod_wrap
+   *   mod_wrap2 et al
+   *
+   * Modules that do NOT need a post_host handler:
+   *   mod_ctrls_admin
+   *   mod_dynmasq
+   *   mod_ifversion
+   *   mod_ifsession
+   *   mod_load
+   *   mod_readme
+   *   mod_sftp (HOST command is FTP only)
+   *   mod_sftp_pam
+   *   mod_sftp_sql
+   *   mod_tls_memcache
+   *   mod_tls_shmcache
+   *   mod_unique_id
    */
 
   /* XXX Will this function need to use pr_response_add(), rather than
@@ -4536,9 +4698,6 @@ MODRET core_host(cmd_rec *cmd) {
 
   pr_session_send_banner(main_server, 0);
   return PR_HANDLED(cmd);
-#else
-  return PR_DECLINED(cmd);
-#endif /* PR_USE_HOST */
 }
 
 MODRET core_post_host(cmd_rec *cmd) {
@@ -4659,18 +4818,17 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
   unsigned char show_symlinks = TRUE, *tmp = NULL;
 
   odir = ndir;
-  pr_fs_clear_cache();
 
   tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     show_symlinks = *tmp;
+  }
 
   if (show_symlinks) {
     int use_cdpath = FALSE;
 
     dir = dir_realpath(cmd->tmp_pool, ndir);
-
-    if (!dir) {
+    if (dir == NULL) {
       use_cdpath = TRUE;
     }
 
@@ -4679,8 +4837,9 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 
       allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
         NULL);
-      if (!allowed_access)
+      if (!allowed_access) {
         use_cdpath = TRUE;
+      }
     }
 
     if (!use_cdpath &&
@@ -5028,7 +5187,7 @@ MODRET core_mkd(cmd_rec *cmd) {
   }
 
   pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
-    quote_dir(cmd, dir));
+    quote_dir(cmd->tmp_pool, dir));
 
   return PR_HANDLED(cmd);
 }
@@ -5159,10 +5318,11 @@ MODRET core_size(cmd_rec *cmd) {
   }
 
   path = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (path != NULL) {
+    pr_fs_clear_cache2(path);
+  }
 
-  pr_fs_clear_cache();
-
-  if (!path ||
+  if (path == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       pr_fsio_stat(path, &st) == -1) {
     int xerrno = errno;
@@ -5265,7 +5425,7 @@ MODRET core_dele(cmd_rec *cmd) {
    * so we need to use lstat(), not stat(), lest we log the wrong size.
    */
   memset(&st, 0, sizeof(st));
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) < 0) {
     int xerrno = errno;
 
@@ -5400,7 +5560,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   /* Deny the rename if AllowOverwrites are not allowed, and the destination
    * rename file already exists.
    */
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(path);
   if ((!allow_overwrite || *allow_overwrite == FALSE) &&
       pr_fsio_stat(path, &st) == 0) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", path);
@@ -5780,6 +5940,30 @@ MODRET core_post_pass(cmd_rec *cmd) {
     core_max_cmd_ts = 0;
   }
 
+  /* Configure the statcache to start caching for the authenticated session. */
+  pr_fs_statcache_reset();
+  c = find_config(main_server->conf, CONF_PARAM, "FSCachePolicy", FALSE);
+  if (c != NULL) {
+    int engine;
+    unsigned int size, max_age;
+
+    engine = *((int *) c->argv[0]);
+    size = *((unsigned int *) c->argv[1]);
+    max_age = *((unsigned int *) c->argv[2]);
+
+    if (engine) {
+      pr_fs_statcache_set_policy(size, max_age, 0);
+
+    } else {
+      pr_fs_statcache_set_policy(0, 0, 0);
+    }
+
+  } else {
+    /* Set the default statcache policy. */
+    pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
+      PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  }
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -5860,6 +6044,7 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
  */
 
 static void core_restart_ev(const void *event_data, void *user_data) {
+  pr_fs_statcache_reset();
   pr_scoreboard_scrub();
 
 #ifdef PR_USE_TRACE
@@ -5939,9 +6124,7 @@ static int core_init(void) {
   pr_help_add(C_NOOP, _("(no operation)"), TRUE);
   pr_help_add(C_FEAT, _("(returns feature list)"), TRUE);
   pr_help_add(C_OPTS, _("<sp> command [<sp> options]"), TRUE);
-#ifdef PR_USE_HOST
   pr_help_add(C_HOST, _("<cp> hostname"), TRUE);
-#endif /* PR_USE_HOST */
   pr_help_add(C_AUTH, _("<sp> base64-data"), FALSE);
   pr_help_add(C_CCC, _("(clears protection level)"), FALSE);
   pr_help_add(C_CONF, _("<sp> base64-data"), FALSE);
@@ -5958,9 +6141,7 @@ static int core_init(void) {
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
-#ifdef PR_USE_HOST
   pr_feat_add(C_HOST);
-#endif /* PR_USE_HOST */
 
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
@@ -6397,6 +6578,7 @@ static conftable core_conftab[] = {
   { "DisplayConnect",		set_displayconnect,		NULL },
   { "DisplayQuit",		set_displayquit,		NULL },
   { "From",			add_from,			NULL },
+  { "FSCachePolicy",		set_fscachepolicy,		NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "HideFiles",		set_hidefiles,			NULL },
@@ -6487,6 +6669,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
   { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_OPTS, G_NONE,  core_opts,    FALSE,	FALSE,	CL_MISC },
+  { CMD, C_HOST, G_NONE,  core_host,    FALSE,	FALSE,	CL_MISC },
   { POST_CMD, C_PASS, G_NONE, core_post_pass, FALSE, FALSE },
   { CMD, C_HOST, G_NONE,  core_host,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD, C_HOST, G_NONE, core_post_host, FALSE, FALSE },

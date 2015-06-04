@@ -876,9 +876,16 @@ static void mcache_set_module_namespace(pr_memcache_t *mcache, module *m) {
   }
 
   if (res != MEMCACHED_SUCCESS) {
-    pr_trace_msg(trace_channel, 9,
-      "unable to set MEMCACHED_CALLBACK_PREFIX_KEY for module 'mod_%s.c': %s",
-      m->name, memcached_strerror(mcache->mc, res));
+    if (m != NULL) {
+      pr_trace_msg(trace_channel, 9,
+        "unable to set MEMCACHED_CALLBACK_PREFIX_KEY for module 'mod_%s.c': %s",
+        m->name, memcached_strerror(mcache->mc, res));
+
+    } else {
+      pr_trace_msg(trace_channel, 9,
+        "unable to clear MEMCACHED_CALLBACK_PREFIX_KEY: %s",
+        memcached_strerror(mcache->mc, res));
+    }
   }
 }
 

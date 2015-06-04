@@ -1682,8 +1682,11 @@ int pr_scoreboard_scrub(void) {
 
       /* Mark the current offset. */
       curr_offset = lseek(fd, (off_t) 0, SEEK_CUR);
-      entry_lock.l_start = curr_offset;
+      if (curr_offset < 0) {
+        break;
+      }
 
+      entry_lock.l_start = curr_offset;
     }
   }
 

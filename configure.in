@@ -45,7 +45,7 @@ AC_DEFINE_UNQUOTED(PR_PLATFORM, $platform)
 AC_SUBST(OSREL)
 AC_SUBST(OSTYPE)
 
-dnl MacOS X requires -traditional-cpp; autodetecting it isn't impossible
+dnl MacOSX requires -traditional-cpp; autodetecting it isn't impossible
 dnl AFAIK, since assuming the need for -traditional-cpp breaks the build
 dnl on other OSes. -jwm, 30 Jan 2001
 if test "$OSTYPE" = "-DRHAPSODY5"; then
@@ -61,7 +61,7 @@ top_builddir=.
 LT_INIT([dlopen])
 
 dnl If LT_INIT provides an empty value for CONFIG_SHELL for some reason (it
-dnl happens on my Mac OSX 10.5 machine, for example), have a fallback.
+dnl happens on my MacOSX 10.5 machine, for example), have a fallback.
 if test x"$CONFIG_SHELL" = x; then
   CONFIG_SHELL="$SHELL"
 fi
@@ -1916,6 +1916,20 @@ AC_CACHE_CHECK(
   pr_cv_func_facl,
   pr_cv_func_facl="none"
 
+  dnl MacOSX.
+  if test "$pr_cv_func_facl" = "none"; then
+    AC_TRY_LINK(
+      [ #include <sys/types.h>
+        #ifdef HAVE_SYS_ACL_H
+        # include <sys/acl.h>
+        #endif
+      ],
+      [ acl_entry_t ae;
+        acl_perm_t p = ACL_READ_DATA;
+        (void)acl_get_qualifier(ae);
+      ], pr_cv_func_facl="MacOSX")
+  fi
+
   dnl BSD.
   if test "$pr_cv_func_facl" = "none"; then
     AC_TRY_LINK(
@@ -1978,6 +1992,11 @@ if test "$pr_cv_func_facl" != "none"; then
         [Define if you have Linux-flavoured POSIX ACL support])
       AC_CHECK_LIB(acl, perm_copy_fd,
         [AC_DEFINE(HAVE_PERM_COPY_FD, 1, [Define if you have perm_copy_fd])])
+      ;;
+
+    "MacOSX")
+      AC_DEFINE(HAVE_MACOSX_POSIX_ACL, 1,
+        [Define if you have MacOSX-flavoured POSIX ACL support])
       ;;
 
     "Solaris")
@@ -2085,7 +2104,7 @@ if test x"$enable_sendfile" != xno ; then
           off_t o, n;
           struct sf_hdtr h;
           (void)sendfile(i,i,o,&n,&h,i);
-        ], pr_cv_func_sendfile="Mac OSX")
+        ], pr_cv_func_sendfile="MacOSX")
     fi
   )
 
@@ -2124,9 +2143,9 @@ if test x"$enable_sendfile" != xno ; then
       ac_build_addl_libs="-lsendfile $ac_build_addl_libs"
       ;;
 
-    "Mac OSX")
+    "MacOSX")
       AC_DEFINE(HAVE_MACOSX_SENDFILE, 1,
-        [Define if using Mac OSX sendfile support.])
+        [Define if using MacOSX sendfile support.])
       ;;
   esac
 fi
@@ -2668,6 +2687,56 @@ if test x"$pr_use_openssl" = xyes; then
   )
   LIBS="$saved_libs"
 
+  AC_MSG_CHECKING([whether linking with OpenSSL has ALPN support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_alpn_select_cb(ctx, NULL, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_ALPN, 1, [Define if your OpenSSL supports ALPN])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether linking with OpenSSL has NPN support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_next_protos_advertised_cb(ctx, NULL, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_NPN, 1, [Define if your OpenSSL supports NPN])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
   if test x"$openssl_cmdline" != xno; then
     if `$openssl_cmdline version 2>/dev/null 1>&2`; then
       openssl_cflags=`$openssl_cmdline version -f 2>/dev/null`
@@ -2747,6 +2816,10 @@ for module in $ac_shared_modules ; do
     ac_shared_modules=`echo "$ac_shared_modules" | sed -e "s/$module//"`
   fi
 done
+
+# Make a copy of the module lists, for displaying later.
+disp_static=`echo "$ac_static_modules" | sed -e 's/\\.o//g'`;
+disp_shared=`echo "$ac_shared_modules" | sed -e 's/\\.la//g'`;
 
 for module in $ac_static_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.o$//'`;
@@ -3135,23 +3208,24 @@ for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
 done
 
 # Display a summary of what modules will be compiled
-disp_static=`echo "$ac_static_modules" | sed -e 's/\\.o//g'`;
-disp_shared=`echo "$ac_shared_modules" | sed -e 's/\\.la//g'`;
-
 echo
 echo "--------------"
 echo "Build Summary"
 echo "--------------"
-echo "Building the following static modules:"
-for amodule in $disp_static; do
- echo "  $amodule"
-done
+if test ! -z "$disp_static"; then
+  echo "Building the following static modules:"
+  for amodule in $disp_static; do
+   echo "  $amodule"
+  done
+fi
 
-echo
-echo "Building the following shared modules:"
-for amodule in $disp_shared; do
- echo "  $amodule"
-done
+if test ! -z "$disp_shared"; then
+  echo
+  echo "Building the following shared modules:"
+  for amodule in $disp_shared; do
+    echo "  $amodule"
+  done
+fi
 
 echo
 echo "--------------"

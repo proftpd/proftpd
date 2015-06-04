@@ -6224,7 +6224,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -6245,7 +6245,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -15459,7 +15459,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 ;;
 esac
-rm -f -r conftest*
+rm -f conftest*
   if test $ac_cv_sys_file_offset_bits = unknown; then
     { echo "$as_me:$LINENO: checking for _LARGE_FILES value needed for large files" >&5
 echo $ECHO_N "checking for _LARGE_FILES value needed for large files... $ECHO_C" >&6; }
@@ -15580,7 +15580,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 ;;
 esac
-rm -f -r conftest*
+rm -f conftest*
   fi
 fi
 
@@ -22719,7 +22719,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -22740,7 +22740,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -24913,7 +24913,7 @@ else
 echo "${ECHO_T}no" >&6; }
 
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 
 
@@ -26437,7 +26437,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_type_uid_t=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_type_uid_t" >&5
@@ -26794,7 +26794,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_type_getgroups=int
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 fi
@@ -26840,10 +26840,10 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_timer_t="no"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_timer_t" >&5
@@ -31869,7 +31869,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_utmaxtype="no"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_utmaxtype" >&5
@@ -31894,7 +31894,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_ut_host="no"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_ut_host" >&5
@@ -31919,7 +31919,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_ut_exit="no"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_ut_exit" >&5
@@ -31978,7 +31978,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_syslog_log_cron="no"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_syslog_log_cron" >&5
@@ -32008,7 +32008,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pr_cv_header_syslog_log_ftp="no"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pr_cv_header_syslog_log_ftp" >&5
@@ -32275,7 +32275,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_os_cray=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_os_cray" >&5
@@ -32554,7 +32554,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_prog_gcc_traditional=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 
   if test $ac_cv_prog_gcc_traditional = no; then
@@ -32571,7 +32571,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   $EGREP "$ac_pattern" >/dev/null 2>&1; then
   ac_cv_prog_gcc_traditional=yes
 fi
-rm -f -r conftest*
+rm -f conftest*
 
   fi
 fi
@@ -35890,6 +35890,59 @@ int
 main ()
 {
  acl_entry_t ae;
+        acl_perm_t p = ACL_READ_DATA;
+        (void)acl_get_qualifier(ae);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  pr_cv_func_facl="MacOSX"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+  fi
+
+    if test "$pr_cv_func_facl" = "none"; then
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+ #include <sys/types.h>
+        #ifdef HAVE_SYS_ACL_H
+        # include <sys/acl.h>
+        #endif
+
+int
+main ()
+{
+ acl_entry_t ae;
         (void)acl_get_qualifier(ae);
 
   ;
@@ -36135,6 +36188,14 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 fi
+
+      ;;
+
+    "MacOSX")
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_MACOSX_POSIX_ACL 1
+_ACEOF
 
       ;;
 
@@ -36443,7 +36504,7 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest$ac_exeext &&
        $as_test_x conftest$ac_exeext; then
-  pr_cv_func_sendfile="Mac OSX"
+  pr_cv_func_sendfile="MacOSX"
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
@@ -36786,7 +36847,7 @@ _ACEOF
       ac_build_addl_libs="-lsendfile $ac_build_addl_libs"
       ;;
 
-    "Mac OSX")
+    "MacOSX")
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_MACOSX_SENDFILE 1
@@ -37860,7 +37921,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   have_psstrings="no"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
     if test "$have_psstrings" = "yes"; then
 	cat >>confdefs.h <<\_ACEOF
@@ -37955,7 +38016,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   pf_cv_argv_type="writeable"
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 { echo "$as_me:$LINENO: result: $pf_cv_argv_type" >&5
@@ -38819,6 +38880,144 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
   LIBS="$saved_libs"
 
+  { echo "$as_me:$LINENO: checking whether linking with OpenSSL has ALPN support" >&5
+echo $ECHO_N "checking whether linking with OpenSSL has ALPN support... $ECHO_C" >&6; }
+  saved_libs="$LIBS"
+
+    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+      #include <openssl/ssl.h>
+
+int
+main ()
+{
+
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_alpn_select_cb(ctx, NULL, NULL);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+      { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_OPENSSL_ALPN 1
+_ACEOF
+
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+      { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+  LIBS="$saved_libs"
+
+  { echo "$as_me:$LINENO: checking whether linking with OpenSSL has NPN support" >&5
+echo $ECHO_N "checking whether linking with OpenSSL has NPN support... $ECHO_C" >&6; }
+  saved_libs="$LIBS"
+
+    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+      #include <openssl/ssl.h>
+
+int
+main ()
+{
+
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_next_protos_advertised_cb(ctx, NULL, NULL);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+      { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_OPENSSL_NPN 1
+_ACEOF
+
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+      { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+  LIBS="$saved_libs"
+
   if test x"$openssl_cmdline" != xno; then
     if `$openssl_cmdline version 2>/dev/null 1>&2`; then
       openssl_cflags=`$openssl_cmdline version -f 2>/dev/null`
@@ -38942,6 +39141,10 @@ for module in $ac_shared_modules ; do
     ac_shared_modules=`echo "$ac_shared_modules" | sed -e "s/$module//"`
   fi
 done
+
+# Make a copy of the module lists, for displaying later.
+disp_static=`echo "$ac_static_modules" | sed -e 's/\\.o//g'`;
+disp_shared=`echo "$ac_shared_modules" | sed -e 's/\\.la//g'`;
 
 for module in $ac_static_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.o$//'`;
@@ -40997,7 +41200,7 @@ do
     cat >>$CONFIG_STATUS <<_ACEOF
     # First, check the format of the line:
     cat >"\$tmp/defines.sed" <<\\CEOF
-/^[	 ]*#[	 ]*undef[	 ][	 ]*$ac_word_re[	 ]*/b def
+/^[	 ]*#[	 ]*undef[	 ][	 ]*$ac_word_re[	 ]*\$/b def
 /^[	 ]*#[	 ]*define[	 ][	 ]*$ac_word_re[(	 ]/b def
 b
 :def
@@ -42072,23 +42275,24 @@ for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
 done
 
 # Display a summary of what modules will be compiled
-disp_static=`echo "$ac_static_modules" | sed -e 's/\\.o//g'`;
-disp_shared=`echo "$ac_shared_modules" | sed -e 's/\\.la//g'`;
-
 echo
 echo "--------------"
 echo "Build Summary"
 echo "--------------"
-echo "Building the following static modules:"
-for amodule in $disp_static; do
- echo "  $amodule"
-done
+if test ! -z "$disp_static"; then
+  echo "Building the following static modules:"
+  for amodule in $disp_static; do
+   echo "  $amodule"
+  done
+fi
 
-echo
-echo "Building the following shared modules:"
-for amodule in $disp_shared; do
- echo "  $amodule"
-done
+if test ! -z "$disp_shared"; then
+  echo
+  echo "Building the following shared modules:"
+  for amodule in $disp_shared; do
+    echo "  $amodule"
+  done
+fi
 
 echo
 echo "--------------"

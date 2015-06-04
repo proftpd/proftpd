@@ -265,7 +265,7 @@ pr_scoreboard_entry_t *util_scoreboard_entry_read(void) {
 }
 
 int util_scoreboard_scrub(int verbose) {
-  int fd = -1;
+  int fd = -1, res = 0;
   off_t curr_offset = 0;
   struct flock lock;
   pr_scoreboard_entry_t sce;
@@ -279,6 +279,10 @@ int util_scoreboard_scrub(int verbose) {
    */
   fd = open(util_get_scoreboard(), O_RDWR);
   if (fd < 0) {
+    if (verbose) {
+      fprintf(stdout, "error opening scoreboard: %s", strerror(errno));
+    }
+
     return -1;
   }
 
@@ -366,6 +370,10 @@ int util_scoreboard_scrub(int verbose) {
 
     /* Mark the current offset. */
     curr_offset = lseek(fd, (off_t) 0, SEEK_CUR);
+    if (curr_offset < 0) {
+      res = -1;
+      break;
+    }
   }
 
   /* Release the scoreboard. */
@@ -383,5 +391,5 @@ int util_scoreboard_scrub(int verbose) {
   /* Don't need the descriptor anymore. */
   (void) close(fd);
 
-  return 0;
+  return res;
 }

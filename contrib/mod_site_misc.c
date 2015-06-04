@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2014 The ProFTPD Project
+ * Copyright (c) 2004-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,12 @@
 
 extern pr_response_t *resp_list, *resp_err_list;
 
+module site_misc_module;
+
 static unsigned int site_misc_engine = TRUE;
+
+/* Necessary prototypes */
+static int site_misc_sess_init(void);
 
 static int site_misc_check_filters(cmd_rec *cmd, const char *path) {
 #ifdef PR_USE_REGEX
@@ -57,8 +62,7 @@ static int site_misc_create_dir(const char *dir) {
   struct stat st;
   int res;
 
-  pr_fs_clear_cache();
-
+  pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
   if (res < 0 &&
       errno != ENOENT) {
@@ -93,10 +97,10 @@ static int site_misc_create_path(pool *p, const char *path) {
   struct stat st;
   char *curr_path, *tmp_path;
 
-  pr_fs_clear_cache();
-
-  if (pr_fsio_stat(path, &st) == 0)
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) == 0) {
     return 0;
+  }
 
   /* The given path should already be canonicalized; we do not need to worry
    * if it is relative to the current working directory or not.
@@ -218,6 +222,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
       cmd->arg = pstrdup(cmd->pool, file);
       cmd->cmd_class = CL_WRITE;
 
+      pr_response_block(TRUE);
       res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
       if (res < 0) {
         int xerrno = errno;
@@ -229,6 +234,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
         pr_response_clear(&resp_err_list);
+        pr_response_block(FALSE);
 
         destroy_pool(sub_pool);
         pr_fsio_closedir(dirh);
@@ -246,6 +252,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
         pr_response_clear(&resp_err_list);
+        pr_response_block(FALSE);
 
         destroy_pool(sub_pool);
         pr_fsio_closedir(dirh);
@@ -254,10 +261,12 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         return -1;
       }
 
+      pr_response_add(R_250, "%s command successful", cmd->argv[0]);
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
       pr_response_clear(&resp_list);
       destroy_pool(sub_pool);
+      pr_response_block(FALSE);
     }
   }
 
@@ -270,6 +279,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   cmd->arg = pstrdup(cmd->pool, dir);
   cmd->cmd_class = CL_DIRS|CL_WRITE;
 
+  pr_response_block(TRUE);
   res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
   if (res < 0) {
     int xerrno = errno;
@@ -278,9 +288,11 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
       ": removing directory '%s' blocked by RMD handler: %s", dir,
       strerror(xerrno));
 
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     pr_response_clear(&resp_err_list);
+    pr_response_block(FALSE);
 
     destroy_pool(sub_pool);
 
@@ -292,18 +304,23 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   if (res < 0) {
     int xerrno = errno;
 
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     pr_response_clear(&resp_err_list);
+    pr_response_block(FALSE);
 
     destroy_pool(sub_pool);
     errno = xerrno;
     return -1;
   }
 
+  pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
+    quote_dir(cmd->tmp_pool, (char *) dir));
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
+  pr_response_block(FALSE);
   destroy_pool(sub_pool);
 
   return 0;
@@ -312,10 +329,10 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
 static int site_misc_delete_path(pool *p, const char *path) {
   struct stat st;
 
-  pr_fs_clear_cache();
-
-  if (pr_fsio_stat(path, &st) < 0)
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) < 0) {
     return -1;
+  }
 
   if (!S_ISDIR(st.st_mode)) {
     errno = EINVAL;
@@ -550,12 +567,12 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     char *cmd_name, *decoded_path, *path = "";
     unsigned char *authenticated;
 
-    if (cmd->argc < 3)
+    if (cmd->argc < 3) {
       return PR_DECLINED(cmd);
+    }
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
-
-    if (!authenticated ||
+    if (authenticated == NULL ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
 
@@ -867,7 +884,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
      * in the filesystem.
      */
        
-    pr_fs_clear_cache();
+    pr_fs_clear_cache2(src);
     res = pr_fsio_stat(src, &st);
     if (res < 0) {
       int xerrno = errno;
@@ -1157,7 +1174,14 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* Unix filesystems typically do not allow changing/setting the creation
+   * timestamp.  Thus we parse the timestamp provided by the client, but
+   * do nothing but log it.
+   */
   parsed_ctime = site_misc_mktime(year, month, day, hour, min, sec);
+  pr_trace_msg("command", 9,
+    "SITE UTIME command sent ctime timestamp of %lu secs",
+    (unsigned long) parsed_ctime);
 
   tvs[0].tv_usec = tvs[1].tv_usec = 0;
   tvs[0].tv_sec = parsed_atime;
@@ -1231,11 +1255,38 @@ MODRET site_misc_utime(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void site_misc_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&site_misc_module, "core.session-reinit",
+    site_misc_sess_reinit_ev);
+
+  site_misc_engine = TRUE;
+  pr_feat_remove("SITE MKDIR");
+  pr_feat_remove("SITE RMDIR");
+  pr_feat_remove("SITE SYMLINK");
+  pr_feat_remove("SITE UTIME");
+
+  res = site_misc_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&site_misc_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization functions
  */
 
 static int site_misc_sess_init(void) {
   config_rec *c;
+
+  pr_event_register(&site_misc_module, "core.session-reinit",
+    site_misc_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "SiteMiscEngine", FALSE);
   if (c) {

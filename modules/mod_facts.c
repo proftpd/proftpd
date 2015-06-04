@@ -355,6 +355,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   char *perm = "";
   int res;
 
+  pr_fs_clear_cache2(path);
   res = pr_fsio_lstat(path, &(info->st));
   if (res < 0) {
     int xerrno = errno;
@@ -386,7 +387,6 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
        * stat in order to ensure that the unique fact values are the same.
        */
 
-      pr_fs_clear_cache();
       res = pr_fsio_stat(path, &target_st);
       if (res < 0) {
         int xerrno = errno;
@@ -743,7 +743,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
        * enable the CAP_FOWNER capability for the session, or b) use root
        * privs.
        */
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         errno = xerrno;
         return -1;
@@ -1381,7 +1381,6 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   }
   session.sf_flags |= SF_ASCII_OVERRIDE;
 
-  pr_fs_clear_cache();
   facts_mlinfobuf_init();
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
@@ -1579,7 +1578,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   info.pool = cmd->tmp_pool;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(decoded_path);
   if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags, fake_uid,
       fake_gid, fake_mode) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
@@ -1719,27 +1718,6 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET facts_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    facts_opts = 0;
-    facts_mlinfo_opts = 0;
-
-    res = facts_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&facts_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 /* Configuration handlers
  */
 
@@ -1792,6 +1770,31 @@ MODRET set_factsoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void facts_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&facts_module, "core.session-reinit",
+    facts_sess_reinit_ev);
+
+  facts_opts = 0;
+  facts_mlinfo_opts = 0;
+
+  pr_feat_remove("MFF modify;UNIX.group;UNIX.mode;");
+  pr_feat_remove("MFMT");
+  pr_feat_remove("TVFS");
+
+  res = facts_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&facts_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization functions
  */
 
@@ -1805,6 +1808,9 @@ static int facts_init(void) {
 static int facts_sess_init(void) {
   config_rec *c;
   int advertise = TRUE;
+
+  pr_event_register(&facts_module, "core.session-reinit",
+    facts_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "FactsAdvertise", FALSE);
   if (c) {
@@ -1861,7 +1867,6 @@ static cmdtable facts_cmdtab[] = {
   { LOG_CMD_ERR,C_MLSD,		G_NONE,	facts_mlsd_cleanup, FALSE, FALSE },
   { CMD,	C_MLST,		G_DIRS,	facts_mlst, TRUE, FALSE, CL_DIRS },
   { CMD,	C_OPTS "_MLST", G_NONE, facts_opts_mlst, FALSE, FALSE },
-  { POST_CMD,	C_HOST,		G_NONE,	facts_post_host, FALSE, FALSE },
   { 0, NULL }
 };
 

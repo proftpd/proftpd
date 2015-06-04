@@ -86,6 +86,7 @@ static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   }
 
   netio_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(netio_pool, "netio stream pool");
   nstrm = pcalloc(netio_pool, sizeof(pr_netio_stream_t));
 
   nstrm->strm_pool = netio_pool;

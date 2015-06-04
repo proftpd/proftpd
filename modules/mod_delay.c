@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,10 +23,8 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * This is mod_delay, contrib software for proftpd 1.2.10 and above.
+ * This is mod_delay, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_delay.c,v 1.73 2014-02-09 20:42:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1703,31 +1701,6 @@ MODRET delay_pre_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-MODRET delay_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    delay_engine = TRUE;
-
-    if (delay_tab.dt_fd > 0) {
-      close(delay_tab.dt_fd);
-      delay_tab.dt_fd = -1;
-    }
-
-    res = delay_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&delay_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 MODRET delay_post_user(cmd_rec *cmd) {
   struct timeval tv;
   unsigned int rownum;
@@ -1921,10 +1894,35 @@ static void delay_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void delay_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&delay_module, "core.session-reinit",
+    delay_sess_reinit_ev);
+
+  delay_engine = TRUE;
+
+  if (delay_tab.dt_fd > 0) {
+    close(delay_tab.dt_fd);
+    delay_tab.dt_fd = -1;
+  }
+
+  delay_nuser = 0;
+  delay_npass = 0;
+
+  res = delay_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&delay_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 static void delay_shutdown_ev(const void *event_data, void *user_data) {
-  pr_fh_t *fh;
-  char *data;
-  size_t datalen;
+  pr_fh_t *fh = NULL;
+  char *data = NULL;
+  size_t datalen = 0;
   int xerrno = 0;
 
   if (delay_engine == FALSE ||
@@ -1969,7 +1967,10 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
 
   datalen = delay_tab.dt_size;
   data = palloc(delay_pool, datalen);
-  memcpy(data, delay_tab.dt_data, datalen);
+  if (data != NULL &&
+      datalen > 0) {
+    memcpy(data, delay_tab.dt_data, datalen);
+  }
 
   if (delay_table_unload(TRUE) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
@@ -1977,10 +1978,13 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
       delay_tab.dt_path, strerror(errno));
   }
 
-  if (pr_fsio_write(fh, data, datalen) < 0) {
-    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": error updating DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+  if (data != NULL &&
+      datalen > 0) {
+    if (pr_fsio_write(fh, data, datalen) < 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": error updating DelayTable '%s': %s", delay_tab.dt_path,
+        strerror(errno));
+    }
   }
 
   delay_tab.dt_fd = -1;
@@ -2034,6 +2038,9 @@ static int delay_sess_init(void) {
   pr_fh_t *fh;
   config_rec *c;
   int xerrno = errno;
+
+  pr_event_register(&delay_module, "core.session-reinit", delay_sess_reinit_ev,
+    NULL);
 
   if (delay_engine == FALSE) {
     return 0;
@@ -2157,7 +2164,6 @@ static cmdtable delay_cmdtab[] = {
   { PRE_CMD,		C_USER,	G_NONE,	delay_pre_user,		FALSE, FALSE },
   { POST_CMD,		C_USER,	G_NONE,	delay_post_user,	FALSE, FALSE },
   { POST_CMD_ERR,	C_USER,	G_NONE,	delay_post_user,	FALSE, FALSE },
-  { POST_CMD,		C_HOST,	G_NONE, delay_post_host,	FALSE, FALSE },
   { LOG_CMD,		C_USER,	G_NONE,	delay_log_user,		FALSE, FALSE },
   { LOG_CMD_ERR,	C_USER,	G_NONE,	delay_log_user,		FALSE, FALSE },
   { LOG_CMD,		C_PASS,	G_NONE,	delay_log_pass,		FALSE, FALSE },

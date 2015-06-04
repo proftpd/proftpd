@@ -1630,7 +1630,7 @@ sub stat {
   }
 }
 
-# From the FTP HOST command RFCXXXX (currently in Draft form)
+# From the FTP HOST command RFC 7151
 sub host {
   my $self = shift;
   my $host = shift;
