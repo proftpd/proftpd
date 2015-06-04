@@ -774,7 +774,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
   /* Make a copy of the command argument; we need to scan through it,
    * looking for any CR+NUL sequences, per RFC 2460, Section 3.1.
    *
-   * Note for futur readers that this scanning may cause problems for
+   * Note for future readers that this scanning may cause problems for
    * commands such as ADAT, ENC, and MIC.  Per RFC 2228, the arguments for
    * these commands are base64-encoded Telnet strings, thus there is no
    * chance of them containing CRNUL sequences.  Any modules which implement
