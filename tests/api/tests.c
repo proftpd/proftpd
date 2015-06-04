@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ static struct testsuite_info suites[] = {
   { "auth",		tests_get_auth_suite },
   { "filter",		tests_get_filter_suite },
   { "inet",		tests_get_inet_suite },
+  { "data",		tests_get_data_suite },
 
   { NULL, NULL }
 };
@@ -154,6 +155,9 @@ static Suite *tests_get_suite(const char *suite) {
 
   } else if (strcmp(suite, "inet") == 0) {
     return tests_get_inet_suite();
+
+  } else if (strcmp(suite, "data") == 0) {
+    return tests_get_data_suite();
   }
 
   return NULL;

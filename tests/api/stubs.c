@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,6 +43,15 @@ int tests_stubs_set_main_server(server_rec *s) {
 
 char *dir_realpath(pool *p, const char *path) {
   return NULL;
+}
+
+int pr_cmd_dispatch(cmd_rec *cmd) {
+  return 0;
+}
+
+int pr_cmd_read(cmd_rec **cmd) {
+  *cmd = NULL;
+  return 0;
 }
 
 int pr_config_get_server_xfer_bufsz(int direction) {
@@ -116,7 +125,22 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   return 0;
 }
 
+int pr_proctitle_get(char *buf, size_t buflen) {
+  errno = ENOSYS;
+  return -1;
+}
+
+void pr_proctitle_set(const char *fmt, ...) {
+}
+
+void pr_proctitle_set_str(const char *str) {
+}
+
 void pr_session_disconnect(module *m, int reason_code, const char *details) {
+}
+
+int pr_session_set_idle(void) {
+  return 0;
 }
 
 void pr_signals_handle(void) {
@@ -126,6 +150,39 @@ void pr_signals_block(void) {
 }
 
 void pr_signals_unblock(void) {
+}
+
+int pr_timeval2millis(struct timeval *tv, uint64_t *millis) {
+  if (tv == NULL ||
+      millis == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Make sure to use 64-bit multiplication to avoid overflow errors,
+   * as much as we can.
+   */
+  *millis = (tv->tv_sec * (uint64_t) 1000) + (tv->tv_usec / (uint64_t) 1000);
+  return 0;
+}
+
+int pr_gettimeofday_millis(uint64_t *millis) {
+  struct timeval tv;
+
+  if (millis == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (gettimeofday(&tv, NULL) < 0) {
+    return -1;
+  }
+
+  if (pr_timeval2millis(&tv, millis) < 0) {
+    return -1;
+  }
+
+  return 0;
 }
 
 void run_schedule(void) {
