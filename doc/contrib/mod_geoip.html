@@ -1,6 +1,3 @@
-<!-- $Id: mod_geoip.html,v 1.6 2013-12-12 16:52:28 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_geoip.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_geoip</title>
@@ -52,7 +49,7 @@ questions, concerns, or suggestions regarding this module.
 
 <hr>
 <h2><a name="GeoIPAllowFilter">GeoIPAllowFilter</a></h2>
-<strong>Syntax:</strong> GeoIPAllowFilter <em>filter</em> <em>pattern</em><br>
+<strong>Syntax:</strong> GeoIPAllowFilter <em>filter1 pattern1 [filter2 pattern2 ...]</em><br>
 <strong>Default:</strong> <em>none</em><br>
 <strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
 <strong>Module:</strong> mod_geoip<br>
@@ -108,7 +105,7 @@ Examples:
 <p>
 <hr>
 <h2><a name="GeoIPDenyFilter">GeoIPDenyFilter</a></h2>
-<strong>Syntax:</strong> GeoIPDenyFilter <em>filter</em> <em>pattern</em><br>
+<strong>Syntax:</strong> GeoIPDenyFilter <em>filter1 pattern1 [filter2 pattern2 ...]</em><br>
 <strong>Default:</strong> <em>none</em><br>
 <strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
 <strong>Module:</strong> mod_geoip<br>
@@ -438,16 +435,28 @@ according to need, demand, inclination, and time:
   &lt;/IfClass&gt;
 </pre>
 
+<p><a name="GeoIPMultipleRules">
+<font color=red>Question</font>: How I can require that a connection match
+multiple rules, <i>e.g.</i> both a <code>RegionCode</code> <i>and</i> a
+<code>CountryCode</code>?<br>
+<font color=blue>Answer</font>: In a given <code>GeoIPAllowFilter</code> or
+<code>GeoIPDenyFilter</code>, you can configure a <i>list</i> of
+filters/patterns.  And <b>all</b> of these filters <b>must</b> be matched,
+in order for that <code>GeoIPAllowFilter</code> or <code>GeoIPDenyFilter</code>
+to be matched.  Thus you can use:
+<pre>
+  # Deny all connections, unless they are explicitly allowed
+  GeoIPPolicy deny,allow
+
+  # Allow only connections from TX, US
+  GeoIPAllowFilter RegionCode TX CountryCode US
+</pre>
+
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-12-12 16:52:28 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2010-2014 TJ Saunders<br>
+&copy; Copyright 2010-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
