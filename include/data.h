@@ -26,8 +26,8 @@
 
 /* Data connection management prototypes */
 
-#ifndef PR_DATACONN_H
-#define PR_DATACONN_H
+#ifndef PR_DATA_H
+#define PR_DATA_H
 
 /* Toggles whether to actually perform ASCII translation during the data
  * transfer.
@@ -71,4 +71,8 @@ pr_sendfile_t;
 pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count);
 #endif /* HAVE_SENDFILE */
 
-#endif /* PR_DATACONN_H */
+/* For internal use only. */
+int ftp_ascii_read(char *, int *, int *);
+unsigned int ftp_ascii_write(char **buf, unsigned int *, unsigned int);
+
+#endif /* PR_DATA_H */

@@ -43,32 +43,11 @@ static void tear_down(void) {
   } 
 }
 
-START_TEST (data_open_test) {
-  int res;
-
-  /* TODO:
-   *  data.c#data_active_open: needs session.c != NULL
-   */
-#if 0
-  res = pr_data_open(NULL, NULL, 0, 0);
-  fail_unless(res == 0, "Failed to open data channel: %s", strerror(errno));
-#endif
+START_TEST (data_ftp_ascii_read_test) {
 }
 END_TEST
 
-START_TEST (data_xfer_ascii_read_test) {
-  /* TODO:
-   *  data.c#data_active_open: needs session.c != NULL
-   *  data.c#pr_data_xfer: needs session.d != NULL
-   */
-}
-END_TEST
-
-START_TEST (data_xfer_ascii_write_test) {
-  /* TODO:
-   *  data.c#data_active_open: needs session.c != NULL
-   *  data.c#pr_data_xfer: needs session.d != NULL
-   */
+START_TEST (data_ftp_ascii_write_test) {
 }
 END_TEST
 
@@ -82,9 +61,8 @@ Suite *tests_get_data_suite(void) {
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
-  tcase_add_test(testcase, data_open_test);
-  tcase_add_test(testcase, data_xfer_ascii_read_test);
-  tcase_add_test(testcase, data_xfer_ascii_write_test);
+  tcase_add_test(testcase, data_ftp_ascii_read_test);
+  tcase_add_test(testcase, data_ftp_ascii_write_test);
 
   suite_add_tcase(suite, testcase);
 

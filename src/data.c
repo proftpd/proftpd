@@ -91,7 +91,7 @@ static RETSIGTYPE data_urgent(int signo) {
   signal(SIGURG, data_urgent);
 }
 
-static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
+int ftp_ascii_read(char *buf, int *bufsize, int *adjlen) {
   char *dst = buf, *src = buf;
   int thislen = *bufsize;
 
@@ -128,14 +128,9 @@ static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
  *  buf = pointer to a buffer
  *  buflen = length of data in buffer
  *  bufsize = total size of buffer
- *
- * The previous incarnations of this functions used memcpy(3), which moves
- * data around in memory quite a bit; this incarnation does everything in
- * a single byte-by-byte pass, resulting in significant performance
- * improvements (due to less redundant copying).
  */
 static int have_dangling_cr = FALSE;
-static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
+unsigned int ftp_ascii_write(char **buf, unsigned int *buflen,
     unsigned int bufsize) {
   register unsigned int i = 0, j = 0;
   char *copybuf = NULL, *tmpbuf = *buf;
@@ -191,8 +186,6 @@ found_lf:
   }
 
   while (j < tmplen) {
-    pr_signals_handle();
-
     if (tmpbuf[j] == '\n' &&
         tmpbuf[j-1] != '\r') {
       copybuf[i++] = '\r';
@@ -200,6 +193,7 @@ found_lf:
 
     copybuf[i++] = tmpbuf[j++];
   }
+  pr_signals_handle();
 
   /* A new buffer of the needed size is allocated from session.xfer.p,
    * which is fine; this pool has a lifetime only for the current data
@@ -1269,14 +1263,14 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
            * adjlen is returned as the number of characters unprocessed in
            *        the buffer (to be dealt with later)
            *
-           * We skip the call to xfrm_ascii_read() in one case:
+           * We skip the call to ftp_ascii_read() in one case:
            * when we have one character in the buffer and have reached
-           * end of data, this is so that xfrm_ascii_read() won't sit
+           * end of data, this is so that ftp_ascii_read() won't sit
            * forever waiting for the next character after a final '\r'.
            */
           if (len > 0 ||
               buflen > 1) {
-            xfrm_ascii_read(buf, &buflen, &adjlen);
+            ftp_ascii_read(buf, &buflen, &adjlen);
           }
 
           /* Now copy everything we can into cl_buf */
@@ -1308,7 +1302,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 	
         /* Restart if data was returned by pr_netio_read() (len > 0) but no
          * data was copied to the client buffer (buflen = 0).  This indicates
-         * that xfrm_ascii_read() needs more data in order to translate, so we
+         * that ftp_ascii_read() needs more data in order to translate, so we
          * need to call pr_netio_read() again.
          */
       } while (len > 0 && buflen == 0);
@@ -1410,7 +1404,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
          * will be adjusted so that it contains the length of data in
          * the internal buffer, including any added CRs.
          */
-        added = xfrm_ascii_write(&session.xfer.buf, &xferbuflen,
+        added = ftp_ascii_write(&session.xfer.buf, &xferbuflen,
           session.xfer.bufsize);
         pr_trace_msg(trace_channel, 9,
           "ASCII transformation added %u CRs; transfer buffer now = %u bytes",
