@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* NetIO API tests
- * $Id: netio.c,v 1.1 2014-01-06 06:58:23 castaglia Exp $
- */
+/* NetIO API tests. */
 
 #include "tests.h"
 
@@ -40,6 +38,7 @@
 #define TELNET_DM      242
 
 static pool *p = NULL;
+static int xfer_bufsz = -1;
 
 static int tmp_fd = -1;
 static const char *tmp_path = NULL;
@@ -75,6 +74,7 @@ static void set_up(void) {
   }
 
   init_netio();
+  xfer_bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_RD);
 }
 
 static void tear_down(void) {
@@ -218,11 +218,14 @@ START_TEST (netio_telnet_gets_single_line_test) {
     xerrno, strerror(xerrno));
   fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
+  fail_unless(pbuf->remaining == xfer_bufsz,
+    "Expected %d remaining bytes, got %lu", xfer_bufsz,
+    (unsigned long) pbuf->remaining);
 }
 END_TEST
 
 START_TEST (netio_telnet_gets_multi_line_test) {
-  char buf[256], *cmd, *first_cmd, *res;
+  char buf[256], *cmd, *first_cmd, *second_cmd, *res;
   pr_netio_stream_t *in, *out;
   pr_buffer_t *pbuf;
   int len, xerrno;
@@ -230,8 +233,10 @@ START_TEST (netio_telnet_gets_multi_line_test) {
   in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
   out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
 
-  cmd = "Hello, World!\nHow are you?\n";
+  /* Note: the line terminator in Telnet is CRLF, not just a bare LF. */
+  cmd = "Hello, World!\r\nHow are you?\r\n";
   first_cmd = "Hello, World!\n";
+  second_cmd = "How are you?\n";
 
   pr_netio_buffer_alloc(in);
   pbuf = in->strm_buf;
@@ -244,13 +249,26 @@ START_TEST (netio_telnet_gets_multi_line_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  pr_netio_close(in);
-  pr_netio_close(out);
-
   fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
   fail_unless(strcmp(buf, first_cmd) == 0, "Expected string '%s', got '%s'",
     first_cmd, buf);
+
+  memset(buf, '\0', sizeof(buf));
+  res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
+  xerrno = errno;
+
+  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+    xerrno, strerror(xerrno));
+  fail_unless(strcmp(buf, second_cmd) == 0, "Expected string '%s', got '%s'",
+    second_cmd, buf);
+
+  pr_netio_close(in);
+  pr_netio_close(out);
+
+  fail_unless(pbuf->remaining == xfer_bufsz,
+    "Expected %d remaining bytes, got %lu", xfer_bufsz,
+    (unsigned long) pbuf->remaining);
 }
 END_TEST
 
@@ -1016,6 +1034,130 @@ START_TEST (netio_telnet_gets_eof_test) {
 }
 END_TEST
 
+START_TEST (netio_telnet_gets2_single_line_test) {
+  int res;
+  char buf[256], *cmd;
+  size_t cmd_len;
+  pr_netio_stream_t *in, *out;
+  pr_buffer_t *pbuf;
+  int len, xerrno;
+
+  in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
+  out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
+
+  cmd = "Hello, World!\n";
+  cmd_len = strlen(cmd);
+
+  pr_netio_buffer_alloc(in);
+  pbuf = in->strm_buf;
+  len = snprintf(pbuf->buf, pbuf->buflen-1, "%s", cmd);
+  pbuf->remaining = pbuf->buflen - len;
+  pbuf->current = pbuf->buf;
+
+  buf[sizeof(buf)-1] = '\0';
+
+  res = pr_netio_telnet_gets2(buf, sizeof(buf)-1, in, out);
+  xerrno = errno;
+
+  pr_netio_close(in);
+  pr_netio_close(out);
+
+  fail_unless(res > 0, "Failed to get string from stream: (%d) %s",
+    xerrno, strerror(xerrno));
+  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+    buf);
+
+  fail_unless(res == cmd_len, "Expected length %lu, got %d",
+    (unsigned long) cmd_len, res);
+  fail_unless(pbuf->remaining == xfer_bufsz,
+    "Expected %d remaining bytes, got %lu", xfer_bufsz,
+    (unsigned long) pbuf->remaining);
+}
+END_TEST
+
+START_TEST (netio_telnet_gets2_single_line_crnul_test) {
+  int res;
+  char buf[256], *cmd;
+  size_t cmd_len;
+  pr_netio_stream_t *in, *out;
+  pr_buffer_t *pbuf;
+  int xerrno;
+
+  in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
+  out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
+
+  /* See Bug#4167.  We cannot use strlen(3) due to the embedded NUL. */
+  cmd = "Hello, \015\000World!\n";
+  cmd_len = 14;
+
+  pr_netio_buffer_alloc(in);
+  pbuf = in->strm_buf;
+  memcpy(pbuf->buf, cmd, cmd_len);
+  pbuf->remaining = pbuf->buflen - cmd_len;
+  pbuf->current = pbuf->buf;
+
+  buf[sizeof(buf)-1] = '\0';
+
+  res = pr_netio_telnet_gets2(buf, sizeof(buf)-1, in, out);
+  xerrno = errno;
+
+  pr_netio_close(in);
+  pr_netio_close(out);
+
+  fail_unless(res > 0, "Failed to get string from stream: (%d) %s",
+    xerrno, strerror(xerrno));
+  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+    buf);
+
+  fail_unless(res == cmd_len, "Expected length %lu, got %d",
+    (unsigned long) cmd_len, res);
+  fail_unless(pbuf->remaining == xfer_bufsz,
+    "Expected %d remaining bytes, got %lu", xfer_bufsz,
+    (unsigned long) pbuf->remaining);
+}
+END_TEST
+
+START_TEST (netio_telnet_gets2_single_line_lf_test) {
+  int res;
+  char buf[256], *cmd;
+  size_t cmd_len;
+  pr_netio_stream_t *in, *out;
+  pr_buffer_t *pbuf;
+  int xerrno;
+
+  in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
+  out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
+
+  cmd = "Hello, \012World!\n";
+  cmd_len = strlen(cmd);
+
+  pr_netio_buffer_alloc(in);
+  pbuf = in->strm_buf;
+  memcpy(pbuf->buf, cmd, cmd_len);
+  pbuf->remaining = pbuf->buflen - cmd_len;
+  pbuf->current = pbuf->buf;
+
+  buf[sizeof(buf)-1] = '\0';
+
+  res = pr_netio_telnet_gets2(buf, sizeof(buf)-1, in, out);
+  xerrno = errno;
+
+  pr_netio_close(in);
+  pr_netio_close(out);
+
+  fail_unless(res > 0, "Failed to get string from stream: (%d) %s",
+    xerrno, strerror(xerrno));
+  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+    buf);
+
+  fail_unless(res == cmd_len, "Expected length %lu, got %d",
+    (unsigned long) cmd_len, res);
+  fail_unless(pbuf->remaining == xfer_bufsz,
+    "Expected %d remaining bytes, got %lu", xfer_bufsz,
+    (unsigned long) pbuf->remaining);
+}
+END_TEST
+
 Suite *tests_get_netio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1050,6 +1192,10 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_telnet_gets_bug3521_test);
   tcase_add_test(testcase, netio_telnet_gets_bug3697_test);
   tcase_add_test(testcase, netio_telnet_gets_eof_test);
+
+  tcase_add_test(testcase, netio_telnet_gets2_single_line_test);
+  tcase_add_test(testcase, netio_telnet_gets2_single_line_crnul_test);
+  tcase_add_test(testcase, netio_telnet_gets2_single_line_lf_test);
 
   suite_add_tcase(suite, testcase);
 

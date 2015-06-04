@@ -8,6 +8,7 @@ use Encode;
 use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
+use IO::Socket::INET;
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
@@ -80,6 +81,16 @@ my $TESTS = {
   mkd_digits_ok => {
     order => ++$order,
     test_class => [qw(forking)],
+  },
+
+  mkd_embedded_cr_bug4167 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  mkd_embedded_lf_bug4167 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
   },
 
 };
@@ -1746,6 +1757,312 @@ sub mkd_digits_ok {
       $expected = "\"$sub_dir\" - Directory successfully created";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
+
+      $self->assert(-d $sub_dir,
+        test_msg("$sub_dir directory does not exist as expected"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub mkd_embedded_cr_bug4167 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/ab\015cd");
+ 
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+ 
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+
+      my $dir = "ab\015\00cd";
+
+      my ($resp_code, $resp_msg) = $client->mkd($dir);
+
+      my $expected;
+
+      $expected = 257;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      if ($^O eq 'darwin') {
+        # MacOSX hack
+        $sub_dir = '/private' . $sub_dir;
+      }
+
+      $expected = "\"$sub_dir\" - Directory successfully created";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(-d $sub_dir,
+        test_msg("$sub_dir directory does not exist as expected"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub mkd_embedded_lf_bug4167 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/cmds.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
+  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/ab\012cd");
+ 
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $home_dir)) {
+      die("Can't set perms on $home_dir to 0755: $!");
+    }
+
+    unless (chown($uid, $gid, $home_dir)) {
+      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    }
+  }
+ 
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'DEFAULT:20',
+
+    AuthUserFile => $auth_user_file,
+    AuthGroupFile => $auth_group_file,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Note: the Net::Cmd module's command() method automatically translates
+      # all LF to spaces!  Crap!  That is why we can't Net::FTP (it's based on
+      # Net::Cmd), and instead have to do the socket IO manually.  Sigh.
+
+      sleep(2);
+
+      my $client = IO::Socket::INET->new(
+        PeerAddr => '127.0.0.1',
+        PeerPort => $port,
+        Proto => 'tcp',
+        Timeout => 5
+      );
+      unless ($client) {
+        die("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      # Read the banner
+      my $banner = <$client>;
+
+      # Send the USER command
+      my $cmd = "USER $user\r\n";
+      $client->print($cmd);
+      $client->flush();
+
+      # Read USER response
+      my $resp = <$client>;
+
+      my $expected = "331 Password required for $user\r\n";
+      $self->assert($expected eq $resp,
+        test_msg("Expected response '$expected', got '$resp'"));
+
+      # Send the PASS command
+      $cmd = "PASS $passwd\r\n";
+      $client->print($cmd);
+      $client->flush();
+
+      # Read PASS response
+      $resp = <$client>;
+
+      $expected = "230 User $user logged in\r\n";
+      $self->assert($expected eq $resp,
+        test_msg("Expected response '$expected', got '$resp'"));
+
+      my $dir = "ab\012cd";
+
+      # Send the MKD command
+      $cmd = "MKD $dir\r\n";
+      $client->print($cmd);
+      $client->flush();
+
+      # Read MKD response.  Note that perl's <> operator reads until
+      # end of line -- and that means just LF, not necessarily CRLF.  Thus
+      # we deliberate do TWO reads here to get the entire response.
+      $resp = <$client>;
+      $resp .= <$client>;
+
+      if ($^O eq 'darwin') {
+        # MacOSX hack
+        $sub_dir = '/private' . $sub_dir;
+      }
+
+      $expected = "257 \"$sub_dir\" - Directory successfully created\r\n";
+      $self->assert($expected eq $resp,
+        test_msg("Expected response '$expected', got '$resp'"));
+      
+      $cmd = "QUIT\r\n";
+      $client->print($cmd);
+      $client->flush();
+      $client->close();
 
       $self->assert(-d $sub_dir,
         test_msg("$sub_dir directory does not exist as expected"));
