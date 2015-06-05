@@ -906,7 +906,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   user_cmd->arg = orig_user;
 
   pass_cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
-  user_cmd->cmd_class = CL_AUTH|CL_SSH;
+  pass_cmd->cmd_class = CL_AUTH|CL_SSH;
   pass_cmd->arg = pstrdup(pkt->pool, "(hidden)");
 
   /* Dispatch these as a PRE_CMDs, so that mod_delay's tactics can be used
