@@ -24,8 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Authentication module for ProFTPD
- */
+/* Authentication module for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -2427,39 +2426,57 @@ MODRET auth_user(cmd_rec *cmd) {
 
 /* Close the passwd and group databases, similar to auth_pre_user(). */
 MODRET auth_pre_pass(cmd_rec *cmd) {
-  config_rec *c;
-  char *displaylogin;
+  char *displaylogin, *user;
 
   pr_auth_endpwent(cmd->tmp_pool);
   pr_auth_endgrent(cmd->tmp_pool);
 
-  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AllowEmptyPasswords", FALSE);
-  if (c != NULL) {
-    int allow_empty_passwords;
+  /* Handle cases where PASS might be sent before USER. */
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+  if (user != NULL) {
+    config_rec *c;
 
-    allow_empty_passwords = *((int *) c->argv[0]);
-    if (allow_empty_passwords == FALSE) {
-      size_t passwd_len;
- 
-      if (cmd->argc > 1) {
-        passwd_len = strlen(cmd->arg);
+    c = find_config(main_server->conf, CONF_PARAM, "AllowEmptyPasswords",
+      FALSE);
+    if (c == NULL) {
+      char *anon_user;
+      config_rec *anon_config;
+
+      /* Since we have not authenticated yet, we cannot use the TOPLEVEL_CONF
+       * macro to handle <Anonymous> sections.  So we do it manually.
+       */
+      anon_user = pstrdup(cmd->tmp_pool, user);
+      anon_config = pr_auth_get_anon_config(cmd->tmp_pool, &anon_user, NULL,
+        NULL);
+      if (anon_config != NULL) {
+        c = find_config(anon_config->subset, CONF_PARAM, "AllowEmptyPasswords",
+          FALSE);
       }
+    }
+ 
+    if (c != NULL) {
+      int allow_empty_passwords;
 
-      if (cmd->argc == 1 ||
-          passwd_len == 0) {
-        char *user;
+      allow_empty_passwords = *((int *) c->argv[0]);
+      if (allow_empty_passwords == FALSE) {
+        size_t passwd_len;
+ 
+        if (cmd->argc > 1) {
+          passwd_len = strlen(cmd->arg);
+        }
 
-        user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+        if (cmd->argc == 1 ||
+            passwd_len == 0) {
+          pr_log_debug(DEBUG5,
+            "Refusing empty password from user '%s' (AllowEmptyPasswords "
+            "false)", user);
+          pr_log_auth(PR_LOG_NOTICE,
+            "Refusing empty password from user '%s'", user);
 
-        pr_log_debug(DEBUG5,
-          "Refusing empty password from user '%s' (AllowEmptyPasswords false)",
-          user);
-        pr_log_auth(PR_LOG_NOTICE,
-          "Refusing empty password from user '%s'", user);
-
-        pr_event_generate("mod_auth.empty-password", user);
-        pr_response_add_err(R_501, _("Login incorrect."));
-        return PR_ERROR(cmd);
+          pr_event_generate("mod_auth.empty-password", user);
+          pr_response_add_err(R_501, _("Login incorrect."));
+          return PR_ERROR(cmd);
+        }
       }
     }
   }
@@ -2672,7 +2689,7 @@ MODRET set_allowemptypasswords(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   allow_empty_passwords = get_boolean(cmd, 1);
   if (allow_empty_passwords == -1) {
@@ -2682,6 +2699,7 @@ MODRET set_allowemptypasswords(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = allow_empty_passwords;
+  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
