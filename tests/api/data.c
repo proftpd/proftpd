@@ -43,10 +43,6 @@ static void tear_down(void) {
   } 
 }
 
-START_TEST (data_clear_xfer_pool_test) {
-}
-END_TEST
-
 START_TEST (data_timeout_test) {
   /* TODO: pr_data_{get,set}_timeout() testing */
 }
@@ -62,7 +58,6 @@ Suite *tests_get_data_suite(void) {
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
-  tcase_add_test(testcase, data_clear_xfer_pool_test);
   tcase_add_test(testcase, data_timeout_test);
 
   suite_add_tcase(suite, testcase);
