@@ -42,7 +42,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/auth.o \
   $(top_srcdir)/src/filter.o \
   $(top_srcdir)/src/inet.o \
-  $(top_srcdir)/src/data.o
+  $(top_srcdir)/src/data.o \
+  $(top_srcdir)/src/ascii.o
 
 TEST_API_LIBS=-lcheck
 
@@ -78,6 +79,7 @@ TEST_API_OBJS=\
   api/filter.o \
   api/inet.o \
   api/data.o \
+  api/ascii.o \
   api/stubs.o \
   api/tests.o
 

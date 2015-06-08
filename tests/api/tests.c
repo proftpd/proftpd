@@ -61,103 +61,18 @@ static struct testsuite_info suites[] = {
   { "filter",		tests_get_filter_suite },
   { "inet",		tests_get_inet_suite },
   { "data",		tests_get_data_suite },
+  { "ascii",		tests_get_ascii_suite },
 
   { NULL, NULL }
 };
 
 static Suite *tests_get_suite(const char *suite) { 
-  if (strcmp(suite, "pool") == 0) { 
-    return tests_get_pool_suite();
- 
-  } else if (strcmp(suite, "array") == 0) {
-    return tests_get_array_suite(); 
+  register unsigned int i;
 
-  } else if (strcmp(suite, "str") == 0) {
-    return tests_get_str_suite(); 
-
-  } else if (strcmp(suite, "sets") == 0) {
-    return tests_get_sets_suite(); 
-
-  } else if (strcmp(suite, "timers") == 0) {
-    return tests_get_timers_suite(); 
-
-  } else if (strcmp(suite, "table") == 0) {
-    return tests_get_table_suite(); 
-
-  } else if (strcmp(suite, "var") == 0) {
-    return tests_get_var_suite(); 
-
-  } else if (strcmp(suite, "event") == 0) {
-    return tests_get_event_suite(); 
-
-  } else if (strcmp(suite, "version") == 0) {
-    return tests_get_version_suite(); 
-
-  } else if (strcmp(suite, "env") == 0) {
-    return tests_get_env_suite(); 
-
-  } else if (strcmp(suite, "feat") == 0) {
-    return tests_get_feat_suite(); 
-
-  } else if (strcmp(suite, "netaddr") == 0) {
-    return tests_get_netaddr_suite(); 
-
-  } else if (strcmp(suite, "netacl") == 0) {
-    return tests_get_netacl_suite();
-
-  } else if (strcmp(suite, "class") == 0) {
-    return tests_get_class_suite();
-
-  } else if (strcmp(suite, "regexp") == 0) {
-    return tests_get_regexp_suite();
-
-  } else if (strcmp(suite, "expr") == 0) {
-    return tests_get_expr_suite();
-
-  } else if (strcmp(suite, "scoreboard") == 0) {
-    return tests_get_scoreboard_suite();
-
-  } else if (strcmp(suite, "stash") == 0) {
-    return tests_get_stash_suite();
-
-  } else if (strcmp(suite, "modules") == 0) {
-    return tests_get_modules_suite();
-
-  } else if (strcmp(suite, "cmd") == 0) {
-    return tests_get_cmd_suite();
-
-  } else if (strcmp(suite, "response") == 0) {
-    return tests_get_response_suite();
-
-  } else if (strcmp(suite, "fsio") == 0) {
-    return tests_get_fsio_suite();
-
-  } else if (strcmp(suite, "netio") == 0) {
-    return tests_get_netio_suite();
-
-  } else if (strcmp(suite, "trace") == 0) {
-    return tests_get_trace_suite();
-
-  } else if (strcmp(suite, "parser") == 0) {
-    return tests_get_parser_suite();
-
-  } else if (strcmp(suite, "pidfile") == 0) {
-    return tests_get_pidfile_suite();
-
-  } else if (strcmp(suite, "config") == 0) {
-    return tests_get_config_suite();
-
-  } else if (strcmp(suite, "auth") == 0) {
-    return tests_get_auth_suite();
-
-  } else if (strcmp(suite, "filter") == 0) {
-    return tests_get_filter_suite();
-
-  } else if (strcmp(suite, "inet") == 0) {
-    return tests_get_inet_suite();
-
-  } else if (strcmp(suite, "data") == 0) {
-    return tests_get_data_suite();
+  for (i = 0; suites[i].name != NULL; i++) {
+    if (strcmp(suite, suites[i].name) == 0) {
+      return (*suites[i].get_suite)();
+    }
   }
 
   return NULL;

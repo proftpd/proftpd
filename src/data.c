@@ -91,130 +91,6 @@ static RETSIGTYPE data_urgent(int signo) {
   signal(SIGURG, data_urgent);
 }
 
-int ftp_ascii_read(char *buf, int *bufsize, int *adjlen) {
-  char *dst = buf, *src = buf;
-  int thislen = *bufsize;
-
-  *adjlen = 0;
-  while (thislen--) {
-    if (*src != '\r') {
-      *dst++ = *src++;
-
-    } else {
-      if (thislen == 0) {
-        /* copy, but save it for later */
-        *dst++ = *src++;
-        (*adjlen)++;
-        (*bufsize)--;
-
-      } else {
-        if (*(src+1) == '\n') { /* skip */
-          (*bufsize)--;
-          src++;
-
-        } else {
-          *dst++ = *src++;
-        }
-      }
-    }
-  }
-
-  return *bufsize;
-}
-
-/* This function rewrites the contents of the given buffer, making sure that
- * each LF has a preceding CR, as required by RFC959:
- *
- *  buf = pointer to a buffer
- *  buflen = length of data in buffer
- *  bufsize = total size of buffer
- */
-static int have_dangling_cr = FALSE;
-unsigned int ftp_ascii_write(char **buf, unsigned int *buflen,
-    unsigned int bufsize) {
-  register unsigned int i = 0, j = 0;
-  char *copybuf = NULL, *tmpbuf = *buf;
-  unsigned int tmplen = *buflen;
-  unsigned int lf_pos = tmplen;
-
-  /* First, determine the position of the first bare LF. */
-  if (have_dangling_cr == FALSE &&
-      tmpbuf[0] == '\n') {
-    lf_pos = 0;
-    goto found_lf;
-  }
-
-  for (i = 1; i < tmplen; i++) {
-    if (tmpbuf[i] == '\n' &&
-        tmpbuf[i-1] != '\r') {
-      lf_pos = i;
-      break;
-    }
-  }
-
-found_lf:
-  /* If the last character in the buffer is CR, then we have a dangling CR.
-   * The first character in the next buffer could be an LF, and without
-   * this flag, that LF would be treated as a bare LF, thus resulting in
-   * an added extraneous CR in the stream.
-   */
-  have_dangling_cr = (tmpbuf[tmplen-1] == '\r') ? TRUE : FALSE;
-
-  if (lf_pos == tmplen) {
-    /* No translation needed. */
-    return 0;
-  }
- 
-  /* Assume the worst: a block containing only LF characters, needing twice
-   * the size for holding the corresponding CRs.
-   */
-  copybuf = malloc(tmplen * 2);
-  if (copybuf == NULL) {
-    pr_log_pri(PR_LOG_ALERT, "Out of memory!");
-    exit(1);
-  }
-
-  if (lf_pos > 0) {
-    memcpy(copybuf, tmpbuf, lf_pos);
-    i = j = lf_pos;
-
-  } else {
-    copybuf[0] = '\r';
-    copybuf[1] = '\n';
-    i = 2;
-    j = 1;
-  }
-
-  while (j < tmplen) {
-    if (tmpbuf[j] == '\n' &&
-        tmpbuf[j-1] != '\r') {
-      copybuf[i++] = '\r';
-    }
-
-    copybuf[i++] = tmpbuf[j++];
-  }
-  pr_signals_handle();
-
-  /* A new buffer of the needed size is allocated from session.xfer.p,
-   * which is fine; this pool has a lifetime only for the current data
-   * transfer, and will be cleared after the transfer is done, either
-   * having succeeded or failed.
-   */
-  session.xfer.bufsize = i;
-  session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize);
-  memcpy(session.xfer.buf, copybuf, i);
-
-  free(copybuf);
-  copybuf = NULL;
-
-  tmpbuf = session.xfer.buf;
-
-  *buf = tmpbuf;
-  *buflen = i;
-
-  return i - j;
-}
-
 static void data_new_xfer(char *filename, int direction) {
   pr_data_clear_xfer_pool();
 
@@ -225,7 +101,7 @@ static void data_new_xfer(char *filename, int direction) {
   session.xfer.direction = direction;
   session.xfer.bufsize = pr_config_get_server_xfer_bufsz(direction);
   session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize + 1);
-  pr_trace_msg("data", 8, "allocated data transfer buffer of %lu bytes",
+  pr_trace_msg(trace_channel, 8, "allocated data transfer buffer of %lu bytes",
     (unsigned long) session.xfer.bufsize);
   session.xfer.buf++;	/* leave room for ascii translation */
   session.xfer.buflen = 0;
@@ -557,7 +433,7 @@ void pr_data_reset(void) {
   }
 
   /* Clear any leftover state from previous transfers. */
-  have_dangling_cr = FALSE;
+  pr_ascii_ftp_reset();
 
   session.d = NULL;
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
@@ -604,7 +480,7 @@ void pr_data_init(char *filename, int direction) {
   }
 
   /* Clear any leftover state from previous transfers. */
-  have_dangling_cr = FALSE;
+  pr_ascii_ftp_reset();
 }
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
@@ -1263,14 +1139,25 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
            * adjlen is returned as the number of characters unprocessed in
            *        the buffer (to be dealt with later)
            *
-           * We skip the call to ftp_ascii_read() in one case:
+           * We skip the call to pr_ascii_ftp_from_crlf() in one case:
            * when we have one character in the buffer and have reached
-           * end of data, this is so that ftp_ascii_read() won't sit
+           * end of data, this is so that pr_ascii_ftp_from_crlf() won't sit
            * forever waiting for the next character after a final '\r'.
            */
           if (len > 0 ||
               buflen > 1) {
-            ftp_ascii_read(buf, &buflen, &adjlen);
+            size_t outlen = 0;
+
+            res = pr_ascii_ftp_from_crlf(session.xfer.p, buf, buflen, &buf,
+              &outlen);
+            if (res < 0) {
+              pr_trace_msg(trace_channel, 3, "error reading ASCII data: %s",
+                strerror(errno));
+
+            } else {
+              adjlen += res;
+              buflen = (int) outlen;
+            }
           }
 
           /* Now copy everything we can into cl_buf */
@@ -1302,8 +1189,8 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 	
         /* Restart if data was returned by pr_netio_read() (len > 0) but no
          * data was copied to the client buffer (buflen = 0).  This indicates
-         * that ftp_ascii_read() needs more data in order to translate, so we
-         * need to call pr_netio_read() again.
+         * that pr_ascii_ftp_from_crlf() needs more data in order to
+         * translate, so we need to call pr_netio_read() again.
          */
       } while (len > 0 && buflen == 0);
 
@@ -1392,23 +1279,29 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       /* We use ASCII translation if:
        *
        * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
-      * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
+       * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
        */
       if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
           ((session.sf_flags & SF_ASCII) &&
            !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
-        unsigned int added = 0;
+        char *out = NULL;
+        size_t outlen = 0;
 
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in
          * the internal buffer, including any added CRs.
          */
-        added = ftp_ascii_write(&session.xfer.buf, &xferbuflen,
-          session.xfer.bufsize);
-        pr_trace_msg(trace_channel, 9,
-          "ASCII transformation added %u CRs; transfer buffer now = %u bytes",
-          added, xferbuflen);
+        res = pr_ascii_ftp_to_crlf(session.xfer.p, session.xfer.buf, xferbuflen,
+          &out, &outlen);
+        if (res < 0) {
+          pr_trace_msg(trace_channel, 1, "error writing ASCII data: %s",
+            strerror(errno));
+
+        } else {
+          session.xfer.buf = out;
+          session.xfer.buflen = xferbuflen = outlen;
+        }
       }
 
       bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf, xferbuflen);
