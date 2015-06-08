@@ -2695,9 +2695,7 @@ static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
 }
 
 static void ban_emptypassword_ev(const void *event_data, void *user_data) {
-
-  /* For this event, event_data is the user name. */
-  char *user = (char *) event_data;
+  const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
@@ -2705,7 +2703,8 @@ static void ban_emptypassword_ev(const void *event_data, void *user_data) {
   if (ban_engine != TRUE)
     return;
 
-  ban_handle_event(BAN_EV_TYPE_EMPTY_PASSWORD, BAN_TYPE_USER, user, tmpl);
+  ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
+  ban_handle_event(BAN_EV_TYPE_EMPTY_PASSWORD, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_maxclientsperclass_ev(const void *event_data, void *user_data) {
