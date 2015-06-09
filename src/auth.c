@@ -1716,13 +1716,16 @@ int pr_auth_chroot(const char *path) {
 
   tz = pr_env_get(session.pool, "TZ"); 
   if (tz == NULL) {
+    char tzbuf[32];
+    long off = (timezone / 60 / 60) - daylight;
+    snprintf(tzbuf, sizeof(tzbuf), "%s%ld", daylight ? tzname[1] : tzname[0], off);
     if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
-        tzname[0])) < 0) { 
+        tzbuf)) < 0) { 
       pr_log_debug(DEBUG0, "error setting TZ environment variable to " 
-        "'%s': %s", tzname[0], strerror(errno));
+        "'%s': %s", tzbuf, strerror(errno));
 
     } else {
-      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
+      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzbuf);
     }
   } else {
     pr_log_debug(DEBUG10, "TZ environment variable already set to '%s'", tz);
