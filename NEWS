@@ -16,6 +16,8 @@ $Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
 - Bug 4188 - Support filtering based on country code and regional code in
   mod_geoip.
 - Bug 4151 - FTP ASCII mode conversion algorithm is painfully slow.
+- Bug 4139 - Support rejecting empty passwords.  See new AllowEmptyPasswords
+  directive.
 
 1.3.6rc1 - Released 27-May-2015
 --------------------------------
