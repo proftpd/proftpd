@@ -24,8 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Authentication module for ProFTPD
- */
+/* Authentication module for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -2427,10 +2426,60 @@ MODRET auth_user(cmd_rec *cmd) {
 
 /* Close the passwd and group databases, similar to auth_pre_user(). */
 MODRET auth_pre_pass(cmd_rec *cmd) {
-  char *displaylogin;
+  char *displaylogin, *user;
 
   pr_auth_endpwent(cmd->tmp_pool);
   pr_auth_endgrent(cmd->tmp_pool);
+
+  /* Handle cases where PASS might be sent before USER. */
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+  if (user != NULL) {
+    config_rec *c;
+
+    c = find_config(main_server->conf, CONF_PARAM, "AllowEmptyPasswords",
+      FALSE);
+    if (c == NULL) {
+      char *anon_user;
+      config_rec *anon_config;
+
+      /* Since we have not authenticated yet, we cannot use the TOPLEVEL_CONF
+       * macro to handle <Anonymous> sections.  So we do it manually.
+       */
+      anon_user = pstrdup(cmd->tmp_pool, user);
+      anon_config = pr_auth_get_anon_config(cmd->tmp_pool, &anon_user, NULL,
+        NULL);
+      if (anon_config != NULL) {
+        c = find_config(anon_config->subset, CONF_PARAM, "AllowEmptyPasswords",
+          FALSE);
+      }
+    }
+ 
+    if (c != NULL) {
+      int allow_empty_passwords;
+
+      allow_empty_passwords = *((int *) c->argv[0]);
+      if (allow_empty_passwords == FALSE) {
+        size_t passwd_len;
+ 
+        if (cmd->argc > 1) {
+          passwd_len = strlen(cmd->arg);
+        }
+
+        if (cmd->argc == 1 ||
+            passwd_len == 0) {
+          pr_log_debug(DEBUG5,
+            "Refusing empty password from user '%s' (AllowEmptyPasswords "
+            "false)", user);
+          pr_log_auth(PR_LOG_NOTICE,
+            "Refusing empty password from user '%s'", user);
+
+          pr_event_generate("mod_auth.empty-password", user);
+          pr_response_add_err(R_501, _("Login incorrect."));
+          return PR_ERROR(cmd);
+        }
+      }
+    }
+  }
 
   /* Look for a DisplayLogin file which has an absolute path.  If we find one,
    * open a filehandle, such that that file can be displayed even if the
@@ -2616,20 +2665,41 @@ MODRET set_accessgrantmsg(cmd_rec *cmd) {
 
 /* usage: AllowChrootSymlinks on|off */
 MODRET set_allowchrootsymlinks(cmd_rec *cmd) {
-  int b = -1;
+  int allow_chroot_symlinks = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  b = get_boolean(cmd, 1);
-  if (b == -1) {
+  allow_chroot_symlinks = get_boolean(cmd, 1);
+  if (allow_chroot_symlinks == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = b;
+  *((int *) c->argv[0]) = allow_chroot_symlinks;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: AllowEmptyPasswords on|off */
+MODRET set_allowemptypasswords(cmd_rec *cmd) {
+  int allow_empty_passwords = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  allow_empty_passwords = get_boolean(cmd, 1);
+  if (allow_empty_passwords == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = allow_empty_passwords;
+  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -2652,17 +2722,44 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: AnonRejectPasswords pattern [flags] */
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 #ifdef PR_USE_REGEX
   pr_regex_t *pre = NULL;
-  int res;
+  int regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
 
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
+    CONF_ERROR(cmd, "bad number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ANON);
+
+  /* Make sure that, if present, the flags parameter is correctly formatted. */
+  if (cmd->argc-1 == 2) {
+    int flags = 0;
+
+    /* We need to parse the flags parameter here, to see if any flags which
+     * affect the compilation of the regex (e.g. NC) are present.
+     */
+
+    flags = pr_filter_parse_flags(cmd->tmp_pool, cmd->argv[2]);
+    if (flags < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": badly formatted flags parameter: '", cmd->argv[2], "'", NULL));
+    }
+
+    if (flags == 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unknown flags '", cmd->argv[2], "'", NULL));
+    }
+
+    regex_flags |= flags;
+  }
 
   pre = pr_regexp_alloc(&auth_module);
 
-  res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  res = pr_regexp_compile(pre, cmd->argv[1], regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
@@ -2673,7 +2770,7 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
       cmd->argv[1], "': ", errstr, NULL));
   }
 
-  (void) add_config_param(cmd->argv[0], 1, (void *) pre);
+  (void) add_config_param(cmd->argv[0], 1, pre);
   return PR_HANDLED(cmd);
 
 #else
@@ -3614,6 +3711,7 @@ static conftable auth_conftab[] = {
   { "AccessDenyMsg",		set_accessdenymsg,		NULL },
   { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
   { "AllowChrootSymlinks",	set_allowchrootsymlinks,	NULL },
+  { "AllowEmptyPasswords",	set_allowemptypasswords,	NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
   { "AnonRejectPasswords",	set_anonrejectpasswords,	NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },

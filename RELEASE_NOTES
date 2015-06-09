@@ -6,6 +6,16 @@ This file contains a description of the major changes to ProFTPD for the
 releases.  More information on these changes can be found in the NEWS and
 ChangeLog files.
 
+1.3.6rc2
+---------
+
+  + New Configuration Directives:
+
+    AllowEmptyPasswords (Bug#4139)
+      Note that this applies to mod_sftp password-based logins as well.
+      Mention new "BanOnEvent EmptyPassword" rule added for this as well.
+
+
 1.3.6rc1
 ---------
 

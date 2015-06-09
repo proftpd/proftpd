@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.6.2"
+#define MOD_BAN_VERSION			"mod_ban/0.6.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -135,6 +135,7 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_ROOT_LOGIN			16
 #define BAN_EV_TYPE_USER_DEFINED		17
 #define BAN_EV_TYPE_BAD_PROTOCOL		18
+#define BAN_EV_TYPE_EMPTY_PASSWORD		19
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ + BAN_LIST_HEADROOMSZ];
@@ -220,6 +221,7 @@ static int ban_sess_init(void);
 static void ban_anonrejectpasswords_ev(const void *, void *);
 static void ban_badprotocol_ev(const void *, void *);
 static void ban_clientconnectrate_ev(const void *, void *);
+static void ban_emptypassword_ev(const void *, void *);
 static void ban_maxclientsperclass_ev(const void *, void *);
 static void ban_maxclientsperhost_ev(const void *, void *);
 static void ban_maxclientsperuser_ev(const void *, void *);
@@ -1142,6 +1144,9 @@ static const char *ban_event_entry_typestr(unsigned int type) {
     case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
       return "AnonRejectPasswords";
 
+    case BAN_EV_TYPE_EMPTY_PASSWORD:
+      return "EmptyPassword";
+
     case BAN_EV_TYPE_BAD_PROTOCOL:
       return "BadProtocol";
 
@@ -1562,6 +1567,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
         switch (type) {
           case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
+          case BAN_EV_TYPE_EMPTY_PASSWORD:
           case BAN_EV_TYPE_BAD_PROTOCOL:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_HOST:
@@ -2361,6 +2367,11 @@ MODRET set_banonevent(cmd_rec *cmd) {
     pr_event_register(&ban_module, "mod_ban.client-connect-rate",
       ban_clientconnectrate_ev, bee);
 
+  } else if (strcasecmp(cmd->argv[1], "EmptyPassword") == 0) {
+    bee->bee_type = BAN_EV_TYPE_EMPTY_PASSWORD;
+    pr_event_register(&ban_module, "mod_auth.empty-password",
+      ban_emptypassword_ev, bee);
+
   } else if (strcasecmp(cmd->argv[1], "LoginRate") == 0) {
     /* We don't register an event listener here.  Instead we rely on
      * the POST_CMD handler for the PASS command; it's the "event"
@@ -2683,6 +2694,19 @@ static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
   ban_handle_event(BAN_EV_TYPE_CLIENT_CONNECT_RATE, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
+static void ban_emptypassword_ev(const void *event_data, void *user_data) {
+  const char *ipstr;
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
+  ban_handle_event(BAN_EV_TYPE_EMPTY_PASSWORD, BAN_TYPE_HOST, ipstr, tmpl);
+}
+
 static void ban_maxclientsperclass_ev(const void *event_data, void *user_data) {
 
   /* For this event, event_data is the class name. */
@@ -2964,6 +2988,7 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&ban_module, "core.timeout-login", NULL);
   pr_event_unregister(&ban_module, "core.timeout-no-transfer", NULL);
   pr_event_unregister(&ban_module, "mod_auth.anon-reject-passwords", NULL);
+  pr_event_unregister(&ban_module, "mod_auth.empty-password", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-clients-per-class", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-clients-per-host", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-clients-per-user", NULL);
