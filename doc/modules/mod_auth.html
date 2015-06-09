@@ -85,7 +85,7 @@ as well.
 <p>
 <hr>
 <h2><a name="AnonRejectPasswords">AnonRejectPasswords</a></h2>
-<strong>Syntax:</strong> AnonRejectPasswords <em>pattern</em><br>
+<strong>Syntax:</strong> AnonRejectPasswords <em>pattern [flags]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_auth<br>
@@ -102,6 +102,39 @@ Example:
 <pre>
   # Reject all <Anonymous> logins that use "evil.org" as part of the password
   AnonRejectPasswords @evil\.org$
+</pre>
+
+<p>
+The optional <em>flags</em> parameter can be used to specify flags for the
+given regular expression; currently the supported flags are:
+<ul>
+  <li><code>[NC|nocase]</code>
+</ul>
+Thus for a case-insensitive pattern, you would use:
+<pre>
+  # Reject all <Anonymous> logins that use "evil.org" as part of the password
+  AnonRejectPasswords @evil\.org$ [NC]
+</pre>
+or:
+<pre>
+  # Reject all <Anonymous> logins that use "evil.org" as part of the password
+  AnonRejectPasswords @evil\.org$ [nocase]
+</pre>
+
+<p>
+If you want to reject any anonymous passwords which do <b>not</b> match the
+pattern, then prefix your pattern with the <code>!</code> (exclamation point)
+character:
+<pre>
+  # Reject all <Anonymous> logins that do NOT use "good.org" as part of the password
+  AnonRejectPasswords !@good\.org$ [nocase]
+</pre>
+<b>Note</b> that this also allows you to use <code>AnonRejectPasswords</code>
+to <b>require</b> that your anonymous logins use email-like passwords:
+<pre>
+  # Require anonymous passwords that look like email addresses.  See:
+  #  <a href="http://www.regular-expressions.info/email.html">http://www.regular-expressions.info/email.html</a>
+  AnonRejectPasswords !^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$ [NC]
 </pre>
 
 <p>

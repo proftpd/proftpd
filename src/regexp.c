@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Regex management code
- * $Id: regexp.c,v 1.20 2013-03-14 21:49:19 castaglia Exp $
- */
+/* Regex management code. */
 
 #include "conf.h"
 
@@ -45,7 +43,7 @@ struct regexp_rec {
   /* For callers wishing to use POSIX REs */
   regex_t *re;
 
-  /* For calles wishing to use PCRE REs */
+  /* For callers wishing to use PCRE REs */
   pcre *pcre;
   pcre_extra *pcre_extra;
 
@@ -190,7 +188,7 @@ void pr_regexp_free(module *m, pr_regex_t *pre) {
 #ifdef PR_USE_PCRE
 static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
     int flags) {
-  int err_offset;
+  int err_offset, study_flags = 0;
 
   if (pre == NULL ||
       pattern == NULL) {
@@ -213,9 +211,12 @@ static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
   }
 
   /* Study the pattern as well, just in case. */
+#ifdef PCRE_STUDY_JIT_COMPILE
+  study_flags = PCRE_STUDY_JIT_COMPILE;
+#endif /* PCRE_STUDY_JIT_COMPILE */
   pr_trace_msg(trace_channel, 9, "studying pattern '%s' for PCRE extra data",
     pattern);
-  pre->pcre_extra = pcre_study(pre->pcre, 0, &(pre->pcre_errstr));
+  pre->pcre_extra = pcre_study(pre->pcre, study_flags, &(pre->pcre_errstr));
   return 0;
 }
 #endif /* PR_USE_PCRE */
@@ -448,6 +449,14 @@ int pr_regexp_exec(pr_regex_t *pre, const char *str, size_t nmatches,
 #endif /* PR_USE_PCRE */
 
   res = regexp_exec_posix(pre, str, nmatches, matches, flags);
+
+  /* Make sure that we return a negative value to indicate a failed match;
+   * PCRE already does this.
+   */
+  if (res == REG_NOMATCH) {
+    res = -1;
+  }
+
   return res;
 }
 

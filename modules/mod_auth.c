@@ -1013,28 +1013,38 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   if (c) {
     anongroup = get_param_ptr(c->subset, "GroupName", FALSE);
-    if (!anongroup)
+    if (anongroup == NULL) {
       anongroup = get_param_ptr(main_server->conf, "GroupName",FALSE);
+    }
 
+#ifdef PR_USE_REGEX
     /* Check for configured AnonRejectPasswords regex here, and fail the login
      * if the given password matches the regex.
      */
-#ifdef PR_USE_REGEX
-    if ((tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords",
-        FALSE)) != NULL) {
-      int re_res;
-      pr_regex_t *pw_regex = (pr_regex_t *) tmpc->argv[0];
+    tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords", FALSE);
+    if (tmpc != NULL) {
+      int re_notmatch;
+      pr_regex_t *pw_regex;
 
-      if (pw_regex && pass &&
-          ((re_res = pr_regexp_exec(pw_regex, pass, 0, NULL, 0, 0, 0)) == 0)) {
-        char errstr[200] = {'\0'};
+      pw_regex = (pr_regex_t *) tmpc->argv[0];
+      re_notmatch = *((int *) tmpc->argv[1]);
 
-        pr_regexp_error(re_res, pw_regex, errstr, sizeof(errstr));
-        pr_log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
-          origuser);
+      if (pw_regex != NULL &&
+          pass != NULL) {
+        int re_res;
+
+        re_res = pr_regexp_exec(pw_regex, pass, 0, NULL, 0, 0, 0);
+        if (re_res == 0 ||
+            (re_res != 0 && re_notmatch == TRUE)) {
+          char errstr[200] = {'\0'};
+
+          pr_regexp_error(re_res, pw_regex, errstr, sizeof(errstr));
+          pr_log_auth(PR_LOG_NOTICE,
+            "ANON %s: AnonRejectPasswords denies login", origuser);
  
-        pr_event_generate("mod_auth.anon-reject-passwords", session.c);
-        goto auth_failure;
+          pr_event_generate("mod_auth.anon-reject-passwords", session.c);
+          goto auth_failure;
+        }
       }
     }
 #endif
@@ -2725,8 +2735,10 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
 /* usage: AnonRejectPasswords pattern [flags] */
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 #ifdef PR_USE_REGEX
+  config_rec *c;
   pr_regex_t *pre = NULL;
-  int regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
+  int notmatch = FALSE, regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
+  char *pattern = NULL;
 
   if (cmd->argc-1 < 1 ||
       cmd->argc-1 > 2) {
@@ -2759,7 +2771,13 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 
   pre = pr_regexp_alloc(&auth_module);
 
-  res = pr_regexp_compile(pre, cmd->argv[1], regex_flags);
+  pattern = cmd->argv[1];
+  if (*pattern == '!') {
+    notmatch = TRUE;
+    pattern++;
+  }
+
+  res = pr_regexp_compile(pre, pattern, regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
@@ -2770,7 +2788,9 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
       cmd->argv[1], "': ", errstr, NULL));
   }
 
-  (void) add_config_param(cmd->argv[0], 1, pre);
+  c = add_config_param(cmd->argv[0], 2, pre, NULL);
+  c->argv[1] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = notmatch;
   return PR_HANDLED(cmd);
 
 #else
