@@ -311,21 +311,21 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  meths = make_array(c->pool, 0, sizeof(struct sftp_auth_list *));
+  meths = make_array(c->pool, 0, sizeof(struct sftp_auth_chain *));
 
   for (i = 1; i < cmd->argc; i++) {
     array_header *method_names;
     register unsigned int j;
-    struct sftp_auth_list *auth_list;
+    struct sftp_auth_chain *auth_chain;
 
-    method_names = sftp_auth_list_parse_method_list(cmd->tmp_pool,
+    method_names = sftp_auth_chain_parse_method_chain(cmd->tmp_pool,
       cmd->argv[i]);
     if (method_names == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "invalid authentication parameter: ", cmd->argv[i], NULL));
     }
 
-    auth_list = sftp_auth_list_alloc(c->pool);
+    auth_chain = sftp_auth_chain_alloc(c->pool);
     for (j = 0; j < method_names->nelts; j++) {
       int res;
       char *name;
@@ -334,8 +334,8 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
 
       name = ((char **) method_names->elts)[j];
 
-      res = sftp_auth_list_parse_method(c->pool, name, &method_id, &method_name,
-        &submethod_name);
+      res = sftp_auth_chain_parse_method(c->pool, name, &method_id,
+        &method_name, &submethod_name);
       if (res < 0) {
         /* Make for a slightly better/more informative error message. */
         if (method_id == SFTP_AUTH_FL_METH_KBDINT) {
@@ -350,11 +350,11 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
         }
       }
 
-      sftp_auth_list_add_method(auth_list, method_id, method_name,
+      sftp_auth_chain_add_method(auth_chain, method_id, method_name,
         submethod_name);
     }
 
-    *((struct sftp_auth_list **) push_array(meths)) = auth_list;
+    *((struct sftp_auth_chain **) push_array(meths)) = auth_chain;
   }
 
   c->argv[0] = meths;

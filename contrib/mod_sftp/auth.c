@@ -211,18 +211,18 @@ static void set_userauth_methods(void) {
      */
 
   } else {
-    struct sftp_auth_list *auth_list;
+    struct sftp_auth_chain *auth_chain;
 
     auth_meth_list = make_array(auth_pool, 0,
-      sizeof(struct sftp_auth_list *));
+      sizeof(struct sftp_auth_chain *));
 
     c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedUserKeys",
       FALSE);
     if (c != NULL) {
-      auth_list = sftp_auth_list_alloc(auth_pool);
-      sftp_auth_list_add_method(auth_list, SFTP_AUTH_FL_METH_PUBLICKEY,
+      auth_chain = sftp_auth_chain_alloc(auth_pool);
+      sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_PUBLICKEY,
         "publickey", NULL);
-      *((struct sftp_auth_list **) push_array(auth_meth_list)) = auth_list;
+      *((struct sftp_auth_chain **) push_array(auth_meth_list)) = auth_chain;
 
     } else {
       pr_trace_msg(trace_channel, 9, "no SFTPAuthorizedUserKeys configured, "
@@ -232,10 +232,10 @@ static void set_userauth_methods(void) {
     c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedHostKeys",
       FALSE);
     if (c != NULL) {
-      auth_list = sftp_auth_list_alloc(auth_pool);
-      sftp_auth_list_add_method(auth_list, SFTP_AUTH_FL_METH_HOSTBASED,
+      auth_chain = sftp_auth_chain_alloc(auth_pool);
+      sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_HOSTBASED,
         "hostbased", NULL);
-      *((struct sftp_auth_list **) push_array(auth_meth_list)) = auth_list;
+      *((struct sftp_auth_chain **) push_array(auth_meth_list)) = auth_chain;
 
     } else {
       pr_trace_msg(trace_channel, 9, "no SFTPAuthorizedHostKeys configured, "
@@ -243,10 +243,10 @@ static void set_userauth_methods(void) {
     }
 
     if (sftp_kbdint_have_drivers() > 0) {
-      auth_list = sftp_auth_list_alloc(auth_pool);
-      sftp_auth_list_add_method(auth_list, SFTP_AUTH_FL_METH_KBDINT,
+      auth_chain = sftp_auth_chain_alloc(auth_pool);
+      sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_KBDINT,
         "keyboard-interactive", NULL);
-      *((struct sftp_auth_list **) push_array(auth_meth_list)) = auth_list;
+      *((struct sftp_auth_chain **) push_array(auth_meth_list)) = auth_chain;
 
     } else {
       pr_trace_msg(trace_channel, 9, "no kbdint drivers present, not "
@@ -254,18 +254,18 @@ static void set_userauth_methods(void) {
     }
 
     /* The 'password' method is always available. */
-    auth_list = sftp_auth_list_alloc(auth_pool);
-    sftp_auth_list_add_method(auth_list, SFTP_AUTH_FL_METH_PASSWORD,
+    auth_chain = sftp_auth_chain_alloc(auth_pool);
+    sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_PASSWORD,
       "password", NULL);
-    *((struct sftp_auth_list **) push_array(auth_meth_list)) = auth_list;
+    *((struct sftp_auth_chain **) push_array(auth_meth_list)) = auth_chain;
   }
 
   for (i = 0 ; i < auth_meth_list->nelts; i++) {
-    struct sftp_auth_list *auth_list;
+    struct sftp_auth_chain *auth_chain;
     struct sftp_auth_method *meth;
 
-    auth_list = ((struct sftp_auth_list **) auth_meth_list->elts)[i];
-    meth = ((struct sftp_auth_method **) auth_list->methods->elts)[0];
+    auth_chain = ((struct sftp_auth_chain **) auth_meth_list->elts)[i];
+    meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[0];
 
     if (!(auth_meths_enabled_flags & meth->method_id)) {
       auth_meths_enabled_flags |= meth->method_id;
@@ -759,16 +759,16 @@ static int send_userauth_failure(char *failed_meth) {
 
     for (i = 0 ; i < auth_meth_list->nelts; i++) {
       register unsigned int j;
-      struct sftp_auth_list *auth_list;
+      struct sftp_auth_chain *auth_chain;
       struct sftp_auth_method *meth = NULL;
 
       pr_signals_handle();
-      auth_list = ((struct sftp_auth_list **) auth_meth_list->elts)[i];
+      auth_chain = ((struct sftp_auth_chain **) auth_meth_list->elts)[i];
 
-      for (j = 0; j < auth_list->methods->nelts; j++) {
+      for (j = 0; j < auth_chain->methods->nelts; j++) {
         struct sftp_auth_method *m;
 
-        m = ((struct sftp_auth_method **) auth_list->methods->elts)[j];
+        m = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
         if (m->succeeded != TRUE &&
             m->failed != TRUE) {
           meth = m;
@@ -881,15 +881,15 @@ static int set_userauth_success(const char *succeeded_meth) {
 
   for (i = 0 ; i < auth_meth_list->nelts; i++) {
     register unsigned int j;
-    struct sftp_auth_list *auth_list;
+    struct sftp_auth_chain *auth_chain;
 
     pr_signals_handle();
-    auth_list = ((struct sftp_auth_list **) auth_meth_list->elts)[i];
+    auth_chain = ((struct sftp_auth_chain **) auth_meth_list->elts)[i];
 
-    for (j = 0; j < auth_list->methods->nelts; j++) {
+    for (j = 0; j < auth_chain->methods->nelts; j++) {
       struct sftp_auth_method *meth = NULL;
 
-      meth = ((struct sftp_auth_method **) auth_list->methods->elts)[j];
+      meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
       if (meth->succeeded != TRUE &&
           meth->failed != TRUE) {
 
@@ -900,8 +900,8 @@ static int set_userauth_success(const char *succeeded_meth) {
 
         /* Add the next method in the list (if any) to the available methods. */
         j++;
-        if (j < auth_list->methods->nelts) {
-          meth = ((struct sftp_auth_method **) auth_list->methods->elts)[j];
+        if (j < auth_chain->methods->nelts) {
+          meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
 
           if (!(auth_meths_enabled_flags & meth->method_id)) {
             auth_meths_enabled_flags |= meth->method_id;
@@ -926,16 +926,16 @@ static int set_userauth_success(const char *succeeded_meth) {
 
   for (i = 0 ; i < auth_meth_list->nelts; i++) {
     register unsigned int j;
-    struct sftp_auth_list *auth_list;
+    struct sftp_auth_chain *auth_chain;
     int ok = TRUE;
 
     pr_signals_handle();
-    auth_list = ((struct sftp_auth_list **) auth_meth_list->elts)[i];
+    auth_chain = ((struct sftp_auth_chain **) auth_meth_list->elts)[i];
 
-    for (j = 0; j < auth_list->methods->nelts; j++) {
+    for (j = 0; j < auth_chain->methods->nelts; j++) {
       struct sftp_auth_method *meth = NULL;
 
-      meth = ((struct sftp_auth_method **) auth_list->methods->elts)[j];
+      meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
       if (meth->succeeded != TRUE) {
         ok = FALSE;
         break;
@@ -944,7 +944,7 @@ static int set_userauth_success(const char *succeeded_meth) {
 
     if (ok == TRUE) {
       /* We have a successfully completed list! */
-      auth_list->completed = completed = TRUE;
+      auth_chain->completed = completed = TRUE;
       break;
     }
   }
@@ -1499,9 +1499,9 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 }
 
 /* Auth Lists API */
-struct sftp_auth_list *sftp_auth_list_alloc(pool *p) {
+struct sftp_auth_chain *sftp_auth_chain_alloc(pool *p) {
   pool *sub_pool;
-  struct sftp_auth_list *auth_list;
+  struct sftp_auth_chain *auth_chain;
 
   if (p == NULL) {
     errno = EINVAL;
@@ -1509,22 +1509,22 @@ struct sftp_auth_list *sftp_auth_list_alloc(pool *p) {
   }
 
   sub_pool = pr_pool_create_sz(p, 256);
-  auth_list = pcalloc(sub_pool, sizeof(struct sftp_auth_list));
-  auth_list->pool = sub_pool;
-  auth_list->methods = make_array(sub_pool, 1,
+  auth_chain = pcalloc(sub_pool, sizeof(struct sftp_auth_chain));
+  auth_chain->pool = sub_pool;
+  auth_chain->methods = make_array(sub_pool, 1,
     sizeof(struct sftp_auth_method *));
-  auth_list->completed = FALSE;
-  auth_list->notes = pr_table_nalloc(sub_pool, 0, 2);
+  auth_chain->completed = FALSE;
+  auth_chain->notes = pr_table_nalloc(sub_pool, 0, 2);
 
-  return auth_list;
+  return auth_chain;
 }
 
-int sftp_auth_list_add_method(struct sftp_auth_list *auth_list,
+int sftp_auth_chain_add_method(struct sftp_auth_chain *auth_chain,
     unsigned int method_id, const char *method_name,
     const char *submethod_name) {
   struct sftp_auth_method *meth;
 
-  if (auth_list == NULL ||
+  if (auth_chain == NULL ||
       method_name == NULL) {
     errno = EINVAL;
     return -1;
@@ -1537,20 +1537,20 @@ int sftp_auth_list_add_method(struct sftp_auth_list *auth_list,
     return -1;
   }
 
-  meth = pcalloc(auth_list->pool, sizeof(struct sftp_auth_method));
+  meth = pcalloc(auth_chain->pool, sizeof(struct sftp_auth_method));
   meth->method_id = method_id;
-  meth->method_name = pstrdup(auth_list->pool, method_name);
+  meth->method_name = pstrdup(auth_chain->pool, method_name);
   if (submethod_name != NULL) {
-    meth->submethod_name = pstrdup(auth_list->pool, submethod_name);
+    meth->submethod_name = pstrdup(auth_chain->pool, submethod_name);
   }
   meth->succeeded = FALSE;
   meth->failed = FALSE;
 
-  *((struct sftp_auth_method **) push_array(auth_list->methods)) = meth;
+  *((struct sftp_auth_method **) push_array(auth_chain->methods)) = meth;
   return 0;
 }
 
-int sftp_auth_list_parse_method(pool *p, const char *name,
+int sftp_auth_chain_parse_method(pool *p, const char *name,
     unsigned int *method_id, const char **method_name,
     const char **submethod_name) {
   char *ptr;
@@ -1618,7 +1618,7 @@ int sftp_auth_list_parse_method(pool *p, const char *name,
   return 0;
 }
 
-array_header *sftp_auth_list_parse_method_list(pool *p,
+array_header *sftp_auth_chain_parse_method_chain(pool *p,
     const char *method_list) {
   char *ptr;
   size_t method_listlen;

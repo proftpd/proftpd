@@ -48,27 +48,27 @@ struct sftp_auth_method {
   int succeeded, failed;
 };
 
-struct sftp_auth_list {
+struct sftp_auth_chain {
   pool *pool;
   array_header *methods;
   int completed;
   pr_table_t *notes;
 };
 
-struct sftp_auth_list *sftp_auth_list_alloc(pool *);
-int sftp_auth_list_add_method(struct sftp_auth_list *, unsigned int,
+struct sftp_auth_chain *sftp_auth_chain_alloc(pool *);
+int sftp_auth_chain_add_method(struct sftp_auth_chain *, unsigned int,
   const char *, const char *);
 
 /* Parse given method name, e.g. "password" or "keyboard-interactive:pam",
  * into the ID for the method, and the submethod portion (if any).
  */
-int sftp_auth_list_parse_method(pool *p, const char *, unsigned int *,
+int sftp_auth_chain_parse_method(pool *p, const char *, unsigned int *,
   const char **, const char **);
 
-/* Parse a list of methods, e.g. "publickey+password", into its component
+/* Parse a chain of methods, e.g. "publickey+password", into its component
  * method names.  Returns the list of parsed method names, or NULL on error.
  */
-array_header *sftp_auth_list_parse_method_list(pool *p, const char *);
+array_header *sftp_auth_chain_parse_method_chain(pool *p, const char *);
 
 char *sftp_auth_get_default_dir(void);
 int sftp_auth_handle(struct ssh2_packet *);
