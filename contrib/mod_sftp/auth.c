@@ -1646,6 +1646,12 @@ array_header *sftp_auth_list_parse_method_list(pool *p,
     pr_signals_handle();
 
     namelen = (ptr - method_list);
+    if (namelen == 0) {
+      /* Double '+' characters. */
+      errno = EPERM;
+      return NULL;
+    }
+
     *((char **) push_array(method_names)) = pstrndup(p, method_list, namelen);
 
     method_list = ptr + 1;
