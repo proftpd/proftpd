@@ -200,15 +200,10 @@ static void set_userauth_methods(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthMethods", FALSE);
   if (c != NULL) {
-    auth_meth_list = c->argv[0];
-
-    /* TODO: Check for SFTPAuthorized{Host,User}Keys, kbdint drivers, etc.
-     * Need to double-check these against the configured auth lists, to
-     * make sure the requested lists can be supported.  Otherwise...what?
-     *
-     * Maybe do this check in a postparse event handlers, for all vhosts,
-     * and fail the startup due to misconfiguration?
+    /* Sanity checking of the configured methods is done in the postparse
+     * event listener; we can use this as-is without fear.
      */
+    auth_meth_list = c->argv[0];
 
   } else {
     struct sftp_auth_chain *auth_chain;
@@ -281,6 +276,28 @@ static void set_userauth_methods(void) {
 
   pr_trace_msg(trace_channel, 9, "offering authentication methods: %s",
     auth_avail_meths);
+
+  /* Prepare the method-specific APIs, too. */
+  if (sftp_auth_hostbased_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'hostbased' authentication: %s", strerror(errno));
+  }
+
+  if (sftp_auth_kbdint_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'keyboard-interactive' authentication: %s",
+      strerror(errno));
+  }
+
+  if (sftp_auth_password_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'password' authentication: %s", strerror(errno));
+  }
+
+  if (sftp_auth_publickey_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'publickey' authentication: %s", strerror(errno));
+  }
 }
 
 static int setup_env(pool *p, char *user) {
@@ -1514,7 +1531,6 @@ struct sftp_auth_chain *sftp_auth_chain_alloc(pool *p) {
   auth_chain->methods = make_array(sub_pool, 1,
     sizeof(struct sftp_auth_method *));
   auth_chain->completed = FALSE;
-  auth_chain->notes = pr_table_nalloc(sub_pool, 0, 2);
 
   return auth_chain;
 }

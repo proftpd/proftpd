@@ -45,6 +45,8 @@
 #include "fxp.h"
 #include "utf8.h"
 
+extern xaset_t *server_list;
+
 module sftp_module;
 
 int sftp_logfd = -1;
@@ -1552,6 +1554,7 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
 
 static void sftp_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
+  server_rec *s;
 
   /* Initialize OpenSSL. */
   ERR_load_crypto_strings();
@@ -1571,6 +1574,68 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   if (sftp_interop_init() < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
       ": error preparing interoperability checks: %s", strerror(errno));
+  }
+
+  /* Check for incompatible SFTPAuthMethods configurations.  For example,
+   * configuring:
+   *
+   *  SFTPAuthMethods hostbased+password
+   *
+   * without also configuring SFTPAuthorizedHostKeys means that authentication
+   * will never succeed.
+   */
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    int supports_hostbased = FALSE, supports_publickey = FALSE;
+
+    c = find_config(s->conf, CONF_PARAM, "SFTPAuthorizedHostKeys", FALSE);
+    if (c != NULL) {
+      supports_hostbased = TRUE;
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "SFTPAuthorizedUserKeys", FALSE);
+    if (c != NULL) {
+      supports_publickey = TRUE;
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "SFTPAuthMethods", FALSE);
+    if (c != NULL) {
+      register unsigned int i;
+      array_header *auth_chains;
+
+      auth_chains = c->argv[0];
+
+      for (i = 0; i < auth_chains->nelts; i++) {
+        register unsigned int j;
+        struct sftp_auth_chain *auth_chain;
+
+        auth_chain = ((struct sftp_auth_chain **) auth_chains->elts)[i];
+        for (j = 0; j < auth_chain->methods->nelts; j++) {
+          struct sftp_auth_method *meth;
+
+          meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
+
+          if (meth->method_id == SFTP_AUTH_FL_METH_HOSTBASED &&
+              supports_hostbased == FALSE) {
+            pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+              ": Server %s: cannot support authentication method '%s' "
+              "without SFTPAuthorizedHostKeys configuraion", s->ServerName,
+              meth->method_name);
+            pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
+              NULL);
+          }
+
+          if (meth->method_id == SFTP_AUTH_FL_METH_PUBLICKEY &&
+              supports_publickey == FALSE) {
+            pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+              ": Server %s: cannot support authentication method '%s' "
+              "without SFTPAuthorizedUserKeys configuraion", s->ServerName,
+              meth->method_name);
+            pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
+              NULL);
+          }
+        }
+      }
+    }
   }
 }
 

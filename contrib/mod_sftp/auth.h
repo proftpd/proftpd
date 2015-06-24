@@ -52,7 +52,6 @@ struct sftp_auth_chain {
   pool *pool;
   array_header *methods;
   int completed;
-  pr_table_t *notes;
 };
 
 struct sftp_auth_chain *sftp_auth_chain_alloc(pool *);
@@ -78,20 +77,24 @@ int sftp_auth_init(void);
 int sftp_auth_hostbased(struct ssh2_packet *, cmd_rec *,
   const char *, const char *, const char *, unsigned char **, uint32_t *,
   int *);
+int sftp_auth_hostbased_init(pool *);
 
 /* Handles 'keyboard-interactive' user authentication. */
 int sftp_auth_kbdint(struct ssh2_packet *, cmd_rec *,
   const char *, const char *, const char *, unsigned char **, uint32_t *,
   int *);
+int sftp_auth_kbdint_init(pool *);
 
 /* Handles 'password' user authentication. */
 int sftp_auth_password(struct ssh2_packet *, cmd_rec *,
   const char *, const char *, const char *, unsigned char **, uint32_t *,
   int *);
+int sftp_auth_password_init(pool *);
 
 /* Handles 'publickey' user authentication. */
 int sftp_auth_publickey(struct ssh2_packet *, cmd_rec *,
   const char *, const char *, const char *, unsigned char **, uint32_t *,
   int *);
+int sftp_auth_publickey_init(pool *);
 
 #endif
