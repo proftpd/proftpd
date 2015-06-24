@@ -298,55 +298,66 @@ MODRET set_sftpacceptenv(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SFTPAuthMethods meth1 ... methN */
+/* usage: SFTPAuthMethods method-list1 ... method-listN */
 MODRET set_sftpauthmeths(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  char *meths = "";
-  unsigned int enabled = 0;
+  array_header *meths;
 
-  if (cmd->argc < 2 ||
-      cmd->argc > 5) {
+  if (cmd->argc < 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
   }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  meths = make_array(c->pool, 0, sizeof(struct sftp_auth_list *));
+
   for (i = 1; i < cmd->argc; i++) {
-    if (strncasecmp(cmd->argv[i], "publickey", 10) == 0) {
-      enabled |= SFTP_AUTH_FL_METH_PUBLICKEY;
+    array_header *method_names;
+    register unsigned int j;
+    struct sftp_auth_list *auth_list;
 
-    } else if (strncasecmp(cmd->argv[i], "hostbased", 10) == 0) {
-      enabled |= SFTP_AUTH_FL_METH_HOSTBASED;
+    method_names = sftp_auth_list_parse_method_list(cmd->tmp_pool,
+      cmd->argv[i]);
+    if (method_names == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "invalid authentication parameter: ", cmd->argv[i], NULL));
+    }
 
-    } else if (strncasecmp(cmd->argv[i], "password", 9) == 0) {
-      enabled |= SFTP_AUTH_FL_METH_PASSWORD;
+    auth_list = sftp_auth_list_alloc(c->pool);
+    for (j = 0; j < method_names->nelts; j++) {
+      int res;
+      char *name;
+      unsigned int method_id = 0;
+      const char *method_name = NULL, *submethod_name = NULL;
 
-    } else if (strncasecmp(cmd->argv[i], "keyboard-interactive", 21) == 0) {
-      if (sftp_kbdint_have_drivers() == 0) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-          "unable to support '", cmd->argv[i],
-            "' authentication: No drivers loaded", NULL));
+      name = ((char **) method_names->elts)[j];
+
+      res = sftp_auth_list_parse_method(c->pool, name, &method_id, &method_name,
+        &submethod_name);
+      if (res < 0) {
+        /* Make for a slightly better/more informative error message. */
+        if (method_id == SFTP_AUTH_FL_METH_KBDINT) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "unsupported authentication method '", name,
+            "': No drivers loaded", NULL));
+
+        } else {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "unsupported authentication method: ", name,
+            strerror(errno), NULL));
+        }
       }
 
-      enabled |= SFTP_AUTH_FL_METH_KBDINT;
-
-    } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unsupported authentication method: ", cmd->argv[i], NULL));
+      sftp_auth_list_add_method(auth_list, method_id, method_name,
+        submethod_name);
     }
+
+    *((struct sftp_auth_list **) push_array(meths)) = auth_list;
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
-
-  for (i = 1; i < cmd->argc; i++) {
-    meths = pstrcat(c->pool, meths, *meths ? "," : "", cmd->argv[i], NULL);
-  }
   c->argv[0] = meths;
-
-  c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[1]) = enabled;
-
   return PR_HANDLED(cmd);
 }
 

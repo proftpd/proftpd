@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication (auth)
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: auth.h,v 1.8 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -35,6 +33,42 @@
 #define SFTP_AUTH_FL_METH_KBDINT	0x002
 #define SFTP_AUTH_FL_METH_PASSWORD	0x004
 #define SFTP_AUTH_FL_METH_HOSTBASED	0x008 
+
+/* Structures which define a list of authentication methods; when each method
+ * in a list has been satisfied, authentication succeeds.
+ */
+struct sftp_auth_method {
+  unsigned int method_id;
+  const char *method_name;
+
+  /* For e.g. kbdint driver names. */
+  const char *submethod_name;
+
+  /* For use during authentication. */
+  int succeeded, failed;
+};
+
+struct sftp_auth_list {
+  pool *pool;
+  array_header *methods;
+  int completed;
+  pr_table_t *notes;
+};
+
+struct sftp_auth_list *sftp_auth_list_alloc(pool *);
+int sftp_auth_list_add_method(struct sftp_auth_list *, unsigned int,
+  const char *, const char *);
+
+/* Parse given method name, e.g. "password" or "keyboard-interactive:pam",
+ * into the ID for the method, and the submethod portion (if any).
+ */
+int sftp_auth_list_parse_method(pool *p, const char *, unsigned int *,
+  const char **, const char **);
+
+/* Parse a list of methods, e.g. "publickey+password", into its component
+ * method names.  Returns the list of parsed method names, or NULL on error.
+ */
+array_header *sftp_auth_list_parse_method_list(pool *p, const char *);
 
 char *sftp_auth_get_default_dir(void);
 int sftp_auth_handle(struct ssh2_packet *);
