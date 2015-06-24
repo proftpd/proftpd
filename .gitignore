@@ -30,6 +30,7 @@ tests/api-tests.log
 utils/*.[0-9]
 *.a
 *.la
+*.lo
 *.log
 *.o
 *.orig
@@ -37,5 +38,6 @@ utils/*.[0-9]
 *.rej
 *~
 *.swp
+.DS_Store
 .libs
 libtool
