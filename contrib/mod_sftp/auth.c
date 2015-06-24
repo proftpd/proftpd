@@ -893,7 +893,16 @@ static int set_userauth_success(const char *succeeded_meth) {
       if (meth->succeeded != TRUE &&
           meth->failed != TRUE) {
 
-        if (strcmp(meth->method_name, succeeded_meth) != 0) {
+        if (strcmp(meth->method_name, succeeded_meth) == 0) {
+          /* TODO: What about submethods, for kbdint drivers? */
+          meth->succeeded = TRUE;
+        }
+
+        /* Add the next method in the list (if any) to the available methods. */
+        j++;
+        if (j < auth_list->methods->nelts) {
+          meth = ((struct sftp_auth_method **) auth_list->methods->elts)[j];
+
           if (!(auth_meths_enabled_flags & meth->method_id)) {
             auth_meths_enabled_flags |= meth->method_id;
 
@@ -904,11 +913,9 @@ static int set_userauth_success(const char *succeeded_meth) {
               auth_avail_meths = meth->method_name;
             }
           }
-
-        } else {
-          /* TODO: What about submethods, for kbdint drivers? */
-          meth->succeeded = TRUE;
         }
+
+        break;
       }
     }
   }
