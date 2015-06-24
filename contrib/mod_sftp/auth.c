@@ -1632,7 +1632,7 @@ array_header *sftp_auth_list_parse_method_list(pool *p,
   }
 
   method_listlen = strlen(method_list);
-  if ((ptr - method_list) == method_listlen) {
+  if (method_list[method_listlen-1] == '+') {
     /* Trailing '+'. */
     errno = EPERM;
     return NULL;
