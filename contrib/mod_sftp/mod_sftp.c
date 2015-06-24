@@ -345,7 +345,7 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
 
         } else {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-            "unsupported authentication method: ", name,
+            "unsupported authentication method '", name, "': ",
             strerror(errno), NULL));
         }
       }

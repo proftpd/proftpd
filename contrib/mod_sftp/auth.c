@@ -1601,6 +1601,11 @@ int sftp_auth_list_parse_method(pool *p, const char *name,
     } else {
       *method_name = name;
     }
+
+  } else {
+    /* Unknown/unsupported method name. */
+    errno = EINVAL;
+    return -1;
   }
  
   return 0;
