@@ -205,7 +205,12 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     /* Log the fingerprint (and fingerprinting algorithm used), for
      * debugging/auditing; make it available via environment variable as well.
      */
-      
+
+    k = pstrdup(session.pool, "SFTP_USER_PUBLICKEY_ALGO");
+    v = pstrdup(session.pool, pubkey_algo);
+    pr_env_unset(session.pool, k);
+    pr_env_set(session.pool, k, v);
+
     k = pstrdup(session.pool, "SFTP_USER_PUBLICKEY_FINGERPRINT");
     v = pstrdup(session.pool, fp);
     pr_env_unset(session.pool, k);
