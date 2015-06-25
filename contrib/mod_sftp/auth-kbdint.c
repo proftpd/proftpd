@@ -32,6 +32,14 @@
 #include "utf8.h"
 #include "kbdint.h"
 
+/* This array tracks the names of kbdint drivers that have successfully
+ * authenticated the user.  In any given session, the same kbdint driver CANNOT
+ * be used twice for authentication; this supports authentication chains
+ * like "keyboard-interactive+keyboard-interactive", requiring clients to
+ * authenticate using multiple different kbdint means.
+ */
+static array_header *kbdint_drivers = NULL;
+
 static const char *trace_channel = "ssh2";
 
 int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
@@ -123,8 +131,30 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
    */
 
   driver = sftp_kbdint_first_driver();
-  while (driver) {
+  while (driver != NULL) {
+    register unsigned int i;
+    int skip_driver = FALSE;
+
     pr_signals_handle();
+
+    /* If this driver has already successfully handled this user, skip it. */
+    for (i = 0; i < kbdint_drivers; i++) {
+      char *dri;
+
+      dri = ((char **) kbdint_drivers->elts)[i];
+      if (strcmp(driver->driver_name, dri) == 0) {
+        skip_driver = TRUE;
+        break;
+      }
+    }
+
+    if (skip_driver) {
+      pr_trace_msg(trace_channel, 9,
+        "skipping already-used kbdint driver '%s' for user '%s'",
+        driver->driver_name, user);
+      driver = sftp_kbdint_next_driver();
+      continue;
+    }
 
     pr_trace_msg(trace_channel, 3, "trying kbdint driver '%s' for user '%s'",
       driver->driver_name, user);
@@ -138,8 +168,12 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     res = driver->authenticate(driver, user);
     driver->close(driver);
 
-    if (res == 0)
+    if (res == 0) {
+      /* Store the driver name for future checking. */
+      *((char **) push_array(kbdint_drivers)) = pstrdup(sftp_pool,
+        driver->driver_name);
       break; 
+    }
 
     driver = sftp_kbdint_next_driver();
   }
@@ -160,5 +194,7 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 }
 
 int sftp_auth_kbdint_init(pool *p) {
+  kbdint_drivers = make_array(p, 0, sizeof(char *));
+
   return 0;
 }
