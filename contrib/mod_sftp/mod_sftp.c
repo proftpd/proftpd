@@ -356,6 +356,12 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
         submethod_name);
     }
 
+    if (sftp_auth_chain_isvalid(auth_chain) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupportable chain of authentication methods '", cmd->argv[i], "': ",
+        strerror(errno), NULL));
+    }
+
     *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
   }
 

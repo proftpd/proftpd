@@ -1534,6 +1534,48 @@ struct sftp_auth_chain *sftp_auth_chain_alloc(pool *p) {
   return auth_chain;
 }
 
+/* Check if 'password' or 'hostbased' methods appear multiple times in
+ * this chain; if so, it's an invalid chain.  Multiple 'publickey' or
+ * 'keyboard-interactive' methods are allowed, though.
+ */
+int sftp_auth_chain_isvalid(struct sftp_auth_chain *auth_chain) {
+  register unsigned int i;
+  int has_password = FALSE, has_hostbased = FALSE;
+
+  for (i = 0; i < auth_chain->methods->nelts; i++) {
+    struct sftp_auth_method *meth;
+
+    meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[i];
+
+    switch (meth->method_id) {
+      case SFTP_AUTH_FL_METH_PASSWORD:
+        if (has_password == TRUE) {
+          errno = EPERM;
+          return -1;
+        }
+
+        has_password = TRUE;
+        break;
+
+      case SFTP_AUTH_FL_METH_HOSTBASED:
+        if (has_hostbased == TRUE) {
+          errno = EPERM;
+          return -1;
+        }
+
+        has_hostbased = TRUE;
+        break;
+
+      case SFTP_AUTH_FL_METH_PUBLICKEY:
+      case SFTP_AUTH_FL_METH_KBDINT:
+      default:
+        break;
+    }
+  }
+
+  return 0;
+}
+
 int sftp_auth_chain_add_method(struct sftp_auth_chain *auth_chain,
     unsigned int method_id, const char *method_name,
     const char *submethod_name) {

@@ -55,6 +55,8 @@ struct sftp_auth_chain {
 };
 
 struct sftp_auth_chain *sftp_auth_chain_alloc(pool *);
+
+/* Add a new method to this authentication chain. */
 int sftp_auth_chain_add_method(struct sftp_auth_chain *, unsigned int,
   const char *, const char *);
 
@@ -68,6 +70,11 @@ int sftp_auth_chain_parse_method(pool *p, const char *, unsigned int *,
  * method names.  Returns the list of parsed method names, or NULL on error.
  */
 array_header *sftp_auth_chain_parse_method_chain(pool *p, const char *);
+
+/* Verify that a given auth chain is correct, i.e. no unsupportable
+ * double/repeated methods, etc.
+ */
+int sftp_auth_chain_isvalid(struct sftp_auth_chain *);
 
 char *sftp_auth_get_default_dir(void);
 int sftp_auth_handle(struct ssh2_packet *);
