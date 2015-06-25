@@ -304,7 +304,7 @@ MODRET set_sftpacceptenv(cmd_rec *cmd) {
 MODRET set_sftpauthmeths(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  array_header *meths;
+  array_header *auth_chains;
 
   if (cmd->argc < 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
@@ -313,7 +313,7 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  meths = make_array(c->pool, 0, sizeof(struct sftp_auth_chain *));
+  auth_chains = make_array(c->pool, 0, sizeof(struct sftp_auth_chain *));
 
   for (i = 1; i < cmd->argc; i++) {
     array_header *method_names;
@@ -356,10 +356,10 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
         submethod_name);
     }
 
-    *((struct sftp_auth_chain **) push_array(meths)) = auth_chain;
+    *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
   }
 
-  c->argv[0] = meths;
+  c->argv[0] = auth_chains;
   return PR_HANDLED(cmd);
 }
 
