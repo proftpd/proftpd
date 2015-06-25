@@ -34,8 +34,8 @@
 #define SFTP_AUTH_FL_METH_PASSWORD	0x004
 #define SFTP_AUTH_FL_METH_HOSTBASED	0x008 
 
-/* Structures which define a list of authentication methods; when each method
- * in a list has been satisfied, authentication succeeds.
+/* Structures which define a chain of authentication methods; when each method
+ * in a chain has been satisfied, authentication succeeds.
  */
 struct sftp_auth_method {
   unsigned int method_id;
