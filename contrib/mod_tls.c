@@ -65,7 +65,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.6"
+#define MOD_TLS_VERSION		"mod_tls/2.6.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030504 
@@ -413,6 +413,9 @@ static char *tls_passphrase_provider = NULL;
 #else
 # define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1)
 #endif /* OpenSSL 1.0.1 or later */
+
+/* This is used for e.g. "TLSProtocol ALL -SSLv3 ...". */
+#define TLS_PROTO_ALL			(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2)
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
 static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
@@ -9280,34 +9283,103 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  for (i = 1; i < cmd->argc; i++) {
-    if (strncasecmp(cmd->argv[i], "SSLv23", 7) == 0) {
-      tls_protocol |= TLS_PROTO_SSL_V3;
-      tls_protocol |= TLS_PROTO_TLS_V1;
+  if (strcasecmp(cmd->argv[1], "all") == 0) {
+    /* We're in an additive/subtractive type of configuration. */
+    tls_protocol = TLS_PROTO_ALL;
 
-    } else if (strncasecmp(cmd->argv[i], "SSLv3", 6) == 0) {
-      tls_protocol |= TLS_PROTO_SSL_V3;
+    for (i = 2; i < cmd->argc; i++) {
+      int disable = FALSE;
+      char *proto_name;
 
-    } else if (strncasecmp(cmd->argv[i], "TLSv1", 6) == 0) {
-      tls_protocol |= TLS_PROTO_TLS_V1;
+      proto_name = cmd->argv[i];
 
-    } else if (strncasecmp(cmd->argv[i], "TLSv1.1", 8) == 0) {
+      if (*proto_name == '+') {
+        proto_name++;
+
+      } else if (*proto_name == '-') {
+        disable = TRUE;
+        proto_name++;
+
+      } else {
+        /* Using the additive/subtractive approach requires a +/- prefix;
+         * it's malformed without such prefaces.
+         */
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "missing required +/- prefix: ",
+          proto_name, NULL));
+      }
+
+      if (strncasecmp(proto_name, "SSLv3", 6) == 0) {
+        if (disable) {
+          tls_protocol &= ~TLS_PROTO_SSL_V3;
+        } else {
+          tls_protocol |= TLS_PROTO_SSL_V3;
+        }
+
+      } else if (strncasecmp(proto_name, "TLSv1", 6) == 0) {
+        if (disable) {
+          tls_protocol &= ~TLS_PROTO_TLS_V1;
+        } else {
+          tls_protocol |= TLS_PROTO_TLS_V1;
+        }
+
+      } else if (strncasecmp(proto_name, "TLSv1.1", 8) == 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-      tls_protocol |= TLS_PROTO_TLS_V1_1;
+        if (disable) {
+          tls_protocol &= ~TLS_PROTO_TLS_V1_1;
+        } else {
+          tls_protocol |= TLS_PROTO_TLS_V1_1;
+        }
 #else
-      CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.1");
+        CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.1");
 #endif /* OpenSSL 1.0.1 or later */
 
-    } else if (strncasecmp(cmd->argv[i], "TLSv1.2", 8) == 0) {
+      } else if (strncasecmp(proto_name, "TLSv1.2", 8) == 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-      tls_protocol |= TLS_PROTO_TLS_V1_2;
+        if (disable) {
+          tls_protocol &= ~TLS_PROTO_TLS_V1_2;
+        } else {
+          tls_protocol |= TLS_PROTO_TLS_V1_2;
+        }
 #else
-      CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.2");
+        CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.2");
 #endif /* OpenSSL 1.0.1 or later */
 
-    } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
-        cmd->argv[i], "'", NULL));
+      } else {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
+          cmd->argv[i], "'", NULL));
+      }
+    }
+
+  } else {
+    for (i = 1; i < cmd->argc; i++) {
+      if (strncasecmp(cmd->argv[i], "SSLv23", 7) == 0) {
+        tls_protocol |= TLS_PROTO_SSL_V3;
+        tls_protocol |= TLS_PROTO_TLS_V1;
+
+      } else if (strncasecmp(cmd->argv[i], "SSLv3", 6) == 0) {
+        tls_protocol |= TLS_PROTO_SSL_V3;
+
+      } else if (strncasecmp(cmd->argv[i], "TLSv1", 6) == 0) {
+        tls_protocol |= TLS_PROTO_TLS_V1;
+
+      } else if (strncasecmp(cmd->argv[i], "TLSv1.1", 8) == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+        tls_protocol |= TLS_PROTO_TLS_V1_1;
+#else
+        CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.1");
+#endif /* OpenSSL 1.0.1 or later */
+
+      } else if (strncasecmp(cmd->argv[i], "TLSv1.2", 8) == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+        tls_protocol |= TLS_PROTO_TLS_V1_2;
+#else
+        CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.2");
+#endif /* OpenSSL 1.0.1 or later */
+
+      } else {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
+          cmd->argv[i], "'", NULL));
+      }
     }
   }
 
