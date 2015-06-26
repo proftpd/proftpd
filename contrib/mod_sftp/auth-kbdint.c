@@ -138,7 +138,7 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     pr_signals_handle();
 
     /* If this driver has already successfully handled this user, skip it. */
-    for (i = 0; i < kbdint_drivers; i++) {
+    for (i = 0; i < kbdint_drivers->nelts; i++) {
       char *dri;
 
       dri = ((char **) kbdint_drivers->elts)[i];
