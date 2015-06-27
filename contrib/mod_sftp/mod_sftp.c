@@ -45,6 +45,8 @@
 #include "fxp.h"
 #include "utf8.h"
 
+extern xaset_t *server_list;
+
 module sftp_module;
 
 int sftp_logfd = -1;
@@ -298,55 +300,72 @@ MODRET set_sftpacceptenv(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SFTPAuthMethods meth1 ... methN */
+/* usage: SFTPAuthMethods method-list1 ... method-listN */
 MODRET set_sftpauthmeths(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  char *meths = "";
-  unsigned int enabled = 0;
+  array_header *auth_chains;
 
-  if (cmd->argc < 2 ||
-      cmd->argc > 5) {
+  if (cmd->argc < 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
   }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  auth_chains = make_array(c->pool, 0, sizeof(struct sftp_auth_chain *));
+
   for (i = 1; i < cmd->argc; i++) {
-    if (strncasecmp(cmd->argv[i], "publickey", 10) == 0) {
-      enabled |= SFTP_AUTH_FL_METH_PUBLICKEY;
+    array_header *method_names;
+    register unsigned int j;
+    struct sftp_auth_chain *auth_chain;
 
-    } else if (strncasecmp(cmd->argv[i], "hostbased", 10) == 0) {
-      enabled |= SFTP_AUTH_FL_METH_HOSTBASED;
+    method_names = sftp_auth_chain_parse_method_chain(cmd->tmp_pool,
+      cmd->argv[i]);
+    if (method_names == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "invalid authentication parameter: ", cmd->argv[i], NULL));
+    }
 
-    } else if (strncasecmp(cmd->argv[i], "password", 9) == 0) {
-      enabled |= SFTP_AUTH_FL_METH_PASSWORD;
+    auth_chain = sftp_auth_chain_alloc(c->pool);
+    for (j = 0; j < method_names->nelts; j++) {
+      int res;
+      char *name;
+      unsigned int method_id = 0;
+      const char *method_name = NULL, *submethod_name = NULL;
 
-    } else if (strncasecmp(cmd->argv[i], "keyboard-interactive", 21) == 0) {
-      if (sftp_kbdint_have_drivers() == 0) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-          "unable to support '", cmd->argv[i],
-            "' authentication: No drivers loaded", NULL));
+      name = ((char **) method_names->elts)[j];
+
+      res = sftp_auth_chain_parse_method(c->pool, name, &method_id,
+        &method_name, &submethod_name);
+      if (res < 0) {
+        /* Make for a slightly better/more informative error message. */
+        if (method_id == SFTP_AUTH_FL_METH_KBDINT) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "unsupported authentication method '", name,
+            "': No drivers loaded", NULL));
+
+        } else {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "unsupported authentication method '", name, "': ",
+            strerror(errno), NULL));
+        }
       }
 
-      enabled |= SFTP_AUTH_FL_METH_KBDINT;
-
-    } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unsupported authentication method: ", cmd->argv[i], NULL));
+      sftp_auth_chain_add_method(auth_chain, method_id, method_name,
+        submethod_name);
     }
+
+    if (sftp_auth_chain_isvalid(auth_chain) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupportable chain of authentication methods '", cmd->argv[i], "': ",
+        strerror(errno), NULL));
+    }
+
+    *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
-
-  for (i = 1; i < cmd->argc; i++) {
-    meths = pstrcat(c->pool, meths, *meths ? "," : "", cmd->argv[i], NULL);
-  }
-  c->argv[0] = meths;
-
-  c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[1]) = enabled;
-
+  c->argv[0] = auth_chains;
   return PR_HANDLED(cmd);
 }
 
@@ -1541,6 +1560,7 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
 
 static void sftp_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
+  server_rec *s;
 
   /* Initialize OpenSSL. */
   ERR_load_crypto_strings();
@@ -1560,6 +1580,68 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   if (sftp_interop_init() < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
       ": error preparing interoperability checks: %s", strerror(errno));
+  }
+
+  /* Check for incompatible SFTPAuthMethods configurations.  For example,
+   * configuring:
+   *
+   *  SFTPAuthMethods hostbased+password
+   *
+   * without also configuring SFTPAuthorizedHostKeys means that authentication
+   * will never succeed.
+   */
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    int supports_hostbased = FALSE, supports_publickey = FALSE;
+
+    c = find_config(s->conf, CONF_PARAM, "SFTPAuthorizedHostKeys", FALSE);
+    if (c != NULL) {
+      supports_hostbased = TRUE;
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "SFTPAuthorizedUserKeys", FALSE);
+    if (c != NULL) {
+      supports_publickey = TRUE;
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "SFTPAuthMethods", FALSE);
+    if (c != NULL) {
+      register unsigned int i;
+      array_header *auth_chains;
+
+      auth_chains = c->argv[0];
+
+      for (i = 0; i < auth_chains->nelts; i++) {
+        register unsigned int j;
+        struct sftp_auth_chain *auth_chain;
+
+        auth_chain = ((struct sftp_auth_chain **) auth_chains->elts)[i];
+        for (j = 0; j < auth_chain->methods->nelts; j++) {
+          struct sftp_auth_method *meth;
+
+          meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
+
+          if (meth->method_id == SFTP_AUTH_FL_METH_HOSTBASED &&
+              supports_hostbased == FALSE) {
+            pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+              ": Server %s: cannot support authentication method '%s' "
+              "without SFTPAuthorizedHostKeys configuraion", s->ServerName,
+              meth->method_name);
+            pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
+              NULL);
+          }
+
+          if (meth->method_id == SFTP_AUTH_FL_METH_PUBLICKEY &&
+              supports_publickey == FALSE) {
+            pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+              ": Server %s: cannot support authentication method '%s' "
+              "without SFTPAuthorizedUserKeys configuraion", s->ServerName,
+              meth->method_name);
+            pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
+              NULL);
+          }
+        }
+      }
+    }
   }
 }
 

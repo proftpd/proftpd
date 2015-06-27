@@ -162,3 +162,7 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   return 1;
 }
+
+int sftp_auth_password_init(pool *p) {
+  return 0;
+}

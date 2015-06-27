@@ -49,9 +49,15 @@ static unsigned int auth_attempts = 0;
 
 static pool *auth_pool = NULL;
 static char *auth_default_dir = NULL;
+
 static const char *auth_avail_meths = NULL;
-static const char *auth_remaining_meths = NULL;
-static unsigned int auth_meths_enabled = 0;
+
+/* This is a bitset of flags, used to check on the authentication method
+ * used by the client, to see if the requested method is even enabled.
+ */
+static unsigned int auth_meths_enabled_flags = 0;
+
+static array_header *auth_chains = NULL;
 
 static int auth_sent_userauth_banner_file = FALSE;
 static int auth_sent_userauth_success = FALSE;
@@ -183,26 +189,34 @@ static char *get_default_root(pool *p) {
 
 static void set_userauth_methods(void) {
   config_rec *c;
+  register unsigned int i;
 
-  if (auth_meths_enabled > 0) {
-    /* No need to do the lookup if we've already done it. */
+  if (auth_chains != NULL) {
     return;
   }
 
-  auth_avail_meths = auth_remaining_meths = NULL;
-  auth_meths_enabled = 0;
+  auth_avail_meths = NULL;
+  auth_meths_enabled_flags = 0;
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthMethods", FALSE);
-  if (c) {
-    auth_avail_meths = auth_remaining_meths = c->argv[0];
-    auth_meths_enabled = *((unsigned int *) c->argv[1]);
+  if (c != NULL) {
+    /* Sanity checking of the configured methods is done in the postparse
+     * event listener; we can use this as-is without fear.
+     */
+    auth_chains = c->argv[0];
 
   } else {
+    struct sftp_auth_chain *auth_chain;
+
+    auth_chains = make_array(auth_pool, 0, sizeof(struct sftp_auth_chain *));
+
     c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedUserKeys",
       FALSE);
-    if (c) {
-      auth_avail_meths = "publickey";
-      auth_meths_enabled |= SFTP_AUTH_FL_METH_PUBLICKEY;
+    if (c != NULL) {
+      auth_chain = sftp_auth_chain_alloc(auth_pool);
+      sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_PUBLICKEY,
+        "publickey", NULL);
+      *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
 
     } else {
       pr_trace_msg(trace_channel, 9, "no SFTPAuthorizedUserKeys configured, "
@@ -211,16 +225,11 @@ static void set_userauth_methods(void) {
 
     c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedHostKeys",
       FALSE);
-    if (c) {
-      if (auth_avail_meths) {
-        auth_avail_meths = pstrcat(auth_pool, auth_avail_meths, ",hostbased",
-          NULL);
-
-      } else {
-        auth_avail_meths = "hostbased";
-      }
-
-      auth_meths_enabled |= SFTP_AUTH_FL_METH_HOSTBASED;
+    if (c != NULL) {
+      auth_chain = sftp_auth_chain_alloc(auth_pool);
+      sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_HOSTBASED,
+        "hostbased", NULL);
+      *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
 
     } else {
       pr_trace_msg(trace_channel, 9, "no SFTPAuthorizedHostKeys configured, "
@@ -228,15 +237,10 @@ static void set_userauth_methods(void) {
     }
 
     if (sftp_kbdint_have_drivers() > 0) {
-      if (auth_avail_meths) {
-        auth_avail_meths = pstrcat(auth_pool, auth_avail_meths,
-          ",keyboard-interactive", NULL);
-
-      } else {
-        auth_avail_meths = "keyboard-interactive";
-      }
-
-      auth_meths_enabled |= SFTP_AUTH_FL_METH_KBDINT;
+      auth_chain = sftp_auth_chain_alloc(auth_pool);
+      sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_KBDINT,
+        "keyboard-interactive", NULL);
+      *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
 
     } else {
       pr_trace_msg(trace_channel, 9, "no kbdint drivers present, not "
@@ -244,21 +248,55 @@ static void set_userauth_methods(void) {
     }
 
     /* The 'password' method is always available. */
-    if (auth_avail_meths) {
-      auth_avail_meths = pstrcat(auth_pool, auth_avail_meths, ",password",
-        NULL);
+    auth_chain = sftp_auth_chain_alloc(auth_pool);
+    sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_PASSWORD,
+      "password", NULL);
+    *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
+  }
 
-    } else {
-      auth_avail_meths = "password";
+  for (i = 0 ; i < auth_chains->nelts; i++) {
+    struct sftp_auth_chain *auth_chain;
+    struct sftp_auth_method *meth;
+
+    auth_chain = ((struct sftp_auth_chain **) auth_chains->elts)[i];
+    meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[0];
+
+    if (!(auth_meths_enabled_flags & meth->method_id)) {
+      auth_meths_enabled_flags |= meth->method_id;
+
+      if (auth_avail_meths != NULL) {
+        auth_avail_meths = pstrcat(auth_pool, auth_avail_meths, ",",
+          meth->method_name, NULL);
+      } else {
+        auth_avail_meths = meth->method_name;
+      }
     }
-
-    auth_meths_enabled |= SFTP_AUTH_FL_METH_PASSWORD;
-
-    auth_remaining_meths = pstrdup(auth_pool, auth_avail_meths);
   }
 
   pr_trace_msg(trace_channel, 9, "offering authentication methods: %s",
     auth_avail_meths);
+
+  /* Prepare the method-specific APIs, too. */
+  if (sftp_auth_hostbased_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'hostbased' authentication: %s", strerror(errno));
+  }
+
+  if (sftp_auth_kbdint_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'keyboard-interactive' authentication: %s",
+      strerror(errno));
+  }
+
+  if (sftp_auth_password_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'password' authentication: %s", strerror(errno));
+  }
+
+  if (sftp_auth_publickey_init(auth_pool) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for 'publickey' authentication: %s", strerror(errno));
+  }
 }
 
 static int setup_env(pool *p, char *user) {
@@ -730,47 +768,63 @@ static int send_userauth_failure(char *failed_meth) {
   pkt = sftp_ssh2_packet_create(auth_pool);
 
   if (failed_meth) {
-    meths = pstrdup(pkt->pool, auth_remaining_meths);
-    meths = sreplace(pkt->pool, meths, failed_meth, "", NULL);
+    register unsigned int i;
 
-    if (*meths == ',') {
-      meths++;
+    auth_avail_meths = NULL;
+    auth_meths_enabled_flags = 0;
+
+    for (i = 0 ; i < auth_chains->nelts; i++) {
+      register unsigned int j;
+      struct sftp_auth_chain *auth_chain;
+      struct sftp_auth_method *meth = NULL;
+
+      pr_signals_handle();
+      auth_chain = ((struct sftp_auth_chain **) auth_chains->elts)[i];
+
+      for (j = 0; j < auth_chain->methods->nelts; j++) {
+        struct sftp_auth_method *m;
+
+        m = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
+        if (m->succeeded != TRUE &&
+            m->failed != TRUE) {
+          meth = m;
+          break;
+        }
+      }
+
+      if (meth == NULL) {
+        /* All of the methods in this list have failed; check the next
+         * list.
+         */
+        continue;
+      }
+
+      if (strcmp(meth->method_name, failed_meth) != 0) {
+        if (!(auth_meths_enabled_flags & meth->method_id)) {
+          auth_meths_enabled_flags |= meth->method_id;
+
+          if (auth_avail_meths != NULL) {
+            auth_avail_meths = pstrcat(auth_pool, auth_avail_meths, ",",
+              meth->method_name, NULL);
+          } else {
+            auth_avail_meths = meth->method_name;
+          }
+        }
+      } else {
+        meth->failed = TRUE;
+      }
     }
 
-    if (meths[strlen(meths)-1] == ',') {
-      meths[strlen(meths)-1] = '\0';
-    }
-
-    if (strstr(meths, ",,") != NULL) {
-      meths = sreplace(pkt->pool, meths, ",,", ",", NULL);
-    }
-
-    if (strncmp(failed_meth, "publickey", 10) == 0) {
-      auth_meths_enabled &= ~SFTP_AUTH_FL_METH_PUBLICKEY;
-
-    } else if (strncmp(failed_meth, "hostbased", 10) == 0) {
-      auth_meths_enabled &= ~SFTP_AUTH_FL_METH_HOSTBASED;
-
-    } else if (strncmp(failed_meth, "password", 9) == 0) {
-      auth_meths_enabled &= ~SFTP_AUTH_FL_METH_PASSWORD;
-
-    } else if (strncmp(failed_meth, "keyboard-interactive", 21) == 0) {
-      auth_meths_enabled &= ~SFTP_AUTH_FL_METH_KBDINT;
-    }
-
-    if (strlen(meths) == 0) {
+    if (auth_avail_meths == NULL) {
       /* If there are no more auth methods available, we have to disconnect. */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no more auth methods available, disconnecting");
       SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_NO_MORE_AUTH_METHODS_AVAILABLE,
         NULL);
     }
-
-    auth_remaining_meths = pstrdup(auth_pool, meths);
-
-  } else {
-    meths = pstrdup(pkt->pool, auth_avail_meths);
   }
+
+  meths = pstrdup(pkt->pool, auth_avail_meths);
 
   buflen = bufsz;
   ptr = buf = palloc(pkt->pool, bufsz);
@@ -834,7 +888,99 @@ static int send_userauth_success(void) {
   return 0;
 }
 
-static int send_userauth_methods(void) {
+static int set_userauth_success(const char *succeeded_meth) {
+  register unsigned int i;
+  int completed = FALSE;
+
+  auth_avail_meths = NULL;
+  auth_meths_enabled_flags = 0;
+
+  for (i = 0 ; i < auth_chains->nelts; i++) {
+    register unsigned int j;
+    struct sftp_auth_chain *auth_chain;
+
+    pr_signals_handle();
+    auth_chain = ((struct sftp_auth_chain **) auth_chains->elts)[i];
+
+    for (j = 0; j < auth_chain->methods->nelts; j++) {
+      struct sftp_auth_method *meth = NULL;
+
+      meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
+      if (meth->succeeded != TRUE &&
+          meth->failed != TRUE) {
+
+        if (strcmp(meth->method_name, succeeded_meth) == 0) {
+          /* TODO: What about submethods, for kbdint drivers? */
+          meth->succeeded = TRUE;
+        }
+
+        /* Add the next method in the list (if any) to the available methods. */
+        j++;
+        if (j < auth_chain->methods->nelts) {
+          meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
+
+          if (!(auth_meths_enabled_flags & meth->method_id)) {
+            auth_meths_enabled_flags |= meth->method_id;
+
+            if (auth_avail_meths != NULL) {
+              auth_avail_meths = pstrcat(auth_pool, auth_avail_meths, ",",
+                meth->method_name, NULL);
+            } else {
+              auth_avail_meths = meth->method_name;
+            }
+          }
+        }
+
+        break;
+      }
+    }
+  }
+
+  /* Now, having marked the list items that have succeeded, check each list
+   * to see if any has been completed.
+   */
+
+  for (i = 0 ; i < auth_chains->nelts; i++) {
+    register unsigned int j;
+    struct sftp_auth_chain *auth_chain;
+    int ok = TRUE;
+
+    pr_signals_handle();
+    auth_chain = ((struct sftp_auth_chain **) auth_chains->elts)[i];
+
+    for (j = 0; j < auth_chain->methods->nelts; j++) {
+      struct sftp_auth_method *meth = NULL;
+
+      meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[j];
+      if (meth->succeeded != TRUE) {
+        ok = FALSE;
+        break;
+      }
+    }
+
+    if (ok == TRUE) {
+      /* We have a successfully completed list! */
+      auth_chain->completed = completed = TRUE;
+      break;
+    }
+  }
+
+  if (completed == TRUE) {
+    return 1;
+  }
+
+  if (auth_avail_meths == NULL) {
+    /* If there are no more auth methods available, we have to disconnect. */
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "no more auth methods available, disconnecting");
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_NO_MORE_AUTH_METHODS_AVAILABLE,
+      NULL);
+  }
+
+  return 0;
+}
+
+static int send_userauth_methods(char partial_success) {
   struct ssh2_packet *pkt;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz = 1024;
@@ -845,17 +991,12 @@ static int send_userauth_methods(void) {
   buflen = bufsz;
   ptr = buf = palloc(pkt->pool, bufsz);
 
-  /* We send the remaining auth methods, not the avail auth methods, since
-   * the list of remaining auth methods may have changed (i.e. because of
-   * of failed auth attempts).
-   */
-
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "sending acceptable userauth methods: %s", auth_remaining_meths);
+    "sending acceptable userauth methods: %s", auth_avail_meths);
   
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_USER_AUTH_FAILURE);
-  sftp_msg_write_string(&buf, &buflen, auth_remaining_meths);
-  sftp_msg_write_bool(&buf, &buflen, FALSE);
+  sftp_msg_write_string(&buf, &buflen, auth_avail_meths);
+  sftp_msg_write_bool(&buf, &buflen, partial_success);
 
   pkt->payload = ptr;
   pkt->payload_len = (bufsz - buflen);
@@ -909,7 +1050,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   pass_cmd->cmd_class = CL_AUTH|CL_SSH;
   pass_cmd->arg = pstrdup(pkt->pool, "(hidden)");
 
-  /* Dispatch these as a PRE_CMDs, so that mod_delay's tactics can be used
+  /* Dispatch these as PRE_CMDs, so that mod_delay's tactics can be used
    * to ameliorate any timing-based attacks.
    */
   if (pr_cmd_dispatch_phase(user_cmd, PRE_CMD, 0) < 0) {
@@ -1053,7 +1194,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
      * the list of authentication methods supported by the server is being
      * queried.
      */
-    if (send_userauth_methods() < 0) {
+    if (send_userauth_methods(FALSE) < 0) {
       pr_response_add_err(R_530, "Login incorrect.");
       pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
@@ -1072,7 +1213,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     return 0;
 
   } else if (strncmp(method, "publickey", 10) == 0) {
-    if (auth_meths_enabled & SFTP_AUTH_FL_METH_PUBLICKEY) {
+    if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_PUBLICKEY) {
       int xerrno;
 
       res = sftp_auth_publickey(pkt, pass_cmd, orig_user, user, *service,
@@ -1091,7 +1232,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
-      if (send_userauth_methods() < 0) {
+      if (send_userauth_methods(FALSE) < 0) {
         pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
@@ -1111,7 +1252,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     }
 
   } else if (strncmp(method, "keyboard-interactive", 21) == 0) {
-    if (auth_meths_enabled & SFTP_AUTH_FL_METH_KBDINT) {
+    if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_KBDINT) {
       int xerrno = errno;
 
       res = sftp_auth_kbdint(pkt, pass_cmd, orig_user, user, *service,
@@ -1130,7 +1271,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
-      if (send_userauth_methods() < 0) {
+      if (send_userauth_methods(FALSE) < 0) {
         pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
@@ -1150,7 +1291,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     }
 
   } else if (strncmp(method, "password", 9) == 0) {
-    if (auth_meths_enabled & SFTP_AUTH_FL_METH_PASSWORD) {
+    if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_PASSWORD) {
       int xerrno;
 
       res = sftp_auth_password(pkt, pass_cmd, orig_user, user, *service,
@@ -1169,7 +1310,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
-      if (send_userauth_methods() < 0) {
+      if (send_userauth_methods(FALSE) < 0) {
         pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
@@ -1189,7 +1330,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     }
 
   } else if (strncmp(method, "hostbased", 10) == 0) {
-    if (auth_meths_enabled & SFTP_AUTH_FL_METH_HOSTBASED) {
+    if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_HOSTBASED) {
       int xerrno;
 
       res = sftp_auth_hostbased(pkt, pass_cmd, orig_user, user, *service,
@@ -1208,7 +1349,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     } else {
       pr_trace_msg(trace_channel, 10, "auth method '%s' not enabled", method);
 
-      if (send_userauth_methods() < 0) {
+      if (send_userauth_methods(FALSE) < 0) {
         pr_response_add_err(R_530, "Login incorrect.");
         pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
@@ -1272,6 +1413,18 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     return res;
   }
 
+  res = set_userauth_success(method);
+  if (res == 0) {
+    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+
+    if (send_userauth_methods(TRUE) < 0) {
+      return -1;
+    }
+
+    return res;
+  }
+
   /* Past this point we will not call incr_auth_attempts(); the client has
    * successfully authenticated at this point, and should not be penalized
    * if an internal error causes the rest of the login process to fail.
@@ -1329,7 +1482,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
    * been tweaked via mod_ifsession's user/group/class-specific sections.
    */
   c = find_config(main_server->conf, CONF_PARAM, "Protocols", FALSE);
-  if (c) {
+  if (c != NULL) {
     register unsigned int i;
     unsigned int services = 0UL;
     array_header *protocols;
@@ -1359,6 +1512,227 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   }
 
   return 1;
+}
+
+/* Auth Lists API */
+struct sftp_auth_chain *sftp_auth_chain_alloc(pool *p) {
+  pool *sub_pool;
+  struct sftp_auth_chain *auth_chain;
+
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  sub_pool = pr_pool_create_sz(p, 256);
+  auth_chain = pcalloc(sub_pool, sizeof(struct sftp_auth_chain));
+  auth_chain->pool = sub_pool;
+  auth_chain->methods = make_array(sub_pool, 1,
+    sizeof(struct sftp_auth_method *));
+  auth_chain->completed = FALSE;
+
+  return auth_chain;
+}
+
+/* Check if 'password' or 'hostbased' methods appear multiple times in
+ * this chain; if so, it's an invalid chain.  Multiple 'publickey' or
+ * 'keyboard-interactive' methods are allowed, though.
+ */
+int sftp_auth_chain_isvalid(struct sftp_auth_chain *auth_chain) {
+  register unsigned int i;
+  int has_password = FALSE, has_hostbased = FALSE;
+
+  for (i = 0; i < auth_chain->methods->nelts; i++) {
+    struct sftp_auth_method *meth;
+
+    meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[i];
+
+    switch (meth->method_id) {
+      case SFTP_AUTH_FL_METH_PASSWORD:
+        if (has_password == TRUE) {
+          errno = EPERM;
+          return -1;
+        }
+
+        has_password = TRUE;
+        break;
+
+      case SFTP_AUTH_FL_METH_HOSTBASED:
+        if (has_hostbased == TRUE) {
+          errno = EPERM;
+          return -1;
+        }
+
+        has_hostbased = TRUE;
+        break;
+
+      case SFTP_AUTH_FL_METH_PUBLICKEY:
+      case SFTP_AUTH_FL_METH_KBDINT:
+      default:
+        break;
+    }
+  }
+
+  return 0;
+}
+
+int sftp_auth_chain_add_method(struct sftp_auth_chain *auth_chain,
+    unsigned int method_id, const char *method_name,
+    const char *submethod_name) {
+  struct sftp_auth_method *meth;
+
+  if (auth_chain == NULL ||
+      method_name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* We currently only allow submethod names for kbdint methods. */
+  if (submethod_name != NULL &&
+      method_id != SFTP_AUTH_FL_METH_KBDINT) {
+    errno = EPERM;
+    return -1;
+  }
+
+  meth = pcalloc(auth_chain->pool, sizeof(struct sftp_auth_method));
+  meth->method_id = method_id;
+  meth->method_name = pstrdup(auth_chain->pool, method_name);
+  if (submethod_name != NULL) {
+    meth->submethod_name = pstrdup(auth_chain->pool, submethod_name);
+  }
+  meth->succeeded = FALSE;
+  meth->failed = FALSE;
+
+  *((struct sftp_auth_method **) push_array(auth_chain->methods)) = meth;
+  return 0;
+}
+
+int sftp_auth_chain_parse_method(pool *p, const char *name,
+    unsigned int *method_id, const char **method_name,
+    const char **submethod_name) {
+  char *ptr;
+  size_t method_namelen;
+
+  if (name == NULL ||
+      method_id == NULL ||
+      method_name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Look for the syntax indicating a submethod name. */
+  ptr = strchr(name, ':');
+  if (ptr == NULL) {
+    method_namelen = strlen(name);
+  } else {
+    method_namelen = ptr - name - 1;
+  }
+
+  if (strncmp(name, "publickey", method_namelen) == 0) {
+    *method_id = SFTP_AUTH_FL_METH_PUBLICKEY;
+    *method_name = name;
+
+  } else if (strncmp(name, "hostbased", method_namelen) == 0) {
+    *method_id = SFTP_AUTH_FL_METH_HOSTBASED;
+    *method_name = name;
+
+  } else if (strncmp(name, "password", method_namelen) == 0) {
+    *method_id = SFTP_AUTH_FL_METH_PASSWORD;
+    *method_name = name;
+
+  } else if (strncmp(name, "keyboard-interactive", method_namelen) == 0) {
+    *method_id = SFTP_AUTH_FL_METH_KBDINT;
+
+    if (sftp_kbdint_have_drivers() == 0) {
+      errno = EPERM;
+      return -1;
+    }
+
+    /* If we have a submethod name, check whether it matches one of our
+     * loaded kbdint drivers.
+     */
+    if (ptr != NULL) {
+      if (sftp_kbdint_get_driver(ptr) == NULL) {
+        errno = EPERM;
+        return -1;  
+      }
+
+      *method_name = pstrndup(p, name, method_namelen);
+      if (submethod_name != NULL) {
+        *submethod_name = ptr;
+      }
+
+    } else {
+      *method_name = name;
+    }
+
+  } else {
+    /* Unknown/unsupported method name. */
+    errno = EINVAL;
+    return -1;
+  }
+ 
+  return 0;
+}
+
+array_header *sftp_auth_chain_parse_method_chain(pool *p,
+    const char *method_list) {
+  char *ptr;
+  size_t method_listlen;
+  array_header *method_names;
+
+  if (p == NULL ||
+      method_list == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  ptr = strchr(method_list, '+');
+  if (ptr == NULL) {
+    method_names = make_array(p, 0, sizeof(char *));
+    *((char **) push_array(method_names)) = pstrdup(p, method_list);
+    return method_names;
+  }
+
+  if (ptr == method_list) {
+    /* Leading '+'. */
+    errno = EPERM;
+    return NULL;
+  }
+
+  method_listlen = strlen(method_list);
+  if (method_list[method_listlen-1] == '+') {
+    /* Trailing '+'. */
+    errno = EPERM;
+    return NULL;
+  }
+
+  method_names = make_array(p, 0, sizeof(char *));
+
+  while (ptr != NULL) {
+    size_t namelen;
+
+    pr_signals_handle();
+
+    namelen = (ptr - method_list);
+    if (namelen == 0) {
+      /* Double '+' characters. */
+      errno = EPERM;
+      return NULL;
+    }
+
+    *((char **) push_array(method_names)) = pstrndup(p, method_list, namelen);
+
+    method_list = ptr + 1;
+    ptr = strchr(method_list, '+');
+
+    /* Don't forget the last name in the list. */
+    if (ptr == NULL) {
+      *((char **) push_array(method_names)) = pstrdup(p, method_list);
+    }
+  }
+
+  return method_names;
 }
 
 char *sftp_auth_get_default_dir(void) {

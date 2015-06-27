@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,6 +32,14 @@
 #include "keystore.h"
 #include "interop.h"
 #include "blacklist.h"
+
+/* This array tracks the fingerprints of publickeys that have been
+ * successfully verified.  In any given session, the same publickey CANNOT
+ * be used twice for authentication; this supports authentication chains
+ * like "publickey+publickey", requiring clients to authenticate using multiple
+ * different publickeys.
+ */
+static array_header *publickey_fps = NULL;
 
 static const char *trace_channel = "ssh2";
 
@@ -74,6 +82,7 @@ static int send_pubkey_ok(const char *algo, const unsigned char *pubkey_data,
 int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     const char *orig_user, const char *user, const char *service,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
+  register unsigned int i;
   int have_signature, res;
   enum sftp_key_type_e pubkey_type;
   unsigned char *pubkey_data;
@@ -348,5 +357,31 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     return 0;
   }
 
+  /* Check the key fingerprint against any previously used keys, to see if the
+   * same key is being reused.
+   */
+  for (i = 0; i < publickey_fps->nelts; i++) {
+    char *fpi;
+
+    fpi = ((char **) publickey_fps->elts)[i];
+    if (strcmp(fp, fpi) == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "publickey request reused previously verified publickey "
+        "(fingerprint %s), rejecting", fp);
+      *send_userauth_fail = TRUE;
+      errno = EACCES;
+      return 0;
+    }
+  }
+
+  /* Store the fingerprint for future checking. */
+  *((char **) push_array(publickey_fps)) = pstrdup(sftp_pool, fp);
+
   return 1;
+}
+
+int sftp_auth_publickey_init(pool *p) {
+  publickey_fps = make_array(p, 0, sizeof(char *));
+
+  return 0;
 }
