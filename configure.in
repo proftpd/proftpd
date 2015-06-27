@@ -2817,10 +2817,6 @@ for module in $ac_shared_modules ; do
   fi
 done
 
-# Make a copy of the module lists, for displaying later.
-disp_static=`echo "$ac_static_modules" | sed -e 's/\\.o//g'`;
-disp_shared=`echo "$ac_shared_modules" | sed -e 's/\\.la//g'`;
-
 for module in $ac_static_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.o$//'`;
 
@@ -3212,17 +3208,17 @@ echo
 echo "--------------"
 echo "Build Summary"
 echo "--------------"
-if test ! -z "$disp_static"; then
+if test ! -z "$my_static_modules"; then
   echo "Building the following static modules:"
-  for amodule in $disp_static; do
+  for amodule in $my_static_modules; do
    echo "  $amodule"
   done
 fi
 
-if test ! -z "$disp_shared"; then
+if test ! -z "$my_shared_modules"; then
   echo
   echo "Building the following shared modules:"
-  for amodule in $disp_shared; do
+  for amodule in $my_shared_modules; do
     echo "  $amodule"
   done
 fi
