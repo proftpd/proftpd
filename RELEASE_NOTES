@@ -17,6 +17,7 @@ ChangeLog files.
 
   + Changed Configuration Directives:
 
+    SFTPAuthMethods (Bug#4153)
     TLSProtocol (Bug#4189)
 
 
