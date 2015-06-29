@@ -47,11 +47,16 @@
 #define SSH2_FX_ATTR_OWNERGROUP		0x00000080
 #define SSH2_FX_ATTR_SUBSECOND_TIMES	0x00000100
 #define SSH2_FX_ATTR_BITS		0x00000200
+
+/* Note that these attributes were added in draft-ietf-secsh-filexfer-06,
+ * which is SFTP protocol version 6.
+ */
 #define SSH2_FX_ATTR_ALLOCATION_SIZE	0x00000400
 #define SSH2_FX_ATTR_TEXT_HINT		0x00000800
 #define SSH2_FX_ATTR_MIME_TYPE		0x00001000
 #define SSH2_FX_ATTR_LINK_COUNT		0x00002000
 #define SSH2_FX_ATTR_UNTRANSLATED_NAME	0x00004000
+
 #define SSH2_FX_ATTR_CTIME		0x00008000
 #define SSH2_FX_ATTR_EXTENDED		0x80000000
 
@@ -1715,6 +1720,10 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
       flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
         SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|
         SSH2_FX_ATTR_OWNERGROUP;
+
+      if (fxp_session->client_version >= 6) {
+        flags |= SSH2_FX_ATTR_LINK_COUNT;
+      } 
     }
   }
 
@@ -1786,6 +1795,13 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
       snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
         tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
         tm->tm_sec);
+      buflen = strlen(buf);
+      ptr = buf + buflen;
+    }
+
+    if (flags & SSH2_FX_ATTR_LINK_COUNT) {
+      snprintf(ptr, bufsz - buflen, "UNIX.nlink=%lu;",
+        (unsigned long) st->st_nlink);
       buflen = strlen(buf);
       ptr = buf + buflen;
     }
@@ -2315,6 +2331,10 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
     flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|SSH2_FX_ATTR_ACCESSTIME|
       SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
 
+    if (fxp_session->client_version >= 6) {
+      flags |= SSH2_FX_ATTR_LINK_COUNT;
+    }
+
     file_type = fxp_get_file_type(st->st_mode);
 
     len += sftp_msg_write_int(buf, buflen, flags);
@@ -2340,6 +2360,10 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
     len += sftp_msg_write_int(buf, buflen, perms);
     len += sftp_msg_write_long(buf, buflen, st->st_atime);
     len += sftp_msg_write_long(buf, buflen, st->st_mtime);
+
+    if (flags & SSH2_FX_ATTR_LINK_COUNT) {
+      len += sftp_msg_write_int(buf, buflen, st->st_nlink);
+    }
   }
 
   return len;
