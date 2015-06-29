@@ -3418,6 +3418,18 @@ static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
     fxp_msg_write_extpair(buf, buflen, &ext);
   }
 #endif
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_HARDLINK) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "hardlink@openssh.com";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
 }
 
 static void fxp_version_add_newline_ext(pool *p, unsigned char **buf,
@@ -4380,6 +4392,192 @@ static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
   pr_cmd_dispatch_phase(cmd, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
+    char *dst) {
+  unsigned char *buf, *path, *ptr;
+  char *args;
+  const char *reason;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_packet *resp;
+  cmd_rec *cmd = NULL, *cmd2 = NULL, *cmd3 = NULL;
+  int res, xerrno = 0;
+
+  args = pstrcat(fxp->pool, src, " ", dst, NULL);
+
+  pr_scoreboard_entry_update(session.pid,
+    PR_SCORE_CMD, "%s", "HARDLINK", NULL, NULL);
+  pr_scoreboard_entry_update(session.pid,
+    PR_SCORE_CMD_ARG, "%s", args, NULL, NULL);
+
+  pr_proctitle_set("%s - %s: HARDLINK %s %s", session.user, session.proc_prefix,
+    src, dst);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "HARDLINK", args);
+  cmd->cmd_class = CL_MISC|CL_SFTP;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  path = dir_best_path(fxp->pool, src);
+  if (path == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "hardlink request denied: unable to access path '%s'", src);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+  src = path;
+
+  path = dir_best_path(fxp->pool, dst);
+  if (path == NULL) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "hardlink request denied: unable to access path '%s'", dst);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+  dst = path;
+
+  if (!dir_check(fxp->pool, cmd, G_DIRS, src, NULL) ||
+      !dir_check(fxp->pool, cmd, G_WRITE, dst, NULL)) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "HARDLINK of '%s' to '%s' blocked by <Limit> configuration",
+      src, dst);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (strcmp(src, dst) == 0) {
+    xerrno = EEXIST;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "HARDLINK of '%s' to same path '%s', rejecting", src, dst);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
+      NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (fxp_path_pass_regex_filters(fxp->pool, "HARDLINK", src) < 0 ||
+      fxp_path_pass_regex_filters(fxp->pool, "HARDLINK", dst) < 0) {
+    xerrno = errno;
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(&buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  res = pr_fsio_link(src, dst);
+  if (res < 0) {
+    xerrno = errno;
+
+    (void) pr_trace_msg("fileperms", 1, "HARDLINK, user '%s' (UID %s, "
+      "GID %s): error hardlinking '%s' to '%s': %s", session.user,
+      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+      src, dst, strerror(xerrno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error hardlinking '%s' to '%s': %s", src, dst, strerror(xerrno));
+
+    errno = xerrno;
+
+  } else {
+    /* No errors. */
+    xerrno = errno = 0;
+  }
+
+  status_code = fxp_errno2status(xerrno, &reason);
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+    "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+    xerrno);
+
+  fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
   pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -5726,6 +5924,24 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     }
 
     res = fxp_handle_ext_fsync(fxp, fxh);
+    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+    return res;
+  }
+
+  if ((fxp_ext_flags & SFTP_FXP_EXT_HARDLINK) &&
+      strncmp(ext_request_name, "hardlink@openssh.com", 21) == 0) {
+    char *src, *dst;
+
+    src = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+    dst = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+    if (fxp_session->client_version >= fxp_utf8_protocol_version) {
+      src = sftp_utf8_decode_str(fxp->pool, src);
+      dst = sftp_utf8_decode_str(fxp->pool, dst);
+    }
+
+    res = fxp_handle_ext_hardlink(fxp, src, dst);
     pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
     return res;

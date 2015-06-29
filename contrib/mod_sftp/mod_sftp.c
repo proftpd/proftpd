@@ -1080,6 +1080,17 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         "on this system; requires statvfs(3) support", cmd->argv[0]);
 #endif /* !HAVE_SYS_STATVFS_H */
 
+    } else if (strncasecmp(ext, "hardlink", 9) == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_HARDLINK;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_HARDLINK;
+          break;
+      }
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown extension: '",
         ext, "'", NULL)); 
