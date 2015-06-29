@@ -15,6 +15,12 @@ ChangeLog files.
       Note that this applies to mod_sftp password-based logins as well.
       Mention new "BanOnEvent EmptyPassword" rule added for this as well.
 
+  + Changed Modules
+
+    mod_sftp supports the LINK_COUNT attribute in SFTP STAT requests,
+    for clients using SFTP protocol version 6.
+
+
   + Changed Configuration Directives:
 
     SFTPAuthMethods (Bug#4153)
