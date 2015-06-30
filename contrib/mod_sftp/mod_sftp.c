@@ -76,7 +76,7 @@ static int sftp_get_client_version(conn_t *conn) {
   int res;
 
   /* 255 is the RFC-defined maximum banner/ID string size */
-  char buf[256], *banner = NULL;
+  char buf[256], *banner = NULL, *ptr = NULL;
   size_t buflen = 0;
 
   /* Read client version.  This looks ugly, reading one byte at a time.
@@ -132,7 +132,6 @@ static int sftp_get_client_version(conn_t *conn) {
     }
 
     if (i == sizeof(buf)-1) {
-      buflen = sizeof(buf)-1;
       bad_proto = TRUE;
 
     } else {
@@ -151,34 +150,35 @@ static int sftp_get_client_version(conn_t *conn) {
      * if the client's version string does not begin with "SSH-2.0-"
      * (or "SSH-1.99-").  Works for me.
      */
-    if (bad_proto == FALSE &&
-        strncmp(buf, "SSH-2.0-", 8) != 0) {
-      bad_proto = TRUE;
-
-      if (sftp_opts & SFTP_OPT_OLD_PROTO_COMPAT) {
-        if (strncmp(buf, "SSH-1.99-", 9) == 0) {
-          if (buflen == 9) {
-            /* The client sent ONLY "SSH-1.99-".  OpenSSH handles this as a
-             * "Protocol mismatch", so shall we.
-             */
-            bad_proto = TRUE;
-
-          } else { 
-            banner = buf + 9;
-            bad_proto = FALSE;
-          }
-        }
-      } 
-
-    } else {
-      if (buflen == 8) {
-        /* The client sent ONLY "SSH-2.0-".  OpenSSH handles this as a
-         * "Protocol mismatch", so shall we.
-         */
+    if (bad_proto == FALSE) {
+      if (strncmp(buf, "SSH-2.0-", 8) != 0) {
         bad_proto = TRUE;
 
-      } else { 
-        banner = buf + 8;
+        if (sftp_opts & SFTP_OPT_OLD_PROTO_COMPAT) {
+          if (strncmp(buf, "SSH-1.99-", 9) == 0) {
+            if (buflen == 9) {
+              /* The client sent ONLY "SSH-1.99-".  OpenSSH handles this as a
+               * "Protocol mismatch", so shall we.
+               */
+              bad_proto = TRUE;
+
+            } else { 
+              banner = buf + 9;
+              bad_proto = FALSE;
+            }
+          }
+        } 
+
+      } else {
+        if (buflen == 8) {
+          /* The client sent ONLY "SSH-2.0-".  OpenSSH handles this as a
+           * "Protocol mismatch", so shall we.
+           */
+          bad_proto = TRUE;
+
+        } else { 
+          banner = buf + 8;
+        }
       }
     }
 
@@ -209,6 +209,16 @@ static int sftp_get_client_version(conn_t *conn) {
     }
 
     break;
+  }
+
+  /* Look for the optional comments field in the received client version; if
+   * present, trim it out, so that we do not try to match on it.
+   */
+  ptr = strchr(buf, ' ');
+  if (ptr != NULL) {
+    pr_trace_msg(trace_channel, 11, "read client version with comments: '%s'",
+      buf);
+    *ptr = '\0';
   }
 
   sftp_client_version = pstrdup(sftp_pool, buf);
