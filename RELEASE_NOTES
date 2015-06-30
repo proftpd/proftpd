@@ -18,12 +18,14 @@ ChangeLog files.
   + Changed Modules
 
     mod_sftp supports the LINK_COUNT attribute in SFTP STAT requests,
-    for clients using SFTP protocol version 6.
+    for clients using SFTP protocol version 6.  It also supports the
+    "hardlink@openssh.com" SFTP extension.
 
 
   + Changed Configuration Directives:
 
     SFTPAuthMethods (Bug#4153)
+    SFTPExtensions hardlink (hardlink@openssh.com support)
     TLSProtocol (Bug#4189)
 
 
