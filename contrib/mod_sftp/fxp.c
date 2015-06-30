@@ -245,6 +245,7 @@ static size_t fxp_packet_data_allocsz = 0;
 #define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 16)
 #define FXP_RESPONSE_DATA_DEFAULT_SZ		512
 
+#define FXP_MAX_PACKET_LEN			(1024 * 512)
 #define FXP_MAX_EXTENDED_ATTRIBUTES		100
 
 struct fxp_extpair {
@@ -11996,12 +11997,22 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         (unsigned long) channel_id);
     }
 
+    if (fxp->packet_len > FXP_MAX_PACKET_LEN) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "received excessive SFTP packet (len %lu > max %lu bytes), rejecting",
+        (unsigned long) fxp->packet_len, (unsigned long) FXP_MAX_PACKET_LEN);
+      destroy_pool(fxp->pool);
+      errno = EPERM;
+      return -1;
+    }
+
     fxp_session = fxp_get_session(channel_id);
     if (fxp_session == NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no existing SFTP session for channel ID %lu, rejecting request",
         (unsigned long) channel_id);
       destroy_pool(fxp->pool);
+      errno = EPERM;
       return -1;
     }
 
