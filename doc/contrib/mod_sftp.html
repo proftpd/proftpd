@@ -83,7 +83,7 @@ subsystem, for secure file transfer over an SSH2 connection.  The
   <li>Blacklisted public keys
   <li>Configurable traffic analysis protection
   <li>Passphrase-protected host keys
-  <li>SFTP extensions: check-file, copy-file, vendor-id, version-select, posix-rename@openssh.com, statvfs@openssh.com, fstatvfs@openssh.com
+  <li>SFTP extensions: check-file, copy-file, vendor-id, version-select, posix-rename@openssh.com, statvfs@openssh.com, fstatvfs@openssh.com, hardlink@openssh.com
 </ul>
 This module supports the SFTP and SCP file transfer protocols; it does
 <b>not</b> support shell access.
@@ -696,6 +696,7 @@ The extension names used for the <code>SFTPExtensions</code> directive are:
   <li>posixRename
   <li>spaceAvailable
   <li>statvfs
+  <li>hardlink
 </ul>
 All extensions <i>except</i> <code>vendorID</code> are enabled by default.
 
