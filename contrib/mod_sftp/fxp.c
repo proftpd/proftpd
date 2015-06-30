@@ -245,6 +245,8 @@ static size_t fxp_packet_data_allocsz = 0;
 #define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 16)
 #define FXP_RESPONSE_DATA_DEFAULT_SZ		512
 
+#define FXP_MAX_EXTENDED_ATTRIBUTES		100
+
 struct fxp_extpair {
   char *ext_name;
   uint32_t ext_datalen;
@@ -2228,6 +2230,14 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
         "protocol version %lu: read EXTENDED attribute: %lu extensions",
         (unsigned long) fxp_session->client_version,
         (unsigned long) extpair_count);
+
+      if (extpair_count > FXP_MAX_EXTENDED_ATTRIBUTES) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "received too many EXTENDED attributes (%lu > max %lu), "
+          "truncating to max", (unsigned long) extpair_count,
+          FXP_MAX_EXTENDED_ATTRIBUTES);
+        extpair_count = FXP_MAX_EXTENDED_ATTRIBUTES;
+      }
 
       for (i = 0; i < extpair_count; i++) {
         struct fxp_extpair *ext;
