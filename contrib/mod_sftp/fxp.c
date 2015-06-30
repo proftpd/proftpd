@@ -4387,7 +4387,7 @@ static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
     "('%s' [%d])", (unsigned long) status_code, reason,
-    xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+    xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
 
@@ -4901,7 +4901,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
     "('%s' [%d])", (unsigned long) status_code, reason,
-    xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+    xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
   /* Clear out any transfer-specific data. */
   if (session.xfer.p) {
@@ -6404,15 +6404,16 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   if (pr_fsio_fstat(fxh->fh, &st) < 0) {
     uint32_t status_code;
     const char *reason;
+    int xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error checking '%s' for FSTAT: %s", fxh->fh->fh_path, strerror(errno));
+      "error checking '%s' for FSTAT: %s", fxh->fh->fh_path, strerror(xerrno));
 
-    status_code = fxp_errno2status(errno, &reason);
+    status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
       "('%s' [%d])", (unsigned long) status_code, reason,
-      errno != EOF ? strerror(errno) : "End of file", errno);
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
     fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason,
       NULL);
@@ -10403,7 +10404,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
     "('%s' [%d])", (unsigned long) status_code, reason,
-    xerrno != EOF ? strerror(errno) : "End of file", xerrno);
+    xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
   /* Clear out any transfer-specific data. */
   if (session.xfer.p) {
