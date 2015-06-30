@@ -22,7 +22,22 @@ $| = 1;
 my $order = 0;
 
 my $TESTS = {
-  ssh2_connect_bad_version => {
+  ssh2_connect_bad_version_bad_format => {
+    order => ++$order,
+    test_class => [qw(bug forking ssh2)],
+  },
+
+  ssh2_connect_bad_version_unsupported_proto_version => {
+    order => ++$order,
+    test_class => [qw(bug forking ssh2)],
+  },
+
+  ssh2_connect_bad_version_too_long => {
+    order => ++$order,
+    test_class => [qw(bug forking ssh2)],
+  },
+
+  ssh2_connect_bad_version_too_short => {
     order => ++$order,
     test_class => [qw(bug forking ssh2)],
   },
@@ -1541,7 +1556,7 @@ sub concat_files {
   return 1;
 }
 
-sub ssh2_connect_bad_version {
+sub ssh2_connect_bad_version_bad_format {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'sftp');
@@ -1554,7 +1569,7 @@ sub ssh2_connect_bad_version {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    Trace => 'ssh2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -1569,6 +1584,7 @@ sub ssh2_connect_bad_version {
         "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        'SFTPOptions PessimisticKexinit',
       ],
     },
   };
@@ -1607,7 +1623,339 @@ sub ssh2_connect_bad_version {
         die("Can't connect to 127.0.0.1:$port: $!");
       }
 
-      print $sock "AAAA" x 1024;
+      $sock->autoflush(1);
+      print $sock "AAAA\r\n";
+
+      my $resp = '';
+      my $len = read($sock, $resp, 64);
+      $self->assert($len > 0, test_msg("Expected response, got none"));
+
+      chomp($resp); 
+
+      my $expected = 'Protocol mismatch.';
+      $self->assert(qr/$expected/, $resp,
+        test_msg("Expected '$expected', got '$resp'"));
+
+      close($sock); 
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ssh2_connect_bad_version_unsupported_proto_version {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        'SFTPOptions PessimisticKexinit',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      my $proto = getprotobyname('tcp');
+
+      my $sock;
+      unless (socket($sock, PF_INET, SOCK_STREAM, $proto)) {
+        die("Can't create socket: $!");
+      }
+
+      my $in_addr = inet_aton('127.0.0.1');
+      my $addr = sockaddr_in($port, $in_addr);
+
+      unless (connect($sock, $addr)) {
+        die("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      $sock->autoflush(1);
+      print $sock "SSH-6.6-FOO\r\n";
+
+      my $resp = '';
+      my $len = read($sock, $resp, 64);
+      $self->assert($len > 0, test_msg("Expected response, got none"));
+
+      chomp($resp); 
+
+      my $expected = 'Protocol mismatch.';
+      $self->assert(qr/$expected/, $resp,
+        test_msg("Expected '$expected', got '$resp'"));
+
+      close($sock); 
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ssh2_connect_bad_version_too_long {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        'SFTPOptions PessimisticKexinit',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      my $proto = getprotobyname('tcp');
+
+      my $sock;
+      unless (socket($sock, PF_INET, SOCK_STREAM, $proto)) {
+        die("Can't create socket: $!");
+      }
+
+      my $in_addr = inet_aton('127.0.0.1');
+      my $addr = sockaddr_in($port, $in_addr);
+
+      unless (connect($sock, $addr)) {
+        die("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      $sock->autoflush(1);
+      print $sock "SSH-2.0-" . 'AAAA' x 1024 . "\r\n";
+
+      my $resp = '';
+      my $len = read($sock, $resp, 64);
+      $self->assert($len > 0, test_msg("Expected response, got none"));
+
+      chomp($resp); 
+
+      my $expected = 'Protocol mismatch.';
+      $self->assert(qr/$expected/, $resp,
+        test_msg("Expected '$expected', got '$resp'"));
+
+      close($sock); 
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+
+  $self->assert_child_ok($pid);
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ssh2_connect_bad_version_too_short {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        'SFTPOptions PessimisticKexinit',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      my $proto = getprotobyname('tcp');
+
+      my $sock;
+      unless (socket($sock, PF_INET, SOCK_STREAM, $proto)) {
+        die("Can't create socket: $!");
+      }
+
+      my $in_addr = inet_aton('127.0.0.1');
+      my $addr = sockaddr_in($port, $in_addr);
+
+      unless (connect($sock, $addr)) {
+        die("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      $sock->autoflush(1);
+      print $sock "SSH-2.0-\r\n";
+
+      my $resp = '';
+      my $len = read($sock, $resp, 64);
+      $self->assert($len > 0, test_msg("Expected response, got none"));
+
+      chomp($resp); 
+
+      my $expected = 'Protocol mismatch.';
+      $self->assert(qr/$expected/, $resp,
+        test_msg("Expected '$expected', got '$resp'"));
 
       close($sock); 
     };

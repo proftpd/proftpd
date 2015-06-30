@@ -77,6 +77,7 @@ static int sftp_get_client_version(conn_t *conn) {
 
   /* 255 is the RFC-defined maximum banner/ID string size */
   char buf[256], *banner = NULL;
+  size_t buflen = 0;
 
   /* Read client version.  This looks ugly, reading one byte at a time.
    * It is necessary, though.  The banner sent by the client is not of any
@@ -97,7 +98,9 @@ static int sftp_get_client_version(conn_t *conn) {
     for (i = 0; i < sizeof(buf) - 1; i++) {
       res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1, 0);
       while (res <= 0) {
-        if (errno == EINTR) {
+        int xerrno = errno;
+
+        if (xerrno == EINTR) {
           pr_signals_handle();
 
           res = sftp_ssh2_packet_sock_read(conn->rfd, &buf[i], 1, 0);
@@ -106,9 +109,11 @@ static int sftp_get_client_version(conn_t *conn) {
 
         if (res < 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error reading from client rfd %d: %s", conn->rfd, strerror(errno));
+            "error reading from client rfd %d: %s", conn->rfd,
+            strerror(xerrno));
         }
 
+        errno = xerrno;
         return res;
       }
 
@@ -126,7 +131,14 @@ static int sftp_get_client_version(conn_t *conn) {
       }
     }
 
-    buf[sizeof(buf)-1] = '\0';
+    if (i == sizeof(buf)-1) {
+      buflen = sizeof(buf)-1;
+      bad_proto = TRUE;
+
+    } else {
+      buf[sizeof(buf)-1] = '\0';
+      buflen = strlen(buf);
+    }
 
     /* If the line does not begin with "SSH-2.0-", skip it.  RFC4253, Section
      * 4.2 does not specify what should happen if the client sends data
@@ -139,18 +151,35 @@ static int sftp_get_client_version(conn_t *conn) {
      * if the client's version string does not begin with "SSH-2.0-"
      * (or "SSH-1.99-").  Works for me.
      */
-    if (strncmp(buf, "SSH-2.0-", 8) != 0) {
+    if (bad_proto == FALSE &&
+        strncmp(buf, "SSH-2.0-", 8) != 0) {
       bad_proto = TRUE;
 
       if (sftp_opts & SFTP_OPT_OLD_PROTO_COMPAT) {
         if (strncmp(buf, "SSH-1.99-", 9) == 0) {
-          banner = buf + 9;
-          bad_proto = FALSE;
+          if (buflen == 9) {
+            /* The client sent ONLY "SSH-1.99-".  OpenSSH handles this as a
+             * "Protocol mismatch", so shall we.
+             */
+            bad_proto = TRUE;
+
+          } else { 
+            banner = buf + 9;
+            bad_proto = FALSE;
+          }
         }
       } 
 
     } else {
-      banner = buf + 8;
+      if (buflen == 8) {
+        /* The client sent ONLY "SSH-2.0-".  OpenSSH handles this as a
+         * "Protocol mismatch", so shall we.
+         */
+        bad_proto = TRUE;
+
+      } else { 
+        banner = buf + 8;
+      }
     }
 
     if (banner != NULL) {
