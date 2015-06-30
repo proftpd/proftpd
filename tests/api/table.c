@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2012 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Table API tests
- * $Id: table.c,v 1.6 2012-01-26 17:55:07 castaglia Exp $
- */
+/* Table API tests */
 
 #include "tests.h"
 
@@ -49,7 +47,7 @@ static void tear_down(void) {
 
 static unsigned int b_val_count = 0;
 
-static int table_cb(const void *key, size_t keysz, void *value,
+static int do_cb(const void *key, size_t keysz, void *value,
     size_t valuesz, void *user_data) {
 
   if (*((char *) value) == 'b') {
@@ -57,6 +55,20 @@ static int table_cb(const void *key, size_t keysz, void *value,
   }
 
   return -1;
+}
+
+static int do_with_remove_cb(const void *key, size_t keysz, void *value,
+    size_t valuesz, void *user_data) {
+  pr_table_t *tab;
+ 
+  tab = user_data;
+
+  if (*((char *) value) == 'b') {
+    b_val_count++;
+  }
+
+  pr_table_kremove(tab, key, keysz, NULL);
+  return 0;
 }
 
 static void table_dump(const char *fmt, ...) {
@@ -530,7 +542,7 @@ START_TEST (table_do_test) {
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  res = pr_table_do(tab, table_cb, NULL, 0);
+  res = pr_table_do(tab, do_cb, NULL, 0);
   fail_unless(res == 0, "Failed to handle empty table");
 
   res = pr_table_add(tab, "foo", "bar", 0);
@@ -539,13 +551,32 @@ START_TEST (table_do_test) {
   res = pr_table_add(tab, "bar", "baz", 0);
   fail_unless(res == 0, "Failed to add 'bar' to table: %s", strerror(errno));
 
-  res = pr_table_do(tab, table_cb, NULL, 0);
+  res = pr_table_do(tab, do_cb, NULL, 0);
   fail_unless(res == -1, "Expected res %d, got %d", -1, res);
   fail_unless(errno == EPERM, "Failed to set errno to EPERM");
   fail_unless(b_val_count == 1, "Expected count %u, got %u", 1, b_val_count);
 
   b_val_count = 0;
-  res = pr_table_do(tab, table_cb, NULL, PR_TABLE_DO_FL_ALL);
+  res = pr_table_do(tab, do_cb, NULL, PR_TABLE_DO_FL_ALL);
+  fail_unless(res == 0, "Failed to do table: %s", strerror(errno));
+  fail_unless(b_val_count == 2, "Expected count %u, got %u", 2, b_val_count);
+}
+END_TEST
+
+START_TEST (table_do_with_remove_test) {
+  int res;
+  pr_table_t *tab;
+
+  tab = pr_table_alloc(p, 0);
+
+  res = pr_table_add(tab, "foo", "bar", 0);
+  fail_unless(res == 0, "Failed to add 'foo' to table: %s", strerror(errno));
+
+  res = pr_table_add(tab, "bar", "baz", 0);
+  fail_unless(res == 0, "Failed to add 'bar' to table: %s", strerror(errno));
+
+  b_val_count = 0;
+  res = pr_table_do(tab, do_with_remove_cb, tab, PR_TABLE_DO_FL_ALL);
   fail_unless(res == 0, "Failed to do table: %s", strerror(errno));
   fail_unless(b_val_count == 2, "Expected count %u, got %u", 2, b_val_count);
 }
@@ -711,6 +742,7 @@ Suite *tests_get_table_suite(void) {
   tcase_add_test(testcase, table_remove_test);
   tcase_add_test(testcase, table_set_test);
   tcase_add_test(testcase, table_do_test);
+  tcase_add_test(testcase, table_do_with_remove_test);
   tcase_add_test(testcase, table_ctl_test);
   tcase_add_test(testcase, table_load_test);
   tcase_add_test(testcase, table_dump_test);

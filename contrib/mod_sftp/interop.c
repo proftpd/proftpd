@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: interop.c,v 1.16 2013-03-14 21:49:19 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -71,6 +69,8 @@ static struct sftp_version_pattern known_versions[] = {
     "^OpenSSH_2\\.5\\.3.*",	SFTP_SSH2_FEAT_REKEYING,		NULL },
 
   { "^OpenSSH.*",		0,					NULL },
+
+  { ".*J2SSH_Maverick.*",	SFTP_SSH2_FEAT_REKEYING,		NULL },
 
   { ".*MindTerm.*",		0,					NULL },
 

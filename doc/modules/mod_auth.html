@@ -1,6 +1,3 @@
-<!-- $Id: mod_auth.html,v 1.11 2013-08-19 16:28:23 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_auth</title>
@@ -20,6 +17,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 <h2>Directives</h2>
 <ul>
   <li><a href="#AllowChrootSymlinks">AllowChrootSymlinks</a>
+  <li><a href="#AllowEmptyPasswords">AllowEmptyPasswords</a>
   <li><a href="#AnonRejectPasswords">AnonRejectPasswords</a>
   <li><a href="#CreateHome">CreateHome</a>
   <li><a href="#DefaultRoot">DefaultRoot</a>
@@ -68,10 +66,28 @@ users to run their untrusted webapps (<i>e.g.</i> PHP, Perl, Ruby, Python,
 
 <p>
 <hr>
+<h2><a name="AllowEmptyPasswords">AllowEmptyPasswords</a></h2>
+<strong>Syntax:</strong> AllowEmptyPasswords <em>on|off</em><br>
+<strong>Default:</strong> AllowEmptyPasswords on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>AllowEmptyPasswords</code> directive configures whether
+<code>proftpd</code> will accept empty passwords or not.  For backward
+compatibility, the default is <em>on</em>.
+
+<p>
+<b>Note</b> that this applies to <code>mod_sftp</code> password-based logins
+as well.
+
+<p>
+<hr>
 <h2><a name="AnonRejectPasswords">AnonRejectPasswords</a></h2>
-<strong>Syntax:</strong> AnonRejectPasswords <em>pattern</em><br>
+<strong>Syntax:</strong> AnonRejectPasswords <em>pattern [flags]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> <code>&lt;AnonRejectPasswords&gt;</code><br>
+<strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_auth<br>
 <strong>Compatibility:</strong> 1.2.9rc1 and later
 
@@ -86,6 +102,39 @@ Example:
 <pre>
   # Reject all <Anonymous> logins that use "evil.org" as part of the password
   AnonRejectPasswords @evil\.org$
+</pre>
+
+<p>
+The optional <em>flags</em> parameter can be used to specify flags for the
+given regular expression; currently the supported flags are:
+<ul>
+  <li><code>[NC|nocase]</code>
+</ul>
+Thus for a case-insensitive pattern, you would use:
+<pre>
+  # Reject all <Anonymous> logins that use "evil.org" as part of the password
+  AnonRejectPasswords @evil\.org$ [NC]
+</pre>
+or:
+<pre>
+  # Reject all <Anonymous> logins that use "evil.org" as part of the password
+  AnonRejectPasswords @evil\.org$ [nocase]
+</pre>
+
+<p>
+If you want to reject any anonymous passwords which do <b>not</b> match the
+pattern, then prefix your pattern with the <code>!</code> (exclamation point)
+character:
+<pre>
+  # Reject all <Anonymous> logins that do NOT use "good.org" as part of the password
+  AnonRejectPasswords !@good\.org$ [nocase]
+</pre>
+<b>Note</b> that this also allows you to use <code>AnonRejectPasswords</code>
+to <b>require</b> that your anonymous logins use email-like passwords:
+<pre>
+  # Require anonymous passwords that look like email addresses.  See:
+  #  <a href="http://www.regular-expressions.info/email.html">http://www.regular-expressions.info/email.html</a>
+  AnonRejectPasswords !^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$ [NC]
 </pre>
 
 <p>
@@ -607,13 +656,8 @@ The <code>mod_auth</code> module is compiled by default.
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-08-19 16:28:23 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2002-2014<br>
+&copy; Copyright 2002-2015<br>
  All Rights Reserved<br>
 </i></b></font>
 

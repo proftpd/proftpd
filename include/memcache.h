@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2011 The ProFTPD Project team
+ * Copyright (c) 2010-2014 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,13 @@
  */
 
 /* Memcache support
- * $Id: memcache.h,v 1.12 2011-05-23 20:35:35 castaglia Exp $
  */
 
 #ifndef PR_MEMCACHE_H
 #define PR_MEMCACHE_H
 
 #include "conf.h"
-#include "tpl.h"
+#include "lib/tpl.h"
 
 typedef struct mcache_rec pr_memcache_t;
 

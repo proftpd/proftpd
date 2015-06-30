@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2014 The ProFTPD Project
+ * Copyright (c) 2007-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -245,8 +245,8 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_GROUP) {
-    snprintf(ptr, bufsz - buflen, "UNIX.group=%lu;",
-      (unsigned long) info->st.st_gid);
+    snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
+      pr_gid2str(NULL, info->st.st_gid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -259,8 +259,8 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_OWNER) {
-    snprintf(ptr, bufsz - buflen, "UNIX.owner=%lu;",
-      (unsigned long) info->st.st_uid);
+    snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
+      pr_uid2str(NULL, info->st.st_uid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
@@ -355,6 +355,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   char *perm = "";
   int res;
 
+  pr_fs_clear_cache2(path);
   res = pr_fsio_lstat(path, &(info->st));
   if (res < 0) {
     int xerrno = errno;
@@ -386,7 +387,6 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
        * stat in order to ensure that the unique fact values are the same.
        */
 
-      pr_fs_clear_cache();
       res = pr_fsio_stat(path, &target_st);
       if (res < 0) {
         int xerrno = errno;
@@ -743,7 +743,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
        * enable the CAP_FOWNER capability for the session, or b) use root
        * privs.
        */
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(path);
       if (pr_fsio_stat(path, &st) < 0) {
         errno = xerrno;
         return -1;
@@ -1356,9 +1356,10 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   if (dirh == NULL) {
     int xerrno = errno;
 
-    pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %lu, GID %lu): "
+    pr_trace_msg("fileperms", 1, "MLSD, user '%s' (UID %s, GID %s): "
       "error opening directory '%s': %s", session.user,
-      (unsigned long) session.uid, (unsigned long) session.gid,
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid),
       best_path, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
@@ -1380,7 +1381,6 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   }
   session.sf_flags |= SF_ASCII_OVERRIDE;
 
-  pr_fs_clear_cache();
   facts_mlinfobuf_init();
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
@@ -1578,7 +1578,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   info.pool = cmd->tmp_pool;
 
-  pr_fs_clear_cache();
+  pr_fs_clear_cache2(decoded_path);
   if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags, fake_uid,
       fake_gid, fake_mode) < 0) {
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
@@ -1718,27 +1718,6 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET facts_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    facts_opts = 0;
-    facts_mlinfo_opts = 0;
-
-    res = facts_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&facts_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 /* Configuration handlers
  */
 
@@ -1791,6 +1770,31 @@ MODRET set_factsoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void facts_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&facts_module, "core.session-reinit",
+    facts_sess_reinit_ev);
+
+  facts_opts = 0;
+  facts_mlinfo_opts = 0;
+
+  pr_feat_remove("MFF modify;UNIX.group;UNIX.mode;");
+  pr_feat_remove("MFMT");
+  pr_feat_remove("TVFS");
+
+  res = facts_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&facts_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization functions
  */
 
@@ -1804,6 +1808,9 @@ static int facts_init(void) {
 static int facts_sess_init(void) {
   config_rec *c;
   int advertise = TRUE;
+
+  pr_event_register(&facts_module, "core.session-reinit",
+    facts_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "FactsAdvertise", FALSE);
   if (c) {
@@ -1860,7 +1867,6 @@ static cmdtable facts_cmdtab[] = {
   { LOG_CMD_ERR,C_MLSD,		G_NONE,	facts_mlsd_cleanup, FALSE, FALSE },
   { CMD,	C_MLST,		G_DIRS,	facts_mlst, TRUE, FALSE, CL_DIRS },
   { CMD,	C_OPTS "_MLST", G_NONE, facts_opts_mlst, FALSE, FALSE },
-  { POST_CMD,	C_HOST,		G_NONE,	facts_post_host, FALSE, FALSE },
   { 0, NULL }
 };
 

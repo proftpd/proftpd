@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2013 TJ Saunders
+ * Copyright (c) 2001-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -576,10 +576,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checking dir test cond against "
         "path '%s'", cond_str);
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(cond_str);
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
-          S_ISDIR(st.st_mode))
+          S_ISDIR(st.st_mode)) {
         res = TRUE;
+      }
 
       if (!negated)
         return res;
@@ -593,10 +594,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checking file test cond against "
         "path '%s'", cond_str);
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(cond_str);
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
-          S_ISREG(st.st_mode))
+          S_ISREG(st.st_mode)) {
         res = TRUE;
+      }
 
       if (!negated)
         return res;
@@ -610,10 +612,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checking symlink test cond against "
         "path '%s'", cond_str);
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(cond_str);
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
-          S_ISLNK(st.st_mode))
+          S_ISLNK(st.st_mode)) {
         res = TRUE;
+      }
 
       if (!negated)
         return res;
@@ -627,11 +630,12 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checking size test cond against "
         "path '%s'", cond_str);
 
-      pr_fs_clear_cache();
+      pr_fs_clear_cache2(cond_str);
       if (pr_fsio_lstat(cond_str, &st) >= 0 &&
           S_ISREG(st.st_mode) &&
-          st.st_size > 0)
+          st.st_size > 0) {
         res = TRUE;
+      }
 
       if (!negated)
         return res;

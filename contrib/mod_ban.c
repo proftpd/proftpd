@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
  *
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,8 +24,6 @@
  *
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_ban.c,v 1.75 2014-04-30 17:33:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +33,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.6.2"
+#define MOD_BAN_VERSION			"mod_ban/0.6.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -136,6 +134,8 @@ struct ban_event_entry {
 #define BAN_EV_TYPE_TLS_HANDSHAKE		15
 #define BAN_EV_TYPE_ROOT_LOGIN			16
 #define BAN_EV_TYPE_USER_DEFINED		17
+#define BAN_EV_TYPE_BAD_PROTOCOL		18
+#define BAN_EV_TYPE_EMPTY_PASSWORD		19
 
 struct ban_event_list {
   struct ban_event_entry bel_entries[BAN_EVENT_LIST_MAXSZ + BAN_LIST_HEADROOMSZ];
@@ -147,6 +147,12 @@ struct ban_data {
   struct ban_list bans;
   struct ban_event_list events;
 };
+
+/* Tracks whether we have already seen the client connect, so that we only
+ * generate the 'client-connect-rate' event once, even in the face of multiple
+ * HOST commands.
+ */
+static int ban_client_connected = FALSE;
 
 static struct ban_data *ban_lists = NULL;
 static int ban_engine = -1;
@@ -210,9 +216,12 @@ static unsigned long ban_cache_opts = 0UL;
 #define BAN_CACHE_OPT_MATCH_SERVER	0x001
 
 static int ban_lock_shm(int);
+static int ban_sess_init(void);
 
 static void ban_anonrejectpasswords_ev(const void *, void *);
+static void ban_badprotocol_ev(const void *, void *);
 static void ban_clientconnectrate_ev(const void *, void *);
+static void ban_emptypassword_ev(const void *, void *);
 static void ban_maxclientsperclass_ev(const void *, void *);
 static void ban_maxclientsperhost_ev(const void *, void *);
 static void ban_maxclientsperuser_ev(const void *, void *);
@@ -1135,6 +1144,12 @@ static const char *ban_event_entry_typestr(unsigned int type) {
     case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
       return "AnonRejectPasswords";
 
+    case BAN_EV_TYPE_EMPTY_PASSWORD:
+      return "EmptyPassword";
+
+    case BAN_EV_TYPE_BAD_PROTOCOL:
+      return "BadProtocol";
+
     case BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS:
       return "MaxClientsPerClass";
 
@@ -1552,6 +1567,8 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
         switch (type) {
           case BAN_EV_TYPE_ANON_REJECT_PASSWORDS:
+          case BAN_EV_TYPE_EMPTY_PASSWORD:
+          case BAN_EV_TYPE_BAD_PROTOCOL:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_CLASS:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_HOST:
           case BAN_EV_TYPE_MAX_CLIENTS_PER_USER:
@@ -2340,10 +2357,20 @@ MODRET set_banonevent(cmd_rec *cmd) {
     pr_event_register(&ban_module, "mod_auth.anon-reject-passwords",
       ban_anonrejectpasswords_ev, bee);
 
+  } else if (strcasecmp(cmd->argv[1], "BadProtocol") == 0) {
+    bee->bee_type = BAN_EV_TYPE_BAD_PROTOCOL;
+    pr_event_register(&ban_module, "core.bad-protocol", ban_badprotocol_ev,
+      bee);
+
   } else if (strcasecmp(cmd->argv[1], "ClientConnectRate") == 0) {
     bee->bee_type = BAN_EV_TYPE_CLIENT_CONNECT_RATE;
     pr_event_register(&ban_module, "mod_ban.client-connect-rate",
       ban_clientconnectrate_ev, bee);
+
+  } else if (strcasecmp(cmd->argv[1], "EmptyPassword") == 0) {
+    bee->bee_type = BAN_EV_TYPE_EMPTY_PASSWORD;
+    pr_event_register(&ban_module, "mod_auth.empty-password",
+      ban_emptypassword_ev, bee);
 
   } else if (strcasecmp(cmd->argv[1], "LoginRate") == 0) {
     /* We don't register an event listener here.  Instead we rely on
@@ -2635,6 +2662,22 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
     ipstr, tmpl);
 }
 
+static void ban_badprotocol_ev(const void *event_data, void *user_data) {
+
+  /* For this event, event_data is the client. */
+  conn_t *c = (conn_t *) event_data;
+  const char *ipstr;
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ipstr = pr_netaddr_get_ipstr(c->remote_addr);
+  ban_handle_event(BAN_EV_TYPE_BAD_PROTOCOL, BAN_TYPE_HOST, ipstr, tmpl);
+}
+
 static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
 
   /* For this event, event_data is the client. */
@@ -2649,6 +2692,19 @@ static void ban_clientconnectrate_ev(const void *event_data, void *user_data) {
 
   ipstr = pr_netaddr_get_ipstr(c->remote_addr);
   ban_handle_event(BAN_EV_TYPE_CLIENT_CONNECT_RATE, BAN_TYPE_HOST, ipstr, tmpl);
+}
+
+static void ban_emptypassword_ev(const void *event_data, void *user_data) {
+  const char *ipstr;
+
+  /* user_data is a template of the ban event entry. */
+  struct ban_event_entry *tmpl = user_data;
+
+  if (ban_engine != TRUE)
+    return;
+
+  ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
+  ban_handle_event(BAN_EV_TYPE_EMPTY_PASSWORD, BAN_TYPE_HOST, ipstr, tmpl);
 }
 
 static void ban_maxclientsperclass_ev(const void *event_data, void *user_data) {
@@ -2932,6 +2988,7 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&ban_module, "core.timeout-login", NULL);
   pr_event_unregister(&ban_module, "core.timeout-no-transfer", NULL);
   pr_event_unregister(&ban_module, "mod_auth.anon-reject-passwords", NULL);
+  pr_event_unregister(&ban_module, "mod_auth.empty-password", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-clients-per-class", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-clients-per-host", NULL);
   pr_event_unregister(&ban_module, "mod_auth.max-clients-per-user", NULL);
@@ -2963,6 +3020,27 @@ static void ban_restart_ev(const void *event_data, void *user_data) {
   }
 
   return;
+}
+
+static void ban_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  ban_cache_opts = 0UL;
+
+  if (mcache != NULL) {
+    (void) pr_memcache_conn_set_namespace(mcache, &ban_module, NULL);
+    mcache = NULL;
+  }
+
+  pr_event_unregister(&ban_module, "core.session-reinit", ban_sess_reinit_ev);
+
+  res = ban_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&ban_module, PR_SESS_DISCONNECT_SESSION_INIT_FAILED,
+      NULL);
+  }
 }
 
 static void ban_rootlogin_ev(const void *event_data, void *user_data) {
@@ -3094,8 +3172,12 @@ static int ban_sess_init(void) {
   const char *remote_ip;
   char *rule_mesg = NULL;
 
-  if (ban_engine != TRUE)
+  pr_event_register(&ban_module, "core.session-reinit", ban_sess_reinit_ev,
+    NULL);
+
+  if (ban_engine != TRUE) {
     return 0;
+  }
 
   /* Check to see if the BanEngine directive is set to 'off'. */
   c = find_config(main_server->conf, CONF_PARAM, "BanEngine", FALSE);
@@ -3179,7 +3261,10 @@ static int ban_sess_init(void) {
     }
   }
 
-  pr_event_generate("mod_ban.client-connect-rate", session.c);
+  if (!ban_client_connected) {
+    pr_event_generate("mod_ban.client-connect-rate", session.c);
+    ban_client_connected = TRUE;
+  }
 
   pr_event_unregister(&ban_module, "core.restart", ban_restart_ev);
 

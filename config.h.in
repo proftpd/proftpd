@@ -52,7 +52,10 @@
 /* Define if you have Linux sendfile() semantics. */
 #undef HAVE_LINUX_SENDFILE
 
-/* Define if you have Mac OSX sendfile() semantics.  */
+/* Define if you have MacOSX POSIX ACLs. */
+#undef HAVE_MACOSX_POSIX_ACL
+
+/* Define if you have MacOSX sendfile() semantics.  */
 #undef HAVE_MACOSX_SENDFILE
 
 /* Define if you have Solaris POSIX ACLs. */
@@ -251,6 +254,12 @@
 
 /* The number of bytes in a pointer to a void.  */
 #undef SIZEOF_VOID_P
+
+/* The number of bytes in a uid_t.  */
+#undef SIZEOF_UID_T
+
+/* The number of bytes in a gid_t.  */
+#undef SIZEOF_GID_T
 
 /* Define if you have the backtrace function.  */
 #undef HAVE_BACKTRACE
@@ -512,6 +521,9 @@
 
 /* Define if you have the strtol function.  */
 #undef HAVE_STRTOL
+
+/* Define if you have the strtoll function.  */
+#undef HAVE_STRTOLL
 
 /* Define if you have the strtoull function.  */
 #undef HAVE_STRTOULL
@@ -963,6 +975,11 @@
 /* Define if OpenSSL support, if available, should be used.  */
 #undef PR_USE_OPENSSL
 
+/* Define if OpenSSL Application Layer Protocol Negotiation (ALPN) support,
+ * if available, should be used.
+ */
+#undef PR_USE_OPENSSL_ALPN
+
 /* Define if OpenSSL Elliptic Curve Cryptography (ECC) support, if available,
  * should be used.
  */
@@ -972,6 +989,11 @@
  * used.
  */
 #undef PR_USE_OPENSSL_FIPS
+
+/* Define if OpenSSL Next Protocol Negotiation (NPN) support, if available,
+ * should be used.
+ */
+#undef PR_USE_OPENSSL_NPN
 
 /* Define if using PCRE support.  */
 #undef PR_USE_PCRE

@@ -43,19 +43,19 @@
 # RHEL5 and clones don't have suitably recent versions of pcre/libmemcached
 # so use --with rhel5 to inhibit those features when using --with everything
 
-%global proftpd_version           1.3.5
+%global proftpd_version           1.3.6
 
 # When doing a stable or maint release, this line is to be commented out.
 # When doing an RC, define it to be e.g. 'rc2'.
 #
 # NOTE: rpmbuild is really bloody stupid, and CANNOT handle a leading '#'
 # character followed by a '%' character.  
-#global release_cand_version      rc4
+%global release_cand_version      rc2
 
 %global usecvsversion             0%{?_with_cvs:1}
 
-%global proftpd_cvs_version_main  1.3.5
-%global proftpd_cvs_version_date  20140515
+%global proftpd_cvs_version_main  1.3.6
+%global proftpd_cvs_version_date  20150527
 
 # Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
 # release candidates and stable/maint releases are all available in that form;

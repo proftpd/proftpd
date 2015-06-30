@@ -72,7 +72,6 @@ END_TEST
 
 START_TEST (inet_set_async_test) {
   int res;
-  conn_t *conn = NULL;
 
   res = pr_inet_set_async(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -84,7 +83,6 @@ END_TEST
 
 START_TEST (inet_set_block_test) {
   int res;
-  conn_t *conn = NULL;
 
   res = pr_inet_set_block(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -96,7 +94,6 @@ END_TEST
 
 START_TEST (inet_set_nonblock_test) {
   int res;
-  conn_t *conn = NULL;
 
   res = pr_inet_set_nonblock(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");

@@ -186,7 +186,6 @@ sub mlsd_ok_raw_active {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw();
@@ -335,7 +334,6 @@ sub mlsd_ok_raw_passive {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw();
@@ -486,7 +484,6 @@ sub mlsd_fails_file {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw($test_file);
@@ -501,11 +498,11 @@ sub mlsd_fails_file {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "'$test_file' is not a directory";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -608,7 +605,6 @@ sub mlsd_ok_dir {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw($home_dir);
@@ -738,7 +734,6 @@ sub mlsd_ok_chrooted_dir {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw('/');
@@ -868,7 +863,6 @@ sub mlsd_ok_empty_dir {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw($test_dir);
@@ -900,12 +894,12 @@ sub mlsd_ok_empty_dir {
       my $type = $res->{'.'};
       my $expected = 'cdir';
       $self->assert($expected eq $type,
-        test_msg("Expected '$expected', got '$type'"));
+        test_msg("Expected type '$expected', got '$type'"));
 
       $type = $res->{'..'};
       $expected = 'pdir';
       $self->assert($expected eq $type,
-        test_msg("Expected '$expected', got '$type'"));
+        test_msg("Expected type '$expected', got '$type'"));
     };
 
     if ($@) {
@@ -1008,7 +1002,6 @@ sub mlsd_ok_no_path {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw();
@@ -1138,7 +1131,6 @@ sub mlsd_ok_glob {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd('?foo*');
@@ -1154,11 +1146,11 @@ sub mlsd_ok_glob {
 
       $expected = 226;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Transfer complete";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -1234,25 +1226,23 @@ sub mlsd_fails_login_required {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mlsd() };
+      eval { $client->mlsd() };
       unless ($@) {
         die("MLSD succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
       $expected = 530;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -1355,32 +1345,29 @@ sub mlsd_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
-
-      my ($resp_code, $resp_msg);
       $client->port();
 
       my $test_file = 'foo/bar/baz';
 
-      eval { ($resp_code, $resp_msg) = $client->mlsd($test_file) };
+      eval { $client->mlsd($test_file) };
       unless ($@) {
-        die("MLSD succeeded unexpectedly ($resp_code $resp_msg)");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
+        die("MLSD succeeded unexpectedly: " . $client->response_code() . " " .
+          $client->response_msg());
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -1494,31 +1481,29 @@ sub mlsd_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->port();
 
       chmod(0660, $sub_dir);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mlsd($test_file) };
+      eval { $client->mlsd($test_file) };
       unless ($@) {
-        die("MLSD succeeded unexpectedly ($resp_code $resp_msg)");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
+        die("MLSD succeeded unexpectedly: " . $client->response_code() . " " .
+          $client->response_msg());
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $expected;
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: Permission denied";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {
@@ -1635,7 +1620,6 @@ sub mlsd_ok_hidden_file {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw($home_dir);
@@ -1769,7 +1753,6 @@ sub mlsd_ok_path_with_spaces {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw('test foo');
@@ -1899,7 +1882,6 @@ sub mlsd_nonascii_chars_bug3032 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw("test\b");
@@ -1973,6 +1955,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2021,7 +2004,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2057,7 +2040,6 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw('foo');
@@ -2068,6 +2050,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -2082,7 +2065,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
         die("MLSD returned wrong number of entries (expected 4, got $count)");
       }
 
-      # test.lnk is a symlink to test.txt.  According to RFC3659, the unique
+      # test.lnk is a symlink to test.txt.  According to RFC 3659, the unique
       # fact for both of these should thus be the same, since they are the
       # same underlying object.
 
@@ -2139,6 +2122,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -2187,7 +2171,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $config = {
     PidFile => $pid_file,
@@ -2223,7 +2207,6 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->mlsd_raw('foo');

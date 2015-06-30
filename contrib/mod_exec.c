@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
  *
- * Copyright (c) 2002-2014 TJ Saunders
+ * Copyright (c) 2002-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -89,6 +89,7 @@ static int exec_log(const char *, ...)
 #else
       ;
 #endif
+static int exec_sess_init(void);
 
 /* Support routines
  */
@@ -468,21 +469,21 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
     /* Child process */
     char **env = NULL, *path = NULL, *ptr = NULL;
     register unsigned int i = 0;
+
+    /* Note: there is no need to clean up this temporary pool, as we've
+     * forked.  If the exec call succeeds, this child process will exit
+     * normally, and its process space recovered by the OS.  If the exec
+     * call fails, we still exit, and the process space is recovered by
+     * the OS.  Either way, the memory will be cleaned up without need for
+     * us to do it explicitly (unless one wanted to be pedantic about it,
+     * of course).
+     */
+    pool *tmp_pool = cmd ? cmd->tmp_pool : make_sub_pool(session.pool);
  
     /* Don't forget to update the PID. */
     session.pid = getpid();
 
     if (!(exec_opts & EXEC_OPT_USE_STDIN)) {
-
-      /* Note: there is no need to clean up this temporary pool, as we've
-       * forked.  If the exec call succeeds, this child process will exit
-       * normally, and its process space recovered by the OS.  If the exec
-       * call fails, we still exit, and the process space is recovered by
-       * the OS.  Either way, the memory will be cleaned up without need for
-       * us to do it explicitly (unless one wanted to be pedantic about it,
-       * of course).
-       */
-      pool *tmp_pool = cmd ? cmd->tmp_pool : make_sub_pool(session.pool);
 
       /* Prepare the environment. */
       env = exec_prepare_environ(tmp_pool, cmd);
@@ -492,6 +493,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         pr_signals_handle();
         c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
       }
+
+    } else {
+      /* Make sure that env is at least a NULL-terminated array. */
+      env = pcalloc(tmp_pool, sizeof(char **));
     }
 
     /* Restore previous signal actions. */
@@ -535,10 +540,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       PRIVS_REVOKE
     }
 
-    exec_log("preparing to execute '%s' with uid %lu (euid %lu), "
-      "gid %lu (egid %lu)", (const char *) c->argv[2],
-      (unsigned long) getuid(), (unsigned long) geteuid(),
-      (unsigned long) getgid(), (unsigned long) getegid());
+    exec_log("preparing to execute '%s' with uid %s (euid %s), "
+      "gid %s (egid %s)", (const char *) c->argv[2],
+      pr_uid2str(tmp_pool, getuid()), pr_uid2str(tmp_pool, geteuid()),
+      pr_gid2str(tmp_pool, getgid()), pr_gid2str(tmp_pool, getegid()));
 
     path = c->argv[2];
 
@@ -1604,9 +1609,8 @@ MODRET set_execonevent(cmd_rec *cmd) {
   if (cmd->argv[1][strlen(cmd->argv[1])-1] == '*') {
     flags |= EXEC_FL_RUN_AS_ROOT;
     cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
-  }
 
-  if (cmd->argv[1][strlen(cmd->argv[1])-1] == '~') {
+  } else if (cmd->argv[1][strlen(cmd->argv[1])-1] == '~') {
     flags |= EXEC_FL_RUN_AS_USER;
     cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
   }
@@ -1791,7 +1795,6 @@ static void exec_exit_ev(const void *event_data, void *user_data) {
     return;
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOnExit", FALSE);
-
   while (c) {
     int res;
 
@@ -1886,6 +1889,29 @@ static void exec_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void exec_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&exec_module, "core.exit", exec_exit_ev);
+  pr_event_unregister(&exec_module, "core.session-reinit", exec_sess_reinit_ev);
+
+  exec_engine = FALSE;
+  exec_opts = 0U;
+  exec_timeout = 0;
+
+  (void) close(exec_logfd);
+  exec_logfd = -1;
+  exec_logname = NULL;
+
+  res = exec_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&exec_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -1893,6 +1919,9 @@ static int exec_sess_init(void) {
   int *use_exec = NULL;
   config_rec *c = NULL;
   const char *proto;
+
+  pr_event_register(&exec_module, "core.session-reinit", exec_sess_reinit_ev,
+    NULL);
 
   use_exec = get_param_ptr(main_server->conf, "ExecEngine", FALSE);
   if (use_exec != NULL &&
@@ -1904,7 +1933,6 @@ static int exec_sess_init(void) {
     return 0;
   }
 
-  /* Register a "core.exit" event handler. */
   pr_event_register(&exec_module, "core.exit", exec_exit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOptions", FALSE);
@@ -1950,7 +1978,6 @@ static int exec_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecOnConnect", FALSE);
-
   while (c) {
     int res;
 

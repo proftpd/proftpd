@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* House initialization and main program loop
- * $Id: main.c,v 1.462 2014-01-25 16:34:09 castaglia Exp $
- */
+/* House initialization and main program loop */
 
 #include "conf.h"
 
@@ -88,7 +86,7 @@ static int syntax_check = 0;
 /* Command handling */
 static void cmd_loop(server_rec *, conn_t *);
 
-static cmd_rec *make_ftp_cmd(pool *, char *, int);
+static cmd_rec *make_ftp_cmd(pool *, char *, size_t, int);
 
 static const char *config_filename = PR_CONFIG_FILE_PATH;
 
@@ -454,8 +452,8 @@ static size_t get_max_cmd_sz(void) {
 int pr_cmd_read(cmd_rec **res) {
   static long cmd_bufsz = -1;
   static char *cmd_buf = NULL;
-  char *cp;
-  size_t cmd_buflen;
+  int cmd_buflen;
+  char *ptr;
 
   if (res == NULL) {
     errno = EINVAL;
@@ -475,9 +473,9 @@ int pr_cmd_read(cmd_rec **res) {
 
     memset(cmd_buf, '\0', cmd_bufsz);
 
-    if (pr_netio_telnet_gets(cmd_buf, cmd_bufsz, session.c->instrm,
-        session.c->outstrm) == NULL) {
-
+    cmd_buflen = pr_netio_telnet_gets2(cmd_buf, cmd_bufsz, session.c->instrm,
+      session.c->outstrm);
+    if (cmd_buflen < 0) {
       if (errno == E2BIG) {
         /* The client sent a too-long command which was ignored; give
          * them another chance?
@@ -496,39 +494,34 @@ int pr_cmd_read(cmd_rec **res) {
     break;
   }
 
-  /* This strlen(3) is guaranteed to terminate; the last byte of buf is
-   * always NUL, since pr_netio_telnet_gets() is told that the buf size is
-   * one byte less than it really is.
-   *
-   * If the strlen(3) says that the length is less than the cmd_bufsz, then
-   * there is no need to truncate the buffer by inserting a NUL.
+  /* If the read length is less than the cmd_bufsz, then there is no need to
+   * truncate the buffer by inserting a NUL.
    */
-  cmd_buflen = strlen(cmd_buf);
   if (cmd_buflen > cmd_bufsz) {
-    pr_log_debug(DEBUG0, "truncating incoming command length (%lu bytes) to "
+    pr_log_debug(DEBUG0, "truncating incoming command length (%d bytes) to "
       "CommandBufferSize %lu; use the CommandBufferSize directive to increase "
-      "the allowed command length", (unsigned long) cmd_buflen,
-      (unsigned long) cmd_bufsz);
+      "the allowed command length", cmd_buflen, (unsigned long) cmd_bufsz);
     cmd_buf[cmd_bufsz-1] = '\0';
   }
 
-  if (cmd_buflen &&
+  if (cmd_buflen > 0 &&
       (cmd_buf[cmd_buflen-1] == '\n' || cmd_buf[cmd_buflen-1] == '\r')) {
     cmd_buf[cmd_buflen-1] = '\0';
     cmd_buflen--;
 
-    if (cmd_buflen &&
+    if (cmd_buflen > 0 &&
         (cmd_buf[cmd_buflen-1] == '\n' || cmd_buf[cmd_buflen-1] =='\r')) {
       cmd_buf[cmd_buflen-1] = '\0';
       cmd_buflen--;
     }
   }
 
-  cp = cmd_buf;
-  if (*cp == '\r')
-    cp++;
+  ptr = cmd_buf;
+  if (*ptr == '\r') {
+    ptr++;
+  }
 
-  if (*cp) {
+  if (*ptr) {
     int flags = 0;
     cmd_rec *cmd;
 
@@ -538,13 +531,27 @@ int pr_cmd_read(cmd_rec **res) {
      * command handlers themselves, via cmd->arg.  This small hack
      * reduces the burden on SITE module developers, however.
      */
-    if (strncasecmp(cp, C_SITE, 4) == 0) {
+    if (strncasecmp(ptr, C_SITE, 4) == 0) {
       flags |= PR_STR_FL_PRESERVE_WHITESPACE;
     }
 
-    cmd = make_ftp_cmd(session.pool, cp, flags);
+    cmd = make_ftp_cmd(session.pool, ptr, cmd_buflen, flags);
     if (cmd) {
       *res = cmd;
+
+      if (pr_cmd_is_http(cmd) == TRUE) {
+        cmd->is_ftp = FALSE;
+        cmd->protocol = "HTTP";
+
+      } else if (pr_cmd_is_smtp(cmd) == TRUE) {
+        cmd->is_ftp = FALSE;
+        cmd->protocol = "SMTP";
+
+      } else {
+        /* Assume that the client is sending valid FTP commands. */
+        cmd->is_ftp = TRUE;
+        cmd->protocol = "FTP";
+      }
     } 
   }
 
@@ -724,23 +731,31 @@ int pr_cmd_dispatch(cmd_rec *cmd) {
     PR_CMD_DISPATCH_FL_SEND_RESPONSE|PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
 }
 
-static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
-  char *cp = buf, *wrd;
+static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
+  register unsigned int i, j;
+  char *arg, *ptr, *wrd;
+  size_t arg_len;
   cmd_rec *cmd;
   pool *subpool;
   array_header *tarr;
-  int str_flags = PR_STR_FL_PRESERVE_COMMENTS|flags;
+  int have_crnul = FALSE, str_flags = PR_STR_FL_PRESERVE_COMMENTS|flags;
 
   /* Be pedantic (and RFC-compliant) by not allowing leading whitespace
    * in an issued FTP command.  Will this cause troubles with many clients?
    */
   if (PR_ISSPACE(buf[0])) {
+    pr_trace_msg("ctrl", 5,
+      "command '%s' has illegal leading whitespace, rejecting", buf);
+    errno = EINVAL;
     return NULL;
   }
 
-  /* Nothing there...bail out. */
-  wrd = pr_str_get_word(&cp, str_flags);
+  ptr = buf;
+  wrd = pr_str_get_word(&ptr, str_flags);
   if (wrd == NULL) {
+    /* Nothing there...bail out. */
+    pr_trace_msg("ctrl", 5, "command '%s' is empty, ignoring", buf);
+    errno = ENOENT;
     return NULL;
   }
 
@@ -755,9 +770,48 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
 
   *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
   cmd->argc++;
-  cmd->arg = pstrdup(cmd->pool, cp);
 
-  while ((wrd = pr_str_get_word(&cp, str_flags)) != NULL) {
+  /* Make a copy of the command argument; we need to scan through it,
+   * looking for any CR+NUL sequences, per RFC 2460, Section 3.1.
+   *
+   * Note for future readers that this scanning may cause problems for
+   * commands such as ADAT, ENC, and MIC.  Per RFC 2228, the arguments for
+   * these commands are base64-encoded Telnet strings, thus there is no
+   * chance of them containing CRNUL sequences.  Any modules which implement
+   * the translating of those arguments, e.g. mod_gss, will need to ensure
+   * it does the proper handling of CRNUL sequences itself.
+   */
+  arg_len = buflen - strlen(wrd);
+  arg = pcalloc(cmd->pool, arg_len + 1);
+
+  for (i = 0, j = 0; i < arg_len; i++) {
+    pr_signals_handle();
+    if (i > 1 &&
+        ptr[i] == '\0' &&
+        ptr[i-1] == '\r') {
+
+      /* Strip out the NUL by simply not copying it into the new buffer. */
+      have_crnul = TRUE;
+  
+    } else {
+      arg[j++] = ptr[i];
+    }
+  }
+
+  cmd->arg = arg;
+
+  if (have_crnul) {
+    char *dup_arg;
+
+    /* Now make a copy of the stripped argument; this is what we need to
+     * tokenize into words, for further command dispatching/processing.
+     */
+    dup_arg = pstrdup(cmd->pool, arg);
+    ptr = dup_arg;
+  }
+
+  while ((wrd = pr_str_get_word(&ptr, str_flags)) != NULL) {
+    pr_signals_handle();
     *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
     cmd->argc++;
   }
@@ -801,6 +855,20 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     }
 
     if (cmd) {
+
+      /* Detect known commands for other protocols; if found, drop the
+       * connection, lest we be used as part of an attack on a different
+       * protocol server (Bug#4143).
+       */
+      if (cmd->is_ftp == FALSE) {
+        pr_log_pri(PR_LOG_WARNING,
+          "client sent %s command '%s', disconnecting", cmd->protocol,
+          cmd->argv[0]);
+        pr_event_generate("core.bad-protocol", cmd);
+        pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BAD_PROTOCOL,
+          cmd->protocol);
+      }
+ 
       pr_cmd_dispatch(cmd);
       destroy_pool(cmd->pool);
 
@@ -1156,8 +1224,26 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pr_signals_unblock();
 
   if (conn == NULL) {
-    pr_log_pri(PR_LOG_ERR, "fatal: unable to open incoming connection: %s",
-      strerror(xerrno));
+    /* There are some errors, e.g. ENOTCONN ("Transport endpoint is not
+     * connected") which can easily happen, as during scans/TCP
+     * probes/healthchecks, commonly done by load balancers, firewalls, and
+     * other clients.  By the time proftpd reaches the point of looking up
+     * the peer data for that connection, the client has disconnected.
+     *
+     * These are normal errors, and thus should not be logged as fatal
+     * conditions.
+     */
+    if (xerrno == ENOTCONN ||
+        xerrno == ECONNABORTED ||
+        xerrno == ECONNRESET) {
+      pr_log_pri(PR_LOG_DEBUG, "unable to open incoming connection: %s",
+        strerror(xerrno));
+
+    } else {
+      pr_log_pri(PR_LOG_ERR, "fatal: unable to open incoming connection: %s",
+        strerror(xerrno));
+    }
+
     exit(1);
   }
 
@@ -1646,12 +1732,17 @@ static void inetd_main(void) {
         pr_log_pri(PR_LOG_ERR, "error opening scoreboard: wrong version, "
           "writing new scoreboard");
 
-        /* Delete the scoreboard, then open it again (and assume that the
-         * open succeeds).
-         */
+        /* Delete the scoreboard, then open it again. */
         PRIVS_ROOT
         pr_delete_scoreboard();
-        pr_open_scoreboard(O_RDWR);
+        if (pr_open_scoreboard(O_RDWR) < 0) {
+          int xerrno = errno;
+
+          PRIVS_RELINQUISH
+          pr_log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
+            strerror(xerrno));
+          return;
+        }
         break;
 
       default:
@@ -1793,6 +1884,7 @@ static void show_settings(void) {
   printf("%s", "  LDFLAGS: " PR_BUILD_LDFLAGS "\n");
   printf("%s", "  LIBS: " PR_BUILD_LIBS "\n");
 
+  /* Files/paths */
   printf("%s", "\n  Files:\n");
   printf("%s", "    Configuration File:\n");
   printf("%s", "      " PR_CONFIG_FILE_PATH "\n");
@@ -1806,6 +1898,24 @@ static void show_settings(void) {
   printf("%s", "    Shared Module Directory:\n");
   printf("%s", "      " PR_LIBEXEC_DIR "\n");
 #endif /* PR_USE_DSO */
+
+  /* Informational */
+  printf("%s", "\n  Info:\n");
+#if SIZEOF_UID_T == SIZEOF_INT
+  printf("    + Max supported UID: %u\n", UINT_MAX);
+#elif SIZEOF_UID_T == SIZEOF_LONG
+  printf("    + Max supported UID: %lu\n", ULONG_MAX);
+#elif SIZEOF_UID_T == SIZEOF_LONG_LONG
+  printf("    + Max supported UID: %llu\n", ULLONG_MAX);
+#endif
+
+#if SIZEOF_GID_T == SIZEOF_INT
+  printf("    + Max supported GID: %u\n", UINT_MAX);
+#elif SIZEOF_GID_T == SIZEOF_LONG
+  printf("    + Max supported GID: %lu\n", ULONG_MAX);
+#elif SIZEOF_GID_T == SIZEOF_LONG_LONG
+  printf("    + Max supported GID: %llu\n", ULLONG_MAX);
+#endif
 
   /* Feature settings */
   printf("%s", "\n  Features:\n");
@@ -1926,6 +2036,7 @@ static void show_settings(void) {
   printf("    PR_TUNABLE_GLOBBING_MAX_RECURSION = %u\n", PR_TUNABLE_GLOBBING_MAX_RECURSION);
   printf("    PR_TUNABLE_HASH_TABLE_SIZE = %u\n", PR_TUNABLE_HASH_TABLE_SIZE);
   printf("    PR_TUNABLE_NEW_POOL_SIZE = %u\n", PR_TUNABLE_NEW_POOL_SIZE);
+  printf("    PR_TUNABLE_PATH_MAX = %u\n", PR_TUNABLE_PATH_MAX);
   printf("    PR_TUNABLE_SCOREBOARD_BUFFER_SIZE = %u\n",
     PR_TUNABLE_SCOREBOARD_BUFFER_SIZE);
   printf("    PR_TUNABLE_SCOREBOARD_SCRUB_TIMER = %u\n",
@@ -2372,14 +2483,16 @@ int main(int argc, char *argv[], char **envp) {
    */
 
   if (geteuid() != daemon_uid) {
-    pr_log_pri(PR_LOG_ERR, "unable to set UID to %lu, current UID: %lu",
-      (unsigned long) daemon_uid, (unsigned long) geteuid());
+    pr_log_pri(PR_LOG_ERR, "unable to set UID to %s, current UID: %s",
+      pr_uid2str(permanent_pool, daemon_uid),
+      pr_uid2str(permanent_pool, geteuid()));
     exit(1);
   }
 
   if (getegid() != daemon_gid) {
-    pr_log_pri(PR_LOG_ERR, "unable to set GID to %lu, current GID: %lu",
-      (unsigned long) daemon_gid, (unsigned long) getegid());
+    pr_log_pri(PR_LOG_ERR, "unable to set GID to %s, current GID: %s",
+      pr_gid2str(permanent_pool, daemon_gid),
+      pr_gid2str(permanent_pool, getegid()));
     exit(1);
   }
 #endif /* PR_DEVEL_COREDUMP */

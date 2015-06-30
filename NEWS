@@ -9,7 +9,19 @@ $Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-Git
+1.3.6rc2
+--------------------------------
+- Bug 4187 - mod_geoip does not load all of the GeoIPTables properly.
+- Bug 4167 - CR/LF characters are not supported in filenames.
+- Bug 4188 - Support filtering based on country code and regional code in
+  mod_geoip.
+- Bug 4151 - FTP ASCII mode conversion algorithm is painfully slow.
+- Bug 4139 - Support rejecting empty passwords.  See new AllowEmptyPasswords
+  directive.
+- Bug 4189 - Support protocol exclusion via TLSProtocol directive.
+- Bug 4153 - Support requiring multiple SSH authentication methods.
+
+1.3.6rc1 - Released 27-May-2015
 --------------------------------
 - Bug 4055 - "error setting listen fd IPV6_TCLASS: Protocol not available" log
   message.
@@ -76,6 +88,36 @@ Git
 - Bug 4137 - GeoIPDenyFilter incorrectly takes precedence over GeoIPAllowFilter.
 - Bug 4138 - Support for hex-encoded salts in mod_sql_passwd.
 - Bug 4140 - SFTP READLINK requests to symlinks to directories fail.
+- Bug 4143 - HTTPS/FTPS protocol confusion leads to XSS.
+- Bug 4144 - Support APPE when HiddenStores are enabled.
+- Bug 4031 - Support JSON output format for ftpwho.
+- Bug 4145 - Segfault if AuthUserFile is a relative symlink.
+- Bug 4152 - Reduce logging of non-fatal "unable to open incoming connection"
+  errors.
+- Bug 4155 - SSH keys with too-long Comment headers aren't recognized by
+  mod_sftp_sql.
+- Bug 4159 - Support ability to disable ASCII translation transparently to FTP
+  clients.
+- Bug 4156 - Segfault handling LIST/NLST FTP command on Mac OS X.
+- Bug 4160 - Malformed response to SSH_FXP_REALPATH with SFTP version 6.
+- Bug 4163 - Remove support for EXPORT grade ciphers.
+- Bug 4164 - mod_sql fails to read UID/GID values larger than 32 bits from SQL
+  tables.
+- Bug 4157 - LIST/NLST of 1000s of files is slow on some platforms.
+- Bug 4059 - Implement additional RADIUS attributes.
+- Bug 4166 - mod_sftp sessions consume large amounts of memory due to rekeying.
+- Bug 4169 - Unauthenticated copying of files via SITE CPFR/CPTO allowed by
+  mod_copy.
+- Bug 4170 - Incorrect handling of control-byte field of SSH_FXP_REALPATH as
+  bitmask rather than enumeration for SFTP protocol version 6.
+- Bug 4168 - Race condition with HiddenStores and TimeoutIdle timeout, causing
+  hidden file not to be cleaned up properly.
+- Bug 3125 - Support for Mac OS X implementation of POSIX ACLs.
+- Bug 4174 - Support for TLS-PSK (pre-shared keys).
+- Bug 4178 - TLS session reuse requirement for data connections not properly
+  enforced.
+- Bug 4184 - Remove support for "weak" Diffie-Hellman groups.
+- Bug 3289 - Support the HOST command.
 
 1.3.5 - Released 15-May-2014
 --------------------------------

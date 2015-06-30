@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.317 2013-12-29 20:17:09 castaglia Exp $
- */
+/* Authentication module for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -43,6 +41,7 @@ static unsigned char mkhome = FALSE;
 static unsigned char authenticated_without_pass = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = FALSE;
+static int auth_client_connected = FALSE;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
 static pr_fh_t *displaylogin_fh = NULL;
@@ -51,8 +50,9 @@ static int TimeoutSession = 0;
 static int saw_first_user_cmd = FALSE;
 static const char *timing_channel = "timing";
 
-static int auth_scan_scoreboard(void);
 static int auth_count_scoreboard(cmd_rec *, char *);
+static int auth_scan_scoreboard(void);
+static int auth_sess_init(void);
 
 /* auth_cmd_chk_cb() is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
@@ -124,10 +124,48 @@ static void auth_exit_ev(const void *event_data, void *user_data) {
   (void) pr_close_scoreboard(FALSE);
 }
 
+static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer, reinitialize ourselves. */
+
+  pr_event_unregister(&auth_module, "core.exit", auth_exit_ev);
+  pr_event_unregister(&auth_module, "core.session-reinit", auth_sess_reinit_ev);
+
+#if defined(PR_USE_LASTLOG)
+  lastlog = FALSE;
+#endif /* PR_USE_LASTLOG */
+  mkhome = FALSE;
+
+  res = auth_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&auth_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
+/* Initialization functions
+ */
+
+static int auth_init(void) {
+  /* Add the commands handled by this module to the HELP list. */ 
+  pr_help_add(C_USER, _("<sp> username"), TRUE);
+  pr_help_add(C_PASS, _("<sp> password"), TRUE);
+  pr_help_add(C_ACCT, _("is not implemented"), FALSE);
+  pr_help_add(C_REIN, _("is not implemented"), FALSE);
+
+  /* By default, enable auth checking */
+  set_auth_check(auth_cmd_chk_cb);
+
+  return 0;
+}
+
 static int auth_sess_init(void) {
   config_rec *c = NULL;
   unsigned char *tmp = NULL;
-  int res = 0;
+
+  pr_event_register(&auth_module, "core.session-reinit", auth_sess_reinit_ev,
+    NULL);
 
   /* Check for a server-specific TimeoutLogin */
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin", FALSE);
@@ -142,52 +180,60 @@ static int auth_sess_init(void) {
       auth_login_timeout_cb, "TimeoutLogin");
   }
 
-  PRIVS_ROOT
-  res = pr_open_scoreboard(O_RDWR);
-  PRIVS_RELINQUISH
+  if (auth_client_connected == FALSE) {
+    int res = 0;
 
-  if (res < 0) {
-    switch (res) {
-      case PR_SCORE_ERR_BAD_MAGIC:
-        pr_log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
-        break;
+    PRIVS_ROOT
+    res = pr_open_scoreboard(O_RDWR);
+    PRIVS_RELINQUISH
 
-      case PR_SCORE_ERR_OLDER_VERSION:
-        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
-        break;
+    if (res < 0) {
+      switch (res) {
+        case PR_SCORE_ERR_BAD_MAGIC:
+          pr_log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
+          break;
 
-      case PR_SCORE_ERR_NEWER_VERSION:
-        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
-        break;
+        case PR_SCORE_ERR_OLDER_VERSION:
+          pr_log_debug(DEBUG0,
+            "error opening scoreboard: bad version (too old)");
+          break;
 
-      default:
-        pr_log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
-        break;
+        case PR_SCORE_ERR_NEWER_VERSION:
+          pr_log_debug(DEBUG0,
+            "error opening scoreboard: bad version (too new)");
+          break;
+
+        default:
+          pr_log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+          break;
+      }
     }
   }
 
   pr_event_register(&auth_module, "core.exit", auth_exit_ev, NULL);
 
-  /* Create an entry in the scoreboard for this session, if we don't already
-   * have one.
-   */
-  if (pr_scoreboard_entry_get(PR_SCORE_CLIENT_ADDR) == NULL) {
-    if (pr_scoreboard_entry_add() < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
-        strerror(errno));
-    }
+  if (auth_client_connected == FALSE) {
+    /* Create an entry in the scoreboard for this session, if we don't already
+     * have one.
+     */
+    if (pr_scoreboard_entry_get(PR_SCORE_CLIENT_ADDR) == NULL) {
+      if (pr_scoreboard_entry_add() < 0) {
+        pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
+          strerror(errno));
+      }
 
-    pr_scoreboard_entry_update(session.pid,
-      PR_SCORE_USER, "(none)",
-      PR_SCORE_SERVER_PORT, main_server->ServerPort,
-      PR_SCORE_SERVER_ADDR, session.c->local_addr, session.c->local_port,
-      PR_SCORE_SERVER_LABEL, main_server->ServerName,
-      PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
-      PR_SCORE_CLIENT_NAME, session.c->remote_name,
-      PR_SCORE_CLASS, session.conn_class ? session.conn_class->cls_name : "",
-      PR_SCORE_PROTOCOL, "ftp",
-      PR_SCORE_BEGIN_SESSION, time(NULL),
-      NULL);
+      pr_scoreboard_entry_update(session.pid,
+        PR_SCORE_USER, "(none)",
+        PR_SCORE_SERVER_PORT, main_server->ServerPort,
+        PR_SCORE_SERVER_ADDR, session.c->local_addr, session.c->local_port,
+        PR_SCORE_SERVER_LABEL, main_server->ServerName,
+        PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
+        PR_SCORE_CLIENT_NAME, session.c->remote_name,
+        PR_SCORE_CLASS, session.conn_class ? session.conn_class->cls_name : "",
+        PR_SCORE_PROTOCOL, "ftp",
+        PR_SCORE_BEGIN_SESSION, time(NULL),
+        NULL);
+    }
 
   } else {
     /* We're probably handling a HOST comand, and the server changed; just
@@ -226,20 +272,7 @@ static int auth_sess_init(void) {
    */
   auth_scan_scoreboard();
 
-  return 0;
-}
-
-static int auth_init(void) {
-
-  /* Add the commands handled by this module to the HELP list. */ 
-  pr_help_add(C_USER, _("<sp> username"), TRUE);
-  pr_help_add(C_PASS, _("<sp> password"), TRUE);
-  pr_help_add(C_ACCT, _("is not implemented"), FALSE);
-  pr_help_add(C_REIN, _("is not implemented"), FALSE);
-
-  /* By default, enable auth checking */
-  set_auth_check(auth_cmd_chk_cb);
-
+  auth_client_connected = TRUE;
   return 0;
 }
 
@@ -769,7 +802,7 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
           path[pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(path);
         res = pr_fsio_lstat(path, &st);
         if (res < 0) {
           xerrno = errno;
@@ -841,16 +874,23 @@ static struct passwd *passwd_dup(pool *p, struct passwd *pw) {
 }
 
 static void ensure_open_passwd(pool *p) {
-  /* Make sure pass/group is open.
-   */
+  /* Make sure pass/group is open. */
   pr_auth_setpwent(p);
   pr_auth_setgrent(p);
 
   /* On some unices the following is necessary to ensure the files
-   * are open.  (BSDI 3.1)
+   * are open (BSDI 3.1)
    */
   pr_auth_getpwent(p);
   pr_auth_getgrent(p);
+
+  /* Per Debian bug report:
+   *   https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=717235
+   * we might want to do another set{pw,gr}ent(), to play better with
+   * some NSS modules.
+   */
+  pr_auth_setpwent(p);
+  pr_auth_setgrent(p);
 }
 
 /* Next function (the biggie) handles all authentication, setting
@@ -973,28 +1013,38 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   if (c) {
     anongroup = get_param_ptr(c->subset, "GroupName", FALSE);
-    if (!anongroup)
+    if (anongroup == NULL) {
       anongroup = get_param_ptr(main_server->conf, "GroupName",FALSE);
+    }
 
+#ifdef PR_USE_REGEX
     /* Check for configured AnonRejectPasswords regex here, and fail the login
      * if the given password matches the regex.
      */
-#ifdef PR_USE_REGEX
-    if ((tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords",
-        FALSE)) != NULL) {
-      int re_res;
-      pr_regex_t *pw_regex = (pr_regex_t *) tmpc->argv[0];
+    tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords", FALSE);
+    if (tmpc != NULL) {
+      int re_notmatch;
+      pr_regex_t *pw_regex;
 
-      if (pw_regex && pass &&
-          ((re_res = pr_regexp_exec(pw_regex, pass, 0, NULL, 0, 0, 0)) == 0)) {
-        char errstr[200] = {'\0'};
+      pw_regex = (pr_regex_t *) tmpc->argv[0];
+      re_notmatch = *((int *) tmpc->argv[1]);
 
-        pr_regexp_error(re_res, pw_regex, errstr, sizeof(errstr));
-        pr_log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
-          origuser);
+      if (pw_regex != NULL &&
+          pass != NULL) {
+        int re_res;
+
+        re_res = pr_regexp_exec(pw_regex, pass, 0, NULL, 0, 0, 0);
+        if (re_res == 0 ||
+            (re_res != 0 && re_notmatch == TRUE)) {
+          char errstr[200] = {'\0'};
+
+          pr_regexp_error(re_res, pw_regex, errstr, sizeof(errstr));
+          pr_log_auth(PR_LOG_NOTICE,
+            "ANON %s: AnonRejectPasswords denies login", origuser);
  
-        pr_event_generate("mod_auth.anon-reject-passwords", session.c);
-        goto auth_failure;
+          pr_event_generate("mod_auth.anon-reject-passwords", session.c);
+          goto auth_failure;
+        }
       }
     }
 #endif
@@ -1263,7 +1313,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
           chroot_path[chroot_pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache();
+        pr_fs_clear_cache2(chroot_path);
         res = pr_fsio_lstat(chroot_path, &st);
         if (res < 0) {
           int xerrno = errno;
@@ -2386,10 +2436,60 @@ MODRET auth_user(cmd_rec *cmd) {
 
 /* Close the passwd and group databases, similar to auth_pre_user(). */
 MODRET auth_pre_pass(cmd_rec *cmd) {
-  char *displaylogin;
+  char *displaylogin, *user;
 
   pr_auth_endpwent(cmd->tmp_pool);
   pr_auth_endgrent(cmd->tmp_pool);
+
+  /* Handle cases where PASS might be sent before USER. */
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+  if (user != NULL) {
+    config_rec *c;
+
+    c = find_config(main_server->conf, CONF_PARAM, "AllowEmptyPasswords",
+      FALSE);
+    if (c == NULL) {
+      char *anon_user;
+      config_rec *anon_config;
+
+      /* Since we have not authenticated yet, we cannot use the TOPLEVEL_CONF
+       * macro to handle <Anonymous> sections.  So we do it manually.
+       */
+      anon_user = pstrdup(cmd->tmp_pool, user);
+      anon_config = pr_auth_get_anon_config(cmd->tmp_pool, &anon_user, NULL,
+        NULL);
+      if (anon_config != NULL) {
+        c = find_config(anon_config->subset, CONF_PARAM, "AllowEmptyPasswords",
+          FALSE);
+      }
+    }
+ 
+    if (c != NULL) {
+      int allow_empty_passwords;
+
+      allow_empty_passwords = *((int *) c->argv[0]);
+      if (allow_empty_passwords == FALSE) {
+        size_t passwd_len;
+ 
+        if (cmd->argc > 1) {
+          passwd_len = strlen(cmd->arg);
+        }
+
+        if (cmd->argc == 1 ||
+            passwd_len == 0) {
+          pr_log_debug(DEBUG5,
+            "Refusing empty password from user '%s' (AllowEmptyPasswords "
+            "false)", user);
+          pr_log_auth(PR_LOG_NOTICE,
+            "Refusing empty password from user '%s'", user);
+
+          pr_event_generate("mod_auth.empty-password", user);
+          pr_response_add_err(R_501, _("Login incorrect."));
+          return PR_ERROR(cmd);
+        }
+      }
+    }
+  }
 
   /* Look for a DisplayLogin file which has an absolute path.  If we find one,
    * open a filehandle, such that that file can be displayed even if the
@@ -2575,20 +2675,41 @@ MODRET set_accessgrantmsg(cmd_rec *cmd) {
 
 /* usage: AllowChrootSymlinks on|off */
 MODRET set_allowchrootsymlinks(cmd_rec *cmd) {
-  int b = -1;
+  int allow_chroot_symlinks = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  b = get_boolean(cmd, 1);
-  if (b == -1) {
+  allow_chroot_symlinks = get_boolean(cmd, 1);
+  if (allow_chroot_symlinks == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = b;
+  *((int *) c->argv[0]) = allow_chroot_symlinks;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: AllowEmptyPasswords on|off */
+MODRET set_allowemptypasswords(cmd_rec *cmd) {
+  int allow_empty_passwords = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  allow_empty_passwords = get_boolean(cmd, 1);
+  if (allow_empty_passwords == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = allow_empty_passwords;
+  c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
@@ -2611,17 +2732,52 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: AnonRejectPasswords pattern [flags] */
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 #ifdef PR_USE_REGEX
+  config_rec *c;
   pr_regex_t *pre = NULL;
-  int res;
+  int notmatch = FALSE, regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
+  char *pattern = NULL;
 
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
+    CONF_ERROR(cmd, "bad number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ANON);
+
+  /* Make sure that, if present, the flags parameter is correctly formatted. */
+  if (cmd->argc-1 == 2) {
+    int flags = 0;
+
+    /* We need to parse the flags parameter here, to see if any flags which
+     * affect the compilation of the regex (e.g. NC) are present.
+     */
+
+    flags = pr_filter_parse_flags(cmd->tmp_pool, cmd->argv[2]);
+    if (flags < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": badly formatted flags parameter: '", cmd->argv[2], "'", NULL));
+    }
+
+    if (flags == 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unknown flags '", cmd->argv[2], "'", NULL));
+    }
+
+    regex_flags |= flags;
+  }
 
   pre = pr_regexp_alloc(&auth_module);
 
-  res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  pattern = cmd->argv[1];
+  if (*pattern == '!') {
+    notmatch = TRUE;
+    pattern++;
+  }
+
+  res = pr_regexp_compile(pre, pattern, regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
@@ -2632,7 +2788,9 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
       cmd->argv[1], "': ", errstr, NULL));
   }
 
-  (void) add_config_param(cmd->argv[0], 1, (void *) pre);
+  c = add_config_param(cmd->argv[0], 2, pre, NULL);
+  c->argv[1] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = notmatch;
   return PR_HANDLED(cmd);
 
 #else
@@ -2777,12 +2935,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           uid_t uid;
 
-          uid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2uid(cmd->argv[++i], &uid) < 0) { 
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
               cmd->argv[i], "'", NULL));
           }
@@ -2801,12 +2956,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         /* Check for a "~" parameter. */
         if (strncmp(cmd->argv[i+1], "~", 2) != 0) {
-          char *tmp = NULL;
           gid_t gid;
 
-          gid = strtol(cmd->argv[++i], &tmp, 10);
-
-          if (tmp && *tmp) {
+          if (pr_str2gid(cmd->argv[++i], &gid) < 0) {
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
               cmd->argv[i], "'", NULL));
           }
@@ -3579,6 +3731,7 @@ static conftable auth_conftab[] = {
   { "AccessDenyMsg",		set_accessdenymsg,		NULL },
   { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
   { "AllowChrootSymlinks",	set_allowchrootsymlinks,	NULL },
+  { "AllowEmptyPasswords",	set_allowemptypasswords,	NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
   { "AnonRejectPasswords",	set_anonrejectpasswords,	NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },

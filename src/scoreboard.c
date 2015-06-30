@@ -1570,7 +1570,7 @@ int pr_scoreboard_scrub(void) {
   /* Skip past the scoreboard header. */
   curr_offset = lseek(fd, (off_t) sizeof(pr_scoreboard_header_t), SEEK_SET);
   if (curr_offset < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     unlock_scoreboard();
     (void) close(fd);
@@ -1682,8 +1682,11 @@ int pr_scoreboard_scrub(void) {
 
       /* Mark the current offset. */
       curr_offset = lseek(fd, (off_t) 0, SEEK_CUR);
-      entry_lock.l_start = curr_offset;
+      if (curr_offset < 0) {
+        break;
+      }
 
+      entry_lock.l_start = curr_offset;
     }
   }
 

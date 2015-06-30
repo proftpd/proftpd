@@ -1,6 +1,3 @@
-<!-- $Id: mod_ban.html,v 1.21 2014-02-23 17:11:36 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ban.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_ban</title>
@@ -195,7 +192,17 @@ supported events are:
   </tr>
 
   <tr>
+    <td><code>BadProtocol</code></td>
+    <td>Host ban</td>
+  </tr>
+
+  <tr>
     <td><code>ClientConnectRate</code></td>
+    <td>Host ban</td>
+  </tr>
+
+  <tr>
+    <td><code>EmptyPassword</code></td>
     <td>Host ban</td>
   </tr>
 
@@ -278,12 +285,12 @@ specifies a number of hours, minutes, and seconds.  This parameter says
 that if <i>N</i> occurrences of <em>event</em> happen within the given
 time interval, then a ban is automatically added.  The IP address of
 the connecting client is banned when the following event rules are
-triggered: <code>AnonRejectPasswords</code>, <code>MaxCommandRate</code>,
-<code>MaxClientsPerHost</code>, <code>MaxConnectionsPerHost</code>,
-<code>MaxLoginAttempts</code>, <code>TimeoutIdle</code>,
-<code>TimeoutNoTransfer</code>, and <code>UnhandledCommand</code>.  The class
-of the connected client, if any, is banned when a rule for
-<code>MaxClientsPerClass</code> is triggered.  Rules for
+triggered: <code>AnonRejectPasswords</code>, <code>BadProtocol</code>,
+<code>MaxCommandRate</code>, <code>MaxClientsPerHost</code>,
+<code>MaxConnectionsPerHost</code>, <code>MaxLoginAttempts</code>,
+<code>TimeoutIdle</code>, <code>TimeoutNoTransfer</code>, and
+<code>UnhandledCommand</code>.  The class of the connected client, if any, is
+banned when a rule for <code>MaxClientsPerClass</code> is triggered.  Rules for
 <code>MaxClientsPerUser</code> and <code>MaxHostsPerUser</code> will cause
 the connected username to be banned.
 
@@ -624,16 +631,10 @@ login as root.  How would I do this?<br>
   BanOnEvent mod_auth.root-login 2/00:10:00 06:00:00
 </pre>
 
-<p>
-<hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-02-23 17:11:36 $</i><br>
-
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2014 TJ Saunders<br>
+&copy; Copyright 2004-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

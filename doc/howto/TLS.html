@@ -1,9 +1,6 @@
-<!-- $Id: TLS.html,v 1.39 2014-03-26 18:22:32 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
-
 <html>
 <head>
-<title>ProFTPD mini-HOWTO - FTP and SSL/TLS</title>
+<title>ProFTPD: FTP and SSL/TLS</title>
 </head>
 
 <body bgcolor=white>
@@ -1133,8 +1130,9 @@ To do this, you would use a combination of
 <p>
 <font color=red>Question</font>: I have configured my <code>proftpd</code>
 server for FTPS.  When I use FileZilla to try to connect to it, though, I
-see this error in the FileZilla logs:
+see one of these errors in the FileZilla logs:
 <pre>
+  GnuTLS error -8: A record packet with illegal version was received
   GnuTLS error -9: A TLS packet with unexpected length was received
 </pre>
 Is there a ProFTPD directive to fix this error?<br>
@@ -1143,6 +1141,48 @@ an <i>error unrelated to SSL/TLS</i> on your server.  Check the proftpd
 <a href="Debugging.html">debug</a> logging, the
 <a href="../contrib/mod_sql.html#SQLLogFile"><code>SQLLogFile</code></a> if
 you are using the <code>mod_sql</code> module, <i>etc</i>.
+
+<p><a name="TLSFileZilla">
+<font color=red>Question</font>: When I use FileZilla to connect to my
+<code>proftpd</code> server, it fails, and I see this error:
+<pre>
+  gnutls_handshake: An unexpected TLS packet was received.
+</pre>
+How to can I connect to my FTPS server using FileZilla?<br>
+<font color=blue>Answer</font>: The most common cause of this is using
+a URL such as "ftps://..." in your FileZilla client; for FileZilla, you
+<b>must</b> use <b>"ftpes://..."</b> (note the <b><i>e</i></b> there) when
+connecting to <code>proftpd</code>.  Why?  Using "ftpes://..." tells FileZilla
+to use <b>explicit</b> TLS, which is what <code>proftpd</code> implements,
+as that is the RFC-mandated behavior.  See:
+<pre>
+  <a href="https://wiki.filezilla-project.org/SSL/TLS#Explicit_vs_Implicit_FTPS">https://wiki.filezilla-project.org/SSL/TLS#Explicit_vs_Implicit_FTPS</a>
+</pre>
+
+<p><a name="TLSLFTP">
+<font color=red>Question</font>: I'm trying to use <code>lftp</code> as my
+FTPS client for talking to <code>proftpd</code>, configured to use
+<code>mod_tls</code>, but it fails to connect.  I am using:
+<pre>
+  $ lftp ftps://pc -u myuser
+</pre>
+What is going wrong?<br>
+<font color=blue>Answer</font>: You may need to tell <code>lftp</code> that
+using SSL/TLS is <i>allowed</i> when talking to an FTP server:
+<pre>
+  $ lftp pc
+  lftp&gt; set ftp:ssl-allow yes
+  lftp&gt; user <i>user</i>
+  ...
+</pre>
+<b>or</b> put the above setting in your <code>~/.lftprc</code> file.
+
+<p>
+Note that if you <i>always</i> want <code>lftp</code> to use SSL/TLS for FTP
+sessions, then you would use this setting:
+<pre>
+  set ftp:ssl-force yes
+</pre>
 
 <p><a name="TLSShmcacheVsMemcache">
 <font color=red>Question</font>: What is the difference between the
@@ -1191,8 +1231,5 @@ configured files were not properly matched up.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2014-03-26 18:22:32 $</i><br>
-<hr>
-
 </body>
 </html>

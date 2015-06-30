@@ -1,6 +1,3 @@
-<!-- $Id: mod_dso.html,v 1.7 2013-05-09 03:58:40 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_dso.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_dso</title>
@@ -456,16 +453,33 @@ whether that module is already loaded -- and if so, the module will
 "already loaded".  This means that your <code>mod_ldap</code> shared module
 code would not be loaded, and thus would not override the static module.
 
+<p><a name="DSOModulePathWorldWritable">
+<font color=red>Question</font>: I try to start my <code>proftpd</code>
+instance, but it fails to start with this error:
+<pre>
+  Fatal: ModulePath: <i>/usr/lib/proftpd</i> is world-writable on line <i>7</i> of <i>'/etc/proftpd/modules.conf'</i>
+</pre>
+Why?<br>
+<font color=blue>Answer</font>: The <code>mod_dso</code> module, used by
+ProFTPD for DSO/shared modules, ensures that the
+<a href="#ModulePath"><code>ModulePath</code></a> directory is secure.  DSO
+modules are code that are loaded directly into <code>proftpd</code>; loading
+these modules from a world-writable directory means that <b>any<b> system user
+could inject/replace any of those DSO modules with their own code, and get
+<code>proftpd</code> to do whatever they wanted.  Thus <code>mod_dso</code>
+will <b>refuse</b> to use a world-writable directory for loading of modules.
+
+<p>
+To fix this, you simply need to ensure that the <code>ModulePath</code> directory is not world-writable, <i>e.g.</i>:
+<pre>
+  $ chmod o-w /usr/lib/proftpd
+</pre>
+
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-05-09 03:58:40 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2004-2014 TJ Saunders<br>
+&copy; Copyright 2004-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 

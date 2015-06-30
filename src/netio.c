@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* NetIO routines
- * $Id: netio.c,v 1.63 2014-01-06 06:57:16 castaglia Exp $
- */
+/* NetIO routines */
 
 #include "conf.h"
 
@@ -88,6 +86,7 @@ static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   }
 
   netio_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(netio_pool, "netio stream pool");
   nstrm = pcalloc(netio_pool, sizeof(pr_netio_stream_t));
 
   nstrm->strm_pool = netio_pool;
@@ -1162,18 +1161,19 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
 
 static int telnet_mode = 0;
 
-char *pr_netio_telnet_gets(char *buf, size_t buflen,
+int pr_netio_telnet_gets2(char *buf, size_t bufsz,
     pr_netio_stream_t *in_nstrm, pr_netio_stream_t *out_nstrm) {
   char *bp = buf;
   unsigned char cp;
   int toread, handle_iac = TRUE, saw_newline = FALSE;
   pr_buffer_t *pbuf = NULL;
+  size_t buflen = bufsz;
 
   if (buflen == 0 ||
       in_nstrm == NULL ||
       out_nstrm == NULL) {
     errno = EINVAL;
-    return NULL;
+    return -1;
   }
 
 #ifdef PR_USE_NLS
@@ -1202,10 +1202,10 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       if (toread <= 0) {
         if (bp != buf) {
           *bp = '\0';
-          return buf;
+          return (bufsz - buflen - 1);
         }
 
-        return NULL;
+        return -1;
       }
 
       pbuf->remaining = pbuf->buflen - toread;
@@ -1222,7 +1222,8 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
 
     while (buflen > 0 &&
            toread > 0 &&
-           *pbuf->current != '\n' &&
+           (*pbuf->current != '\n' ||
+            (*pbuf->current == '\n' && *(pbuf->current - 1) != '\r')) &&
            toread--) {
       pr_signals_handle();
 
@@ -1315,11 +1316,25 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
     if (buflen > 0 &&
         toread > 0 &&
         *pbuf->current == '\n') {
-      buflen--;
-      toread--;
-      *bp++ = *pbuf->current++;
-      pbuf->remaining++;
 
+      /* If the current character is LF, and the previous character we
+       * copied was a CR, then strip the CR by overwriting it with the LF,
+       * turning the copied data from Telnet CRLF line termination to
+       * Unix LF line termination.
+       */
+      if (*(bp-1) == '\r') {
+        /* We already decrement the buffer length for the CR; no need to
+         * do it again since we are overwriting that CR.
+         */
+        *(bp-1) = *pbuf->current++;
+
+      } else {
+        *bp++ = *pbuf->current++;
+        buflen--;
+      }
+
+      pbuf->remaining++;
+      toread--;
       saw_newline = TRUE;
       break;
     }
@@ -1340,18 +1355,30 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
 
     properly_terminated_prev_command = FALSE;
     errno = E2BIG;
-    return NULL;
+    return -1;
   }
 
   if (!properly_terminated_prev_command) {
     properly_terminated_prev_command = TRUE;
     pr_log_pri(PR_LOG_NOTICE, "client sent too-long command, ignoring");
     errno = E2BIG;
-    return NULL;
+    return -1;
   }
 
   properly_terminated_prev_command = TRUE;
   *bp = '\0';
+  return (bufsz - buflen - 1);
+}
+
+char *pr_netio_telnet_gets(char *buf, size_t bufsz,
+    pr_netio_stream_t *in_nstrm, pr_netio_stream_t *out_nstrm) {
+  int res;
+
+  res = pr_netio_telnet_gets2(buf, bufsz, in_nstrm, out_nstrm);
+  if (res < 0) {
+    return NULL;
+  }
+
   return buf;
 }
 

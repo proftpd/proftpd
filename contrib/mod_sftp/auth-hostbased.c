@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'hostbased' user authentication
- * Copyright (c) 2008-2012 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: auth-hostbased.c,v 1.10 2012-03-13 18:58:48 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -246,4 +244,8 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   }
 
   return 1;
+}
+
+int sftp_auth_hostbased_init(pool *p) {
+  return 0;
 }

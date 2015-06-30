@@ -114,6 +114,7 @@ typedef struct tpl_gather_t {
 typedef int (tpl_gather_cb)(void *img, size_t sz, void *data);
 
 /* Prototypes */
+TPL_API void tpl_fatal(char *fmt, ...);		/* default tpl_hook fatal fcn */
 TPL_API tpl_node *tpl_map(char *fmt,...);       /* define tpl using format */
 TPL_API void tpl_free(tpl_node *r);             /* free a tpl map */
 TPL_API int tpl_pack(tpl_node *r, int i);       /* pack the n'th packable */

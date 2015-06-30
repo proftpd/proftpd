@@ -1,6 +1,3 @@
-<!-- $Id: mod_sftp.html,v 1.82 2014-03-03 05:40:13 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sftp.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_sftp</title>
@@ -51,21 +48,21 @@ to FTPS for secure transfer of data.
 <b>SSH2 RFCs and SFTP Drafts</b><br>
 For those wishing to learn more about the SSH2 and SFTP protocols, see:
 <ul>
-  <li><a href="http://www.faqs.org/rfcs/rfc4250.html">SSH Assigned Numbers (RFC4250)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4251.html">SSH Architecture (RFC4251)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4252.html">SSH Authentication (RFC4252)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4253.html">SSH Transport Layer (RFC4253)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4254.html">SSH Connection (RFC4254)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4256.html">SSH Keyboard-Interactive Authentication (RFC4256)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4335.html">SSH Channel "Break" Extension (RFC4335)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4344.html">SSH Transport Encryption Modes (RFC4344)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4345.html">SSH Improved Arcfour Modes (RFC4345)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4419.html">SSH Diffie-Hellman Group Exchange Protocol (RFC4419)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4432.html">SSH RSA Key Exchange Protocol (RFC4432)</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc4716.html">SSH Public Key File Format (RFC4716)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4250.html">SSH Assigned Numbers (RFC 4250)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4251.html">SSH Architecture (RFC 4251)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4252.html">SSH Authentication (RFC 4252)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4253.html">SSH Transport Layer (RFC 4253)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4254.html">SSH Connection (RFC 4254)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4256.html">SSH Keyboard-Interactive Authentication (RFC 4256)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4335.html">SSH Channel "Break" Extension (RFC 4335)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4344.html">SSH Transport Encryption Modes (RFC 4344)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4345.html">SSH Improved Arcfour Modes (RFC 4345)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4419.html">SSH Diffie-Hellman Group Exchange Protocol (RFC 4419)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4432.html">SSH RSA Key Exchange Protocol (RFC 4432)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc4716.html">SSH Public Key File Format (RFC 4716)</a>
   <li><a href="http://www.vandyke.com/technology/draft-ietf-secsh-filexfer.txt">SFTP Draft</a>
   <li><a href="http://tools.ietf.org/html/draft-ietf-secsh-filexfer-extensions-00">SFTP Extensions Draft</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc5656.html">SSH Elliptic Curve Algorithms (RFC5656)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc5656.html">SSH Elliptic Curve Algorithms (RF C5656)</a>
 </ul>
 
 <p>
@@ -86,7 +83,7 @@ subsystem, for secure file transfer over an SSH2 connection.  The
   <li>Blacklisted public keys
   <li>Configurable traffic analysis protection
   <li>Passphrase-protected host keys
-  <li>SFTP extensions: check-file, copy-file, vendor-id, version-select, posix-rename@openssh.com, statvfs@openssh.com, fstatvfs@openssh.com
+  <li>SFTP extensions: check-file, copy-file, vendor-id, version-select, posix-rename@openssh.com, statvfs@openssh.com, fstatvfs@openssh.com, hardlink@openssh.com
 </ul>
 This module supports the SFTP and SCP file transfer protocols; it does
 <b>not</b> support shell access.
@@ -210,6 +207,35 @@ directive is configured.
 The <em>keyboard-interactive</em> authentication method is only offered to
 clients if the <a href="mod_sftp_pam.html"><code>mod_sftp_pam</code></a>
 module is present.
+
+<p>
+As of <code>proftpd-1.3.6rc2</code> and later, you can use the
+<code>SFTPAuthMethods</code> directive to configure <em>chains</em> of
+methods.  An authentication <em>chain</em> is a list of authentication
+methods, <b>all</b> of which must succeed in order for login to succeed.
+For example, using:
+<pre>
+  # Require both publickey and password authentication
+  SFTPAuthMethods publickey+password
+</pre>
+Note that <i>order of the methods in a chain is important</i>.  In the above
+example, the publickey authentication <b>must</b> succeed first, before
+password authentication will be offered.  If you want require both
+publickey and password authentication, but that they can be used in any
+order, you can configure multiple chains:
+<pre>
+  # Require both publickey and password authentication, in any order
+  SFTPAuthMethods publickey+password password+publickey
+</pre>
+As long as any <i>one</i> chain is completed, login will succeed.
+
+<p>
+You can even require that multiple different keys be used (<i>e.g.</i> a
+RSA and a DSA public key, or multiple different RSA/DSA keys) using:
+<pre>
+  # Require different keys for publickey authentication
+  SFTPAuthMethods publickey+publickey
+</pre>
 
 <p>
 <hr>
@@ -531,7 +557,7 @@ may be used to list all of the engine drivers supported by OpenSSL.
 The <code>SFTPDHParamFile</code> directive is used to configure the path
 to a file containing pre-computed Diffie-Hellman (DH) group parameters.
 These parameters will be used by <code>mod_sftp</code> when handling the
-Diffie-Hellman group exchange (see RFC4419) portion of the key exchange.
+Diffie-Hellman group exchange (see RFC 4419) portion of the key exchange.
 
 <p>
 The <code>SFTPDHParamFile</code> is produced using OpenSSL, which uses
@@ -573,6 +599,7 @@ of supported MAC algorithms is:
   <li>hmac-md5-96
   <li>hmac-ripemd160
   <li>umac-64@openssh.com
+  <li>umac-128@openssh.com
 </ul>
 By default, all of the above MAC algorithms are presented to the client,
 in the above order, during the key exchange.  <b>Note</b> that some algorithms
@@ -600,13 +627,15 @@ by default are:
   <li>hmac-sha1-96
   <li>hmac-md5-96
   <li>umac-64@openssh.com
+  <li>umac-128@openssh.com
 </ul>
 Thus if you wanted to configure <code>mod_sftp</code> to present the same
 MAC algorithms as OpenSSH, you would use:
 <pre>
   # Make mod_sftp present the MAC ciphers as OpenSSH
   SFTPDigests hmac-md5 hmac-sha1 hmac-sha2-256 hmac-sha2-512 \
-    hmac-ripemd160 hmac-sha1-96 hmac-md5-96 umac-64@openssh.com
+    hmac-ripemd160 hmac-sha1-96 hmac-md5-96 umac-64@openssh.com \
+    umac-128@openssh.com
 </pre>
 
 <p>
@@ -667,6 +696,7 @@ The extension names used for the <code>SFTPExtensions</code> directive are:
   <li>posixRename
   <li>spaceAvailable
   <li>statvfs
+  <li>hardlink
 </ul>
 All extensions <i>except</i> <code>vendorID</code> are enabled by default.
 
@@ -885,6 +915,20 @@ The currently implemented options are:
   </li>
 
   <p>
+  <li><code>AllowWeakDH</code><br>
+    <p>
+    The <code>mod_sftp</code> will not use Diffie-Hellman groups of less
+    than 2048 bits, due to <a href="https://www.weakdh.org">weaknesses</a>
+    that can downgrade the security of an SSH session.  If for any reason
+    your SFTP/SCP clients <b>require</b> smaller Diffie-Hellman groups, then
+    use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc1</code>.
+  </li>
+
+  <p>
   <li><code>IgnoreSCPUploadPerms</code><br>
     <p>
     When an SCP client uploads a file, the desired permissions on the file
@@ -1070,7 +1114,7 @@ By default, <code>mod_sftp</code> will only <b>require</b> rekeying when
 the packet sequence number (for sent <i>or</i> received SSH2 packets) reaches
 a rather high limit.  The digest algorithm used, for example, might begin
 to leak cryptographically sensitive information if used for too many
-packets (see RFC4344).  Outside of these sequence number limits, however,
+packets (see RFC 4344).  Outside of these sequence number limits, however,
 <code>mod_sftp</code> will not attempt to initiate rekeying.
 
 <p>
@@ -1408,6 +1452,7 @@ values), once the client has successfully exchanged keys with
 And after the client has successfully authenticated, the following variables
 <i>may</i> be set, depending on the authentication mechanism used:
 <ul>
+  <li><code>SFTP_USER_PUBLICKEY_ALGO</code>
   <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT</code>
   <li><code>SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO</code>
 </ul>
@@ -1898,7 +1943,7 @@ that is too long.  Simply delete that "Comment: " line; the
 SSH is insecure?<br>
 <font color=blue>Answer</font>: It is true that there are a couple of published
 <i>theoretical</i> attacks against the SSH protocol when CBC ciphers are
-used, including Rogaway, Wai, and Bellare (see RFC4251, Section 9.3.1) and
+used, including Rogaway, Wai, and Bellare (see RFC 4251, Section 9.3.1) and
 <a href="http://www.cpni.gov.uk/Docs/Vulnerability_Advisory_SSH.txt">"Plaintext Recovery Attacks Against SSH"</a> (CPNI-957037).
 
 <p>
@@ -2213,7 +2258,7 @@ cannot read either the <code>SFTPDHParamFile</code> or the
 <hr><br>
 
 <font size=2><b><i>
-&copy; Copyright 2008-2014 TJ Saunders<br>
+&copy; Copyright 2008-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
