@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/*
- * Class API tests
- * $Id: class.c,v 1.2 2011-05-23 20:50:30 castaglia Exp $
- */
+/* Class API tests */
 
 #include "tests.h"
 
@@ -100,6 +97,32 @@ START_TEST (class_add_acl_test) {
 
   res = pr_class_add_acl(acl);
   fail_unless(res == 0, "Failed to add ACL: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (class_add_note_test) {
+  const char *k = NULL;
+  void *v = NULL;
+  size_t vsz = 0;
+  int res;
+
+  res = pr_class_add_note(k, v, vsz);
+  fail_unless(res == -1, "Failed to handle NULL argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  k = "KEY";
+  v = "VALUE";
+  vsz = 6;
+
+  res = pr_class_add_note(k, v, vsz);
+  fail_unless(res == -1, "Failed to handle unopened class");
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM");
+
+  res = pr_class_open(p, "foo");
+  fail_unless(res == 0, "Failed to open class: %s", strerror(errno));
+
+  res = pr_class_add_note(k, v, vsz);
+  fail_unless(res == 0, "Failed to add note: %s", strerror(errno));
 }
 END_TEST
 
@@ -449,6 +472,7 @@ Suite *tests_get_class_suite(void) {
 
   tcase_add_test(testcase, class_open_test);
   tcase_add_test(testcase, class_add_acl_test);
+  tcase_add_test(testcase, class_add_note_test);
   tcase_add_test(testcase, class_close_test);
   tcase_add_test(testcase, class_set_satisfy_test);
   tcase_add_test(testcase, class_get_test);
