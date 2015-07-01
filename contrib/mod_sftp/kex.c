@@ -1720,7 +1720,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     }
   }
 
-  kex_algo = get_shared_name(kex_pool, client_list, server_list);
+  kex_algo = get_shared_name(kex->pool, client_list, server_list);
   if (kex_algo != NULL) {
     /* Unlike the following algorithms, we wait to setup the chosen kex algo
      * until the end.  Why?  The kex algo setup may require knowledge of the
@@ -1887,7 +1887,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent client compression algorithms: %s", server_list);
 
-  shared = get_shared_name(kex_pool, client_list, server_list);
+  shared = get_shared_name(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_comp_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
