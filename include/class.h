@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2011 The ProFTPD Project team
+ * Copyright (c) 2003-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Class definitions
- * $Id: class.h,v 1.4 2011-05-23 20:35:35 castaglia Exp $
- */
+/* Class definitions */
 
 #ifndef PR_CLASS_H
 #define PR_CLASS_H
@@ -36,6 +34,7 @@ typedef struct pr_class_t {
   char *cls_name;
   unsigned int cls_satisfy;
   array_header *cls_acls;
+  pr_table_t *cls_notes;
 
   struct pr_class_t *cls_next;
 } pr_class_t;
@@ -72,14 +71,16 @@ int pr_class_open(pool *, const char *);
  */
 int pr_class_close(void);
 
-/* Add the given ACL object to the currently opened class object.
- */
+/* Add the given ACL object to the currently opened class object. */
 int pr_class_add_acl(pr_netacl_t *);
 
-/* Set the Satisfy flag on the currently opened class object.
- */
+/* Set the Satisfy flag on the currently opened class object. */
 int pr_class_set_satisfy(int);
 
+/* Set a note on the currently opened class object. */
+int pr_class_add_note(const char *, void *, size_t);
+
+/* For internal use only. */
 void init_class(void);
 
 #endif /* PR_CLASS_H */
