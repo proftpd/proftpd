@@ -333,6 +333,28 @@ sub config_write_subsection {
 
       print $fh "$indent</Limit>\n";
     }
+
+  } elsif ($type eq 'Class') {
+    my $sections = $config;
+
+    foreach my $class (keys(%$sections)) {
+      print $fh "<Class $class>\n";
+
+      my $section = $sections->{$class};
+
+      if (ref($section) eq 'HASH') {
+        while (my ($class_k, $class_v) = each(%$section)) {
+          print $fh "  $class_k $class_v\n";
+        }
+
+      } elsif (ref($section) eq 'ARRAY') {
+        foreach my $line (@$section) {
+          print $fh "  $line\n";
+        }
+      }
+
+      print $fh "</Class>\n";
+    }
   }
 }
 
@@ -519,7 +541,14 @@ sub config_write {
 
             if (ref($section) eq 'HASH') {
               while (my ($mod_k, $mod_v) = each(%$section)) {
-                print $fh "  $mod_k $mod_v\n";
+
+                if (ref($mod_v) eq 'HASH' ||
+                    ref($mod_v) eq 'ARRAY') {
+                  config_write_subsection($fh, $mod_k, $mod_v, "  ");
+
+                } else {
+                  print $fh "  $mod_k $mod_v\n";
+                }
               }
 
             } elsif (ref($section) eq 'ARRAY') {
