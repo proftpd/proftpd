@@ -1161,7 +1161,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       "session.notes: %s", strerror(errno));
   }
 
-  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "USERAUTH_REQUEST"));
+  cmd = pr_cmd_alloc(pkt->pool, 3, pstrdup(pkt->pool, "USERAUTH_REQUEST"),
+    pstrdup(pkt->pool, user), pstrdup(pkt->pool, method));
   cmd->arg = pstrcat(pkt->pool, user, " ", method, NULL);
   cmd->cmd_class = CL_AUTH|CL_SSH;
 

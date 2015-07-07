@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: channel.c,v 1.47 2012-02-18 22:12:20 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -404,7 +402,8 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
     "packet size = %lu bytes", channel_type, (unsigned long) *channel_id,
     (unsigned long) initial_windowsz, (unsigned long) max_packetsz);
 
-  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_OPEN"));
+  cmd = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, "CHANNEL_OPEN"),
+    pstrdup(pkt->pool, channel_type));
   cmd->arg = channel_type;
   cmd->cmd_class = CL_MISC|CL_SSH;
 
@@ -990,7 +989,8 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
     channel_request, (unsigned long) channel_id,
     want_reply ? "true" : "false");
 
-  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "CHANNEL_REQUEST"));
+  cmd = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, "CHANNEL_REQUEST"),
+    pstrdup(pkt->pool, channel_request));
   cmd->arg = channel_request;
   cmd->cmd_class = CL_MISC|CL_SSH;
 
