@@ -635,22 +635,32 @@ static int get_dh_nbits(struct sftp_kex *kex) {
   algo = kex->session_names->c2s_encrypt_algo;
   cipher = sftp_crypto_get_cipher(algo, NULL, NULL);
   if (cipher != NULL) {
-    int key_len;
+    int block_size, key_len;
 
     key_len = EVP_CIPHER_key_length(cipher);
     if (dh_size < key_len) {
       dh_size = key_len;
+    }
+
+    block_size = EVP_CIPHER_block_size(cipher);
+    if (dh_size < block_size) {
+      dh_size = block_size;
     }
   }
 
   algo = kex->session_names->s2c_encrypt_algo;
   cipher = sftp_crypto_get_cipher(algo, NULL, NULL);
   if (cipher != NULL) {
-    int key_len;
+    int block_size, key_len;
 
     key_len = EVP_CIPHER_key_length(cipher);
     if (dh_size < key_len) {
       dh_size = key_len;
+    }
+
+    block_size = EVP_CIPHER_block_size(cipher);
+    if (dh_size < block_size) {
+      dh_size = block_size;
     }
   }
 
