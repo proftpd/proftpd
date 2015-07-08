@@ -37,8 +37,6 @@
 #include "interop.h"
 #include "tap.h"
 
-#define SFTP_DH_PRIV_KEY_RANDOM_BITS	2048
-
 /* Define the minimum DH group length we allow (unless the AllowWeakDH
  * SFTPOption is used).
  */
