@@ -2236,7 +2236,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "received too many EXTENDED attributes (%lu > max %lu), "
           "truncating to max", (unsigned long) extpair_count,
-          FXP_MAX_EXTENDED_ATTRIBUTES);
+          (unsigned long) FXP_MAX_EXTENDED_ATTRIBUTES);
         extpair_count = FXP_MAX_EXTENDED_ATTRIBUTES;
       }
 
@@ -4414,12 +4414,12 @@ static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
 
 static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
     char *dst) {
-  unsigned char *buf, *path, *ptr;
-  char *args;
+  unsigned char *buf, *ptr;
+  char *args, *path;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
-  cmd_rec *cmd = NULL, *cmd2 = NULL, *cmd3 = NULL;
+  cmd_rec *cmd = NULL, *cmd2 = NULL;
   int res, xerrno = 0;
 
   args = pstrcat(fxp->pool, src, " ", dst, NULL);
