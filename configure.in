@@ -3085,13 +3085,17 @@ if test x"$devel" = xyes ; then
     dnl Some C compilers (e.g. older gcc versions) may not accept these
     dnl options.  Check if they are supported.  They will be added to
     dnl CFLAGS if supported.
+    PR_CHECK_CC_OPT(Wcomment)
+    PR_CHECK_CC_OPT(Wdeclaration-after-statement)
     PR_CHECK_CC_OPT(Wfloat-equal)
     PR_CHECK_CC_OPT(Wformat)
     PR_CHECK_CC_OPT(Wformat-security)
     PR_CHECK_CC_OPT(Wimplicit-function-declaration)
     PR_CHECK_CC_OPT(Wmaybe-uninitialized)
+    PR_CHECK_CC_OPT(Wmissing-braces)
     PR_CHECK_CC_OPT(Wpointer-to-int-cast)
     PR_CHECK_CC_OPT(Wstack-protector)
+    PR_CHECK_CC_OPT(Wswitch)
     PR_CHECK_CC_OPT(Wunreachable-code)
     PR_CHECK_CC_OPT(fstack-protector-all)
   fi

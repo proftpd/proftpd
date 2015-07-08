@@ -39427,7 +39427,33 @@ _ACEOF
 
   if test x"$GCC" = xyes; then
 
-                { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wfloat-equal" >&5
+                { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wcomment" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wcomment... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wcomment conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wcomment"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wdeclaration-after-statement" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wdeclaration-after-statement... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wdeclaration-after-statement conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wdeclaration-after-statement"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wfloat-equal" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wfloat-equal... $ECHO_C" >&6; }
    echo 'void f(){}' > conftest.c
    if test -z "`${CC-cc} -c -Wfloat-equal conftest.c 2>&1`"; then
@@ -39492,6 +39518,19 @@ echo "${ECHO_T}no" >&6; }
    fi
    rm -f conftest*
 
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wmissing-braces" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wmissing-braces... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wmissing-braces conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wmissing-braces"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wpointer-to-int-cast" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wpointer-to-int-cast... $ECHO_C" >&6; }
    echo 'void f(){}' > conftest.c
@@ -39512,6 +39551,19 @@ echo $ECHO_N "checking whether ${CC-cc} accepts -Wstack-protector... $ECHO_C" >&
      { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
      CFLAGS="$CFLAGS -Wstack-protector"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wswitch" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wswitch... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wswitch conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wswitch"
    else
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
