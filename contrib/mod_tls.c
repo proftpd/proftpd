@@ -47,6 +47,7 @@
 */
 
 #include <openssl/err.h>
+#include <openssl/conf.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/x509v3.h>
@@ -10387,6 +10388,7 @@ static int tls_init(void) {
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
   pr_event_register(&tls_module, "core.shutdown", tls_shutdown_ev, NULL);
 
+  OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
 

@@ -1185,7 +1185,6 @@ int sftp_crypto_set_driver(const char *driver) {
     /* Load all ENGINE implementations bundled with OpenSSL. */
     ENGINE_load_builtin_engines();
     ENGINE_register_all_complete();
-    OPENSSL_config(NULL);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "enabled all builtin crypto devices");
@@ -1195,7 +1194,6 @@ int sftp_crypto_set_driver(const char *driver) {
 
     /* Load all ENGINE implementations bundled with OpenSSL. */
     ENGINE_load_builtin_engines();
-    OPENSSL_config(NULL);
 
     e = ENGINE_by_id(driver);
     if (e) {
