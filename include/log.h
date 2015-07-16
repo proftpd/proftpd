@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@
 
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
- *
- * $Id: log.h,v 1.38 2013-10-07 01:29:05 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -63,7 +61,6 @@
 
 /* Log file modes */
 #define PR_LOG_SYSTEM_MODE	0640
-#define PR_LOG_XFER_MODE	0644
 
 #ifdef PR_USE_LASTLOG
 
