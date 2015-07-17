@@ -640,11 +640,17 @@ static int get_dh_nbits(struct sftp_kex *kex) {
     key_len = EVP_CIPHER_key_length(cipher);
     if (dh_size < key_len) {
       dh_size = key_len;
+      pr_trace_msg(trace_channel, 19,
+        "set DH size to %d bytes, matching client-to-server '%s' cipher "
+        "key length", dh_size, algo);
     }
 
     block_size = EVP_CIPHER_block_size(cipher);
     if (dh_size < block_size) {
       dh_size = block_size;
+      pr_trace_msg(trace_channel, 19,
+        "set DH size to %d bytes, matching client-to-server '%s' cipher "
+        "block size", dh_size, algo);
     }
   }
 
@@ -656,11 +662,17 @@ static int get_dh_nbits(struct sftp_kex *kex) {
     key_len = EVP_CIPHER_key_length(cipher);
     if (dh_size < key_len) {
       dh_size = key_len;
+      pr_trace_msg(trace_channel, 19,
+        "set DH size to %d bytes, matching server-to-client '%s' cipher "
+        "key length", dh_size, algo);
     }
 
     block_size = EVP_CIPHER_block_size(cipher);
     if (dh_size < block_size) {
       dh_size = block_size;
+      pr_trace_msg(trace_channel, 19,
+        "set DH size to %d bytes, matching server-to-client '%s' cipher "
+        "block size", dh_size, algo);
     }
   }
 
@@ -672,6 +684,9 @@ static int get_dh_nbits(struct sftp_kex *kex) {
     mac_len = EVP_MD_size(digest);
     if (dh_size < mac_len) {
       dh_size = mac_len;
+      pr_trace_msg(trace_channel, 19,
+        "set DH size to %d bytes, matching client-to-server '%s' digest size",
+        dh_size, algo);
     }
   }
 
@@ -683,6 +698,9 @@ static int get_dh_nbits(struct sftp_kex *kex) {
     mac_len = EVP_MD_size(digest);
     if (dh_size < mac_len) {
       dh_size = mac_len;
+      pr_trace_msg(trace_channel, 19,
+        "set DH size to %d bytes, matching server-to-client '%s' digest size",
+        dh_size, algo);
     }
   }
 
