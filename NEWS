@@ -1,4 +1,3 @@
-$Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -12,6 +11,8 @@ $Id: NEWS,v 1.1597 2014-05-15 16:24:13 castaglia Exp $
 1.3.5b
 --------------------------------
 - Bug 4187 - mod_geoip does not load all of the GeoIPTables properly.
+- Bug 4191 - "Incorrect string value" reported by mod_sql_mysql for some UTF8
+  characters.
 
 1.3.5a - Released 27-May-2015
 --------------------------------
