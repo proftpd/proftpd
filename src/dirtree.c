@@ -2774,7 +2774,7 @@ int fixup_servers(xaset_t *list) {
 #endif /* PR_USE_IPV6 */
 
           if (ipstr) {
-            pr_conf_add_server_config_param_str(s, "_bind", 1, ipstr);
+            pr_conf_add_server_config_param_str(s, "_bind_", 1, ipstr);
           }
         }
       }

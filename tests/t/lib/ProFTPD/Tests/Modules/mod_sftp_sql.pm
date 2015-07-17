@@ -155,11 +155,21 @@ sub ssh2_auth_publickey_rsa_sql {
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
 INSERT INTO sftpuserkeys (name, key) VALUES ('$user', '$rsa_data');
+
+CREATE TABLE users (
+  userid TEXT NOT NULL PRIMARY KEY,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+
 EOS
     unless (close($fh)) {
       die("Can't write $db_script: $!");
@@ -216,7 +226,7 @@ EOS
       },
 
       'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
+        SQLAuthenticate => 'users usersetfast',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
         SQLNamedQuery => 'get-user-authorized-keys SELECT "key FROM sftpuserkeys WHERE name = \'%{0}\'"',
@@ -343,7 +353,8 @@ sub ssh2_auth_publickey_rsa_sql_var_U {
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
 
   my $config = {
     PidFile => $pid_file,
@@ -361,7 +372,7 @@ sub ssh2_auth_publickey_rsa_sql_var_U {
       },
 
       'mod_sql_sqlite.c' => {
-        SQLAuthenticate => 'off',
+        SQLAuthenticate => 'users usersetfast',
         SQLConnectInfo => $db_file,
         SQLLogFile => $log_file,
         SQLNamedQuery => 'get-user-authorized-keys SELECT "key FROM sftpuserkeys WHERE name = \'%U\'"',
@@ -385,12 +396,22 @@ sub ssh2_auth_publickey_rsa_sql_var_U {
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
 INSERT INTO sftpuserkeys (name, key) VALUES ('$user', '$rsa_data');
 INSERT INTO sftpuserkeys (name, key) VALUES ('$config_user', '$rsa_data');
+
+CREATE TABLE users (
+  userid TEXT NOT NULL PRIMARY KEY,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+
 EOS
     unless (close($fh)) {
       die("Can't write $db_script: $!");
@@ -564,7 +585,7 @@ sub ssh2_auth_publickey_rsa_sql_var_u {
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -694,7 +715,7 @@ sub ssh2_auth_publickey_dsa_sql {
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -870,7 +891,7 @@ sub ssh2_auth_publickey_rsa_dsa_sql {
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -1054,7 +1075,7 @@ Byq2pv4VBo953gK7f1AQ==
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -1239,7 +1260,7 @@ Byq2pv4VBo953gK7f1AQ==
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -1427,7 +1448,7 @@ NJ/pRF0JutY1UDEUMQ==
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -1624,7 +1645,7 @@ NJ/pRF0JutY1UDEUMQ==
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -1820,7 +1841,7 @@ GLxgWrkgXv/3qR/8zNaQ==
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
@@ -2025,14 +2046,14 @@ sub ssh2_auth_publickey_rsa_sql_fp_env_vars {
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 
 INSERT INTO sftpuserkeys (name, key) VALUES ('$user', '$rsa_data');
 
 CREATE TABLE sftpsessions (
-  user TEXT NOT NULL,
+  user TEXT NOT NULL PRIMARY KEY,
   key_fingerprint TEXT,
   key_fingerprint_algo TEXT
 );
@@ -2241,7 +2262,7 @@ MSJJkwubawXDDPj/RUjw==
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL,
+  name TEXT NOT NULL PRIMARY KEY,
   key BLOB NOT NULL
 );
 

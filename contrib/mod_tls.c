@@ -47,6 +47,7 @@
 */
 
 #include <openssl/err.h>
+#include <openssl/conf.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/x509v3.h>
@@ -10387,6 +10388,7 @@ static int tls_init(void) {
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
   pr_event_register(&tls_module, "core.shutdown", tls_shutdown_ev, NULL);
 
+  OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
 
@@ -10954,6 +10956,7 @@ static int tls_sess_init(void) {
       /* Load all ENGINE implementations bundled with OpenSSL. */
       ENGINE_load_builtin_engines();
       ENGINE_register_all_complete();
+      OPENSSL_config(NULL);
 
       tls_log("%s", "enabled all builtin crypto devices");
 
@@ -10962,6 +10965,7 @@ static int tls_sess_init(void) {
 
       /* Load all ENGINE implementations bundled with OpenSSL. */
       ENGINE_load_builtin_engines();
+      OPENSSL_config(NULL);
 
       e = ENGINE_by_id(tls_crypto_device);
       if (e) {

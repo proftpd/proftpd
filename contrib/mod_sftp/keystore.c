@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp keystores
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: keystore.c,v 1.7 2012-02-15 23:50:51 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -310,7 +308,6 @@ int sftp_keystore_verify_user_key(pool *p, const char *user,
     }
 
     *ptr = '\0';
-
     path = ptr + 1;
 
     /* Check for any variables in the configured path.
@@ -324,8 +321,8 @@ int sftp_keystore_verify_user_key(pool *p, const char *user,
     session.user = session_user;
 
     pr_trace_msg(trace_channel, 2,
-      "using SFTPAuthorizedUserKeys '%s' for public key authentication for "
-      "user '%s'", path, user);
+      "using SFTPAuthorizedUserKeys '%s:%s' for public key authentication for "
+      "user '%s'", store_type, path, user);
 
     sks = keystore_get_store(store_type, SFTP_SSH2_USER_KEY_STORE);
     if (sks) {

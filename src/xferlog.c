@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2013 The ProFTPD Project team
+ * Copyright (c) 2003-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* ProFTPD xferlog(5) logging support.
- * $Id: xferlog.c,v 1.12 2013-02-15 22:39:00 castaglia Exp $
- */
+/* ProFTPD xferlog(5) logging support. */
 
 #include "conf.h"
 
@@ -41,20 +39,25 @@ void xferlog_close(void) {
 
 int xferlog_open(const char *path) {
 
-  if (!path) {
-    if (xferlogfd != -1)
+  if (path == NULL) {
+    if (xferlogfd != -1) {
       xferlog_close();
+    }
 
     return 0;
   }
 
   if (xferlogfd == -1) {
     pr_log_debug(DEBUG6, "opening TransferLog '%s'", path);
-    pr_log_openfile(path, &xferlogfd, PR_LOG_XFER_MODE);
+    pr_log_openfile(path, &xferlogfd, PR_TUNABLE_XFER_LOG_MODE);
 
     if (xferlogfd < 0) {
+      int xerrno = errno;
+
       pr_log_pri(PR_LOG_NOTICE, "unable to open TransferLog '%s': %s",
-        path, strerror(errno));
+        path, strerror(xerrno));
+
+      errno = xerrno;
     }
   }
 

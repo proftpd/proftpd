@@ -75,7 +75,7 @@
  * miscellaneous tasks.
  */
 #ifndef PR_TUNABLE_BUFFER_SIZE
-# define PR_TUNABLE_BUFFER_SIZE	1024
+# define PR_TUNABLE_BUFFER_SIZE		1024
 #endif
 
 /* There is also a definable buffer size used specifically for data
@@ -223,6 +223,10 @@
  * The default behavior is delay 0.2 secs between retries.
  */
 # define PR_TUNABLE_EINTR_RETRY_INTERVAL	0.2
+#endif
+
+#ifndef PR_TUNABLE_XFER_LOG_MODE
+# define PR_TUNABLE_XFER_LOG_MODE		0644
 #endif
 
 /* FS Statcache tuning. */

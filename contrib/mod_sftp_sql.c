@@ -35,7 +35,7 @@
 
 module sftp_sql_module;
 
-#define SFTP_SQL_BUFSZ		1024
+#define SFTP_SQL_BUFSZ			1024
 
 struct sqlstore_key {
   const char *subject;
@@ -87,8 +87,6 @@ static char *sqlstore_getline(pool *p, char **blob, size_t *bloblen) {
 
   if (data == NULL ||
       datalen == 0) {
-    pr_trace_msg(trace_channel, 10,
-      "reached end of data, no matching key found");
     errno = EOF;
     return NULL;
   }

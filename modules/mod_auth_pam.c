@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2014 The ProFTPD Project
+ * Copyright 2000-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,13 +29,8 @@
  * This module should work equally well under all Linux distributions (which
  * have PAM support), as well as Solaris 2.5 and above.
  *
- * If you have any problems, questions, comments, or suggestions regarding
- * this module, please feel free to contact Habeeb J. Dihu aka MacGyver
- * <macgyver@tos.net>.
- *
- * -- DO NOT MODIFY THE TWO LINES BELOW --
+ * -- DO NOT MODIFY THE LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.30 2013-10-13 17:34:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -177,7 +172,7 @@ static struct pam_conv pam_conv = {
 };
 
 static void auth_pam_exit_ev(const void *event_data, void *user_data) {
-  int pam_error = 0, disable_id_switching;
+  int res = 0, disable_id_switching;
 
   /* Sanity check.
    */
@@ -204,20 +199,20 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
    * instance of PAM authentication.
    */
 #ifdef PAM_CRED_DELETE
-  pam_error = pam_setcred(pamh, PAM_CRED_DELETE);
+  res = pam_setcred(pamh, PAM_CRED_DELETE);
 #else
-  pam_error = pam_setcred(pamh, PAM_DELETE_CRED);
+  res = pam_setcred(pamh, PAM_DELETE_CRED);
 #endif /* !PAM_CRED_DELETE */
-  if (pam_error != PAM_SUCCESS) {
+  if (res != PAM_SUCCESS) {
     pr_trace_msg(trace_channel, 1,
       "error setting PAM_DELETE_CRED credential: %s",
-      pam_strerror(pamh, pam_error));
+      pam_strerror(pamh, res));
   }
 
-  pam_error = pam_close_session(pamh, PAM_SILENT);
-  if (pam_error != PAM_SUCCESS) {
+  res = pam_close_session(pamh, PAM_SILENT);
+  if (res != PAM_SUCCESS) {
     pr_trace_msg(trace_channel, 1, "error closing PAM session: %s",
-      pam_strerror(pamh, pam_error));
+      pam_strerror(pamh, res));
   }
 
 #ifndef SOLARIS2
@@ -240,7 +235,7 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
 }
 
 MODRET pam_auth(cmd_rec *cmd) {
-  int pam_error = 0, retval = PR_AUTH_ERROR, success = 0;
+  int res = 0, retval = PR_AUTH_ERROR, success = 0;
   config_rec *c = NULL;
   unsigned char *auth_pam = NULL, pam_authoritative = FALSE;
   char ttyentry[32];
@@ -265,15 +260,16 @@ MODRET pam_auth(cmd_rec *cmd) {
     pam_authoritative = TRUE;
   }
 
-  /* Just in case...
-   */
-  if (cmd->argc != 2)
+  /* Just in case... */
+  if (cmd->argc != 2) {
     return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
+  }
 
-  /* Allocate our entries...we free these up at the end of the authentication.
-   */
-  if ((pam_user_len = strlen(cmd->argv[0]) + 1) > (PAM_MAX_MSG_SIZE + 1))
+  /* Allocate our entries; we free these up at the end of the authentication. */
+  pam_user_len = strlen(cmd->argv[0]) + 1;
+  if (pam_user_len > (PAM_MAX_MSG_SIZE + 1)) {
     pam_user_len = PAM_MAX_MSG_SIZE + 1;
+  }
 
 #ifdef MAXLOGNAME
   /* Some platforms' PAM libraries do not handle login strings that
@@ -290,13 +286,16 @@ MODRET pam_auth(cmd_rec *cmd) {
   }
 #endif
   pam_user = malloc(pam_user_len);
-  if (pam_user == NULL)
+  if (pam_user == NULL) {
     return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
+  }
 
   sstrncpy(pam_user, cmd->argv[0], pam_user_len);
 
-  if ((pam_pass_len = strlen(cmd->argv[1]) + 1) > (PAM_MAX_MSG_SIZE + 1))
+  pam_pass_len = strlen(cmd->argv[1]) + 1;
+  if (pam_pass_len > (PAM_MAX_MSG_SIZE + 1)) {
     pam_pass_len = PAM_MAX_MSG_SIZE + 1;
+  }
  
   pam_pass = malloc(pam_pass_len);
   if (pam_pass == NULL) {
@@ -351,9 +350,10 @@ MODRET pam_auth(cmd_rec *cmd) {
    * pam_open_session()
    * pam_setcred()
    */
-  pam_error = pam_start(pamconfig, pam_user, &pam_conv, &pamh);
-  if (pam_error != PAM_SUCCESS)
+  res = pam_start(pamconfig, pam_user, &pam_conv, &pamh);
+  if (res != PAM_SUCCESS) {
     goto done;
+  }
 
   pam_set_item(pamh, PAM_RUSER, pam_user);
 
@@ -376,12 +376,10 @@ MODRET pam_auth(cmd_rec *cmd) {
     pam_set_item(pamh, PAM_TTY, ttyentry);
   }
 
-  /* Authenticate, and get any credentials as needed.
-   */
-  pam_error = pam_authenticate(pamh, PAM_SILENT);
-
-  if (pam_error != PAM_SUCCESS) {
-    switch (pam_error) {
+  /* Authenticate, and get any credentials as needed. */
+  res = pam_authenticate(pamh, PAM_SILENT);
+  if (res != PAM_SUCCESS) {
+    switch (res) {
       case PAM_USER_UNKNOWN:
         retval = PR_AUTH_NOPWD;
         break;
@@ -410,8 +408,8 @@ MODRET pam_auth(cmd_rec *cmd) {
     }
 
     pr_trace_msg(trace_channel, 1,
-      "authentication error (%d) for user '%s': %s", pam_error, cmd->argv[0],
-      pam_strerror(pamh, pam_error));
+      "authentication error (%d) for user '%s': %s", res, cmd->argv[0],
+      pam_strerror(pamh, res));
     goto done;
   }
 
@@ -420,10 +418,9 @@ MODRET pam_auth(cmd_rec *cmd) {
     goto done;
   }
 
-  pam_error = pam_acct_mgmt(pamh, PAM_SILENT);
-
-  if (pam_error != PAM_SUCCESS) {
-    switch (pam_error) {
+  res = pam_acct_mgmt(pamh, PAM_SILENT);
+  if (res != PAM_SUCCESS) {
+    switch (res) {
 #ifdef PAM_AUTHTOKEN_REQD
       case PAM_AUTHTOKEN_REQD:
         pr_trace_msg(trace_channel, 8,
@@ -459,21 +456,20 @@ MODRET pam_auth(cmd_rec *cmd) {
 
       default:
         pr_trace_msg(trace_channel, 8, "account mgmt error: (unknown) [%d]",
-          pam_error);
+          res);
         retval = PR_AUTH_BADPWD;
         break;
     }
 
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
-      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, pam_error));
+      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, res));
     goto done;
   }
 
   /* Open the session. */
-  pam_error = pam_open_session(pamh, PAM_SILENT);
-
-  if (pam_error != PAM_SUCCESS) {
-    switch (pam_error) {
+  res = pam_open_session(pamh, PAM_SILENT);
+  if (res != PAM_SUCCESS) {
+    switch (res) {
       case PAM_SESSION_ERR:
         retval = PR_AUTH_INIT_ERROR;
         break;
@@ -484,19 +480,19 @@ MODRET pam_auth(cmd_rec *cmd) {
     }
 
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
-      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, pam_error));
+      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, res));
     goto done;
   }
 
   /* Finally, establish credentials. */
 #ifdef PAM_CRED_ESTABLISH
-  pam_error = pam_setcred(pamh, PAM_CRED_ESTABLISH);
+  res = pam_setcred(pamh, PAM_CRED_ESTABLISH);
 #else
-  pam_error = pam_setcred(pamh, PAM_ESTABLISH_CRED);
+  res = pam_setcred(pamh, PAM_ESTABLISH_CRED);
 #endif /* !PAM_CRED_ESTABLISH */
 
-  if (pam_error != PAM_SUCCESS) {
-    switch (pam_error) {
+  if (res != PAM_SUCCESS) {
+    switch (res) {
 #ifdef PAM_CRED_UNAVAIL
       case PAM_CRED_UNAVAIL:
         pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_UNAVAIL");
@@ -523,13 +519,13 @@ MODRET pam_auth(cmd_rec *cmd) {
 
       default:
         pr_trace_msg(trace_channel, 8, "credentials error: (unknown) [%d]",
-          pam_error);
+          res);
         retval = PR_AUTH_BADPWD;
         break;
     }
 
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
-      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, pam_error));
+      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, res));
     goto done;
   }
 
@@ -540,11 +536,13 @@ MODRET pam_auth(cmd_rec *cmd) {
   /* And we're done.  Clean up and relinquish our root privs.  */
 
 #if defined(SOLARIS2) || defined(HPUX10) || defined(HPUX11)
-  if (success)
-    pam_error = pam_close_session(pamh, 0);
+  if (success) {
+    res = pam_close_session(pamh, 0);
+  }
 
-  if (pamh)
-    pam_end(pamh, pam_error);
+  if (pamh) {
+    pam_end(pamh, res);
+  }
   pamh = NULL;
 #endif
 

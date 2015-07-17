@@ -1613,6 +1613,7 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   server_rec *s;
 
   /* Initialize OpenSSL. */
+  OPENSSL_config(NULL);
   ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
 
