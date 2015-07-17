@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: keys.c,v 1.39 2014-01-28 17:26:17 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -2161,27 +2159,38 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
 #ifdef PR_USE_OPENSSL_ECC
   int count = 0;
 
-  *nids = palloc(p, sizeof(int) * 3);
+  if (nids != NULL) {
+    *nids = palloc(p, sizeof(int) * 3);
+  }
 
   if (sftp_ecdsa256_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa256_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
 
   } else if (sftp_ecdsa384_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa384_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
 
   } else if (sftp_ecdsa521_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa521_hostkey->pkey);
-    (*nids)[count++] = get_ecdsa_nid(ec);
+    if (nids != NULL) {
+      (*nids)[count] = get_ecdsa_nid(ec);
+    }
+    count++;
     EC_KEY_free(ec);
   }
 
