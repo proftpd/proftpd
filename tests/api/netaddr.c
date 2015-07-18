@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2014 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* NetAddr API tests
- * $Id: netaddr.c,v 1.13 2014-01-27 18:31:35 castaglia Exp $
- */
+/* NetAddr API tests */
 
 #include "tests.h"
 
@@ -350,7 +348,7 @@ START_TEST (netaddr_get_dnsstr_test) {
   fail_unless(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
 
   /* We need to clear the netaddr internal cache as well. */
-  pr_netaddr_clear_cache();
+  pr_netaddr_clear_ipcache(ip);
   addr = pr_netaddr_get_addr(p, ip, NULL);
   fail_unless(addr != NULL, "Failed to get addr for '%s': %s", ip,
     strerror(errno));
@@ -418,7 +416,7 @@ START_TEST (netaddr_get_dnsstr_ipv6_test) {
   fail_unless(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
 
   /* We need to clear the netaddr internal cache as well. */
-  pr_netaddr_clear_cache();
+  pr_netaddr_clear_ipcache(ip);
   addr = pr_netaddr_get_addr(p, ip, NULL);
   fail_unless(addr != NULL, "Failed to get addr for '%s': %s", ip,
     strerror(errno));

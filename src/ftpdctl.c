@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* ProFTPD Controls command-line client
- * $Id: ftpdctl.c,v 1.20 2013-07-16 21:36:49 castaglia Exp $
- */
+/* ProFTPD Controls command-line client */
 
 #include "conf.h"
 #include "privs.h"
@@ -119,6 +117,11 @@ int pr_table_free(pr_table_t *tab) {
 }
 
 void *pr_table_get(pr_table_t *tab, const char *k, size_t *sz) {
+  errno = EPERM;
+  return NULL;
+}
+
+void *pr_table_remove(pr_table_t *tab, const char *k, size_t *sz) {
   errno = EPERM;
   return NULL;
 }

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2014 The ProFTPD Project team
+ * Copyright (c) 2003-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Network address routines
- * $Id: netaddr.c,v 1.98 2013-12-23 17:53:42 castaglia Exp $
- */
+/* Network address routines */
 
 #include "conf.h"
 
@@ -2289,6 +2287,18 @@ void pr_netaddr_clear_cache(void) {
 
     /* Allocate a fresh table. */
     netaddr_dnstab = pr_table_alloc(netaddr_pool, 0);
+  }
+}
+
+void pr_netaddr_clear_dnscache(const char *ip_str) {
+  if (netaddr_dnstab != NULL) {
+    (void) pr_table_remove(netaddr_dnstab, ip_str, NULL);
+  }
+}
+
+void pr_netaddr_clear_ipcache(const char *name) {
+  if (netaddr_iptab != NULL) {
+    (void) pr_table_remove(netaddr_iptab, name, NULL);
   }
 }
 
