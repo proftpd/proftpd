@@ -3921,7 +3921,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
    * assumed to be small, thus there's no need for the larger buffer size.
    * Right?
    */
-  BIO_set_write_buf_size(wbio, TLS_HANDSHAKE_WRITE_BUFFER_SIZE);
+  (void) BIO_set_write_buf_size(wbio, TLS_HANDSHAKE_WRITE_BUFFER_SIZE);
 
   SSL_set_bio(ssl, rbio, wbio);
 
@@ -4069,7 +4069,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
     }
 
-    BIO_set_write_buf_size(wbio, TLS_DATA_ADAPTIVE_WRITE_MIN_BUFFER_SIZE);
+    (void) BIO_set_write_buf_size(wbio,
+      TLS_DATA_ADAPTIVE_WRITE_MIN_BUFFER_SIZE);
     tls_data_adaptive_bytes_written_ms = 0L;
     tls_data_adaptive_bytes_written_count = 0;
   }
@@ -6728,7 +6729,8 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
       /* Boost the buffer size if we've written more than the "boost"
        * threshold.
        */
-      BIO_set_write_buf_size(wbio, TLS_DATA_ADAPTIVE_WRITE_MAX_BUFFER_SIZE);
+      (void) BIO_set_write_buf_size(wbio,
+        TLS_DATA_ADAPTIVE_WRITE_MAX_BUFFER_SIZE);
     }
 
     if (now > (tls_data_adaptive_bytes_written_ms + TLS_DATA_ADAPTIVE_WRITE_BOOST_INTERVAL_MS)) {
@@ -6737,7 +6739,8 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
        * congestion (and thus closing of the TCP congestion window).
        */
       tls_data_adaptive_bytes_written_count = 0;
-      BIO_set_write_buf_size(wbio, TLS_DATA_ADAPTIVE_WRITE_MIN_BUFFER_SIZE);
+      (void) BIO_set_write_buf_size(wbio,
+        TLS_DATA_ADAPTIVE_WRITE_MIN_BUFFER_SIZE);
     }
 
     tls_data_adaptive_bytes_written_ms = now;
@@ -7489,7 +7492,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
         if (tls_accept(session.d, TRUE) < 0) {
           tls_log("%s",
             "unable to open data connection: TLS negotiation failed");
-          session.d->xerrno = EPERM;
+          session.d->xerrno = errno = EPERM;
           return -1;
         }
 
@@ -7525,7 +7528,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
             tls_log("%s", "unable to open data connection: control/data "
               "certificate mismatch");
 
-            session.d->xerrno = EPERM;
+            session.d->xerrno = errno = EPERM;
             return -1;
           }
 
@@ -7543,7 +7546,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
         if (tls_connect(session.d) < 0) {
           tls_log("%s",
             "unable to open data connection: TLS connection failed");
-          session.d->xerrno = EPERM;
+          session.d->xerrno = errno = EPERM;
           return -1;
         }
      }
