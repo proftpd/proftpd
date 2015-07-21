@@ -795,7 +795,7 @@ void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
 
   while (c) {
     if (c->data == data &&
-        c->plain_cleanup_cb == cleanup_cb) {
+        (c->plain_cleanup_cb == cleanup_cb || cleanup_cb == NULL)) {
 
       /* Remove the given cleanup by pointing the previous next pointer to
        * the matching cleanup's next pointer.
