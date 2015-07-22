@@ -2703,8 +2703,14 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
 
     if (pr_table_add_dup(session.notes, "mod_tls.sni",
         (char *) server_name, 0) < 0) {
-      pr_trace_msg(trace_channel, 3,
-        "error stashing 'mod_tls.sni' in session.notes: %s", strerror(errno));
+
+      /* The session.notes may already have the SNI from the ctrl channel;
+       * no need to overwrite that.
+       */
+      if (errno != EEXIST) {
+        pr_trace_msg(trace_channel, 3,
+          "error stashing 'mod_tls.sni' in session.notes: %s", strerror(errno));
+      }
     }
   }
 
@@ -7982,6 +7988,7 @@ MODRET tls_any(cmd_rec *cmd) {
   if (pr_cmd_cmp(cmd, PR_CMD_SYST_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_AUTH_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_FEAT_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_HOST_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) == 0) {
     return PR_DECLINED(cmd);
   }
