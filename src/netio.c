@@ -249,18 +249,43 @@ void pr_netio_abort(pr_netio_stream_t *nstrm) {
 
   switch (nstrm->strm_type) {
     case PR_NETIO_STRM_CTRL:
-      ctrl_netio ? (ctrl_netio->abort)(nstrm) :
+      if (ctrl_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s abort() for control stream",
+          ctrl_netio->owner_name);
+        (ctrl_netio->abort)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s abort() for control stream",
+          default_ctrl_netio->owner_name);
         (default_ctrl_netio->abort)(nstrm);
+      }
+
       break;
 
     case PR_NETIO_STRM_DATA:
-      data_netio ? (data_netio->abort)(nstrm) :
+      if (data_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s abort() for data stream",
+          data_netio->owner_name);
+        (data_netio->abort)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s abort() for data stream",
+          default_data_netio->owner_name);
         (default_data_netio->abort)(nstrm);
+      }
       break;
 
     case PR_NETIO_STRM_OTHR:
-      othr_netio ? (othr_netio->abort)(nstrm) :
+      if (othr_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s abort() for other stream",
+          othr_netio->owner_name);
+        (othr_netio->abort)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s abort() for other stream",
+          default_othr_netio->owner_name);
         (default_othr_netio->abort)(nstrm);
+      }
       break;
 
     default:
@@ -281,20 +306,44 @@ int pr_netio_close(pr_netio_stream_t *nstrm) {
 
   switch (nstrm->strm_type) {
     case PR_NETIO_STRM_CTRL:
-      res = ctrl_netio ? (ctrl_netio->close)(nstrm) :
-        (default_ctrl_netio->close)(nstrm);
+      if (ctrl_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s close() for control stream",
+          ctrl_netio->owner_name);
+        res = (ctrl_netio->close)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s close() for control stream",
+          default_ctrl_netio->owner_name);
+        res = (default_ctrl_netio->close)(nstrm);
+      }
       destroy_pool(nstrm->strm_pool);
       return res;
 
     case PR_NETIO_STRM_DATA:
-      res = data_netio ? (data_netio->close)(nstrm) :
-        (default_data_netio->close)(nstrm);
+      if (data_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s close() for data stream",
+          data_netio->owner_name);
+        res = (data_netio->close)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s close() for data stream",
+          default_data_netio->owner_name);
+        res = (default_data_netio->close)(nstrm);
+      }
       destroy_pool(nstrm->strm_pool);
       return res;
 
     case PR_NETIO_STRM_OTHR:
-      res = othr_netio ? (othr_netio->close)(nstrm) :
-        (default_othr_netio->close)(nstrm);
+      if (othr_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s close() for other stream",
+          data_netio->owner_name);
+        res = (othr_netio->close)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s close() for other stream",
+          default_othr_netio->owner_name);
+        res = (default_othr_netio->close)(nstrm);
+      }
       destroy_pool(nstrm->strm_pool);
       return res;
   }
@@ -381,16 +430,43 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
 
   switch (nstrm->strm_type) {
     case PR_NETIO_STRM_CTRL:
-      return ctrl_netio ? (ctrl_netio->close)(nstrm) :
-        (default_ctrl_netio->close)(nstrm);
+      if (ctrl_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s close() for control stream",
+          ctrl_netio->owner_name);
+        res = (ctrl_netio->close)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s close() for control stream",
+          default_ctrl_netio->owner_name);
+        res = (default_ctrl_netio->close)(nstrm);
+      }
+      return res;
 
     case PR_NETIO_STRM_DATA:
-      return data_netio ? (data_netio->close)(nstrm) :
-        (default_data_netio->close)(nstrm);
+      if (data_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s close() for data stream",
+          data_netio->owner_name);
+        res = (data_netio->close)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s close() for data stream",
+          default_data_netio->owner_name);
+        res = (default_data_netio->close)(nstrm);
+      }
+      return res;
 
     case PR_NETIO_STRM_OTHR:
-      return othr_netio ? (othr_netio->close)(nstrm) :
-        (default_othr_netio->close)(nstrm);
+      if (othr_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s close() for other stream",
+          othr_netio->owner_name);
+        res = (othr_netio->close)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s close() for other stream",
+          default_othr_netio->owner_name);
+        res = (default_othr_netio->close)(nstrm);
+      }
+      return res;
   }
 
   errno = EPERM;
@@ -473,11 +549,15 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
       if (ctrl_netio != NULL) {
         pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
           ctrl_netio, sizeof(pr_netio_t *));
+        pr_trace_msg(trace_channel, 19, "using %s open() for control stream",
+          ctrl_netio->owner_name);
         return (ctrl_netio->open)(nstrm, fd, mode);
 
       } else {
         pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
           default_ctrl_netio, sizeof(pr_netio_t *));
+        pr_trace_msg(trace_channel, 19, "using %s open() for control stream",
+          default_ctrl_netio->owner_name);
         return (default_ctrl_netio->open)(nstrm, fd, mode);
       }
 
@@ -488,11 +568,15 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
       if (data_netio != NULL) {
         pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
           data_netio, sizeof(pr_netio_t *));
+        pr_trace_msg(trace_channel, 19, "using %s open() for data stream",
+          data_netio->owner_name);
         return (data_netio->open)(nstrm, fd, mode);
 
       } else {
         pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
           default_data_netio, sizeof(pr_netio_t *));
+        pr_trace_msg(trace_channel, 19, "using %s open() for data stream",
+          default_data_netio->owner_name);
         return (default_data_netio->open)(nstrm, fd, mode);
       }
 
@@ -503,11 +587,15 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
       if (othr_netio != NULL) {
         pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
           othr_netio, sizeof(pr_netio_t *));
+        pr_trace_msg(trace_channel, 19, "using %s open() for other stream",
+          othr_netio->owner_name);
         return (othr_netio->open)(nstrm, fd, mode);
 
       } else {
         pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
           default_othr_netio, sizeof(pr_netio_t *));
+        pr_trace_msg(trace_channel, 19, "using %s open() for other stream",
+          default_othr_netio->owner_name);
         return (default_othr_netio->open)(nstrm, fd, mode);
       }
   }
@@ -520,6 +608,7 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
 }
 
 pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *nstrm, int fd, int mode) {
+  int res;
 
   if (nstrm == NULL) {
     errno = EINVAL;
@@ -528,16 +617,43 @@ pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *nstrm, int fd, int mode) {
 
   switch (nstrm->strm_type) {
     case PR_NETIO_STRM_CTRL:
-      return ctrl_netio ? (ctrl_netio->reopen)(nstrm, fd, mode) :
-        (default_ctrl_netio->reopen)(nstrm, fd, mode);
+      if (ctrl_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s reopen() for control stream",
+          ctrl_netio->owner_name);
+        res = (ctrl_netio->reopen)(nstrm, fd, mode);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s reopen() for control stream",
+          default_ctrl_netio->owner_name);
+        res = (default_ctrl_netio->reopen)(nstrm, fd, mode);
+      }
+      return res;
 
     case PR_NETIO_STRM_DATA:
-      return data_netio ? (data_netio->reopen)(nstrm, fd, mode) :
-        (default_data_netio->reopen)(nstrm, fd, mode);
+      if (data_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s reopen() for data stream",
+          data_netio->owner_name);
+        res = (data_netio->reopen)(nstrm, fd, mode);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s reopen() for data stream",
+          default_data_netio->owner_name);
+        res = (default_data_netio->reopen)(nstrm, fd, mode);
+      }
+      return res;
 
     case PR_NETIO_STRM_OTHR:
-      return othr_netio ? (othr_netio->reopen)(nstrm, fd, mode) :
-        (default_othr_netio->reopen)(nstrm, fd, mode);
+      if (othr_netio != NULL) {
+        pr_trace_msg(trace_channel, 19, "using %s reopen() for other stream",
+          othr_netio->owner_name);
+        res = (othr_netio->reopen)(nstrm, fd, mode);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "using %s reopen() for other stream",
+          default_othr_netio->owner_name);
+        res = (default_othr_netio->reopen)(nstrm, fd, mode);
+      }
+      return res;
   }
 
   errno = EPERM;
@@ -555,7 +671,6 @@ void pr_netio_reset_poll_interval(pr_netio_stream_t *nstrm) {
 }
 
 void pr_netio_set_poll_interval(pr_netio_stream_t *nstrm, unsigned int secs) {
-
   if (nstrm == NULL) {
     errno = EINVAL;
     return;
@@ -591,18 +706,45 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
 
     switch (nstrm->strm_type) {
       case PR_NETIO_STRM_CTRL:
-        res = ctrl_netio ? (ctrl_netio->poll)(nstrm) :
-          (default_ctrl_netio->poll)(nstrm);
+        if (ctrl_netio != NULL) {
+          pr_trace_msg(trace_channel, 19,
+            "using %s poll() for control stream", ctrl_netio->owner_name);
+          res = (ctrl_netio->poll)(nstrm);
+
+        } else {
+          pr_trace_msg(trace_channel, 19,
+            "using %s poll() for control stream",
+            default_ctrl_netio->owner_name);
+          res = (default_ctrl_netio->poll)(nstrm);
+        }
         break;
 
       case PR_NETIO_STRM_DATA:
-        res = data_netio ? (data_netio->poll)(nstrm) :
-          (default_data_netio->poll)(nstrm);
+        if (data_netio != NULL) {
+          pr_trace_msg(trace_channel, 19,
+            "using %s poll() for data stream", data_netio->owner_name);
+          res = (data_netio->poll)(nstrm);
+
+        } else {
+          pr_trace_msg(trace_channel, 19,
+            "using %s poll() for data stream",
+            default_data_netio->owner_name);
+          res = (default_data_netio->poll)(nstrm);
+        }
         break;
 
       case PR_NETIO_STRM_OTHR:
-        res = othr_netio ? (othr_netio->poll)(nstrm) :
-          (default_othr_netio->poll)(nstrm);
+        if (othr_netio != NULL) {
+          pr_trace_msg(trace_channel, 19,
+            "using %s poll() for other stream", othr_netio->owner_name);
+          res = (othr_netio->poll)(nstrm);
+
+        } else {
+          pr_trace_msg(trace_channel, 19,
+            "using %s poll() for other stream",
+            default_othr_netio->owner_name);
+          res = (default_othr_netio->poll)(nstrm);
+        }
         break;
     }
 
@@ -668,6 +810,8 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
 }
 
 int pr_netio_postopen(pr_netio_stream_t *nstrm) {
+  int res;
+
   if (nstrm == NULL) {
     errno = EINVAL;
     return -1;
@@ -675,16 +819,46 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
 
   switch (nstrm->strm_type) {
     case PR_NETIO_STRM_CTRL:
-      return ctrl_netio ? (ctrl_netio->postopen)(nstrm) :
-        (default_ctrl_netio->postopen)(nstrm);
+      if (ctrl_netio != NULL) {
+        pr_trace_msg(trace_channel, 19,
+          "using %s postopen() for control stream", ctrl_netio->owner_name);
+        res = (ctrl_netio->postopen)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "using %s postopen() for control stream",
+          default_ctrl_netio->owner_name);
+        res = (default_ctrl_netio->postopen)(nstrm);
+      }
+      return res;
 
     case PR_NETIO_STRM_DATA:
-      return data_netio ? (data_netio->postopen)(nstrm) :
-        (default_data_netio->postopen)(nstrm);
+      if (data_netio != NULL) {
+        pr_trace_msg(trace_channel, 19,
+          "using %s postopen() for data stream", data_netio->owner_name);
+        res = (data_netio->postopen)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "using %s postopen() for data stream",
+          default_data_netio->owner_name);
+        res = (default_data_netio->postopen)(nstrm);
+      }
+      return res;
 
     case PR_NETIO_STRM_OTHR:
-      return othr_netio ? (othr_netio->postopen)(nstrm) :
-        (default_othr_netio->postopen)(nstrm);
+      if (othr_netio != NULL) {
+        pr_trace_msg(trace_channel, 19,
+          "using %s postopen() for other stream", othr_netio->owner_name);
+        res = (othr_netio->postopen)(nstrm);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "using %s postopen() for other stream",
+          default_othr_netio->owner_name);
+        res = (default_othr_netio->postopen)(nstrm);
+      }
+      return res;
   }
 
   errno = EPERM;
@@ -803,21 +977,50 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
           switch (nstrm->strm_type) {
             case PR_NETIO_STRM_CTRL:
-              bwritten = ctrl_netio ? (ctrl_netio->write)(nstrm, buf, buflen) :
-                (default_ctrl_netio->write)(nstrm, buf, buflen);
-                break;
+              if (ctrl_netio != NULL) {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s write() for control stream",
+                  ctrl_netio->owner_name);
+                bwritten = (ctrl_netio->write)(nstrm, buf, buflen);
+
+              } else {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s write() for control stream",
+                  default_ctrl_netio->owner_name);
+                bwritten = (default_ctrl_netio->write)(nstrm, buf, buflen);
+              }
+              break;
 
             case PR_NETIO_STRM_DATA:
-              if (XFER_ABORTED)
+              if (XFER_ABORTED) {
                 break;
+              }
 
-              bwritten = data_netio ? (data_netio->write)(nstrm, buf, buflen) :
-                (default_data_netio->write)(nstrm, buf, buflen);
+              if (data_netio != NULL) {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s write() for data stream", ctrl_netio->owner_name);
+                bwritten = (data_netio->write)(nstrm, buf, buflen);
+
+              } else {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s write() for data stream",
+                  default_data_netio->owner_name);
+                bwritten = (default_data_netio->write)(nstrm, buf, buflen);
+              }
               break;
 
             case PR_NETIO_STRM_OTHR:
-              bwritten = othr_netio ? (othr_netio->write)(nstrm, buf, buflen) :
-                (default_othr_netio->write)(nstrm, buf, buflen);
+              if (othr_netio != NULL) {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s write() for other stream", othr_netio->owner_name);
+                bwritten = (othr_netio->write)(nstrm, buf, buflen);
+
+              } else {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s write() for other stream",
+                  default_othr_netio->owner_name);
+                bwritten = (default_othr_netio->write)(nstrm, buf, buflen);
+              }
               break;
           }
 
@@ -845,7 +1048,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   pr_buffer_t *pbuf;
 
   /* Sanity check */
-  if (!nstrm) {
+  if (nstrm == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -856,11 +1059,14 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   }
 
   /* Prepare the descriptor for nonblocking IO. */
-  if ((flags = fcntl(nstrm->strm_fd, F_GETFL)) == -1)
+  flags = fcntl(nstrm->strm_fd, F_GETFL);
+  if (flags < 0) {
     return -1;
+  }
 
-  if (fcntl(nstrm->strm_fd, F_SETFL, flags|O_NONBLOCK) == -1)
+  if (fcntl(nstrm->strm_fd, F_SETFL, flags|O_NONBLOCK) < 0) {
     return -1;
+  }
 
   /* Before we send out the data to the client, generate an event
    * for any listeners which may want to examine this data.
@@ -904,18 +1110,45 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
       switch (nstrm->strm_type) {
         case PR_NETIO_STRM_CTRL:
-          bwritten = ctrl_netio ? (ctrl_netio->write)(nstrm, buf, buflen) :
-            (default_ctrl_netio->write)(nstrm, buf, buflen);
+          if (ctrl_netio != NULL) {
+            pr_trace_msg(trace_channel, 19,
+              "using %s write() for control stream", ctrl_netio->owner_name);
+            bwritten = (ctrl_netio->write)(nstrm, buf, buflen);
+
+          } else {
+            pr_trace_msg(trace_channel, 19,
+              "using %s write() for control stream",
+              default_ctrl_netio->owner_name);
+            bwritten = (default_ctrl_netio->write)(nstrm, buf, buflen);
+          }
           break;
 
         case PR_NETIO_STRM_DATA:
-          bwritten = data_netio ? (data_netio->write)(nstrm, buf, buflen) :
-            (default_data_netio->write)(nstrm, buf, buflen);
+          if (data_netio != NULL) {
+            pr_trace_msg(trace_channel, 19,
+              "using %s write() for data stream", data_netio->owner_name);
+            bwritten = (data_netio->write)(nstrm, buf, buflen);
+
+          } else {
+            pr_trace_msg(trace_channel, 19,
+              "using %s write() for data stream",
+              default_data_netio->owner_name);
+            bwritten = (default_data_netio->write)(nstrm, buf, buflen);
+          }
           break;
 
         case PR_NETIO_STRM_OTHR:
-          bwritten = othr_netio ? (othr_netio->write)(nstrm, buf, buflen) :
-            (default_othr_netio->write)(nstrm, buf, buflen);
+          if (othr_netio != NULL) {
+            pr_trace_msg(trace_channel, 19,
+              "using %s write() for other stream", othr_netio->owner_name);
+            bwritten = (othr_netio->write)(nstrm, buf, buflen);
+
+          } else {
+            pr_trace_msg(trace_channel, 19,
+              "using %s write() for other stream",
+              default_othr_netio->owner_name);
+            bwritten = (default_othr_netio->write)(nstrm, buf, buflen);
+          }
           break;
       }
 
@@ -938,7 +1171,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     buflen -= bwritten;
   }
 
-  fcntl(nstrm->strm_fd, F_SETFL, flags);
+  (void) fcntl(nstrm->strm_fd, F_SETFL, flags);
   return total;
 }
 
@@ -947,7 +1180,7 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
   int bread = 0, total = 0;
 
   /* Sanity check. */
-  if (!nstrm) {
+  if (nstrm == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -957,11 +1190,13 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     return -1;
   }
 
-  if (bufmin < 1)
+  if (bufmin < 1) {
     bufmin = 1;
+  }
 
-  if (bufmin > buflen)
+  if (bufmin > buflen) {
     bufmin = buflen;
+  }
 
   while (bufmin > 0) {
     polling:
@@ -981,21 +1216,49 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
 
           switch (nstrm->strm_type) {
             case PR_NETIO_STRM_CTRL:
-              bread = ctrl_netio ? (ctrl_netio->read)(nstrm, buf, buflen) :
-                (default_ctrl_netio->read)(nstrm, buf, buflen);
-                break;
+              if (ctrl_netio != NULL) {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s read() for control stream", ctrl_netio->owner_name);
+                bread = (ctrl_netio->read)(nstrm, buf, buflen);
+
+              } else {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s read() for control stream",
+                  default_ctrl_netio->owner_name);
+                bread = (default_ctrl_netio->read)(nstrm, buf, buflen);
+              }
+              break;
 
             case PR_NETIO_STRM_DATA:
-              if (XFER_ABORTED)
+              if (XFER_ABORTED) {
                 break;
+              }
 
-              bread = data_netio ? (data_netio->read)(nstrm, buf, buflen) :
-                (default_data_netio->read)(nstrm, buf, buflen);
+              if (data_netio != NULL) {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s read() for data stream", data_netio->owner_name);
+                bread = (data_netio->read)(nstrm, buf, buflen);
+
+              } else {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s read() for data stream",
+                  default_data_netio->owner_name);
+                bread = (default_data_netio->read)(nstrm, buf, buflen);
+              }
               break;
 
             case PR_NETIO_STRM_OTHR:
-              bread = othr_netio ? (othr_netio->read)(nstrm, buf, buflen) :
-                (default_othr_netio->read)(nstrm, buf, buflen);
+              if (othr_netio != NULL) {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s read() for other stream", othr_netio->owner_name);
+                bread = (othr_netio->read)(nstrm, buf, buflen);
+
+              } else {
+                pr_trace_msg(trace_channel, 19,
+                  "using %s read() for other stream",
+                  default_othr_netio->owner_name);
+                bread = (default_othr_netio->read)(nstrm, buf, buflen);
+              }
               break;
           }
 
@@ -1054,25 +1317,52 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
 int pr_netio_shutdown(pr_netio_stream_t *nstrm, int how) {
   int res = -1;
 
-  if (!nstrm) {
+  if (nstrm == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   switch (nstrm->strm_type) {
     case PR_NETIO_STRM_CTRL:
-      res = ctrl_netio ? (ctrl_netio->shutdown)(nstrm, how) :
-        (default_ctrl_netio->shutdown)(nstrm, how);
+      if (ctrl_netio != NULL) {
+        pr_trace_msg(trace_channel, 19,
+          "using %s shutdown() for control stream", ctrl_netio->owner_name);
+        res = (ctrl_netio->shutdown)(nstrm, how);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "using %s shutdown() for control stream",
+          default_ctrl_netio->owner_name);
+        res = (default_ctrl_netio->shutdown)(nstrm, how);
+      }
       return res;
 
     case PR_NETIO_STRM_DATA:
-      res = data_netio ? (data_netio->shutdown)(nstrm, how) :
-        (default_data_netio->shutdown)(nstrm, how);
+      if (data_netio != NULL) {
+        pr_trace_msg(trace_channel, 19,
+          "using %s shutdown() for data stream", data_netio->owner_name);
+        res = (data_netio->shutdown)(nstrm, how);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "using %s shutdown() for data stream",
+          default_data_netio->owner_name);
+        res = (default_data_netio->shutdown)(nstrm, how);
+      }
       return res;
 
     case PR_NETIO_STRM_OTHR:
-      res = othr_netio ? (othr_netio->shutdown)(nstrm, how) :
-        (default_othr_netio->shutdown)(nstrm, how);
+      if (othr_netio != NULL) {
+        pr_trace_msg(trace_channel, 19,
+          "using %s shutdown() for other stream", othr_netio->owner_name);
+        res = (othr_netio->shutdown)(nstrm, how);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "using %s shutdown() for other stream",
+          default_othr_netio->owner_name);
+        res = (default_othr_netio->shutdown)(nstrm, how);
+      }
       return res;
   }
 
@@ -1133,10 +1423,10 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
     toread = pbuf->buflen - pbuf->remaining;
 
     while (buflen && *pbuf->current != '\n' && toread--) {
-      if (*pbuf->current & 0x80)
+      if (*pbuf->current & 0x80) {
         pbuf->current++;
 
-      else {
+      } else {
         *bp++ = *pbuf->current++;
         buflen--;
       }
@@ -1151,8 +1441,9 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
       break;
     }
 
-    if (!toread)
+    if (!toread) {
       pbuf->current = NULL;
+    }
   }
 
   *bp = '\0';
@@ -1515,6 +1806,8 @@ pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner) {
 
   if (owner != NULL) {
     netio->owner_name = pstrdup(netio_pool, owner->name);
+  } else {
+    netio->owner_name = "default";
   }
 
   /* Set the default NetIO handlers to the core handlers. */
@@ -1541,4 +1834,3 @@ void init_netio(void) {
 
   pr_register_netio(NULL, 0);
 }
-
