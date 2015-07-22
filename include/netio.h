@@ -231,15 +231,13 @@ pr_netio_t *pr_alloc_netio2(pool *, module *);
  */
 int pr_register_netio(pr_netio_t *, int);
 
-/* Unregister the NetIO objects indicated by strm_types.
- */
+/* Unregister the NetIO objects indicated by strm_types. */
 int pr_unregister_netio(int);
 
 /* Peek at the NetIO registered for the given stream type. */
 pr_netio_t *pr_get_netio(int);
 
-/* Initialize the network I/O layer.
- */
+/* Initialize the network I/O layer. */
 void init_netio(void);
 
 #endif /* PR_NETIO_H */
