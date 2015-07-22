@@ -3587,12 +3587,15 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   /* Fixup the address string for the PASV response. */
   tmp = strrchr(addrstr, ':');
-  if (tmp)
+  if (tmp) {
     addrstr = tmp + 1;
+  }
 
-  for (tmp = addrstr; *tmp; tmp++)
-    if (*tmp == '.')
+  for (tmp = addrstr; *tmp; tmp++) {
+    if (*tmp == '.') {
       *tmp = ',';
+    }
+  }
 
   pr_log_debug(DEBUG1, "Entering Passive Mode (%s,%u,%u).", addrstr,
     (port >> 8) & 255, port & 255);
@@ -4423,7 +4426,8 @@ MODRET core_host(cmd_rec *cmd) {
   /* If the user has already authenticated or negotiated a RFC2228 mechanism,
    * then the HOST command is too late.
    */
-  if (session.rfc2228_mech != NULL) {
+  if (session.rfc2228_mech != NULL &&
+      pr_table_get(session.notes, "mod_tls.sni", NULL) == NULL) {
     pr_log_debug(DEBUG0, "HOST '%s' command received after client has "
       "requested RFC2228 protection (%s), refusing HOST command", cmd->argv[1],
       session.rfc2228_mech);
