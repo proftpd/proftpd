@@ -3522,8 +3522,8 @@ MODRET core_pasv(cmd_rec *cmd) {
   }
 
   if (session.d == NULL) {
-    pr_response_add_err(R_425, _("Unable to build data connection: "
-      "Internal error"));
+    pr_response_add_err(R_425,
+      _("Unable to build data connection: Internal error"));
 
     pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;
