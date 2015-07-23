@@ -582,7 +582,10 @@ void pr_inet_close(pool *p, conn_t *c) {
    * Simply destroy the pool and all the dirty work gets done.
    */
 
-  destroy_pool(c->pool);
+  if (c->pool != NULL) {
+    destroy_pool(c->pool);
+    c->pool = NULL;
+  }
 }
 
 /* Perform shutdown/read on streams */
