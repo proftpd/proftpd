@@ -3939,16 +3939,22 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (on_data) {
     /* Make sure that TCP_NODELAY is enabled for the handshake. */
-    (void) pr_inet_set_proto_nodelay(conn->pool, conn, 1);
+    if (pr_inet_set_proto_nodelay(conn->pool, conn, 1) < 0) {
+      pr_trace_msg(trace_channel, 9,
+        "error enabling TCP_NODELAY on data conn: %s", strerror(errno));
+    }
 
     /* Make sure that TCP_CORK (aka TCP_NOPUSH) is DISABLED for the handshake.
      * This socket option is set via the pr_inet_set_proto_opts() call made
      * in mod_core, upon handling the PASV/EPSV command.
      */
-    (void) pr_inet_set_proto_cork(conn->wfd, 0);
+    if (pr_inet_set_proto_cork(conn->wfd, 0) < 0) {
+      pr_trace_msg(trace_channel, 9,
+        "error disabling TCP_CORK on data conn: %s", strerror(errno));
+    }
 
     cache_mode = SSL_CTX_get_session_cache_mode(ssl_ctx);
-    if (!(cache_mode & SSL_SESS_CACHE_OFF)) {
+    if (cache_mode != SSL_SESS_CACHE_OFF) {
       /* Disable STORING of any new session IDs in the session cache. We DO
        * want to allow LOOKUP of session IDs in the session cache, however.
        */
@@ -3968,21 +3974,28 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      */
     if (pr_inet_set_nonblock(conn->pool, conn) < 0) {
       pr_trace_msg(trace_channel, 3,
-        "error making connection nonblocking: %s", strerror(errno));
+        "error making %s connection nonblocking: %s",
+        on_data ? "data" : "ctrl", strerror(errno));
     }
   }
 
   pr_signals_handle();
+
+  pr_trace_msg(trace_channel, 17, "calling SSL_accept() on %s conn fd %d",
+    on_data ? "data" : "ctrl", conn->rfd);
   res = SSL_accept(ssl);
   if (res == -1) {
     xerrno = errno;
   }
+  pr_trace_msg(trace_channel, 17, "SSL_accept() returned %d for %s conn fd %d",
+    res, on_data ? "data" : "ctrl", conn->rfd);
 
   if (blocking) {
     /* Return the connection to blocking mode. */
     if (pr_inet_set_block(conn->pool, conn) < 0) {
       pr_trace_msg(trace_channel, 3,
-        "error making connection blocking: %s", strerror(errno));
+        "error making %s connection blocking: %s",
+        on_data ? "data" : "ctrl", strerror(errno));
     }
   }
 
@@ -4063,14 +4076,24 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     return -3;
   }
 
+  pr_trace_msg(trace_channel, 17,
+    "TLS handshake on %s conn fd %d COMPLETED", on_data ? "data" : "ctrl",
+    conn->rfd);
+
   if (on_data) {
     /* Disable TCP_NODELAY, now that the handshake is done. */
-    (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+    if (pr_inet_set_proto_nodelay(conn->pool, conn, 0) < 0) {
+      pr_trace_msg(trace_channel, 9,
+        "error disabling TCP_NODELAY on data conn: %s", strerror(errno));
+    }
 
     /* Reenable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
-    (void) pr_inet_set_proto_cork(conn->wfd, 1);
+    if (pr_inet_set_proto_cork(conn->wfd, 1) < 0) {
+      pr_trace_msg(trace_channel, 9,
+        "error re-enabling TCP_CORK on data conn: %s", strerror(errno));
+    }
 
-    if (!(cache_mode & SSL_SESS_CACHE_OFF)) {
+    if (cache_mode != SSL_SESS_CACHE_OFF) {
       /* Restore the previous session cache mode. */
       SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
     }
