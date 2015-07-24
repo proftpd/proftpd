@@ -625,18 +625,6 @@ the <code>CCC</code> command by clients, the following must appear in your
 </pre>
 See the <a href="../contrib/mod_tls.html#TLSRequired"><code>TLSRequired</code></a> description for more details.
 
-<!-- Note: I am not sure the following advice is relevant or even good anymore
-<p><a name="TLSSlow">
-<font color=red>Question</font>: Sometimes my encrypted transfers are slow.
-Is there a way to speed them up?<br>
-<font color=blue>Answer</font>:  There have been reports that increasing the
-tunable buffer size (using the <code>--enable-buffer-size</code> option
-of the <code>configure</code> script) to 8192 increases transfer speeds, most
-notably on very high speed networks.  Increasing the buffer size does not
-appear to affect normal FTP transfers (in fact, it may benefit them as well,
-depending on the client).
--->
-
 <p><a name="TLSDataProtection">
 <font color=red>Question</font>: I can login using FTPS, but I cannot see
 any directories.  Why not?<br>
@@ -833,6 +821,26 @@ thing is to move those <code>TLSCACertificateFile</code> and
 section in your <code>proftpd.conf</code>, so that they apply to all
 vhosts configured.  The virtual hosting <a href="Vhost.html">howto</a>
 describes this in more detail.
+
+<p><a name="TLSClientCertChainTooLong">
+<font color=red>Question</font>: When my FTPS client connects to my
+<code>mod_tls</code>-enabled server, the TLS handshake fails.  I see these
+messages in my <code>TLSLog</code>:
+<pre>
+  mod_tls/2.4.3[28786]: error: unable to verify certificate at depth 1
+  mod_tls/2.4.3[28786]: client certificate failed verification: certificate chain too long
+</pre>
+What causes this?<br>
+<font color=blue>Answer</font>: This can happen if you have your
+<code>mod_tls</code> configured with a very small <a href="../contrib/mod_tls.html#TLSVerifyDepth"><code>TLSVerifyDepth</code></a> value, <i>e.g.</i>:
+<pre>
+  TLSVerifyDepth 0
+</pre>
+Using small values, especially a value of 0, is a <b>bad idea</b>; most client
+certificate chains have a "depth" (or <em>length</em>) of 2-3, or perhaps
+longer.  The default <code>TLSVerifyDepth</code> value of 10 is sufficient for
+most cases; it allows for long certificate chains, but still guards against
+chains which might be absurdly long.
 
 <p><a name="TLSRenegotiations">
 <font color=red>Question</font>: My FTPS client sometimes times out after uploading/downloading more than 1 GB of data.  When I turn off SSL/TLS, the upload/download works. Why?<br>
