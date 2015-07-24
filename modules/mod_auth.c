@@ -2469,7 +2469,7 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
 
       allow_empty_passwords = *((int *) c->argv[0]);
       if (allow_empty_passwords == FALSE) {
-        size_t passwd_len;
+        size_t passwd_len = 0;
  
         if (cmd->argc > 1) {
           passwd_len = strlen(cmd->arg);
