@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.155 2013-11-11 01:34:04 castaglia Exp $
- */
+/* Flexible logging module for proftpd */
 
 #include "conf.h"
 #include "privs.h"
@@ -1721,8 +1719,9 @@ MODRET log_any(cmd_rec *cmd) {
 
       if (!session.anon_config &&
           lf->lf_conf &&
-          lf->lf_conf->config_type == CONF_ANON)
+          lf->lf_conf->config_type == CONF_ANON) {
         continue;
+      }
 
       do_log(cmd, lf);
     }
@@ -1807,7 +1806,7 @@ static void log_restart_ev(const void *event_data, void *user_data) {
   log_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(log_pool, "mod_log pool");
 
-  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "default", "%h %l %u %t \"%r\" %s %b");
   return;
 }
 
@@ -1829,7 +1828,7 @@ static int log_init(void) {
   pr_pool_tag(log_pool, "mod_log pool");
 
   /* Add the "default" extendedlog format */
-  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "default", "%h %l %u %t \"%r\" %s %b");
 
   pr_event_register(&log_module, "core.postparse", log_postparse_ev, NULL);
   pr_event_register(&log_module, "core.restart", log_restart_ev, NULL);
