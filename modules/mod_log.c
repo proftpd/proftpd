@@ -24,8 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Flexible logging module for proftpd
- */
+/* Flexible logging module for proftpd */
 
 #include "conf.h"
 #include "privs.h"
@@ -1924,7 +1923,7 @@ static void log_restart_ev(const void *event_data, void *user_data) {
   log_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(log_pool, "mod_log pool");
 
-  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "default", "%h %l %u %t \"%r\" %s %b");
   return;
 }
 
@@ -1977,7 +1976,7 @@ static int log_init(void) {
   pr_pool_tag(log_pool, "mod_log pool");
 
   /* Add the "default" extendedlog format */
-  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "default", "%h %l %u %t \"%r\" %s %b");
 
   pr_event_register(&log_module, "core.postparse", log_postparse_ev, NULL);
   pr_event_register(&log_module, "core.restart", log_restart_ev, NULL);
