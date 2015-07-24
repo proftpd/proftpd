@@ -466,6 +466,10 @@ MODRET set_logformat(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
 
+  if (strlen(cmd->argv[1]) == 0) {
+    CONF_ERROR(cmd, "missing required nickname parameter");
+  }
+
   logformat(cmd->argv[0], cmd->argv[1], cmd->argv[2]);
   return PR_HANDLED(cmd);
 }
