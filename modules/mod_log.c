@@ -36,6 +36,7 @@ module log_module;
 #define EXTENDED_LOG_BUFFER_SIZE		(PR_TUNABLE_PATH_MAX + 128)
 
 #define EXTENDED_LOG_MODE			0644
+#define EXTENDED_LOG_FORMAT_DEFAULT		"default"
 
 typedef struct logformat_struc	logformat_t;
 typedef struct logfile_struc 	logfile_t;
@@ -431,8 +432,9 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
   lf->lf_format = palloc(log_pool, outs - format);
   memcpy(lf->lf_format, format, outs - format);
 
-  if (!format_set)
+  if (format_set == NULL) {
     format_set = xaset_create(log_pool, NULL);
+  }
 
   xaset_insert_end(format_set, (xasetmember_t *) lf);
   formats = (logformat_t *) format_set->xas_list;
@@ -1806,7 +1808,7 @@ static void log_restart_ev(const void *event_data, void *user_data) {
   log_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(log_pool, "mod_log pool");
 
-  logformat(NULL, "default", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
   return;
 }
 
@@ -1828,7 +1830,7 @@ static int log_init(void) {
   pr_pool_tag(log_pool, "mod_log pool");
 
   /* Add the "default" extendedlog format */
-  logformat(NULL, "default", "%h %l %u %t \"%r\" %s %b");
+  logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
 
   pr_event_register(&log_module, "core.postparse", log_postparse_ev, NULL);
   pr_event_register(&log_module, "core.restart", log_restart_ev, NULL);
@@ -1887,6 +1889,19 @@ static void find_extendedlogs(void) {
       for (logfmt = formats; logfmt; logfmt = logfmt->next) {
         if (strcmp(logfmt->lf_nickname, logfmt_s) == 0) {
           break;
+        }
+      }
+
+      if (logfmt == NULL) {
+        if (strcasecmp(logfmt_s, EXTENDED_LOG_FORMAT_DEFAULT) == 0) {
+          /* Try again, this time looking for the default LogFormat
+           * name, which is registered using a nickname of "".
+           */
+          for (logfmt = formats; logfmt; logfmt = logfmt->next) {
+            if (strcmp(logfmt->lf_nickname, "") == 0) {
+              break;
+            }
+          }
         }
       }
 
