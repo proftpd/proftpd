@@ -24,8 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Flexible logging module for proftpd
- */
+/* Flexible logging module for proftpd */
 
 #include "conf.h"
 #include "privs.h"
@@ -37,6 +36,7 @@ module log_module;
 #define EXTENDED_LOG_BUFFER_SIZE		(PR_TUNABLE_PATH_MAX + 128)
 
 #define EXTENDED_LOG_MODE			0644
+#define EXTENDED_LOG_FORMAT_DEFAULT		"default"
 
 typedef struct logformat_struc	logformat_t;
 typedef struct logfile_struc 	logfile_t;
@@ -465,6 +465,10 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
 MODRET set_logformat(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
+
+  if (strlen(cmd->argv[1]) == 0) {
+    CONF_ERROR(cmd, "missing required nickname parameter");
+  }
 
   logformat(cmd->argv[0], cmd->argv[1], cmd->argv[2]);
   return PR_HANDLED(cmd);
@@ -2036,6 +2040,19 @@ static void find_extendedlogs(void) {
       for (logfmt = formats; logfmt; logfmt = logfmt->next) {
         if (strcmp(logfmt->lf_nickname, logfmt_s) == 0) {
           break;
+        }
+      }
+
+      if (logfmt == NULL) {
+        if (strcasecmp(logfmt_s, EXTENDED_LOG_FORMAT_DEFAULT) == 0) {
+          /* Try again, this time looking for the default LogFormat
+           * name, which is registered using a nickname of "".
+           */
+          for (logfmt = formats; logfmt; logfmt = logfmt->next) {
+            if (strcmp(logfmt->lf_nickname, "") == 0) {
+              break;
+            }
+          }
         }
       }
 

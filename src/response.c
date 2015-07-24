@@ -143,6 +143,8 @@ void pr_response_flush(pr_response_t **head) {
   pr_response_t *resp = NULL;
 
   if (resp_blocked) {
+    pr_trace_msg(trace_channel, 19,
+      "responses blocked, not flushing response chain");
     return;
   }
 
@@ -290,6 +292,8 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   int maxlen;
 
   if (resp_blocked) {
+    pr_trace_msg(trace_channel, 19,
+      "responses blocked, not sending async response");
     return;
   }
 
@@ -322,6 +326,7 @@ void pr_response_send(const char *resp_numeric, const char *fmt, ...) {
   va_list msg;
 
   if (resp_blocked) {
+    pr_trace_msg(trace_channel, 19, "responses blocked, not sending response");
     return;
   }
 
@@ -349,6 +354,8 @@ void pr_response_send_raw(const char *fmt, ...) {
   va_list msg;
 
   if (resp_blocked) {
+    pr_trace_msg(trace_channel, 19,
+      "responses blocked, not sending raw response");
     return;
   }
 

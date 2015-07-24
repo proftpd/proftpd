@@ -21,7 +21,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * DO NOT EDIT BELOW THIS LINE
+ * -----DO NOT EDIT BELOW THIS LINE-----
  * $Archive: mod_sftp.a$
  * $Libraries: -lcrypto$
  */

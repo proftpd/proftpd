@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2014 The ProFTPD Project team
+ * Copyright (c) 2003-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Network address routines
- * $Id: netaddr.c,v 1.98 2013-12-23 17:53:42 castaglia Exp $
- */
+/* Network address routines */
 
 #include "conf.h"
 
@@ -650,7 +648,7 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
     }
   }
 
-  if (info) {
+  if (info != NULL) {
     na = (pr_netaddr_t *) pcalloc(p, sizeof(pr_netaddr_t));
 
     /* Copy the first returned addr into na, as the return value. */
@@ -669,6 +667,33 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
     if (netaddr_ipcache_set(pr_netaddr_get_ipstr(na), na) < 0) {
       pr_trace_msg(trace_channel, 2, "error setting '%s' in cache: %s",
         pr_netaddr_get_ipstr(na), strerror(errno));
+    }
+
+    if (addrs != NULL) {
+      struct addrinfo *next_info = NULL;
+
+      /* Copy any other addrs into the list. */
+      if (*addrs == NULL) {
+        *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
+      }
+
+      next_info = info->ai_next;
+      while (next_info != NULL) {
+        pr_netaddr_t **elt;
+
+        pr_signals_handle();
+        elt = push_array(*addrs);
+
+        *elt = pcalloc(p, sizeof(pr_netaddr_t));
+        pr_netaddr_set_family(*elt, next_info->ai_family);
+        pr_netaddr_set_sockaddr(*elt, next_info->ai_addr);
+
+        pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
+          next_info->ai_family == AF_INET ? "IPv4" : "IPv6",
+          pr_netaddr_get_ipstr(*elt));
+
+        next_info = next_info->ai_next;
+      }
     }
 
     pr_freeaddrinfo(info);
@@ -715,19 +740,29 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
        * returned list of additional addresses.
        */
       if (info != NULL) {
-        if (info->ai_family != pr_netaddr_get_family(na)) {
+        struct addrinfo *next_info = NULL;
+
+        /* Copy any other addrs into the list. */
+        if (*addrs == NULL) {
+          *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
+        }
+
+        next_info = info->ai_next;
+        while (next_info != NULL) {
           pr_netaddr_t **elt;
 
-          *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
+          pr_signals_handle();
           elt = push_array(*addrs);
 
           *elt = pcalloc(p, sizeof(pr_netaddr_t));
-          pr_netaddr_set_family(*elt, info->ai_family);
-          pr_netaddr_set_sockaddr(*elt, info->ai_addr);
+          pr_netaddr_set_family(*elt, next_info->ai_family);
+          pr_netaddr_set_sockaddr(*elt, next_info->ai_addr);
 
           pr_trace_msg(trace_channel, 7, "resolved '%s' to %s address %s", name,
-            info->ai_family == AF_INET ? "IPv4" : "IPv6",
+            next_info->ai_family == AF_INET ? "IPv4" : "IPv6",
             pr_netaddr_get_ipstr(*elt));
+
+          next_info = next_info->ai_next;
         }
 
         pr_freeaddrinfo(info);
@@ -2289,6 +2324,18 @@ void pr_netaddr_clear_cache(void) {
 
     /* Allocate a fresh table. */
     netaddr_dnstab = pr_table_alloc(netaddr_pool, 0);
+  }
+}
+
+void pr_netaddr_clear_dnscache(const char *ip_str) {
+  if (netaddr_dnstab != NULL) {
+    (void) pr_table_remove(netaddr_dnstab, ip_str, NULL);
+  }
+}
+
+void pr_netaddr_clear_ipcache(const char *name) {
+  if (netaddr_iptab != NULL) {
+    (void) pr_table_remove(netaddr_iptab, name, NULL);
   }
 }
 

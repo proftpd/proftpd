@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Resource allocation code
- * $Id: pool.c,v 1.72 2013-10-07 05:51:30 castaglia Exp $
- */
+/* Resource allocation code */
 
 #include "conf.h"
 
@@ -656,12 +654,13 @@ void *push_array(array_header *arr) {
   return ((char *) arr->elts) + (arr->elt_size * (arr->nelts - 1));
 }
 
-void array_cat(array_header *dst, const array_header *src) {
+int array_cat2(array_header *dst, const array_header *src) {
   size_t elt_size;
 
   if (dst == NULL ||
       src == NULL) {
-    return;
+    errno = EINVAL;
+    return -1;
   }
 
   elt_size = dst->elt_size;
@@ -670,11 +669,13 @@ void array_cat(array_header *dst, const array_header *src) {
     int new_size = dst->nalloc * 2;
     char *new_data;
 
-    if (new_size == 0)
+    if (new_size == 0) {
       ++new_size;
+    }
 
-    while ((dst->nelts + src->nelts) > new_size)
+    while ((dst->nelts + src->nelts) > new_size) {
       new_size *= 2;
+    }
 
     new_data = pcalloc(dst->pool, elt_size * new_size);
     memcpy(new_data, dst->elts, dst->nalloc * elt_size);
@@ -686,6 +687,12 @@ void array_cat(array_header *dst, const array_header *src) {
   memcpy(((char *) dst->elts) + (dst->nelts * elt_size), (char *) src->elts,
          elt_size * src->nelts);
   dst->nelts += src->nelts;
+
+  return 0;
+}
+
+void array_cat(array_header *dst, const array_header *src) {
+  (void) array_cat2(dst, src);
 }
 
 array_header *copy_array(pool *p, const array_header *arr) {
@@ -788,7 +795,7 @@ void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
 
   while (c) {
     if (c->data == data &&
-        c->plain_cleanup_cb == cleanup_cb) {
+        (c->plain_cleanup_cb == cleanup_cb || cleanup_cb == NULL)) {
 
       /* Remove the given cleanup by pointing the previous next pointer to
        * the matching cleanup's next pointer.
