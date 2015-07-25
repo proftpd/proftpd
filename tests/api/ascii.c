@@ -75,9 +75,9 @@ START_TEST (ascii_ftp_from_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(expected, dst, expected_len + 1) == 0,
-    "Expected output buffer '%s' (%u), got '%s' (%u)", expected,
-    (unsigned int) expected_len, dst);
+  res = strcmp(expected, dst);
+  fail_unless(res == 0, "Expected output buffer '%s', got '%s' (%d)", expected,
+    dst, res);
 
   /* Handle an input buffer with CRs, no LFs. */
   pr_ascii_ftp_reset();
