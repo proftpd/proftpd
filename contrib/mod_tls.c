@@ -50,6 +50,7 @@
 #include <openssl/conf.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
+#include <openssl/ssl3.h>
 #include <openssl/x509v3.h>
 #include <openssl/pkcs12.h>
 #include <openssl/rand.h>
