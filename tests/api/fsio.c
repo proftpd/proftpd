@@ -175,7 +175,7 @@ START_TEST (fs_dircat_test) {
 
   a = "/foo";
   b = "";
-  ok = "/foo";
+  ok = "/foo/";
   res = pr_fs_dircat(buf, sizeof(buf)-1, a, b);
   fail_unless(res == 0, "Failed to concatenate two empty paths");
   fail_unless(strcmp(buf, ok) == 0, "Expected concatenated dir '%s', got '%s'",
@@ -183,7 +183,7 @@ START_TEST (fs_dircat_test) {
 
   a = "";
   b = "/bar";
-  ok = "/bar";
+  ok = "/bar/";
   res = pr_fs_dircat(buf, sizeof(buf)-1, a, b);
   fail_unless(res == 0, "Failed to concatenate two empty paths");
   fail_unless(strcmp(buf, ok) == 0, "Expected concatenated dir '%s', got '%s'",
