@@ -66,7 +66,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "hello";
   src_len = 5;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with no CRLFs");
@@ -83,7 +83,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "he\rl\rlo";
   src_len = 7;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with CRs, no LFs");
@@ -99,7 +99,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "he\nl\nlo";
   src_len = 7;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with LFs, no CRs");
@@ -115,7 +115,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "he\r\nl\r\nlo"; 
   src_len = 9;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with CRLFs");
@@ -131,7 +131,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "he\r\nl\r\nlo\r";
   src_len = 10;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 1, "Failed to handle input buffer with trailing CR");
