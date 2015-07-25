@@ -47,7 +47,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   size_t src_len, dst_len, expected_len;
 
   pr_ascii_ftp_reset();
-  res = pr_ascii_ftp_from_crlf(NULL, NULL, NULL, NULL, NULL);
+  res = pr_ascii_ftp_from_crlf(NULL, NULL, 0, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL ('%s' [%d]), got '%s' [%d]",
     strerror(errno), errno);
@@ -66,7 +66,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "hello";
   src_len = 5;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with no CRLFs");
@@ -75,14 +75,15 @@ START_TEST (ascii_ftp_from_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strcmp(dst, expected) == 0,
-    "Expected output buffer '%s', got '%s'", expected, dst);
+  res = strcmp(expected, dst);
+  fail_unless(res == 0, "Expected output buffer '%s', got '%s' (%d)", expected,
+    dst, res);
 
   /* Handle an input buffer with CRs, no LFs. */
   pr_ascii_ftp_reset();
   src = "he\rl\rlo";
   src_len = 7;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with CRs, no LFs");
@@ -98,7 +99,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "he\nl\nlo";
   src_len = 7;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with LFs, no CRs");
@@ -114,7 +115,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "he\r\nl\r\nlo"; 
   src_len = 9;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 0, "Failed to handle input buffer with CRLFs");
@@ -130,7 +131,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   pr_ascii_ftp_reset();
   src = "he\r\nl\r\nlo\r";
   src_len = 10;
-  dst = pcalloc(p, src_len);
+  dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
   fail_unless(res == 1, "Failed to handle input buffer with trailing CR");
@@ -150,7 +151,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   size_t src_len, dst_len, expected_len;
 
   pr_ascii_ftp_reset();
-  res = pr_ascii_ftp_to_crlf(NULL, NULL, NULL, NULL, NULL);
+  res = pr_ascii_ftp_to_crlf(NULL, NULL, 0, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL ('%s' [%d]), got '%s' [%d]",
     strerror(errno), errno);

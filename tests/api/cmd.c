@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2011-2014 The ProFTPD Project team
+ * Copyright (c) 2011-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -442,7 +442,7 @@ START_TEST (cmd_get_displayable_str_test) {
 END_TEST
 
 START_TEST (cmd_get_errno_test) {
-  int res, xerrno;
+  int res;
   cmd_rec *cmd = NULL;
 
   res = pr_cmd_get_errno(NULL);
