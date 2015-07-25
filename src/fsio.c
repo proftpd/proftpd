@@ -2051,12 +2051,16 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
   /* If dir2 is non-empty, but dir1 IS empty... */
   if (dir1len == 0) {
     sstrncpy(buf, dir2, buflen);
+    buflen -= dir2len;
+    sstrcat(buf, "/", buflen);
     return 0;
   }
 
   /* Likewise, if dir1 is non-empty, but dir2 IS empty... */
   if (dir2len == 0) {
     sstrncpy(buf, dir1, buflen);
+    buflen -= dir1len;
+    sstrcat(buf, "/", buflen);
     return 0;
   }
 
