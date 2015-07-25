@@ -644,7 +644,7 @@ static void tls_reset_state(void) {
   tls_required_on_data = 0;
 }
 
-static void tls_diags_cb(const SSL *ssl, int where, int ret) {
+static void tls_info_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
   int w;
 
@@ -662,8 +662,25 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
     int ssl_state;
 
     ssl_state = SSL_get_state(ssl);
-    if (ssl_state == SSL_ST_OK) {
-      str = "ok";
+    switch (ssl_state) {
+#ifdef SSL_ST_BEFORE
+      case SSL_ST_BEFORE:
+        str = "before";
+        break;
+#endif
+
+      case SSL_ST_OK:
+        str = "ok";
+        break;
+
+#ifdef SSL_ST_RENEGOTIATE
+      case SSL_ST_RENEGOTIATE:
+        str = "renegotiating";
+        break;
+#endif
+
+      default:
+        break;
     }
   }
 
@@ -747,6 +764,11 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
 #endif
     }
 
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+    }
+
+  } else if (where & SSL_CB_HANDSHAKE_START) {
     if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
       tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
     }
@@ -1009,8 +1031,9 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
           }
 
         } else {
-          tls_log("[msg] %s %s Handshake message, unknown type (%u %s)",
-            action_str, version_str, (unsigned int) buflen, bytes_str);
+          tls_log("[msg] %s %s Handshake message, unknown type %d (%u %s)",
+            action_str, version_str, content_type, (unsigned int) buflen,
+            bytes_str);
         }
 
         break;
@@ -1058,8 +1081,9 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
             }
 
           } else {
-            tls_log("[msg] %s %s Error message, unknown type (%u %s)",
-              action_str, version_str, (unsigned int) buflen, bytes_str);
+            tls_log("[msg] %s %s Error message, unknown type %d (%u %s)",
+              action_str, version_str, content_type, (unsigned int) buflen,
+              bytes_str);
           }
           break;
         }
@@ -1116,8 +1140,8 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
      * one of the recognized SSL/TLS versions.  Weird.
      */
 
-    tls_log("[msg] %s message of unknown version (%d) (%u %s)", action_str,
-      version, (unsigned int) buflen, bytes_str);
+    tls_log("[msg] %s message of unknown version %d, type %d (%u %s)",
+      action_str, version, content_type, (unsigned int) buflen, bytes_str);
   }
 
 }
@@ -10966,7 +10990,7 @@ static int tls_sess_init(void) {
    * is enabled, that info callback will also log the OpenSSL diagnostic
    * information.
    */
-  SSL_CTX_set_info_callback(ssl_ctx, tls_diags_cb);
+  SSL_CTX_set_info_callback(ssl_ctx, tls_info_cb);
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Install a callback for logging OpenSSL message information,
