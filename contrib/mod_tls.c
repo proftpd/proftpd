@@ -885,6 +885,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 #endif
 
     default:
+#ifdef SSL3_RT_HEADER
       /* OpenSSL calls this callback for SSL records received; filter those
        * from true "unknowns".
        */
@@ -893,6 +894,9 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
            buflen != SSL3_RT_HEADER_LENGTH)) {
         tls_log("[msg] unknown/unsupported version: %d", version);
       }
+#else
+      tls_log("[msg] unknown/unsupported version: %d", version);
+#endif
       break;
   }
 
@@ -1142,11 +1146,13 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
         (unsigned int) buflen, bytes_str);
     }
 
+#ifdef SSL3_RT_HEADER
   } else if (version == 0 &&
              content_type == SSL3_RT_HEADER &&
              SSL3_RT_HEADER_LENGTH) {
     tls_log("[msg] %s protocol record message (%u %s)", action_str,
       (unsigned int) buflen, bytes_str);
+#endif
 
   } else {
     /* This case might indicate an issue with OpenSSL itself; the version
