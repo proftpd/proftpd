@@ -47,7 +47,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   size_t src_len, dst_len, expected_len;
 
   pr_ascii_ftp_reset();
-  res = pr_ascii_ftp_from_crlf(NULL, NULL, NULL, NULL, NULL);
+  res = pr_ascii_ftp_from_crlf(NULL, NULL, 0, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL ('%s' [%d]), got '%s' [%d]",
     strerror(errno), errno);
@@ -76,7 +76,8 @@ START_TEST (ascii_ftp_from_crlf_test) {
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
   fail_unless(strncmp(expected, dst, expected_len + 1) == 0,
-    "Expected output buffer '%s', got '%s'", expected, dst);
+    "Expected output buffer '%s' (%u), got '%s' (%u)", expected,
+    (unsigned int) expected_len, dst);
 
   /* Handle an input buffer with CRs, no LFs. */
   pr_ascii_ftp_reset();
@@ -150,7 +151,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   size_t src_len, dst_len, expected_len;
 
   pr_ascii_ftp_reset();
-  res = pr_ascii_ftp_to_crlf(NULL, NULL, NULL, NULL, NULL);
+  res = pr_ascii_ftp_to_crlf(NULL, NULL, 0, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL ('%s' [%d]), got '%s' [%d]",
     strerror(errno), errno);
