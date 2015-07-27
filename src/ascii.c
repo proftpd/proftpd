@@ -98,6 +98,11 @@ int pr_ascii_ftp_to_crlf(pool *p, char *in, size_t inlen, char **out,
     return -1;
   }
 
+  if (inlen == 0) {
+    *out = in;
+    return 0;
+  }
+
   src = in;
   src_len = lf_pos = inlen;
 
