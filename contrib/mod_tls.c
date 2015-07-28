@@ -50,6 +50,7 @@
 #include <openssl/conf.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
+#include <openssl/ssl3.h>
 #include <openssl/x509v3.h>
 #include <openssl/pkcs12.h>
 #include <openssl/rand.h>
@@ -644,7 +645,7 @@ static void tls_reset_state(void) {
   tls_required_on_data = 0;
 }
 
-static void tls_diags_cb(const SSL *ssl, int where, int ret) {
+static void tls_info_cb(const SSL *ssl, int where, int ret) {
   const char *str = "(unknown)";
   int w;
 
@@ -662,8 +663,25 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
     int ssl_state;
 
     ssl_state = SSL_get_state(ssl);
-    if (ssl_state == SSL_ST_OK) {
-      str = "ok";
+    switch (ssl_state) {
+#ifdef SSL_ST_BEFORE
+      case SSL_ST_BEFORE:
+        str = "before";
+        break;
+#endif
+
+      case SSL_ST_OK:
+        str = "ok";
+        break;
+
+#ifdef SSL_ST_RENEGOTIATE
+      case SSL_ST_RENEGOTIATE:
+        str = "renegotiating";
+        break;
+#endif
+
+      default:
+        break;
     }
   }
 
@@ -747,6 +765,11 @@ static void tls_diags_cb(const SSL *ssl, int where, int ret) {
 #endif
     }
 
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+    }
+
+  } else if (where & SSL_CB_HANDSHAKE_START) {
     if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
       tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
     }
@@ -862,7 +885,18 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 #endif
 
     default:
+#ifdef SSL3_RT_HEADER
+      /* OpenSSL calls this callback for SSL records received; filter those
+       * from true "unknowns".
+       */
+      if (version == 0 &&
+          (content_type != SSL3_RT_HEADER ||
+           buflen != SSL3_RT_HEADER_LENGTH)) {
+        tls_log("[msg] unknown/unsupported version: %d", version);
+      }
+#else
       tls_log("[msg] unknown/unsupported version: %d", version);
+#endif
       break;
   }
 
@@ -1009,8 +1043,9 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
           }
 
         } else {
-          tls_log("[msg] %s %s Handshake message, unknown type (%u %s)",
-            action_str, version_str, (unsigned int) buflen, bytes_str);
+          tls_log("[msg] %s %s Handshake message, unknown type %d (%u %s)",
+            action_str, version_str, content_type, (unsigned int) buflen,
+            bytes_str);
         }
 
         break;
@@ -1058,8 +1093,9 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
             }
 
           } else {
-            tls_log("[msg] %s %s Error message, unknown type (%u %s)",
-              action_str, version_str, (unsigned int) buflen, bytes_str);
+            tls_log("[msg] %s %s Error message, unknown type %d (%u %s)",
+              action_str, version_str, content_type, (unsigned int) buflen,
+              bytes_str);
           }
           break;
         }
@@ -1110,14 +1146,22 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
         (unsigned int) buflen, bytes_str);
     }
 
+#ifdef SSL3_RT_HEADER
+  } else if (version == 0 &&
+             content_type == SSL3_RT_HEADER &&
+             SSL3_RT_HEADER_LENGTH) {
+    tls_log("[msg] %s protocol record message (%u %s)", action_str,
+      (unsigned int) buflen, bytes_str);
+#endif
+
   } else {
     /* This case might indicate an issue with OpenSSL itself; the version
      * given to the msg_callback function was not initialized, or not set to
      * one of the recognized SSL/TLS versions.  Weird.
      */
 
-    tls_log("[msg] %s message of unknown version (%d) (%u %s)", action_str,
-      version, (unsigned int) buflen, bytes_str);
+    tls_log("[msg] %s message of unknown version %d, type %d (%u %s)",
+      action_str, version, content_type, (unsigned int) buflen, bytes_str);
   }
 
 }
@@ -10966,7 +11010,7 @@ static int tls_sess_init(void) {
    * is enabled, that info callback will also log the OpenSSL diagnostic
    * information.
    */
-  SSL_CTX_set_info_callback(ssl_ctx, tls_diags_cb);
+  SSL_CTX_set_info_callback(ssl_ctx, tls_info_cb);
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Install a callback for logging OpenSSL message information,

@@ -162,7 +162,7 @@ sub test_http_req {
     eval {
       sleep(1);
 
-      # To reproduce Bug#XXXX, we only need to connect to the server,
+      # To reproduce Bug#4143, we only need to connect to the server,
       # then issue an HTTP request.
 
       my $client = LWP::UserAgent->new(
