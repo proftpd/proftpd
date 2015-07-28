@@ -34,6 +34,7 @@
 extern xaset_t *server_list;
 extern module sftp_module;
 
+/* Note: Should this size be made bigger, in light of larger hostkeys? */
 #define SFTP_DEFAULT_HOSTKEY_SZ		4096
 #define SFTP_MAX_SIG_SZ			4096
 
@@ -2020,7 +2021,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       }
 
       /* XXX Is this buffer large enough?  Too large? */
-      ptr = buf = sftp_msg_getbuf(p, buflen);
+      ptr = buf = palloc(p, buflen);
       sftp_msg_write_string(&buf, &buflen, "ssh-rsa");
       sftp_msg_write_mpint(&buf, &buflen, rsa->e);
       sftp_msg_write_mpint(&buf, &buflen, rsa->n);
@@ -2040,7 +2041,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       }
 
       /* XXX Is this buffer large enough?  Too large? */
-      ptr = buf = sftp_msg_getbuf(p, buflen);
+      ptr = buf = palloc(p, buflen);
       sftp_msg_write_string(&buf, &buflen, "ssh-dss");
       sftp_msg_write_mpint(&buf, &buflen, dsa->p);
       sftp_msg_write_mpint(&buf, &buflen, dsa->q);
@@ -2063,8 +2064,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       }
 
       /* XXX Is this buffer large enough?  Too large? */
-      ptr = buf = sftp_msg_getbuf(p, buflen);
-
+      ptr = buf = palloc(p, buflen);
       sftp_msg_write_string(&buf, &buflen, "ecdsa-sha2-nistp256");
       sftp_msg_write_string(&buf, &buflen, "nistp256");
       sftp_msg_write_ecpoint(&buf, &buflen, EC_KEY_get0_group(ec),
@@ -2085,8 +2085,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       }
 
       /* XXX Is this buffer large enough?  Too large? */
-      ptr = buf = sftp_msg_getbuf(p, buflen);
-
+      ptr = buf = palloc(p, buflen);
       sftp_msg_write_string(&buf, &buflen, "ecdsa-sha2-nistp384");
       sftp_msg_write_string(&buf, &buflen, "nistp384");
       sftp_msg_write_ecpoint(&buf, &buflen, EC_KEY_get0_group(ec),
@@ -2107,8 +2106,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       }
 
       /* XXX Is this buffer large enough?  Too large? */
-      ptr = buf = sftp_msg_getbuf(p, buflen);
-
+      ptr = buf = palloc(p, buflen);
       sftp_msg_write_string(&buf, &buflen, "ecdsa-sha2-nistp521");
       sftp_msg_write_string(&buf, &buflen, "nistp521");
       sftp_msg_write_ecpoint(&buf, &buflen, EC_KEY_get0_group(ec),
@@ -2129,8 +2127,14 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
   *datalen = SFTP_DEFAULT_HOSTKEY_SZ - buflen;
 
   /* If the caller provided a pool, make a copy of the data from the
-   * given pool, and return the copy.  Make sure the scrub the original
+   * given pool, and return the copy.  Make sure to scrub the original
    * after making the copy.
+   *
+   * Note that we do this copy, even though we use the given pool, since
+   * we only know the actual size of the data after the fact.  And we need
+   * to provide the size of the data to the caller, NOT the optimistic size
+   * we allocate out of the pool for writing the data in the first place.
+   * Hence the copy.
    */
   if (p) {
     buf = palloc(p, *datalen);
