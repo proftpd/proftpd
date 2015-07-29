@@ -1594,16 +1594,13 @@ static int tls_check_server_cert(SSL *ssl, conn_t *conn) {
   }
 
   if (ok == 0 &&
-      !(tls_opts & TLS_SESS_VERIFY_SERVER_NO_DNS)) {
+      !(tls_flags & TLS_SESS_VERIFY_SERVER_NO_DNS)) {
     int reverse_dns;
     const char *remote_name;
 
     reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
 
-    /* XXX Should clear the Netaddr cache here, but just for our single
-     * name.  Should be an API for that.
-     */
-    pr_netaddr_clear_cache();
+    pr_netaddr_clear_ipcache(pr_netaddr_get_ipstr(conn->remote_addr));
 
     conn->remote_addr->na_have_dnsstr = FALSE;
     remote_name = pr_netaddr_get_dnsstr(conn->remote_addr);
