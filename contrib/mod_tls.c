@@ -7544,8 +7544,6 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
         (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
       SSL *ssl = NULL;
 
-      ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
-
       /* XXX How to force 421 response code for failed secure FXP/SSCN? */
 
       /* Directory listings (LIST, MLSD, NLST) are ALWAYS handled in server
@@ -7579,6 +7577,8 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           pr_trace_msg(timing_channel, 4,
             "TLS data handshake duration: %lu ms", elapsed_ms);
         } 
+
+        ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
 
         /* Make sure that the certificate used, if any, for this data channel
          * handshake is the same as that used for the control channel handshake.
