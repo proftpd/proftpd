@@ -7668,7 +7668,9 @@ static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
      * the raw bytes read in versus the non-SSL bytes read in, in order to
      * have %I be accurately represented for the raw traffic.
      */
-    session.total_raw_in += (bread - res);
+    if (res > 0) {
+      session.total_raw_in += (bread - res);
+    }
 
     /* Manually update session.total_raw_out, in order to have %O be
      * accurately represented for the raw traffic.
@@ -7817,7 +7819,9 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
      * the raw bytes written out versus the non-SSL bytes written out,
      * in order to have %) be accurately represented for the raw traffic.
      */
-    session.total_raw_out += (bwritten - res);
+    if (res > 0) {
+      session.total_raw_out += (bwritten - res);
+    }
 
     return res;
   }
