@@ -1628,7 +1628,10 @@ for using a shared memory external SSL session cache, see the
 The optional <em>timeout</em> parameters sets the time-to-live, in seconds, for
 the SSL session datal stored in the external SSL session cache.  It can be set
 as low as 15 for testing, but should be set to higher values like 600 in real
-life.  The default timeout is 1800 seconds (30 minutes).
+life.  The default timeout is 1800 seconds (30 minutes).  <b>Note</b> that to
+ensure that the session cache is <em>aggressively</em> pruned of expired
+sessions, <b>each</b> FTP session, upon ending, will flush <b>any</b> expired
+sessions from the session cache.
 
 <p>
 Use of SSL session caching can be disabled entirely by using:
