@@ -7569,7 +7569,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           return -1;
         }
 
-        if (pr_trace_get_level(timing_channel)) {
+        if (pr_trace_get_level(timing_channel) >= 4) {
           unsigned long elapsed_ms;
           uint64_t finish_ms;
 
@@ -8262,7 +8262,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
     tls_flags |= TLS_SESS_ON_CTRL;
 
-    if (pr_trace_get_level(timing_channel)) {
+    if (pr_trace_get_level(timing_channel) >= 4) {
       unsigned long elapsed_ms;
       uint64_t finish_ms;
 
@@ -8316,7 +8316,7 @@ MODRET tls_auth(cmd_rec *cmd) {
     tls_flags |= TLS_SESS_ON_CTRL;
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
 
-    if (pr_trace_get_level(timing_channel)) {
+    if (pr_trace_get_level(timing_channel) >= 4) {
       unsigned long elapsed_ms;
       uint64_t finish_ms;
 
@@ -11133,7 +11133,7 @@ static int tls_sess_init(void) {
       tls_flags |= TLS_SESS_NEED_DATA_PROT;
     }
 
-    if (pr_trace_get_level(timing_channel)) {
+    if (pr_trace_get_level(timing_channel) >= 4) {
       unsigned long elapsed_ms;
       uint64_t finish_ms;
 
