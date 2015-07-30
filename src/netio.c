@@ -1757,17 +1757,17 @@ int pr_register_netio(pr_netio_t *netio, int strm_types) {
      */
     if (default_ctrl_netio == NULL) {
       default_ctrl_netio = default_netio = pr_alloc_netio2(permanent_pool,
-        NULL);
+        NULL, NULL);
     }
 
     if (default_data_netio == NULL) {
       default_data_netio = default_netio ? default_netio :
-        (default_netio = pr_alloc_netio2(permanent_pool, NULL));
+        (default_netio = pr_alloc_netio2(permanent_pool, NULL, NULL));
     }
 
     if (default_othr_netio == NULL) {
       default_othr_netio = default_netio ? default_netio :
-        (default_netio = pr_alloc_netio2(permanent_pool, NULL));
+        (default_netio = pr_alloc_netio2(permanent_pool, NULL, NULL));
     }
 
     return 0;
@@ -1848,7 +1848,8 @@ pr_netio_t *pr_get_netio(int strm_type) {
 
 extern pid_t mpid;
 
-pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner) {
+pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner,
+    const char *owner_name) {
   pr_netio_t *netio = NULL;
   pool *netio_pool = NULL;
 
@@ -1879,7 +1880,13 @@ pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner) {
   netio->owner = owner;
 
   if (owner != NULL) {
-    netio->owner_name = pstrdup(netio_pool, owner->name);
+    if (owner_name != NULL) {
+      netio->owner_name = pstrdup(netio_pool, owner_name);
+
+    } else {
+      netio->owner_name = pstrdup(netio_pool, owner->name);
+    }
+
   } else {
     netio->owner_name = "default";
   }
@@ -1899,7 +1906,7 @@ pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner) {
 }
 
 pr_netio_t *pr_alloc_netio(pool *parent_pool) {
-  return pr_alloc_netio2(parent_pool, NULL);
+  return pr_alloc_netio2(parent_pool, NULL, NULL);
 }
 
 void init_netio(void) {

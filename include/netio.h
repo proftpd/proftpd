@@ -223,7 +223,7 @@ void pr_netio_set_poll_interval(pr_netio_stream_t *, unsigned int);
  * default handlers.
  */
 pr_netio_t *pr_alloc_netio(pool *);
-pr_netio_t *pr_alloc_netio2(pool *, module *);
+pr_netio_t *pr_alloc_netio2(pool *, module *, const char *);
 
 /* Register the given NetIO object and all its callbacks for the network
  * I/O layer's use.  If given a NULL argument, it will automatically
