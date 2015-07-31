@@ -2786,6 +2786,7 @@ static int tls_alpn_select_cb(SSL *ssl,
     void *user_data) {
   register unsigned int i;
   struct tls_next_proto *next_proto;
+  char *selected_alpn;
 
   pr_trace_msg(trace_channel, 9, "%s",
     "ALPN protocols advertised by client:");
@@ -2807,8 +2808,10 @@ static int tls_alpn_select_cb(SSL *ssl,
     return SSL_TLSEXT_ERR_NOACK;
   }
 
+  selected_alpn = pstrndup(session.pool, (char *) *selected_proto,
+    *selected_protolen);
   pr_trace_msg(trace_channel, 9,
-    "selected ALPN protocol '%*s'", *selected_protolen, *selected_proto);
+    "selected ALPN protocol '%s'", selected_alpn);
   return SSL_TLSEXT_ERR_OK;
 }
 #endif /* ALPN */
