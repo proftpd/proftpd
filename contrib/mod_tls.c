@@ -4745,10 +4745,11 @@ static void tls_cleanup(int flags) {
      * initialization, and other modules want to use OpenSSL, we may
      * be depriving those modules of OpenSSL functionality.
      *
-     * At the moment, the modules known to use OpenSSL are mod_ldap,
+     * At the moment, the modules known to use OpenSSL are mod_ldap, mod_proxy,
      * mod_sftp, mod_sql, and mod_sql_passwd.
      */
     if (pr_module_get("mod_ldap.c") == NULL &&
+        pr_module_get("mod_proxy.c") == NULL &&
         pr_module_get("mod_sftp.c") == NULL &&
         pr_module_get("mod_sql.c") == NULL &&
         pr_module_get("mod_sql_passwd.c") == NULL) {
