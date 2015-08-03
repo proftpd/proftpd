@@ -1554,7 +1554,14 @@ static void sftp_ban_host_ev(const void *event_data, void *user_data) {
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
   if (strncmp(proto, "SSH2", 5) == 0) {
-    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+    char *ban_msg = "Banned", *name;
+
+    name = user_data;
+    if (name != NULL) {
+      ban_msg = pstrcat(sftp_pool, "Host ", name, " has been banned", NULL);
+    }
+
+    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, ban_msg,
       __FILE__, __LINE__, "");
   }
 }
@@ -1566,7 +1573,14 @@ static void sftp_ban_user_ev(const void *event_data, void *user_data) {
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
   if (strncmp(proto, "SSH2", 5) == 0) {
-    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
+    char *ban_msg = "Banned", *name;
+
+    name = user_data;
+    if (name != NULL) {
+      ban_msg = pstrcat(sftp_pool, "User ", name, " has been banned", NULL);
+    }
+
+    sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, ban_msg,
       __FILE__, __LINE__, "");
   }
 }
