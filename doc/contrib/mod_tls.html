@@ -283,13 +283,13 @@ does not request that the client send a certificate to be verified.
 <hr>
 <h2><a name="TLSCipherSuite">TLSCipherSuite</a></h2>
 <strong>Syntax:</strong> TLSCipherSuite <em>cipher-list</em><br>
-<strong>Default:</strong> DEFAULT:!EXPORT:!DES<br>
+<strong>Default:</strong> DEFAULT:!ADH:!EXPORT:!DES<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
 <p>
-Default cipher list is &quot;DEFAULT:!EXPORT:!DES&quot;.
+Default cipher list is &quot;DEFAULT:!ADH:!EXPORT:!DES&quot;.
 
 <p>
 How to put together a <em>cipher list</em> parameter:
@@ -317,12 +317,17 @@ How to put together a <em>cipher list</em> parameter:
   MAC Digest Algorithm:
     "MD5"       MD5 hash function
     "SHA1"      SHA1 hash function
+    "SHA256"    SHA-256 hash function
+    "SHA384"    SHA-384 hash function
+    "SHA512"    SHA-512 hash function
     "SHA"       SHA hash function (should not be used)
 
   Aliases:
     "ALL"       all ciphers
     "SSLv2"     all SSL version 2.0 ciphers (should not be used)
     "SSLv3"     all SSL version 3.0 ciphers
+    "TLSv1"     all TLS version 1.0 ciphers
+    "ECDH"      all ciphers using Elliptic Curve Diffie-Hellman key exchange
     "EXP"       all export ciphers (40-bit)
     "EXPORT56"  all export ciphers (56-bit)
     "LOW"       all low strength ciphers (no export)
