@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,14 +24,11 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* ProFTPD logging support.
- * $Id: log.c,v 1.121 2013-10-13 23:46:43 castaglia Exp $
- */
+/* ProFTPD logging support. */
 
 #include "conf.h"
 
-/* Max path length plus 64 bytes for additional info. */
-#define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX + 64)
+#define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX * 4)
 
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
@@ -278,7 +275,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
 int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
     va_list msg) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[LOGBUFFER_SIZE] = {'\0'};
   struct timeval now;
   struct tm *tm = NULL;
   size_t buflen, len;
