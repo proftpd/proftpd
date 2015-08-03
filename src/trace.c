@@ -24,7 +24,6 @@
 
 /* Trace functions. */
 
-
 #include "conf.h"
 #include "privs.h"
 
@@ -93,7 +92,7 @@ static void trace_restart_ev(const void *event_data, void *user_data) {
 
 static int trace_write(const char *channel, int level, const char *msg,
     int discard) {
-  char buf[PR_TUNABLE_BUFFER_SIZE];
+  char buf[PR_TUNABLE_BUFFER_SIZE * 2];
   size_t buflen, len;
   struct tm *tm;
   int use_conn_ips = FALSE;
@@ -168,7 +167,11 @@ static int trace_write(const char *channel, int level, const char *msg,
     buflen++;
 
   } else {
-    buf[sizeof(buf)-2] = '\n';
+    buf[sizeof(buf)-5] = '.';
+    buf[sizeof(buf)-4] = '.';
+    buf[sizeof(buf)-3] = '.';
+    buf[sizeof(buf)-2] = '.';
+    buflen = sizeof(buf)-1;
   }
 
   pr_log_event_generate(PR_LOG_TYPE_TRACELOG, trace_logfd, level, buf, buflen);
@@ -505,7 +508,7 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
 
 int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     va_list msg) {
-  char buf[PR_TUNABLE_BUFFER_SIZE];
+  char buf[PR_TUNABLE_BUFFER_SIZE * 2];
   size_t buflen;
   struct trace_levels *levels;
   int discard = FALSE;
@@ -562,7 +565,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
   }
 
   memset(buf, '\0', sizeof(buf));
-  buflen = vsnprintf(buf, sizeof(buf), fmt, msg);
+  buflen = vsnprintf(buf, sizeof(buf)-1, fmt, msg);
 
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf)-1] = '\0';
