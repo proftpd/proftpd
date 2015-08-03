@@ -511,8 +511,15 @@ static void log_write(int priority, int f, char *s, int discard) {
     max_priority = *ptr;
 
   } else {
-    /* Default SyslogLevel */
+    /* Default SyslogLevel is NOTICE.  Note, however, that for backward
+     * compatibility of debugging, if the DebugLevel is set higher
+     * than DEBUG0, we will automatically ASSUME that the admin wants
+     * the syslog level to be e.g. DEBUG.
+     */
     max_priority = default_level;
+    if (debug_level != DEBUG0) {
+      max_priority = PR_LOG_DEBUG;
+    }
   }
 
   if (priority > max_priority) {
