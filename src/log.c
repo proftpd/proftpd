@@ -28,7 +28,7 @@
 
 #include "conf.h"
 
-#define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX * 4)
+#define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX * 2)
 
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
@@ -318,8 +318,11 @@ int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
     buf[buflen++] = '\n';
 
   } else {
+    buf[sizeof(buf)-5] = '.';
+    buf[sizeof(buf)-4] = '.';
+    buf[sizeof(buf)-3] = '.';
     buf[sizeof(buf)-2] = '\n';
-    buflen++;
+    buflen = sizeof(buf)-1;
   }
 
   pr_log_event_generate(PR_LOG_TYPE_UNSPEC, logfd, -1, buf, buflen);
