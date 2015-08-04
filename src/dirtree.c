@@ -945,8 +945,16 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
 
 static int check_user_access(xaset_t *set, const char *name) {
   int res = 0;
-  config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
+  config_rec *c;
 
+  /* If no user has been authenticated yet for this session, short-circuit the
+   * check.
+   */
+  if (session.user == NULL) {
+    return 0;
+  }
+
+  c = find_config(set, CONF_PARAM, name, FALSE);
   while (c) {
     pr_signals_handle();
 
@@ -964,15 +972,15 @@ static int check_user_access(xaset_t *set, const char *name) {
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_user_or((char **) &c->argv[1]);
-
-      if (res == TRUE)
+      if (res == TRUE) {
         break;
+      }
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
       res = pr_expr_eval_user_and((char **) &c->argv[1]);
-
-      if (res == TRUE)
+      if (res == TRUE) {
         break;
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
@@ -983,8 +991,16 @@ static int check_user_access(xaset_t *set, const char *name) {
 
 static int check_group_access(xaset_t *set, const char *name) {
   int res = 0;
-  config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
+  config_rec *c;
 
+  /* If no groups has been authenticated yet for this session, short-circuit the
+   * check.
+   */
+  if (session.group == NULL) {
+    return 0;
+  }
+
+  c = find_config(set, CONF_PARAM, name, FALSE);
   while (c) {
 #ifdef PR_USE_REGEX
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
@@ -998,12 +1014,13 @@ static int check_group_access(xaset_t *set, const char *name) {
       } else if (session.groups) {
         register int i = 0;
 
-        for (i = session.groups->nelts-1; i >= 0; i--)
+        for (i = session.groups->nelts-1; i >= 0; i--) {
           if (pr_regexp_exec(pre, *(((char **) session.groups->elts) + i), 0,
               NULL, 0, 0, 0) == 0) {
             res = TRUE;
             break;
           }
+        }
       }
 
     } else
@@ -1011,15 +1028,15 @@ static int check_group_access(xaset_t *set, const char *name) {
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_group_or((char **) &c->argv[1]);
-
-      if (res == TRUE)
+      if (res == TRUE) {
         break;
+      }
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
       res = pr_expr_eval_group_and((char **) &c->argv[1]);
-
-      if (res == TRUE)
+      if (res == TRUE) {
         break;
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
@@ -1057,15 +1074,15 @@ static int check_class_access(xaset_t *set, const char *name) {
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       res = pr_expr_eval_class_or((char **) &c->argv[1]);
-
-      if (res == TRUE)
+      if (res == TRUE) {
         break;
+      }
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
       res = pr_expr_eval_class_and((char **) &c->argv[1]);
-
-      if (res == TRUE)
+      if (res == TRUE) {
         break;
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
@@ -1079,8 +1096,9 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
   int res = 0;
   config_rec *c;
 
-  if (!cmd)
-    return res;
+  if (cmd == NULL) {
+    return 0;
+  }
 
   c = find_config(set, CONF_PARAM, name, FALSE);
   while (c) {
