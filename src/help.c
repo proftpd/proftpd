@@ -59,7 +59,7 @@ void pr_help_add(const char *cmd, const char *syntax, int impl) {
     register unsigned int i = 0;
     struct help_rec *helps = help_list->elts;
 
-    for (i = 0; i < help_list->nelts; i++)
+    for (i = 0; i < help_list->nelts; i++) {
       if (strcmp(helps[i].cmd, cmd) == 0) {
         if (helps[i].impl == FALSE &&
             impl == TRUE) {
@@ -68,6 +68,7 @@ void pr_help_add(const char *cmd, const char *syntax, int impl) {
 
         return;
       }
+    }
   }
 
   help = push_array(help_list);
@@ -108,8 +109,8 @@ int pr_help_add_response(cmd_rec *cmd, const char *target) {
         }
 
         /* 8 rows */
-        if ((i == 0 || (i + 1) % 8 == 0) ||
-            helps[i+1].cmd == NULL) {
+        if ((i + 1) % 8 == 0 ||
+            (i+1 == help_list->nelts)) {
           register unsigned int j;
 
           for (j = 0; j < 8; j++) {
