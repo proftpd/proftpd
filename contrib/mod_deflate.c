@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_deflate -- a module for supporting on-the-fly compression
  *
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -871,7 +871,7 @@ MODRET deflate_mode(cmd_rec *cmd) {
      * compression.
      */
 
-    deflate_netio = pr_alloc_netio2(session.pool, &deflate_module);
+    deflate_netio = pr_alloc_netio2(session.pool, &deflate_module, NULL);
     deflate_netio->close = deflate_netio_close_cb;
     deflate_netio->open = deflate_netio_open_cb;
     deflate_netio->read = deflate_netio_read_cb;
