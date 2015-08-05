@@ -63,6 +63,7 @@ static struct testsuite_info suites[] = {
   { "data",		tests_get_data_suite },
   { "ascii",		tests_get_ascii_suite },
   { "help",		tests_get_help_suite },
+  { "rlimit",		tests_get_rlimit_suite },
 
   { NULL, NULL }
 };

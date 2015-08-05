@@ -32,6 +32,7 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/modules.o \
   $(top_srcdir)/src/cmd.o \
   $(top_srcdir)/src/response.o \
+  $(top_srcdir)/src/rlimit.o \
   $(top_srcdir)/src/fsio.o \
   $(top_srcdir)/src/netio.o \
   $(top_srcdir)/src/encode.o \
@@ -82,6 +83,7 @@ TEST_API_OBJS=\
   api/data.o \
   api/ascii.o \
   api/help.o \
+  api/rlimit.o \
   api/stubs.o \
   api/tests.o
 
