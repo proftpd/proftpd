@@ -134,9 +134,14 @@ START_TEST (rlimit_memory_test) {
 
   curr_rlim = max_rlim = -1;
   res = pr_rlimit_set_memory(curr_rlim, max_rlim);
-  fail_unless(res == -1, "Failed to handle negative arguments");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
-    strerror(errno), errno);
+
+  /* Note that some platforms will NOT fail a setrlimit(2) command if the
+   * arguments are negative.  Hence this conditional check.
+   */
+  if (res < 0) {
+    fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+      strerror(errno), errno);
+  }
 }
 END_TEST
 
@@ -155,9 +160,14 @@ START_TEST (rlimit_nproc_test) {
 
   curr_rlim = max_rlim = -1;
   res = pr_rlimit_set_nproc(curr_rlim, max_rlim);
-  fail_unless(res == -1, "Failed to handle negative arguments");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
-    strerror(errno), errno);
+
+  /* Note that some platforms will NOT fail a setrlimit(2) command if the
+   * arguments are negative.  Hence this conditional check.
+   */
+  if (res < 0) {
+    fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+      strerror(errno), errno);
+  }
 }
 END_TEST
 
