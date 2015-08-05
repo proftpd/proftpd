@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source distribution.
  */
 
-/* ProFTPD scoreboard support.
- * $Id: scoreboard.c,v 1.81 2013-12-09 19:16:14 castaglia Exp $
- */
+/* ProFTPD scoreboard support. */
 
 #include "conf.h"
 #include "privs.h"
@@ -1123,12 +1121,10 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
     if (scan_entry.sce_pid) {
       unlock_scoreboard();
       return &scan_entry;
-
-    } else
-      continue;
+    }
   }
 
-  unlock_scoreboard();
+  /* Technically we never reach this. */
   return NULL;
 }
 
