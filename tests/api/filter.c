@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Filter API tests
- */
+/* Filter API tests */
 
 #include "tests.h"
 
@@ -35,13 +34,22 @@ static void set_up(void) {
   }
 
   init_config();
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("filter", 0, 20);
+  }
 }
 
 static void tear_down(void) {
   if (p) {
     destroy_pool(p);
     p = NULL;
-  } 
+  }
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+  }
 }
 
 START_TEST (filter_parse_flags_test) {
@@ -95,6 +103,7 @@ START_TEST (filter_allow_path_test) {
 
   mark_point();
   c = add_config_param_set(&set, "test", 1, "test");
+  fail_if(c == NULL, "Failed to add config param: %s", strerror(errno));
 
   path = "/foo/bar";
   res = pr_filter_allow_path(set, path);
@@ -107,6 +116,7 @@ START_TEST (filter_allow_path_test) {
   fail_unless(res == 0, "Error compiling deny filter");
 
   c = add_config_param_set(&set, "PathDenyFilter", 1, deny_pre);
+  fail_if(c == NULL, "Failed to add config param: %s", strerror(errno));
 
   mark_point();
   res = pr_filter_allow_path(set, path);
@@ -125,6 +135,7 @@ START_TEST (filter_allow_path_test) {
   fail_unless(res == 0, "Error compiling allow filter");
 
   c = add_config_param_set(&set, "PathAllowFilter", 1, allow_pre);
+  fail_if(c == NULL, "Failed to add config param: %s", strerror(errno));
 
   mark_point();
   path = "/foo/quxx";
