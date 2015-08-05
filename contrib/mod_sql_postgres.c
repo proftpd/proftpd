@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.56 2013-10-09 04:57:13 castaglia Exp $
  * $Libraries: -lm -lpq $
  */
 
@@ -232,7 +231,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   PGresult *result = NULL;
   sql_data_t *sd = NULL;
   char **data = NULL;
-  int index = 0;
+  int idx = 0;
   int field = 0;
   int row =0;
 
@@ -250,14 +249,14 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   
   for (row = 0; row < sd->rnum; row++) {
     for (field = 0; field < sd->fnum; field++) {
-      data[index++] = pstrdup(cmd->tmp_pool, PQgetvalue(result, row, field));
+      data[idx++] = pstrdup(cmd->tmp_pool, PQgetvalue(result, row, field));
     }
   }
-  data[index] = NULL;
+  data[idx] = NULL;
 
   sd->data = data;
 
-  return mod_create_data( cmd, (void *) sd );
+  return mod_create_data(cmd, (void *) sd);
 }
 
 #ifdef PR_USE_NLS
