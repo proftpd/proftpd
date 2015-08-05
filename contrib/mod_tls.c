@@ -10655,7 +10655,7 @@ static int tls_sess_init(void) {
     identity = c->argv[0];
     path = c->argv[1];
 
-    /* Advance path the "hex:" format prefix. */
+    /* Advance past the "hex:" format prefix. */
     path += 4;
 
     PRIVS_ROOT
@@ -10721,7 +10721,7 @@ static int tls_sess_init(void) {
     } else if (key_len < TLS_MIN_PSK_LEN) {
       pr_log_debug(DEBUG2, MOD_TLS_VERSION
         ": read %d bytes from TLSPreSharedKey file '%s', need at least %d "
-        "bytes of key data, ignoring", TLS_MIN_PSK_LEN, path, key_len);
+        "bytes of key data, ignoring", key_len, path, TLS_MIN_PSK_LEN);
       c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
       continue;
     }
