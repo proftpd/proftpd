@@ -77,6 +77,10 @@ static void reset_last_response(void) {
 void pr_response_set_pool(pool *p) {
   resp_pool = p;
 
+  if (p == NULL) {
+    return;
+  }
+
   /* Copy any old "last" values out of the new pool. */
   if (resp_last_response_code != NULL) {
     char *tmp;
@@ -210,7 +214,9 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   resp->msg = pstrdup(resp_pool, resp_buf);
 
-  resp_last_response_code = pstrdup(resp_pool, resp->num);
+  if (numeric != R_DUP) {
+    resp_last_response_code = pstrdup(resp_pool, resp->num);
+  }
   resp_last_response_msg = pstrdup(resp_pool, resp->msg);
 
   pr_trace_msg(trace_channel, 7, "error response added to pending list: %s %s",
@@ -255,7 +261,9 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   resp->msg = pstrdup(resp_pool, resp_buf);
 
-  resp_last_response_code = pstrdup(resp_pool, resp->num);
+  if (numeric != R_DUP) {
+    resp_last_response_code = pstrdup(resp_pool, resp->num);
+  }
   resp_last_response_msg = pstrdup(resp_pool, resp->msg);
 
   pr_trace_msg(trace_channel, 7, "response added to pending list: %s %s",
@@ -374,4 +382,3 @@ void pr_response_send_raw(const char *fmt, ...) {
 
   RESPONSE_WRITE_STR(session.c->outstrm, "%s\r\n", resp_buf)
 }
-

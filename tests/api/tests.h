@@ -70,6 +70,7 @@ Suite *tests_get_filter_suite(void);
 Suite *tests_get_inet_suite(void);
 Suite *tests_get_data_suite(void);
 Suite *tests_get_ascii_suite(void);
+Suite *tests_get_help_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.

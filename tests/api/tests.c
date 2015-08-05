@@ -62,6 +62,7 @@ static struct testsuite_info suites[] = {
   { "inet",		tests_get_inet_suite },
   { "data",		tests_get_data_suite },
   { "ascii",		tests_get_ascii_suite },
+  { "help",		tests_get_help_suite },
 
   { NULL, NULL }
 };

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2011-2012 The ProFTPD Project team
+ * Copyright (c) 2011-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Response API tests
- * $Id: response.c,v 1.5 2012-07-26 22:40:37 castaglia Exp $
- */
+/* Response API tests */
 
 #include "tests.h"
 
@@ -34,13 +32,22 @@ static void set_up(void) {
   if (p == NULL) {
     p = make_sub_pool(NULL);
   }
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("response", 0, 20);
+  }
 }
 
 static void tear_down(void) {
   if (p) {
     destroy_pool(p);
     p = NULL;
-  } 
+  }
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+  }
 }
 
 START_TEST (response_pool_get_test) {
