@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_sql -- a mod_wrap2 sub-module for supplying IP-based
  *                           access control data via SQL tables
  *
- * Copyright (c) 2002-2014 TJ Saunders
+ * Copyright (c) 2002-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
  * As a special exemption, TJ Saunders gives permission to link this program
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
- *
- * $Id: mod_wrap2_sql.c,v 1.12 2012-05-01 21:31:48 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -138,29 +136,32 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
 
     ptr = strpbrk(vals[i], ", \t");
     if (ptr != NULL) {
-      char *dup = pstrdup(sqltab->tab_pool, vals[i]);
-      char *word;
+      char *dup_opts, *word;
 
-      while ((word = pr_str_get_token(&dup, ", \t")) != NULL) {
+      dup_opts = pstrdup(sqltab->tab_pool, vals[i]);
+      while ((word = pr_str_get_token(&dup_opts, ", \t")) != NULL) {
         size_t wordlen;
 
         pr_signals_handle();
 
         wordlen = strlen(word);
-        if (wordlen == 0)
+        if (wordlen == 0) {
           continue;
+        }
 
         /* Remove any trailing comma */
-        if (word[wordlen-1] == ',')
+        if (word[wordlen-1] == ',') {
           word[wordlen-1] = '\0';
+          wordlen--;
+        }
 
         *((char **) push_array(clients_list)) = word;
 
         /* Skip redundant whitespaces */
-        while (*dup == ' ' ||
-               *dup == '\t') {
+        while (*dup_opts == ' ' ||
+               *dup_opts == '\t') {
           pr_signals_handle();
-          dup++;
+          dup_opts++;
         }
       }
 

@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap2_file -- a mod_wrap2 sub-module for supplying IP-based
  *                            access control data via file-based tables
  *
- * Copyright (c) 2002-2014 TJ Saunders
+ * Copyright (c) 2002-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
  * As a special exemption, TJ Saunders gives permission to link this program
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
- *
- * $Id: mod_wrap2_file.c,v 1.14 2013-12-19 23:19:50 castaglia Exp $
  */
 
 #include "mod_wrap2.h"
@@ -149,10 +147,10 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
 
       ptr = strpbrk(res, ", \t");
       if (ptr != NULL) {
-        char *dup = pstrdup(filetab->tab_pool, res);
-        char *word;
+        char *dup_opts, *word;
 
-        while ((word = pr_str_get_token(&dup, ", \t")) != NULL) {
+        dup_opts = pstrdup(filetab->tab_pool, res);
+        while ((word = pr_str_get_token(&dup_opts, ", \t")) != NULL) {
           size_t wordlen;
 
           pr_signals_handle();
@@ -165,15 +163,16 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
           /* Remove any trailing comma */
           if (word[wordlen-1] == ',') {
             word[wordlen-1] = '\0';
+            wordlen--;
           }
 
           *((char **) push_array(filetab_clients_list)) = word;
 
           /* Skip redundant whitespaces */
-          while (*dup == ' ' ||
-                 *dup == '\t') {
+          while (*dup_opts == ' ' ||
+                 *dup_opts == '\t') {
             pr_signals_handle();
-            dup++;
+            dup_opts++;
           }
         }
 

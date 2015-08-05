@@ -2672,7 +2672,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
       if (strlen(new_arg) > 0) {
         int flags = PR_STR_FL_PRESERVE_COMMENTS;
-        char *param, *dup;
+        char *param, *dup_arg;
         array_header *list;
 
         rewrite_replace_cmd_arg(cmd, new_arg);
@@ -2701,8 +2701,8 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
           }
         }
 
-        dup = pstrdup(cmd->tmp_pool, new_arg);
-        while ((param = pr_str_get_word(&dup, flags)) != NULL) {
+        dup_arg = pstrdup(cmd->tmp_pool, new_arg);
+        while ((param = pr_str_get_word(&dup_arg, flags)) != NULL) {
           pr_signals_handle();
 
           *((char **) push_array(list)) = pstrdup(cmd->pool, param);
