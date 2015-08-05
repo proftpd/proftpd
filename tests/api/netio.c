@@ -925,15 +925,13 @@ START_TEST (netio_telnet_gets_telnet_single_iac_test) {
 END_TEST
 
 START_TEST (netio_telnet_gets_bug3521_test) {
-  char buf[10], *cmd, *res, telnet_opt;
+  char buf[10], *res, telnet_opt;
   pr_netio_stream_t *in, *out;
   pr_buffer_t *pbuf;
   int len, xerrno;
 
   in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
   out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
-
-  cmd = "Hello, World!\n";
 
   pr_netio_buffer_alloc(in);
   pbuf = in->strm_buf;
