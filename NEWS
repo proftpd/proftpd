@@ -14,6 +14,8 @@
 - Bug 4191 - "Incorrect string value" reported by mod_sql_mysql for some UTF8
   characters.
 - Bug 4097 - SSH rekey fails when using RSA hostkey smaller than 2048 bits.
+- Bug 4198 - MLSD/MLST fact type "cdir" is incorrectly used for the current
+  working directory.
 
 1.3.5a - Released 27-May-2015
 --------------------------------

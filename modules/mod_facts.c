@@ -28,7 +28,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_FACTS_VERSION		"mod_facts/0.3"
+#define MOD_FACTS_VERSION		"mod_facts/0.4"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
@@ -49,6 +49,7 @@ static unsigned long facts_opts = 0;
 static unsigned long facts_mlinfo_opts = 0;
 #define FACTS_MLINFO_FL_SHOW_SYMLINKS			0x00001
 #define FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK		0x00002
+#define FACTS_MLINFO_FL_NO_CDIR				0x00004
 
 struct mlinfo {
   pool *pool;
@@ -491,20 +492,17 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   } else {
     info->type = "dir";
 
-    if (dent_name[0] != '.') {
-      if (strcmp(path, pr_fs_getcwd()) == 0) {
-        info->type = "cdir";
-      }
+    if (!(flags & FACTS_MLINFO_FL_NO_CDIR)) {
+      if (dent_name[0] == '.') {
+        if (dent_name[1] == '\0') {
+          info->type = "cdir";
+        }
 
-    } else {
-      if (dent_name[1] == '\0') {
-        info->type = "cdir";
-      }
-
-      if (strlen(dent_name) >= 2) {
-        if (dent_name[1] == '.' &&
-            dent_name[2] == '\0') {
-          info->type = "pdir";
+        if (strlen(dent_name) >= 2) {
+          if (dent_name[1] == '.' &&
+              dent_name[2] == '\0') {
+            info->type = "pdir";
+          }
         }
       }
     }
@@ -1424,6 +1422,13 @@ MODRET facts_mlst(cmd_rec *cmd) {
   }
 
   info.pool = cmd->tmp_pool;
+
+  /* Since this is an MLST command, we are not listing the contents of
+   * of a directory, we're only showing the entry for a path, whether
+   * directory or not.  Thus the "cdir" type fact should not be used
+   * (Bug#4198).
+   */
+  flags |= FACTS_MLINFO_FL_NO_CDIR;
 
   pr_fs_clear_cache();
   if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags, fake_uid,
