@@ -465,7 +465,7 @@ static int xfer_displayfile(void) {
 }
 
 static int xfer_prio_adjust(void) {
-  int res;
+  int res, xerrno = 0;
 
   if (xfer_prio_config == 0) {
     return 0;
@@ -475,8 +475,11 @@ static int xfer_prio_adjust(void) {
   res = getpriority(PRIO_PROCESS, 0);
   if (res < 0 &&
       errno != 0) {
+    xerrno = errno;
+
     pr_trace_msg(trace_channel, 7, "unable to get current process priority: %s",
-      strerror(errno));
+      strerror(xerrno));
+    errno = xerrno;
     return -1;
   }
 
@@ -485,27 +488,33 @@ static int xfer_prio_adjust(void) {
    */
   if (res == xfer_prio_config) {
     pr_trace_msg(trace_channel, 10,
-      "current process priority matches configured priority");
+      "current process priority (%d) matches configured priority", res);
     return 0;
   }
 
   xfer_prio_curr = res;
 
-  pr_trace_msg(trace_channel, 10, "adjusting process priority to be %d",
-    xfer_prio_config);
+  pr_trace_msg(trace_channel, 10,
+    "adjusting process priority to be %d (currently %d)", xfer_prio_config,
+    xfer_prio_curr);
+
   if (xfer_prio_config > 0) {
     res = setpriority(PRIO_PROCESS, 0, xfer_prio_config);
+    xerrno = errno;
 
   } else {
     /* Increasing the process priority requires root privs. */
     PRIVS_ROOT
     res = setpriority(PRIO_PROCESS, 0, xfer_prio_config);
+    xerrno = errno;
     PRIVS_RELINQUISH
   }
 
   if (res < 0) {
     pr_trace_msg(trace_channel, 1, "error adjusting process priority: %s",
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -513,7 +522,7 @@ static int xfer_prio_adjust(void) {
 }
 
 static int xfer_prio_restore(void) {
-  int res;
+  int res, xerrno;
 
   if (xfer_prio_config == 0 ||
       xfer_prio_curr == 0) {
@@ -525,11 +534,12 @@ static int xfer_prio_restore(void) {
 
   PRIVS_ROOT
   res = setpriority(PRIO_PROCESS, 0, xfer_prio_curr);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (res < 0) {
     pr_trace_msg(trace_channel, 1, "error restoring process priority: %s",
-      strerror(errno));
+      strerror(xerrno));
   }
 
   xfer_prio_curr = 0;
@@ -3287,8 +3297,7 @@ MODRET set_transferoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TransferPriority cmds "low"|"medium"|"high"|number
- */
+/* usage: TransferPriority cmds "low"|"medium"|"high"|number */
 MODRET set_transferpriority(cmd_rec *cmd) {
   config_rec *c;
   int prio;
