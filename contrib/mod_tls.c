@@ -5779,12 +5779,14 @@ static void tls_setup_environ(SSL *ssl) {
   char *k, *v;
 
   if (!(tls_opts & TLS_OPT_EXPORT_CERT_DATA) &&
-      !(tls_opts & TLS_OPT_STD_ENV_VARS))
+      !(tls_opts & TLS_OPT_STD_ENV_VARS)) {
     return;
+  }
 
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
     SSL_CIPHER *cipher = NULL;
     SSL_SESSION *ssl_session = NULL;
+    char *sni = NULL;
 
     k = pstrdup(main_server->pool, "FTPS");
     v = pstrdup(main_server->pool, "1");
@@ -5845,6 +5847,13 @@ static void tls_setup_environ(SSL *ssl) {
 
       k = pstrdup(main_server->pool, "TLS_CIPHER_KEYSIZE_USED");
       v = pstrdup(main_server->pool, buf);
+      pr_env_set(main_server->pool, k, v);
+    }
+
+    sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
+    if (sni != NULL) {
+      k = pstrdup(main_server->pool, "TLS_SERVER_NAME");
+      v = pstrdup(main_server->pool, sni);
       pr_env_set(main_server->pool, k, v);
     }
 
