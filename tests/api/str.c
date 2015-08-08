@@ -719,7 +719,7 @@ START_TEST (get_word_test) {
   ok = "foo";
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
-  str = pstrdup(p, "foo \"bar\" baz");
+  str = pstrdup(p, "foo \"bar baz\" qux \"quz norf\"");
   res = pr_str_get_word(&str, 0);
   fail_unless(res != NULL, "Failed to handle quoted argument: %s",
     strerror(errno));
@@ -731,14 +731,21 @@ START_TEST (get_word_test) {
   fail_unless(res != NULL, "Failed to handle quoted argument: %s",
     strerror(errno));
 
-  ok = "bar";
+  ok = "bar baz";
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   res = pr_str_get_word(&str, 0);
   fail_unless(res != NULL, "Failed to handle quoted argument: %s",
     strerror(errno));
 
-  ok = "baz";
+  ok = "qux";
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  res = pr_str_get_word(&str, 0);
+  fail_unless(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
+
+  ok = "quz norf";
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 }
 END_TEST
