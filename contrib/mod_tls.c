@@ -542,8 +542,8 @@ static int tls_sess_init(void);
 
 /* SSL/TLS support functions */
 static void tls_closelog(void);
-static void tls_end_sess(SSL *, int, int);
-#define TLS_SHUTDOWN_BIDIRECTIONAL	0x0001
+static void tls_end_sess(SSL *, conn_t *, int);
+#define TLS_SHUTDOWN_FL_BIDIRECTIONAL		0x0001
 
 static void tls_fatal_error(long, int);
 static const char *tls_get_errors(void);
@@ -716,7 +716,7 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
               ": client-initiated session renegotiation detected, "
               "aborting connection");
 
-            tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+            tls_end_sess(ctrl_ssl, session.c, 0);
             pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
             pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
             ctrl_ssl = NULL;
@@ -752,7 +752,7 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
               ": client-initiated session renegotiation detected, "
               "aborting connection");
 
-            tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+            tls_end_sess(ctrl_ssl, session.c, 0);
             pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
             pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
             ctrl_ssl = NULL;
@@ -2500,7 +2500,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on control channel");
       tls_log("%s", "shutting down control channel TLS session");
-      tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+      tls_end_sess(ctrl_ssl, session.c, 0);
       pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
       pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
       ctrl_ssl = NULL;
@@ -2519,7 +2519,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
       tls_log("%s", "shutting down data channel TLS session");
-      tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+      tls_end_sess(ssl, session.d, 0);
       pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
       pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
     }
@@ -4051,7 +4051,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     if (tls_handshake_timed_out) {
       tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
-      tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL, 0);
+      tls_end_sess(ssl, on_data ? session.d : session.c, 0);
       return -4;
     }
 
@@ -4116,7 +4116,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       pr_event_generate("mod_tls.ctrl-handshake-failed", &errcode);
     }
 
-    tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL, 0);
+    tls_end_sess(ssl, on_data ? session.d : session.c, 0);
     return -3;
   }
 
@@ -4301,7 +4301,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
        * requirement checks.
        */
       if (tls_check_client_cert(ssl, conn) < 0) {
-        tls_end_sess(ssl, PR_NETIO_STRM_CTRL, 0);
+        tls_end_sess(ssl, session.c, 0);
         ctrl_ssl = NULL;
         return -1;
       }
@@ -4351,7 +4351,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       if (reused != 1) {
         tls_log("%s", "client did not reuse SSL session, rejecting data "
           "connection (see the NoSessionReuseRequired TLSOptions parameter)");
-        tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+        tls_end_sess(ssl, session.d, 0);
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
         pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
         return -1;
@@ -4394,7 +4394,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
             tls_log("Client did not reuse SSL session from control channel, "
               "rejecting data connection (see the NoSessionReuseRequired "
               "TLSOptions parameter)");
-            tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+            tls_end_sess(ssl, session.d, 0);
             pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
             pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
             return -1;
@@ -4442,7 +4442,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
           tls_log("%s", "BUG: unable to determine whether client reused SSL "
             "session: SSL_get_session() for data connection returned NULL");
           tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
-          tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+          tls_end_sess(ssl, session.d, 0);
           pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
           pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
           return -1;
@@ -4453,7 +4453,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         tls_log("%s", "BUG: unable to determine whether client reused SSL "
           "session: SSL_get_session() for control connection returned NULL!");
         tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
-        tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+        tls_end_sess(ssl, session.d, 0);
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
         pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
         return -1;
@@ -4547,7 +4547,7 @@ static int tls_connect(conn_t *conn) {
 
     if (tls_handshake_timed_out) {
       tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
-      tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+      tls_end_sess(ssl, conn, 0);
       return -4;
     }
 
@@ -4607,7 +4607,7 @@ static int tls_connect(conn_t *conn) {
 
     pr_event_generate("mod_tls.data-handshake-failed", &errcode);
 
-    tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+    tls_end_sess(ssl, conn, 0);
     return -3;
   }
 
@@ -4674,7 +4674,7 @@ static int tls_connect(conn_t *conn) {
   }
 
   if (tls_check_server_cert(ssl, conn) < 0) {
-    tls_end_sess(ssl, PR_NETIO_STRM_DATA, 0);
+    tls_end_sess(ssl, conn, 0);
     return -1;
   }
 
@@ -4771,15 +4771,16 @@ static void tls_cleanup(int flags) {
   }
 }
 
-static void tls_end_sess(SSL *ssl, int strms, int flags) {
+static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
   int res = 0;
   int shutdown_state;
   BIO *rbio, *wbio;
   int bread, bwritten;
   unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes; 
 
-  if (!ssl)
+  if (ssl == NULL) {
     return;
+  }
 
   rbio = SSL_get_rbio(ssl);
   rbio_rbytes = BIO_number_read(rbio);
@@ -4797,13 +4798,28 @@ static void tls_end_sess(SSL *ssl, int strms, int flags) {
   if (!(shutdown_state & SSL_SENT_SHUTDOWN)) {
     errno = 0;
 
+    if (conn != NULL) {
+      /* Disable any socket buffering (Nagle, TCP_CORK), so that the alert
+       * is sent in a timely manner (avoiding TLS shutdown latency).
+       */
+      if (pr_inet_set_proto_nodelay(conn->pool, conn, 1) < 0) {
+        pr_trace_msg(trace_channel, 9,
+          "error enabling TCP_NODELAY on conn: %s", strerror(errno));
+      }
+
+      if (pr_inet_set_proto_cork(conn->wfd, 0) < 0) {
+        pr_trace_msg(trace_channel, 9,
+          "error disabling TCP_CORK on fd %d: %s", conn->wfd, strerror(errno));
+      }
+    }
+
     /* 'close_notify' not already sent; send it now. */
     res = SSL_shutdown(ssl);
   }
 
   if (res == 0) {
     /* Now call SSL_shutdown() again, but only if necessary. */
-    if (flags & TLS_SHUTDOWN_BIDIRECTIONAL) {
+    if (flags & TLS_SHUTDOWN_FL_BIDIRECTIONAL) {
       shutdown_state = SSL_get_shutdown(ssl);
 
       res = 1;
@@ -7437,7 +7453,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
   if (ssl != NULL) {
     if (nstrm->strm_type == PR_NETIO_STRM_CTRL &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_end_sess(ssl, nstrm->strm_type, 0);
+      tls_end_sess(ssl, session.c, 0);
       pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
       pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
       tls_ctrl_netio = NULL;
@@ -7604,7 +7620,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
             X509_free(data_cert);
 
             /* Properly shutdown the SSL session. */
-            tls_end_sess(ssl, nstrm->strm_type, 0);
+            tls_end_sess(ssl, session.d, 0);
             pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
             pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
 
@@ -7728,6 +7744,7 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
         BIO *rbio, *wbio;
         int bread = 0, bwritten = 0;
         unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
+        conn_t *conn;
 
         rbio = SSL_get_rbio(ssl);
         rbio_rbytes = BIO_number_read(rbio);
@@ -7738,6 +7755,25 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
         wbio_wbytes = BIO_number_written(wbio);
 
         if (!(SSL_get_shutdown(ssl) & SSL_SENT_SHUTDOWN)) {
+
+          /* Disable any socket buffering (Nagle, TCP_CORK), so that the alert
+           * is sent in a timely manner (avoiding TLS shutdown latency).
+           */
+          conn = (nstrm->strm_type == PR_NETIO_STRM_DATA) ? session.d :
+            session.c;
+          if (conn != NULL) {
+            if (pr_inet_set_proto_nodelay(conn->pool, conn, 1) < 0) {
+              pr_trace_msg(trace_channel, 9,
+                "error enabling TCP_NODELAY on conn: %s", strerror(errno));
+            }
+
+            if (pr_inet_set_proto_cork(conn->wfd, 0) < 0) {
+              pr_trace_msg(trace_channel, 9,
+                "error disabling TCP_CORK on fd %d: %s", conn->wfd,
+                strerror(errno));
+            }
+          }
+
           /* We haven't sent a 'close_notify' alert yet; do so now. */
           SSL_shutdown(ssl);
         }
@@ -8402,7 +8438,7 @@ MODRET tls_ccc(cmd_rec *cmd) {
    * The data channel, if protected, should remain so.
    */
 
-  tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, TLS_SHUTDOWN_BIDIRECTIONAL);
+  tls_end_sess(ctrl_ssl, session.c, TLS_SHUTDOWN_FL_BIDIRECTIONAL);
   pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
   pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
   ctrl_ssl = NULL;
@@ -10137,7 +10173,7 @@ static void tls_timeout_ev(const void *event_data, void *user_data) {
     /* Try to properly close the SSL session down on the control channel,
      * if there is one.
      */ 
-    tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, 0);
+    tls_end_sess(ctrl_ssl, session.c, 0);
     pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
     pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
     ctrl_ssl = NULL;
