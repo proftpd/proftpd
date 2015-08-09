@@ -3749,12 +3749,6 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   pkt = read_kex_packet(kex_pool, kex, SFTP_SSH2_DISCONNECT_PROTOCOL_ERROR,
     NULL, 1, SFTP_SSH2_MSG_NEWKEYS);
 
-  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "NEWKEYS"));
-  cmd->arg = "";
-  cmd->cmd_class = CL_AUTH;
-
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-
   /* If we didn't send our NEWKEYS message earlier, do it now. */
   if (!sent_newkeys) {
     pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
@@ -3788,6 +3782,13 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     destroy_kex(kex);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
+
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "NEWKEYS"));
+  cmd->arg = "";
+  cmd->cmd_class = CL_AUTH;
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+  destroy_pool(pkt->pool);
 
   /* Reset this flag for the next time through. */
   kex_sent_kexinit = FALSE;
