@@ -822,6 +822,17 @@ static int send_userauth_failure(char *failed_meth) {
       SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_NO_MORE_AUTH_METHODS_AVAILABLE,
         NULL);
     }
+
+  } else {
+    if (auth_avail_meths == NULL) {
+      /* This situation can happen when the authentication method succeeded,
+       * BUT the subsequent login actions failed (such as failing to chroot,
+       * no such home directory, etc etc).  But we still need a list
+       * of authentication methods to send back to the client in this message;
+       * we thus use the empty string.
+       */
+      auth_avail_meths = "";
+    }
   }
 
   meths = pstrdup(pkt->pool, auth_avail_meths);
