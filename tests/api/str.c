@@ -719,6 +719,7 @@ START_TEST (get_word_test) {
   ok = "foo";
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  /* Test multiple embedded quotes. */
   str = pstrdup(p, "foo \"bar baz\" qux \"quz norf\"");
   res = pr_str_get_word(&str, 0);
   fail_unless(res != NULL, "Failed to handle quoted argument: %s",
@@ -747,6 +748,42 @@ START_TEST (get_word_test) {
 
   ok = "quz norf";
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+}
+END_TEST
+
+START_TEST (get_word_utf8_test) {
+  const char *path;
+  FILE *fh;
+
+  /* Test UT8 spaces. Note that in order to do this, I had to use
+   * some other tool (Perl) to emit the desired UTF8 characters to
+   * a file; we then read in the bytes to parse from that file.  Some
+   * compilers (e.g. gcc), in conjunction with the terminal/editor I'm
+   * using, don't like using the '\uNNNN' syntax for encoding UTF8 in C
+   * source code.
+   */
+
+  path = "api/etc/str/utf8-space.txt";
+  fh = fopen(path, "r"); 
+  if (fh != NULL) {
+    char *ok, *res, *str;
+    size_t nread = 0, sz;
+
+    sz = 256;
+    str = pcalloc(p, sz);
+
+    nread = fread(str, sizeof(char), sz-1, fh);
+    fail_if(ferror(fh), "Error reading '%s': %s", path, strerror(errno));
+
+    res = pr_str_get_word(&str, 0);
+      fail_unless(res != NULL, "Failed to handle UTF8 argument: %s",
+      strerror(errno));
+
+    ok = "foo";
+    fail_if(strcmp(res, ok) == 0, "Did NOT expect '%s'", ok);
+
+    fclose(fh);
+  }
 }
 END_TEST
 
@@ -1242,6 +1279,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, get_token_test);
   tcase_add_test(testcase, get_token2_test);
   tcase_add_test(testcase, get_word_test);
+  tcase_add_test(testcase, get_word_utf8_test);
   tcase_add_test(testcase, is_boolean_test);
   tcase_add_test(testcase, is_fnmatch_test);
   tcase_add_test(testcase, get_nbytes_test);

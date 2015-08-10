@@ -445,21 +445,54 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
           &cmd->stash_index, &cmd->stash_hash);
       }
 
-      if (cmd->tmp_pool)
+      if (cmd->tmp_pool) {
         destroy_pool(cmd->tmp_pool);
+      }
 
-      if (!found) {
+      if (found == FALSE) {
+        register unsigned int i;
+        char *name;
+        size_t namelen;
+        int non_ascii = FALSE;
+
+        /* I encountered a case where a particular configuration file had
+         * what APPEARED to be a valid directive, but the parser kept reporting
+         * that the directive was unknown.  I now suspect that the file in
+         * question had embedded UTF8 characters (spaces, perhaps), which
+         * would appear as normal spaces in e.g. UTF8-aware editors/terminals,
+         * but which the parser would rightly refuse.
+         *
+         * So to indicate that this might be the case, check for any non-ASCII
+         * characters in the "unknown" directive name, and if found, log
+         * about them.
+         */
+
+        name = cmd->argv[0];
+        namelen = strlen(name);
+
+        for (i = 0; i < namelen; i++) {
+          if (!isascii((int) name[i])) {
+            non_ascii = TRUE;
+            break;
+          }
+        }
 
         if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
           pr_log_pri(PR_LOG_WARNING, "fatal: unknown configuration directive "
-            "'%s' on line %u of '%s'", (char *) cmd->argv[0], cs->cs_lineno,
-            report_path);
-          exit(1);
+            "'%s' on line %u of '%s'", name, cs->cs_lineno, report_path);
+          if (non_ascii) {
+            pr_log_pri(PR_LOG_WARNING, "fatal: malformed directive name "
+              "'%s' (contains non-ASCII characters)", name);
+          }
 
-        } else {
-          pr_log_pri(PR_LOG_WARNING, "warning: unknown configuration directive "
-            "'%s' on line %u of '%s'", (char *) cmd->argv[0], cs->cs_lineno,
-            report_path);
+          exit(1);
+        }
+
+        pr_log_pri(PR_LOG_WARNING, "warning: unknown configuration directive "
+          "'%s' on line %u of '%s'", name, cs->cs_lineno, report_path);
+        if (non_ascii) {
+          pr_log_pri(PR_LOG_WARNING, "warning: malformed directive name "
+            "'%s' (contains non-ASCII characters)", name);
         }
       }
     }
