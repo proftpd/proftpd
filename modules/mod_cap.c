@@ -29,7 +29,7 @@
  * recommended for security-consious admins. See README.capabilities for more
  * information.
  *
- * -- DO NOT MODIFY THE TWO LINES BELOW --
+ * ----- DO NOT MODIFY THE TWO LINES BELOW -----
  * $Libraries: -L$(top_srcdir)/lib/libcap -lcap$
  * $Directories: $(top_srcdir)/lib/libcap$
  */
@@ -190,8 +190,9 @@ MODRET set_caps(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
 
-  if (cmd->argc - 1 < 1)
+  if (cmd->argc - 1 < 1) {
     CONF_ERROR(cmd, "need at least one parameter");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -199,40 +200,50 @@ MODRET set_caps(cmd_rec *cmd) {
   flags |= (CAP_USE_CHOWN|CAP_USE_SETUID);
 
   for (i = 1; i < cmd->argc; i++) {
-    char *cp = cmd->argv[i];
-    cp++;
+    char *cap, *ptr;
 
-    if (*cmd->argv[i] != '+' && *cmd->argv[i] != '-')
+    cap = ptr = cmd->argv[i];
+    ptr++;
+
+    if (*param != '+' &&
+        *param != '-') {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": bad option: '",
-        cmd->argv[i], "'", NULL));
+        param, "'", NULL));
+    }
 
-    if (strcasecmp(cp, "CAP_CHOWN") == 0) {
-      if (*cmd->argv[i] == '-')
+    if (strcasecmp(ptr, "CAP_CHOWN") == 0) {
+      if (*param == '-') {
         flags &= ~CAP_USE_CHOWN;
+      }
 
-    } else if (strcasecmp(cp, "CAP_DAC_OVERRIDE") == 0) {
-      if (*cmd->argv[i] == '+')
+    } else if (strcasecmp(ptr, "CAP_DAC_OVERRIDE") == 0) {
+      if (*param == '+') {
         flags |= CAP_USE_DAC_OVERRIDE;
+      }
 
-    } else if (strcasecmp(cp, "CAP_DAC_READ_SEARCH") == 0) {
-      if (*cmd->argv[i] == '+')
+    } else if (strcasecmp(ptr, "CAP_DAC_READ_SEARCH") == 0) {
+      if (*param == '+') {
         flags |= CAP_USE_DAC_READ_SEARCH;
+      }
 
-    } else if (strcasecmp(cp, "CAP_FOWNER") == 0) {
-      if (*cmd->argv[i] == '+')
+    } else if (strcasecmp(ptr, "CAP_FOWNER") == 0) {
+      if (*param == '+') {
         flags |= CAP_USE_FOWNER;
+      }
 
-    } else if (strcasecmp(cp, "CAP_FSETID") == 0) {
-      if (*cmd->argv[i] == '+')
+    } else if (strcasecmp(ptr, "CAP_FSETID") == 0) {
+      if (*param == '+') {
         flags |= CAP_USE_FSETID;
+      }
 
-    } else if (strcasecmp(cp, "CAP_SETUID") == 0) {
-      if (*cmd->argv[i] == '-')
+    } else if (strcasecmp(ptr, "CAP_SETUID") == 0) {
+      if (*param == '-') {
         flags &= ~CAP_USE_SETUID;
+      }
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown capability: '",
-        cp, "'", NULL));
+        ptr, "'", NULL));
     }
   }
 
