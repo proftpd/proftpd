@@ -2307,9 +2307,11 @@ MODRET set_hidefiles(cmd_rec *cmd) {
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
     int argc = cmd->argc - 3;
-    char **argv = ((char **) cmd->argv) + 2;
+    void **argv;
 
-    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+    argv = &(cmd->argv[2]);
+
+    acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
     if (acl == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating expression: ",
         strerror(errno), NULL));
@@ -2327,7 +2329,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     /* Capture the config_rec's argv pointer for doing the by-hand
      * population.
      */
-    argv = (char **) c->argv;
+    argv = c->argv;
 
     /* Copy in the regexp. */
     *argv = pcalloc(c->pool, sizeof(pr_regex_t *));
