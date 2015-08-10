@@ -3535,7 +3535,7 @@ sub hidefiles_stat {
 
       my $expected;
 
-      $expected = 211;
+      $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
