@@ -205,39 +205,39 @@ MODRET set_caps(cmd_rec *cmd) {
     cap = ptr = cmd->argv[i];
     ptr++;
 
-    if (*param != '+' &&
-        *param != '-') {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": bad option: '",
-        param, "'", NULL));
+    if (*cap != '+' &&
+        *cap != '-') {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": bad option: '", cap, "'",
+        NULL));
     }
 
     if (strcasecmp(ptr, "CAP_CHOWN") == 0) {
-      if (*param == '-') {
+      if (*cap == '-') {
         flags &= ~CAP_USE_CHOWN;
       }
 
     } else if (strcasecmp(ptr, "CAP_DAC_OVERRIDE") == 0) {
-      if (*param == '+') {
+      if (*cap == '+') {
         flags |= CAP_USE_DAC_OVERRIDE;
       }
 
     } else if (strcasecmp(ptr, "CAP_DAC_READ_SEARCH") == 0) {
-      if (*param == '+') {
+      if (*cap == '+') {
         flags |= CAP_USE_DAC_READ_SEARCH;
       }
 
     } else if (strcasecmp(ptr, "CAP_FOWNER") == 0) {
-      if (*param == '+') {
+      if (*cap == '+') {
         flags |= CAP_USE_FOWNER;
       }
 
     } else if (strcasecmp(ptr, "CAP_FSETID") == 0) {
-      if (*param == '+') {
+      if (*cap == '+') {
         flags |= CAP_USE_FSETID;
       }
 
     } else if (strcasecmp(ptr, "CAP_SETUID") == 0) {
-      if (*param == '-') {
+      if (*cap == '-') {
         flags &= ~CAP_USE_SETUID;
       }
 
