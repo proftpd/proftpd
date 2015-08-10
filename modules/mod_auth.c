@@ -2428,7 +2428,8 @@ MODRET auth_user(cmd_rec *cmd) {
     pr_cmd_dispatch(fakecmd);
 
   } else {
-    pr_response_add(R_331, _("Password required for %s"), cmd->argv[1]);
+    pr_response_add(R_331, _("Password required for %s"),
+      (char *) cmd->argv[1]);
   }
 
   return PR_HANDLED(cmd);
@@ -3028,8 +3029,9 @@ MODRET set_createhome(cmd_rec *cmd) {
 
 MODRET add_defaultroot(cmd_rec *cmd) {
   config_rec *c;
-  char *dir,**argv;
+  char *dir;
   int argc;
+  void **argv;
   array_header *acl = NULL;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -3037,31 +3039,34 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   if (cmd->argc < 2)
     CONF_ERROR(cmd,"syntax: DefaultRoot <directory> [<group-expression>]");
 
-  argv = cmd->argv;
   argc = cmd->argc - 2;
+  argv = cmd->argv;
 
   dir = *++argv;
 
   /* dir must be / or ~. */
   if (*dir != '/' &&
-      *dir != '~')
+      *dir != '~') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") absolute pathname "
       "required", NULL));
+  }
 
-  if (strchr(dir, '*'))
+  if (strchr(dir, '*')) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
       "in pathname", NULL));
+  }
 
-  if (*(dir + strlen(dir) - 1) != '/')
+  if (*(dir + strlen(dir) - 1) != '/') {
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
+  }
 
-  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
 
   c = add_config_param(cmd->argv[0], 0);
 
   c->argc = argc + 1;
-  c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
-  argv = (char **) c->argv;
+  c->argv = pcalloc(c->pool, (argc + 2) * sizeof(void *));
+  argv = c->argv;
   *argv++ = pstrdup(c->pool, dir);
 
   if (argc && acl)
@@ -3076,8 +3081,9 @@ MODRET add_defaultroot(cmd_rec *cmd) {
 
 MODRET add_defaultchdir(cmd_rec *cmd) {
   config_rec *c;
-  char *dir,**argv;
+  char *dir;
   int argc;
+  void **argv;
   array_header *acl = NULL;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
@@ -3085,32 +3091,35 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   if (cmd->argc < 2)
     CONF_ERROR(cmd, "syntax: DefaultChdir <directory> [<group-expression>]");
 
-  argv = cmd->argv;
   argc = cmd->argc - 2;
+  argv = cmd->argv;
 
   dir = *++argv;
 
-  if (strchr(dir, '*'))
+  if (strchr(dir, '*')) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
       "in pathname", NULL));
+  }
 
-  if (*(dir + strlen(dir) - 1) != '/')
+  if (*(dir + strlen(dir) - 1) != '/') {
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
+  }
 
-  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
 
   c = add_config_param(cmd->argv[0], 0);
 
   c->argc = argc + 1;
-  c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
-  argv = (char **) c->argv;
+  c->argv = pcalloc(c->pool, (argc + 2) * sizeof(void *));
+  argv = c->argv;
   *argv++ = pstrdup(c->pool, dir);
 
-  if (argc && acl)
+  if (argc && acl) {
     while(argc--) {
       *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;
     }
+  }
 
   *argv = NULL;
 
@@ -3580,24 +3589,27 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
 
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
-    int argc = cmd->argc - 3;
-    char **argv = cmd->argv + 2;
+    int argc;
+    void **argv;
 
-    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+    argc = cmd->argc - 3;
+    argv = cmd->argv + 2;
+
+    acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 2;
 
-    /* add 3 to argc for the argv of the config_rec: one for the
+    /* Add 3 to argc for the argv of the config_rec: one for the
      * seconds value, one for the precedence, one for the classifier,
-     * and one for the terminating NULL
+     * and one for the terminating NULL.
      */
-    c->argv = pcalloc(c->pool, ((argc + 4) * sizeof(char *)));
+    c->argv = pcalloc(c->pool, ((argc + 4) * sizeof(void *)));
 
-    /* capture the config_rec's argv pointer for doing the by-hand
-     * population
+    /* Capture the config_rec's argv pointer for doing the by-hand
+     * population.
      */
-    argv = (char **) c->argv;
+    argv = c->argv;
 
     /* Copy in the seconds. */
     *argv = pcalloc(c->pool, sizeof(int));

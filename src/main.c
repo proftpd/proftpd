@@ -265,7 +265,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
           !cmd_auth_chk(cmd)) {
         pr_trace_msg("command", 8,
           "command '%s' failed 'requires_auth' check for mod_%s.c",
-          cmd->argv[0], c->m->name);
+          (char *) cmd->argv[0], c->m->name);
         errno = EACCES;
         return -1;
       }
@@ -572,7 +572,8 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
   if (flags & PR_CMD_DISPATCH_FL_CLEAR_RESPONSE) {
     pr_trace_msg("response", 9,
-      "clearing response lists before dispatching command '%s'", cmd->argv[0]);
+      "clearing response lists before dispatching command '%s'",
+      (char *) cmd->argv[0]);
     pr_response_clear(&resp_list);
     pr_response_clear(&resp_err_list);
   }
@@ -621,7 +622,7 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
       xerrno = errno;
       pr_trace_msg("response", 9, "flushing error response list for '%s'",
-        cmd->argv[0]);
+        (char *) cmd->argv[0]);
       pr_response_flush(&resp_err_list);
 
       /* Restore any previous pool to the Response API. */
@@ -645,7 +646,7 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
       xerrno = errno;
       pr_trace_msg("response", 9, "flushing response list for '%s'",
-        cmd->argv[0]);
+        (char *) cmd->argv[0]);
       pr_response_flush(&resp_list);
 
       errno = xerrno;
@@ -663,7 +664,7 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
       xerrno = errno;
       pr_trace_msg("response", 9, "flushing error response list for '%s'",
-        cmd->argv[0]);
+        (char *) cmd->argv[0]);
       pr_response_flush(&resp_err_list);
 
       errno = xerrno;
@@ -706,12 +707,12 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
       if (success == 1) {
         pr_trace_msg("response", 9, "flushing response list for '%s'",
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
         pr_response_flush(&resp_list);
 
       } else if (success < 0) {
         pr_trace_msg("response", 9, "flushing error response list for '%s'",
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
         pr_response_flush(&resp_err_list);
       }
 
@@ -863,7 +864,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       if (cmd->is_ftp == FALSE) {
         pr_log_pri(PR_LOG_WARNING,
           "client sent %s command '%s', disconnecting", cmd->protocol,
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
         pr_event_generate("core.bad-protocol", cmd);
         pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BAD_PROTOCOL,
           cmd->protocol);

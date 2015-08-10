@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2014 The ProFTPD Project team
+ * Copyright (c) 2004-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * for OpenSSL in the source distribution.
  */
 
-/* Configuration parser
- * $Id: parser.c,v 1.40 2013-12-30 06:38:59 castaglia Exp $
- */
+/* Configuration parser */
 
 #include "conf.h"
 
@@ -395,8 +393,9 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
    */
   cs = add_config_source(fh);
 
-  if (start) 
+  if (start) {
     add_config_ctxt(start);
+  }
 
   while ((cmd = pr_parser_parse_line(tmp_pool)) != NULL) {
     pr_signals_handle();
@@ -453,13 +452,13 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
         if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
           pr_log_pri(PR_LOG_WARNING, "fatal: unknown configuration directive "
-            "'%s' on line %u of '%s'", cmd->argv[0], cs->cs_lineno,
+            "'%s' on line %u of '%s'", (char *) cmd->argv[0], cs->cs_lineno,
             report_path);
           exit(1);
 
         } else {
           pr_log_pri(PR_LOG_WARNING, "warning: unknown configuration directive "
-            "'%s' on line %u of '%s'", cmd->argv[0], cs->cs_lineno,
+            "'%s' on line %u of '%s'", (char *) cmd->argv[0], cs->cs_lineno,
             report_path);
         }
       }
@@ -523,7 +522,7 @@ cmd_rec *pr_parser_parse_line(pool *p) {
      * it will get purged when the command's pool is destroyed.
      */
 
-    cmd->argv = (char **) arr->elts;
+    cmd->argv = (void **) arr->elts;
 
     /* Perform a fixup on configuration directives so that:
      *
@@ -537,9 +536,10 @@ cmd_rec *pr_parser_parse_line(pool *p) {
      */
 
     if (cmd->argc &&
-        *(cmd->argv[0]) == '<') {
-      char *cp = cmd->argv[cmd->argc-1];
+        *((char *) cmd->argv[0]) == '<') {
+      char *cp;
 
+      cp = cmd->argv[cmd->argc-1];
       if (*(cp + strlen(cp)-1) == '>' &&
           cmd->argc > 1) {
 

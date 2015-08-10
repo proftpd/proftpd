@@ -1129,7 +1129,7 @@ MODRET handle_ldap_quota_lookup(cmd_rec *cmd) {
 
   } else {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "returning cached quota for user %s", cmd->argv[0]);
+      "returning cached quota for user %s", (char *) cmd->argv[0]);
   }
 
   return mod_create_data(cmd, cached_quota);
@@ -1144,7 +1144,7 @@ MODRET handle_ldap_ssh_pubkey_lookup(cmd_rec *cmd) {
       strcasecmp(((char **) cached_ssh_pubkeys->elts)[0], cmd->argv[0]) == 0) {
 
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "returning cached SSH public keys for user %s", cmd->argv[0]);
+      "returning cached SSH public keys for user %s", (char *) cmd->argv[0]);
     return mod_create_data(cmd, cached_ssh_pubkeys);
   }
 
@@ -1323,7 +1323,7 @@ MODRET ldap_auth_getgroups(cmd_rec *cmd) {
 
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "added user %s secondary group %s/%s",
-        (pw && pw->pw_name) ? pw->pw_name : cmd->argv[0],
+        (pw && pw->pw_name) ? pw->pw_name : (char *) cmd->argv[0],
         LDAP_VALUE(cn, 0), LDAP_VALUE(gidNumber, 0));
     }
 
@@ -1607,12 +1607,14 @@ MODRET set_ldaplog(cmd_rec *cmd) {
 MODRET set_ldapprotoversion(cmd_rec *cmd) {
   int i = 0;
   config_rec *c;
+  char *version;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  while (cmd->argv[1][i]) {
-    if (!PR_ISDIGIT((int) cmd->argv[1][i])) {
+  version = cmd->argv[1];
+  while (version[i]) {
+    if (!PR_ISDIGIT((int) version[i])) {
       CONF_ERROR(cmd, "LDAPProtocolVersion: argument must be numeric!");
     }
 
@@ -1621,7 +1623,7 @@ MODRET set_ldapprotoversion(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = atoi(cmd->argv[1]);
+  *((int *) c->argv[0]) = atoi(version);
 
   return PR_HANDLED(cmd);
 }

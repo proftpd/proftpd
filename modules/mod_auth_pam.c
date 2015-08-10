@@ -277,11 +277,11 @@ MODRET pam_auth(cmd_rec *cmd) {
    */
   if (pam_user_len > MAXLOGNAME) {
     pr_log_pri(PR_LOG_NOTICE,
-      "PAM(%s): Name exceeds maximum login length (%u)", cmd->argv[0],
+      "PAM(%s): Name exceeds maximum login length (%u)", (char *) cmd->argv[0],
       MAXLOGNAME);
     pr_trace_msg(trace_channel, 1,
       "user name '%s' exceeds maximum login length %u, declining",
-      cmd->argv[0], MAXLOGNAME);
+      (char *) cmd->argv[0], MAXLOGNAME);
     return PR_DECLINED(cmd);
   }
 #endif
@@ -408,7 +408,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     }
 
     pr_trace_msg(trace_channel, 1,
-      "authentication error (%d) for user '%s': %s", res, cmd->argv[0],
+      "authentication error (%d) for user '%s': %s", res, (char *) cmd->argv[0],
       pam_strerror(pamh, res));
     goto done;
   }
@@ -462,7 +462,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     }
 
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
-      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, res));
+      ": PAM(%s): %s", (char *) cmd->argv[0], pam_strerror(pamh, res));
     goto done;
   }
 
@@ -480,7 +480,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     }
 
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
-      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, res));
+      ": PAM(%s): %s", (char *) cmd->argv[0], pam_strerror(pamh, res));
     goto done;
   }
 
@@ -525,7 +525,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     }
 
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
-      ": PAM(%s): %s", cmd->argv[0], pam_strerror(pamh, res));
+      ": PAM(%s): %s", (char *) cmd->argv[0], pam_strerror(pamh, res));
     goto done;
   }
 
@@ -621,7 +621,7 @@ MODRET set_authpamoptions(cmd_rec *cmd) {
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthPAMOption: '",
-        cmd->argv[i], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
   }
 

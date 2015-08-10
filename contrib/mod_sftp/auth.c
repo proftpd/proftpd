@@ -1067,7 +1067,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   if (pr_cmd_dispatch_phase(user_cmd, PRE_CMD, 0) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "authentication request for user '%s' blocked by '%s' handler",
-      orig_user, user_cmd->argv[0]);
+      orig_user, (char *) user_cmd->argv[0]);
 
     pr_response_add_err(R_530, "Login incorrect.");
     pr_cmd_dispatch_phase(user_cmd, POST_CMD_ERR, 0);

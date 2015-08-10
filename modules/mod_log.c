@@ -615,6 +615,7 @@ static int parse_classes(char *s, int *classes) {
 MODRET set_extendedlog(cmd_rec *cmd) {
   config_rec *c = NULL;
   int argc;
+  char *path;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
@@ -626,25 +627,25 @@ MODRET set_extendedlog(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
-  if (strncasecmp(cmd->argv[1], "syslog:", 7) == 0) {
+  path = cmd->argv[1];
+  if (strncasecmp(path, "syslog:", 7) == 0) {
     char *ptr;
 
-    ptr = strchr(cmd->argv[1], ':');
+    ptr = strchr(path, ':');
 
     if (pr_log_str2sysloglevel(++ptr) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown syslog level: '",
         ptr, "'", NULL));
-
-    } else {
-      c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
     }
 
-  } else if (cmd->argv[1][0] != '/') {
+    c->argv[0] = pstrdup(log_pool, path);
+
+  } else if (path[0] != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "relative paths not allowed: '",
-        cmd->argv[1], "'", NULL));
+      path, "'", NULL));
 
   } else {
-    c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
+    c->argv[0] = pstrdup(log_pool, path);
   }
 
   if (argc > 2) {
@@ -1232,7 +1233,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           *ptr = toupper((int) *ptr);
         }
 
-        snprintf(argp, sizeof(arg), "%s %s", cmd->argv[0], cmd->argv[1]);
+        snprintf(argp, sizeof(arg), "%s %s", (char *) cmd->argv[0],
+          (char *) cmd->argv[1]);
       }
 
       m++;

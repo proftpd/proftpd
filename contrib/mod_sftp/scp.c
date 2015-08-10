@@ -932,7 +932,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "scp upload to '%s' blocked by '%s' handler", sp->path,
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
 
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1909,7 +1909,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       if (xerrno != EISDIR) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp download of '%s' blocked by '%s' handler", sp->path,
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
 
         (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);

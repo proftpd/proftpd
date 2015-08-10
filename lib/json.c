@@ -445,7 +445,7 @@ bool json_validate(const char *json)
 	return true;
 }
 
-JsonNode *json_find_element(JsonNode *array, int index)
+JsonNode *json_find_element(JsonNode *array, int idx)
 {
 	JsonNode *element;
 	int i = 0;
@@ -454,7 +454,7 @@ JsonNode *json_find_element(JsonNode *array, int index)
 		return NULL;
 	
 	json_foreach(element, array) {
-		if (i == index)
+		if (i == idx)
 			return element;
 		i++;
 	}

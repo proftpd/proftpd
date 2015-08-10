@@ -1248,8 +1248,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
     int xerrno = errno;
 
-    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration", cmd->argv[0],
-      cmd->arg);
+    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+      (char *) cmd->argv[0], cmd->arg);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -1263,8 +1263,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -1272,8 +1272,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       return PR_ERROR(cmd);
 
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -1503,7 +1503,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
     /* If we can't guarantee a unique filename, refuse the command. */
     pr_response_add_err(R_450, _("%s: unable to generate unique filename"),
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -1676,7 +1676,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       ferrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error opening '%s': %s", cmd->argv[0], session.user,
+        "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path_hidden,
         strerror(ferrno));
@@ -1697,7 +1697,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       ferrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error opening '%s': %s", cmd->argv[0], session.user,
+        "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path,
         strerror(ferrno));
@@ -1711,7 +1711,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       ferrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error opening '%s': %s", cmd->argv[0], session.user,
+        "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(ferrno));
     }
@@ -1890,7 +1890,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       }
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error writing to '%s': %s", cmd->argv[0], session.user,
+        "error writing to '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), stor_fh->fh_path,
         strerror(xerrno));
@@ -2017,7 +2017,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
 MODRET xfer_rest(cmd_rec *cmd) {
   off_t pos;
-  char *endp = NULL;
+  char *endp = NULL, *ptr;
 
   if (cmd->argc != 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
@@ -2031,7 +2031,8 @@ MODRET xfer_rest(cmd_rec *cmd) {
   /* Don't allow negative numbers.  strtoul()/strtoull() will silently
    * handle them.
    */
-  if (*cmd->argv[1] == '-') {
+  ptr = cmd->argv[1];
+  if (*ptr == '-') {
     pr_response_add_err(R_501,
       _("REST requires a value greater than or equal to 0"));
 
@@ -2041,9 +2042,9 @@ MODRET xfer_rest(cmd_rec *cmd) {
   }
 
 #ifdef HAVE_STRTOULL
-  pos = strtoull(cmd->argv[1], &endp, 10);
+  pos = strtoull(ptr, &endp, 10);
 #else
-  pos = strtoul(cmd->argv[1], &endp, 10);
+  pos = strtoul(ptr, &endp, 10);
 #endif /* HAVE_STRTOULL */
 
   if (endp &&
@@ -2068,9 +2069,10 @@ MODRET xfer_rest(cmd_rec *cmd) {
   if ((session.sf_flags & SF_ASCII) &&
       pos != 0 &&
       !(xfer_opts & PR_XFER_OPT_IGNORE_ASCII)) {
-    pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
+    pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", (char *) cmd->argv[0]);
     pr_response_add_err(R_501,
-      _("%s: Resuming transfers not allowed in ASCII mode"), cmd->argv[0]);
+      _("%s: Resuming transfers not allowed in ASCII mode"),
+      (char *) cmd->argv[0]);
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
@@ -2224,7 +2226,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-      "error opening '%s': %s", cmd->argv[0], session.user,
+      "error opening '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
@@ -2273,7 +2275,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       retr_fh = NULL;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error seeking to byte %" PR_LU " of '%s': %s", cmd->argv[0],
+        "error seeking to byte %" PR_LU " of '%s': %s", (char *) cmd->argv[0],
         session.user, pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), (pr_off_t) session.restart_pos,
         dir, strerror(xerrno));
@@ -2517,18 +2519,20 @@ MODRET xfer_type(cmd_rec *cmd) {
 
   } else {
     pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
-      cmd->argv[0], cmd->argv[1]);
+      (char *) cmd->argv[0], (char *) cmd->argv[1]);
 
     pr_cmd_set_errno(cmd, ENOSYS);
     errno = ENOSYS;
     return PR_ERROR(cmd);
   }
 
-  pr_response_add(R_200, _("Type set to %s"), cmd->argv[1]);
+  pr_response_add(R_200, _("Type set to %s"), (char *) cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 
 MODRET xfer_stru(cmd_rec *cmd) {
+  char *stru;
+
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
@@ -2538,9 +2542,10 @@ MODRET xfer_stru(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  cmd->argv[1][0] = toupper(cmd->argv[1][0]);
+  stru = cmd->argv[1];
+  stru[0] = toupper(stru[0]);
 
-  switch ((int) cmd->argv[1][0]) {
+  switch ((int) stru[0]) {
     case 'F':
       /* Should 202 be returned instead??? */
       pr_response_add(R_200, _("Structure set to F"));
@@ -2580,6 +2585,8 @@ MODRET xfer_stru(cmd_rec *cmd) {
 }
 
 MODRET xfer_mode(cmd_rec *cmd) {
+  char *mode;
+
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"),
       pr_cmd_get_displayable_str(cmd, NULL));
@@ -2589,9 +2596,10 @@ MODRET xfer_mode(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  cmd->argv[1][0] = toupper(cmd->argv[1][0]);
+  mode = cmd->argv[1];
+  mode[0] = toupper(mode[0]);
 
-  switch ((int) cmd->argv[1][0]) {
+  switch ((int) mode[0]) {
     case 'S':
       /* Should 202 be returned instead??? */
       pr_response_add(R_200, _("Mode set to S"));
@@ -2676,8 +2684,8 @@ MODRET xfer_allo(cmd_rec *cmd) {
 
       if (requested_kb > avail_kb) {
         pr_log_debug(DEBUG5, "%s requested %" PR_LU " KB, only %" PR_LU
-          " KB available on '%s'", cmd->argv[0], (pr_off_t) requested_kb,
-          (pr_off_t) avail_kb, path);
+          " KB available on '%s'", (char *) cmd->argv[0],
+          (pr_off_t) requested_kb, (pr_off_t) avail_kb, path);
         pr_response_add_err(R_552, "%s: %s", cmd->arg, strerror(ENOSPC));
 
         pr_cmd_set_errno(cmd, ENOSPC);
@@ -2685,7 +2693,7 @@ MODRET xfer_allo(cmd_rec *cmd) {
         return PR_ERROR(cmd);
       }
 
-      pr_response_add(R_200, _("%s command successful"), cmd->argv[0]);
+      pr_response_add(R_200, _("%s command successful"), (char *) cmd->argv[0]);
     }
 
   } else {
@@ -2943,6 +2951,7 @@ MODRET set_displayfiletransfer(cmd_rec *cmd) {
 MODRET set_hiddenstores(cmd_rec *cmd) {
   int enabled = -1, add_periods = TRUE;
   config_rec *c = NULL;
+  char *prefix = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
@@ -2954,8 +2963,9 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
    * get_boolean(): if the value begins AND ends with a period, then treat
    * it as a custom prefix.
    */
-  if ((cmd->argv[1])[0] == '.' &&
-      (cmd->argv[1])[strlen(cmd->argv[1])-1] == '.') {
+  prefix = cmd->argv[1];
+  if (prefix[0] == '.' &&
+      prefix[strlen(prefix)-1] == '.') {
     add_periods = FALSE;
     enabled = -1;
 
@@ -3103,16 +3113,19 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
 
   } else {
     array_header *acl = NULL;
-    int argc = cmd->argc - 4;
-    char **argv = cmd->argv + 3;
+    int argc;
+    void **argv;
 
-    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+    argc = cmd->argc - 4;
+    argv = cmd->argv + 3;
+
+    acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 3;
-    c->argv = pcalloc(c->pool, ((argc + 4) * sizeof(char *)));
+    c->argv = pcalloc(c->pool, ((argc + 4) * sizeof(void *)));
 
-    argv = (char **) c->argv;
+    argv = c->argv;
 
     /* Copy in the configured bytes */
     *argv = pcalloc(c->pool, sizeof(unsigned long));
@@ -3301,7 +3314,7 @@ MODRET set_transferoptions(cmd_rec *cmd) {
 MODRET set_transferpriority(cmd_rec *cmd) {
   config_rec *c;
   int prio;
-  char *str;
+  char *param, *str;
   unsigned long flags = 0;
 
   CHECK_ARGS(cmd, 2);
@@ -3331,7 +3344,9 @@ MODRET set_transferpriority(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
 
   /* Parse the command list. */
-  while ((str = get_cmd_from_list(&cmd->argv[1])) != NULL) {
+
+  param = cmd->argv[1];
+  while ((str = get_cmd_from_list(&param)) != NULL) {
 
     if (strcmp(str, C_APPE) == 0) {
       flags |= PR_XFER_PRIO_FL_APPE;
@@ -3461,10 +3476,13 @@ MODRET set_transferrate(cmd_rec *cmd) {
 
   } else {
     array_header *acl = NULL;
-    int argc = cmd->argc - 4;
-    char **argv = cmd->argv + 3;
+    int argc;
+    void **argv;
 
-    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+    argc = cmd->argc - 4;
+    argv = cmd->argv + 3;
+
+    acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
 
     c = add_config_param(cmd->argv[0], 0);
 
@@ -3475,11 +3493,12 @@ MODRET set_transferrate(cmd_rec *cmd) {
      */
     c->argc = argc + 5;
 
-    c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(char *)));
-    argv = (char **) c->argv;
+    c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(void *)));
+    argv = c->argv;
 
-    if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
+    if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0) {
       CONF_ERROR(cmd, "error with command list");
+    }
 
     /* Note: the command list is at index 0, hence this increment. */
     argv++;
@@ -3523,27 +3542,29 @@ MODRET set_usesendfile(cmd_rec *cmd) {
      */
     bool = get_boolean(cmd, 1);
     if (bool == -1) {
+      char *arg;
       size_t arglen;
 
       /* See if the given parameter is a percentage. */
-      arglen = strlen(cmd->argv[1]);
+      arg = cmd->argv[1];
+      arglen = strlen(arg);
       if (arglen > 1 &&
-          cmd->argv[1][arglen-1] == '%') {
+          arg[arglen-1] == '%') {
           char *ptr = NULL;
   
-          cmd->argv[1][arglen-1] = '\0';
+          arg[arglen-1] = '\0';
 
 #ifdef HAVE_STRTOF
-          sendfile_pct = strtof(cmd->argv[1], &ptr);
+          sendfile_pct = strtof(arg, &ptr);
 #elif HAVE_STRTOD
-          sendfile_pct = strtod(cmd->argv[1], &ptr);
+          sendfile_pct = strtod(arg, &ptr);
 #else
-          sendfile_pct = atof(cmd->argv[1]);
+          sendfile_pct = atof(arg);
 #endif /* !HAVE_STRTOF and !HAVE_STRTOD */
 
           if (ptr && *ptr) {
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad percentage value '",
-              cmd->argv[1], "%'", NULL));
+              arg, "%'", NULL));
           }
 
           sendfile_pct /= 100.0;

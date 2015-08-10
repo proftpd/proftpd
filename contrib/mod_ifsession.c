@@ -434,7 +434,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
   int config_type = 0, eval_type = 0;
   int argc = 0;
   char *name = NULL;
-  char **argv = NULL;
+  void **argv = NULL;
   array_header *acl = NULL;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -545,7 +545,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
     argv = cmd->argv;
   }
 
-  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
   if (acl == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating regex expression: ",
       strerror(errno), NULL));
@@ -555,12 +555,12 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 
   c->config_type = config_type;
   c->argc = acl->nelts + 2;
-  c->argv = pcalloc(c->pool, (c->argc + 2) * sizeof(char *));
+  c->argv = pcalloc(c->pool, (c->argc + 2) * sizeof(void *));
   c->argv[0] = pstrdup(c->pool, cmd->arg);
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[1]) = eval_type;
 
-  argv = (char **) c->argv + 2;
+  argv = c->argv + 2;
 
   if (acl) {
     while (acl->nelts--) {

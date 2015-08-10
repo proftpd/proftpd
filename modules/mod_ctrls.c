@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2014 TJ Saunders
+ * Copyright (c) 2000-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@
  *
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_ctrls.c,v 1.59 2013-12-05 00:11:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -991,11 +989,11 @@ MODRET set_ctrlsauthfreshness(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   freshness = atoi(cmd->argv[1]);
-  if (freshness <= 0)
+  if (freshness <= 0) {
     CONF_ERROR(cmd, "must be a positive number");
+  }
 
   ctrls_cl_freshness = freshness;
-
   return PR_HANDLED(cmd);
 }
 
@@ -1006,8 +1004,9 @@ MODRET set_ctrlsengine(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   ctrls_engine = bool;
   return PR_HANDLED(cmd);
@@ -1021,8 +1020,9 @@ MODRET set_ctrlsinterval(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   nsecs = atoi(cmd->argv[1]);
-  if (nsecs <= 0)
+  if (nsecs <= 0) {
     CONF_ERROR(cmd, "must be a positive number");
+  }
 
   /* Remove the existing timer, and re-install it with this new interval. */
   ctrls_interval = nsecs;
@@ -1044,13 +1044,15 @@ MODRET set_ctrlslog(cmd_rec *cmd) {
 
   res = ctrls_openlog();
   if (res < 0) {
-    if (res == -1)
+    if (res == -1) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to open '",
-        cmd->argv[1], "': ", strerror(errno), NULL));
+        (char *) cmd->argv[1], "': ", strerror(errno), NULL));
+    }
 
-    if (res == -2)
+    if (res == -2) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unable to log to a world-writable directory", NULL));
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -1064,8 +1066,9 @@ MODRET set_ctrlsmaxclients(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   nclients = atoi(cmd->argv[1]);
-  if (nclients <= 0)
+  if (nclients <= 0) {
     CONF_ERROR(cmd, "must be a positive number");
+  }
 
   cl_maxlistlen = nclients;
   return PR_HANDLED(cmd);
@@ -1073,11 +1076,15 @@ MODRET set_ctrlsmaxclients(cmd_rec *cmd) {
 
 /* Default: var/run/proftpd.sock */
 MODRET set_ctrlssocket(cmd_rec *cmd) {
+  char *path;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (*cmd->argv[1] != '/')
+  path = cmd->argv[1];
+  if (*path != '/') {
     CONF_ERROR(cmd, "must be an absolute path");
+  }
 
   /* Close the socket. */
   if (ctrls_sockfd >= 0) {
@@ -1089,8 +1096,8 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
   }
 
   /* Change the path. */
-  if (strcmp(cmd->argv[1], ctrls_sock_file) != 0) {
-    ctrls_sock_file = pstrdup(ctrls_pool, cmd->argv[1]);
+  if (strcmp(path, ctrls_sock_file) != 0) {
+    ctrls_sock_file = pstrdup(ctrls_pool, path);
   }
 
   return PR_HANDLED(cmd);
@@ -1135,29 +1142,33 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
 
   uid = pr_auth_name2uid(cmd->tmp_pool, cmd->argv[1]);
   if (uid == (uid_t) -1) {
-    if (errno != EINVAL)
-      pr_log_debug(DEBUG0, "%s: %s has UID of -1", cmd->argv[0],
-        cmd->argv[1]);
+    if (errno != EINVAL) {
+      pr_log_debug(DEBUG0, "%s: %s has UID of -1", (char *) cmd->argv[0],
+        (char *) cmd->argv[1]);
 
-    else
-      pr_log_debug(DEBUG0, "%s: no such user '%s'", cmd->argv[0],
-        cmd->argv[1]);
+    } else {
+      pr_log_debug(DEBUG0, "%s: no such user '%s'", (char *) cmd->argv[0],
+        (char *) cmd->argv[1]);
+    }
 
-  } else
+  } else {
     ctrls_sock_uid = uid;
+  }
 
   gid = pr_auth_name2gid(cmd->tmp_pool, cmd->argv[2]);
   if (gid == (gid_t) -1) {
-    if (errno != EINVAL)
-      pr_log_debug(DEBUG0, "%s: %s has GID of -1", cmd->argv[0],
-        cmd->argv[2]);
+    if (errno != EINVAL) {
+      pr_log_debug(DEBUG0, "%s: %s has GID of -1", (char *) cmd->argv[0],
+        (char *) cmd->argv[2]);
 
-    else
-      pr_log_debug(DEBUG0, "%s: no such group '%s'", cmd->argv[0],
-        cmd->argv[2]);
+    } else {
+      pr_log_debug(DEBUG0, "%s: no such group '%s'", (char *) cmd->argv[0],
+        (char *) cmd->argv[2]);
+    }
 
-  } else
+  } else {
     ctrls_sock_gid = gid;
+  }
 
   return PR_HANDLED(cmd);
 }

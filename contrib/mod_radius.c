@@ -4137,15 +4137,21 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
   } 
 
   if (!radius_have_var(cmd->argv[3])) {
+    char *path;
+
+    path = cmd->argv[3];
     /* Make sure the path is absolute, at least. */
-    if (*(cmd->argv[3]) != '/') {
+    if (*path != '/') {
       CONF_ERROR(cmd, "home relative path not allowed");
     }
   }
 
   if (!radius_have_var(cmd->argv[4])) {
+    char *path;
+
+    path = cmd->argv[4];
     /* Make sure the path is absolute, at least. */
-    if (*(cmd->argv[4]) != '/') {
+    if (*path != '/') {
       CONF_ERROR(cmd, "shell relative path not allowed");
     }
   }
@@ -4167,12 +4173,14 @@ MODRET set_radiusvendor(cmd_rec *cmd) {
   /* Make sure that the given vendor ID number is valid. */
   id = strtol(cmd->argv[2], &tmp, 10);
 
-  if (tmp && *tmp)
+  if (tmp && *tmp) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": vendor id '", cmd->argv[2],
       "' is not a valid number", NULL));
+  }
 
-  if (id < 0)
+  if (id < 0) {
     CONF_ERROR(cmd, "vendor id must be a positive number");
+  }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);

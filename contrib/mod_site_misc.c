@@ -261,7 +261,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         return -1;
       }
 
-      pr_response_add(R_250, "%s command successful", cmd->argv[0]);
+      pr_response_add(R_250, "%s command successful", (char *) cmd->argv[0]);
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
       pr_response_clear(&resp_list);
@@ -558,7 +558,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 
@@ -631,7 +631,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
       cmd->argv[0] = cmd_name;
 
       pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
-        ": %s command denied by <Limit>", cmd->argv[0]);
+        ": %s command denied by <Limit>", (char *) cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
@@ -650,7 +650,8 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"),
+      (char *) cmd->argv[1]);
     return PR_HANDLED(cmd);
   }
 
@@ -668,7 +669,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 
@@ -729,7 +730,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
       cmd->argv[0] = cmd_name;
 
       pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
-        ": %s command denied by <Limit>", cmd->argv[0]);
+        ": %s command denied by <Limit>", (char *) cmd->argv[0]);
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
@@ -748,7 +749,8 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"),
+      (char *) cmd->argv[1]);
     return PR_HANDLED(cmd);
   } 
 
@@ -766,7 +768,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 
@@ -795,10 +797,10 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[2],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[2], strerror(xerrno));
       pr_response_add_err(R_550,
-        _("%s: Illegal character sequence in filename"), cmd->argv[2]);
+        _("%s: Illegal character sequence in filename"), (char *) cmd->argv[2]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -823,8 +825,9 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
       cmd->argv[0] = cmd_name;
 
       pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
-        ": %s command denied by <Limit>", cmd->argv[0]);
-      pr_response_add_err(R_550, "%s: %s", cmd->argv[2], strerror(xerrno));
+        ": %s command denied by <Limit>", (char *) cmd->argv[0]);
+      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[2],
+        strerror(xerrno));
 
       errno = xerrno;
       return PR_ERROR(cmd);
@@ -835,10 +838,10 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[3],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[3], strerror(xerrno));
       pr_response_add_err(R_550,
-        _("%s: Illegal character sequence in filename"), cmd->argv[3]);
+        _("%s: Illegal character sequence in filename"), (char *) cmd->argv[3]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -861,8 +864,9 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
       cmd->argv[0] = cmd_name;
 
       pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
-        ": %s command denied by <Limit>", cmd->argv[0]);
-      pr_response_add_err(R_550, "%s: %s", cmd->argv[3], strerror(xerrno));
+        ": %s command denied by <Limit>", (char *) cmd->argv[0]);
+      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[3],
+        strerror(xerrno));
 
       errno = xerrno;
       return PR_ERROR(cmd);
@@ -904,7 +908,8 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"),
+      (char *) cmd->argv[1]);
     return PR_HANDLED(cmd);
   } 
 
@@ -931,7 +936,7 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
 
     pr_log_debug(DEBUG7, MOD_SITE_MISC_VERSION
       ": wrong number of digits in timestamp argument '%s' (%lu)",
-      cmd->argv[2], (unsigned long) timestamp_len);
+      (char *) cmd->argv[2], (unsigned long) timestamp_len);
     pr_response_add_err(R_500, "%s: %s", cmd->arg, strerror(xerrno));
 
     errno = xerrno;
@@ -975,7 +980,7 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
     cmd->argv[0] = cmd_name;
 
     pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
-      ": %s command denied by <Limit>", cmd->argv[0]);
+      ": %s command denied by <Limit>", (char *) cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     errno = xerrno;
@@ -1015,7 +1020,8 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
  
-  pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
+  pr_response_add(R_200, _("SITE %s command successful"),
+    (char *) cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 
@@ -1065,7 +1071,7 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
     cmd->argv[0] = cmd_name;
 
     pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
-      ": %s command denied by <Limit>", cmd->argv[0]);
+      ": %s command denied by <Limit>", (char *) cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     errno = xerrno;
@@ -1196,7 +1202,8 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
  
-  pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
+  pr_response_add(R_200, _("SITE %s command successful"),
+    (char *) cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 
@@ -1207,7 +1214,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", cmd->argv[0], cmd->argc);
+      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 

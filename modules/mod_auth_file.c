@@ -1326,6 +1326,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   config_rec *c = NULL;
   authfile_file_t *file = NULL;
   int flags = 0;
+  char *path;
 
 #ifdef PR_USE_REGEX
   if (cmd->argc-1 < 1 ||
@@ -1339,10 +1340,11 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*(cmd->argv[1]) != '/') {
+  path = cmd->argv[1];
+  if (*path != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "unable to use relative path for ", cmd->argv[0], " '",
-      cmd->argv[1], "'.", NULL));
+      "unable to use relative path for ", (char *) cmd->argv[0], " '",
+      path, "'.", NULL));
   }
 
   /* Make sure the configured file has the correct permissions.  Note that
@@ -1352,13 +1354,13 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   flags = PR_AUTH_FILE_FL_ALLOW_WORLD_READABLE;
   if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1], flags) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "unable to use ", cmd->argv[1], ": ", strerror(errno), NULL));
+      "unable to use ", path, ": ", strerror(errno), NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   file = pcalloc(c->pool, sizeof(authfile_file_t));
-  file->af_path = pstrdup(c->pool, cmd->argv[1]);
+  file->af_path = pstrdup(c->pool, path);
   c->argv[0] = (void *) file;
 
   /* Check for restrictions */
@@ -1446,6 +1448,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
   config_rec *c = NULL;
   authfile_file_t *file = NULL;
   int flags = 0;
+  char *path;
 
 #ifdef PR_USE_REGEX
   if (cmd->argc-1 < 1 ||
@@ -1459,10 +1462,11 @@ MODRET set_authuserfile(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*(cmd->argv[1]) != '/') {
+  path = cmd->argv[1];
+  if (*path != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "unable to use relative path for ", cmd->argv[0], " '",
-      cmd->argv[1], "'.", NULL));
+      "unable to use relative path for ", (char *) cmd->argv[0], " '",
+      path, "'.", NULL));
   }
 
   /* Make sure the configured file has the correct permissions.  Note that
@@ -1472,13 +1476,13 @@ MODRET set_authuserfile(cmd_rec *cmd) {
   flags = 0;
   if (af_check_file(cmd->tmp_pool, cmd->argv[0], cmd->argv[1], flags) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "unable to use ", cmd->argv[1], ": ", strerror(errno), NULL));
+      "unable to use ", path, ": ", strerror(errno), NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   file = pcalloc(c->pool, sizeof(authfile_file_t));
-  file->af_path = pstrdup(c->pool, cmd->argv[1]);
+  file->af_path = pstrdup(c->pool, path);
   c->argv[0] = (void *) file;
 
   /* Check for restrictions */

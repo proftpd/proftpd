@@ -942,7 +942,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
         pr_trace_msg(trace_channel, 5,
           "client sent '%s' command during data transfer, denying",
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
 
         resp_list = resp_err_list = NULL;
         resp_pool = pr_response_get_pool();
@@ -950,7 +950,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         pr_response_set_pool(cmd->pool);
 
         pr_response_add_err(R_450, _("%s: data transfer in progress"),
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
 
         pr_response_flush(&resp_err_list);
 
@@ -968,7 +968,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
         pr_trace_msg(trace_channel, 5,
           "client sent '%s' command during data transfer, ignoring",
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
 
         resp_list = resp_err_list = NULL;
         resp_pool = pr_response_get_pool();
@@ -976,7 +976,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         pr_response_set_pool(cmd->pool);
 
         pr_response_add(R_200, _("%s: data transfer in progress"),
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
 
         pr_response_flush(&resp_list);
 
@@ -990,7 +990,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
         pr_trace_msg(trace_channel, 5,
           "client sent '%s' command during data transfer, dispatching",
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
 
         title_len = pr_proctitle_get(NULL, 0);
         if (title_len > 0) {

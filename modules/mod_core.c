@@ -193,28 +193,32 @@ static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
 MODRET start_ifdefine(cmd_rec *cmd) {
   unsigned int ifdefine_ctx_count = 1;
   unsigned char not_define = FALSE, defined = FALSE;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL, *ptr;
 
   CHECK_ARGS(cmd, 1);
 
-  if (*(cmd->argv[1]) == '!') {
+  ptr = cmd->argv[1];
+  if (*ptr == '!') {
     not_define = TRUE;
-    (cmd->argv[1])++;
+    ptr++;
   }
 
-  defined = pr_define_exists(cmd->argv[1]);
+  defined = pr_define_exists(ptr);
 
   /* Return now if we don't need to consume the <IfDefine> section
    * configuration lines.
    */
-  if ((!not_define && defined) || (not_define && !defined)) {
-    pr_log_debug(DEBUG3, "%s: using '%s%s' section at line %u", cmd->argv[0],
-      not_define ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
+  if ((!not_define && defined) ||
+      (not_define && !defined)) {
+    pr_log_debug(DEBUG3, "%s: using '%s%s' section at line %u",
+      (char *) cmd->argv[0], not_define ? "!" : "", (char *) cmd->argv[1],
+      pr_parser_get_lineno());
     return PR_HANDLED(cmd);
+  }
 
-  } else
-    pr_log_debug(DEBUG3, "%s: skipping '%s%s' section at line %u", cmd->argv[0],
-      not_define ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
+  pr_log_debug(DEBUG3, "%s: skipping '%s%s' section at line %u",
+    (char *) cmd->argv[0], not_define ? "!" : "", (char *) cmd->argv[1],
+    pr_parser_get_lineno());
 
   /* Rather than communicating with parse_config_file() via some global
    * variable/flag the need to skip configuration lines, if the requested
@@ -225,17 +229,19 @@ MODRET start_ifdefine(cmd_rec *cmd) {
   while (ifdefine_ctx_count && (config_line = pr_parser_read_line(buf,
       sizeof(buf))) != NULL) {
 
-    if (strncasecmp(config_line, "<IfDefine", 9) == 0)
+    if (strncasecmp(config_line, "<IfDefine", 9) == 0) {
       ifdefine_ctx_count++;
 
-    if (strcasecmp(config_line, "</IfDefine>") == 0)
+    } else if (strcasecmp(config_line, "</IfDefine>") == 0) {
       ifdefine_ctx_count--;
+    }
   }
 
   /* If there are still unclosed <IfDefine> sections, signal an error.
    */
-  if (ifdefine_ctx_count)
+  if (ifdefine_ctx_count) {
     CONF_ERROR(cmd, "unclosed <IfDefine> context");
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -251,29 +257,32 @@ MODRET end_ifdefine(cmd_rec *cmd) {
 MODRET start_ifmodule(cmd_rec *cmd) {
   unsigned int ifmodule_ctx_count = 1;
   unsigned char not_module = FALSE, found_module = FALSE;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL, *ptr;
 
   CHECK_ARGS(cmd, 1);
 
-  if (*(cmd->argv[1]) == '!') {
+  ptr = cmd->argv[1];
+  if (*ptr == '!') {
     not_module = TRUE;
-    (cmd->argv[1])++;
+    ptr++;
   }
 
-  found_module = pr_module_exists(cmd->argv[1]);
+  found_module = pr_module_exists(ptr);
 
   /* Return now if we don't need to consume the <IfModule> section
    * configuration lines.
    */
-  if ((!not_module && found_module) || (not_module && !found_module)) {
-    pr_log_debug(DEBUG3, "%s: using '%s%s' section at line %u", cmd->argv[0],
-      not_module ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
+  if ((!not_module && found_module) ||
+      (not_module && !found_module)) {
+    pr_log_debug(DEBUG3, "%s: using '%s%s' section at line %u",
+      (char *) cmd->argv[0], not_module ? "!" : "", (char *) cmd->argv[1],
+      pr_parser_get_lineno());
     return PR_HANDLED(cmd);
-
-  } else {
-    pr_log_debug(DEBUG3, "%s: skipping '%s%s' section at line %u", cmd->argv[0],
-      not_module ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
   }
+
+  pr_log_debug(DEBUG3, "%s: skipping '%s%s' section at line %u",
+    (char *) cmd->argv[0], not_module ? "!" : "", (char *) cmd->argv[1],
+    pr_parser_get_lineno());
 
   /* Rather than communicating with parse_config_file() via some global
    * variable/flag the need to skip configuration lines, if the requested
@@ -359,13 +368,13 @@ MODRET add_include(cmd_rec *cmd) {
 
     if (xerrno != EINVAL) {
       pr_log_pri(PR_LOG_WARNING, "warning: unable to include '%s': %s",
-        cmd->argv[1], strerror(xerrno));
+        (char *) cmd->argv[1], strerror(xerrno));
 
     } else {
       PRIVS_RELINQUISH
 
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '", cmd->argv[1],
-        "': ", strerror(xerrno), NULL));
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '",
+        (char *) cmd->argv[1], "': ", strerror(xerrno), NULL));
     }
   }
   PRIVS_RELINQUISH
@@ -551,7 +560,7 @@ MODRET set_setenv(cmd_rec *cmd) {
   if (ctxt_type == CONF_ROOT) {
     if (pr_env_set(cmd->server->pool, cmd->argv[1], cmd->argv[2]) < 0) {
       pr_log_debug(DEBUG1, "%s: unable to set environ variable '%s': %s",
-        cmd->argv[0], cmd->argv[1], strerror(errno));
+        (char *) cmd->argv[0], (char *) cmd->argv[1], strerror(errno));
 
     } else {
       core_handle_locale_env(cmd->argv[1]);
@@ -1155,7 +1164,9 @@ MODRET set_socketoptions(cmd_rec *cmd) {
         cmd->server->tcp_keepalive->keepalive_intvl = intvl;
 #else
         cmd->server->tcp_keepalive->keepalive_enabled = TRUE;
-        pr_log_debug(DEBUG0, "%s: platform does not support fine-grained TCP keepalive control, using \"keepalive on\"", cmd->argv[0]);
+        pr_log_debug(DEBUG0,
+          "%s: platform does not support fine-grained TCP keepalive control, "
+          "using \"keepalive on\"", (char *) cmd->argv[0]);
 #endif /* No TCP_KEEPIDLE, TCP_KEEPCNT, or TCP_KEEPINTVL */
 
       } else {
@@ -1269,7 +1280,7 @@ MODRET set_user(cmd_rec *cmd) {
 
 MODRET add_from(cmd_rec *cmd) {
   int cargc;
-  char **cargv;
+  void **cargv;
 
   CHECK_CONF(cmd, CONF_CLASS);
 
@@ -1277,20 +1288,21 @@ MODRET add_from(cmd_rec *cmd) {
   cargv = cmd->argv;
 
   while (cargc && *(cargv + 1)) {
-    if (strcasecmp("all", *(cargv + 1)) == 0 ||
-        strcasecmp("none", *(cargv + 1)) == 0) {
-      pr_netacl_t *acl = pr_netacl_create(cmd->tmp_pool, *(cargv + 1));
+    if (strcasecmp("all", *(((char **) cargv) + 1)) == 0 ||
+        strcasecmp("none", *(((char **) cargv) + 1)) == 0) {
+      pr_netacl_t *acl = pr_netacl_create(cmd->tmp_pool,
+        *(((char **) cargv) + 1));
       if (acl == NULL) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
-          *(cargv + 1), "': ", strerror(errno), NULL));
+          *(((char **) cargv) + 1), "': ", strerror(errno), NULL));
       }
 
-      pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'", *(cargv + 1),
-        pr_netacl_get_str(cmd->tmp_pool, acl));
+      pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'",
+        *(((char **) cargv) + 1), pr_netacl_get_str(cmd->tmp_pool, acl));
 
       if (pr_class_add_acl(acl) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '",
-          *(cargv + 1), "': ", strerror(errno), NULL));
+          *(((char **) cargv) + 1), "': ", strerror(errno), NULL));
       }
 
       cargc = 0;
@@ -1301,8 +1313,9 @@ MODRET add_from(cmd_rec *cmd) {
 
   /* Parse each parameter into a netacl. */
   while (cargc-- && *(++cargv)) {
-    char *ent = NULL;
-    char *str = pstrdup(cmd->tmp_pool, *cargv);
+    char *ent = NULL, *str;
+
+    str = pstrdup(cmd->tmp_pool, *((char **) cargv));
 
     while ((ent = pr_str_get_token(&str, ",")) != NULL) {
       if (*ent) {
@@ -1317,7 +1330,7 @@ MODRET add_from(cmd_rec *cmd) {
         acl = pr_netacl_create(cmd->tmp_pool, ent);
         if (acl == NULL) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
-            *(cargv + 1), "': ", strerror(errno), NULL));
+            *(((char **) cargv) + 1), "': ", strerror(errno), NULL));
         }
 
         pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'", ent,
@@ -1486,7 +1499,7 @@ MODRET set_trace(cmd_rec *cmd) {
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = cmd->argc - 2;
-    c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(char *))); 
+    c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(void *))); 
 
     for (i = idx; i < cmd->argc; i++) {
       char *ptr;
@@ -1601,7 +1614,7 @@ MODRET set_traceoptions(cmd_rec *cmd) {
      */
     if (pr_trace_set_options(trace_opts) < 0) {
       pr_log_debug(DEBUG6, "%s: error setting TraceOptions (%lu): %s",
-        cmd->argv[0], trace_opts, strerror(errno));
+        (char *) cmd->argv[0], trace_opts, strerror(errno));
     }
   }
 
@@ -1675,7 +1688,7 @@ MODRET set_unsetenv(cmd_rec *cmd) {
   if (ctxt_type == CONF_ROOT) {
     if (pr_env_unset(cmd->server->pool, cmd->argv[1]) < 0) {
       pr_log_debug(DEBUG1, "%s: unable to unset environ variable '%s': %s",
-        cmd->argv[0], cmd->argv[1], strerror(errno));
+        (char *) cmd->argv[0], (char *) cmd->argv[1], strerror(errno));
 
     } else {
       core_handle_locale_env(cmd->argv[1]);
@@ -1916,8 +1929,8 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
     regex_flags |= flags;
   }
 
-  pr_log_debug(DEBUG4, "%s: compiling %s regex '%s'", cmd->argv[0], type,
-    cmd->argv[1]);
+  pr_log_debug(DEBUG4, "%s: compiling %s regex '%s'", (char *) cmd->argv[0],
+    type, (char *) cmd->argv[1]);
   pre = pr_regexp_alloc(&core_module);
 
   res = pr_regexp_compile(pre, cmd->argv[1], regex_flags);
@@ -1927,8 +1940,8 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
     pr_regexp_error(res, pre, errstr, sizeof(errstr));
     pr_regexp_free(NULL, pre);
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
-      "compilation: ", errstr, NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", (char *) cmd->argv[1],
+      "' failed regex compilation: ", errstr, NULL));
   }
 
   c = add_config_param(param, 1, pre);
@@ -1978,7 +1991,8 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
     regex_flags |= flags;
   }
 
-  pr_log_debug(DEBUG4, "%s: compiling regex '%s'", cmd->argv[0], cmd->argv[1]);
+  pr_log_debug(DEBUG4, "%s: compiling regex '%s'", (char *) cmd->argv[0],
+    (char *) cmd->argv[1]);
   pre = pr_regexp_alloc(&core_module);
 
   res = pr_regexp_compile(pre, cmd->argv[1], regex_flags);
@@ -1988,8 +2002,8 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
     pr_regexp_error(res, pre, errstr, sizeof(errstr));
     pr_regexp_free(NULL, pre);
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
-      "compilation: ", errstr, NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", (char *) cmd->argv[1],
+      "' failed regex compilation: ", errstr, NULL));
   }
 
   c = add_config_param(cmd->argv[0], 1, pre);
@@ -2192,11 +2206,11 @@ MODRET add_directory(cmd_rec *cmd) {
 
   if (!(c->flags & CF_DEFER)) {
     pr_log_debug(DEBUG2, "<Directory %s>: adding section for resolved "
-      "path '%s'", cmd->argv[1], dir);
+      "path '%s'", (char *) cmd->argv[1], dir);
 
   } else {
     pr_log_debug(DEBUG2,
-      "<Directory %s>: deferring resolution of path", cmd->argv[1]);
+      "<Directory %s>: deferring resolution of path", (char *) cmd->argv[1]);
   }
 
   return PR_HANDLED(cmd);
@@ -2208,6 +2222,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
   config_rec *c = NULL;
   unsigned int precedence = 0;
   unsigned char negated = FALSE, none = FALSE;
+  char *ptr;
 
   int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
@@ -2232,15 +2247,16 @@ MODRET set_hidefiles(cmd_rec *cmd) {
   }
 
   /* Check for a leading '!' prefix, signifying regex negation */
-  if (*cmd->argv[1] == '!') {
+  ptr = cmd->argv[1];
+  if (*ptr == '!') {
     negated = TRUE;
-    cmd->argv[1] = cmd->argv[1] + 1;
+    ptr++;
 
   } else {
     /* Check for a "none" argument, which is used to nullify inherited
      * HideFiles configurations from parent directories.
      */
-    if (strcasecmp(cmd->argv[1], "none") == 0) {
+    if (strcasecmp(ptr, "none") == 0) {
       none = TRUE;
     }
   }
@@ -2250,14 +2266,14 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
     pre = pr_regexp_alloc(&core_module);
   
-    res = pr_regexp_compile(pre, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+    res = pr_regexp_compile(pre, ptr, REG_EXTENDED|REG_NOSUB);
     if (res != 0) {
       char errstr[200] = {'\0'};
 
       pr_regexp_error(res, pre, errstr, sizeof(errstr));
       pr_regexp_free(NULL, pre);
 
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", ptr,
         "' failed regex compilation: ", errstr, NULL));
     }
   }
@@ -2291,7 +2307,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
     int argc = cmd->argc - 3;
-    char **argv = cmd->argv + 2;
+    char **argv = ((char **) cmd->argv) + 2;
 
     acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
     if (acl == NULL) {
@@ -2306,7 +2322,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
      * regexp, one for the 'negated' value, one for the precedence,
      * one for the classifier, and one for the terminating NULL
      */
-    c->argv = pcalloc(c->pool, ((argc + 5) * sizeof(char *)));
+    c->argv = pcalloc(c->pool, ((argc + 5) * sizeof(void *)));
 
     /* Capture the config_rec's argv pointer for doing the by-hand
      * population.
@@ -2498,8 +2514,9 @@ MODRET end_directory(cmd_rec *cmd) {
 
   pr_parser_config_ctxt_close(&empty_ctxt);
 
-  if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
+  if (empty_ctxt) {
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", (char *) cmd->argv[0]);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -2545,8 +2562,9 @@ MODRET end_anonymous(cmd_rec *cmd) {
 
   pr_parser_config_ctxt_close(&empty_ctxt);
 
-  if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
+  if (empty_ctxt) {
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", (char *) cmd->argv[0]);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -2594,8 +2612,9 @@ MODRET end_global(cmd_rec *cmd) {
 
   pr_parser_config_ctxt_close(&empty_ctxt);
 
-  if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
+  if (empty_ctxt) {
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", (char *) cmd->argv[0]);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -2606,11 +2625,13 @@ MODRET add_limit(cmd_rec *cmd) {
   int cargc, have_cdup = FALSE, have_xcup = FALSE, have_mkd = FALSE,
     have_xmkd = FALSE, have_pwd = FALSE, have_xpwd = FALSE, have_rmd = FALSE,
     have_xrmd = FALSE;
-  char **cargv, **elts;
+  void **cargv, **elts;
   array_header *list;
 
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     CONF_ERROR(cmd, "directive requires one or more commands");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_DYNDIR|CONF_GLOBAL);
 
   c = pr_parser_config_ctxt_open("Limit");
@@ -2621,9 +2642,9 @@ MODRET add_limit(cmd_rec *cmd) {
   list = make_array(c->pool, c->argc + 1, sizeof(void *));
 
   while (cargc-- && *(++cargv)) {
-    char *ent = NULL;
-    char *str = pstrdup(cmd->tmp_pool, *cargv);
+    char *ent = NULL, *str;
 
+    str = pstrdup(cmd->tmp_pool, *((char **) cargv));
     while ((ent = pr_str_get_token(&str, ",")) != NULL) {
       pr_signals_handle();
 
@@ -2644,7 +2665,7 @@ MODRET add_limit(cmd_rec *cmd) {
    * the counterpart (see Bug#3077).
    */
 
-  elts = (char **) list->elts;
+  elts = list->elts;
   for (i = 0; i < list->nelts; i++) {
     if (strcasecmp(elts[i], C_CDUP) == 0) {
       have_cdup = TRUE;
@@ -2711,24 +2732,35 @@ MODRET add_limit(cmd_rec *cmd) {
 }
 
 MODRET set_order(cmd_rec *cmd) {
-  int order = -1,argc = cmd->argc;
-  char *arg = "",**argv = cmd->argv+1;
+  int order = -1;
+  char *arg = "";
   config_rec *c = NULL;
 
+  if (cmd->argc != 2 &&
+      cmd->argc != 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_LIMIT);
 
-  while (--argc && *argv)
-    arg = pstrcat(cmd->tmp_pool, arg, *argv++, NULL);
+  if (cmd->argc == 2) {
+    arg = cmd->argv[1];
 
-  if (strcasecmp(arg, "allow,deny") == 0)
+  } else {
+    /* Concatenate our parameters. */
+    arg = pstrcat(cmd->tmp_pool, arg, (char *) cmd->argv[1],
+      (char *) cmd->argv[2], NULL);
+  }
+
+  if (strcasecmp(arg, "allow,deny") == 0) {
     order = ORDER_ALLOWDENY;
 
-  else if (strcasecmp(arg, "deny,allow") == 0)
+  } else if (strcasecmp(arg, "deny,allow") == 0) {
     order = ORDER_DENYALLOW;
 
-  else
+  } else {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", arg, "': invalid argument",
       NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
@@ -2739,14 +2771,15 @@ MODRET set_order(cmd_rec *cmd) {
 
 MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   config_rec *c;
-  char **argv;
+  void **argv;
   int argc, eval_type;
   array_header *acl = NULL;
  
   CHECK_CONF(cmd, CONF_LIMIT);
 
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   /* For AllowClass/DenyClass and AllowUser/DenyUser, the default expression
    * type is "or".
@@ -2769,7 +2802,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
     if (strcasecmp(cmd->argv[1], "AND") == 0) {
       eval_type = PR_EXPR_EVAL_AND;
       argc = cmd->argc-2;
-      argv = cmd->argv+1;
+      argv = cmd->argv;
 
     } else if (strcasecmp(cmd->argv[1], "OR") == 0) {
       eval_type = PR_EXPR_EVAL_OR;
@@ -2794,8 +2827,8 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
         pr_regexp_error(res, pre, errstr, sizeof(errstr));
         pr_regexp_free(NULL, pre);
 
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' failed "
-          "regex compilation: ", errstr, NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", (char *) cmd->argv[2],
+          "' failed regex compilation: ", errstr, NULL));
       }
 
       c = add_config_param(cmd->argv[0], 2, NULL, NULL);
@@ -2805,7 +2838,6 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       c->flags |= CF_MERGEDOWN_MULTI;
 
       return PR_HANDLED(cmd);
-
 #else
       CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
         "as you do not have POSIX compliant regex support");
@@ -2821,7 +2853,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
     argv = cmd->argv;
   }
 
-  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
   if (acl == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating expression: ",
       strerror(errno), NULL));
@@ -2830,12 +2862,12 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 0);
 
   c->argc = acl->nelts + 1;
-  c->argv = pcalloc(c->pool, (c->argc + 1) * sizeof(char *));
+  c->argv = pcalloc(c->pool, (c->argc + 1) * sizeof(void *));
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = eval_type;
 
-  argv = (char **) c->argv + 1;
+  argv = &(c->argv[1]);
 
   while (acl->nelts-- > 0) {
     pr_signals_handle();
@@ -2852,7 +2884,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
 
 MODRET set_allowdeny(cmd_rec *cmd) {
   int argc;
-  char **argv;
+  void **argv;
   pr_netacl_t **aclargv;
   array_header *list;
   config_rec *c;
@@ -2871,13 +2903,13 @@ MODRET set_allowdeny(cmd_rec *cmd) {
    */
 
   while (argc && *(argv+1)) {
-    if (strcasecmp("from", *(argv+1)) == 0) {
+    if (strcasecmp("from", *(((char **) argv) + 1)) == 0) {
       argv++;
       argc--;
       continue;
 
-    } else if (strcasecmp("!all", *(argv+1)) == 0 ||
-               strcasecmp("!none", *(argv+1)) == 0) {
+    } else if (strcasecmp("!all", *(((char **) argv) + 1)) == 0 ||
+               strcasecmp("!none", *(((char **) argv) + 1)) == 0) {
       CONF_ERROR(cmd, "the ! negation operator cannot be used with ALL/NONE");
 
     } else if (strcasecmp("all", *(argv+1)) == 0 ||
@@ -2979,9 +3011,9 @@ MODRET set_authorder(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   module_list = make_array(c->pool, 0, sizeof(char *));
 
-  for (i = 1; i < cmd->argc; i++)
+  for (i = 1; i < cmd->argc; i++) {
     *((char **) push_array(module_list)) = pstrdup(c->pool, cmd->argv[i]);
-
+  }
   c->argv[0] = (void *) module_list;
 
   return PR_HANDLED(cmd);
@@ -2995,8 +3027,9 @@ MODRET end_limit(cmd_rec *cmd) {
 
   pr_parser_config_ctxt_close(&empty_ctxt);
 
-  if (empty_ctxt)
-    pr_log_debug(DEBUG3, "%s: ignoring empty section", cmd->argv[0]);
+  if (empty_ctxt) {
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", (char *) cmd->argv[0]);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -3259,7 +3292,7 @@ MODRET regex_filters(cmd_rec *cmd) {
   if (allow_regex != NULL &&
       cmd->arg != NULL &&
       pr_regexp_exec(allow_regex, cmd->arg, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by AllowFilter", (char *) cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
 
@@ -3273,7 +3306,7 @@ MODRET regex_filters(cmd_rec *cmd) {
   if (deny_regex != NULL &&
       cmd->arg != NULL &&
       pr_regexp_exec(deny_regex, cmd->arg, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by DenyFilter", (char *) cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
 
@@ -3351,7 +3384,7 @@ MODRET core_pre_any(cmd_rec *cmd) {
       if (reject_cmd) {
         pr_log_debug(DEBUG3,
           "RNFR followed immediately by %s rather than RNTO, rejecting command",
-          cmd->argv[0]);
+          (char *) cmd->argv[0]);
         pr_response_add_err(R_501, _("Bad sequence of commands"));
 
         pr_cmd_set_errno(cmd, EPERM);
@@ -3414,7 +3447,8 @@ MODRET core_pwd(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
     int xerrno = EACCES;
 
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -3451,7 +3485,8 @@ MODRET core_pasv(cmd_rec *cmd) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG8, "PASV denied by <Limit> configuration");
-    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -3478,7 +3513,8 @@ MODRET core_pasv(cmd_rec *cmd) {
         pr_log_debug(DEBUG0,
           "Unable to handle PASV for IPv6 address '%s', rejecting command",
           pr_netaddr_get_ipstr(session.c->local_addr));
-        pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(xerrno));
+        pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
+          strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -3542,7 +3578,8 @@ MODRET core_pasv(cmd_rec *cmd) {
   if (pr_inet_listen(session.pool, session.d, 1, 0) < 0) {
     int xerrno = errno;
 
-    pr_response_add_err(R_425, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -3611,6 +3648,7 @@ MODRET core_pasv(cmd_rec *cmd) {
 
 MODRET core_port(cmd_rec *cmd) {
   pr_netaddr_t *listen_addr = NULL, *port_addr = NULL;
+  char *port_info;
 #ifdef PR_USE_IPV6
   char buf[INET6_ADDRSTRLEN] = {'\0'};
 #else
@@ -3639,7 +3677,8 @@ MODRET core_port(cmd_rec *cmd) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG8, "PORT denied by <Limit> configuration");
-    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -3668,9 +3707,10 @@ MODRET core_port(cmd_rec *cmd) {
   }
 
   /* Format is h1,h2,h3,h4,p1,p2 (ASCII in network order) */
-  if (sscanf(cmd->argv[1], "%u,%u,%u,%u,%u,%u", &h1, &h2, &h3, &h4, &p1,
+  port_info = cmd->argv[1];
+  if (sscanf(port_info, "%u,%u,%u,%u,%u,%u", &h1, &h2, &h3, &h4, &p1,
       &p2) != 6) {
-    pr_log_debug(DEBUG2, "PORT '%s' is not syntactically valid", cmd->argv[1]);
+    pr_log_debug(DEBUG2, "PORT '%s' is not syntactically valid", port_info);
     pr_response_add_err(R_501, _("Illegal PORT command"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -3857,7 +3897,8 @@ MODRET core_eprt(cmd_rec *cmd) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG8, "EPRT denied by <Limit> configuration");
-    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -3948,7 +3989,8 @@ MODRET core_eprt(cmd_rec *cmd) {
 
   tmp = strchr(argstr, delim);
   if (tmp == NULL) {
-    pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
+    pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'",
+      (char *) cmd->argv[1]);
     pr_response_add_err(R_501, _("Illegal EPRT command"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -4019,7 +4061,8 @@ MODRET core_eprt(cmd_rec *cmd) {
    * parameter.
    */
   if (*argstr != delim) {
-    pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
+    pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'",
+      (char *) cmd->argv[1]);
     pr_response_add_err(R_501, _("Illegal EPRT command"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -4155,7 +4198,8 @@ MODRET core_epsv(cmd_rec *cmd) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG8, "EPSV denied by <Limit> configuration");
-    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -4184,7 +4228,7 @@ MODRET core_epsv(cmd_rec *cmd) {
 
     if (endp && *endp) {
       pr_response_add_err(R_501, _("%s: unknown network protocol"),
-        cmd->argv[0]);
+        (char *) cmd->argv[0]);
 
       pr_cmd_set_errno(cmd, EINVAL);
       errno = EINVAL;
@@ -4309,7 +4353,8 @@ MODRET core_epsv(cmd_rec *cmd) {
   if (pr_inet_listen(session.pool, session.d, 1, 0) < 0) {
     int xerrno = errno;
 
-    pr_response_add_err(R_425, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -4356,8 +4401,9 @@ MODRET core_help(cmd_rec *cmd) {
   } else {
     char *cp;
 
-    for (cp = cmd->argv[1]; *cp; cp++)
+    for (cp = cmd->argv[1]; *cp; cp++) {
       *cp = toupper(*cp);
+    }
 
     if (strcasecmp(cmd->argv[1], C_SITE) == 0) {
       return pr_module_call(&site_module, site_dispatch, cmd);
@@ -4367,7 +4413,8 @@ MODRET core_help(cmd_rec *cmd) {
       return PR_HANDLED(cmd);
     }
 
-    pr_response_add_err(R_502, _("Unknown command '%s'"), cmd->argv[1]);
+    pr_response_add_err(R_502, _("Unknown command '%s'"),
+      (char *) cmd->argv[1]);
 
     pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;
@@ -4385,7 +4432,7 @@ MODRET core_host(cmd_rec *cmd) {
   int found_ipv6 = FALSE;
 
   if (cmd->argc != 2) {
-    pr_response_add_err(R_500, _("'%s' not understood"), cmd->argv[0]);
+    pr_response_add_err(R_500, _("'%s' not understood"), (char *) cmd->argv[0]);
 
     pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;
@@ -4395,7 +4442,7 @@ MODRET core_host(cmd_rec *cmd) {
   if (session.user != NULL) {
     pr_log_debug(DEBUG0,
       "HOST '%s' command received after login, refusing HOST command",
-      cmd->argv[1]);
+      (char *) cmd->argv[1]);
 
     /* Per HOST spec, HOST after successful USER/PASS is not allowed. */
     pr_response_add_err(R_503, _("Bad sequence of commands"));
@@ -4408,7 +4455,8 @@ MODRET core_host(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     int xerrno = EACCES;
 
-    pr_response_add_err(R_504, "%s: %s", cmd->argv[1], strerror(xerrno));
+    pr_response_add_err(R_504, "%s: %s", (char *) cmd->argv[1],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -4429,8 +4477,8 @@ MODRET core_host(cmd_rec *cmd) {
   if (session.rfc2228_mech != NULL &&
       pr_table_get(session.notes, "mod_tls.sni", NULL) == NULL) {
     pr_log_debug(DEBUG0, "HOST '%s' command received after client has "
-      "requested RFC2228 protection (%s), refusing HOST command", cmd->argv[1],
-      session.rfc2228_mech);
+      "requested RFC2228 protection (%s), refusing HOST command",
+      (char *) cmd->argv[1], session.rfc2228_mech);
 
     pr_response_add_err(R_503, _("Bad sequence of commands"));
 
@@ -4466,7 +4514,7 @@ MODRET core_host(cmd_rec *cmd) {
           "refusing HOST command", host);
 
         pr_response_add_err(R_501, _("%s: Invalid IPv6 address provided"),
-          cmd->argv[1]);
+          (char *) cmd->argv[1]);
 
         pr_cmd_set_errno(cmd, EINVAL);
         errno = EINVAL;
@@ -4496,7 +4544,7 @@ MODRET core_host(cmd_rec *cmd) {
         pr_log_debug(DEBUG0, "HOST '%s' requested, but client connected to "
           "IPv4 address '%s', refusing HOST command", host, local_ipstr);
         pr_response_add_err(R_504, _("%s: Unknown hostname provided"),
-          cmd->argv[1]);
+          (char *) cmd->argv[1]);
 
         pr_cmd_set_errno(cmd, EPERM);
         errno = EPERM;
@@ -4542,7 +4590,7 @@ MODRET core_host(cmd_rec *cmd) {
         pr_log_debug(DEBUG0, "HOST '%s' requested, but client connected to "
           "IPv6 address '%s', refusing HOST command", host, local_ipstr);
         pr_response_add_err(R_504, _("%s: Unknown hostname provided"),
-          cmd->argv[1]);
+          (char *) cmd->argv[1]);
 
         pr_cmd_set_errno(cmd, EPERM);
         errno = EPERM;
@@ -4582,7 +4630,7 @@ MODRET core_host(cmd_rec *cmd) {
       "refusing HOST command", host, local_ipstr, main_server->ServerPort);
 
     pr_response_add_err(R_504, _("%s: Unknown hostname provided"),
-      cmd->argv[1]);
+      (char *) cmd->argv[1]);
 
     pr_cmd_set_errno(cmd, ENOENT);
     errno = ENOENT;
@@ -4603,7 +4651,7 @@ MODRET core_host(cmd_rec *cmd) {
         pr_log_debug(DEBUG0, "HOST '%s' requested, but client connected via "
           "TLS to SNI '%s', refusing HOST command", host, sni);
         pr_response_add_err(R_504, _("%s: Unknown hostname provided"),
-          cmd->argv[1]);
+          (char *) cmd->argv[1]);
 
         pr_cmd_set_errno(cmd, EPERM);
         errno = EPERM;
@@ -5000,7 +5048,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     }
   }
 
-  pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
+  pr_response_add(R_250, _("%s command successful"), (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -5033,8 +5081,8 @@ MODRET core_rmd(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        dir);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+        (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5042,8 +5090,8 @@ MODRET core_rmd(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        dir);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+        (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5079,7 +5127,7 @@ MODRET core_rmd(cmd_rec *cmd) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-      "error removing directory '%s': %s", cmd->argv[0], session.user,
+      "error removing directory '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
@@ -5090,7 +5138,7 @@ MODRET core_rmd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
+  pr_response_add(R_250, _("%s command successful"), (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -5134,8 +5182,8 @@ MODRET core_mkd(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        dir);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+        (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5143,8 +5191,8 @@ MODRET core_mkd(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        dir);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+        (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5166,7 +5214,8 @@ MODRET core_mkd(cmd_rec *cmd) {
   if (!dir_check_canon(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
     int xerrno = EACCES;
 
-    pr_log_debug(DEBUG8, "%s command denied by <Limit> config", cmd->argv[0]);
+    pr_log_debug(DEBUG8, "%s command denied by <Limit> config",
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -5179,7 +5228,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-      "error making directory '%s': %s", cmd->argv[0], session.user,
+      "error making directory '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
 
@@ -5298,8 +5347,9 @@ MODRET core_size(cmd_rec *cmd) {
 
   /* Refuse the command if we're in ASCII mode. */
   if (session.sf_flags & SF_ASCII) {
-    pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
-    pr_response_add_err(R_550, _("%s not allowed in ASCII mode"), cmd->argv[0]);
+    pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", (char *) cmd->argv[0]);
+    pr_response_add_err(R_550, _("%s not allowed in ASCII mode"),
+      (char *) cmd->argv[0]);
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
@@ -5383,8 +5433,8 @@ MODRET core_dele(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5392,8 +5442,8 @@ MODRET core_dele(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5449,7 +5499,7 @@ MODRET core_dele(cmd_rec *cmd) {
     int xerrno = EISDIR;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-      "error deleting '%s': %s", cmd->argv[0], session.user,
+      "error deleting '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
 
@@ -5466,7 +5516,7 @@ MODRET core_dele(cmd_rec *cmd) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-      "error deleting '%s': %s", cmd->argv[0], session.user,
+      "error deleting '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
 
@@ -5491,7 +5541,7 @@ MODRET core_dele(cmd_rec *cmd) {
       "_");
   }
 
-  pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
+  pr_response_add(R_250, _("%s command successful"), (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -5539,8 +5589,8 @@ MODRET core_rnto(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5548,8 +5598,8 @@ MODRET core_rnto(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5592,7 +5642,8 @@ MODRET core_rnto(cmd_rec *cmd) {
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error copying '%s' to '%s': %s (previous error was '%s')",
-        cmd->argv[0], session.user, pr_uid2str(cmd->tmp_pool, session.uid),
+        (char *) cmd->argv[0], session.user,
+        pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
         strerror(xerrno), strerror(EXDEV));
 
@@ -5615,7 +5666,7 @@ MODRET core_rnto(cmd_rec *cmd) {
 
     if (xerrno != EXDEV) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error renaming '%s' to '%s': %s", cmd->argv[0], session.user,
+        "error renaming '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
         strerror(xerrno));
@@ -5635,7 +5686,7 @@ MODRET core_rnto(cmd_rec *cmd) {
       xerrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error copying '%s' to '%s': %s", cmd->argv[0], session.user,
+        "error copying '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
         strerror(xerrno));
@@ -5701,8 +5752,8 @@ MODRET core_rnfr(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5710,8 +5761,8 @@ MODRET core_rnfr(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        path);
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+        (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
       pr_cmd_set_errno(cmd, EPERM);
@@ -5767,8 +5818,9 @@ MODRET core_feat(cmd_rec *cmd) {
     int xerrno = EPERM;
 
     pr_log_debug(DEBUG3, "%s command denied by <Limit> configuration",
-      cmd->argv[0]);
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(xerrno));
+      (char *) cmd->argv[0]);
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -5817,7 +5869,8 @@ MODRET core_opts(cmd_rec *cmd) {
 
     pr_log_debug(DEBUG2,
       "OPTS command with too many parameters (%d), rejecting", cmd->argc-1);
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(xerrno));
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -5832,9 +5885,9 @@ MODRET core_opts(cmd_rec *cmd) {
     int xerrno = EACCES;
 
     pr_log_debug(DEBUG7, "OPTS %s denied by <Limit> configuration",
-      cmd->argv[1]);
-    pr_response_add_err(R_550, "%s %s: %s", cmd->argv[0], cmd->argv[1],
-      strerror(xerrno));
+      (char *) cmd->argv[1]);
+    pr_response_add_err(R_550, "%s %s: %s", (char *) cmd->argv[0],
+      (char *) cmd->argv[1], strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -5981,15 +6034,18 @@ MODRET core_post_pass(cmd_rec *cmd) {
  */
 
 MODRET set_defaulttransfermode(cmd_rec *cmd) {
+  char *mode;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strcasecmp(cmd->argv[1], "ascii") != 0 &&
-      strcasecmp(cmd->argv[1], "binary") != 0)
+  mode = cmd->argv[1];
+  if (strcasecmp(mode, "ascii") != 0 &&
+      strcasecmp(mode, "binary") != 0) {
     CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
+  }
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
+  add_config_param_str(cmd->argv[0], 1, mode);
   return PR_HANDLED(cmd);
 }
 
@@ -6001,8 +6057,9 @@ MODRET set_deferwelcome(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));

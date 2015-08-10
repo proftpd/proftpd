@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -147,7 +147,8 @@ MODRET set_displayreadme(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
   
-  pr_log_debug(DEBUG5, "Added pattern %s to readme list", cmd->argv[1]);
+  pr_log_debug(DEBUG5, "Added pattern %s to readme list",
+    (char *) cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 

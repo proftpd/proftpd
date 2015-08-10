@@ -2337,8 +2337,10 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   if (c != NULL) {
     unsigned char *ignore = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
 
-    if (ignore && *ignore == TRUE)
+    if (ignore &&
+        *ignore == TRUE) {
       ignore_hidden = TRUE;
+    }
   }
 
   j = 0;
@@ -2480,14 +2482,14 @@ MODRET genericlist(cmd_rec *cmd) {
      * If not, keep looking for other applicable ListOptions.
      */
     if (list_flags & LS_FL_NLST_ONLY) {
-      pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions", cmd->argv[0]);
+      pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions",
+        (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
       continue;
     }
 
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
-
     list_ndepth.max = *((unsigned int *) c->argv[2]);
 
     /* We add one to the configured maxdepth in order to allow it to
@@ -2496,8 +2498,9 @@ MODRET genericlist(cmd_rec *cmd) {
      * layer deeper.  For the checks to work, the maxdepth of 2 needs to
      * handled internally as a maxdepth of 3.
      */
-    if (list_ndepth.max)
+    if (list_ndepth.max) {
       list_ndepth.max += 1;
+    }
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
@@ -2589,7 +2592,8 @@ MODRET ls_stat(cmd_rec *cmd) {
     if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
       int xerrno = EPERM;
 
-      pr_response_add_err(R_500, "%s: %s", cmd->argv[0], strerror(xerrno));
+      pr_response_add_err(R_500, "%s: %s", (char *) cmd->argv[0],
+        strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -2685,13 +2689,15 @@ MODRET ls_stat(cmd_rec *cmd) {
      * If not, keep looking for other applicable ListOptions.
      */
     if (list_flags & LS_FL_LIST_ONLY) {
-      pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions", cmd->argv[0]);
+      pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions",
+        (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
       continue;
     }
 
     if (list_flags & LS_FL_NLST_ONLY) {
-      pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions", cmd->argv[0]);
+      pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions",
+        (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
       continue;
     }
@@ -2833,7 +2839,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
      * If not, keep looking for other applicable ListOptions.
      */
     if (list_flags & LS_FL_LIST_ONLY) {
-      pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions", cmd->argv[0]);
+      pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions",
+        (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
       continue;
     }
@@ -3293,7 +3300,7 @@ MODRET set_dirfakeusergroup(cmd_rec *cmd) {
 
   if (cmd->argc < 2 ||
       cmd->argc > 3) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "syntax: ", cmd->argv[0],
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "syntax: ", (char *) cmd->argv[0],
       " on|off [<id to display>]", NULL));
   }
 
@@ -3387,45 +3394,48 @@ MODRET set_listoptions(cmd_rec *cmd) {
       } else if (strcasecmp(cmd->argv[i], "maxdepth") == 0) {
         int maxdepth = atoi(cmd->argv[++i]);
 
-        if (maxdepth < 1)
+        if (maxdepth < 1) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
             ": maxdepth must be greater than 0: '", cmd->argv[i],
             "'", NULL));
+        }
 
         *((unsigned int *) c->argv[2]) = maxdepth;
 
       } else if (strcasecmp(cmd->argv[i], "maxfiles") == 0) {
         int maxfiles = atoi(cmd->argv[++i]);
 
-        if (maxfiles < 1)
+        if (maxfiles < 1) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-            ": maxfiles must be greater than 0: '", cmd->argv[i],
+            ": maxfiles must be greater than 0: '", (char *) cmd->argv[i],
             "'", NULL));
+        }
 
-          *((unsigned int *) c->argv[3]) = maxfiles;
+        *((unsigned int *) c->argv[3]) = maxfiles;
 
       } else if (strcasecmp(cmd->argv[i], "maxdirs") == 0) {
         int maxdirs = atoi(cmd->argv[++i]);
 
-        if (maxdirs < 1)
+        if (maxdirs < 1) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-            ": maxdirs must be greater than 0: '", cmd->argv[i],
+            ": maxdirs must be greater than 0: '", (char *) cmd->argv[i],
             "'", NULL));
+        }
 
-          *((unsigned int *) c->argv[4]) = maxdirs;
+        *((unsigned int *) c->argv[4]) = maxdirs;
 
       } else if (strcasecmp(cmd->argv[i], "LISTOnly") == 0) {
-          flags |= LS_FL_LIST_ONLY;
+        flags |= LS_FL_LIST_ONLY;
 
       } else if (strcasecmp(cmd->argv[i], "NLSTOnly") == 0) {
-          flags |= LS_FL_NLST_ONLY;
+        flags |= LS_FL_NLST_ONLY;
 
       } else if (strcasecmp(cmd->argv[i], "NoErrorIfAbsent") == 0) {
-          flags |= LS_FL_NO_ERROR_IF_ABSENT;
+        flags |= LS_FL_NO_ERROR_IF_ABSENT;
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown keyword: '",
-          cmd->argv[i], "'", NULL));
+          (char *) cmd->argv[i], "'", NULL));
       }
     }
   }
@@ -3459,8 +3469,10 @@ MODRET set_useglobbing(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
