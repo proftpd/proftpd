@@ -4003,7 +4003,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
     outsp = outs;
 
     pr_trace_msg(trace_channel, 15, "processing SQLShowInfo ERR_%s '%s'",
-      cmd->argv[0], cmd->argv[1]);
+      (char *) cmd->argv[0], (char *) cmd->argv[1]);
 
     for (tmp = c->argv[1]; *tmp; ) {
       pr_signals_handle();
@@ -4041,7 +4041,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 
               pr_trace_msg(trace_channel, 13,
                 "SQLShowInfo ERR_%s query '%s' returned row count %lu",
-                cmd->argv[0], query, sd->rnum);
+                (char *) cmd->argv[0], query, sd->rnum);
 
               if (sd->rnum == 0 ||
                   sd->data[0] == NULL) {
@@ -4132,14 +4132,14 @@ MODRET errinfo_master(cmd_rec *cmd) {
           *resp_code == '5') {
         pr_trace_msg(trace_channel, 15,
           "adding error response code %s, msg '%s' for SQLShowInfo ERR_%s",
-          resp_code, outs, cmd->argv[0]);
+          resp_code, outs, (char *) cmd->argv[0]);
 
         pr_response_add_err(resp_code, "%s", outs);
 
       } else {
         pr_trace_msg(trace_channel, 15,
           "adding response code %s, msg '%s' for SQLShowInfo ERR_%s", resp_code,
-          outs, cmd->argv[0]);
+          outs, (char *) cmd->argv[0]);
 
         pr_response_add(resp_code, "%s", outs);
       }
@@ -5562,21 +5562,22 @@ MODRET set_sqluserinfo(cmd_rec *cmd) {
 
   if (cmd->argc-1 == 1) {
     char *user = NULL, *userbyid = NULL, *userset = NULL, *usersetfast = NULL;
-    char *ptr = NULL;
+    char *param, *ptr = NULL;
 
     /* If only one paramter is used, it must be of the "custom:/" form. */
-    if (strncmp("custom:/", cmd->argv[1], 8) != 0) {
+    param = cmd->argv[1];
+    if (strncmp("custom:/", param, 8) != 0) {
       CONF_ERROR(cmd, "badly formatted parameter");
     }
 
-    ptr = strchr(cmd->argv[1] + 8, '/');
+    ptr = strchr(param + 8, '/');
     if (ptr == NULL) {
-      add_config_param_str("SQLCustomUserInfoByName", 1, cmd->argv[1] + 8);
+      add_config_param_str("SQLCustomUserInfoByName", 1, param + 8);
       return PR_HANDLED(cmd);
     }
 
     *ptr = '\0';
-    user = cmd->argv[1] + 8;
+    user = param + 8;
     userbyid = ptr + 1;
 
     add_config_param_str("SQLCustomUserInfoByName", 1, user);
@@ -5652,20 +5653,21 @@ MODRET set_sqlgroupinfo(cmd_rec *cmd) {
   if (cmd->argc-1 == 1) {
     char *groupbyname = NULL, *groupbyid = NULL, *groupmembers = NULL,
       *groupset = NULL, *groupsetfast = NULL;
-    char *ptr = NULL;
+    char *param, *ptr = NULL;
 
     /* If only one paramter is used, it must be of the "custom:/" form. */
-    if (strncmp("custom:/", cmd->argv[1], 8) != 0) {
+    param = cmd->argv[1];
+    if (strncmp("custom:/", param, 8) != 0) {
       CONF_ERROR(cmd, "badly formatted parameter");
     }
 
-    ptr = strchr(cmd->argv[1] + 8, '/');
+    ptr = strchr(param + 8, '/');
     if (ptr == NULL) {
       CONF_ERROR(cmd, "badly formatted parameter");
     }
 
     *ptr = '\0';
-    groupbyname = cmd->argv[1] + 8;
+    groupbyname = param + 8;
     groupbyid = ptr + 1;
 
     add_config_param_str("SQLCustomGroupInfoByName", 1, groupbyname);
@@ -6101,11 +6103,15 @@ MODRET set_sqlauthenticate(cmd_rec *cmd) {
         userset_flag = 1;
 
       } else if (strncasecmp("groups", arg, 6) == 0) {
-        if (groups_flag)
+        if (groups_flag) {
           CONF_ERROR(cmd, "groups already set");
-	
+        }
+
         if (strcasecmp("groups*", arg) == 0) {
-          pr_log_debug(DEBUG1, "%s: use of '*' in SQLAuthenticate has been deprecated.  Use AuthOrder for setting authoritativeness", cmd->argv[0]);
+          pr_log_debug(DEBUG1,
+            "%s: use of '*' in SQLAuthenticate has been deprecated. "
+            "Use AuthOrder for setting authoritativeness",
+            (char *) cmd->argv[0]);
 
         } else if (strlen(arg) > 6) {
           CONF_ERROR(cmd, "unknown argument");
@@ -6115,11 +6121,15 @@ MODRET set_sqlauthenticate(cmd_rec *cmd) {
         groups_flag = 1;
 
       } else if (strncasecmp("users", arg, 5) == 0) {
-        if (users_flag)
+        if (users_flag) {
           CONF_ERROR(cmd, "users already set");
+        }
 
         if (strcasecmp("users*", arg) == 0) {
-          pr_log_debug(DEBUG1, "%s: use of '*' in SQLAuthenticate has been deprecated.  Use AuthOrder for setting authoritativeness", cmd->argv[0]);
+          pr_log_debug(DEBUG1,
+            "%s: use of '*' in SQLAuthenticate has been deprecated. "
+            "Use AuthOrder for setting authoritativeness",
+            (char *) cmd->argv[0]);
 
         } else if (strlen(arg) > 5) {
           CONF_ERROR(cmd, "unknown argument");

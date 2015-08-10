@@ -2,7 +2,7 @@
  * mod_log_forensic - a buffering log module for aiding in server behavior
  *                    forensic analysis
  *
- * Copyright (c) 2011-2014 TJ Saunders
+ * Copyright (c) 2011-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,6 @@ module log_forensic_module;
 static pool *forensic_pool = NULL;
 static int forensic_engine = FALSE;
 static int forensic_logfd = -1;
-static uint64_t forensic_ms = 0L;
 
 /* Criteria for flushing out the "forensic" logs. */
 #define FORENSIC_CRIT_FAILED_LOGIN		0x00001

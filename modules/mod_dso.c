@@ -574,7 +574,7 @@ MODRET set_moduleorder(cmd_rec *cmd) {
     }
   }
 
-  pr_log_debug(DEBUG4, "%s: reordering modules", cmd->argv[0]);
+  pr_log_debug(DEBUG4, "%s: reordering modules", (char *) cmd->argv[0]);
   for (i = 1; i < cmd->argc; i++) {
     m = pr_module_get(cmd->argv[i]);
 
@@ -596,7 +596,7 @@ MODRET set_moduleorder(cmd_rec *cmd) {
 
     if (pr_module_unload(m) < 0) {
       pr_log_debug(DEBUG0, "%s: error unloading module 'mod_%s.c': %s",
-        cmd->argv[0], m->name, strerror(errno));
+        (char *) cmd->argv[0], m->name, strerror(errno));
     }
 
     m = mn;
@@ -605,12 +605,12 @@ MODRET set_moduleorder(cmd_rec *cmd) {
   for (m = module_list; m; m = m->next) {
     if (pr_module_load(m) < 0) {
       pr_log_debug(DEBUG0, "%s: error loading module 'mod_%s.c': %s",
-        cmd->argv[0], m->name, strerror(errno));
+        (char *) cmd->argv[0], m->name, strerror(errno));
       exit(1);
     }
   }
 
-  pr_log_pri(PR_LOG_NOTICE, "%s: module order is now:", cmd->argv[0]);
+  pr_log_pri(PR_LOG_NOTICE, "%s: module order is now:", (char *) cmd->argv[0]);
   for (m = loaded_modules; m; m = m->next) {
     pr_log_pri(PR_LOG_NOTICE, " mod_%s.c", m->name);
   }

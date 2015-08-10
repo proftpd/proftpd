@@ -1472,7 +1472,7 @@ MODRET set_quotadefault(cmd_rec *cmd) {
       strncasecmp(cmd->argv[1], "class", 6) != 0 &&
       strncasecmp(cmd->argv[1], "all", 4) != 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown quota type '",
-      cmd->argv[1], "' configured", NULL));
+      (char *) cmd->argv[1], "' configured", NULL));
   } 
 
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
@@ -1480,7 +1480,7 @@ MODRET set_quotadefault(cmd_rec *cmd) {
   /* per-session */
   if (pr_str_is_boolean(cmd->argv[2]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "expected Boolean per-session parameter: ", cmd->argv[2], NULL));
+      "expected Boolean per-session parameter: ", (char *) cmd->argv[2], NULL));
   }
 
   c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
@@ -1548,9 +1548,10 @@ MODRET set_quotadisplayunits(cmd_rec *cmd) {
   } else if (strcasecmp(cmd->argv[1], "Gb") == 0) {
     units = GIGA;
 
-  } else
+  } else {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown display units: ",
-      cmd->argv[1], NULL));
+      (char *) cmd->argv[1], NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(quota_units_t));
@@ -1602,8 +1603,8 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
     pr_regexp_error(res, pre, errstr, sizeof(errstr));
     pr_regexp_free(NULL, pre);
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
-      "compilation: ", errstr, NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", (char *) cmd->argv[1],
+      "' failed regex compilation: ", errstr, NULL));
   }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
@@ -1619,15 +1620,19 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
 
 /* usage: QuotaLock file */
 MODRET set_quotalock(cmd_rec *cmd) {
+  char *path;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
+  path = cmd->argv[1];
+
   /* Check for non-absolute paths */
-  if (*cmd->argv[1] != '/')
+  if (*path != '/') {
     CONF_ERROR(cmd, "absolute path required");
+  }
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
+  add_config_param_str(cmd->argv[0], 1, path);
   return PR_HANDLED(cmd);
 }
 
@@ -1846,7 +1851,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
     have_quota_update = 0;
 
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -1860,10 +1865,10 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -1875,10 +1880,10 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -1914,7 +1919,7 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
@@ -1932,8 +1937,8 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
       append_bytes = 0;
 
     } else {
-      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
-        strerror(errno));
+      quotatab_log("%s: error checking '%s': %s", (char *) cmd->argv[0],
+        cmd->arg, strerror(errno));
     }
   }
 
@@ -1947,10 +1952,10 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     if (!have_err_response) {
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_IN(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     }
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
@@ -1973,9 +1978,10 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
           -1, 0, -1);
 
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0], cmd->arg);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
+          cmd->arg);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->arg);
+          (char *) cmd->argv[0], cmd->arg);
       }
     }
 
@@ -1983,10 +1989,10 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     if (!have_err_response) {
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_XFER(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     }
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail &&
@@ -2000,9 +2006,9 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
           -1, 0, -1);
 
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0], cmd->arg);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],            cmd->arg);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->arg);
+          (char *) cmd->argv[0], cmd->arg);
       }
     }
   }
@@ -2023,7 +2029,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
@@ -2041,8 +2047,8 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
       append_bytes = 0;
 
     } else {
-      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
-        strerror(errno));
+      quotatab_log("%s: error checking '%s': %s", (char *) cmd->argv[0],
+        cmd->arg, strerror(errno));
     }
   }
 
@@ -2056,10 +2062,10 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     if (!have_err_response) {
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_IN(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     }
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
@@ -2082,9 +2088,10 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
           -1, 0, -1);
 
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0], cmd->arg);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
+          cmd->arg);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->arg);
+          (char *) cmd->argv[0], cmd->arg);
       }
     }
 
@@ -2092,10 +2099,10 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     if (!have_err_response) {
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_XFER(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     }
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail &&
@@ -2118,9 +2125,10 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
           -1, 0, -1);
 
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0], cmd->arg);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
+          cmd->arg);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->arg);
+          (char *) cmd->argv[0], cmd->arg);
       }
     }
   }
@@ -2144,7 +2152,7 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
     have_quota_update = 0;
 
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->argv[1], quota_exclude_filter);
+      (char *) cmd->argv[0], (char *) cmd->argv[1], quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -2158,10 +2166,10 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -2173,10 +2181,10 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
              sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -2217,10 +2225,10 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
         sess_tally.files_in_used >= sess_limit.files_in_avail) {
 
       /* Report the exceeding of the threshold. */
-      quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+      quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_IN(cmd));
       pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-        cmd->argv[0], DISPLAY_FILES_IN(cmd));
+        (char *) cmd->argv[0], DISPLAY_FILES_IN(cmd));
       have_err_response = TRUE;
 
       /* Set an appropriate errno value. */
@@ -2232,10 +2240,10 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
                sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
       /* Report the exceeding of the threshold. */
-      quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+      quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_XFER(cmd));
       pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-        cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
       have_err_response = TRUE;
 
       /* Set an appropriate errno value. */
@@ -2259,7 +2267,7 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->argv[2])) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->argv[2], quota_exclude_filter);
+      (char *) cmd->argv[0], (char *) cmd->argv[2], quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -2314,10 +2322,10 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
 
     if (!have_err_response) {
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_IN(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     }
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
@@ -2332,7 +2340,7 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
       }
 
       if (res < 0) {
-        quotatab_log("notice: unable to unlink '%s': %s", cmd->argv[2],
+        quotatab_log("notice: unable to unlink '%s': %s", (char *) cmd->argv[2],
           strerror(errno));
 
       } else {
@@ -2340,10 +2348,10 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
           -quotatab_disk_nfiles, 0, -quotatab_disk_nfiles);
 
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0],
-          cmd->argv[2]);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
+          (char *) cmd->argv[2]);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->argv[2]);
+          (char *) cmd->argv[0], (char *) cmd->argv[2]);
       }
     }
 
@@ -2352,10 +2360,10 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
 
     if (!have_err_response) {
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_XFER(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     }
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail &&
@@ -2370,7 +2378,7 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
       }
 
       if (res < 0) {
-        quotatab_log("notice: unable to unlink '%s': %s", cmd->argv[2],
+        quotatab_log("notice: unable to unlink '%s': %s", (char *) cmd->argv[2],
           strerror(errno));
 
       } else {
@@ -2378,10 +2386,10 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
           -quotatab_disk_nfiles, 0, -quotatab_disk_nfiles);
 
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0],
-          cmd->argv[2]);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
+          (char *) cmd->argv[2]);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->argv[2]);
+          (char *) cmd->argv[0], (char *) cmd->argv[2]);
       }
     }
   }
@@ -2396,10 +2404,10 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
 
       if (!have_err_response) {
         /* Report the reaching of the threshold. */
-        quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+        quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
           DISPLAY_FILES_IN(cmd));
         pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-          cmd->argv[0], DISPLAY_FILES_IN(cmd));
+          (char *) cmd->argv[0], DISPLAY_FILES_IN(cmd));
       }
 
     } else if (sess_limit.files_xfer_avail != 0 &&
@@ -2407,10 +2415,10 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
 
       if (!have_err_response) {
         /* Report the reaching of the threshold. */
-        quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+        quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
           DISPLAY_FILES_XFER(cmd));
         pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-          cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+          (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
       }
     }
   }
@@ -2453,7 +2461,7 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
   if (path) {
     if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
       quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-        cmd->argv[0], cmd->arg, quota_exclude_filter);
+        (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
       return PR_DECLINED(cmd);
     }
 
@@ -2485,7 +2493,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3080,7 +3088,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3094,10 +3102,10 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.bytes_out_used >= sess_limit.bytes_out_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_OUT(cmd));
     pr_response_add_err(R_451, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3109,10 +3117,10 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_451, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3128,10 +3136,10 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.files_out_used >= sess_limit.files_out_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_OUT(cmd));
     pr_response_add_err(R_451, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_FILES_OUT(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_OUT(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3143,10 +3151,10 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s: denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s: denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_XFER(cmd));
     pr_response_add(R_451, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3167,7 +3175,7 @@ MODRET quotatab_post_retr(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3182,19 +3190,19 @@ MODRET quotatab_post_retr(cmd_rec *cmd) {
       sess_tally.bytes_out_used >= sess_limit.bytes_out_avail) {
 
     /* Report the reaching of the threshold. */
-    quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+    quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_OUT(cmd));
     pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
 
   } else if (sess_limit.bytes_xfer_avail > 0.0 &&
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the reaching of the threshold. */
-    quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+    quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
   }
 
   /* Check quotas to see if files download or total quota has been reached.
@@ -3204,19 +3212,19 @@ MODRET quotatab_post_retr(cmd_rec *cmd) {
       sess_tally.files_out_used >= sess_limit.files_out_avail) {
 
     /* Report the reaching of the threshold. */
-    quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+    quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_OUT(cmd));
     pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-      cmd->argv[0], DISPLAY_FILES_OUT(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_OUT(cmd));
 
   } else if (sess_limit.files_xfer_avail != 0 &&
     sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
     /* Report the reaching of the threshold. */
-    quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+    quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_XFER(cmd));
     pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-      cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
   }
 
   return PR_DECLINED(cmd);
@@ -3230,7 +3238,7 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3247,10 +3255,10 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
     if (!have_err_response) {
 
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_OUT(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
     }
 
   } else if (sess_limit.bytes_xfer_avail > 0.0 &&
@@ -3259,10 +3267,10 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
     if (!have_err_response) {
 
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_XFER(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     }
   }
 
@@ -3275,10 +3283,10 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
     if (!have_err_response) {
 
       /* Report the reaching of the treshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_OUT(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_FILES_OUT(cmd));
+        (char *) cmd->argv[0], DISPLAY_FILES_OUT(cmd));
     }
 
   } else if (sess_limit.files_xfer_avail != 0 &&
@@ -3287,10 +3295,10 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
     if (!have_err_response) {
 
       /* Report the reaching of the treshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_XFER(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
     }
   }
 
@@ -3327,7 +3335,7 @@ MODRET quotatab_post_rmd(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3349,7 +3357,7 @@ MODRET quotatab_pre_rnto(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3377,7 +3385,7 @@ MODRET quotatab_post_rnto(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3407,7 +3415,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     have_quota_update = 0;
 
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     return PR_DECLINED(cmd);
   }
 
@@ -3421,10 +3429,10 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3436,10 +3444,10 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3455,10 +3463,10 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.files_in_used >= sess_limit.files_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_FILES_IN(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_IN(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3470,10 +3478,10 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
+    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
-      cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
     have_err_response = TRUE;
 
     /* Set an appropriate errno value. */
@@ -3511,7 +3519,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
@@ -3527,7 +3535,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
     if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       quotatab_log("%s: upload aborted and DeleteAbortedStores on, "
-        "skipping tally update", cmd->argv[0]);
+        "skipping tally update", (char *) cmd->argv[0]);
       have_quota_update = 0;
       return PR_DECLINED(cmd);
     }
@@ -3546,8 +3554,8 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
       store_bytes = 0;
 
     } else {
-      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
-        strerror(errno));
+      quotatab_log("%s: error checking '%s': %s", (char *) cmd->argv[0],
+        cmd->arg, strerror(errno));
     }
   }
 
@@ -3568,10 +3576,10 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
     if (!have_err_response) {
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_IN(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     }
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail &&
@@ -3594,21 +3602,22 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
           -1, 0, -1);
         
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0], cmd->arg);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
+          cmd->arg);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->arg);
+          (char *) cmd->argv[0], cmd->arg);
       }
     }
 
   } else if (sess_limit.bytes_xfer_avail > 0.0 &&
-      sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
+             sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     if (!have_err_response) {
       /* Report the reaching of the threshold. */ 
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_XFER(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     }
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail &&
@@ -3631,9 +3640,10 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
           -1, 0, -1);
 
         /* Report the removal of the file. */
-        quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0], cmd->arg);
+        quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
+          cmd->arg);
         pr_response_add(R_DUP, _("%s: notice: quota reached: '%s' removed"),
-          cmd->argv[0], cmd->arg);
+          (char *) cmd->argv[0], cmd->arg);
       }
     }
   }
@@ -3646,10 +3656,10 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
     if (!have_err_response) {
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_IN(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_FILES_IN(cmd));
+        (char *) cmd->argv[0], DISPLAY_FILES_IN(cmd));
     }
 
   } else if (sess_limit.files_xfer_avail != 0 &&
@@ -3657,10 +3667,10 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
     if (!have_err_response) {
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_XFER(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
     }
   }
 
@@ -3680,7 +3690,7 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
-      cmd->argv[0], cmd->arg, quota_exclude_filter);
+      (char *) cmd->argv[0], cmd->arg, quota_exclude_filter);
     have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
@@ -3696,7 +3706,7 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
     if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       quotatab_log("%s: upload aborted and DeleteAbortedStores on, "
-        "skipping tally update", cmd->argv[0]);
+        "skipping tally update", (char *) cmd->argv[0]);
       have_quota_update = 0;
       return PR_DECLINED(cmd);
     } 
@@ -3716,8 +3726,8 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
         store_bytes = 0;
 
       } else {
-        quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
-          strerror(errno));
+        quotatab_log("%s: error checking '%s': %s", (char *) cmd->argv[0],
+          cmd->arg, strerror(errno));
       }
     }
   }
@@ -3741,10 +3751,10 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
     if (!have_err_response) {
 
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_IN(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_IN(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     }
 
     if (sess_tally.bytes_in_used > sess_limit.bytes_in_avail) {
@@ -3765,10 +3775,10 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
         } else {
 
           /* Report the removal of the file. */
-          quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0],
+          quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
             cmd->arg);
           pr_response_add_err(R_DUP,
-            _("%s: notice: quota reached: '%s' removed"), cmd->argv[0],
+            _("%s: notice: quota reached: '%s' removed"), (char *) cmd->argv[0],
             cmd->arg);
         }
       }
@@ -3782,10 +3792,10 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
     if (!have_err_response) {
 
       /* Report the reaching of the threshold. */
-      quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+      quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_XFER(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-        cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
+        (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     }
 
     if (sess_tally.bytes_xfer_used > sess_limit.bytes_xfer_avail) {
@@ -3806,10 +3816,10 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
         } else {
 
           /* Report the removal of the file. */
-          quotatab_log("%s: quota reached: '%s' removed", cmd->argv[0],
+          quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
             cmd->arg);
           pr_response_add_err(R_DUP,
-            _("%s: notice: quota reached: '%s' removed"), cmd->argv[0],
+            _("%s: notice: quota reached: '%s' removed"), (char *) cmd->argv[0],
             cmd->arg);
         }
       }
@@ -3825,19 +3835,19 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
       sess_tally.files_in_used >= sess_limit.files_in_avail) {
 
     /* Report the reaching of the threshold. */
-    quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+    quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_IN(cmd));
     pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-      cmd->argv[0], DISPLAY_FILES_IN(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_IN(cmd));
 
   } else if (sess_limit.files_xfer_avail != 0 &&
       sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
     /* Report the reaching of the threshold. */
-    quotatab_log("%s: quota reached: used %s", cmd->argv[0],
+    quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
       DISPLAY_FILES_XFER(cmd));
     pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
-      cmd->argv[0], DISPLAY_FILES_XFER(cmd));
+      (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
   }
 
   have_quota_update = 0;
@@ -3847,8 +3857,9 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 MODRET quotatab_pre_site(cmd_rec *cmd) {
 
   /* Make sure it's a valid SITE command */
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     return PR_DECLINED(cmd);
+  }
 
   if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
     cmd_rec *copy_cmd;
@@ -3862,8 +3873,9 @@ MODRET quotatab_pre_site(cmd_rec *cmd) {
     cmd_rec *copy_cmd;
     char *from, *to = "";
 
-    if (cmd->argc < 3)
+    if (cmd->argc < 3) {
       return PR_DECLINED(cmd);
+    }
 
     from = pr_table_get(session.notes, "mod_copy.cpfr-path", NULL);
     if (from == NULL) {
@@ -3889,8 +3901,9 @@ MODRET quotatab_pre_site(cmd_rec *cmd) {
 MODRET quotatab_site(cmd_rec *cmd) {
 
   /* Make sure it's a valid SITE QUOTA command */
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     return PR_DECLINED(cmd);
+  }
 
   if (strncasecmp(cmd->argv[1], "QUOTA", 6) == 0) {
     char *cmd_name;

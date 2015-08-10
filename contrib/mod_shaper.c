@@ -2,7 +2,7 @@
  * ProFTPD: mod_shaper -- a module implementing daemon-wide rate throttling
  *                        via IPC
  *
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
  *
  * This is mod_shaper, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_shaper.c,v 1.18 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1953,48 +1951,63 @@ MODRET set_shapersession(cmd_rec *cmd) {
 
   register unsigned int i;
 
-  if (cmd->argc-1 < 2 || cmd->argc-1 > 8 || (cmd->argc-1) % 2 != 0)
+  if (cmd->argc-1 < 2 ||
+      cmd->argc-1 > 8 ||
+      (cmd->argc-1) % 2 != 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   for (i = 1; i < cmd->argc;) {
     if (strcmp(cmd->argv[i], "downshares") == 0) {
-      if (*cmd->argv[i+1] != '+' &&
-          *cmd->argv[i+1] != '-')
-        CONF_ERROR(cmd, "downshares parameter must start with '+' or '-'");
+      char *shareno;
 
-      downshares = atoi(cmd->argv[i+1]);
+      shareno = cmd->argv[i+1];
+      if (*shareno != '+' &&
+          *shareno != '-') {
+        CONF_ERROR(cmd, "downshares parameter must start with '+' or '-'");
+      }
+
+      downshares = atoi(shareno);
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "priority") == 0) {
       prio = atoi(cmd->argv[i+1]);
-
-      if (prio < 0)
+      if (prio < 0) {
         CONF_ERROR(cmd, "priority must be greater than 0");
+      }
 
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "shares") == 0) {
-      if (*cmd->argv[i+1] != '+' &&
-          *cmd->argv[i+1] != '-')
+      char *shareno;
+
+      shareno = cmd->argv[i+1];
+      if (*shareno != '+' &&
+          *shareno != '-') {
         CONF_ERROR(cmd, "shares parameter must start with '+' or '-'");
+      }
 
-      downshares = upshares = atoi(cmd->argv[i+1]);
-
+      downshares = upshares = atoi(shareno);
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "upshares") == 0) {
-      if (*cmd->argv[i+1] != '+' &&
-          *cmd->argv[i+1] != '-')
-        CONF_ERROR(cmd, "upshares parameter must start with '+' or '-'");
+      char *shareno;
 
-      upshares = atoi(cmd->argv[i+1]);
+      shareno = cmd->argv[i+1];
+      if (*shareno != '+' &&
+          *shareno != '-') {
+        CONF_ERROR(cmd, "upshares parameter must start with '+' or '-'");
+      }
+
+      upshares = atoi(shareno);
       i += 2;
 
-    } else
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown option: '",
-        cmd->argv[i], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
+    }
   }
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL);
@@ -2014,8 +2027,9 @@ MODRET set_shapertable(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (pr_fs_valid_path(cmd->argv[1]) < 0)
+  if (pr_fs_valid_path(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, "must be an absolute path");
+  }
 
   shaper_tab_path = pstrdup(shaper_pool, cmd->argv[1]);
   return PR_HANDLED(cmd);

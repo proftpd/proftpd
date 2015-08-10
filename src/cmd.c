@@ -170,11 +170,11 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
     cmd->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
     va_start(args, argc);
 
-    for (i = 0; i < argc; i++)
-      cmd->argv[i] = (void *) va_arg(args, char *);
+    for (i = 0; i < argc; i++) {
+      cmd->argv[i] = va_arg(args, void *);
+    }
 
     va_end(args);
-
     cmd->argv[argc] = NULL;
   }
 
@@ -326,7 +326,7 @@ int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
 char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
   char *res;
   int argc;
-  char **argv;
+  void **argv;
   pool *p;
 
   if (cmd == NULL) {

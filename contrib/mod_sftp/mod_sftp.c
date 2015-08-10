@@ -363,7 +363,7 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
       cmd->argv[i]);
     if (method_names == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "invalid authentication parameter: ", cmd->argv[i], NULL));
+        "invalid authentication parameter: ", (char *) cmd->argv[i], NULL));
     }
 
     auth_chain = sftp_auth_chain_alloc(c->pool);
@@ -397,8 +397,8 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
 
     if (sftp_auth_chain_isvalid(auth_chain) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unsupportable chain of authentication methods '", cmd->argv[i], "': ",
-        strerror(errno), NULL));
+        "unsupportable chain of authentication methods '",
+        (char *) cmd->argv[i], "': ", strerror(errno), NULL));
     }
 
     *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
@@ -434,7 +434,7 @@ MODRET set_sftpauthorizedkeys(cmd_rec *cmd) {
     ptr = strchr(cmd->argv[i], ':');
     if (ptr == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
-        cmd->argv[i], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
     *ptr = '\0';
 
@@ -443,7 +443,7 @@ MODRET set_sftpauthorizedkeys(cmd_rec *cmd) {
      */
     if (sftp_keystore_supports_store(cmd->argv[i], requested_key_type) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported key store: '",
-        cmd->argv[i], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
 
     *ptr = ':';
@@ -473,7 +473,7 @@ MODRET set_sftpciphers(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (sftp_crypto_get_cipher(cmd->argv[i], NULL, NULL) == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unsupported cipher algorithm: ", cmd->argv[i], NULL));
+        "unsupported cipher algorithm: ", (char *) cmd->argv[i], NULL));
     }
   }
 
@@ -495,13 +495,13 @@ MODRET set_sftpclientalive(cmd_rec *cmd) {
 
   count = atoi(cmd->argv[1]);
   if (count < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "max count '", cmd->argv[1],
-      "' must be equal to or greater than zero", NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "max count '",
+      (char *) cmd->argv[1], "' must be equal to or greater than zero", NULL));
   }
 
   interval = atoi(cmd->argv[2]);
   if (interval < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "interval '", cmd->argv[2],
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "interval '", (char *) cmd->argv[2],
       "' must be equal to or greater than zero", NULL));
   }
 
@@ -549,8 +549,8 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
     pr_regexp_error(res, pre, errstr, sizeof(errstr));
     pr_regexp_free(NULL, pre);
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
-      "compilation: ", errstr, NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", (char *) cmd->argv[1],
+      "' failed regex compilation: ", errstr, NULL));
   }
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
@@ -1390,26 +1390,29 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 /* usage: SFTPPassPhraseProvider path */
 MODRET set_sftppassphraseprovider(cmd_rec *cmd) {
   struct stat st;
+  char *path;
  
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
+
+  path = cmd->argv[1];
  
-  if (*cmd->argv[1] != '/') {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be a full path: '",
-      cmd->argv[1], "'", NULL));
+  if (*path != '/') {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be a full path: '", path, "'",
+      NULL));
   }
  
-  if (stat(cmd->argv[1], &st) < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error checking '", 
-      cmd->argv[1], "': ", strerror(errno), NULL));
+  if (stat(path, &st) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error checking '", path, "': ",
+      strerror(errno), NULL));
   }
 
   if (!S_ISREG(st.st_mode)) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '",
-      cmd->argv[1], ": Not a regular file", NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path,
+      ": Not a regular file", NULL));
   }
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  add_config_param_str(cmd->argv[0], 1, path);
   return PR_HANDLED(cmd);
 }
 

@@ -729,8 +729,9 @@ MODRET set_deflateengine(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
@@ -741,14 +742,18 @@ MODRET set_deflateengine(cmd_rec *cmd) {
 
 /* usage: DeflateLog path|"none" */
 MODRET set_deflatelog(cmd_rec *cmd) {
+  char *path;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (pr_fs_valid_path(cmd->argv[1]) < 0)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": ", cmd->argv[1],
-      " is not a valid path", NULL));
+  path = cmd->argv[1];
+  if (pr_fs_valid_path(path) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": ", path, " is not a valid path",
+      NULL));
+  }
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  add_config_param_str(cmd->argv[0], 1, path);
   return PR_HANDLED(cmd);
 }
 
@@ -776,7 +781,7 @@ MODRET deflate_opts(cmd_rec *cmd) {
       deflate_strategy = MOD_DEFLATE_DEFAULT_STRATEGY;
       deflate_window_bits = MOD_DEFLATE_DEFAULT_WINDOW_BITS;
 
-      pr_response_add(R_200, _("%s OK"), cmd->argv[0]);
+      pr_response_add(R_200, _("%s OK"), (char *) cmd->argv[0]);
       return PR_HANDLED(cmd);
 
     } else {
@@ -791,22 +796,28 @@ MODRET deflate_opts(cmd_rec *cmd) {
       }
 
       for (i = 2; i < cmd->argc; i += 2) {
-        if (strcasecmp(cmd->argv[i], "blocksize") == 0 ||
-            strcasecmp(cmd->argv[i], "engine") == 0) {
+        char *key, *val;
+
+        key = cmd->argv[i];
+        val = cmd->argv[i+1];
+
+        if (strcasecmp(key, "blocksize") == 0 ||
+            strcasecmp(key, "engine") == 0) {
           pr_response_add_err(R_501, _("%s: unsupported MODE Z option: %s"),
-            cmd->argv[0], cmd->argv[i]);
+            (char *) cmd->argv[0], key);
 
           pr_cmd_set_errno(cmd, ENOSYS);
           errno = ENOSYS;
           return PR_ERROR(cmd);
 
-        } else if (strcasecmp(cmd->argv[i], "level") == 0) {
-          int level = atoi(cmd->argv[i+1]);
+        } else if (strcasecmp(key, "level") == 0) {
+          int level;
 
+          level = atoi(val);
           if (level < 0 ||
               level > 9) {
             pr_response_add_err(R_501, _("%s: bad MODE Z option value: %s %s"),
-              cmd->argv[0], cmd->argv[i], cmd->argv[i+1]);
+              (char *) cmd->argv[0], key, val);
 
             pr_cmd_set_errno(cmd, EINVAL);
             errno = EINVAL;
@@ -817,7 +828,7 @@ MODRET deflate_opts(cmd_rec *cmd) {
 
         } else {
           pr_response_add_err(R_501, _("%s: unknown MODE Z option: %s"),
-            cmd->argv[0], cmd->argv[i]);
+            (char *) cmd->argv[0], key);
 
           pr_cmd_set_errno(cmd, EINVAL);
           errno = EINVAL;
@@ -834,6 +845,8 @@ MODRET deflate_opts(cmd_rec *cmd) {
 }
 
 MODRET deflate_mode(cmd_rec *cmd) {
+  char *mode;
+
   if (!deflate_engine) {
     return PR_DECLINED(cmd);
   }
@@ -844,9 +857,10 @@ MODRET deflate_mode(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  cmd->argv[1][0] = toupper(cmd->argv[1][0]);
+  mode = cmd->argv[1];
+  mode[0] = toupper(mode[0]);
 
-  if (cmd->argv[1][0] == 'Z') {
+  if (mode[0] == 'Z') {
     if (session.rfc2228_mech) {
       (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
         "declining MODE Z (RFC2228 mechanism '%s' in effect)",
@@ -906,7 +920,8 @@ MODRET deflate_mode(cmd_rec *cmd) {
 
       } else {
         (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
-          "%s %s: unregistered netio", cmd->argv[0], cmd->argv[1]);
+          "%s %s: unregistered netio", (char *) cmd->argv[0],
+          (char *) cmd->argv[1]);
       }
 
       if (deflate_netio) {

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2014 TJ Saunders
+ * Copyright (c) 2000-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1428,9 +1428,8 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
   register unsigned int i = 0;
   unsigned char have_registration = FALSE;
   config_rec *c = NULL;
-
   int argc = 1;
-  char **argv = NULL;
+  void **argv = NULL;
   array_header *acl = NULL;
 
   CHECK_ARGS(cmd, 3);
@@ -1443,7 +1442,7 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
     tmp = strchr(cmd->argv[i], ':');
     if (tmp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly table parameter: '",
-        cmd->argv[i], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
 
     *tmp = '\0';
@@ -1457,7 +1456,7 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
 
     if (!have_registration) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
-        cmd->argv[1], "'", NULL));
+        (char *) cmd->argv[1], "'", NULL));
     }
 
     *tmp = ':';
@@ -1465,12 +1464,12 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 0);
 
-  acl = pr_expr_create(cmd->tmp_pool, &argc, &cmd->argv[0]);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) &cmd->argv[0]);
 
   /* Build the desired config_rec manually. */
   c->argc = argc + 2;
-  c->argv = pcalloc(c->pool, (argc + 3) * sizeof(char *));
-  argv = (char **) c->argv;
+  c->argv = pcalloc(c->pool, (argc + 3) * sizeof(void *));
+  argv = c->argv;
 
   /* The tables are the first two parameters */
   *argv++ = pstrdup(c->pool, cmd->argv[2]);
@@ -1497,7 +1496,6 @@ MODRET set_wraplog(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
   return PR_HANDLED(cmd);
 }
 
@@ -1507,8 +1505,9 @@ MODRET set_wrapoptions(cmd_rec *cmd) {
   register unsigned int i = 0;
   unsigned long opts = 0UL;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -1591,9 +1590,8 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
   register unsigned int i = 0;
   unsigned char have_registration = FALSE;
   config_rec *c = NULL;
-
   int argc = 1;
-  char **argv = NULL;
+  void **argv = NULL;
   array_header *acl = NULL;
 
   CHECK_ARGS(cmd, 3);
@@ -1606,7 +1604,7 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
     tmp = strchr(cmd->argv[i], ':');
     if (tmp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly table parameter: '",
-        cmd->argv[i], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
 
     *tmp = '\0';
@@ -1620,7 +1618,7 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
 
     if (!have_registration) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
-        cmd->argv[1], "'", NULL));
+        (char *) cmd->argv[1], "'", NULL));
     }
 
     *tmp = ':';
@@ -1628,29 +1626,29 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 0);
 
-  acl = pr_expr_create(cmd->tmp_pool, &argc, &cmd->argv[0]);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) &cmd->argv[0]);
 
   /* Build the desired config_rec manually. */
   c->argc = argc + 2;
-  c->argv = pcalloc(c->pool, (argc + 3) * sizeof(char *));
-  argv = (char **) c->argv;
+  c->argv = pcalloc(c->pool, (argc + 3) * sizeof(void *));
+  argv = c->argv;
 
   /* The tables are the first two parameters */
   *argv++ = pstrdup(c->pool, cmd->argv[2]);
   *argv++ = pstrdup(c->pool, cmd->argv[3]); 
 
   /* Now populate the user-expression names */
-  if (argc && acl)
+  if (argc && acl) {
     while (argc--) {
       *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;
     }
+  }
 
   /* Do not forget the terminating NULL */
   *argv = NULL;
 
   c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 

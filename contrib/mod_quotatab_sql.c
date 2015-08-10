@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab_sql -- a mod_quotatab sub-module for managing quota
  *                              data via SQL-based tables
  *
- * Copyright (c) 2002-2014 TJ Saunders
+ * Copyright (c) 2002-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
  * As a special exemption, TJ Saunders gives permission to link this program
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
- *
- * $Id: mod_quotatab_sql.c,v 1.17 2013-01-21 19:59:59 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -43,14 +41,15 @@ static cmd_rec *sqltab_cmd_create(pool *parent_pool, int argc, ...) {
   cmd->pool = cmd_pool;
 
   cmd->argc = argc;
-  cmd->argv = (char **) pcalloc(cmd->pool, argc * sizeof(char *));
+  cmd->argv = pcalloc(cmd->pool, argc * sizeof(void *));
 
   /* Hmmm... */
   cmd->tmp_pool = cmd->pool;
 
   va_start(argp, argc);
-  for (i = 0; i < argc; i++)
+  for (i = 0; i < argc; i++) {
     cmd->argv[i] = va_arg(argp, char *);
+  }
   va_end(argp);
 
   return cmd;
@@ -68,8 +67,9 @@ static char *sqltab_get_name(pool *p, char *name) {
     return name;
   }
 
-  if (strlen(name) == 0)
+  if (strlen(name) == 0) {
     return name;
+  }
 
   cmd = sqltab_cmd_create(p, 1, pr_str_strip(p, name));
 

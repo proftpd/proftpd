@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: cipher.c,v 1.18 2014-03-02 06:07:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -228,7 +226,6 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
     const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
     char *letter, const unsigned char *id, uint32_t id_len) {
-
   EVP_MD_CTX ctx;
   unsigned char *key = NULL;
   size_t key_sz = 0;
@@ -351,20 +348,22 @@ const char *sftp_cipher_get_read_algo(void) {
 
 int sftp_cipher_set_read_algo(const char *algo) {
   unsigned int idx = read_cipher_idx;
+  size_t key_len, discard_len;
 
   if (read_ciphers[idx].key) {
     /* If we have an existing key, it means that we are currently rekeying. */
     idx = get_next_read_index();
   }
 
-  read_ciphers[idx].cipher = sftp_crypto_get_cipher(algo,
-    (size_t *) &(read_ciphers[idx].key_len),
-    &(read_ciphers[idx].discard_len));
-
-  if (read_ciphers[idx].cipher == NULL)
+  read_ciphers[idx].cipher = sftp_crypto_get_cipher(algo, &key_len,
+    &discard_len);
+  if (read_ciphers[idx].cipher == NULL) {
     return -1;
+  }
 
   read_ciphers[idx].algo = algo;
+  read_ciphers[idx].key_len = (uint32_t) key_len;
+  read_ciphers[idx].discard_len = discard_len;
   return 0;
 }
 
@@ -514,20 +513,22 @@ const char *sftp_cipher_get_write_algo(void) {
 
 int sftp_cipher_set_write_algo(const char *algo) {
   unsigned int idx = write_cipher_idx;
+  size_t key_len, discard_len;
 
   if (write_ciphers[idx].key) {
     /* If we have an existing key, it means that we are currently rekeying. */
     idx = get_next_write_index();
   }
 
-  write_ciphers[idx].cipher = sftp_crypto_get_cipher(algo,
-    (size_t *) &(write_ciphers[idx].key_len),
-    &(write_ciphers[idx].discard_len));
-
-  if (write_ciphers[idx].cipher == NULL)
+  write_ciphers[idx].cipher = sftp_crypto_get_cipher(algo, &key_len,
+    &discard_len);
+  if (write_ciphers[idx].cipher == NULL) {
     return -1;
+  }
 
   write_ciphers[idx].algo = algo;
+  write_ciphers[idx].key_len = (uint32_t) key_len;
+  write_ciphers[idx].discard_len = discard_len;
   return 0;
 }
 

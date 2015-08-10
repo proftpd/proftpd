@@ -45,14 +45,15 @@ static cmd_rec *sql_cmd_create(pool *parent_pool, int argc, ...) {
   cmd->pool = cmd_pool;
 
   cmd->argc = argc;
-  cmd->argv = (char **) pcalloc(cmd->pool, argc * sizeof(char *));
+  cmd->argv = pcalloc(cmd->pool, argc * sizeof(void *));
 
   /* Hmmm... */
   cmd->tmp_pool = cmd->pool;
 
   va_start(argp, argc);
-  for (i = 0; i < argc; i++)
+  for (i = 0; i < argc; i++) {
     cmd->argv[i] = va_arg(argp, char *);
+  }
   va_end(argp);
 
   return cmd;

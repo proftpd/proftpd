@@ -537,10 +537,10 @@ MODRET copy_copy(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[2],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[2], strerror(xerrno));
       pr_response_add_err(R_550,
-        _("%s: Illegal character sequence in filename"), cmd->argv[2]);
+        _("%s: Illegal character sequence in filename"), (char *) cmd->argv[2]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -554,10 +554,10 @@ MODRET copy_copy(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[3],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[3], strerror(xerrno));
       pr_response_add_err(R_550,
-        _("%s: Illegal character sequence in filename"), cmd->argv[3]);
+        _("%s: Illegal character sequence in filename"), (char *) cmd->argv[3]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -572,7 +572,8 @@ MODRET copy_copy(cmd_rec *cmd) {
       int xerrno = EPERM;
 
       pr_cmd_set_name(cmd, cmd_name);
-      pr_response_add_err(R_550, "%s: %s", cmd->argv[3], strerror(xerrno));
+      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[3],
+        strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -583,14 +584,16 @@ MODRET copy_copy(cmd_rec *cmd) {
     if (copy_paths(cmd->tmp_pool, from, to) < 0) {
       int xerrno = errno;
 
-      pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(xerrno));
+      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[1],
+        strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
     }
 
-    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[1]);
+    pr_response_add(R_200, _("SITE %s command successful"),
+      (char *) cmd->argv[1]);
     return PR_HANDLED(cmd);
   }
 
@@ -640,8 +643,8 @@ MODRET copy_cpfr(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[i], strerror(xerrno));
       pr_response_add_err(R_550,
         _("%s: Illegal character sequence in filename"), cmd->arg);
 
@@ -749,8 +752,8 @@ MODRET copy_cpto(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[i], strerror(xerrno));
       pr_response_add_err(R_550,
         _("%s: Illegal character sequence in filename"), cmd->arg);
 
@@ -767,7 +770,8 @@ MODRET copy_cpto(cmd_rec *cmd) {
   if (copy_paths(cmd->tmp_pool, from, to) < 0) {
     int xerrno = errno;
 
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(xerrno));
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[1],
+      strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;

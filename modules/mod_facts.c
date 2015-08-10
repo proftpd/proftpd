@@ -71,7 +71,8 @@ static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
   if (pre != NULL &&
       pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) != 0) {
     pr_log_debug(DEBUG2, MOD_FACTS_VERSION
-      ": %s denied by PathAllowFilter on '%s'", cmd->argv[0], cmd->arg);
+      ": %s denied by PathAllowFilter on '%s'", (char *) cmd->argv[0],
+      cmd->arg);
     return -1;
   }
 
@@ -79,7 +80,7 @@ static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
   if (pre != NULL &&
       pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) == 0) {
     pr_log_debug(DEBUG2, MOD_FACTS_VERSION
-      ": %s denied by PathDenyFilter on '%s'", cmd->argv[0], cmd->arg);
+      ": %s denied by PathDenyFilter on '%s'", (char *) cmd->argv[0], cmd->arg);
     return -1;
   }
 #endif
@@ -912,7 +913,7 @@ MODRET facts_mff(cmd_rec *cmd) {
 
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, canon_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -955,7 +956,8 @@ MODRET facts_mff(cmd_rec *cmd) {
       if (ptr2 == NULL) {
         int xerrno = EINVAL;
 
-        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(xerrno));
+        pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[1],
+          strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -978,7 +980,7 @@ MODRET facts_mff(cmd_rec *cmd) {
       if (ptr2) {
         pr_log_debug(DEBUG7, MOD_FACTS_VERSION
           ": %s: ignoring unsupported timestamp precision in '%s'",
-          cmd->argv[0], timestamp);
+          (char *) cmd->argv[0], timestamp);
         *ptr2 = '\0';
       }
 
@@ -1003,7 +1005,8 @@ MODRET facts_mff(cmd_rec *cmd) {
         int xerrno = EINVAL;
 
         *ptr = ';';
-        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(xerrno));
+        pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[1],
+          strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -1033,7 +1036,8 @@ MODRET facts_mff(cmd_rec *cmd) {
         int xerrno = errno;
 
         *ptr = ';';
-        pr_response_add_err(R_501, "%s: %s", cmd->argv[1], strerror(xerrno));
+        pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[1],
+          strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -1059,7 +1063,7 @@ MODRET facts_mff(cmd_rec *cmd) {
        */
       pr_log_debug(DEBUG5, MOD_FACTS_VERSION
         ": %s: fact '%s' unsupported for modification, denying request",
-        cmd->argv[0], facts);
+        (char *) cmd->argv[0], facts);
       pr_response_add_err(R_504, _("Cannot modify fact '%s'"), facts);
 
       *ptr = ';';
@@ -1078,7 +1082,7 @@ MODRET facts_mff(cmd_rec *cmd) {
    * were successfully modified are to be included in the response, for
    * possible client parsing.  This means that the list is NOT localisable.
    */
-  pr_response_add(R_213, "%s %s", cmd->argv[1], path);
+  pr_response_add(R_213, "%s %s", (char *) cmd->argv[1], path);
   return PR_HANDLED(cmd);
 }
 
@@ -1140,7 +1144,7 @@ MODRET facts_mfmt(cmd_rec *cmd) {
 
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, canon_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -1171,8 +1175,8 @@ MODRET facts_mfmt(cmd_rec *cmd) {
   ptr = strchr(timestamp, '.');
   if (ptr) {
     pr_log_debug(DEBUG7, MOD_FACTS_VERSION
-      ": %s: ignoring unsupported timestamp precision in '%s'", cmd->argv[0],
-      timestamp);
+      ": %s: ignoring unsupported timestamp precision in '%s'",
+      (char *) cmd->argv[0], timestamp);
     *ptr = '\0';
   }
 
@@ -1244,7 +1248,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path, NULL)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -1266,7 +1270,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     int xerrno = errno;
 
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": unable to stat '%s' (%s), "
-      "denying %s", decoded_path, strerror(xerrno), cmd->argv[0]);
+      "denying %s", decoded_path, strerror(xerrno), (char *) cmd->argv[0]);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
 
@@ -1500,7 +1504,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path,
       &hidden)) {
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_550, _("Unable to handle command"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -1633,8 +1637,9 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
 
   /* Convert underscores to spaces in the method name, for prettier logging. */
   for (i = 0; method[i]; i++) {
-    if (method[i] == '_')
+    if (method[i] == '_') {
       method[i] = ' ';
+    }
   }
 
   if (cmd->argc > 2) {

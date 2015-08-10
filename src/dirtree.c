@@ -1108,12 +1108,13 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
     pr_signals_handle();
 
     pr_trace_msg("filter", 8,
-      "comparing %s argument '%s' against %s pattern '%s'", cmd->argv[0],
-      cmd->arg, name, pr_regexp_get_pattern(pre));
+      "comparing %s argument '%s' against %s pattern '%s'",
+      (char *) cmd->argv[0], cmd->arg, name, pr_regexp_get_pattern(pre));
     matched = pr_regexp_exec(pre, cmd->arg, 0, NULL, 0, 0, 0);
     pr_trace_msg("filter", 8,
       "comparing %s argument '%s' against %s pattern '%s' returned %d",
-      cmd->argv[0], cmd->arg, name, pr_regexp_get_pattern(pre), matched);
+      (char *) cmd->argv[0], cmd->arg, name, pr_regexp_get_pattern(pre),
+      matched);
 
     if (matched == 0) {
       res = TRUE;
@@ -1124,8 +1125,8 @@ static int check_filter_access(xaset_t *set, const char *name, cmd_rec *cmd) {
   }
 
   pr_trace_msg("filter", 8,
-    "comparing %s argument '%s' against %s patterns returned %d", cmd->argv[0],
-    cmd->arg, name, res);
+    "comparing %s argument '%s' against %s patterns returned %d",
+    (char *) cmd->argv[0], cmd->arg, name, res);
   return res;
 #else
   return 0;

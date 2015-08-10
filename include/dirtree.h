@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Server, command and associated prototypes.
- * $Id: dirtree.h,v 1.88 2013-07-16 19:06:13 castaglia Exp $
- */
+/* Server, command and associated prototypes. */
 
 #ifndef PR_DIRTREE_H
 #define PR_DIRTREE_H
@@ -117,7 +115,8 @@ typedef struct cmd_struc {
   int argc;
 
   char *arg;			/* entire argument (excluding command) */
-  char **argv;
+  void **argv;
+
   char *group;			/* Command grouping */
 
   int cmd_class;		/* The command class */

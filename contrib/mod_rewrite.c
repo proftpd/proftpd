@@ -421,16 +421,14 @@ static char *rewrite_argsep(char **arg) {
 static char *rewrite_get_cmd_name(cmd_rec *cmd) {
   if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) != 0) {
     return cmd->argv[0];
-
-  } else {
-    if (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
-        strcasecmp(cmd->argv[1], "CHMOD") == 0) {
-      return pstrcat(cmd->pool, cmd->argv[0], " ", cmd->argv[1], NULL);
-
-    } else {
-      return cmd->argv[0];
-    }
   }
+
+  if (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+      strcasecmp(cmd->argv[1], "CHMOD") == 0) {
+    return pstrcat(cmd->pool, cmd->argv[0], " ", cmd->argv[1], NULL);
+  }
+
+  return cmd->argv[0];
 }
 
 static unsigned int rewrite_parse_cond_flags(pool *p, const char *flags_str) {
@@ -2079,84 +2077,99 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
   unsigned char negated = FALSE;
   rewrite_cond_op_t cond_op = 0;
   int regex_flags = REG_EXTENDED, res = -1;
+  char *pattern;
 
-  if (cmd->argc-1 < 2 || cmd->argc-1 > 3)
+  if (cmd->argc-1 < 2 ||
+      cmd->argc-1 > 3) {
     CONF_ERROR(cmd, "bad number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   /* The following variables are not allowed in RewriteConditions:
    *  %P (PID), and %t (Unix epoch).  Check for them.
    */
-  if (strstr(cmd->argv[2], "%P") || strstr(cmd->argv[2], "%t"))
+  if (strstr(cmd->argv[2], "%P") != NULL ||
+      strstr(cmd->argv[2], "%t") != NULL) {
     CONF_ERROR(cmd, "illegal RewriteCondition variable used");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   /* Make sure that, if present, the flags parameter is correctly formatted. */
   if (cmd->argc-1 == 3) {
-    if (cmd->argv[3][0] != '[' || cmd->argv[3][strlen(cmd->argv[3])-1] != ']')
+    char *flags_str;
+
+    flags_str = cmd->argv[3];
+
+    if (flags_str[0] != '[' ||
+        flags_str[strlen(flags_str)-1] != ']') {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": badly formatted flags parameter: '", cmd->argv[3], "'", NULL));
+        ": badly formatted flags parameter: '", flags_str, "'", NULL));
+    }
 
     /* We need to parse the flags parameter here, to see if any flags which
      * affect the compilation of the regex (e.g. NC) are present.
      */
-    cond_flags = rewrite_parse_cond_flags(cmd->tmp_pool, cmd->argv[3]);
+    cond_flags = rewrite_parse_cond_flags(cmd->tmp_pool, flags_str);
     if (cond_flags == 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": unknown RewriteCondition flags '", cmd->argv[3], "'", NULL));
+        ": unknown RewriteCondition flags '", flags_str, "'", NULL));
     }
 
-    if (cond_flags & REWRITE_COND_FLAG_NOCASE)
+    if (cond_flags & REWRITE_COND_FLAG_NOCASE) {
       regex_flags |= REG_ICASE;
+    }
   }
 
-  if (!rewrite_conds) {
-    if (rewrite_cond_pool)
+  if (rewrite_conds == NULL) {
+    if (rewrite_cond_pool != NULL) {
       destroy_pool(rewrite_cond_pool);
+    }
 
     rewrite_cond_pool = make_sub_pool(rewrite_pool);
     rewrite_conds = make_array(rewrite_cond_pool, 0, sizeof(config_rec *));
   }
 
   /* Check for a leading '!' negation prefix to the regex pattern */
-  if (*cmd->argv[2] == '!') {
-    cmd->argv[2]++;
+  pattern = cmd->argv[2];
+  if (pattern[0] == '!') {
+    pattern++;
     negated = TRUE;
   }
 
   /* Check the next character in the given pattern.  It may be a lexical
    * or a file test pattern...
    */
-  if (*cmd->argv[2] == '>') {
+  if (*pattern == '>') {
     cond_op = REWRITE_COND_OP_LEX_LT;
-    cond_data = pstrdup(rewrite_pool, ++cmd->argv[2]);
+    cond_data = pstrdup(rewrite_pool, ++pattern);
 
-  } else if (*cmd->argv[2] == '<') {
+  } else if (*pattern == '<') {
     cond_op = REWRITE_COND_OP_LEX_GT;
-    cond_data = pstrdup(rewrite_pool, ++cmd->argv[2]);
+    cond_data = pstrdup(rewrite_pool, ++pattern);
 
-  } else if (*cmd->argv[2] == '=') {
+  } else if (*pattern == '=') {
     cond_op = REWRITE_COND_OP_LEX_EQ;
-    cond_data = pstrdup(rewrite_pool, ++cmd->argv[2]);
+    cond_data = pstrdup(rewrite_pool, ++pattern);
 
-  } else if (strncmp(cmd->argv[2], "-d", 3) == 0) {
+  } else if (strncmp(pattern, "-d", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_DIR;
 
-  } else if (strncmp(cmd->argv[2], "-f", 3) == 0) {
+  } else if (strncmp(pattern, "-f", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_FILE;
 
-  } else if (strncmp(cmd->argv[2], "-l", 3) == 0) {
+  } else if (strncmp(pattern, "-l", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_SYMLINK;
 
-  } else if (strncmp(cmd->argv[2], "-s", 3) == 0) {
+  } else if (strncmp(pattern, "-s", 3) == 0) {
     cond_op = REWRITE_COND_OP_TEST_SIZE;
 
   } else {
     cond_op = REWRITE_COND_OP_REGEX;
     cond_data = pr_regexp_alloc(&rewrite_module);
 
-    res = pr_regexp_compile(cond_data, cmd->argv[2], regex_flags);
+    res = pr_regexp_compile(cond_data, pattern, regex_flags);
     if (res != 0) {
       char errstr[200] = {'\0'};
 
@@ -2164,7 +2177,7 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
       regfree(cond_data);
 
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
-        cmd->argv[2], "' regex: ", errstr, NULL));
+        pattern, "' regex: ", errstr, NULL));
     }
   }
 
@@ -2258,15 +2271,18 @@ MODRET set_rewriteengine(cmd_rec *cmd) {
 
 /* usage: RewriteLock file */
 MODRET set_rewritelock(cmd_rec *cmd) {
+  char *path;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   /* Check for non-absolute paths */
-  if (*cmd->argv[1] != '/')
+  path = cmd->argv[1];
+  if (*path != '/') {
     CONF_ERROR(cmd, "absolute path required");
+  }
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
+  add_config_param_str(cmd->argv[0], 1, path);
   return PR_HANDLED(cmd);
 }
 
@@ -2292,16 +2308,19 @@ MODRET set_rewritemaxreplace(cmd_rec *cmd) {
 
 /* usage: RewriteLog file|"none" */
 MODRET set_rewritelog(cmd_rec *cmd) {
+  char *path;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   /* Check for non-absolute paths */
-  if (strcasecmp(cmd->argv[1], "none") != 0 && *(cmd->argv[1]) != '/')
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0], ": absolute path "
-      "required", NULL));
+  path = cmd->argv[1];
+  if (strcasecmp(path, "none") != 0 &&
+      *path != '/') {
+    CONF_ERROR(cmd, "absolute path required");
+  }
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
+  add_config_param_str(cmd->argv[0], 1, path);
   return PR_HANDLED(cmd);
 }
 
@@ -2380,17 +2399,18 @@ MODRET set_rewritemap(cmd_rec *cmd) {
     txtmap = pcalloc(txt_pool, sizeof(rewrite_map_txt_t));
 
     /* Make sure the given path is absolute. */
-    if (*mapsrc != '/')
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0],
+    if (*mapsrc != '/') {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, (char *) cmd->argv[0],
         ": txt: absolute path required", NULL));
+    }
 
     txtmap->txt_pool = txt_pool;
     txtmap->txt_path = pstrdup(txt_pool, mapsrc);    
 
     if (!rewrite_parse_map_txt(txtmap)) {
-      pr_log_debug(DEBUG3, "%s: error parsing map file", cmd->argv[0]);
+      pr_log_debug(DEBUG3, "%s: error parsing map file", (char *) cmd->argv[0]);
       pr_log_debug(DEBUG3, "%s: check the RewriteLog for details",
-        cmd->argv[0]);
+        (char *) cmd->argv[0]);
     }
 
     map = (void *) txtmap;
@@ -2418,36 +2438,46 @@ MODRET set_rewriterule(cmd_rec *cmd) {
   unsigned char negated = FALSE;
   int regex_flags = REG_EXTENDED, res = -1;
   register unsigned int i = 0;
+  char *pattern;
 
-  if (cmd->argc-1 < 2 || cmd->argc-1 > 3)
+  if (cmd->argc-1 < 2 ||
+      cmd->argc-1 > 3) {
     CONF_ERROR(cmd, "bad number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   /* Make sure that, if present, the flags parameter is correctly formatted. */
   if (cmd->argc-1 == 3) {
-    if (cmd->argv[3][0] != '[' || cmd->argv[3][strlen(cmd->argv[3])-1] != ']')
+    char *flags_str;
+
+    flags_str = cmd->argv[3];
+    if (flags_str[0] != '[' ||
+        flags_str[strlen(flags_str)-1] != ']') {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": badly formatted flags parameter: '", cmd->argv[3], "'", NULL));
+        ": badly formatted flags parameter: '", flags_str, "'", NULL));
+    }
 
     /* We need to parse the flags parameter here, to see if any flags which
      * affect the compilation of the regex (e.g. NC) are present.
      */
-    rule_flags = rewrite_parse_rule_flags(cmd->tmp_pool, cmd->argv[3]);
+    rule_flags = rewrite_parse_rule_flags(cmd->tmp_pool, flags_str);
 
-    if (rule_flags & REWRITE_RULE_FLAG_NOCASE)
+    if (rule_flags & REWRITE_RULE_FLAG_NOCASE) {
       regex_flags |= REG_ICASE;
+    }
   }
 
   pre = pr_regexp_alloc(&rewrite_module);
 
   /* Check for a leading '!' prefix, signifying regex negation */
-  if (*cmd->argv[1] == '!') {
+  pattern = cmd->argv[1];
+  if (*pattern == '!') {
     negated = TRUE;
-    cmd->argv[1]++;
+    pattern++;
   }
 
-  res = pr_regexp_compile_posix(pre, cmd->argv[1], regex_flags);
+  res = pr_regexp_compile_posix(pre, pattern, regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
@@ -2455,7 +2485,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     pr_regexp_free(NULL, pre);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
-      cmd->argv[1], "' regex: ", errstr, NULL));
+      pattern, "' regex: ", errstr, NULL));
   }
 
   c = add_config_param(cmd->argv[0], 6, pre, NULL, NULL, NULL, NULL, NULL);
@@ -2481,8 +2511,9 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     arg_conds = (config_rec **) c->argv[3];
     conf_conds = (config_rec **) rewrite_conds->elts;
 
-    for (i = 0; i <= rewrite_conds->nelts; i++)
+    for (i = 0; i <= rewrite_conds->nelts; i++) {
       arg_conds[i] = conf_conds[i];
+    }
 
     arg_conds[rewrite_conds->nelts] = NULL;
 
@@ -2712,8 +2743,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         /* NULL-terminate the list. */
         *((char **) push_array(list)) = NULL;
 
-        cmd->argv = (char **) list->elts;
-
+        cmd->argv = list->elts;
         pr_cmd_clear_cache(cmd);
 
       } else {

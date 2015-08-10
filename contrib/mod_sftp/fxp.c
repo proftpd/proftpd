@@ -4120,7 +4120,8 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "COPY of '%s' to '%s' blocked by '%s' handler", src, dst, cmd->argv[0]);
+      "COPY of '%s' to '%s' blocked by '%s' handler", src, dst,
+      (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -4630,7 +4631,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME from '%s' blocked by '%s' handler", src, cmd2->argv[0]);
+      "RENAME from '%s' blocked by '%s' handler", src, (char *) cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -4696,7 +4697,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME to '%s' blocked by '%s' handler", dst, cmd3->argv[0]);
+      "RENAME to '%s' blocked by '%s' handler", dst, (char *) cmd3->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -5431,8 +5432,8 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -5891,8 +5892,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     fxh = fxp_handle_get(handle);
     if (fxh == NULL) {
       pr_trace_msg(trace_channel, 17,
-        "%s: unable to find handle for name '%s': %s", cmd->argv[0], handle,
-        strerror(errno));
+        "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+        handle, strerror(errno));
 
       status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -5915,7 +5916,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       errno = EISDIR;
 
       pr_trace_msg(trace_channel, 17,
-        "%s: handle '%s': %s", cmd->argv[0], handle, strerror(errno));
+        "%s: handle '%s': %s", (char *) cmd->argv[0], handle, strerror(errno));
 
       status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -6011,8 +6012,8 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     fxh = fxp_handle_get(handle);
     if (fxh == NULL) {
       pr_trace_msg(trace_channel, 17,
-        "%s: unable to find handle for name '%s': %s", cmd->argv[0], handle,
-        strerror(errno));
+        "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+        handle, strerror(errno));
 
       status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -6100,8 +6101,8 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -6130,7 +6131,8 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "FSETSTAT of '%s' blocked by '%s' handler", cmd->arg, cmd->argv[0]);
+      "FSETSTAT of '%s' blocked by '%s' handler", cmd->arg,
+      (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -6192,7 +6194,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "FSETSTAT of '%s' blocked by <Limit %s> configuration", path,
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
 
     pr_cmd_set_name(cmd, cmd_name);
 
@@ -6341,8 +6343,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     uint32_t status_code;
 
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -6673,7 +6675,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "LINK of '%s' to '%s' blocked by <Limit %s> configuration",
-      target_path, link_path, cmd->argv[0]);
+      target_path, link_path, (char *) cmd->argv[0]);
 
     pr_cmd_set_name(cmd, cmd_name);
 
@@ -6774,8 +6776,8 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -7045,7 +7047,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "LSTAT of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "LSTAT of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -7242,7 +7244,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "MKDIR of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "MKDIR of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -7267,7 +7269,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "MKDIR of '%s' blocked by '%s' handler", path, cmd2->argv[0]);
+      "MKDIR of '%s' blocked by '%s' handler", path, (char *) cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -7329,7 +7331,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "MKDIR of '%s' blocked by <Limit %s> configuration", path, cmd->argv[0]);
+      "MKDIR of '%s' blocked by <Limit %s> configuration", path,
+      (char *) cmd->argv[0]);
 
     pr_cmd_set_name(cmd, cmd_name);
 
@@ -7767,7 +7770,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       /* One of the PRE_CMD phase handlers rejected the command. */
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "OPEN command for '%s' blocked by '%s' handler", path, cmd2->argv[0]);
+        "OPEN command for '%s' blocked by '%s' handler", path,
+        (char *) cmd2->argv[0]);
 
       /* Hopefully the command handlers set an appropriate errno value.  If
        * they didn't, however, we need to be prepared with a fallback.
@@ -8178,7 +8182,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "OPENDIR of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "OPENDIR of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -8257,7 +8261,8 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 
     /* One of the PRE_CMD phase handlers rejected the command. */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "OPENDIR command for '%s' blocked by '%s' handler", path, cmd2->argv[0]);
+      "OPENDIR command for '%s' blocked by '%s' handler", path,
+      (char *) cmd2->argv[0]);
 
     /* Hopefully the command handlers set an appropriate errno value.  If
      * they didn't, however, we need to be prepared with a fallback.
@@ -8534,8 +8539,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     uint32_t status_code;
 
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -8866,8 +8871,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     uint32_t status_code;
 
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -8943,7 +8948,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
  
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "READDIR of '%s' blocked by <Limit %s> configuration", fxh->dir,
-      cmd->argv[0]);
+      (char *) cmd->argv[0]);
 
     pr_cmd_set_name(cmd, cmd_name);
 
@@ -9205,7 +9210,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "READLINK of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "READLINK of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -9259,7 +9264,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "READLINK of '%s' (resolved to '%s') blocked by <Limit %s> configuration",
-      path, resolved_path, cmd->argv[0]);
+      path, resolved_path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -9453,7 +9458,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "REALPATH of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "REALPATH of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     if (fxp_session->client_version <= 5 ||
         (fxp_session->client_version >= 6 &&
@@ -9760,7 +9765,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "REMOVE of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "REMOVE of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -9785,7 +9790,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "DELE of '%s' blocked by '%s' handler", path, cmd2->argv[0]);
+      "DELE of '%s' blocked by '%s' handler", path, (char *) cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -9994,7 +9999,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
       'b', 'd', 'r', session.user, 'c', "_");
 
-    pr_response_add(R_250, "%s command successful", cmd2->argv[0]);
+    pr_response_add(R_250, "%s command successful", (char *) cmd2->argv[0]);
     pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
     pr_response_clear(&resp_list);
@@ -10101,7 +10106,8 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME from '%s' blocked by '%s' handler", old_path, cmd2->argv[0]);
+      "RENAME from '%s' blocked by '%s' handler", old_path,
+      (char *) cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -10165,7 +10171,8 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RENAME to '%s' blocked by '%s' handler", new_path, cmd3->argv[0]);
+      "RENAME to '%s' blocked by '%s' handler", new_path,
+      (char *) cmd3->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -10503,7 +10510,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RMDIR of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "RMDIR of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -10550,7 +10557,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "RMDIR of '%s' blocked by '%s' handler", path, cmd2->argv[0]);
+      "RMDIR of '%s' blocked by '%s' handler", path, (char *) cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -10768,7 +10775,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "SETSTAT of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "SETSTAT of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -10957,7 +10964,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "STAT of '%s' blocked by '%s' handler", path, cmd->argv[0]);
+      "STAT of '%s' blocked by '%s' handler", path, (char *) cmd->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -11232,7 +11239,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "SYMLINK of '%s' to '%s' blocked by '%s' handler", target_path, link_path,
-      cmd2->argv[0]);
+      (char *) cmd2->argv[0]);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
@@ -11386,8 +11393,8 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 
@@ -11739,8 +11746,8 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
     pr_trace_msg(trace_channel, 17,
-      "%s: unable to find handle for name '%s': %s", cmd->argv[0], name,
-      strerror(errno));
+      "%s: unable to find handle for name '%s': %s", (char *) cmd->argv[0],
+      name, strerror(errno));
 
     status_code = SSH2_FX_INVALID_HANDLE;
 

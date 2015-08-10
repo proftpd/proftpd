@@ -1256,11 +1256,11 @@ MODRET exec_pre_cmd(cmd_rec *cmd) {
     if (exec_match_cmd(cmd, c->argv[1])) {
       int res = exec_ssystem(cmd, c, EXEC_FL_NO_SEND);
       if (res != 0) {
-        exec_log("%s ExecBeforeCommand '%s' failed: %s", cmd->argv[0],
+        exec_log("%s ExecBeforeCommand '%s' failed: %s", (char *) cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
 
       } else {
-        exec_log("%s ExecBeforeCommand '%s' succeeded", cmd->argv[0],
+        exec_log("%s ExecBeforeCommand '%s' succeeded", (char *) cmd->argv[0],
           (const char *) c->argv[2]);
       }
     }
@@ -1319,11 +1319,11 @@ MODRET exec_post_cmd(cmd_rec *cmd) {
     if (exec_match_cmd(cmd, c->argv[1])) {
       int res = exec_ssystem(cmd, c, 0);
       if (res != 0) {
-        exec_log("%s ExecOnCommand '%s' failed: %s", cmd->argv[0],
+        exec_log("%s ExecOnCommand '%s' failed: %s", (char *) cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
 
       } else {
-        exec_log("%s ExecOnCommand '%s' succeeded", cmd->argv[0],
+        exec_log("%s ExecOnCommand '%s' succeeded", (char *) cmd->argv[0],
           (const char *) c->argv[2]);
       }
     }
@@ -1384,11 +1384,11 @@ MODRET exec_post_cmd_err(cmd_rec *cmd) {
 
       res = exec_ssystem(cmd, c, 0);
       if (res != 0) {
-        exec_log("%s ExecOnError '%s' failed: %s", cmd->argv[0],
+        exec_log("%s ExecOnError '%s' failed: %s", (char *) cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
 
       } else {
-        exec_log("%s ExecOnError '%s' succeeded", cmd->argv[0],
+        exec_log("%s ExecOnError '%s' succeeded", (char *) cmd->argv[0],
           (const char *) c->argv[2]);
       }
     }
@@ -1406,27 +1406,32 @@ MODRET exec_post_cmd_err(cmd_rec *cmd) {
 MODRET set_execbeforecommand(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
+  char *path;
 
-  if (cmd->argc-1 < 2)
+  if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR);
 
-  if (*cmd->argv[2] != '/')
+  path = cmd->argv[2];
+  if (*path != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
+  }
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = cmd->argc + 1;
-  c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1));
+  c->argv = pcalloc(c->pool, sizeof(void *) * (c->argc + 1));
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = exec_nexecs++;
 
   exec_parse_cmds(c, cmd->argv[1]);
 
-  for (i = 2; i < cmd->argc; i++)
+  for (i = 2; i < cmd->argc; i++) {
     c->argv[i] = pstrdup(c->pool, cmd->argv[i]);
+  }
 
   c->flags |= CF_MERGEDOWN_MULTI;
 
@@ -1480,17 +1485,24 @@ MODRET set_execengine(cmd_rec *cmd) {
 MODRET set_execenviron(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
+  char *key;
 
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = add_config_param_str(cmd->argv[0], 2, NULL, cmd->argv[2]);
 
-  /* Make sure the given environment variable name is uppercased. */
-  for (i = 0; i < strlen(cmd->argv[1]); i++)
-    (cmd->argv[1])[i] = toupper((cmd->argv[1])[i]);
-  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  /* Make sure the given environment variable name is uppercased.
+   * NOTE: Are there cases where this SHOULD NOT happen?  Why should
+   * environment variable names always be uppercased?
+   */
+  key = cmd->argv[1];
 
+  for (i = 0; i < strlen(key); i++) {
+    key[i] = toupper(key[i]);
+  }
+
+  c->argv[0] = pstrdup(c->pool, key);
   return PR_HANDLED(cmd);
 }
 
@@ -1507,30 +1519,34 @@ MODRET set_execlog(cmd_rec *cmd) {
 MODRET set_execoncommand(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
+  char *path;
 
-  if (cmd->argc-1 < 2)
+  if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR);
 
-  if (*cmd->argv[2] != '/')
+  path = cmd->argv[2];
+  if (*path != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
+  }
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = cmd->argc + 1;
-  c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1));
+  c->argv = pcalloc(c->pool, sizeof(void *) * (c->argc + 1));
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = exec_nexecs++;
 
   exec_parse_cmds(c, cmd->argv[1]);
 
-  for (i = 2; i < cmd->argc; i++)
+  for (i = 2; i < cmd->argc; i++) {
     c->argv[i] = pstrdup(c->pool, cmd->argv[i]);
+  }
 
   c->flags |= CF_MERGEDOWN_MULTI;
-
   return PR_HANDLED(cmd);
 }
 
@@ -1538,20 +1554,24 @@ MODRET set_execoncommand(cmd_rec *cmd) {
 MODRET set_execonconnect(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
+  char *path;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*cmd->argv[1] != '/')
+  path = cmd->argv[1];
+  if (*path != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
+  }
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = cmd->argc + 1;
 
   /* Add one for the terminating NULL. */
-  c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1)); 
+  c->argv = pcalloc(c->pool, sizeof(void *) * (c->argc + 1)); 
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = exec_nexecs++;
@@ -1567,30 +1587,34 @@ MODRET set_execonconnect(cmd_rec *cmd) {
 MODRET set_execonerror(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
+  char *path;
 
-  if (cmd->argc-1 < 2)
+  if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR); 
 
-  if (*cmd->argv[2] != '/')
+  path = cmd->argv[2];
+  if (*path != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
+  }
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = cmd->argc + 1;
-  c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1));
+  c->argv = pcalloc(c->pool, sizeof(void *) * (c->argc + 1));
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = exec_nexecs++;
 
   exec_parse_cmds(c, cmd->argv[1]);
   
-  for (i = 2; i < cmd->argc; i++) 
+  for (i = 2; i < cmd->argc; i++) {
     c->argv[i] = pstrdup(c->pool, cmd->argv[i]);
+  }
 
   c->flags |= CF_MERGEDOWN_MULTI;
-
   return PR_HANDLED(cmd);
 }
 
@@ -1598,24 +1622,33 @@ MODRET set_execonerror(cmd_rec *cmd) {
 MODRET set_execonevent(cmd_rec *cmd) {
   register unsigned int i;
   unsigned int flags = EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND;
+  char *event_name, *path;
+  size_t event_namelen;
   config_rec *c;
   struct exec_event_data *eed;
 
-  if (cmd->argc-1 < 2)
+  if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (cmd->argv[1][strlen(cmd->argv[1])-1] == '*') {
-    flags |= EXEC_FL_RUN_AS_ROOT;
-    cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
+  event_name = cmd->argv[1];
+  event_namelen = strlen(event_name);
 
-  } else if (cmd->argv[1][strlen(cmd->argv[1])-1] == '~') {
+  if (event_name[event_namelen-1] == '*') {
+    flags |= EXEC_FL_RUN_AS_ROOT;
+    event_name[event_namelen-1] = '\0';
+    event_namelen--;
+
+  } else if (event_name[event_namelen-1] == '~') {
     flags |= EXEC_FL_RUN_AS_USER;
-    cmd->argv[1][strlen(cmd->argv[1])-1] = '\0';
+    event_name[event_namelen-1] = '\0';
+    event_namelen--;
   }
 
-  if (*cmd->argv[2] != '/') {
+  path = cmd->argv[2];
+  if (*path != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
   }
 
@@ -1623,7 +1656,7 @@ MODRET set_execonevent(cmd_rec *cmd) {
   c->pool = make_sub_pool(cmd->server->pool);
   pr_pool_tag(c->pool, cmd->argv[0]);
   c->argc = cmd->argc + 1;
-  c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1));
+  c->argv = pcalloc(c->pool, sizeof(void *) * (c->argc + 1));
 
   /* Unused for event config_recs. */
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
@@ -1635,7 +1668,7 @@ MODRET set_execonevent(cmd_rec *cmd) {
 
   eed = pcalloc(c->pool, sizeof(struct exec_event_data));
   eed->flags = flags;
-  eed->event = pstrdup(c->pool, cmd->argv[1]);
+  eed->event = pstrdup(c->pool, event_name);
   eed->c = c;
 
   if (strncasecmp(eed->event, "MaxConnectionRate", 18) == 0) {
@@ -1657,26 +1690,31 @@ MODRET set_execonevent(cmd_rec *cmd) {
 MODRET set_execonexit(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
+  char *path;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*cmd->argv[1] != '/')
+  path = cmd->argv[1];
+  if (*path != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
+  }
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = cmd->argc + 1;
 
   /* Add one for the terminating NULL. */
-  c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1));
+  c->argv = pcalloc(c->pool, sizeof(void *) * (c->argc + 1));
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = exec_nexecs++;
 
-  for (i = 1; i < cmd->argc; i++)
+  for (i = 1; i < cmd->argc; i++) {
     c->argv[i+1] = pstrdup(c->pool, cmd->argv[i]);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1685,26 +1723,31 @@ MODRET set_execonexit(cmd_rec *cmd) {
 MODRET set_execonrestart(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
+  char *path;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (*cmd->argv[1] != '/')
+  path = cmd->argv[1];
+  if (*path != '/') {
     CONF_ERROR(cmd, "path to program must be a full path");
+  }
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = cmd->argc + 1;
 
   /* Add one for the terminating NULL. */
-  c->argv = pcalloc(c->pool, sizeof(char *) * (c->argc + 1));
+  c->argv = pcalloc(c->pool, sizeof(void *) * (c->argc + 1));
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = exec_nexecs++;
 
-  for (i = 1; i < cmd->argc; i++) 
+  for (i = 1; i < cmd->argc; i++) {
     c->argv[i+1] = pstrdup(c->pool, cmd->argv[i]);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1715,8 +1758,9 @@ MODRET set_execoptions(cmd_rec *cmd) {
   register unsigned int i;
   unsigned int opts = 0U;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -1737,7 +1781,7 @@ MODRET set_execoptions(cmd_rec *cmd) {
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown ExecOption: '",
-        cmd->argv[i], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
   }
 

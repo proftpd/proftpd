@@ -88,10 +88,11 @@ MODRET site_chgrp(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[i], strerror(xerrno));
       pr_response_add_err(R_550,
-        _("SITE %s: Illegal character sequence in command"), cmd->argv[1]);
+        _("SITE %s: Illegal character sequence in command"),
+        (char *) cmd->argv[1]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -105,8 +106,8 @@ MODRET site_chgrp(cmd_rec *cmd) {
   pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
   if (pre != NULL &&
       pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-      arg);
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+      (char *) cmd->argv[0], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -117,8 +118,8 @@ MODRET site_chgrp(cmd_rec *cmd) {
   pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
   if (pre != NULL &&
       pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-      arg);
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+      (char *) cmd->argv[0], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -151,7 +152,8 @@ MODRET site_chgrp(cmd_rec *cmd) {
       int xerrno = EINVAL;
 
       pr_log_debug(DEBUG9,
-        "SITE CHGRP: Unable to resolve group name '%s' to GID", cmd->argv[1]);
+        "SITE CHGRP: Unable to resolve group name '%s' to GID",
+        (char *) cmd->argv[1]);
       pr_response_add_err(R_550, "%s: %s", arg, strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
@@ -165,7 +167,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-      "error chown'ing '%s' to GID %s: %s", cmd->argv[0], session.user,
+      "error chown'ing '%s' to GID %s: %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), path,
       pr_gid2str(cmd->tmp_pool, gid), strerror(xerrno));
@@ -175,18 +177,17 @@ MODRET site_chgrp(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
-
-  } else {
-    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[0]);
   }
 
+  pr_response_add(R_200, _("SITE %s command successful"),
+    (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
 MODRET site_chmod(cmd_rec *cmd) {
   int res;
   mode_t mode = 0;
-  char *dir, *endp, *tmp, *arg = "";
+  char *dir, *endp, *mode_str, *tmp, *arg = "";
   register unsigned int i = 0;
 #ifdef PR_USE_REGEX
   pr_regex_t *pre;
@@ -209,10 +210,11 @@ MODRET site_chmod(cmd_rec *cmd) {
     if (decoded_path == NULL) {
       int xerrno = errno;
 
-      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->argv[i],
-        strerror(xerrno));
+      pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s",
+        (char *) cmd->argv[i], strerror(xerrno));
       pr_response_add_err(R_550,
-        _("SITE %s: Illegal character sequence in command"), cmd->argv[1]);
+        _("SITE %s: Illegal character sequence in command"),
+        (char *) cmd->argv[1]);
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -226,8 +228,8 @@ MODRET site_chmod(cmd_rec *cmd) {
   pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
   if (pre != NULL &&
       pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->argv[1], arg);
+    pr_log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter",
+      (char *) cmd->argv[0], (char *) cmd->argv[1], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -238,8 +240,8 @@ MODRET site_chmod(cmd_rec *cmd) {
   pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
   if (pre != NULL &&
       pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->argv[1], arg);
+    pr_log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter",
+      (char *) cmd->argv[0], (char *) cmd->argv[1], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -263,18 +265,18 @@ MODRET site_chmod(cmd_rec *cmd) {
    * This will fail if the chmod is a symbolic, but takes care of the
    * case where an octal number is sent without the leading '0'.
    */
-
-  if (cmd->argv[1][0] != '0') {
-    tmp = pstrcat(cmd->tmp_pool, "0", cmd->argv[1], NULL);
+  mode_str = cmd->argv[1];
+  if (mode_str[0] != '0') {
+    tmp = pstrcat(cmd->tmp_pool, "0", mode_str, NULL);
 
   } else {
-    tmp = cmd->argv[1];
+    tmp = mode_str;
   }
 
-  mode = strtol(tmp,&endp,0);
+  mode = strtol(tmp, &endp, 0);
   if (endp && *endp) {
     /* It's not an absolute number, try symbolic */
-    char *cp = cmd->argv[1];
+    char *cp = mode_str;
     int mask = 0, mode_op = 0, curr_mode = 0, curr_umask = umask(0);
     int invalid = 0;
     char *who, *how, *what;
@@ -442,7 +444,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     }
 
     if (invalid) {
-      pr_response_add_err(R_550, _("'%s': invalid mode"), cmd->argv[1]);
+      pr_response_add_err(R_550, _("'%s': invalid mode"), (char *) cmd->argv[1]);
 
       pr_cmd_set_errno(cmd, EINVAL);
       errno = EINVAL;
@@ -455,7 +457,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-      "error chmod'ing '%s' to %04o: %s", cmd->argv[0], session.user,
+      "error chmod'ing '%s' to %04o: %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), dir, (unsigned int) mode,
       strerror(xerrno));
@@ -465,11 +467,10 @@ MODRET site_chmod(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
-
-  } else {
-    pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[0]);
   }
 
+  pr_response_add(R_200, _("SITE %s command successful"),
+    (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -488,28 +489,32 @@ MODRET site_help(cmd_rec *cmd) {
         strcasecmp(cmd->argv[1], "SITE") == 0)))) {
 
     for (i = 0; _help[i].cmd; i++) {
-      if (_help[i].implemented)
+      if (_help[i].implemented) {
         pr_response_add(i != 0 ? R_DUP : R_214, "%s", _help[i].cmd);
-      else
+
+      } else {
         pr_response_add(i != 0 ? R_DUP : R_214, "%s",
           pstrcat(cmd->pool, _help[i].cmd, "*", NULL));
+      }
     }
 
   } else {
-    char *cp = NULL;
+    char *arg, *cp = NULL;
 
-    for (cp = cmd->argv[1]; *cp; cp++)
+    arg = cmd->argv[1];
+    for (cp = arg; *cp; cp++) {
       *cp = toupper(*cp);
+    }
 
-    for (i = 0; _help[i].cmd; i++)
-      if (strcasecmp(cmd->argv[1], _help[i].cmd) == 0) {
+    for (i = 0; _help[i].cmd; i++) {
+      if (strcasecmp(arg, _help[i].cmd) == 0) {
         pr_response_add(R_214, _("Syntax: SITE %s %s"),
-          cmd->argv[1], _help[i].syntax);
+          (char *) cmd->argv[1], _help[i].syntax);
         return PR_HANDLED(cmd);
       }
+    }
 
     pr_response_add_err(R_502, _("Unknown command 'SITE %s'"), cmd->arg);
-
     pr_cmd_set_errno(cmd, ENOSYS);
     errno = ENOSYS;
     return PR_ERROR(cmd);
@@ -540,7 +545,7 @@ modret_t *site_dispatch(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  for (i = 0; site_commands[i].command; i++)
+  for (i = 0; site_commands[i].command; i++) {
     if (strcmp(cmd->argv[0], site_commands[i].command) == 0) {
       if (site_commands[i].requires_auth && cmd_auth_chk &&
           !cmd_auth_chk(cmd)) {
@@ -549,13 +554,14 @@ modret_t *site_dispatch(cmd_rec *cmd) {
         pr_cmd_set_errno(cmd, EPERM);
         errno = EPERM;
         return PR_ERROR(cmd);
-
-      } else {
-        return site_commands[i].handler(cmd);
       }
-    }
 
-  pr_response_add_err(R_500, _("'SITE %s' not understood"), cmd->argv[0]);
+      return site_commands[i].handler(cmd);
+    }
+  }
+
+  pr_response_add_err(R_500, _("'SITE %s' not understood"),
+    (char *) cmd->argv[0]);
 
   pr_cmd_set_errno(cmd, EINVAL);
   errno = EINVAL;

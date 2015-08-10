@@ -2113,36 +2113,38 @@ MODRET set_snmpoptions(cmd_rec *cmd) {
 MODRET set_snmptables(cmd_rec *cmd) {
   int res;
   struct stat st;
+  char *path;
  
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
- 
-  if (*cmd->argv[1] != '/') {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be a full path: '",
-      cmd->argv[1], "'", NULL));
+
+  path = cmd->argv[1]; 
+  if (*path != '/') {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be a full path: '", path, "'",
+      NULL));
   }
 
-  res = stat(cmd->argv[1], &st);
+  res = stat(path, &st);
   if (res < 0) {
     char *agent_chroot;
 
     if (errno != ENOENT) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to stat '", cmd->argv[1],
-        "': ", strerror(errno), NULL));
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to stat '", path, "': ",
+        strerror(errno), NULL));
     }
 
     pr_log_debug(DEBUG0, MOD_SNMP_VERSION
-      ": SNMPTables directory '%s' does not exist, creating it", cmd->argv[1]);
+      ": SNMPTables directory '%s' does not exist, creating it", path);
 
     /* Create the directory. */
-    res = snmp_mkpath(cmd->tmp_pool, cmd->argv[1], geteuid(), getegid(), 0755);
+    res = snmp_mkpath(cmd->tmp_pool, path, geteuid(), getegid(), 0755);
     if (res < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to create directory '",
-        cmd->argv[1], "': ", strerror(errno), NULL));
+        path, "': ", strerror(errno), NULL));
     }
 
     /* Also create the empty/ directory underneath, for the chroot. */
-    agent_chroot = pdircat(cmd->tmp_pool, cmd->argv[1], "empty", NULL);
+    agent_chroot = pdircat(cmd->tmp_pool, path, "empty", NULL);
 
     res = snmp_mkpath(cmd->tmp_pool, agent_chroot, geteuid(), getegid(), 0111);
     if (res < 0) {
@@ -2151,20 +2153,20 @@ MODRET set_snmptables(cmd_rec *cmd) {
     }
 
     pr_log_debug(DEBUG2, MOD_SNMP_VERSION
-      ": created SNMPTables directory '%s'", cmd->argv[1]);
+      ": created SNMPTables directory '%s'", path);
 
   } else {
     char *agent_chroot;
 
     if (!S_ISDIR(st.st_mode)) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path,
         ": Not a directory", NULL));
     }
 
     /* See if the chroot directory empty/ already exists as well.  And enforce
      * the permissions on that directory.
      */
-    agent_chroot = pdircat(cmd->tmp_pool, cmd->argv[1], "empty", NULL);
+    agent_chroot = pdircat(cmd->tmp_pool, path, "empty", NULL);
 
     res = stat(agent_chroot, &st);
     if (res < 0) {
@@ -2194,7 +2196,7 @@ MODRET set_snmptables(cmd_rec *cmd) {
     }
   }
 
-  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  (void) add_config_param_str(cmd->argv[0], 1, path);
   return PR_HANDLED(cmd);
 }
 
