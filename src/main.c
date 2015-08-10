@@ -818,7 +818,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
   }
 
   *((char **) push_array(tarr)) = NULL;
-  cmd->argv = (char **) tarr->elts;
+  cmd->argv = tarr->elts;
 
   /* This table will not contain that many entries, so a low number
    * of chains should suffice.
