@@ -189,8 +189,8 @@ static int trace_write(const char *channel, int level, const char *msg,
 }
 
 pr_table_t *pr_trace_get_table(void) {
-  if (!trace_tab) {
-    errno = EPERM;
+  if (trace_tab == NULL) {
+    errno = ENOENT;
     return NULL;
   }
 
@@ -494,8 +494,8 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   }
 
   /* If no one's listening... */
-  if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0 &&
-      trace_logfd < 0) {
+  if (trace_logfd < 0 &&
+      pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0) {
     return 0;
   }
 
@@ -511,7 +511,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
   char buf[PR_TUNABLE_BUFFER_SIZE * 2];
   size_t buflen;
   struct trace_levels *levels;
-  int discard = FALSE;
+  int discard = FALSE, listening;
 
   /* Writing a trace message at level zero is NOT helpful; this makes it
    * impossible to quell messages to that trace channel by setting the level
@@ -532,43 +532,44 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
   }
 
   /* If no one's listening... */
-  if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0 &&
-      trace_logfd < 0) {
+  if (trace_logfd < 0) {
+    return 0;
+  }
+
+  listening = pr_log_event_listening(PR_LOG_TYPE_TRACELOG);
+  if (listening <= 0) {
     return 0;
   }
 
   levels = trace_get_levels(channel);
   if (levels == NULL) {
     discard = TRUE;
-
-    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0) {
-      return -1;
-    }
   }
 
   if (discard == FALSE &&
       level < levels->min_level) {
     discard = TRUE;
-
-    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0) {
-      return 0;
-    }
   }
 
   if (discard == FALSE &&
       level > levels->max_level) {
     discard = TRUE;
-
-    if (pr_log_event_listening(PR_LOG_TYPE_TRACELOG) <= 0) {
-      return 0;
-    }
   }
 
-  memset(buf, '\0', sizeof(buf));
   buflen = vsnprintf(buf, sizeof(buf)-1, fmt, msg);
 
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf)-1] = '\0';
+
+  if (buflen < sizeof(buf)) {
+    buf[buflen] = '\0';
+
+  } else {
+    /* Note that vsnprintf() returns the number of characters _that would have
+     * been printed if buffer were unlimited_.  Be careful of this.
+     */
+    buflen = sizeof(buf)-1; 
+  }
 
   /* Trim trailing newlines. */
   while (buflen >= 1 &&

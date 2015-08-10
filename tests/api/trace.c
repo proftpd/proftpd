@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,13 +74,14 @@ START_TEST (trace_get_table_test) {
 
   res = pr_trace_get_table();
   fail_unless(res == NULL, "Failed to handle uninitialized Trace API");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %d (%s)",
+  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
     errno, strerror(errno));
 
   pr_trace_set_levels("foo", 1, 2);
 
   res = pr_trace_get_table();
-  fail_unless(res != NULL, "Did not get Trace API table as expected");
+  fail_unless(res != NULL, "Did not get Trace API table as expected: %s",
+    strerror(errno));
 }
 END_TEST
 
