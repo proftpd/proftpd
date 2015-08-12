@@ -1530,7 +1530,7 @@ static void daemon_loop(void) {
     }
 
     running = 1;
-    xerrno = 0;
+    xerrno = errno = 0;
 
     PR_DEVEL_CLOCK(i = select(maxfd + 1, &listenfds, NULL, NULL, &tv));
     if (i < 0) {
