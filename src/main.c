@@ -1525,13 +1525,16 @@ static void daemon_loop(void) {
     }
 
     running = 1;
+    xerrno = 0;
 
     PR_DEVEL_CLOCK(i = select(maxfd + 1, &listenfds, NULL, NULL, &tv));
     if (i < 0) {
       xerrno = errno;
     }
 
-    if (i == -1 && xerrno == EINTR) {
+    if (i == -1 &&
+        xerrno == EINTR) {
+      errno = xerrno;
       pr_signals_handle();
       continue;
     }
