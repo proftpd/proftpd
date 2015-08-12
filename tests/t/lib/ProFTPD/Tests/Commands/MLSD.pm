@@ -120,7 +120,10 @@ sub new {
 }
 
 sub list_tests {
-  return testsuite_get_runnable_tests($TESTS);
+#  return testsuite_get_runnable_tests($TESTS);
+  return qw(
+    mlsd_ok_raw_active
+  );
 }
 
 sub mlsd_ok_raw_active {
@@ -261,6 +264,7 @@ sub mlsd_ok_raw_active {
 
   $self->assert_child_ok($pid);
 
+$ex = 'FOOBAR!';
   if ($ex) {
     test_append_logfile($log_file);
     unlink($log_file);
