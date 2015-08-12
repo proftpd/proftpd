@@ -369,6 +369,9 @@ void pr_signals_handle(void) {
       (unsigned long) tv.tv_usec, tv.tv_usec != 1 ? "microsecs" : "microsec");
 
     pr_timer_usleep(interval_usecs);
+
+    /* Clear the EINTR errno, now that we've dealt with it. */
+    errno = 0;
   }
 
   while (recvd_signal_flags) {

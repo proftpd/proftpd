@@ -1536,6 +1536,9 @@ static void daemon_loop(void) {
         xerrno == EINTR) {
       errno = xerrno;
       pr_signals_handle();
+
+      /* We handled our signal; clear errno. */
+      xerrno = errno = 0;
       continue;
     }
 
