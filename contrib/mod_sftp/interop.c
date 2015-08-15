@@ -125,10 +125,11 @@ static struct sftp_version_pattern known_versions[] = {
 
 static const char *trace_channel = "ssh2";
 
-int sftp_interop_handle_version(const char *client_version) {
+int sftp_interop_handle_version(pool *p, const char *client_version) {
   register unsigned int i;
   size_t version_len;
   const char *version = NULL;
+  char *ptr = NULL;
   int is_probe = FALSE, is_scan = FALSE;
   config_rec *c;
 
@@ -165,10 +166,20 @@ int sftp_interop_handle_version(const char *client_version) {
    * client info.
    */
   if (strncmp(client_version, "SSH-2.0-", 8) == 0) {
-    version = client_version + 8;
+    version = pstrdup(p, client_version + 8);
 
   } else if (strncmp(client_version, "SSH-1.99-", 9) == 0) {
-    version = client_version + 9;
+    version = pstrdup(p, client_version + 9);
+  }
+
+  /* Look for the optional comments field in the received client version; if
+   * present, trim it out, so that we do not try to match on it.
+   */
+  ptr = strchr(version, ' ');
+  if (ptr != NULL) {
+    pr_trace_msg(trace_channel, 11, "read client version with comments: '%s'",
+      version);
+    *ptr = '\0';
   }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
