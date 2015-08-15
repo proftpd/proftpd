@@ -1070,8 +1070,9 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
           pstrcat(p, sp->filename, ": write error: ", strerror(xerrno), NULL));
         sp->wrote_errors = TRUE;
 
-        pr_fsio_close(sp->fh);
-        sp->fh = NULL;
+        /* Note that we do NOT explicitly close the filehandle here; we leave
+         * that to the calling function, so that it can do e.g. other cleanup.
+         */
 
         errno = xerrno;
         return 1;
@@ -1096,8 +1097,9 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
           pstrcat(p, sp->filename, ": write error: ", strerror(xerrno), NULL));
         sp->wrote_errors = TRUE;
 
-        pr_fsio_close(sp->fh);
-        sp->fh = NULL;
+        /* Note that we do NOT explicitly close the filehandle here; we leave
+         * that to the calling function, so that it can do e.g. other cleanup.
+         */
 
         errno = xerrno;
         return 1;
@@ -1233,6 +1235,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     unsigned char *data, uint32_t datalen) {
   int res;
   cmd_rec *cmd = NULL;
+  char *curr_path = NULL;
 
   if (!sp->checked_errors) {
     res = recv_errors(p, channel_id, sp, data, datalen);
@@ -1432,8 +1435,6 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   if (sp->fh) {
-    char *curr_path;
-
     curr_path = pstrdup(scp_pool, sp->fh->fh_path);
 
     /* Set session.curr_cmd, for any FSIO callbacks that might be interested. */
@@ -1452,46 +1453,47 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
 
     sp->fh = NULL;
+  }
 
-    if (sp->hiddenstore == TRUE) {
-      if (sp->wrote_errors == TRUE) {
-        /* There was an error writing this HiddenStores file; be sure to clean
-         * things up.
-         */
-        pr_trace_msg(trace_channel, 8, "deleting HiddenStores path '%s'",
-          curr_path);
+  if (sp->hiddenstore == TRUE &&
+      curr_path != NULL) {
+    if (sp->wrote_errors == TRUE) {
+      /* There was an error writing this HiddenStores file; be sure to clean
+       * things up.
+       */
+      pr_trace_msg(trace_channel, 8, "deleting HiddenStores path '%s'",
+        curr_path);
+
+      if (pr_fsio_unlink(curr_path) < 0) {
+        if (errno != ENOENT) {
+          pr_log_debug(DEBUG0, MOD_SFTP_VERSION
+            ": error deleting HiddenStores file '%s': %s", curr_path,
+            strerror(errno));
+        }
+      }
+
+    } else {
+      /* This is a HiddenStores file, and needs to be renamed to the real
+       * path (i.e. sp->best_path).
+       */
+      pr_trace_msg(trace_channel, 8,
+        "renaming HiddenStores path '%s' to '%s'", curr_path, sp->best_path);
+
+      res = pr_fsio_rename(curr_path, sp->best_path);
+      if (res < 0) {
+        int xerrno = errno;
+
+        pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s",
+          curr_path, sp->best_path, strerror(xerrno));
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "renaming of HiddenStore path '%s' to '%s' failed: %s",
+          curr_path, sp->best_path, strerror(xerrno));
 
         if (pr_fsio_unlink(curr_path) < 0) {
-          if (errno != ENOENT) {
-            pr_log_debug(DEBUG0, MOD_SFTP_VERSION
-              ": error deleting HiddenStores file '%s': %s", curr_path,
-              strerror(errno));
-          }
-        }
-
-      } else {
-        /* This is a HiddenStores file, and needs to be renamed to the real
-         * path (i.e. sp->best_path).
-         */
-        pr_trace_msg(trace_channel, 8,
-          "renaming HiddenStores path '%s' to '%s'", curr_path, sp->best_path);
-
-        res = pr_fsio_rename(curr_path, sp->best_path);
-        if (res < 0) {
-          int xerrno = errno;
-
-          pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s",
-            curr_path, sp->best_path, strerror(xerrno));
-
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "renaming of HiddenStore path '%s' to '%s' failed: %s",
-            curr_path, sp->best_path, strerror(xerrno));
-
-          if (pr_fsio_unlink(curr_path) < 0) {
-            pr_trace_msg(trace_channel, 1,
-              "error deleting HiddenStores file '%s': %s", curr_path,
-              strerror(errno));
-          }
+          pr_trace_msg(trace_channel, 1,
+            "error deleting HiddenStores file '%s': %s", curr_path,
+            strerror(errno));
         }
       }
     }
