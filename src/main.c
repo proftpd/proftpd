@@ -1376,6 +1376,12 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     pr_log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied",
       session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr));
+
+    /* XXX Send DisplayConnect here? No chroot to worry about; modules have
+     * NOT been initialized, so generating an event would not work as
+     * expected.
+     */
+
     exit(0);
   }
 
