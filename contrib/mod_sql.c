@@ -2352,18 +2352,23 @@ MODRET sql_post_retr(cmd_rec *cmd) {
 
 static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   const char *long_tag = NULL;
-  size_t taglen;
+  size_t tag_len;
 
-  if (strncmp(tag, "uid", 4) == 0) {
+  tag_len = strlen(tag);
+
+  if (tag_len == 3 &&
+      strncmp(tag, "uid", 4) == 0) {
     long_tag = pr_uid2str(cmd->tmp_pool, session.login_uid); 
   }
 
   if (long_tag == NULL &&
+      tag_len == 3 &&
       strncmp(tag, "gid", 4) == 0) {
     long_tag = pr_gid2str(cmd->tmp_pool, session.login_gid); 
   }
 
   if (long_tag == NULL &&
+      tag_len == 13 &&
       strncasecmp(tag, "file-modified", 14) == 0) {
     char *modified;
 
@@ -2377,17 +2382,19 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 11 &&
       strncasecmp(tag, "file-offset", 12) == 0) {
     off_t *offset;
 
     offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
     if (offset) {
       char offset_str[1024];
+      size_t len = 0;
 
       memset(offset_str, '\0', sizeof(offset_str));
-      snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
+      len = snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
         (pr_off_t) *offset);
-      long_tag = pstrdup(cmd->tmp_pool, offset_str);
+      long_tag = pstrndup(cmd->tmp_pool, offset_str, len);
 
     } else {
       long_tag = pstrdup(cmd->tmp_pool, "-");
@@ -2395,43 +2402,49 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 7 &&
       strncasecmp(tag, "iso8601", 8) == 0) {
     char buf[32];
     struct timeval now;
     struct tm *tm;
-    size_t len;
+    size_t fmt_len, len = 0;
     unsigned long millis;
 
     memset(buf, '\0', sizeof(buf));
     gettimeofday(&now, NULL);
     tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
 
-    len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
+    fmt_len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
+    len += fmt_len;
 
     /* Convert microsecs to millisecs. */
     millis = now.tv_usec / 1000;
 
-    snprintf(buf + len, sizeof(buf) - len, ",%03lu", millis);
-    long_tag = pstrdup(cmd->tmp_pool, buf);
+    len += snprintf(buf + fmt_len, sizeof(buf) - fmt_len, ",%03lu", millis);
+    long_tag = pstrndup(cmd->tmp_pool, buf, len);
   }
 
   if (long_tag == NULL &&
+      tag_len == 9 &&
       strncmp(tag, "microsecs", 10) == 0) {
     char buf[7];
     struct timeval now;
+    size_t len = 0;
 
     memset(buf, '\0', sizeof(buf));
     gettimeofday(&now, NULL); 
 
-    snprintf(buf, sizeof(buf), "%06lu", (unsigned long) now.tv_usec);
-    long_tag = pstrdup(cmd->tmp_pool, buf);
+    len = snprintf(buf, sizeof(buf), "%06lu", (unsigned long) now.tv_usec);
+    long_tag = pstrndup(cmd->tmp_pool, buf, len);
   }
 
   if (long_tag == NULL &&
+      tag_len == 9 &&
       strncmp(tag, "millisecs", 10) == 0) {
     char buf[4];
     struct timeval now;
     unsigned long millis;
+    size_t len = 0;
 
     memset(buf, '\0', sizeof(buf));
     gettimeofday(&now, NULL);
@@ -2439,19 +2452,18 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     /* Convert microsecs to millisecs. */
     millis = now.tv_usec / 1000;
 
-    snprintf(buf, sizeof(buf), "%03lu", millis);
-    long_tag = pstrdup(cmd->tmp_pool, buf);
+    len = snprintf(buf, sizeof(buf), "%03lu", millis);
+    long_tag = pstrndup(cmd->tmp_pool, buf, len);
   }
 
   if (long_tag == NULL &&
+      tag_len == 8 &&
       strncmp(tag, "protocol", 9) == 0) {
     long_tag = pr_session_get_protocol(0);
   }
 
-  taglen = strlen(tag);
-
   if (long_tag == NULL &&
-      taglen > 5 &&
+      tag_len > 5 &&
       strncmp(tag, "env:", 4) == 0) {
     char *env;
 
@@ -2460,7 +2472,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
-      taglen > 5 &&
+      tag_len > 5 &&
       strncmp(tag, "note:", 5) == 0) {
     char *key = NULL, *note = NULL;
 
@@ -2476,7 +2488,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
-      taglen > 6 &&
+      tag_len > 6 &&
       strncmp(tag, "time:", 5) == 0) {
     char time_str[128], *fmt;
     time_t now;
@@ -2493,6 +2505,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 8 &&
       strncmp(tag, "basename", 9) == 0) {
     const char *path = NULL;
 
@@ -2588,6 +2601,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 16 &&
       strncmp(tag, "transfer-failure", 17) == 0) {
 
     /* If the current command is one that incurs a data transfer, then we
@@ -2655,6 +2669,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 15 &&
       strncmp(tag, "transfer-status", 16) == 0) {
 
     /* If the current command is one that incurs a data transfer, then we
@@ -2758,6 +2773,7 @@ static int resolve_numeric_tag(cmd_rec *cmd, char *tag) {
 
 static char *resolve_short_tag(cmd_rec *cmd, char tag) {
   char arg[PR_TUNABLE_PATH_MAX+1], *argp = NULL, *short_tag = NULL;
+  int len = 0;
 
   memset(arg, '\0', sizeof(arg));
 
@@ -2767,37 +2783,39 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
       argp = arg;
       pass = pr_table_get(session.notes, "mod_auth.anon-passwd", NULL);
-      if (!pass)
+      if (pass == NULL) {
 	pass = "UNKNOWN";
-      
-      sstrncpy(argp, pass, sizeof(arg));
+      }
+ 
+      len = sstrncpy(argp, pass, sizeof(arg));
       break;
     }
 
     case 'a':
       argp = arg;
-      sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()),
-        sizeof(arg));
+      len = sstrncpy(argp,
+        pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()), sizeof(arg));
       break;
 
     case 'b':
       argp = arg;
       if (session.xfer.p) {
-        snprintf(argp, sizeof(arg), "%" PR_LU,
+        len = snprintf(argp, sizeof(arg), "%" PR_LU,
           (pr_off_t) session.xfer.total_bytes);
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0) {
-        snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) sql_dele_filesz);
+        len = snprintf(argp, sizeof(arg), "%" PR_LU,
+          (pr_off_t) sql_dele_filesz);
 
       } else {
-        sstrncpy(argp, "0", sizeof(arg));
+        len = sstrncpy(argp, "0", sizeof(arg));
       }
       break;
 
     case 'c':
       argp = arg;
-      sstrncpy(argp, session.conn_class ? session.conn_class->cls_name : "-",
-        sizeof(arg));
+      len = sstrncpy(argp,
+        session.conn_class ? session.conn_class->cls_name : "-", sizeof(arg));
       break;
 
     case 'd':
@@ -2814,25 +2832,26 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
           pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
-        char *tmp = strrchr(cmd->arg, '/');
+        char *ptr;
 
-        if (tmp != NULL) {
-          if (tmp != cmd->arg) {
-            sstrncpy(argp, tmp + 1, sizeof(arg));
+        ptr = strrchr(cmd->arg, '/');
+        if (ptr != NULL) {
+          if (ptr != cmd->arg) {
+            len = sstrncpy(argp, ptr + 1, sizeof(arg));
 
-          } else if (*(tmp + 1) != '\0') {
-            sstrncpy(argp, tmp + 1, sizeof(arg));
+          } else if (*(ptr + 1) != '\0') {
+            len = sstrncpy(argp, ptr + 1, sizeof(arg));
 
           } else {
-            sstrncpy(argp, cmd->arg, sizeof(arg));
+            len = sstrncpy(argp, cmd->arg, sizeof(arg));
           }
 
         } else {
-          sstrncpy(argp, cmd->arg, sizeof(arg));
+          len = sstrncpy(argp, cmd->arg, sizeof(arg));
         }
 
       } else {
-        sstrncpy(argp, pr_fs_getvwd(), sizeof(arg));
+        len = sstrncpy(argp, pr_fs_getvwd(), sizeof(arg));
       }
       break;
 
@@ -2848,7 +2867,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
           pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
           pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
-        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
+        len = sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
           sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
@@ -2864,18 +2883,17 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
         if (session.chroot_path) {
           /* Chrooted session. */
-          sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
+          len = sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
             pdircat(cmd->tmp_pool, session.chroot_path, pr_fs_getvwd(), NULL) :
             session.chroot_path, sizeof(arg));
 
         } else {
-
           /* Non-chrooted session. */
-          sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
+          len = sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
         }
 
       } else {
-        sstrncpy(argp, "", sizeof(arg));
+        len = sstrncpy(argp, "", sizeof(arg));
       }
       break;
 
@@ -2886,10 +2904,16 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
 
       reason_str = pr_session_get_disconnect_reason(&details);
-      sstrncpy(argp, reason_str, sizeof(arg));
+      len = sstrncpy(argp, reason_str, sizeof(arg));
       if (details != NULL) {
+        size_t details_len;
+
+        details_len = strlen(details);
+
         sstrcat(argp, ": ", sizeof(arg));
         sstrcat(argp, details, sizeof(arg));
+
+        len += details_len + 2;
       }
 
       break;
@@ -2899,32 +2923,34 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
 
       if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
-        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
+        len = sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
           sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
         char *path;
 
         path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
-        sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE), sizeof(arg));
+        len = sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE),
+          sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
         char *path;
 
         path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
-        sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE), sizeof(arg));
+        len = sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE),
+          sizeof(arg));
 
       } else if (session.xfer.p &&
                  session.xfer.path) {
-        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
-          sizeof(arg));
+        len = sstrncpy(argp,
+          dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE), sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
                  pr_cmd_cmp(cmd, PR_CMD_PWD_ID) == 0 ||
                  pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
                  pr_cmd_cmp(cmd, PR_CMD_XPWD_ID) == 0) {
-        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, pr_fs_getcwd(), TRUE),
+        len = sstrncpy(argp, dir_abs_path(cmd->tmp_pool, pr_fs_getcwd(), TRUE),
           sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
@@ -2939,13 +2965,13 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
          */
         if (session.chroot_path) {
           /* Chrooted session. */
-          sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
+          len = sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
             pdircat(cmd->tmp_pool, session.chroot_path, pr_fs_getvwd(), NULL) :
             session.chroot_path, sizeof(arg));
 
         } else {
           /* Non-chrooted session. */
-          sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
+          len = sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
         }
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
@@ -2960,7 +2986,8 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
             NULL);
         }
 
-        sstrncpy(argp, dir_abs_path(cmd->tmp_pool, tmp, TRUE), sizeof(arg));
+        len = sstrncpy(argp, dir_abs_path(cmd->tmp_pool, tmp, TRUE),
+          sizeof(arg));
 
       } else {
 
@@ -2978,17 +3005,17 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
             pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
-          sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
+          len = sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE),
             sizeof(arg));
 
         } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0) {
           /* MFMT has, as its filename, the second argument. */
-          sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->argv[2], TRUE),
+          len = sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->argv[2], TRUE),
             sizeof(arg));
 
         } else {
           /* All other situations get a "-".  */
-          sstrncpy(argp, "-", sizeof(arg));
+          len = sstrncpy(argp, "-", sizeof(arg));
         }
       }
       break;
@@ -3001,11 +3028,11 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
         path = dir_best_path(cmd->tmp_pool,
           pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
-        sstrncpy(arg, path, sizeof(arg));
+        len = sstrncpy(arg, path, sizeof(arg));
 
       } else if (session.xfer.p &&
                  session.xfer.path) {
-        sstrncpy(argp, session.xfer.path, sizeof(arg));
+        len = sstrncpy(argp, session.xfer.path, sizeof(arg));
 
       } else {
         /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
@@ -3022,10 +3049,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
           path = dir_best_path(cmd->tmp_pool,
             pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
-          sstrncpy(arg, path, sizeof(arg));
+          len = sstrncpy(arg, path, sizeof(arg));
 
         } else {
-          sstrncpy(argp, "-", sizeof(arg));
+          len = sstrncpy(argp, "-", sizeof(arg));
         }
       }
       break;
@@ -3034,10 +3061,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
 
       if (session.group != NULL) {
-        sstrncpy(argp, session.group, sizeof(arg));
+        len = sstrncpy(argp, session.group, sizeof(arg));
 
       } else {
-        sstrncpy(argp, "-", sizeof(arg));
+        len = sstrncpy(argp, "-", sizeof(arg));
       }
 
       break;
@@ -3045,34 +3072,35 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
     case 'H':
       argp = arg;
-      sstrncpy(argp, cmd->server->ServerAddress, sizeof(arg));
+      len = sstrncpy(argp, cmd->server->ServerAddress, sizeof(arg));
       break;
 
     case 'h':
       argp = arg;
-      sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
+      len = sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
       break;
 
     case 'I':
       argp = arg;
-      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_in);
+      len = snprintf(argp, sizeof(arg), "%" PR_LU,
+        (pr_off_t) session.total_raw_in);
       break;
 
     case 'J':
       argp = arg;
       if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
-        sstrncpy(argp, "(hidden)", sizeof(arg));
+        len = sstrncpy(argp, "(hidden)", sizeof(arg));
 
       } else {
-        sstrncpy(argp, cmd->arg, sizeof(arg));
+        len = sstrncpy(argp, cmd->arg, sizeof(arg));
       }
       break;
 
     case 'L':
       argp = arg;
-      sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr()),
-        sizeof(arg));
+      len = sstrncpy(argp,
+        pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr()), sizeof(arg));
       break;
 
     case 'l': {
@@ -3081,41 +3109,44 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
       rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
         NULL);
-      if (rfc1413_ident == NULL)
+      if (rfc1413_ident == NULL) {
         rfc1413_ident = "UNKNOWN";
+      }
 
-      sstrncpy(argp, rfc1413_ident, sizeof(arg));
+      len = sstrncpy(argp, rfc1413_ident, sizeof(arg));
       break;
     }
 
     case 'm':
       argp = arg;
-      sstrncpy(argp, cmd->argv[0], sizeof(arg));
+      len = sstrncpy(argp, cmd->argv[0], sizeof(arg));
       break;
 
     case 'O':
       argp = arg;
-      snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) session.total_raw_out);
+      len = snprintf(argp, sizeof(arg), "%" PR_LU,
+        (pr_off_t) session.total_raw_out);
       break;
 
     case 'P':
       argp = arg;
-      snprintf(argp, sizeof(arg), "%lu", (unsigned long) getpid());
+      len = snprintf(argp, sizeof(arg), "%lu", (unsigned long) session.pid);
       break;
 
     case 'p': 
       argp = arg;
-      snprintf(argp, sizeof(arg), "%d", main_server->ServerPort);
+      len = snprintf(argp, sizeof(arg), "%d", main_server->ServerPort);
       break;
 
     case 'r':
       argp = arg;
       if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
           session.hide_password) {
-        sstrncpy(argp, C_PASS " (hidden)", sizeof(arg));
+        len = sstrncpy(argp, C_PASS " (hidden)", sizeof(arg));
 
       } else {
-        sstrncpy(argp, pr_cmd_get_displayable_str(cmd, NULL), sizeof(arg));
+        len = sstrncpy(argp, pr_cmd_get_displayable_str(cmd, NULL),
+          sizeof(arg));
       }
       break;
 
@@ -3128,10 +3159,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       res = pr_response_get_last(cmd->tmp_pool, &resp_code, NULL);
       if (res == 0 &&
           resp_code != NULL) {
-        sstrncpy(argp, resp_code, sizeof(arg));
+        len = sstrncpy(argp, resp_code, sizeof(arg));
 
       } else {
-        sstrncpy(argp, "-", sizeof(arg));
+        len = sstrncpy(argp, "-", sizeof(arg));
       }
 
       break;
@@ -3146,10 +3177,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       res = pr_response_get_last(cmd->tmp_pool, NULL, &resp_msg);
       if (res == 0 &&
           resp_msg != NULL) {
-        sstrncpy(argp, resp_msg, sizeof(arg));
+        len = sstrncpy(argp, resp_msg, sizeof(arg));
 
       } else {
-        sstrncpy(argp, "-", sizeof(arg));
+        len = sstrncpy(argp, "-", sizeof(arg));
       }
 
       break;
@@ -3173,12 +3204,12 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
           end_time.tv_sec--;
         }
       
-        snprintf(argp, sizeof(arg), "%lu.%03lu",
+        len = snprintf(argp, sizeof(arg), "%lu.%03lu",
           (unsigned long) end_time.tv_sec,
           (unsigned long) (end_time.tv_usec / 1000));
 
       } else {
-        sstrncpy(argp, "0.0", sizeof(arg));
+        len = sstrncpy(argp, "0.0", sizeof(arg));
       }
       break;
 
@@ -3192,7 +3223,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         login_user = "-";
       }
 
-      sstrncpy(argp, login_user, sizeof(arg));
+      len = sstrncpy(argp, login_user, sizeof(arg));
       break;
     }
 
@@ -3200,10 +3231,10 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
 
       if (session.user != NULL) {
-        sstrncpy(argp, session.user, sizeof(arg));
+        len = sstrncpy(argp, session.user, sizeof(arg));
 
       } else {
-        sstrncpy(argp, "-", sizeof(arg));
+        len = sstrncpy(argp, "-", sizeof(arg));
       }
 
       break;
@@ -3211,13 +3242,13 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
     case 'V':
       argp = arg;
-      sstrncpy(argp, pr_netaddr_get_dnsstr(pr_netaddr_get_sess_local_addr()),
-        sizeof(arg));
+      len = sstrncpy(argp,
+        pr_netaddr_get_dnsstr(pr_netaddr_get_sess_local_addr()), sizeof(arg));
       break;
 
     case 'v':
       argp = arg;
-      sstrncpy(argp, main_server->ServerName, sizeof(arg));
+      len = sstrncpy(argp, main_server->ServerName, sizeof(arg));
       break;
 
     case 'w': {
@@ -3235,7 +3266,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       }
  
       argp = arg; 
-      sstrncpy(argp, rnfr_path, sizeof(arg));
+      len = sstrncpy(argp, rnfr_path, sizeof(arg));
       break;
     }
 
@@ -3248,7 +3279,13 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       break;
   }
 
-  short_tag = pstrdup(cmd->tmp_pool, argp);
+  if (len > 0) {
+    short_tag = pstrndup(cmd->tmp_pool, argp, len);
+
+  } else {
+    short_tag = pstrdup(cmd->tmp_pool, argp);
+  }
+
   pr_trace_msg(trace_channel, 15, "returning short tag '%s' for tag '%%%c'",
     short_tag, tag);
 
