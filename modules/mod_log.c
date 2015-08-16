@@ -964,13 +964,37 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
             pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
             pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
-          sstrncpy(arg, dir_abs_path(p, pr_fs_decode_path(p, cmd->arg), TRUE),
-            sizeof(arg));
+          char *abs_path, *decoded_path;
+
+          decoded_path = pr_fs_decode_path(p, cmd->arg);
+          abs_path = dir_abs_path(p, decoded_path, TRUE);
+          if (abs_path == NULL) {
+            /* This time, try without the interpolation. */
+            abs_path = dir_abs_path(p, decoded_path, FALSE);
+          }
+
+          if (abs_path == NULL) {
+            abs_path = decoded_path;
+          }
+
+          sstrncpy(arg, abs_path, sizeof(arg));
 
         } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0) {
+          char *abs_path, *decoded_path;
+
           /* MFMT has, as its filename, the second argument. */
-          sstrncpy(arg, dir_abs_path(p, pr_fs_decode_path(p, cmd->argv[2]),
-            TRUE), sizeof(arg));
+          decoded_path = pr_fs_decode_path(p, cmd->argv[2]);
+          abs_path = dir_abs_path(p, decoded_path, TRUE);
+          if (abs_path == NULL) {
+            /* This time, try without the interpolation. */
+            abs_path = dir_abs_path(p, decoded_path, FALSE);
+          }
+
+          if (abs_path == NULL) {
+            abs_path = decoded_path;
+          }
+
+          sstrncpy(arg, abs_path, sizeof(arg));
  
         } else {
           /* All other situations get a "-".  */
@@ -1818,6 +1842,8 @@ MODRET log_any(cmd_rec *cmd) {
   for (lf = logs; lf; lf = lf->next) {
     int log_cmd = FALSE;
 
+    pr_signals_handle();
+
     /* Skip any unopened files (obviously); make sure that special fd
      * for syslog is NOT skipped, though.
      */
@@ -1842,7 +1868,8 @@ MODRET log_any(cmd_rec *cmd) {
     /* If the logging class of this command is unknown (defaults to zero),
      * AND this ExtendedLog is configured to log ALL commands, log it.
      */
-    if (cmd->cmd_class == 0 && lf->lf_classes == CL_ALL) {
+    if (cmd->cmd_class == 0 &&
+        lf->lf_classes == CL_ALL) {
       log_cmd = TRUE;
     }
 

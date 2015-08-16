@@ -2982,6 +2982,10 @@ sub extlog_dele_bug3469 {
     while (my $line = <$fh>) {
       chomp($line);
 
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "$line\n";
+      }
+
       # We're only interested in the DELE log line
       unless ($line =~ /^DELE (.*)$/i) {
         next;
@@ -4688,7 +4692,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
           test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
         $expected_min = 6828;
-        $expected_max = 8140;
+        $expected_max = 9140;
         $self->assert($expected_min <= $bytes_out &&
                       $expected_max >= $bytes_out,
           test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
@@ -9873,7 +9877,7 @@ sub ftps_data_xfer_cancelled_cb {
 
   if ($total_len > 0) {
     $user_data->close();
-    croak("FOO!");
+    die("$func_name failed due to test callback (len $total_len > 0)");
   }
 }
 
@@ -10067,12 +10071,17 @@ EOC
       while (my $line = <$fh>) {
         chomp($line);
 
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "$line\n";
+        }
+
         if ($line =~ /^(\S+) (.*)?$/) {
           my $cmd = $1;
           my $xfer_status = $2;
 
           if ($cmd eq 'RETR') {
-            if ($xfer_status eq 'cancelled') {
+            if ($xfer_status eq 'cancelled' ||
+                $xfer_status eq 'failed') {
               $expected_xfer_status = 1;
               last;
             }
@@ -12240,6 +12249,10 @@ sub extlog_exclusion_bug4067 {
 
       while (my $line = <$fh>) {
         chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "$line\n";
+        }
 
         if ($line eq 'USER' ||
             $line eq 'PASS') {

@@ -11328,8 +11328,8 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
   { CMD,	"SSCN",	G_NONE,	tls_sscn,	TRUE,	FALSE,	CL_SEC },
-  { POST_CMD,	C_HOST,	G_NONE,	tls_post_host,	FALSE,	FALSE,	CL_SEC },
-  { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE,	CL_SEC },
+  { POST_CMD,	C_HOST,	G_NONE,	tls_post_host,	FALSE,	FALSE },
+  { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE },
   { 0,	NULL }
 };
 
