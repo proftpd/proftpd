@@ -1919,6 +1919,7 @@ array_header *pr_netaddr_get_dnsstr_list(pool *p, pr_netaddr_t *na) {
 /* Return the hostname (wrapper for gethostname(2), except returns FQDN). */
 const char *pr_netaddr_get_localaddr_str(pool *p) {
   char buf[256];
+  int res, xerrno;
 
   if (p == NULL) {
     errno = EINVAL;
@@ -1930,7 +1931,10 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
   }
 
   memset(buf, '\0', sizeof(buf));
-  if (gethostname(buf, sizeof(buf)-1) != -1) {
+  res = gethostname(buf, sizeof(buf)-1);
+  xerrno = errno;
+
+  if (res >= 0) {
     struct hostent *host;
 
     buf[sizeof(buf)-1] = '\0';
@@ -1940,13 +1944,17 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
      * a machine only resolves to an IPv6 address.
      */
     host = gethostbyname(buf);
-    if (host)
+    if (host) {
       return pr_netaddr_validate_dns_str(pstrdup(p, host->h_name));
+    }
 
+    pr_trace_msg(trace_channel, 14,
+      "gethostbyname() failed for '%s': %s", buf, hstrerror(h_errno));
     return pr_netaddr_validate_dns_str(pstrdup(p, buf));
   }
 
-  pr_trace_msg(trace_channel, 1, "gethostname(2) error: %s", strerror(errno));
+  pr_trace_msg(trace_channel, 1, "gethostname(2) error: %s", strerror(xerrno));
+  errno = xerrno;
   return NULL;
 }
 
