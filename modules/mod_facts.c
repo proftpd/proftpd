@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
  *
- * Copyright (c) 2007-2013 The ProFTPD Project
+ * Copyright (c) 2007-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mod_facts.c,v 1.60 2013-04-16 16:04:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,6 +48,7 @@ static unsigned long facts_mlinfo_opts = 0;
 #define FACTS_MLINFO_FL_SHOW_SYMLINKS			0x00001
 #define FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK		0x00002
 #define FACTS_MLINFO_FL_NO_CDIR				0x00004
+#define FACTS_MLINFO_FL_APPEND_CRLF			0x00008
 
 struct mlinfo {
   pool *pool;
@@ -204,7 +203,8 @@ static time_t facts_mktime(unsigned int year, unsigned int month,
   return res;
 }
 
-static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
+static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
+    int flags) {
   char *ptr;
   size_t buflen = 0;
 
@@ -268,13 +268,8 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz) {
     ptr = buf + buflen;
   }
 
-  /* MLST entries are not sent via pr_data_xfer(), and thus we do not need
-   * to include an LF at the end; it is appended by pr_response_send_raw().
-   * But MLSD entries DO need the trailing LF, so that it can be converted
-   * into a CRLF sequence by pr_data_xfer().
-   */
-  if (strcmp(session.curr_cmd, C_MLSD) == 0) {
-    snprintf(ptr, bufsz - buflen, " %s\n", info->path);
+  if (flags & FACTS_MLINFO_FL_APPEND_CRLF) {
+    snprintf(ptr, bufsz - buflen, " %s\r\n", info->path);
 
   } else {
     snprintf(ptr, bufsz - buflen, " %s", info->path);
@@ -312,11 +307,11 @@ static void facts_mlinfobuf_init(void) {
   mlinfo_buflen = 0;
 }
 
-static void facts_mlinfobuf_add(struct mlinfo *info) {
+static void facts_mlinfobuf_add(struct mlinfo *info, int flags) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   size_t buflen;
  
-  buflen = facts_mlinfo_fmt(info, buf, sizeof(buf));
+  buflen = facts_mlinfo_fmt(info, buf, sizeof(buf), flags);
 
   /* If this buffer will exceed the capacity of mlinfo_buf, then flush
    * mlinfo_buf.
@@ -536,10 +531,10 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   return 0;
 }
 
-static void facts_mlinfo_add(struct mlinfo *info) {
+static void facts_mlinfo_add(struct mlinfo *info, int flags) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
 
-  (void) facts_mlinfo_fmt(info, buf, sizeof(buf));
+  (void) facts_mlinfo_fmt(info, buf, sizeof(buf), flags);
 
   /* The trailing CRLF will be added by pr_response_add(). */
   pr_response_add(R_DUP, "%s", buf);
@@ -1290,7 +1285,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
      */
     info.path = pr_fs_encode_path(cmd->tmp_pool, dent->d_name);
 
-    facts_mlinfobuf_add(&info);
+    facts_mlinfobuf_add(&info, FACTS_MLINFO_FL_APPEND_CRLF);
 
     if (XFER_ABORTED) {
       pr_data_abort(0, 0);
@@ -1463,7 +1458,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
   }
 
   pr_response_add(R_250, _("Start of list for %s"), path);
-  facts_mlinfo_add(&info);
+  facts_mlinfo_add(&info, 0);
   pr_response_add(R_250, _("End of list"));
 
   return PR_HANDLED(cmd);
