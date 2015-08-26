@@ -76,7 +76,7 @@ static int sftp_get_client_version(conn_t *conn) {
   int res;
 
   /* 255 is the RFC-defined maximum banner/ID string size */
-  char buf[256], *banner = NULL, *ptr = NULL;
+  char buf[256], *banner = NULL;
   size_t buflen = 0;
 
   /* Read client version.  This looks ugly, reading one byte at a time.
@@ -211,21 +211,11 @@ static int sftp_get_client_version(conn_t *conn) {
     break;
   }
 
-  /* Look for the optional comments field in the received client version; if
-   * present, trim it out, so that we do not try to match on it.
-   */
-  ptr = strchr(buf, ' ');
-  if (ptr != NULL) {
-    pr_trace_msg(trace_channel, 11, "read client version with comments: '%s'",
-      buf);
-    *ptr = '\0';
-  }
-
   sftp_client_version = pstrdup(sftp_pool, buf);
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "received client version '%s'", sftp_client_version);
 
-  if (sftp_interop_handle_version(sftp_client_version) < 0) {
+  if (sftp_interop_handle_version(sftp_pool, sftp_client_version) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error checking client version '%s' for interoperability: %s",
       sftp_client_version, strerror(errno));

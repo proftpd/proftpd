@@ -799,8 +799,10 @@ static long transmit_data(pool *p, off_t data_len, off_t *data_offset,
      * client aborts the transfer, thus we need to check for this.
      */
     if (pr_inet_set_proto_cork(PR_NETIO_FD(session.d->outstrm), 0) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "error uncorking socket fd %d: %s",
-        PR_NETIO_FD(session.d->outstrm), strerror(errno));
+      if (errno != EINVAL) {
+        pr_log_pri(PR_LOG_NOTICE, "error uncorking socket fd %d: %s",
+          PR_NETIO_FD(session.d->outstrm), strerror(errno));
+      }
     }
   }
 

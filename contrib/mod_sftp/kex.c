@@ -2816,7 +2816,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   buf = palloc(kex_pool, dhlen);
 
   pr_trace_msg(trace_channel, 12, "computing DH key");
-  res = DH_compute_key((unsigned char *) buf, kex->e, kex->dh);
+  res = DH_compute_key(buf, kex->e, kex->dh);
   if (res < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error computing DH shared secret: %s", sftp_crypto_get_errors());
@@ -2824,11 +2824,12 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   }
 
   k = BN_new();
-  if (BN_bin2bn((unsigned char *) buf, res, k) == NULL) {
+  if (BN_bin2bn(buf, res, k) == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error converting DH shared secret to BN: %s", sftp_crypto_get_errors());
 
     pr_memscrub(buf, res);
+    BN_clear_free(k);
     return -1;
   }
 

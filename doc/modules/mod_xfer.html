@@ -109,9 +109,11 @@ See also: <a href="#AllowRetrieveRestart"><code>AllowRetrieveRestart</code></a>,
 The <code>DeleteAbortedStores</code> directive controls whether ProFTPD
 deletes partially uploaded files if the transfer is stopped via the
 FTP <code>ABOR</code> command (as opposed to a connection failure).
-By default, <code>DeleteAbortedStores</code> is <em>off</em>; however when
-<code>HiddenStores</code> is enabled, then <code>DeleteAbortedStores</code>
-is automatically enabled as well.
+By default, <code>DeleteAbortedStores</code> is <em>off</em>.
+
+<p>
+<b>However</b>, when <code>HiddenStores</code> is enabled, then
+<code>DeleteAbortedStores</code> is automatically enabled as well.
 
 <p>
 See also: <a href="#HiddenStores"><code>HiddenStores</code></a>

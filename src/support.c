@@ -675,7 +675,7 @@ void pr_getopt_reset(void) {
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
     defined(FREEBSD10) || \
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
-    defined(DARWIN10) || defined(DARWIN11)
+    defined(DARWIN10) || defined(DARWIN11) || defined(DARWIN12)
   optreset = 1;
   opterr = 1;
   optind = 1;

@@ -1376,6 +1376,12 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     pr_log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied",
       session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr));
+
+    /* XXX Send DisplayConnect here? No chroot to worry about; modules have
+     * NOT been initialized, so generating an event would not work as
+     * expected.
+     */
+
     exit(0);
   }
 
@@ -1525,7 +1531,7 @@ static void daemon_loop(void) {
     }
 
     running = 1;
-    xerrno = 0;
+    xerrno = errno = 0;
 
     PR_DEVEL_CLOCK(i = select(maxfd + 1, &listenfds, NULL, NULL, &tv));
     if (i < 0) {
@@ -1536,6 +1542,9 @@ static void daemon_loop(void) {
         xerrno == EINTR) {
       errno = xerrno;
       pr_signals_handle();
+
+      /* We handled our signal; clear errno. */
+      xerrno = errno = 0;
       continue;
     }
 

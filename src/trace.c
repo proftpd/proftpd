@@ -537,23 +537,32 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
   }
 
   listening = pr_log_event_listening(PR_LOG_TYPE_TRACELOG);
-  if (listening <= 0) {
-    return 0;
-  }
 
   levels = trace_get_levels(channel);
   if (levels == NULL) {
     discard = TRUE;
+
+    if (listening <= 0) {
+      return 0;
+    }
   }
 
   if (discard == FALSE &&
       level < levels->min_level) {
     discard = TRUE;
+
+    if (listening <= 0) {
+      return 0;
+    }
   }
 
   if (discard == FALSE &&
       level > levels->max_level) {
     discard = TRUE;
+
+    if (listening <= 0) {
+      return 0;
+    }
   }
 
   buflen = vsnprintf(buf, sizeof(buf)-1, fmt, msg);
