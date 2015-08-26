@@ -192,6 +192,7 @@ sub mlsd_ok_raw_active {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw();
       unless ($conn) {
@@ -206,7 +207,10 @@ sub mlsd_ok_raw_active {
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
+      $self->assert(scalar(@$lines) > 1,
+        test_msg("Expected several MLSD lines, got " . scalar(@$lines)));
+
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
@@ -354,7 +358,7 @@ sub mlsd_ok_raw_passive {
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
@@ -611,6 +615,7 @@ sub mlsd_ok_cwd_dir {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw($home_dir);
       unless ($conn) {
@@ -623,7 +628,7 @@ sub mlsd_ok_cwd_dir {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$2} = $1;
@@ -749,6 +754,7 @@ sub mlsd_ok_other_dir_bug4198 {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       # First, change to some other directory
       $client->cwd($sub_dir);
@@ -764,7 +770,7 @@ sub mlsd_ok_other_dir_bug4198 {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$2} = $1;
@@ -895,6 +901,7 @@ sub mlsd_ok_chrooted_dir {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw('/');
       unless ($conn) {
@@ -907,7 +914,7 @@ sub mlsd_ok_chrooted_dir {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
@@ -1024,6 +1031,7 @@ sub mlsd_ok_empty_dir {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw($test_dir);
       unless ($conn) {
@@ -1036,7 +1044,7 @@ sub mlsd_ok_empty_dir {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$2} = $1;
@@ -1163,6 +1171,7 @@ sub mlsd_ok_no_path {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw();
       unless ($conn) {
@@ -1175,7 +1184,7 @@ sub mlsd_ok_no_path {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
@@ -1292,6 +1301,7 @@ sub mlsd_ok_glob {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd('?foo*');
       unless ($conn) {
@@ -1506,6 +1516,7 @@ sub mlsd_fails_enoent {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
       $client->port();
 
       my $test_file = 'foo/bar/baz';
@@ -1642,6 +1653,7 @@ sub mlsd_fails_eperm {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
       $client->port();
 
       chmod(0660, $sub_dir);
@@ -1781,6 +1793,7 @@ sub mlsd_ok_hidden_file {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw($home_dir);
       unless ($conn) {
@@ -1793,7 +1806,7 @@ sub mlsd_ok_hidden_file {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
@@ -1914,6 +1927,7 @@ sub mlsd_ok_path_with_spaces {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw('test foo');
       unless ($conn) {
@@ -1926,7 +1940,7 @@ sub mlsd_ok_path_with_spaces {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
@@ -2043,6 +2057,7 @@ sub mlsd_nonascii_chars_bug3032 {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw("test\b");
       unless ($conn) {
@@ -2055,7 +2070,7 @@ sub mlsd_nonascii_chars_bug3032 {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$1} = 1;
@@ -2201,6 +2216,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw('foo');
       unless ($conn) {
@@ -2213,7 +2229,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$2} = $1;
@@ -2368,6 +2384,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw('foo');
       unless ($conn) {
@@ -2380,7 +2397,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
@@ -2537,6 +2554,7 @@ sub mlsd_symlinked_dir_bug3859 {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw('foo');
       unless ($conn) {
@@ -2549,7 +2567,7 @@ sub mlsd_symlinked_dir_bug3859 {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
@@ -2704,6 +2722,7 @@ sub mlsd_symlinked_dir_showsymlinks_off_bug3859 {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
+      $client->type('binary');
 
       my $conn = $client->mlsd_raw('foo');
       unless ($conn) {
@@ -2716,7 +2735,7 @@ sub mlsd_symlinked_dir_showsymlinks_off_bug3859 {
       eval { $conn->close() };
 
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
