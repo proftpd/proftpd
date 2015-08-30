@@ -32,27 +32,24 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#LDAPAliasDereference">LDAPAliasDereference</a>
   <li><a href="#LDAPAttr">LDAPAttr</a>
   <li><a href="#LDAPAuthBinds">LDAPAuthBinds</a>
-  <li><a href="#LDAPDNInfo">LDAPDNInfo</a>
+  <li><a href="#LDAPBindDN">LDAPBindDN</a>
   <li><a href="#LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a>
   <li><a href="#LDAPDefaultGID">LDAPDefaultGID</a>
+  <li><a href="#LDAPDefaultQuota">LDAPDefaultQuota</a>
   <li><a href="#LDAPDefaultUID">LDAPDefaultUID</a>
-  <li><a href="#LDAPDoAuth">LDAPDoAuth</a>
-  <li><a href="#LDAPDoGIDLookups">LDAPDoGIDLookups</a>
-  <li><a href="#LDAPDoQuotaLookups">LDAPDoQuotaLookups</a>
-  <li><a href="#LDAPDoUIDLookups">LDAPDoUIDLookups</a>
   <li><a href="#LDAPForceDefaultGID">LDAPForceDefaultGID</a>
   <li><a href="#LDAPForceDefaultUID">LDAPForceDefaultUID</a>
   <li><a href="#LDAPForceGeneratedHomedir">LDAPForceGeneratedHomedir</a>
   <li><a href="#LDAPGenerateHomedir">LDAPGenerateHomedir</a>
   <li><a href="#LDAPGenerateHomedirPrefix">LDAPGenerateHomedirPrefix</a>
   <li><a href="#LDAPGenerateHomedirPrefixNoUsername">LDAPGenerateHomedirPrefixNoUsername</a>
+  <li><a href="#LDAPGroups">LDAPGroups</a>
   <li><a href="#LDAPLog">LDAPLog</a>
-  <li><a href="#LDAPNegativeCache">LDAPNegativeCache</a>
   <li><a href="#LDAPProtocolVersion">LDAPProtocolVersion</a>
   <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</a>
   <li><a href="#LDAPSearchScope">LDAPSearchScope</a>
   <li><a href="#LDAPServer">LDAPServer</a>
-  <li><a href="#LDAPUseSSL">LDAPUseSSL</a>
+  <li><a href="#LDAPUsers">LDAPUsers</a>
   <li><a href="#LDAPUseTLS">LDAPUseTLS</a>
 </ul>
 
@@ -140,14 +137,17 @@ The following LDAP attributes can be renamed in this manner:
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
 <p>
-By default, the DN specified by the <a href="#LDAPDNInfo"><code>LDAPDNInfo</code></a> will be used to bind to the LDAP server to obtain user information,
-including the <code>userPassword</code> attribute.  If <code>LDAPAuthBinds</code> is set to <em>on</em>, the DN specified by <code>LDAPDNInfo</code> will be
-used to fetch all user information <i>except</i> the <code>userPassword</code>
-attribute.  Then, the <code>mod_ldap</code> module will bind to the LDAP server
-as the user who is logging in via FTP with the user-supplied password.  If this
-bind succeeds, the user is considered authenticated and is allowed to log in.
-This method of LDAP authentication has the added benefit of supporting any
-password encryption scheme that your LDAP server supports.
+By default, the DN specified by the
+<a href="#LDAPBindDNo"><code>LDAPBindDN</code></a> will be used to bind to the
+LDAP server to obtain user information, including the <code>userPassword</code>
+attribute.  If <code>LDAPAuthBinds</code> is set to <em>on</em>, the DN
+specified by <code>LDAPDNInfo</code> will be used to fetch all user information
+<i>except</i> the <code>userPassword</code> attribute.  Then, the
+<code>mod_ldap</code> module will bind to the LDAP server as the user who is
+logging in via FTP with the user-supplied password.  If this bind succeeds,
+the user is considered authenticated and is allowed to log in.  This method of
+LDAP authentication has the added benefit of supporting any password encryption
+scheme that your LDAP server supports.
 
 <p>
 In versions of <code>mod_ldap</code> up to 2.7.6, the default for
@@ -156,24 +156,25 @@ the default value for <code>LDAPAuthBinds</code> is <em>on</em>.
 
 <p>
 <hr>
-<h2><a name="LDAPDNInfo">LDAPDNInfo</a></h2>
-<strong>Syntax:</strong> LDAPDNInfo <em>dn password</em><br>
+<h2><a name="LDAPBindDN">LDAPBindDN</a></h2>
+<strong>Syntax:</strong> LDAPBindDN <em>dn password</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ldap<br>
-<strong>Compatibility:</strong> 1.2.7rc1 and later
+<strong>Compatibility:</strong> 1.3.5rc1 and later
 
 <p>
-The <code>LDAPDNInfo</code> directive configures the DN and the password that
-<code>mod_ldap</code> will use when binding to the LDAP directory.  If this
-configuration directive is missing, then anonymous binds are used.
+The <code>LDAPBindDN</code> directive configures the <em>DN</em> and the
+<em>password</em> that <code>mod_ldap</code> will use when binding to the LDAP
+directory.  If this configuration directive is missing, then anonymous binds
+are used.
 
 <p>
 The default is:
 <pre>
   &lt;IfModule mod_ldap.c&gt;
     # Use anonymous binds
-    LDAPDNInfo "" ""
+    LDAPBindDN "" ""
   &lt;/IfModule&gt;
 </pre>
 
@@ -228,6 +229,20 @@ See also: <a href="#LDAPDefaultUID"><code>LDAPDefaultUID</code></a>
 
 <p>
 <hr>
+<h2><a name="LDAPDefaultQuota">LDAPDefaultQuota</a></h2>
+<strong>Syntax:</strong> LDAPDefaultQuota <em>default-quota</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>LDAPDefaultQuota</code> directive configures a <em>default-quota</em>
+to use if a user does not have an <code>ftpQuota</code> attribute.  This
+parameter is formatted the same way as the <code>ftpQuota</code> LDAP attribute.
+
+<p>
+<hr>
 <h2><a name="LDAPDefaultUID">LDAPDefaultUID</a></h2>
 <strong>Syntax:</strong> LDAPDefaultUID <em>uid</em><br>
 <strong>Default:</strong> None<br>
@@ -250,22 +265,7 @@ automatically assign those users a single UID.
 <p>
 See also: <a href="#LDAPDefaultGID"><code>LDAPDefaultGID</code></a>
 
-<p>
-<hr>
-<h2><a name="LDAPDoAuth">LDAPDoAuth</a></h2>
-<strong>Syntax:</strong> LDAPDoAuth <em>off|on base-dn search-filter-template</em><br>
-<strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_ldap<br>
-<strong>Compatibility:</strong> 1.2.7rc1 and later
-
-<p>
-The <code>LDAPDoAuth</code> configuration directive activates LDAP
-authentication.  The second parameter to this directive is the LDAP base DN to
-use for authentication.  The third parameter is a template to be used for the
-search filter; <code>%v</code> will be replaced with the username that is being
-authenticated.
-
+DoAuth
 <p>
 By default, the search filter template used is:
 <pre>
@@ -277,98 +277,6 @@ in versions of <code>mod_ldap</code> 2.7 and later.</para>
 
 <p>
 See also: <a href="#LDAPAttr"><code>LDAPAttr</code></a>
-
-<p>
-<hr>
-<h2><a name="LDAPDoGIDLookups">LDAPDoGIDLookups</a></h2>
-<strong>Syntax:</strong> LDAPDoGIDLookups <em>off|on base-dn cn-filter-template gid-number-filter-template member-uid-filter-template</em><br>
-<strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_ldap<br>
-<strong>Compatibility:</strong> 1.2.7rc1 and later
-
-<p>
-The <code>LDAPDoGIDLookups</code> directive activates LDAP GID-to-name lookups
-for directory listings.  The second parameter to this directive is the LDAP
-base DN to use for GID-to-name lookups.  The third through fifth parameters are
-templates to be used for the search filter; <code>%v</code> will be replaced
-with the GID that is being looked up.
-
-<p>
-By default, the CN filter template look like this:
-<pre>
-  (&amp;(LDAPAttr_cn=%v)(objectclass=posixGroup))
-</pre>
-The <code>gidNumber</code> filter template is:
-<pre>
-  (&amp;(LDAPAttr_gidNumber=%v)(objectclass=posixGroup))
-</pre>
-and the <code>memberUid</code> filter template used is:
-  (&amp;(LDAPAttr_memberUid=%v)(objectclass=posixGroup))
-</pre>
-Note that filter templates are only supported in <code>mod_ldap</code>
-version 2.8.3 and later.
-
-<p>
-The attribute names used in the default search filters are taken from the
-<a href="#LDAPAttr"><code>LDAPAttr</code></a> directive.
-
-<p>
-<hr>
-<h2><a name="LDAPDoQuotaLookups">LDAPDoQuotaLookups</a></h2>
-<strong>Syntax:</strong> LDAPDoQuotaLookups <em>off|on base-dn quota-filter-template default-quota</em><br>
-<strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_ldap<br>
-<strong>Compatibility:</strong> 1.2.7rc1 and later
-
-<p>
-The <code>LDAPDoQuotaLookups</code> directive enables LDAP quota lookups.  The
-second parameter of this directive is the LDAP base DN to use for quota limit
-search.  The third parameter is a template to be used for the search filter;
-<code>%v</code> will be replaced with the username that is being authenticated.
-
-<p>
-By default, the search filter template is:
-<pre>
-  (&amp;(LDAPAttr_uid=%v)(objectclass=posixAccount))
-</pre>
-The <em>uid</em> for the the search filter is taken from the
-<a href="#LDAPAttr"><code>LDAPAttr</code></a> directive.  Note that search
-filter templates are only supported in <code>mod_ldap</code> version 2.7 and
-later.
-
-<p>
-If specified, the <em>default-quota</em> parameter indicates the quota limits
-to use if a user does not have an <code>ftpQuota</code> attribute.  This
-parameter is formatted the same way as the <code>ftpQuota</code> LDAP
-attribute.
-
-<p>
-<hr>
-<h2><a name="LDAPDoUIDLookups">LDAPDoUIDLookups</a></h2>
-<strong>Syntax:</strong> LDAPDoUIDLookups <em>off|on base-dn uid-filter-template</em><br>
-<strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_ldap<br>
-<strong>Compatibility:</strong> 1.2.7rc1 and later
-
-<p>
-The <code>LDAPDoUIDLookups</code> directive activates LDAP UID-to-name lookups
-for directory listings.  The second parameter to this directive is the LDAP
-base DN to use for UID-to-name lookups.  The third parameter is a
-template to be used for the search filter; <code>%v</code> will be replaced
-with the UID that is being looked up.
-
-<p>
-By default, the search filter template looks like this:
-<pre>
-  (&amp;(LDAPAttr_uidNumber=%v)(objectclass=posixGroup))
-</pre>
-The <em>uidNumber</em> attribute name used in the search filter comes from
-the <a href="#LDAPAttr"><code>LDAPAttr</code></a> directive.
-Note that filter templates are only supported in <code>mod_ldap</code>
-version 2.7 and later.
 
 <p>
 <hr>
@@ -446,6 +354,41 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 
 <p>
 <hr>
+<h2><a name="LDAPGroups">LDAPGroups</a></h2>
+<strong>Syntax:</strong> LDAPGroups <em>base-dn cn-filter-template gid-number-filter-template member-uid-filter-template</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>LDAPGroups</code> directive activates LDAP GID-to-name lookups for
+directory listings.  The first parameter to this directive is the LDAP
+<em>base DN</em> to use for GID-to-name lookups.  The second through fourth
+optional parameters are templates to be used for the search filter;
+<code>%v</code> will be replaced with the GID that is being looked up.
+
+<p>
+By default, the CN filter template look like this:
+<pre>
+  (&amp;(LDAPAttr_cn=%v)(objectclass=posixGroup))
+</pre>
+The <code>gidNumber</code> filter template is:
+<pre>
+  (&amp;(LDAPAttr_gidNumber=%v)(objectclass=posixGroup))
+</pre>
+and the <code>memberUid</code> filter template used is:
+  (&amp;(LDAPAttr_memberUid=%v)(objectclass=posixGroup))
+</pre>
+Note that filter templates are only supported in <code>mod_ldap</code>
+version 2.8.3 and later.
+
+<p>
+The attribute names used in the default search filters are taken from the
+<a href="#LDAPAttr"><code>LDAPAttr</code></a> directive.
+
+<p>
+<hr>
 <h2><a name="LDAPLog">LDAPLog</a></h2>
 <strong>Syntax:</strong> LDAPLog <em>file|"none"</em><br>
 <strong>Default:</strong> <em>None</em><br>
@@ -462,28 +405,6 @@ parameter given must be the full path to the file to use for logging.
 Note that this path must <b>not</b> be to a world-writable directory and,
 unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 (generally a bad idea), the path must <b>not</b> be a symbolic link.
-
-<p>
-<hr>
-<h2><a name="LDAPNegativeCache">LDAPNegativeCache</a></h2>
-<strong>Syntax:</strong> LDAPNegativeCache <em>on|off</em><br>
-<strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_ldap<br>
-<strong>Compatibility:</strong> 1.2.7rc1 and later
-
-<p>
-The <code>LDAPNegativeCache</code> directive specifies whether or not to cache
-negative responses from the LDAP server when using LDAP for UID/GID lookups.
-This option is useful if you also use/are in transition from another
-authentication system; if there are many users in your old authentication
-system that aren't in the LDAP database, there can be a significant delay when
-a directory listing is performed as the UIDs not in the LDAP database are
-repeatedly looked up in an attempt to present usernames instead of UIDs in
-directory listings. With <code>LDAPNegativeCache</code> set to <em>on</em>,
-negative ("not found") responses from the LDAP server will be cached and speed
-will improve on directory listings that contain many users not present in the
-LDAP database.
 
 <p>
 <hr>
@@ -551,13 +472,49 @@ quotation marks.  For example:
 </pre>
 
 <p>
+<b>Note</b> that to use LDAPS (LDAP over SSL), use the <em>url</em> format,
+<i>e.g.</i>:
+<pre>
+  LDAPServer ldaps://host1:port1 ldaps://host2:port2
+</pre>
+Alternatively, you can use the <a href="#LDAPUseTLS"><code>LDAPUseTLS</code></a>
+directive, <i>e.g.</i>:
+<pre>
+  LDAPServer ldap://host1:port1 ldap://host2:port2
+  LDAPUseTLS on
+</pre>
+
+<p>
 <hr>
-<h2><a name="LDAPUseSSL">LDAPUseSSL</a></h2>
-<strong>Syntax:</strong> LDAPUseSSL <em>on|off</em><br>
-<strong>Default:</strong> off<br>
+<h2><a name="LDAPUsers">LDAPUsers</a></h2>
+<strong>Syntax:</strong> LDAPUsers <em>base-dn [name-filter-template [uid-filter-template]]</em><br>
+<strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ldap<br>
-<strong>Compatibility:</strong> 1.3.1rc1 and later
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>LDAPUsers</code> directive activates LDAP UID-to-name lookups
+for directory listings.  The first parameter to this directive is the LDAP
+<em>base DN</em> to use for UID-to-name lookups.  The optional second parameter
+is a template to be used for the search filter for the username; <code>%v</code>
+will be replaced with the UID that is being looked up.  Similarly, an optional
+third parameter is also a template, to be used for the search filter for
+the UID.
+
+<p>
+By default, the name search filter template looks like this:
+<pre>
+  (&amp;(uid=%v)(objectclass=posixAccount))
+</pre>
+and the UID search filter template looks like this:
+<pre>
+  (&amp;(LDAPAttr_uidNumber=%v)(objectclass=posixGroup))
+</pre>
+The <em>uidNumber</em> attribute name used in the search filter comes from
+the <a href="#LDAPAttr"><code>LDAPAttr</code></a> directive.
+Note that filter templates are only supported in <code>mod_ldap</code>
+version 2.7 and later.
 
 <p>
 <hr>
@@ -609,12 +566,12 @@ server.  Note that this configuration has not been tested; if it works for
 you (or not), please let us know:
 <pre>
   &lt;IfModule mod_ldap.c&gt;
-    LDAPServer dc.example.org:3268
+    LDAPServer ldaps://dc.example.org:3268
     LDAPUseTLS on
     LDAPAuthBinds on
-    LDAPDNInfo "cn=SRV_ACC_SVN_AUTH,ou=special accounts,ou=Sales,dc=example,dc=org" ******************
+    LDAPBindDN "cn=SRV_ACC_SVN_AUTH,ou=special accounts,ou=Sales,dc=example,dc=org" ******************
 
-    LDAPDoAuth on ou=Users,ou=Sales,dc=example,dc=org "(&(sAMAccountName=%u)(objectclass=user)(memberOf=cn=Linux Admins,ou=Groups,ou=Sales,dc=example,DC=org))"
+    LDAPUsers ou=Users,ou=Sales,dc=example,dc=org "(&(sAMAccountName=%u)(objectclass=user)(memberOf=cn=Linux Admins,ou=Groups,ou=Sales,dc=example,DC=org))"
     LDAPSearchScope subtree
 
     # Assign default IDs
@@ -648,19 +605,13 @@ This trace logging can generate large files; it is intended for debugging use
 only, and should be removed from any production configuration.
 
 <p>
-<hr><br>
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-01-21 22:11:45 $</i><br>
-
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2013-2014 TJ Saunders<br>
+&copy; Copyright 2013-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
 <hr><br>
-
 </body>
 </html>
-
