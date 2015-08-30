@@ -1720,7 +1720,7 @@ MODRET set_ldapusetls(cmd_rec *cmd) {
 #endif /* LDAP_OPT_X_TLS */
 }
 
-MODRET set_ldapdninfo(cmd_rec *cmd) {
+MODRET set_ldapbinddn(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -2303,7 +2303,7 @@ static conftable ldap_conftab[] = {
   { "LDAPAliasDereference",	set_ldapaliasdereference,	NULL },
   { "LDAPAttr",			set_ldapattr,			NULL },
   { "LDAPAuthBinds",		set_ldapauthbinds,		NULL },
-  { "LDAPBindDN",		set_ldapdninfo,			NULL },
+  { "LDAPBindDN",		set_ldapbinddn,			NULL },
   { "LDAPDefaultAuthScheme",	set_ldapdefaultauthscheme,	NULL },
   { "LDAPDefaultGID",		set_ldapdefaultgid,		NULL },
   { "LDAPDefaultQuota",		set_ldapdefaultquota,		NULL },
