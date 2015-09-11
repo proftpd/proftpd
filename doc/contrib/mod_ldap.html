@@ -1,6 +1,3 @@
-<!-- $Id: mod_ldap.html,v 1.2 2014-01-21 22:11:45 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ldap.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_ldap</title>
@@ -483,6 +480,7 @@ directive, <i>e.g.</i>:
   LDAPServer ldap://host1:port1 ldap://host2:port2
   LDAPUseTLS on
 </pre>
+to tell <code>mod_ldap</code> to use LDAP's <a href="https://en.wikipedia.org/wiki/STARTTLS">STARTTLS</a> mechanism.
 
 <p>
 <hr>
@@ -527,8 +525,7 @@ version 2.7 and later.
 
 <p>
 The <code>LDAPUseTLS</code> directive configures whether <code>mod_ldap</code>
-will use SSL/TLS to protect the connections made to the configured LDAP
-servers.
+will use SSL/TLS via <a href="https://en.wikipedia.org/wiki/STARTTLS">STARTTLS</a> to protect the connections made to the configured LDAP servers.
 
 <p>
 By default, the <code>mod_ldap</code> module connects to the LDAP server via 
@@ -594,6 +591,7 @@ you (or not), please let us know:
 The <code>mod_ldap</code> module supports <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
 <ul>
   <li>ldap
+  <li>ldap.library
 </ul>
 Thus for trace logging, to aid in debugging, you would use the following in
 your <code>proftpd.conf</code>:
