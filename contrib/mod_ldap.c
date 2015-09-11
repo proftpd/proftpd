@@ -43,6 +43,9 @@
 
 static int ldap_logfd = -1;
 static const char *trace_channel = "ldap";
+#if defined(LBER_OPT_LOG_PRINT_FN)
+static const char *libtrace_channel = "ldap.library";
+#endif
 
 #if LDAP_API_VERSION >= 2000
 # define HAS_LDAP_SASL_BIND_S
@@ -160,8 +163,8 @@ static struct timeval ldap_querytimeout_tv;
 static uid_t ldap_defaultuid = -1;
 static gid_t ldap_defaultgid = -1;
 
-#ifdef LDAP_OPT_X_TLS
-static int ldap_use_tls = 0;
+#if defined(LDAP_OPT_X_TLS)
+static int ldap_use_tls = FALSE;
 #endif
 
 static LDAP *ld = NULL;
@@ -254,12 +257,25 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
     "connected to %s:%d", ldap_server ? ldap_server : "(null)", ldap_port);
 #endif /* HAS_LDAP_INITIALIZE */
 
-#ifdef LDAP_OPT_X_TLS
-  if (ldap_use_tls == 1) {
+#if defined(LDAP_OPT_X_TLS)
+  if (ldap_use_tls == TRUE) {
     res = ldap_start_tls_s(*conn_ld, NULL, NULL);
     if (res != LDAP_SUCCESS) {
-      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-       "failed to start TLS: %s", ldap_err2string(res));
+      char *diag_msg = NULL;
+
+      ldap_get_option(*conn_ld, LDAP_OPT_DIAGNOSTIC_MESSAGE,
+        (void *) &diag_msg);
+
+      if (diag_msg != NULL) {
+        (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+         "failed to start TLS: %s: %s", ldap_err2string(res), diag_msg);
+        ldap_memfree(diag_msg);
+
+      } else {
+        (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+         "failed to start TLS: %s", ldap_err2string(res));
+      }
+
       pr_ldap_unbind();
       return -1;
     }
@@ -320,6 +336,12 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
   return 1;
 }
 
+#if defined(LBER_OPT_LOG_PRINT_FN)
+static void ldap_tracelog_cb(const char *msg) {
+  (void) pr_trace_msg(libtrace_channel, 1, "%s", msg);
+}
+#endif /* no LBER_OPT_LOG_PRINT_FN */
+
 static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
   int start_server_index;
   char *item;
@@ -371,7 +393,7 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
         if (url->lud_scope != LDAP_SCOPE_DEFAULT) {
           ldap_search_scope = url->lud_scope;
           if (ldap_search_scope == LDAP_SCOPE_BASE) {
-            pr_log_debug(DEBUG3, MOD_LDAP_VERSION
+            pr_log_debug(DEBUG0, MOD_LDAP_VERSION
               ": WARNING: LDAP URL search scopes default to 'base' (not 'sub') "
               "and may not be what you want");
           }
@@ -391,6 +413,17 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
     }
 
     if (do_ldap_connect(conn_ld, do_bind) == 1) {
+      /* This debug level value should be LDAP_DEBUG_ANY, but that macro is, I
+       * think, OpenLDAP-specific.
+       */
+      int debug_level = -1, res;
+
+      res = ldap_set_option(*conn_ld, LDAP_OPT_DEBUG_LEVEL, &debug_level);
+      if (res != LDAP_OPT_SUCCESS) {
+        (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+          "error setting DEBUG_ANY debug level: %s", ldap_err2string(res));
+      }
+
       return 1;
     }
 
@@ -1696,6 +1729,7 @@ MODRET set_ldapserver(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: LDAPUseTLS on|off */
 MODRET set_ldapusetls(cmd_rec *cmd) {
 #ifndef LDAP_OPT_X_TLS
   CONF_ERROR(cmd, "LDAPUseTLS: Your LDAP libraries do not appear to support TLS");
@@ -2066,7 +2100,7 @@ static int ldap_sess_init(void) {
     path = c->argv[0];
 
     if (strncasecmp(path, "none", 5) != 0) {
-      int res, xerrno;
+      int res, xerrno = 0;
 
       pr_signals_block();
       PRIVS_ROOT
@@ -2113,9 +2147,9 @@ static int ldap_sess_init(void) {
     *((char **) push_array(ldap_servers)) = NULL;
   }
 
-#ifdef LDAP_OPT_X_TLS
+#if defined(LDAP_OPT_X_TLS)
   ptr = get_param_ptr(main_server->conf, "LDAPUseTLS", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_use_tls = *((int *) ptr);
   }
 #endif /* LDAP_OPT_X_TLS */
@@ -2127,7 +2161,7 @@ static int ldap_sess_init(void) {
   }
 
   scope = get_param_ptr(main_server->conf, "LDAPSearchScope", FALSE);
-  if (scope) {
+  if (scope != NULL) {
     if (strcasecmp(scope, "base") == 0) {
       ldap_search_scope = LDAP_SCOPE_BASE;
 
@@ -2140,22 +2174,22 @@ static int ldap_sess_init(void) {
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPQueryTimeout", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_querytimeout = *((int *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPAliasDereference", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_dereference = *((int *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPAuthBinds", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_authbinds = *((int *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPDefaultAuthScheme", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_defaultauthscheme = (char *) ptr;
   }
 
@@ -2222,32 +2256,32 @@ static int ldap_sess_init(void) {
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPDefaultUID", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_defaultuid = *((uid_t *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPDefaultGID", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_defaultgid = *((gid_t *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPForceDefaultUID", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_forcedefaultuid = *((int *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPForceDefaultGID", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_forcedefaultgid = *((int *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPForceGeneratedHomedir", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_forcegenhdir = *((int *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPGenerateHomedir", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_genhdir = *((int *) ptr);
   }
 
@@ -2259,7 +2293,7 @@ static int ldap_sess_init(void) {
 
   ptr = get_param_ptr(main_server->conf, "LDAPGenerateHomedirPrefixNoUsername",
     FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_genhdir_prefix_nouname = *((int *) ptr);
   }
 
@@ -2292,6 +2326,21 @@ static int ldap_sess_init(void) {
         "(&(", ldap_attr_memberuid, "=%v)(objectclass=posixGroup))", NULL);
     }
   }
+
+#if defined(LBER_OPT_LOG_PRINT_FN)
+  /* If trace logging is enabled for the 'ldap.library' channel, direct
+   * libldap (via liblber) to log to our trace logging.
+   */
+  if (pr_trace_get_level(libtrace_channel) >= 1) {
+    int res;
+
+    res = ber_set_option(NULL, LBER_OPT_LOG_PRINT_FN, ldap_tracelog_cb);
+    if (res != LBER_OPT_SUCCESS) {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "error setting trace logging function: %s", strerror(EINVAL));
+    }
+  }
+#endif /* LBER_OPT_LOG_PRINT_FN */
 
   return 0;
 }
