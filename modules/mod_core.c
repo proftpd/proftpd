@@ -5612,48 +5612,11 @@ static int create_path(pool *p, const char *path) {
     curr_dir = strsep(&dup_path, "/");
     curr_path = pdircat(p, curr_path, curr_dir, NULL);
 
-    /* Dispatch fake C_MKD command, e.g. for mod_quotatab */
-    sub_pool = pr_pool_create_sz(p, 64);
-    cmd = pr_cmd_alloc(sub_pool, 2, pstrdup(sub_pool, C_MKD),
-      pstrdup(sub_pool, curr_path));
-    cmd->arg = pstrdup(cmd->pool, curr_path);
-    cmd->cmd_class = CL_DIRS|CL_WRITE;
-
-    pr_response_clear(&resp_list);
-    pr_response_clear(&resp_err_list);
-
-    res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
-    if (res < 0) {
-      int xerrno = errno;
-
-      pr_log_debug(DEBUG3,
-        ": creating directory '%s' blocked by MKD handler: %s", curr_path,
-        strerror(xerrno));
-
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
-
-      destroy_pool(sub_pool);
-
-      errno = xerrno;
-      return -1;
-    }
-
     res = create_dir(curr_path);
     if (res < 0) {
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
-
-      destroy_pool(sub_pool);
       return -1;
     }
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
-    destroy_pool(sub_pool);
   }
 
   return 0;
@@ -5743,49 +5706,12 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
 
     /* Is this path to a regular file? */
     } else if (S_ISREG(st.st_mode)) {
-      cmd_rec *cmd;
-
-      /* Dispatch fake COPY command, e.g. for mod_quotatab */
-      cmd = pr_cmd_alloc(iter_pool, 4, pstrdup(iter_pool, "SITE"),
-        pstrdup(iter_pool, "COPY"), pstrdup(iter_pool, src_path),
-        pstrdup(iter_pool, dst_path));
-      cmd->arg = pstrcat(iter_pool, "COPY ", src_path, " ", dst_path, NULL);
-      cmd->cmd_class = CL_WRITE;
-
-      pr_response_clear(&resp_list);
-      pr_response_clear(&resp_err_list);
-
-      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
-        int xerrno = errno;
-
-        pr_log_debug(DEBUG3,
-          ": COPY of '%s' to '%s' blocked by COPY handler: %s", src_path,
-          dst_path, strerror(xerrno));
-
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-        pr_response_clear(&resp_err_list);
-
-        errno = xerrno;
-        res = -1;
-        break;
-
-      } else {
         if (pr_fs_copy_file(src_path, dst_path) < 0) {
-          pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-          pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-          pr_response_clear(&resp_err_list);
-
           res = -1;
           break;
 
         } else {
           char *abs_path;
-          
-          pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-          pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-          pr_response_clear(&resp_list);
-
           /* Write a TransferLog entry as well. */
 
           pr_fs_clear_cache2(dst_path);
@@ -5804,7 +5730,6 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
               session.user, 'c', "_");
           }
         }
-      }
 
       continue;
 
@@ -6081,7 +6006,7 @@ MODRET core_rnto(cmd_rec *cmd) {
     if (pr_fs_copy_file(session.xfer.path, path) < 0) {
       xerrno = errno;
       
-      if (xerrno == EISDIR)
+      if (xerrno == EISDIR) {
         /* In this case, the client has requested that a directory be renamed
          * across mount points.  The pr_fs_copy_file() function can't handle
          * copying directories
@@ -6096,7 +6021,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   	      errno = xerrno;
   	      return PR_ERROR(cmd);
         }
-        else {
+      }else {
           (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
           "error copying '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
           pr_uid2str(cmd->tmp_pool, session.uid),
