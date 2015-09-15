@@ -5546,6 +5546,434 @@ MODRET core_dele(cmd_rec *cmd) {
   pr_response_add(R_250, _("%s command successful"), (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
+/* code from mod_copy */
+extern pr_response_t *resp_list, *resp_err_list;
+static const char *trace_channel = "core";
+
+static int create_dir(const char *dir) {
+  struct stat st;
+  int res = -1;
+
+  pr_fs_clear_cache2(dir);
+  res = pr_fsio_stat(dir, &st);
+
+  if (res < 0 &&
+      errno != ENOENT) {
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, ": error checking '%s': %s",
+      dir, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  /* The directory already exists. */
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 9, "path '%s' already exists", dir);
+    return 1;
+  }
+
+  if (pr_fsio_mkdir(dir, 0777) < 0) {
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, ": error creating '%s': %s",
+      dir, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  pr_log_debug(DEBUG6, ": directory '%s' created", dir);
+  return 0;
+}
+
+static int create_path(pool *p, const char *path) {
+  struct stat st;
+  char *curr_path, *dup_path; 
+ 
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) == 0) {
+    return 0;
+  }
+ 
+  dup_path = pstrdup(p, path);
+
+  curr_path = "/"; 
+  while (dup_path &&
+         *dup_path) {
+    char *curr_dir;
+    int res;
+    cmd_rec *cmd;
+    pool *sub_pool;
+
+    pr_signals_handle();
+
+    curr_dir = strsep(&dup_path, "/");
+    curr_path = pdircat(p, curr_path, curr_dir, NULL);
+
+    /* Dispatch fake C_MKD command, e.g. for mod_quotatab */
+    sub_pool = pr_pool_create_sz(p, 64);
+    cmd = pr_cmd_alloc(sub_pool, 2, pstrdup(sub_pool, C_MKD),
+      pstrdup(sub_pool, curr_path));
+    cmd->arg = pstrdup(cmd->pool, curr_path);
+    cmd->cmd_class = CL_DIRS|CL_WRITE;
+
+    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
+
+    res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG3,
+        ": creating directory '%s' blocked by MKD handler: %s", curr_path,
+        strerror(xerrno));
+
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
+
+      destroy_pool(sub_pool);
+
+      errno = xerrno;
+      return -1;
+    }
+
+    res = create_dir(curr_path);
+    if (res < 0) {
+      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
+
+      destroy_pool(sub_pool);
+      return -1;
+    }
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+    destroy_pool(sub_pool);
+  }
+
+  return 0;
+}
+
+static int copy_symlink(pool *p, const char *src_path, const char *dst_path) {
+  char *link_path = pcalloc(p, PR_TUNABLE_BUFFER_SIZE);
+  int len;
+
+  len = pr_fsio_readlink(src_path, link_path, PR_TUNABLE_BUFFER_SIZE-1);
+  if (len < 0) {
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, ": error reading link '%s': %s",
+      src_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+  link_path[len] = '\0';
+
+  if (pr_fsio_symlink(link_path, dst_path) < 0) {
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING,
+      ": error symlinking '%s' to '%s': %s", link_path, dst_path,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
+  DIR *dh = NULL;
+  struct dirent *dent = NULL;
+  int res = 0;
+  pool *iter_pool = NULL;
+
+  dh = opendir(src_dir);
+  if (dh == NULL) {
+    pr_log_pri(PR_LOG_WARNING,
+      ": error reading directory '%s': %s", src_dir, strerror(errno));
+    return -1;
+  }
+
+  while ((dent = readdir(dh)) != NULL) {
+    struct stat st;
+    char *src_path, *dst_path;
+
+    pr_signals_handle();
+
+    /* Skip "." and ".." */
+    if (strncmp(dent->d_name, ".", 2) == 0 ||
+        strncmp(dent->d_name, "..", 3) == 0) {
+      continue;
+    }
+
+    if (iter_pool != NULL) {
+      destroy_pool(iter_pool);
+    }
+
+    iter_pool = pr_pool_create_sz(p, 128);
+    src_path = pdircat(iter_pool, src_dir, dent->d_name, NULL);
+    dst_path = pdircat(iter_pool, dst_dir, dent->d_name, NULL);
+
+    if (pr_fsio_lstat(src_path, &st) < 0) {
+      pr_log_debug(DEBUG3,
+        ": unable to stat '%s' (%s), skipping", src_path, strerror(errno));
+      continue;
+    }
+
+    /* Is this path to a directory? */
+    if (S_ISDIR(st.st_mode)) {
+      if (create_path(iter_pool, dst_path) < 0) {
+        res = -1;
+        break;
+      }
+
+      if (copy_dir(iter_pool, src_path, dst_path) < 0) {
+        res = -1;
+        break;
+      }
+      continue;
+
+    /* Is this path to a regular file? */
+    } else if (S_ISREG(st.st_mode)) {
+      cmd_rec *cmd;
+
+      /* Dispatch fake COPY command, e.g. for mod_quotatab */
+      cmd = pr_cmd_alloc(iter_pool, 4, pstrdup(iter_pool, "SITE"),
+        pstrdup(iter_pool, "COPY"), pstrdup(iter_pool, src_path),
+        pstrdup(iter_pool, dst_path));
+      cmd->arg = pstrcat(iter_pool, "COPY ", src_path, " ", dst_path, NULL);
+      cmd->cmd_class = CL_WRITE;
+
+      pr_response_clear(&resp_list);
+      pr_response_clear(&resp_err_list);
+
+      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+        int xerrno = errno;
+
+        pr_log_debug(DEBUG3,
+          ": COPY of '%s' to '%s' blocked by COPY handler: %s", src_path,
+          dst_path, strerror(xerrno));
+
+        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+        pr_response_clear(&resp_err_list);
+
+        errno = xerrno;
+        res = -1;
+        break;
+
+      } else {
+        if (pr_fs_copy_file(src_path, dst_path) < 0) {
+          pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+          pr_response_clear(&resp_err_list);
+
+          res = -1;
+          break;
+
+        } else {
+          char *abs_path;
+          
+          pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+          pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+          pr_response_clear(&resp_list);
+
+          /* Write a TransferLog entry as well. */
+
+          pr_fs_clear_cache2(dst_path);
+          pr_fsio_stat(dst_path, &st);
+
+          abs_path = dir_abs_path(p, dst_path, TRUE);
+
+          if (session.sf_flags & SF_ANON) {
+            xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+               (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a',
+               session.anon_user, 'c', "_");
+
+          } else {
+            xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+              (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r',
+              session.user, 'c', "_");
+          }
+        }
+      }
+
+      continue;
+
+    /* Is this path a symlink? */
+    } else if (S_ISLNK(st.st_mode)) {
+      if (copy_symlink(iter_pool, src_path, dst_path) < 0) {
+        res = -1;
+        break;
+      }
+      continue;
+
+    /* All other file types are skipped */
+    } else {
+      pr_log_debug(DEBUG3, ": skipping supported file '%s'",
+        src_path);
+      continue;
+    }
+  }
+
+  if (iter_pool != NULL) {
+    destroy_pool(iter_pool);
+  }
+
+  closedir(dh);
+  return res;
+}
+
+static int copy_paths(pool *p, const char *from, const char *to, unsigned char *allow_overwrite) {
+  struct stat st;
+  int res;
+  xaset_t *set;
+
+  set = get_dir_ctxt(p, (char *) to);
+  res = pr_filter_allow_path(set, to);
+  switch (res) {
+    case 0:
+      break;
+
+    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
+      pr_log_debug(DEBUG7,
+        ": path '%s' denied by PathAllowFilter", to);
+      errno = EPERM;
+      return -1;
+
+    case PR_FILTER_ERR_FAILS_DENY_FILTER:
+      pr_log_debug(DEBUG7,
+        ": path '%s' denied by PathDenyFilter", to);
+      errno = EPERM;
+      return -1;
+  }
+
+  /* Check whether from is a file, a directory, a symlink, or something
+   * unsupported.
+   */
+  res = pr_fsio_lstat(from, &st);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_log_debug(DEBUG7, ": error checking '%s': %s", from,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+   
+  if (S_ISREG(st.st_mode)) { 
+    char *abs_path;
+
+    pr_fs_clear_cache2(to);
+    res = pr_fsio_stat(to, &st);
+    if (res == 0) {
+      if (allow_overwrite == NULL ||
+          *allow_overwrite == FALSE) {
+        pr_log_debug(DEBUG6,
+          ": AllowOverwrite permission denied for '%s'", to);
+        errno = EACCES;
+        return -1;
+      }
+    }
+
+    res = pr_fs_copy_file(from, to);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG7,
+        ": error copying file '%s' to '%s': %s", from, to, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
+    pr_fs_clear_cache2(to);
+    if (pr_fsio_stat(to, &st) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error stat'ing '%s': %s", to, strerror(errno));
+    }
+
+    /* Write a TransferLog entry as well. */
+    abs_path = dir_abs_path(p, to, TRUE);
+
+    if (session.sf_flags & SF_ANON) {
+      xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+        (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a',
+        session.anon_user, 'c', "_");
+
+    } else {
+      xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+        (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r',
+        session.user, 'c', "_");
+    }
+
+  } else if (S_ISDIR(st.st_mode)) {
+    res = create_path(p, to);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG7,
+        ": error creating path '%s': %s", to, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
+    res = copy_dir(p, from, to);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG7,
+        ": error copying directory '%s' to '%s': %s", from, to,
+        strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
+  } else if (S_ISLNK(st.st_mode)) {
+    pr_fs_clear_cache2(to);
+    res = pr_fsio_stat(to, &st);
+    if (res == 0) {
+      if (allow_overwrite == NULL ||
+          *allow_overwrite == FALSE) {
+        pr_log_debug(DEBUG6,
+          ": AllowOverwrite permission denied for '%s'", to);
+        errno = EACCES;
+        return -1;
+      }
+    }
+
+    res = copy_symlink(p, from, to);
+    if (res < 0) {
+      int xerrno = errno;
+
+      pr_log_debug(DEBUG7,
+        ": error copying symlink '%s' to '%s': %s", from, to, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
+  } else {
+    pr_log_debug(DEBUG7,
+      ": unsupported file type for '%s'", from);
+    errno = EINVAL;
+    return -1;
+  }
+
+  return 0;
+}
+/* end code from mod_copy*/
 
 MODRET core_rnto(cmd_rec *cmd) {
   int res;
@@ -5641,29 +6069,26 @@ MODRET core_rnto(cmd_rec *cmd) {
        * For now, error out now with a more informative error message to the
        * client.
        */
+	    if (copy_paths(cmd->tmp_pool, session.xfer.path, path, allow_overwrite) < 0) {
+	      int xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error copying '%s' to '%s': %s (previous error was '%s')",
-        (char *) cmd->argv[0], session.user,
-        pr_uid2str(cmd->tmp_pool, session.uid),
-        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
-        strerror(xerrno), strerror(EXDEV));
+	      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[1],
+	        strerror(xerrno));
 
-      pr_log_debug(DEBUG4,
-        "Cannot rename directory '%s' across a filesystem mount point",
-        session.xfer.path);
+	      pr_cmd_set_errno(cmd, xerrno);
+	      errno = xerrno;
+	      return PR_ERROR(cmd);
+	    }
+	    /* Once copied, unlink the original file. */
+	    /*if (pr_fsio_unlink(session.xfer.path) < 0) {
+	      pr_log_debug(DEBUG0, "error unlinking '%s': %s", session.xfer.path,
+	        strerror(errno));
+	    }*/
+	    /* Change the xfer path to the name of the destination file, for logging. */
+	    session.xfer.path = pstrdup(session.xfer.p, path);
 
-      /* Use EPERM, rather than EISDIR, to get slightly more informative
-       * error messages.
-       */
-      xerrno = EPERM;
-
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
+	    pr_response_add(R_250, _("Rename successful"));
+	    return PR_HANDLED(cmd);
     }
 
     if (xerrno != EXDEV) {
