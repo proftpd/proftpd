@@ -6060,37 +6060,6 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_fsio_rename(session.xfer.path, path) == -1) {
     int xerrno = errno;
 
-    if (xerrno == EISDIR) {
-      /* In this case, the client has requested that a directory be renamed
-       * across mount points.  The pr_fs_copy_file() function can't handle
-       * copying directories; it only knows about files.  (This could be
-       * fixed to work later, e.g. using code from the mod_copy module.)
-       *
-       * For now, error out now with a more informative error message to the
-       * client.
-       */
-	    if (copy_paths(cmd->tmp_pool, session.xfer.path, path, allow_overwrite) < 0) {
-	      int xerrno = errno;
-
-	      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[1],
-	        strerror(xerrno));
-
-	      pr_cmd_set_errno(cmd, xerrno);
-	      errno = xerrno;
-	      return PR_ERROR(cmd);
-	    }
-	    /* Once copied, unlink the original file. */
-	    /*if (pr_fsio_unlink(session.xfer.path) < 0) {
-	      pr_log_debug(DEBUG0, "error unlinking '%s': %s", session.xfer.path,
-	        strerror(errno));
-	    }*/
-	    /* Change the xfer path to the name of the destination file, for logging. */
-	    session.xfer.path = pstrdup(session.xfer.p, path);
-
-	    pr_response_add(R_250, _("Rename successful"));
-	    return PR_HANDLED(cmd);
-    }
-
     if (xerrno != EXDEV) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error renaming '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
@@ -6111,21 +6080,37 @@ MODRET core_rnto(cmd_rec *cmd) {
      */
     if (pr_fs_copy_file(session.xfer.path, path) < 0) {
       xerrno = errno;
+      
+      if (xerrno == EISDIR)
+        /* In this case, the client has requested that a directory be renamed
+         * across mount points.  The pr_fs_copy_file() function can't handle
+         * copying directories
+         */
+        if (copy_paths(cmd->tmp_pool, session.xfer.path, path, allow_overwrite) < 0) {
+  	      int xerrno = errno;
 
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error copying '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
-        pr_uid2str(cmd->tmp_pool, session.uid),
-        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
-        strerror(xerrno));
+  	      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[1],
+  	        strerror(xerrno));
 
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
+  	      pr_cmd_set_errno(cmd, xerrno);
+  	      errno = xerrno;
+  	      return PR_ERROR(cmd);
+        }
+        else {
+          (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
+          "error copying '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
+          pr_uid2str(cmd->tmp_pool, session.uid),
+          pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
+          strerror(xerrno));
 
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
+          pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
+          strerror(xerrno));
+
+          pr_cmd_set_errno(cmd, xerrno);
+          errno = xerrno;
+          return PR_ERROR(cmd);
+      }
     }
-
     /* Once copied, unlink the original file. */
     if (pr_fsio_unlink(session.xfer.path) < 0) {
       pr_log_debug(DEBUG0, "error unlinking '%s': %s", session.xfer.path,
