@@ -5546,9 +5546,6 @@ MODRET core_dele(cmd_rec *cmd) {
   pr_response_add(R_250, _("%s command successful"), (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
-/* code from mod_copy */
-extern pr_response_t *resp_list, *resp_err_list;
-static const char *trace_channel = "core";
 
 static int create_dir(const char *dir) {
   struct stat st;
@@ -5570,7 +5567,7 @@ static int create_dir(const char *dir) {
 
   /* The directory already exists. */
   if (res == 0) {
-    pr_trace_msg(trace_channel, 9, "path '%s' already exists", dir);
+    pr_trace_msg("fileperms", 9, "path '%s' already exists", dir);
     return 1;
   }
 
@@ -5604,8 +5601,6 @@ static int create_path(pool *p, const char *path) {
          *dup_path) {
     char *curr_dir;
     int res;
-    cmd_rec *cmd;
-    pool *sub_pool;
 
     pr_signals_handle();
 
@@ -5823,7 +5818,7 @@ static int copy_paths(pool *p, const char *from, const char *to, unsigned char *
 
     pr_fs_clear_cache2(to);
     if (pr_fsio_stat(to, &st) < 0) {
-      pr_trace_msg(trace_channel, 3,
+      pr_trace_msg("fileperms", 3,
         "error stat'ing '%s': %s", to, strerror(errno));
     }
 
@@ -5898,7 +5893,6 @@ static int copy_paths(pool *p, const char *from, const char *to, unsigned char *
 
   return 0;
 }
-/* end code from mod_copy*/
 
 MODRET core_rnto(cmd_rec *cmd) {
   int res;
