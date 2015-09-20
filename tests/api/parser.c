@@ -35,6 +35,8 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  pr_parser_cleanup();
+
   if (p) {
     destroy_pool(p);
     p = NULL;
@@ -57,6 +59,27 @@ START_TEST (parser_prepare_test) {
 }
 END_TEST
 
+START_TEST (parser_server_ctxt_test) {
+  server_rec *ctx, *res;
+
+  pr_parser_prepare(p, NULL);
+
+  mark_point();
+  res = pr_parser_server_ctxt_open("127.0.0.1");
+  fail_unless(res != NULL, "Failed to open server context: %s",
+    strerror(errno));
+
+  mark_point();
+  ctx = pr_parser_server_ctxt_get();
+  fail_unless(ctx != NULL, "Failed to get current server context: %s",
+    strerror(errno));
+  fail_unless(ctx == res, "Expected server context %p, got %p", res, ctx);
+
+  mark_point();
+  (void) pr_parser_server_ctxt_close();
+}
+END_TEST
+
 Suite *tests_get_parser_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -68,6 +91,7 @@ Suite *tests_get_parser_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, parser_prepare_test);
+  tcase_add_test(testcase, parser_server_ctxt_test);
 #if 0
   tcase_add_test(testcase, parser_read_line_test);
   tcase_add_test(testcase, parser_parse_file_test);

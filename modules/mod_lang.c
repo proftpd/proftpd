@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_lang -- a module for handling the LANG command [RFC2640]
  *
- * Copyright (c) 2006-2014 The ProFTPD Project
+ * Copyright (c) 2006-2015 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -480,8 +480,9 @@ MODRET lang_lang(cmd_rec *cmd) {
 
   if (lang_supported(cmd->tmp_pool, cmd->argv[1]) < 0) {
     pr_log_debug(DEBUG3, MOD_LANG_VERSION ": language '%s' unsupported: %s",
-      cmd->argv[1], strerror(errno));
-    pr_response_add_err(R_504, _("Language %s not supported"), cmd->argv[1]);
+      (char *) cmd->argv[1], strerror(errno));
+    pr_response_add_err(R_504, _("Language %s not supported"),
+      (char *) cmd->argv[1]);
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
@@ -489,12 +490,12 @@ MODRET lang_lang(cmd_rec *cmd) {
   }
 
   pr_log_debug(DEBUG7, MOD_LANG_VERSION
-    ": setting to client-requested language '%s'", cmd->argv[1]);
+    ": setting to client-requested language '%s'", (char *) cmd->argv[1]);
 
   if (lang_set_lang(cmd->tmp_pool, cmd->argv[1]) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
-      ": unable to use client-requested language '%s': %s", cmd->argv[1],
-      strerror(errno));
+      ": unable to use client-requested language '%s': %s",
+      (char *) cmd->argv[1], strerror(errno));
     pr_log_pri(PR_LOG_NOTICE, MOD_LANG_VERSION
       ": using LangDefault '%s' instead", lang_default);
 
@@ -557,12 +558,13 @@ MODRET lang_utf8(cmd_rec *cmd) {
   curr_encoding = pr_encode_get_encoding();
   if (curr_encoding != NULL) {
     pr_log_debug(DEBUG9, MOD_LANG_VERSION
-      ": Handling OPTS UTF8 %s (current encoding is '%s')", cmd->argv[1],
-      curr_encoding);
+      ": Handling OPTS UTF8 %s (current encoding is '%s')",
+      (char *) cmd->argv[1], curr_encoding);
 
   } else {
     pr_log_debug(DEBUG9, MOD_LANG_VERSION
-      ": Handling OPTS UTF8 %s (encoding currently disabled)", cmd->argv[1]);
+      ": Handling OPTS UTF8 %s (encoding currently disabled)",
+      (char *) cmd->argv[1]);
   }
 
   if (pr_encode_is_utf8(curr_encoding) == TRUE) {

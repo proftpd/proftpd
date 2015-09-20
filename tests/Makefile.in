@@ -84,6 +84,7 @@ TEST_API_OBJS=\
   api/ascii.o \
   api/help.o \
   api/rlimit.o \
+  api/encode.o \
   api/stubs.o \
   api/tests.o
 

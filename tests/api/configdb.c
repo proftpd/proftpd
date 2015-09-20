@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,9 +35,22 @@ static void set_up(void) {
   }
 
   init_config();
+  pr_parser_prepare(p, NULL);
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("config", 1, 20);
+  }
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+    pr_trace_set_levels("config", 0, 0);
+  }
+
+  pr_parser_cleanup();
+
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
@@ -45,6 +58,34 @@ static void tear_down(void) {
 }
 
 START_TEST (add_remove_config_test) {
+  int res;
+  const char *name = NULL;
+  config_rec *c = NULL;
+  server_rec *s = NULL;
+
+  s = pr_parser_server_ctxt_open("127.0.0.1");
+  fail_unless(s != NULL, "Failed to open server context: %s", strerror(errno));
+
+  name = "foo";
+
+  mark_point();
+  c = add_config(NULL, name);
+  fail_unless(c != NULL, "Failed to add config '%s': %s", name,
+    strerror(errno));
+  fail_unless(c->config_type == 0, "Expected config_type 0, got %d",
+    c->config_type);
+
+  mark_point();
+  res = remove_config(s->conf, name, FALSE);
+  fail_unless(res > 0, "Failed to remove config '%s': %s", name,
+    strerror(errno));
+
+  mark_point();
+  pr_config_dump(NULL, s->conf, " ");
+}
+END_TEST
+
+START_TEST (add_remove_config_set_test) {
   int res;
   xaset_t *set = NULL;
   const char *name = NULL;
@@ -374,6 +415,7 @@ Suite *tests_get_config_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, add_remove_config_test);
+  tcase_add_test(testcase, add_remove_config_set_test);
   tcase_add_test(testcase, add_config_param_set_test);
   tcase_add_test(testcase, find_config_test);
   tcase_add_test(testcase, find_config2_test);
