@@ -4932,15 +4932,36 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
 
   session.xfer.path = pstrdup(session.xfer.p, src);
 
-  /* XXX Use pr_response_add(R_250) here for success, add_err/R_550 if not */
-  pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
-  pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  if (xerrno == 0) {
+    pr_response_add(R_350,
+      "File or directory exists, ready for destination name");
+    pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+
+  } else {
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd2->argv[0],
+      strerror(xerrno));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+  }
 
   session.xfer.path = pstrdup(session.xfer.p, dst);
 
-  /* XXX Use pr_response_add(R_250) here for success, add_err/R_550 if not */
-  pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
-  pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  if (xerrno == 0) {
+    pr_response_add(R_250, "Rename successful");
+    pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+
+  } else {
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd3->argv[0],
+      strerror(xerrno));
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+  }
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
   pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
@@ -10441,15 +10462,36 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
 
   session.xfer.path = pstrdup(session.xfer.p, old_path);
 
-  /* XXX Use pr_response_add(R_250) here for success, add_err/R_550 if not */
-  pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
-  pr_cmd_dispatch_phase(cmd2, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  if (xerrno == 0) {
+    pr_response_add(R_350,
+      "File or directory exists, ready for destination name");
+    pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+
+  } else {
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd2->argv[0],
+      strerror(xerrno));
+    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+  }
 
   session.xfer.path = pstrdup(session.xfer.p, new_path);
 
-  /* XXX Use pr_response_add(R_250) here for success, add_err/R_550 if not */
-  pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
-  pr_cmd_dispatch_phase(cmd3, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  if (xerrno == 0) {
+    pr_response_add(R_250, "Rename successful");
+    pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+
+  } else {
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd3->argv[0],
+      strerror(xerrno));
+    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+  }
 
   fxp_status_write(&buf, &buflen, fxp->request_id, status_code, reason, NULL);
   pr_cmd_dispatch_phase(cmd, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
