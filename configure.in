@@ -930,6 +930,11 @@ AC_ARG_ENABLE(devel,
         pr_devel_cflags="-DPR_DEVEL_COREDUMP $pr_devel_cflags"
       fi
 
+      if test `echo $enableval | grep -c coverage` = "1" ; then
+        pr_devel_cflags="-DPR_DEVEL_COVERAGE --coverage $pr_devel_cflags"
+        pr_devel_libs="--coverage $pr_devel_libs"
+      fi
+
       if test `echo $enableval | grep -c nodaemon` = "1" ; then
         pr_devel_cflags="-DPR_DEVEL_NO_DAEMON $pr_devel_cflags"
       fi
