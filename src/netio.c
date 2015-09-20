@@ -242,11 +242,11 @@ static const char *netio_stream_mode(int strm_mode) {
 
   switch (strm_mode) {
     case PR_NETIO_IO_RD:
-      modestr = "read";
+      modestr = "reading";
       break;
 
     case PR_NETIO_IO_WR:
-      modestr = "write";
+      modestr = "writing";
       break;
 
     default:
@@ -364,7 +364,7 @@ int pr_netio_close(pr_netio_stream_t *nstrm) {
     case PR_NETIO_STRM_OTHR:
       if (othr_netio != NULL) {
         pr_trace_msg(trace_channel, 19, "using %s close() for other %s stream",
-          data_netio->owner_name, nstrm_mode);
+          othr_netio->owner_name, nstrm_mode);
         res = (othr_netio->close)(nstrm);
 
       } else {
@@ -794,65 +794,63 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         break;
     }
 
-    switch (res) {
-      case -1:
-        xerrno = errno;
-        if (xerrno == EINTR) {
-          if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
-            nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
-            return 1;
-          }
-
-	  /* Otherwise, restart the call */
-          pr_signals_handle();
-          continue;
-        }
-
-        /* Some other error occured */
-        nstrm->strm_errno = xerrno;
-
-        /* If this is the control stream, and the error indicates a
-         * broken pipe (i.e. the client went away), AND there is a data
-         * transfer is progress, abort the transfer.
-         */
-        if (xerrno == EPIPE &&
-            nstrm->strm_type == PR_NETIO_STRM_CTRL &&
-            (session.sf_flags & SF_XFER)) {
-          pr_trace_msg(trace_channel, 5,
-            "received EPIPE on control connection, setting 'aborted' "
-            "session flag");
-          session.sf_flags |= SF_ABORT;
-        }
-
-        errno = nstrm->strm_errno;
-        return -1;
-
-      case 0:
-        /* In case the kernel doesn't support interrupted syscalls. */
+    if (res == -1) {
+      xerrno = errno;
+      if (xerrno == EINTR) {
         if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
           nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
           return 1;
         }
 
-        /* If the stream has been marked as "interruptible", AND the
-         * poll interval is zero seconds (meaning a true poll, not blocking),
-         * then return here.
-         */
-        if ((nstrm->strm_flags & PR_NETIO_SESS_INTR) &&
-            nstrm->strm_interval == 0) {
-          errno = EOF;
-          return -1;
-        }
-
+        /* Otherwise, restart the call */
+        pr_signals_handle();
         continue;
+      }
 
-      default:
-        return 0;
+      /* Some other error occured */
+      nstrm->strm_errno = xerrno;
+
+      /* If this is the control stream, and the error indicates a
+       * broken pipe (i.e. the client went away), AND there is a data
+       * transfer is progress, abort the transfer.
+       */
+      if (xerrno == EPIPE &&
+          nstrm->strm_type == PR_NETIO_STRM_CTRL &&
+          (session.sf_flags & SF_XFER)) {
+        pr_trace_msg(trace_channel, 5,
+          "received EPIPE on control connection, setting 'aborted' "
+          "session flag");
+        session.sf_flags |= SF_ABORT;
+      }
+
+      errno = nstrm->strm_errno;
+      return -1;
     }
+
+    if (res == 0) {
+      /* In case the kernel doesn't support interrupted syscalls. */
+      if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
+        nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
+        return 1;
+      }
+
+      /* If the stream has been marked as "interruptible", AND the
+       * poll interval is zero seconds (meaning a true poll, not blocking),
+       * then return here.
+       */
+      if ((nstrm->strm_flags & PR_NETIO_SESS_INTR) &&
+          nstrm->strm_interval == 0) {
+        errno = EOF;
+        return -1;
+      }
+
+      continue;
+    }
+
+    break;
   }
 
-  /* This will never be reached. */
-  return -1;
+  return 0;
 }
 
 int pr_netio_postopen(pr_netio_stream_t *nstrm) {
@@ -1053,7 +1051,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
               if (data_netio != NULL) {
                 pr_trace_msg(trace_channel, 19,
-                  "using %s write() for data %s stream", ctrl_netio->owner_name,
+                  "using %s write() for data %s stream", data_netio->owner_name,
                   nstrm_mode);
                 bwritten = (data_netio->write)(nstrm, buf, buflen);
 
@@ -1888,7 +1886,12 @@ pr_netio_t *pr_alloc_netio2(pool *parent_pool, module *owner,
     }
 
   } else {
-    netio->owner_name = "default";
+    if (owner_name != NULL) {
+      netio->owner_name = owner_name;
+
+    } else {
+      netio->owner_name = "default";
+    }
   }
 
   /* Set the default NetIO handlers to the core handlers. */

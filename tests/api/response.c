@@ -26,27 +26,44 @@
 
 #include "tests.h"
 
+extern pr_response_t *resp_list, *resp_err_list;
+
 static pool *p = NULL;
 
 static void set_up(void) {
   if (p == NULL) {
-    p = make_sub_pool(NULL);
+    p = permanent_pool = make_sub_pool(NULL);
   }
+
+  init_netio();
+  init_inet();
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("netio", 0, 20);
     pr_trace_set_levels("response", 0, 20);
   }
 }
 
 static void tear_down(void) {
+  pr_response_register_handler(NULL);
+
+  if (session.c != NULL) {
+    pr_inet_close(p, session.c);
+    session.c = NULL;
+  }
+
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
   if (p) {
     destroy_pool(p);
-    p = NULL;
+    p = permanent_pool = NULL;
   }
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_use_stderr(FALSE);
+    pr_trace_set_levels("netio", 0, 0);
+    pr_trace_set_levels("response", 0, 0);
   }
 }
 
@@ -136,6 +153,193 @@ START_TEST (response_get_last_test) {
 }
 END_TEST
 
+START_TEST (response_block_test) {
+  int res;
+
+  res = pr_response_block(-1);
+  fail_unless(res == -1, "Failed to handle invalid argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)",
+    EINVAL, strerror(errno), errno);
+
+  res = pr_response_block(TRUE);
+  fail_unless(res == 0, "Failed to block responses: %s", strerror(errno));
+
+  res = pr_response_block(FALSE);
+  fail_unless(res == 0, "Failed to unblock responses: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (response_clear_test) {
+  pr_response_set_pool(p);
+  pr_response_add(R_200, "%s", "OK");
+  pr_response_clear(&resp_list);
+}
+END_TEST
+
+static int response_netio_poll_cb(pr_netio_stream_t *nstrm) {
+  /* Always return >0, to indicate that we haven't timed out, AND that there
+   * is a writable fd available.
+   */
+  return 7;
+}
+
+static int response_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
+    size_t buflen) {
+  return buflen;
+}
+
+static unsigned int resp_nlines = 0;
+
+static char *response_handler_cb(pool *cb_pool, const char *fmt, ...) {
+  char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
+  va_list msg;
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+
+  resp_nlines++;
+  return pstrdup(cb_pool, buf);
+}
+
+START_TEST (response_flush_test) {
+  int res, sockfd = -2;
+  conn_t *conn;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = response_netio_poll_cb;
+  netio->write = response_netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, INPORT_ANY, FALSE);
+  session.c = conn;
+
+  pr_response_register_handler(response_handler_cb);
+
+  resp_nlines = 0;
+  pr_response_set_pool(p);
+
+  pr_response_add(R_200, "%s", "OK");
+  pr_response_add(R_DUP, "%s", "Still OK");
+  pr_response_add(R_DUP, "%s", "OK already!");
+  pr_response_flush(&resp_list);
+
+  pr_response_register_handler(NULL);
+  pr_inet_close(p, session.c);
+  session.c = NULL;
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  fail_unless(resp_nlines == 3, "Expected 3 response lines flushed, got %u",
+    resp_nlines);
+}
+END_TEST
+
+START_TEST (response_send_test) {
+  int res, sockfd = -2;
+  conn_t *conn;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = response_netio_poll_cb;
+  netio->write = response_netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, INPORT_ANY, FALSE);
+  session.c = conn;
+
+  pr_response_register_handler(response_handler_cb);
+
+  resp_nlines = 0;
+  pr_response_set_pool(p);
+
+  pr_response_send(R_200, "%s", "OK");
+
+  pr_response_register_handler(NULL);
+  pr_inet_close(p, session.c);
+  session.c = NULL;
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  fail_unless(resp_nlines == 1, "Expected 1 response line flushed, got %u",
+    resp_nlines);
+}
+END_TEST
+
+START_TEST (response_send_async_test) {
+  int res, sockfd = -2;
+  conn_t *conn;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = response_netio_poll_cb;
+  netio->write = response_netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, INPORT_ANY, FALSE);
+  session.c = conn;
+
+  pr_response_register_handler(response_handler_cb);
+
+  resp_nlines = 0;
+  pr_response_set_pool(p);
+
+  pr_response_send_async(R_200, "%s", "OK");
+
+  pr_response_register_handler(NULL);
+  pr_inet_close(p, session.c);
+  session.c = NULL;
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  fail_unless(resp_nlines == 1, "Expected 1 response line flushed, got %u",
+    resp_nlines);
+}
+END_TEST
+
+START_TEST (response_send_raw_test) {
+  int res, sockfd = -2;
+  conn_t *conn;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = response_netio_poll_cb;
+  netio->write = response_netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, INPORT_ANY, FALSE);
+  session.c = conn;
+
+  pr_response_register_handler(response_handler_cb);
+
+  resp_nlines = 0;
+  pr_response_set_pool(p);
+
+  pr_response_send_raw("%s", "OK");
+
+  pr_response_register_handler(NULL);
+  pr_inet_close(p, session.c);
+  session.c = NULL;
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  fail_unless(resp_nlines == 1, "Expected 1 response line flushed, got %u",
+    resp_nlines);
+}
+END_TEST
+
+#if defined(TEST_BUG3711)
 START_TEST (response_pool_bug3711_test) {
   cmd_rec *cmd;
   pool *resp_pool, *cmd_pool;
@@ -178,12 +382,14 @@ START_TEST (response_pool_bug3711_test) {
   pr_response_add_err(err_code, "%s", err_msg);
 }
 END_TEST
-
+#endif /* TEST_BUG3711 */
 
 Suite *tests_get_response_suite(void) {
   Suite *suite;
   TCase *testcase;
+#if defined(TEST_BUG3711)
   int bug3711_signo = 0;
+#endif /* TEST_BUG3711 */
 
   suite = suite_create("response");
 
@@ -197,12 +403,20 @@ Suite *tests_get_response_suite(void) {
   tcase_add_test(testcase, response_add_err_test);
   tcase_add_test(testcase, response_get_last_test);
 
+  tcase_add_test(testcase, response_block_test);
+  tcase_add_test(testcase, response_clear_test);
+  tcase_add_test(testcase, response_flush_test);
+  tcase_add_test(testcase, response_send_test);
+  tcase_add_test(testcase, response_send_async_test);
+  tcase_add_test(testcase, response_send_raw_test);
+
+#if defined(TEST_BUG3711)
   /* We expect this test to fail due to a segfault; see Bug#3711.
    *
    * Note that on some platforms (e.g. Darwin), the test case should fail
    * with a SIGBUS rather than SIGSEGV, hence the conditional here.
    */
-#if defined(DARWIN9)
+#if defined(DARWIN9) || defined(DARWIN10) || defined(DARWIN11)
   bug3711_signo = SIGBUS;
 #else
   bug3711_signo = SIGSEGV;
@@ -212,10 +426,9 @@ Suite *tests_get_response_suite(void) {
    * a regression test, and only generates core files which can litter
    * the filesystems of build/test machines needlessly.
    */
-#if 0
   tcase_add_test_raise_signal(testcase, response_pool_bug3711_test,
     bug3711_signo);
-#endif
+#endif /* TEST_BUG3711 */
 
   suite_add_tcase(suite, testcase);
 

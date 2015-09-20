@@ -51,6 +51,8 @@ static void test_cleanup(void) {
     (void) unlink(tmp_path);
     tmp_path = NULL;
   }
+
+  pr_unregister_netio(PR_NETIO_STRM_CTRL|PR_NETIO_STRM_DATA|PR_NETIO_STRM_OTHR);
 }
 
 static int open_tmpfile(void) {
@@ -75,6 +77,11 @@ static void set_up(void) {
 
   init_netio();
   xfer_bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_RD);
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("netio", 1, 20);
+  }
 }
 
 static void tear_down(void) {
@@ -84,6 +91,11 @@ static void tear_down(void) {
   } 
 
   test_cleanup();
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+    pr_trace_set_levels("netio", 0, 0);
+  }
 }
 
 START_TEST (netio_open_test) {
@@ -1156,6 +1168,187 @@ START_TEST (netio_telnet_gets2_single_line_lf_test) {
 }
 END_TEST
 
+static int netio_poll_cb(pr_netio_stream_t *nstrm) {
+  /* Always return >0, to indicate that we haven't timed out, AND that there
+   * is a writable fd available.
+   */
+  return 7;
+}
+
+static int netio_write_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
+  return buflen;
+}
+
+static int netio_write_to_stream(int strm_type, int use_async) {
+  int fd = 2, res;
+  char *buf;
+  size_t buflen;
+  pr_netio_stream_t *nstrm;
+
+  nstrm = pr_netio_open(p, strm_type, fd, PR_NETIO_IO_WR);
+  if (nstrm == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg("netio", 1, "error opening custom netio stream: %s",
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  buf = "Hello, World!\n";
+  buflen = strlen(buf);
+
+  if (use_async) {
+    res = pr_netio_write_async(nstrm, buf, buflen);
+
+  } else {
+    res = pr_netio_write(nstrm, buf, buflen);
+  }
+
+  if (res != buflen) {
+    pr_trace_msg("netio", 1, "wrote buffer (%lu bytes), got %d",
+      (unsigned long) buflen, res);
+    pr_netio_close(nstrm);
+
+    if (res < 0) {
+      return -1;
+    }
+
+    errno = EIO;
+    return -1;
+  }
+
+  mark_point();
+  pr_netio_close(nstrm);
+  return 0;
+}
+
+START_TEST (netio_write_test) {
+  int res;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = netio_poll_cb;
+  netio->write = netio_write_cb;
+
+  /* Write to control stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  res = netio_write_to_stream(PR_NETIO_STRM_CTRL, FALSE);
+  fail_unless(res == 0, "Failed to write to custom ctrl NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  /* Write to data stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+    strerror(errno));
+
+  res = netio_write_to_stream(PR_NETIO_STRM_DATA, FALSE);
+  fail_unless(res == 0, "Failed to write to custom data NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_DATA);
+
+  /* Write to other stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
+  fail_unless(res == 0, "Failed to register custom other NetIO: %s",
+    strerror(errno));
+
+  res = netio_write_to_stream(PR_NETIO_STRM_OTHR, FALSE);
+  fail_unless(res == 0, "Failed to write to custom other NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_OTHR);
+}
+END_TEST
+
+START_TEST (netio_write_async_test) {
+  int res;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = netio_poll_cb;
+  netio->write = netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  res = netio_write_to_stream(PR_NETIO_STRM_CTRL, TRUE);
+  fail_unless(res == 0, "Failed to write to custom ctrl NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+}
+END_TEST
+
+static int netio_print_to_stream(int strm_type) {
+  int fd = 2, res;
+  char *buf;
+  size_t buflen;
+  pr_netio_stream_t *nstrm;
+
+  nstrm = pr_netio_open(p, strm_type, fd, PR_NETIO_IO_WR);
+  if (nstrm == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg("netio", 1, "error opening custom netio stream: %s",
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  buf = "Hello, World!\n";
+  buflen = strlen(buf);
+
+  res = pr_netio_printf(nstrm, "%s", buf);
+  if (res != buflen) {
+    pr_trace_msg("netio", 1, "printed buffer (%lu bytes), got %d",
+      (unsigned long) buflen, res);
+    pr_netio_close(nstrm);
+
+    if (res < 0) {
+      return -1;
+    }
+
+    errno = EIO;
+    return -1;
+  }
+
+  mark_point();
+  pr_netio_close(nstrm);
+  return 0;
+}
+
+START_TEST (netio_printf_test) {
+  int res;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = netio_poll_cb;
+  netio->write = netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  res = netio_print_to_stream(PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to print to custom ctrl NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+}
+END_TEST
+
 Suite *tests_get_netio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1194,6 +1387,10 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_telnet_gets2_single_line_test);
   tcase_add_test(testcase, netio_telnet_gets2_single_line_crnul_test);
   tcase_add_test(testcase, netio_telnet_gets2_single_line_lf_test);
+
+  tcase_add_test(testcase, netio_write_test);
+  tcase_add_test(testcase, netio_write_async_test);
+  tcase_add_test(testcase, netio_printf_test);
 
   suite_add_tcase(suite, testcase);
 
