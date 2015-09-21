@@ -100,9 +100,7 @@ static void tear_down(void) {
 
 START_TEST (netio_open_test) {
   pr_netio_stream_t *nstrm;
-  int fd;
-
-  fd = -1;
+  int fd = -1;
 
   nstrm = pr_netio_open(NULL, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
   fail_unless(nstrm == NULL, "Failed to handle null pool argument");
@@ -114,25 +112,77 @@ START_TEST (netio_open_test) {
   fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
     strerror(errno), errno);
 
+  /* open/close CTRL stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
+  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+    strerror(errno));
+
+  pr_netio_close(nstrm);
+
+  /* open/close DATA stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_WR);
+  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+    strerror(errno));
+
+  pr_netio_close(nstrm);
+
+  /* open/close OTHR stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_WR);
+  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
     strerror(errno));
 
   pr_netio_close(nstrm);
 }
 END_TEST
 
+START_TEST (netio_postopen_test) {
+  pr_netio_stream_t *nstrm;
+  int fd = -1, res;
+
+  res = pr_netio_postopen(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* open/postopen/close CTRL stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_postopen(nstrm);
+  fail_unless(res == 0, "Failed to post-open ctrl stream: %s", strerror(errno));
+  (void) pr_netio_close(nstrm);
+
+  /* open/postopen/close DATA stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_postopen(nstrm);
+  fail_unless(res == 0, "Failed to post-open data stream: %s", strerror(errno));
+  (void) pr_netio_close(nstrm);
+
+  /* open/postopen/close OTHR stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_postopen(nstrm);
+  fail_unless(res == 0, "Failed to post-open othr stream: %s", strerror(errno));
+  (void) pr_netio_close(nstrm);
+}
+END_TEST
+
 START_TEST (netio_close_test) {
   pr_netio_stream_t *nstrm;
-  int res, fd;
-
-  fd = -1;
+  int res, fd = -1;
 
   res = pr_netio_close(NULL);
   fail_unless(res == -1, "Failed to handle null stream argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
+  /* Open/close CTRL stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
   nstrm->strm_type = 7777;
 
@@ -142,6 +192,102 @@ START_TEST (netio_close_test) {
     strerror(errno), errno);
 
   nstrm->strm_type = PR_NETIO_STRM_CTRL;
+  res = pr_netio_close(nstrm);
+  fail_unless(res == -1, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+    strerror(errno), errno);
+
+  /* Open/close DATA stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
+  res = pr_netio_close(nstrm);
+  fail_unless(res == -1, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+    strerror(errno), errno);
+
+  /* Open/close OTHR stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
+  res = pr_netio_close(nstrm);
+  fail_unless(res == -1, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+    strerror(errno), errno);
+}
+END_TEST
+
+START_TEST (netio_lingering_close_test) {
+  pr_netio_stream_t *nstrm;
+  int res, fd = -1;
+  long linger = 0L;
+
+  res = pr_netio_lingering_close(NULL, linger);
+  fail_unless(res == -1, "Failed to handle null stream argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+    strerror(errno), errno);
+
+  /* Open/close CTRL stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  nstrm->strm_type = 7777;
+
+  res = pr_netio_lingering_close(nstrm, linger);
+  fail_unless(res < 0, "Failed to handle unknown stream type argument");
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+    strerror(errno), errno);
+
+  nstrm->strm_type = PR_NETIO_STRM_CTRL;
+  res = pr_netio_lingering_close(nstrm, linger);
+  fail_unless(res == 0, "Failed to close stream: %s", strerror(errno));
+
+  /* Open/close DATA stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
+  res = pr_netio_lingering_close(nstrm, linger);
+  fail_unless(res == 0, "Failed to close stream: %s", strerror(errno));
+
+  /* Open/close OTHR stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
+  res = pr_netio_lingering_close(nstrm, linger);
+  fail_unless(res == 0, "Failed to close stream: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (netio_reopen_test) {
+  pr_netio_stream_t *nstrm, *nstrm2;
+  int res, fd = -1;
+
+  nstrm2 = pr_netio_reopen(NULL, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm2 == NULL, "Failed to handle null stream argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+    strerror(errno), errno);
+
+  /* Open/reopen/close CTRL stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  nstrm->strm_type = 7777;
+
+  nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm2 == NULL, "Failed to handle unknown stream type argument");
+  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+    strerror(errno), errno);
+
+  nstrm->strm_type = PR_NETIO_STRM_CTRL;
+  nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm2 != NULL, "Failed to reopen ctrl stream: %s",
+    strerror(errno));
+
+  /* Open/reopen/close DATA stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
+  nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm2 != NULL, "Failed to reopen data stream: %s",
+    strerror(errno));
+
+  res = pr_netio_close(nstrm);
+  fail_unless(res == -1, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+    strerror(errno), errno);
+
+  /* Open/reopen/close OTHR stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
+  nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm2 != NULL, "Failed to reopen othr stream: %s",
+    strerror(errno));
+
   res = pr_netio_close(nstrm);
   fail_unless(res == -1, "Failed to handle bad file descriptor");
   fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
@@ -1225,7 +1371,7 @@ static int netio_write_to_stream(int strm_type, int use_async) {
 
 START_TEST (netio_write_test) {
   int res;
-  pr_netio_t *netio;
+  pr_netio_t *netio, *netio2;
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = netio_poll_cb;
@@ -1235,6 +1381,12 @@ START_TEST (netio_write_test) {
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
   fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
+
+  netio2 = pr_get_netio(PR_NETIO_STRM_CTRL);
+  fail_unless(netio2 != NULL, "Failed to get custom ctrl NetIO: %s",
+    strerror(errno));
+  fail_unless(netio2 == netio, "Expected custom ctrl NetIO %p, got %p",
+    netio, netio2);
 
   res = netio_write_to_stream(PR_NETIO_STRM_CTRL, FALSE);
   fail_unless(res == 0, "Failed to write to custom ctrl NetIO: %s",
@@ -1248,6 +1400,12 @@ START_TEST (netio_write_test) {
   fail_unless(res == 0, "Failed to register custom data NetIO: %s",
     strerror(errno));
 
+  netio2 = pr_get_netio(PR_NETIO_STRM_DATA);
+  fail_unless(netio2 != NULL, "Failed to get custom data NetIO: %s",
+    strerror(errno));
+  fail_unless(netio2 == netio, "Expected custom data NetIO %p, got %p",
+    netio, netio2);
+
   res = netio_write_to_stream(PR_NETIO_STRM_DATA, FALSE);
   fail_unless(res == 0, "Failed to write to custom data NetIO: %s",
     strerror(errno));
@@ -1259,6 +1417,12 @@ START_TEST (netio_write_test) {
   res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
   fail_unless(res == 0, "Failed to register custom other NetIO: %s",
     strerror(errno));
+
+  netio2 = pr_get_netio(PR_NETIO_STRM_OTHR);
+  fail_unless(netio2 != NULL, "Failed to get custom othr NetIO: %s",
+    strerror(errno));
+  fail_unless(netio2 == netio, "Expected custom othr NetIO %p, got %p",
+    netio, netio2);
 
   res = netio_write_to_stream(PR_NETIO_STRM_OTHR, FALSE);
   fail_unless(res == 0, "Failed to write to custom other NetIO: %s",
@@ -1290,7 +1454,7 @@ START_TEST (netio_write_async_test) {
 }
 END_TEST
 
-static int netio_print_to_stream(int strm_type) {
+static int netio_print_to_stream(int strm_type, int use_async) {
   int fd = 2, res;
   char *buf;
   size_t buflen;
@@ -1309,7 +1473,13 @@ static int netio_print_to_stream(int strm_type) {
   buf = "Hello, World!\n";
   buflen = strlen(buf);
 
-  res = pr_netio_printf(nstrm, "%s", buf);
+  if (use_async) {
+    res = pr_netio_printf_async(nstrm, "%s", buf);
+
+  } else {
+    res = pr_netio_printf(nstrm, "%s", buf);
+  }
+
   if (res != buflen) {
     pr_trace_msg("netio", 1, "printed buffer (%lu bytes), got %d",
       (unsigned long) buflen, res);
@@ -1340,12 +1510,248 @@ START_TEST (netio_printf_test) {
   fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
-  res = netio_print_to_stream(PR_NETIO_STRM_CTRL);
+  res = netio_print_to_stream(PR_NETIO_STRM_CTRL, FALSE);
   fail_unless(res == 0, "Failed to print to custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
+}
+END_TEST
+
+START_TEST (netio_printf_async_test) {
+  int res;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = netio_poll_cb;
+  netio->write = netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  res = netio_print_to_stream(PR_NETIO_STRM_CTRL, TRUE);
+  fail_unless(res == 0, "Failed to print to custom ctrl NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+}
+END_TEST
+
+START_TEST (netio_abort_test) {
+  pr_netio_stream_t *nstrm;
+  int fd = -1;
+
+  mark_point();
+  pr_netio_abort(NULL);
+
+  /* open/abort/close CTRL stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+    strerror(errno));
+
+  pr_netio_abort(nstrm);
+  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+    "Failed to set PR_NETIO_SESS_ABORT flags on ctrl stream");
+
+  pr_netio_close(nstrm);
+
+  /* open/abort/close DATA stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_WR);
+  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+    strerror(errno));
+
+  pr_netio_abort(nstrm);
+  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+    "Failed to set PR_NETIO_SESS_ABORT flags on data stream");
+
+  pr_netio_close(nstrm);
+
+  /* open/abort/close OTHR stream */
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_WR);
+  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
+    strerror(errno));
+
+  pr_netio_abort(nstrm);
+  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+    "Failed to set PR_NETIO_SESS_ABORT flags on othr stream");
+
+  pr_netio_close(nstrm);
+}
+END_TEST
+
+static int netio_close_cb(pr_netio_stream_t *nstrm) {
+  return 0;
+}
+
+START_TEST (netio_lingering_abort_test) {
+  pr_netio_t *netio;
+  pr_netio_stream_t *nstrm;
+  int fd = 0, res;
+  long linger = 0L;
+
+  mark_point();
+  res = pr_netio_lingering_abort(NULL, linger);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->close = netio_close_cb;
+
+  /* open/abort/close CTRL stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_lingering_abort(nstrm, linger);
+  fail_unless(res == 0, "Failed to set lingering abort on ctrl stream: %s",
+    strerror(errno));
+
+  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+    "Failed to set PR_NETIO_SESS_ABORT flags on ctrl stream");
+
+  pr_netio_close(nstrm);
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  /* open/abort/close DATA stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+    strerror(errno));
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_lingering_abort(nstrm, linger);
+  fail_unless(res == 0, "Failed to set lingering abort on data stream: %s",
+    strerror(errno));
+
+  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+    "Failed to set PR_NETIO_SESS_ABORT flags on data stream");
+
+  pr_netio_close(nstrm);
+  pr_unregister_netio(PR_NETIO_STRM_DATA);
+
+  /* open/abort/close OTHR stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
+  fail_unless(res == 0, "Failed to register custom othr NetIO: %s",
+    strerror(errno));
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_lingering_abort(nstrm, linger);
+  fail_unless(res == 0, "Failed to set lingering abort on othr stream: %s",
+    strerror(errno));
+
+  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+    "Failed to set PR_NETIO_SESS_ABORT flags on othr stream");
+
+  pr_netio_close(nstrm);
+  pr_unregister_netio(PR_NETIO_STRM_OTHR);
+}
+END_TEST
+
+START_TEST (netio_poll_interval_test) {
+  pr_netio_stream_t *nstrm;
+  int fd = -1;
+  unsigned int interval = 3;
+
+  mark_point();
+  pr_netio_set_poll_interval(NULL, 0);
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+    strerror(errno));
+
+  pr_netio_set_poll_interval(nstrm, interval); 
+  fail_unless(nstrm->strm_interval == interval,
+    "Expected stream interval %u, got %u", interval, nstrm->strm_interval);
+  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_INTR,
+    "Failed to set PR_NETIO_SESS_INTR stream flag");
+
+  mark_point();
+  pr_netio_reset_poll_interval(NULL);
+
+  pr_netio_reset_poll_interval(nstrm);
+  fail_if(nstrm->strm_flags & PR_NETIO_SESS_INTR,
+    "Failed to clear PR_NETIO_SESS_INTR stream flag");
+
+  (void) pr_netio_close(nstrm);
+}
+END_TEST
+
+static int netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
+  return 0;
+}
+
+START_TEST (netio_shutdown_test) {
+  pr_netio_t *netio;
+  pr_netio_stream_t *nstrm;
+  int fd = 0, how = SHUT_RD, res;
+
+  mark_point();
+  res = pr_netio_shutdown(NULL, how);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->close = netio_close_cb;
+  netio->shutdown = netio_shutdown_cb;
+
+  /* open/shutdown/close CTRL stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_shutdown(nstrm, how);
+  fail_unless(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
+
+  pr_netio_close(nstrm);
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  /* open/shutdown/close DATA stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+    strerror(errno));
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_shutdown(nstrm, how);
+  fail_unless(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
+
+  pr_netio_close(nstrm);
+  pr_unregister_netio(PR_NETIO_STRM_DATA);
+
+  /* open/shutdown/close OTHR stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
+  fail_unless(res == 0, "Failed to register custom othr NetIO: %s",
+    strerror(errno));
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_netio_shutdown(nstrm, how);
+  fail_unless(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
+
+  pr_netio_close(nstrm);
+  pr_unregister_netio(PR_NETIO_STRM_OTHR);
 }
 END_TEST
 
@@ -1360,8 +1766,14 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, netio_open_test);
+  tcase_add_test(testcase, netio_postopen_test);
   tcase_add_test(testcase, netio_close_test);
+  tcase_add_test(testcase, netio_lingering_close_test);
+  tcase_add_test(testcase, netio_reopen_test);
   tcase_add_test(testcase, netio_buffer_alloc_test);
+
+  /* XXX pr_netio_read, pr_netio_gets tests! */
+
   tcase_add_test(testcase, netio_telnet_gets_args_test);
   tcase_add_test(testcase, netio_telnet_gets_single_line_test);
   tcase_add_test(testcase, netio_telnet_gets_multi_line_test);
@@ -1391,6 +1803,11 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_write_test);
   tcase_add_test(testcase, netio_write_async_test);
   tcase_add_test(testcase, netio_printf_test);
+  tcase_add_test(testcase, netio_printf_async_test);
+  tcase_add_test(testcase, netio_abort_test);
+  tcase_add_test(testcase, netio_lingering_abort_test);
+  tcase_add_test(testcase, netio_poll_interval_test);
+  tcase_add_test(testcase, netio_shutdown_test);
 
   suite_add_tcase(suite, testcase);
 

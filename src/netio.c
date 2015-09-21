@@ -390,6 +390,17 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
     return -1;
   }
 
+  switch (nstrm->strm_type) {
+    case PR_NETIO_STRM_CTRL:
+    case PR_NETIO_STRM_DATA:
+    case PR_NETIO_STRM_OTHR:
+      break;
+
+    default:
+      errno = EPERM;
+      return -1;
+  }
+
   if (nstrm->strm_fd < 0) {
     /* Already closed. */
     return 0;
@@ -514,6 +525,17 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
     return -1;
   }
 
+  switch (nstrm->strm_type) {
+    case PR_NETIO_STRM_CTRL:
+    case PR_NETIO_STRM_DATA:
+    case PR_NETIO_STRM_OTHR:
+      break;
+
+    default:
+      errno = EPERM;
+      return -1;
+  }
+
   /* Send an appropriate response code down the stream asychronously. */
   pr_response_send_async(R_426, _("Transfer aborted. Data connection closed."));
 
@@ -552,6 +574,8 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
       break;
     }
   }
+
+  nstrm->strm_flags |= PR_NETIO_SESS_ABORT;
 
   /* Now continue with a normal lingering close. */
   return netio_lingering_close(nstrm, linger,
