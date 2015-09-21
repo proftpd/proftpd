@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2013 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Scoreboard API tests
- * $Id: scoreboard.c,v 1.10 2013-01-05 03:36:39 castaglia Exp $
- */
+/* Scoreboard API tests */
 
 #include "tests.h"
 
@@ -36,13 +34,23 @@ static void set_up(void) {
   }
 
   ServerType = SERVER_STANDALONE;
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("scoreboard", 1, 20);
+  }
+
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+    pr_trace_set_levels("scoreboard", 0, 0);
+  }
+
   if (p) {
     destroy_pool(p);
-    p = NULL;
-    permanent_pool = NULL;
+    p = permanent_pool = NULL;
   } 
 }
 
@@ -135,6 +143,25 @@ START_TEST (scoreboard_set_test) {
     strerror(errno));  
   fail_unless(strcmp("/tmp/prt-scoreboard/bar", path) == 0,
     "Expected '%s', got '%s'", "/tmp/prt-scoreboard/bar", path);
+}
+END_TEST
+
+START_TEST (scoreboard_set_mutex_test) {
+  int res;
+  const char *path;
+
+  res = pr_set_scoreboard_mutex(NULL);
+  fail_unless(res == -1, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
+  res = pr_set_scoreboard_mutex("/tmp");
+  fail_unless(res == 0, "Failed to set scoreboard mutex: %s", strerror(errno));
+
+  path = pr_get_scoreboard_mutex();
+  fail_unless(path != NULL, "Failed to get scoreboard mutex path: %s",
+    strerror(errno));  
+  fail_unless(strcmp("/tmp", path) == 0,
+    "Expected '%s', got '%s'", "/tmp", path);
 }
 END_TEST
 
@@ -1189,6 +1216,16 @@ START_TEST (scoreboard_entry_get_test) {
     fail("Unexpectedly read value from scoreboard entry");
   }
 
+  /* XXX pr_scoreboard_entry_get:
+   *   PR_SCORE_USER
+   *   PR_SCORE_CLIENT_ADDR
+   *   PR_SCORE_CLIENT_NAME
+   *   PR_SCORE_CLASS
+   *   PR_SCORE_CMD
+   *   PR_SCORE_CMD_ARG
+   *   PR_SCORE_CMD_PROTOCOL
+   */
+
   if (errno != ENOENT) {
     int xerrno = errno;
 
@@ -1351,6 +1388,22 @@ START_TEST (scoreboard_entry_update_test) {
 }
 END_TEST
 
+START_TEST (scoreboard_entry_kill_test) {
+  int res;
+  pr_scoreboard_entry_t sce;
+
+  res = pr_scoreboard_entry_kill(NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  sce.sce_pid = getpid();
+  res = pr_scoreboard_entry_kill(&sce, 0);
+  fail_unless(res == 0, "Failed to send signal 0 to PID %lu: %s",
+    (unsigned long) sce.sce_pid, strerror(errno));
+}
+END_TEST
+
 START_TEST (scoreboard_disabled_test) {
   register unsigned int i = 0;
   const char *paths[4] = {
@@ -1439,6 +1492,7 @@ Suite *tests_get_scoreboard_suite(void) {
 
   tcase_add_test(testcase, scoreboard_get_test);
   tcase_add_test(testcase, scoreboard_set_test);
+  tcase_add_test(testcase, scoreboard_set_mutex_test);
   tcase_add_test(testcase, scoreboard_open_close_test);
   tcase_add_test(testcase, scoreboard_delete_test);
   tcase_add_test(testcase, scoreboard_restore_test);
@@ -1451,6 +1505,7 @@ Suite *tests_get_scoreboard_suite(void) {
   tcase_add_test(testcase, scoreboard_entry_read_test);
   tcase_add_test(testcase, scoreboard_entry_get_test);
   tcase_add_test(testcase, scoreboard_entry_update_test);
+  tcase_add_test(testcase, scoreboard_entry_kill_test);
   tcase_add_test(testcase, scoreboard_disabled_test);
 
   suite_add_tcase(suite, testcase);

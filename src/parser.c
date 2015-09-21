@@ -283,7 +283,7 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
    * prematurely, and helps to avoid memory leaks.
    */
   if (strncasecmp(name, "<Global>", 9) == 0) {
-    if (!global_config_pool) {
+    if (global_config_pool == NULL) {
       global_config_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(global_config_pool, "<Global> Pool");
     }
@@ -310,8 +310,9 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
   c->name = pstrdup(c->pool, name);
 
   if (parent) {
-    if (parent->config_type == CONF_DYNDIR)
+    if (parent->config_type == CONF_DYNDIR) {
       c->flags |= CF_DYNAMIC;
+    }
   }
 
   add_config_ctxt(c);
@@ -648,12 +649,13 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
   /* Always use the config stream at the top of the stack. */
   cs = parser_sources;
 
-  if (!buf) {
+  if (buf == NULL ||
+      cs == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
-  if (!cs->cs_fh) {
+  if (cs->cs_fh == NULL) {
     errno = EPERM;
     return NULL;
   }

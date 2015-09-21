@@ -940,6 +940,11 @@ int pr_set_scoreboard(const char *path) {
 }
 
 int pr_set_scoreboard_mutex(const char *path) {
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   sstrncpy(scoreboard_mutex, path, sizeof(scoreboard_mutex));
   return 0;
 }

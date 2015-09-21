@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Command API tests
- * $Id: cmd.c,v 1.4 2014-01-27 18:25:15 castaglia Exp $
- */
+/* Command API tests */
 
 #include "tests.h"
 
@@ -359,6 +357,7 @@ END_TEST
 START_TEST (cmd_get_displayable_str_test) {
   char *ok, *res = NULL;
   cmd_rec *cmd = NULL;
+  size_t len = 0;
 
   res = pr_cmd_get_displayable_str(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null cmd_rec");
@@ -382,6 +381,11 @@ START_TEST (cmd_get_displayable_str_test) {
    * rather than creating it anew.
    */
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  if (pr_cmd_clear_cache(NULL) < 0) {
+    fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+      strerror(errno), errno);
+  }
 
   mark_point();
   pr_cmd_clear_cache(cmd);
@@ -438,11 +442,27 @@ START_TEST (cmd_get_displayable_str_test) {
   ok = " bar baz";
   fail_if(res == NULL, "Expected string, got null");
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 2, C_PASS, "foo");
+  res = pr_cmd_get_displayable_str(cmd, &len);
+  ok = "PASS (hidden)";
+  fail_unless(res != NULL, "Expected displayable string, got null");
+  fail_unless(len == 13, "Expected len 13, got %lu", (unsigned long) len);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 2, C_ADAT, "bar baz quxx");
+  res = pr_cmd_get_displayable_str(cmd, &len);
+  ok = "ADAT (hidden)";
+  fail_unless(res != NULL, "Expected displayable string, got null");
+  fail_unless(len == 13, "Expected len 13, got %lu", (unsigned long) len);
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 }
 END_TEST
 
 START_TEST (cmd_get_errno_test) {
-  int res;
+  int res, *xerrno = NULL;
   cmd_rec *cmd = NULL;
 
   res = pr_cmd_get_errno(NULL);
@@ -453,12 +473,107 @@ START_TEST (cmd_get_errno_test) {
   res = pr_cmd_get_errno(cmd);
   fail_unless(res == 0, "Expected errno 0, got %d", res);
 
+  (void) pr_table_remove(cmd->notes, "errno", NULL);
+  res = pr_cmd_get_errno(cmd);
+  fail_unless(res < 0, "Failed to handle missing 'errno' note");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  xerrno = pcalloc(cmd->pool, sizeof(int));
+  (void) pr_table_add(cmd->notes, "errno", xerrno, sizeof(int));
+
+  res = pr_cmd_set_errno(NULL, ENOENT);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   res = pr_cmd_set_errno(cmd, ENOENT);
   fail_unless(res == 0, "Failed to stash errno ENOENT: %s", strerror(errno));
 
   res = pr_cmd_get_errno(cmd);
   fail_unless(res == ENOENT, "Expected errno ENOENT, got %s (%d)",
     strerror(res), res);
+}
+END_TEST
+
+START_TEST (cmd_set_name_test) {
+  int res;
+  cmd_rec *cmd;
+  const char *name;
+
+  res = pr_cmd_set_name(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  cmd = pr_cmd_alloc(p, 1, "foo");
+  res = pr_cmd_set_name(cmd, NULL);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "bar";
+  res = pr_cmd_set_name(cmd, name);
+  fail_unless(res == 0, "Failed to command name to '%s': %s", name,
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (cmd_is_http_test) {
+  int res;
+  cmd_rec *cmd;
+
+  res = pr_cmd_is_http(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, C_SYST);
+  cmd->argv[0] = NULL;
+  res = pr_cmd_is_http(cmd);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  cmd->argv[0] = C_SYST;
+  res = pr_cmd_is_http(cmd);
+  fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, "GET");
+  res = pr_cmd_is_http(cmd);
+  fail_unless(res == TRUE, "Expected TRUE (%d), got %d", TRUE, res);
+}
+END_TEST
+
+START_TEST (cmd_is_smtp_test) {
+  int res;
+  cmd_rec *cmd;
+
+  res = pr_cmd_is_smtp(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, C_SYST);
+  cmd->argv[0] = NULL;
+  res = pr_cmd_is_smtp(cmd);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  cmd->argv[0] = C_SYST;
+  res = pr_cmd_is_smtp(cmd);
+  fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, "RCPT");
+  res = pr_cmd_is_smtp(cmd);
+  fail_unless(res == TRUE, "Expected TRUE (%d), got %d", TRUE, res);
 }
 END_TEST
 
@@ -469,7 +584,6 @@ Suite *tests_get_cmd_suite(void) {
   suite = suite_create("cmd");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, cmd_alloc_test);
@@ -478,6 +592,9 @@ Suite *tests_get_cmd_suite(void) {
   tcase_add_test(testcase, cmd_strcmp_test);
   tcase_add_test(testcase, cmd_get_displayable_str_test);
   tcase_add_test(testcase, cmd_get_errno_test);
+  tcase_add_test(testcase, cmd_set_name_test);
+  tcase_add_test(testcase, cmd_is_http_test);
+  tcase_add_test(testcase, cmd_is_smtp_test);
 
   suite_add_tcase(suite, testcase);
 

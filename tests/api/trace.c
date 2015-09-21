@@ -22,23 +22,26 @@
  * OpenSSL in the source distribution.
  */
 
-/* Trace API tests
- */
+/* Trace API tests */
 
 #include "tests.h"
 
 static pool *p = NULL;
 
+static const char *trace_path = "/tmp/prt-trace.log";
+
 static void set_up(void) {
   if (p == NULL) {
-    p = make_sub_pool(NULL);
+    p = permanent_pool = make_sub_pool(NULL);
   }
 }
 
 static void tear_down(void) {
+  (void) unlink(trace_path);
+
   if (p) {
     destroy_pool(p);
-    p = NULL;
+    p = permanent_pool = NULL;
   } 
 }
 
@@ -248,6 +251,33 @@ START_TEST (trace_parse_levels_test) {
 }
 END_TEST
 
+START_TEST (trace_set_file_test) {
+  int res;
+
+  res = pr_trace_set_file(trace_path);
+  fail_unless(res == 0, "Failed to set trace file '%s': %s", trace_path,
+    strerror(errno));
+  pr_trace_set_levels("foo", 1, 20);
+
+  pr_trace_msg("foo", 1, "bar?");
+  pr_trace_msg("foo", 1, "baz!");
+
+  res = pr_trace_set_options(PR_TRACE_OPT_LOG_CONN_IPS|PR_TRACE_OPT_USE_TIMESTAMP_MILLIS);
+  fail_unless(res == 0, "Failed to set options: %s", strerror(errno));
+
+  pr_trace_msg("foo", 1, "quxx?");
+  pr_trace_msg("foo", 1, "QUZZ!");
+
+  res = pr_trace_set_options(PR_TRACE_OPT_DEFAULT);
+  fail_unless(res == 0, "Failed to set default options: %s", strerror(errno));
+
+  pr_trace_set_levels("foo", 0, 0);
+  res = pr_trace_set_file(NULL);
+  fail_unless(res == 0, "Failed to reset trace file: %s", strerror(errno));
+
+  (void) unlink(trace_path);
+}
+END_TEST
 #endif /* PR_USE_TRACE */
 
 Suite *tests_get_trace_suite(void) {
@@ -257,7 +287,6 @@ Suite *tests_get_trace_suite(void) {
   suite = suite_create("trace");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
 #ifdef PR_USE_TRACE
@@ -267,6 +296,7 @@ Suite *tests_get_trace_suite(void) {
   tcase_add_test(testcase, trace_get_min_level_test);
   tcase_add_test(testcase, trace_get_level_test);
   tcase_add_test(testcase, trace_parse_levels_test);
+  tcase_add_test(testcase, trace_set_file_test);
 #endif /* PR_USE_TRACE */
 
   suite_add_tcase(suite, testcase);
