@@ -11,26 +11,20 @@ Introduction
 ------------
 
 ProFTPD is a highly configurable FTP daemon for Unix and Unix-like
-operating systems.  See the README.ports file for more details about
+operating systems.  See the _**README.ports**_ file for more details about
 the platforms on which ProFTPD in known or thought to build and run.
 
 ProFTPD grew from a desire for a secure and configurable FTP server.
 It was inspired by a significant admiration of the Apache web server.
-Unlike most other Unix ftp servers, it has not been derived from the old
-BSD ftpd code base, but is a completely new design and implementation.
+Unlike most other Unix FTP servers, it has not been derived from the old
+BSD `ftpd` code base, but is a completely new design and implementation.
 
 ProFTPD's extensive configurability provides systems adminstrators great
 flexibility in user authentication and access controls, including virtual
-ftp users and easy chroot() ftp sessions for individual users.
+users and easy chroot() ftp sessions for individual users.
 
 ProFTPD is popular with many service providers for delivering update
 access to user web pages, without resorting to Unix shell accounts.
-
-ProFTPD powers many well-known, high-volume anonymous FTP sites,
-including debian.org, kernel.org, redhat.com and sourceforge.net.
-
-ProFTPD is bundled with several Linux distributions, including
-Conectiva and Trustix.
 
 Latest Release
 --------------
@@ -55,11 +49,11 @@ Major Features
 
 - Shadow password support, including support for expired accounts.
 
-- Multiple authentication methods, including PAM, LDAP and SQL.
+- Multiple authentication methods, including PAM, LDAP, SQL, and RADIUS.
 
 - Virtual users.
 
-- ProFTPD never executes any external program at any time. There is no SITE EXEC command, and all file and directory listings are generated internally, without using an external ls command.
+- ProFTPD never executes any external program at any time. There is no `SITE EXEC` command, and all file and directory listings are generated internally, without using an external ls command.
 
 - Anonymous FTP and other chroot directories do not require any specific directory structure, executable programs or other system files. 
 
@@ -84,11 +78,17 @@ Installation Overview
 
 For detailed installation instructions, see the INSTALL file in the root directory of the source distribution.
 
-The ProFTPD source distribution is designed to be configured using the GNU autotools, so compiling and installing follows the familiar command sequence of './configure ; make ; make install'.  However, a significant portion of ProFTPD's configurability is done at compile time, so it is highly recommended that you read INSTALL and all the README.* files that pertain to your platform and desired features before building the sources.
+The ProFTPD source distribution is designed to be configured using the GNU autotools, so compiling and installing follows the familiar command sequence of
+
+    ./configure
+    make
+    make install
+
+However, a significant portion of ProFTPD's configurability is done at compile time, so it is highly recommended that you read INSTALL and all the README.* files that pertain to your platform and desired features before building the sources.
 
 ProFTPD uses a single configuration file.  A few examples are included in the sample-configurations subdirectory of the source distribution.
 
-On most systems, the inetd or xinetd configuration must be changed, either to remove the current ftpd entry to run ProFTPD standalone, or to change the current ftpd entry to use the proftpd daemon.
+On most systems, the `inetd` or `xinetd` configuration must be changed, either to remove the current ftpd entry to run ProFTPD standalone, or to change the current ftpd entry to use the proftpd daemon.
 
 Questions
 ---------
