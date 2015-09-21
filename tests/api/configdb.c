@@ -57,7 +57,7 @@ static void tear_down(void) {
   } 
 }
 
-START_TEST (add_remove_config_test) {
+START_TEST (add_config_test) {
   int res;
   const char *name = NULL;
   config_rec *c = NULL;
@@ -76,44 +76,39 @@ START_TEST (add_remove_config_test) {
     c->config_type);
 
   mark_point();
+  pr_config_dump(NULL, s->conf, NULL);
+
+  mark_point();
   res = remove_config(s->conf, name, FALSE);
   fail_unless(res > 0, "Failed to remove config '%s': %s", name,
     strerror(errno));
-
-  mark_point();
-  pr_config_dump(NULL, s->conf, " ");
 }
 END_TEST
 
-START_TEST (add_remove_config_set_test) {
+START_TEST (add_config_param_test) {
   int res;
-  xaset_t *set = NULL;
   const char *name = NULL;
   config_rec *c = NULL;
+  server_rec *s = NULL;
 
-  res = remove_config(NULL, NULL, FALSE);
-  fail_unless(res == 0, "Failed to handle null arguments: %s", strerror(errno));
-
+  s = pr_parser_server_ctxt_open("127.0.0.1");
+  fail_unless(s != NULL, "Failed to open server context: %s", strerror(errno));
+  
   name = "foo";
 
-  c = add_config_set(NULL, name);
-  fail_unless(c == NULL, "Failed to handle null set argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
-    errno, strerror(errno));
-
-  c = add_config_set(&set, name);
-  fail_unless(c != NULL, "Failed to add config '%s' to set: %s", name,
+  mark_point();
+  c = add_config_param(name, 1, "bar");
+  fail_unless(c != NULL, "Failed to add config '%s': %s", name,
     strerror(errno));
-  fail_unless(c->config_type == 0, "Expected config_type 0, got %d",
-    c->config_type);
+  fail_unless(c->config_type == CONF_PARAM, "Expected config_type %d, got %d",
+    CONF_PARAM, c->config_type);
 
-  res = remove_config(set, name, FALSE);
+  mark_point();
+  pr_config_dump(NULL, s->conf, NULL);
+
+  mark_point();
+  res = remove_config(s->conf, name, FALSE);
   fail_unless(res > 0, "Failed to remove config '%s': %s", name,
-    strerror(errno));
-
-  name = "bar";
-  res = remove_config(set, name, FALSE);
-  fail_unless(res == 0, "Removed config '%s' unexpectedly", name,
     strerror(errno));
 }
 END_TEST
@@ -148,6 +143,67 @@ START_TEST (add_config_param_set_test) {
   fail_unless(strcmp("baz", (char *) c->argv[1]) == 0,
     "Expected argv[1] to be 'baz', got '%s'", (char *) c->argv[1]);
   fail_unless(c->argv[2] == NULL, "Expected argv[2] to be null");
+}
+END_TEST
+
+START_TEST (add_config_param_str_test) {
+  int res;
+  const char *name = NULL;
+  config_rec *c = NULL;
+  server_rec *s = NULL;
+
+  s = pr_parser_server_ctxt_open("127.0.0.1");
+  fail_unless(s != NULL, "Failed to open server context: %s", strerror(errno));
+
+  name = "foo";
+
+  mark_point();
+  c = add_config_param_str(name, 1, "bar");
+  fail_unless(c != NULL, "Failed to add config '%s': %s", name,
+    strerror(errno));
+  fail_unless(c->config_type == CONF_PARAM, "Expected config_type %d, got %d",
+    CONF_PARAM, c->config_type);
+
+  mark_point();
+  pr_config_dump(NULL, s->conf, NULL);
+
+  mark_point();
+  res = remove_config(s->conf, name, FALSE);
+  fail_unless(res > 0, "Failed to remove config '%s': %s", name,
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (add_config_set_test) {
+  int res;
+  xaset_t *set = NULL;
+  const char *name = NULL;
+  config_rec *c = NULL;
+
+  res = remove_config(NULL, NULL, FALSE);
+  fail_unless(res == 0, "Failed to handle null arguments: %s", strerror(errno));
+
+  name = "foo";
+
+  c = add_config_set(NULL, name);
+  fail_unless(c == NULL, "Failed to handle null set argument");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  c = add_config_set(&set, name);
+  fail_unless(c != NULL, "Failed to add config '%s' to set: %s", name,
+    strerror(errno));
+  fail_unless(c->config_type == 0, "Expected config_type 0, got %d",
+    c->config_type);
+
+  res = remove_config(set, name, FALSE);
+  fail_unless(res > 0, "Failed to remove config '%s': %s", name,
+    strerror(errno));
+
+  name = "bar";
+  res = remove_config(set, name, FALSE);
+  fail_unless(res == 0, "Removed config '%s' unexpectedly", name,
+    strerror(errno));
 }
 END_TEST
 
@@ -414,9 +470,11 @@ Suite *tests_get_config_suite(void) {
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
-  tcase_add_test(testcase, add_remove_config_test);
-  tcase_add_test(testcase, add_remove_config_set_test);
+  tcase_add_test(testcase, add_config_test);
+  tcase_add_test(testcase, add_config_param_test);
   tcase_add_test(testcase, add_config_param_set_test);
+  tcase_add_test(testcase, add_config_param_str_test);
+  tcase_add_test(testcase, add_config_set_test);
   tcase_add_test(testcase, find_config_test);
   tcase_add_test(testcase, find_config2_test);
   tcase_add_test(testcase, get_param_ptr_test);
