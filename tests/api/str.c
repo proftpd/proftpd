@@ -140,6 +140,7 @@ START_TEST (sstrcat_test) {
 
   fail_unless(dst[1] == 0, "Failed to terminate destination buffer");
 
+  mark_point();
   src[0] = 'f';
   src[1] = '\0';
   dst[0] = 'e';
@@ -147,28 +148,45 @@ START_TEST (sstrcat_test) {
   res = sstrcat(dst, src, 3);
   fail_unless(res == dst, "Returned wrong destination buffer");
 
+  mark_point();
   fail_unless(dst[0] == 'e',
     "Failed to preserve destination buffer (expected '%c' at index 0, "
     "got '%c')", 'e', dst[0]);
 
+  mark_point();
   fail_unless(dst[1] == 'f',
     "Failed to copy source buffer (expected '%c' at index 1, got '%c')",
     'f', dst[1]);
 
+  mark_point();
   fail_unless(dst[2] == 0, "Failed to terminate destination buffer");
 
-  memset(src, c, sizeof(src));
+  mark_point();
+  memset(src, c, sizeof(src)-1);
 
+  /* Note: we need to NUL-terminate the source buffer, for e.g. strlcat(3)
+   * implementations.  Failure to do so can yield SIGABRT/SIGSEGV problems
+   * during e.g. unit tests.
+   */
+  src[sizeof(src)-1] = '\0';
   dst[0] = '\0';
+
+  mark_point();
   res = sstrcat(dst, src, sizeof(dst));
+
+  mark_point();
   fail_unless(res == dst, "Returned wrong destination buffer");
+
+  mark_point();
   fail_unless(dst[sizeof(dst)-1] == 0,
     "Failed to terminate destination buffer");
 
+  mark_point();
   fail_unless(strlen(dst) == (sizeof(dst)-1),
     "Failed to copy all the data (expected len %u, got len %u)",
     sizeof(dst)-1, strlen(dst));
 
+  mark_point();
   for (i = 0; i < sizeof(dst)-1; i++) {
     fail_unless(dst[i] == c, "Copied wrong value (expected '%c', got '%c')",
       c, dst[i]);
