@@ -50,9 +50,9 @@ union block_hdr {
 
   /* Actual header */
   struct {
-    char *endp;
+    void *endp;
     union block_hdr *next;
-    char *first_avail;
+    void *first_avail;
   } h;
 };
 
@@ -132,7 +132,7 @@ static union block_hdr *malloc_block(size_t size) {
 
   blok->h.next = NULL;
   blok->h.first_avail = (char *) (blok + 1);
-  blok->h.endp = size + blok->h.first_avail;
+  blok->h.endp = size + (char *) blok->h.first_avail;
 
   return blok;
 }
@@ -204,17 +204,16 @@ static union block_hdr *new_block(int minsz, int exact) {
   /* Check if we have anything of the requested size on our free list first...
    */
   while (blok) {
-    if (minsz <= blok->h.endp - blok->h.first_avail) {
+    if (minsz <= ((char *) blok->h.endp - (char *) blok->h.first_avail)) {
       *lastptr = blok->h.next;
       blok->h.next = NULL;
 
       stat_freehit++;
       return blok;
-
-    } else {
-      lastptr = &blok->h.next;
-      blok = blok->h.next;
     }
+
+    lastptr = &blok->h.next;
+    blok = blok->h.next;
   }
 
   /* Nope...damn.  Have to malloc() a new one. */
@@ -268,7 +267,7 @@ static unsigned long bytes_in_block_list(union block_hdr *blok) {
   unsigned long size = 0;
 
   while (blok) {
-    size += blok->h.endp - (char *) (blok + 1);
+    size += ((char *) blok->h.endp - (char *) (blok + 1));
     blok = blok->h.next;
   }
 
@@ -402,7 +401,7 @@ struct pool_rec *make_sub_pool(struct pool_rec *p) {
   blok = new_block(0, FALSE);
 
   new_pool = (pool *) blok->h.first_avail;
-  blok->h.first_avail += POOL_HDR_BYTES;
+  blok->h.first_avail = POOL_HDR_BYTES + (char *) blok->h.first_avail;
 
   memset(new_pool, 0, sizeof(struct pool_rec));
   new_pool->free_first_avail = blok->h.first_avail;
@@ -432,7 +431,7 @@ struct pool_rec *pr_pool_create_sz(struct pool_rec *p, size_t sz) {
   blok = new_block(sz + POOL_HDR_BYTES, TRUE);
 
   new_pool = (pool *) blok->h.first_avail;
-  blok->h.first_avail += POOL_HDR_BYTES;
+  blok->h.first_avail = POOL_HDR_BYTES + (char *) blok->h.first_avail;
 
   memset(new_pool, 0, sizeof(struct pool_rec));
   new_pool->free_first_avail = blok->h.first_avail;
@@ -537,7 +536,6 @@ void destroy_pool(pool *p) {
  */
 
 static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
-
   /* Round up requested size to an even number of aligned units */
   size_t nclicks = 1 + ((reqsz - 1) / CLICK_SZ);
   size_t sz = nclicks * CLICK_SZ;
@@ -557,7 +555,7 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
 
   new_first_avail = first_avail + sz;
 
-  if (new_first_avail <= blok->h.endp) {
+  if (new_first_avail <= (char *) blok->h.endp) {
     blok->h.first_avail = new_first_avail;
     return (void *) first_avail;
   }
@@ -570,7 +568,7 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
   p->last = blok;
 
   first_avail = blok->h.first_avail;
-  blok->h.first_avail += sz;
+  blok->h.first_avail = sz + (char *) blok->h.first_avail;
 
   pr_alarms_unblock();
   return (void *) first_avail;
