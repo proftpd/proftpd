@@ -76,7 +76,7 @@ Documentation
 Installation Overview
 ---------------------
 
-For detailed installation instructions, see the INSTALL file in the root directory of the source distribution.
+For detailed installation instructions, see the _**INSTALL**_ file in the root directory of the source distribution.
 
 The ProFTPD source distribution is designed to be configured using the GNU autotools, so compiling and installing follows the familiar command sequence of
 
@@ -84,9 +84,9 @@ The ProFTPD source distribution is designed to be configured using the GNU autot
     make
     make install
 
-However, a significant portion of ProFTPD's configurability is done at compile time, so it is highly recommended that you read INSTALL and all the README.* files that pertain to your platform and desired features before building the sources.
+However, a significant portion of ProFTPD's configurability is done at compile time, so it is highly recommended that you read _**INSTALL**_ and all of the _**README.***_ files that pertain to your platform and desired features before building the sources.
 
-ProFTPD uses a single configuration file.  A few examples are included in the sample-configurations subdirectory of the source distribution.
+ProFTPD uses a single configuration file.  A few examples are included in the [sample-configurations/](sample-configurations/) subdirectory of the source distribution.
 
 On most systems, the `inetd` or `xinetd` configuration must be changed, either to remove the current ftpd entry to run ProFTPD standalone, or to change the current ftpd entry to use the proftpd daemon.
 

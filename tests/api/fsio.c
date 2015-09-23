@@ -1534,7 +1534,8 @@ START_TEST (fsio_sys_utimes_test) {
 
   res = pr_fsio_utimes(fsio_test_path, (struct timeval *) &tvs);
   fail_unless(res < 0, "Changed times of '%s' unexpectedly", fsio_test_path);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  fail_unless(errno == ENOENT || errno == EINVAL,
+    "Expected ENOENT (%d) or EINVAL (%d), got %s (%d)", ENOENT, EINVAL,
     strerror(errno), errno);
 
   fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
