@@ -1383,17 +1383,26 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   int rc;
 #endif /* HAVE_AIX_SENDFILE */
 
-  if (session.xfer.direction == PR_NETIO_IO_RD)
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    errno = EPERM;
     return -1;
+  }
+
+  if (session.d == NULL) {
+    errno = EPERM;
+    return -1;
+  }
 
   flags = fcntl(PR_NETIO_FD(session.d->outstrm), F_GETFL);
-  if (flags == -1)
+  if (flags == -1) {
     return -1;
+  }
 
   /* Set fd to blocking-mode for sendfile() */
   if (flags & O_NONBLOCK) {
-    if (fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags^O_NONBLOCK) == -1)
+    if (fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags^O_NONBLOCK) < 0) {
       return -1;
+    }
   }
 
   for (;;) {
@@ -1416,24 +1425,26 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
      */
 
 #if defined(HAVE_LINUX_SENDFILE)
-    if (count > INT_MAX)
+    if (count > INT_MAX) {
       count = INT_MAX;
-
+    }
 #elif defined(HAVE_SOLARIS_SENDFILE)
 # if SIZEOF_SIZE_T == SIZEOF_INT
-    if (count > INT_MAX)
+    if (count > INT_MAX) {
       count = INT_MAX;
+    }
 # elif SIZEOF_SIZE_T == SIZEOF_LONG
-    if (count > LONG_MAX)
+    if (count > LONG_MAX) {
       count = LONG_MAX;
+    }
 # elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
-    if (count > LLONG_MAX)
+    if (count > LLONG_MAX) {
       count = LLONG_MAX;
+    }
 # endif
 #endif /* !HAVE_SOLARIS_SENDFILE */
 
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
-
     if (len != -1 &&
         len < count) {
       /* Under Linux semantics, this occurs when a signal has interrupted
@@ -1497,14 +1508,17 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
      */
 
 #if SIZEOF_SIZE_T == SIZEOF_INT
-    if (count > UINT_MAX)
+    if (count > UINT_MAX) {
       count = UINT_MAX;
+    }
 #elif SIZEOF_SIZE_T == SIZEOF_LONG
-    if (count > ULONG_MAX)
+    if (count > ULONG_MAX) {
       count = ULONG_MAX;
+    }
 #elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
-    if (count > ULLONG_MAX)
+    if (count > ULLONG_MAX) {
       count = ULLONG_MAX;
+    }
 #endif
 
     if (sendfile(retr_fd, PR_NETIO_FD(session.d->outstrm), *offset, count,
@@ -1520,10 +1534,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
      */
 
     res = sendfile(retr_fd, PR_NETIO_FD(session.d->outstrm), *offset, &orig_len,
-        NULL, 0);
+      NULL, 0);
     len = orig_len;
 
-    if (res == -1) {
+    if (res < 0) {
 #elif defined(HAVE_AIX_SENDFILE)
 
     memset(&parms, 0, sizeof(parms));
@@ -1532,10 +1546,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
     parms.file_offset = (uint64_t) *offset;
     parms.file_bytes = (int64_t) count;
 
-    rc  = send_file(&(PR_NETIO_FD(session.d->outstrm)), &(parms), (uint_t)0);
+    rc = send_file(&(PR_NETIO_FD(session.d->outstrm)), &(parms), (uint_t)0);
     len = (int) parms.bytes_sent;
 
-    if (rc == -1 || rc == 1) {
+    if (rc < -1 || rc == 1) {
 
 #endif /* HAVE_AIX_SENDFILE */
 
