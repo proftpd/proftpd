@@ -85,6 +85,7 @@ TEST_API_OBJS=\
   api/help.o \
   api/rlimit.o \
   api/encode.o \
+  api/privs.o \
   api/stubs.o \
   api/tests.o
 
