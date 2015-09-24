@@ -216,9 +216,9 @@ START_TEST (data_open_active_test) {
   mark_point();
   res = pr_data_open(NULL, NULL, dir, 0);
   fail_unless(res < 0, "Opened active READ data connection unexpectedly");
-  fail_unless(errno == EADDRNOTAVAIL,
-    "Expected EADDRNOTAVAIL (%d), got %s (%d)", EADDRNOTAVAIL,
-    strerror(errno), errno);
+  fail_unless(errno == EADDRNOTAVAIL || errno == ECONNREFUSED,
+    "Expected EADDRNOTAVAIL (%d) or ECONNREFUSED (%d), got %s (%d)",
+    EADDRNOTAVAIL, ECONNREFUSED, strerror(errno), errno);
 
   /* Open a WRITing data transfer connection...*/
   dir = PR_NETIO_IO_WR;
@@ -226,9 +226,9 @@ START_TEST (data_open_active_test) {
   mark_point();
   res = pr_data_open(NULL, NULL, dir, 0);
   fail_unless(res < 0, "Opened active READ data connection unexpectedly");
-  fail_unless(errno == EADDRNOTAVAIL,
-    "Expected EADDRNOTAVAIL (%d), got %s (%d)", EADDRNOTAVAIL,
-    strerror(errno), errno);
+  fail_unless(errno == EADDRNOTAVAIL || errno == ECONNREFUSED,
+    "Expected EADDRNOTAVAIL (%d) or ECONNREFUSED (%d), got %s (%d)",
+    EADDRNOTAVAIL, ECONNREFUSED, strerror(errno), errno);
 
   (void) pr_inet_close(p, session.c);
   session.c = NULL;
