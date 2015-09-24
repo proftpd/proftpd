@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Regexp API tests
- * $Id: regexp.c,v 1.4 2011-05-23 20:50:31 castaglia Exp $
- */
+/* Regexp API tests */
 
 #include "tests.h"
 
@@ -36,43 +34,57 @@ static void set_up(void) {
   }
 
   init_regexp();
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("regexp", 1, 20);
+  }
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+    pr_trace_set_levels("regexp", 0, 0);
+  }
+
   if (p) {
     destroy_pool(p);
-    p = NULL;
-    permanent_pool = NULL;
-  } 
+    p = permanent_pool = NULL;
+  }
 }
 
 START_TEST (regexp_alloc_test) {
   pr_regex_t *res;
 
   res = pr_regexp_alloc(NULL);
-  fail_unless(res != NULL, "Failed to allocate regex");
+  fail_unless(res != NULL, "Failed to allocate regex: %s", strerror(errno));
+  pr_regexp_free(NULL, res);
 }
 END_TEST
 
 START_TEST (regexp_free_test) {
-  pr_regex_t *res = NULL;
-
-  pr_regexp_free(NULL, res);
-
-  res = pr_regexp_alloc(NULL);
-  fail_unless(res != NULL, "Failed to allocate regex");
-
-  pr_regexp_free(NULL, res);
+  mark_point();
+  pr_regexp_free(NULL, NULL);
 }
 END_TEST
 
-START_TEST (regexp_compile) {
+START_TEST (regexp_compile_test) {
   pr_regex_t *pre = NULL;
   int res;
   char errstr[256], *pattern;
   size_t errstrlen;
 
+  res = pr_regexp_compile(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   pre = pr_regexp_alloc(NULL);
+
+  res = pr_regexp_compile(pre, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null pattern");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   pattern = "[=foo";
   res = pr_regexp_compile(pre, pattern, 0); 
@@ -89,16 +101,86 @@ START_TEST (regexp_compile) {
 }
 END_TEST
 
-START_TEST (regexp_exec) {
+START_TEST (regexp_compile_posix_test) {
+  pr_regex_t *pre = NULL;
+  int res;
+  char *pattern;
+
+  res = pr_regexp_compile_posix(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  pre = pr_regexp_alloc(NULL);
+
+  res = pr_regexp_compile_posix(pre, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null pattern");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  pattern = "[=foo";
+  res = pr_regexp_compile_posix(pre, pattern, 0);
+  fail_unless(res != 0, "Successfully compiled pattern unexpectedly");
+
+  pattern = "foo";
+  res = pr_regexp_compile_posix(pre, pattern, 0);
+  fail_unless(res == 0, "Failed to compile regex pattern");
+
+  pr_regexp_free(NULL, pre);
+}
+END_TEST
+
+START_TEST (regexp_get_pattern_test) {
+  pr_regex_t *pre = NULL;
+  int res;
+  const char *str;
+  char *pattern;
+
+  str = pr_regexp_get_pattern(NULL);
+  fail_unless(str == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  pre = pr_regexp_alloc(NULL);
+  pattern = "^foo";
+  res = pr_regexp_compile(pre, pattern, 0);
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
+
+  str = pr_regexp_get_pattern(pre);
+  fail_unless(str != NULL, "Failed to get regex pattern: %s", strerror(errno));
+  fail_unless(strcmp(str, pattern) == 0, "Expected '%s', got '%s'", pattern,
+    str);
+
+  pr_regexp_free(NULL, pre);
+}
+END_TEST
+
+START_TEST (regexp_set_limits_test) {
+  int res;
+
+  res = pr_regexp_set_limits(0, 0);
+  fail_unless(res == 0, "Failed to set limits: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (regexp_exec_test) {
   pr_regex_t *pre = NULL;
   int res;
   char *pattern, *str;
+
+  res = pr_regexp_exec(NULL, NULL, 0, NULL, 0, 0, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   pre = pr_regexp_alloc(NULL);
 
   pattern = "^foo";
   res = pr_regexp_compile(pre, pattern, 0);
   fail_unless(res == 0, "Failed to compile regex pattern");
+
+  res = pr_regexp_exec(pre, NULL, 0, NULL, 0, 0, 0);
+  fail_unless(res != 0, "Failed to handle null string");
 
   str = "bar";
   res = pr_regexp_exec(pre, str, 0, NULL, 0, 0, 0);
@@ -119,15 +201,16 @@ Suite *tests_get_regexp_suite(void) {
   suite = suite_create("regexp");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, regexp_alloc_test);
   tcase_add_test(testcase, regexp_free_test);
-  tcase_add_test(testcase, regexp_compile);
-  tcase_add_test(testcase, regexp_exec);
+  tcase_add_test(testcase, regexp_compile_test);
+  tcase_add_test(testcase, regexp_compile_posix_test);
+  tcase_add_test(testcase, regexp_exec_test);
+  tcase_add_test(testcase, regexp_get_pattern_test);
+  tcase_add_test(testcase, regexp_set_limits_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }
