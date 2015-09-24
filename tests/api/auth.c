@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,13 +26,17 @@
 
 #include "tests.h"
 
-#define PR_TEST_AUTH_NAME	"unit_test"
-#define PR_TEST_AUTH_UID	500
-#define PR_TEST_AUTH_UID_STR	"500"
-#define PR_TEST_AUTH_GID	500
-#define PR_TEST_AUTH_GID_STR	"500"
-#define PR_TEST_AUTH_HOME	"/tmp"
-#define PR_TEST_AUTH_SHELL	"/bin/bash"
+#define PR_TEST_AUTH_NAME		"testsuite_user"
+#define PR_TEST_AUTH_NOBODY		"testsuite_nobody"
+#define PR_TEST_AUTH_NOBODY2		"testsuite_nobody2"
+#define PR_TEST_AUTH_NOGROUP		"testsuite_nogroup"
+#define PR_TEST_AUTH_UID		500
+#define PR_TEST_AUTH_UID_STR		"500"
+#define PR_TEST_AUTH_GID		500
+#define PR_TEST_AUTH_GID_STR		"500"
+#define PR_TEST_AUTH_HOME		"/tmp"
+#define PR_TEST_AUTH_SHELL		"/bin/bash"
+#define PR_TEST_AUTH_PASSWD		"password"
 
 static pool *p = NULL;
 
@@ -102,11 +106,23 @@ MODRET handle_getpwnam(cmd_rec *cmd) {
   name = cmd->argv[0];
   getpwnam_count++;
 
-  if (strcmp(name, PR_TEST_AUTH_NAME) != 0) {
-    return PR_DECLINED(cmd);
+  if (strcmp(name, PR_TEST_AUTH_NAME) == 0) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_pwd);
   }
 
-  return mod_create_data(cmd, &test_pwd);
+  if (strcmp(name, PR_TEST_AUTH_NOBODY) == 0) {
+    test_pwd.pw_uid = (uid_t) -1;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  if (strcmp(name, PR_TEST_AUTH_NOBODY2) == 0) {
+    test_pwd.pw_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_getpwuid(cmd_rec *cmd) {
@@ -179,11 +195,17 @@ MODRET handle_getgrnam(cmd_rec *cmd) {
   name = cmd->argv[0];
   getgrnam_count++;
 
-  if (strcmp(name, PR_TEST_AUTH_NAME) != 0) {
-    return PR_DECLINED(cmd);
+  if (strcmp(name, PR_TEST_AUTH_NAME) == 0) {
+    test_grp.gr_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_grp);
   }
 
-  return mod_create_data(cmd, &test_grp);
+  if (strcmp(name, PR_TEST_AUTH_NOBODY) == 0) {
+    test_grp.gr_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_grp);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_getgrgid(cmd_rec *cmd) {
@@ -255,6 +277,66 @@ MODRET handle_getgroups(cmd_rec *cmd) {
   return mod_create_data(cmd, (void *) &gids->nelts);
 }
 
+MODRET handle_authn(cmd_rec *cmd) {
+  const char *user, *cleartext_passwd;
+
+  user = cmd->argv[0];
+  cleartext_passwd = cmd->argv[1];
+
+  if (strcmp(user, PR_TEST_AUTH_NAME) == 0) {
+    if (strcmp(cleartext_passwd, PR_TEST_AUTH_PASSWD) == 0) {
+      return PR_HANDLED(cmd);
+    }
+
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  return PR_DECLINED(cmd);
+}
+
+MODRET handle_authz(cmd_rec *cmd) {
+  const char *user;
+
+  user = cmd->argv[0];
+
+  if (strcmp(user, PR_TEST_AUTH_NAME) == 0) {
+    return PR_HANDLED(cmd);
+  }
+
+  return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
+}
+
+MODRET handle_check(cmd_rec *cmd) {
+  const char *user, *cleartext_passwd, *ciphertext_passwd;
+
+  ciphertext_passwd = cmd->argv[0];
+  user = cmd->argv[1];
+  cleartext_passwd = cmd->argv[2];
+
+  if (strcmp(user, PR_TEST_AUTH_NAME) == 0) {
+    if (ciphertext_passwd != NULL &&
+        strcmp(ciphertext_passwd, cleartext_passwd) == 0) {
+      return PR_HANDLED(cmd);
+    }
+
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  return PR_DECLINED(cmd);
+}
+
+MODRET handle_requires_pass(cmd_rec *cmd) {
+  const char *name;
+
+  name = cmd->argv[0];
+
+  if (strcmp(name, PR_TEST_AUTH_NAME) == 0) {
+    return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Fixtures */
 
 static void set_up(void) {
@@ -264,9 +346,12 @@ static void set_up(void) {
     p = permanent_pool = make_sub_pool(NULL);
   }
 
-  pr_trace_use_stderr(TRUE);
   init_stash();
   init_auth();
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("auth", 1, 20);
+  }
 
   s = pcalloc(p, sizeof(server_rec));
   tests_stubs_set_main_server(s);
@@ -302,6 +387,10 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("auth", 0, 0);
+  }
+
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
@@ -433,9 +522,20 @@ START_TEST (auth_getpwnam_test) {
 
   mark_point();
 
+  pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NOBODY);
+  fail_unless(pw == NULL, "Found user '%s' unexpectedly", PR_TEST_AUTH_NOBODY);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NOBODY2);
+  fail_unless(pw == NULL, "Found user '%s' unexpectedly", PR_TEST_AUTH_NOBODY2);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NAME);
-  fail_unless(pw != NULL, "Failed to find pwnam: %s", strerror(errno));
-  fail_unless(getpwnam_count == 1, "Expected call count 1, got %u",
+  fail_unless(pw != NULL, "Failed to find user '%s': %s", PR_TEST_AUTH_NAME,
+    strerror(errno));
+  fail_unless(getpwnam_count == 3, "Expected call count 3, got %u",
     getpwnam_count);
 
   mark_point();
@@ -444,7 +544,7 @@ START_TEST (auth_getpwnam_test) {
   fail_unless(pw == NULL, "Found pwnam for user 'other' unexpectedly");
   fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
     errno, strerror(errno));
-  fail_unless(getpwnam_count == 2, "Expected call count 2, got %u",
+  fail_unless(getpwnam_count == 4, "Expected call count 4, got %u",
     getpwnam_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
@@ -716,9 +816,15 @@ START_TEST (auth_getgrnam_test) {
 
   mark_point();
 
+  gr = pr_auth_getgrnam(p, PR_TEST_AUTH_NOGROUP);
+  fail_unless(gr == NULL, "Found group '%s' unexpectedly",
+    PR_TEST_AUTH_NOGROUP);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   gr = pr_auth_getgrnam(p, PR_TEST_AUTH_NAME);
   fail_unless(gr != NULL, "Failed to find grnam: %s", strerror(errno));
-  fail_unless(getgrnam_count == 1, "Expected call count 1, got %u",
+  fail_unless(getgrnam_count == 2, "Expected call count 2, got %u",
     getgrnam_count);
 
   mark_point();
@@ -727,7 +833,7 @@ START_TEST (auth_getgrnam_test) {
   fail_unless(gr == NULL, "Found grnam for user 'other' unexpectedly");
   fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
     errno, strerror(errno));
-  fail_unless(getgrnam_count == 2, "Expected call count 2, got %u",
+  fail_unless(getgrnam_count == 3, "Expected call count 3, got %u",
     getgrnam_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
@@ -1142,6 +1248,250 @@ START_TEST (auth_cache_name2gid_failed_test) {
 }
 END_TEST
 
+START_TEST (auth_clear_auth_only_module_test) {
+  int res;
+
+  res = pr_auth_clear_auth_only_modules();
+  fail_unless(res < 0, "Failed to handle no auth module list");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+}
+END_TEST
+
+START_TEST (auth_add_auth_only_module_test) {
+  int res;
+  const char *name = "foo.bar";
+
+  res = pr_auth_add_auth_only_module(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_add_auth_only_module(name);
+  fail_unless(res == 0, "Failed to add auth-only module '%s': %s", name,
+    strerror(errno));
+
+  res = pr_auth_add_auth_only_module(name);
+  fail_unless(res < 0, "Failed to handle duplicate auth-only module");
+  fail_unless(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+    strerror(errno), errno);
+
+  res = pr_auth_clear_auth_only_modules();
+  fail_unless(res == 0, "Failed to clear auth-only modules: %s",
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (auth_remove_auth_only_module_test) {
+  int res;
+  const char *name = "foo.bar";
+
+  res = pr_auth_remove_auth_only_module(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_remove_auth_only_module(name);
+  fail_unless(res < 0, "Failed to handle empty auth-only module list");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  res = pr_auth_add_auth_only_module(name);
+  fail_unless(res == 0, "Failed to add auth-only module '%s': %s", name,
+    strerror(errno));
+
+  res = pr_auth_remove_auth_only_module(name);
+  fail_unless(res == 0, "Failed to remove auth-only module '%s': %s", name,
+    strerror(errno));
+
+  (void) pr_auth_clear_auth_only_modules();
+}
+END_TEST
+
+START_TEST (auth_authenticate_test) {
+  int res;
+  authtable authtab;
+  char *sym_name = "auth";
+
+  res = pr_auth_authenticate(NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_authenticate(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, NULL);
+  fail_unless(res < 0, "Failed to handle null password");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = handle_authn;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  res = pr_auth_authenticate(p, "other", "foobar");
+  fail_unless(res == PR_AUTH_NOPWD,
+    "Authenticated user 'other' unexpectedly (expected %d, got %d)",
+    PR_AUTH_NOPWD, res);
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, "foobar");
+  fail_unless(res == PR_AUTH_BADPWD,
+    "Authenticated user '%s' unexpectedly (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_BADPWD, res);
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authenticate user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+}
+END_TEST
+
+START_TEST (auth_authorize_test) {
+  int res;
+  authtable authtab;
+  char *sym_name = "authorize";
+
+  res = pr_auth_authorize(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_authorize(p, NULL);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
+  fail_unless(res > 0, "Failed to handle missing handler");
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = handle_authz;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  res = pr_auth_authorize(p, "other");
+  fail_unless(res == PR_AUTH_NOPWD,
+    "Authorized user 'other' unexpectedly (expected %d, got %d)",
+    PR_AUTH_NOPWD, res);
+
+  res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authorize user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+}
+END_TEST
+
+START_TEST (auth_check_test) {
+  int res;
+  const char *cleartext_passwd, *ciphertext_passwd, *name;
+  authtable authtab;
+  char *sym_name = "check";
+
+  res = pr_auth_check(NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_check(p, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = PR_TEST_AUTH_NAME;
+  res = pr_auth_check(p, NULL, name, NULL);
+  fail_unless(res < 0, "Failed to handle null cleartext password");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  cleartext_passwd = PR_TEST_AUTH_PASSWD;
+  res = pr_auth_check(p, NULL, name, cleartext_passwd);
+  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+    res);
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = handle_check;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  res = pr_auth_check(p, NULL, "other", cleartext_passwd);
+  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+    res);
+
+  res = pr_auth_check(p, "foo", name, cleartext_passwd);
+  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+    res);
+
+  res = pr_auth_check(p, NULL, name, cleartext_passwd);
+  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+    res);
+
+  ciphertext_passwd = PR_TEST_AUTH_PASSWD;
+  res = pr_auth_check(p, ciphertext_passwd, name, cleartext_passwd);
+  fail_unless(res == PR_AUTH_OK, "Expected %d, got %d", PR_AUTH_OK, res);
+}
+END_TEST
+
+START_TEST (auth_requires_pass_test) {
+  int res;
+  const char *name;
+  authtable authtab;
+  char *sym_name = "requires_pass";
+
+  res = pr_auth_requires_pass(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_requires_pass(p, NULL);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "other";
+  res = pr_auth_requires_pass(p, name);
+  fail_unless(res == TRUE, "Unknown users should require passwords (got %d)",
+    res);
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = handle_requires_pass;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  res = pr_auth_requires_pass(p, name);
+  fail_unless(res == TRUE, "Unknown users should require passwords (got %d)",
+    res);
+
+  name = PR_TEST_AUTH_NAME;
+  res = pr_auth_requires_pass(p, name);
+  fail_unless(res == FALSE, "Known users should NOT require passwords (got %d)",
+    res);
+}
+END_TEST
+
 Suite *tests_get_auth_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1149,7 +1499,6 @@ Suite *tests_get_auth_suite(void) {
   suite = suite_create("auth");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   /* pwent* et al */
@@ -1179,20 +1528,17 @@ Suite *tests_get_auth_suite(void) {
   tcase_add_test(testcase, auth_cache_name2uid_failed_test);
   tcase_add_test(testcase, auth_cache_name2gid_failed_test);
 
-#if 0
+  /* Auth modules */
+  tcase_add_test(testcase, auth_clear_auth_only_module_test);
+  tcase_add_test(testcase, auth_add_auth_only_module_test);
+  tcase_add_test(testcase, auth_remove_auth_only_module_test);
+
   /* Authorization */
   tcase_add_test(testcase, auth_authenticate_test);
   tcase_add_test(testcase, auth_authorize_test);
   tcase_add_test(testcase, auth_check_test);
   tcase_add_test(testcase, auth_requires_pass_test);
 
-  /* Auth modules */
-  tcase_add_test(testcase, auth_add_auth_only_module_test);
-  tcase_add_test(testcase, auth_remove_auth_only_module_test);
-  tcase_add_test(testcase, auth_clear_auth_only_modules_test);
-#endif
-
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

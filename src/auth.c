@@ -597,11 +597,13 @@ struct passwd *pr_auth_getpwent(pool *p) {
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: UID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
@@ -632,12 +634,14 @@ struct group *pr_auth_getgrent(pool *p) {
   }
 
   /* Sanity check */
-  if (res == NULL)
+  if (res == NULL) {
     return NULL;
+  }
 
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
@@ -678,11 +682,13 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: UID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
@@ -782,6 +788,7 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
 
   if (res->pw_gid == (gid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
@@ -823,6 +830,7 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
@@ -871,6 +879,7 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: GID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
@@ -1020,24 +1029,25 @@ int pr_auth_authorize(pool *p, const char *name) {
   return res;
 }
 
-int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
+int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
+    const char *cleartext_passwd) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   module *m = NULL;
   int res = PR_AUTH_BADPWD;
 
-  /* Note: it's possible for cpw to be NULL (mod_ldap might do this, for
-   * example), so we cannot enforce that it be non-NULL.
+  /* Note: it's possible for ciphertext_passwd to be NULL (mod_ldap might do
+   * this, for example), so we cannot enforce that it be non-NULL.
    */
 
   if (p == NULL ||
       name == NULL ||
-      pw == NULL) {
+      cleartext_passwd == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  cmd = make_cmd(p, 3, cpw, name, pw);
+  cmd = make_cmd(p, 3, ciphertext_passwd, name, cleartext_passwd);
 
   /* First, check for any of the modules in the "authenticating only" list
    * of modules.  This is usually only mod_auth_pam, but other modules
@@ -2011,12 +2021,12 @@ int pr_auth_cache_set(int enable, unsigned int flags) {
 int pr_auth_add_auth_only_module(const char *name) {
   struct auth_module_elt *elt = NULL;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!auth_pool) {
+  if (auth_pool == NULL) {
     auth_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(auth_pool, "Auth API");
   }
@@ -2058,7 +2068,7 @@ int pr_auth_add_auth_only_module(const char *name) {
 
 int pr_auth_clear_auth_only_modules(void) {
   if (auth_module_list == NULL) {
-    errno = EINVAL;
+    errno = EPERM;
     return -1;
   }
 
@@ -2070,7 +2080,7 @@ int pr_auth_clear_auth_only_modules(void) {
 int pr_auth_remove_auth_only_module(const char *name) {
   struct auth_module_elt *elt = NULL;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -2087,7 +2097,7 @@ int pr_auth_remove_auth_only_module(const char *name) {
   if (auth_module_list == NULL) {
     pr_trace_msg(trace_channel, 9, "not removing '%s' from list: "
       "empty auth-only module list", name);
-    errno = ENOENT;
+    errno = EPERM;
     return -1;
   }
 
