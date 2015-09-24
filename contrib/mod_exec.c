@@ -317,7 +317,10 @@ static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
    * First, use getrlimit() to obtain the maximum number of open files
    * for this process -- then close that number.
    */
-#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
+#if defined(__APPLE__)
+   getrlimit(RLIMIT_NOFILE, &rlim);
+   nfiles = rlim.rlim_cur;
+#elif defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
 # if defined(RLIMIT_NOFILE)
   if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
 # elif defined(RLIMIT_OFILE)
