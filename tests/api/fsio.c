@@ -161,6 +161,11 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  fh = pr_fsio_open("/etc/resolv.conf", flags);
+  fail_unless(fh != NULL, "Failed to open '/etc/resolv.conf': %s",
+    strerror(errno));
+  (void) pr_fsio_close(fh);
 }
 END_TEST
 
@@ -244,6 +249,11 @@ START_TEST (fsio_sys_unlink_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_unlink("/lib/foo.bar.baz");
+  fail_unless(res < 0, "Deleted /lib/foo.bar.baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -315,6 +325,9 @@ START_TEST (fsio_sys_creat_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  fh = pr_fsio_creat("/lib/foo.bar.baz.d/test.dat", flags);
+  fail_unless(fh == NULL, "Created /lib/foo.bar.baz.d/test.dat unexpectedly");
 }
 END_TEST
 
@@ -1871,14 +1884,13 @@ START_TEST (fsio_statcache_negative_cache_test) {
 }
 END_TEST
 
-START_TEST (fsio_statcache_expiry_test) {
-  unsigned int max_age;
+START_TEST (fsio_statcache_expired_test) {
+  unsigned int cache_size, max_age;
   int res;
   struct stat st;
 
-  max_age = 1;
-
-  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE, max_age, 0);
+  cache_size = max_age = 1;
+  pr_fs_statcache_set_policy(cache_size, max_age, 0);
 
   /* First is a cache miss...*/
   res = pr_fsio_stat("/tmp", &st);
@@ -1888,8 +1900,10 @@ START_TEST (fsio_statcache_expiry_test) {
   sleep(max_age + 1);
 
   /* This is another cache miss, hopefully. */
-  res = pr_fsio_stat("/tmp", &st);
-  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+  res = pr_fsio_stat("/tmp2", &st);
+  fail_unless(res < 0, "Check of '/tmp2' succeeded unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
 
   pr_fs_clear_cache();
 }
@@ -2394,7 +2408,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_statcache_clear_cache_test);
   tcase_add_test(testcase, fsio_statcache_cache_hit_test);
   tcase_add_test(testcase, fsio_statcache_negative_cache_test);
-  tcase_add_test(testcase, fsio_statcache_expiry_test);
+  tcase_add_test(testcase, fsio_statcache_expired_test);
   tcase_add_test(testcase, fsio_statcache_dump_test);
 
   /* Custom FSIO management tests */
