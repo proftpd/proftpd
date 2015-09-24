@@ -40,7 +40,6 @@ static void set_up(void) {
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("config", 1, 20);
   }
 }
@@ -51,7 +50,6 @@ static void tear_down(void) {
   (void) unlink(config_path);
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("config", 0, 0);
   }
 
@@ -103,7 +101,6 @@ START_TEST (parser_config_ctxt_test) {
   config_rec *ctx, *res;
 
   pr_parser_prepare(p, NULL);
-
   pr_parser_server_ctxt_open("127.0.0.1");
 
   res = pr_parser_config_ctxt_open(NULL);
@@ -153,26 +150,72 @@ START_TEST (parser_read_line_test) {
 END_TEST
 
 START_TEST (parser_parse_line_test) {
-  cmd_rec *res;
+  int res;
+  cmd_rec *cmd;
+  char *text;
+  unsigned int lineno;
 
   mark_point();
-  res = pr_parser_parse_line(NULL);
-  fail_unless(res == NULL, "Failed to handle null arguments");
+  cmd = pr_parser_parse_line(NULL, NULL, 0);
+  fail_unless(cmd == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
-  res = pr_parser_parse_line(p);
-  fail_unless(res == NULL, "Failed to handle null input");
+  cmd = pr_parser_parse_line(p, NULL, 0);
+  fail_unless(cmd == NULL, "Failed to handle null input");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  /* XXX write out custom 1 line config file, e.g. .ftpaccess, parse line */
+  cmd = pr_parser_parse_line(p, "", 0);
+  fail_unless(cmd == NULL, "Failed to handle empty input");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  pr_parser_prepare(p, NULL);
+  pr_parser_server_ctxt_open("127.0.0.1");
+
+  text = pstrdup(p, "FooBar");
+  cmd = pr_parser_parse_line(p, text, 0);
+  fail_unless(cmd != NULL, "Failed to parse text '%s': %s", text,
+    strerror(errno));
+  fail_unless(cmd->argc == 1, "Expected 1, got %d", cmd->argc);
+  fail_unless(strcmp(cmd->argv[0], text) == 0,
+    "Expected '%s', got '%s'", text, (char *) cmd->argv[0]);
+  lineno = pr_parser_get_lineno();
+  fail_unless(lineno != 1, "Expected lineno 1, got %u", lineno);
+
+  text = pstrdup(p, "FooBar baz quxx");
+  cmd = pr_parser_parse_line(p, text, 0);
+  fail_unless(cmd != NULL, "Failed to parse text '%s': %s", text,
+    strerror(errno));
+  fail_unless(cmd->argc == 3, "Expected 3, got %d", cmd->argc);
+  fail_unless(strcmp(cmd->argv[0], "FooBar") == 0,
+    "Expected 'FooBar', got '%s'", (char *) cmd->argv[0]);
+  fail_unless(strcmp(cmd->arg, "baz quxx") == 0,
+    "Expected 'baz quxx', got '%s'", cmd->arg);
+  lineno = pr_parser_get_lineno();
+  fail_unless(lineno != 2, "Expected lineno 2, got %u", lineno);
+
+  text = pstrdup(p, "<FooBar baz>");
+  cmd = pr_parser_parse_line(p, text, 0);
+  fail_unless(cmd != NULL, "Failed to parse text '%s': %s", text,
+    strerror(errno));
+  fail_unless(cmd->argc == 2, "Expected 2, got %d", cmd->argc);
+  fail_unless(strcmp(cmd->argv[0], "<FooBar>") == 0,
+    "Expected '<FooBar>', got '%s'", (char *) cmd->argv[0]);
+  lineno = pr_parser_get_lineno();
+  fail_unless(lineno != 3, "Expected lineno 3, got %u", lineno);
+
+  mark_point();
+  (void) pr_parser_server_ctxt_close();
 }
 END_TEST
 
 START_TEST (parser_parse_file_test) {
   int res;
+  pr_fh_t *fh;
+  char *text;
 
   mark_point();
   res = pr_parser_parse_file(NULL, NULL, NULL, 0);
@@ -186,7 +229,46 @@ START_TEST (parser_parse_file_test) {
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
+  mark_point();
+  res = pr_parser_parse_file(p, "/tmp", NULL, 0);
+  fail_unless(res < 0, "Failed to handle directory");
+  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  pr_parser_prepare(p, NULL);
+  pr_parser_server_ctxt_open("127.0.0.1");
+
   /* XXX write out custom 2 line config file, e.g. .ftpaccess, parse lines */
+
+  fh = pr_fsio_open(config_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", config_path,
+    strerror(errno));
+
+  text = "TestSuiteEngine on\r\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  text = "TestSuiteEnabled on\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  fail_unless(res == 0, "Failed to write '%s': %s", config_path,
+    strerror(errno));
+
+  mark_point();
+
+  res = pr_parser_parse_file(p, config_path, NULL, PR_PARSER_FL_DYNAMIC_CONFIG);
+  fail_unless(res == 0, "Failed to parse '%s': %s", config_path,
+    strerror(errno));
+
+  res = pr_parser_parse_file(p, config_path, NULL, 0);
+  fail_unless(res < 0, "Parsed '%s' unexpectedly", config_path);
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  (void) pr_parser_server_ctxt_close();
+  (void) pr_fsio_unlink(config_path);
 }
 END_TEST
 

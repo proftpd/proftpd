@@ -949,13 +949,20 @@ void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
     pr_event_generate("core.preparse", NULL);
 
     PRIVS_ROOT
-    if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
+    if (pr_parser_parse_file(NULL, config_filename, NULL, 0) < 0) {
       int xerrno = errno;
 
       PRIVS_RELINQUISH
-      pr_log_pri(PR_LOG_WARNING,
-        "fatal: unable to read configuration file '%s': %s", config_filename,
-        strerror(xerrno));
+
+      /* Note: EPERM is used to indicate the presence of unrecognized
+       * configuration directives in the parsed file(s).
+       */
+      if (xerrno != EPERM) {
+        pr_log_pri(PR_LOG_WARNING,
+          "fatal: unable to read configuration file '%s': %s", config_filename,
+          strerror(xerrno));
+      }
+
       pr_session_end(0);
     }
     PRIVS_RELINQUISH
@@ -2406,10 +2413,16 @@ int main(int argc, char *argv[], char **envp) {
 
   pr_event_generate("core.preparse", NULL);
 
-  if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
-    pr_log_pri(PR_LOG_WARNING,
-      "fatal: unable to read configuration file '%s': %s", config_filename,
-      strerror(errno));
+  if (pr_parser_parse_file(NULL, config_filename, NULL, 0) < 0) {
+    /* Note: EPERM is used to indicate the presence of unrecognized
+     * configuration directives in the parsed file(s).
+     */
+    if (errno != EPERM) {
+      pr_log_pri(PR_LOG_WARNING,
+        "fatal: unable to read configuration file '%s': %s", config_filename,
+        strerror(errno));
+    }
+
     exit(1);
   }
 

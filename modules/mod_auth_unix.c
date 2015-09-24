@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,8 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Unix authentication module for ProFTPD
- */
+/* Unix authentication module for ProFTPD */
 
 #include "conf.h"
 
@@ -1120,7 +1119,8 @@ MODRET pw_getgroups(cmd_rec *cmd) {
       "using getgrouplist(3) to look up group membership");
 
     memset(group_ids, 0, sizeof(group_ids));
-    if (getgrouplist(pw->pw_name, pw->pw_gid, group_ids, &ngroups) < 0) {
+    if (getgrouplist(pw->pw_name, pw->pw_gid, (int *) group_ids,
+        &ngroups) < 0) {
       int xerrno = errno;
 
       pr_log_pri(PR_LOG_WARNING, "getgrouplist error: %s", strerror(xerrno));

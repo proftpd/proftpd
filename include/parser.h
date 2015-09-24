@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2011 The ProFTPD Project team
+ * Copyright (c) 2004-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Configuration parser
- * $Id: parser.h,v 1.4 2011-05-23 20:35:35 castaglia Exp $
- */
+/* Configuration parser */
 
 #ifndef PR_PARSER_H
 #define PR_PARSER_H
@@ -60,8 +58,7 @@ config_rec *pr_parser_config_ctxt_get(void);
  */
 config_rec *pr_parser_config_ctxt_open(const char *name);
 
-/* Returns the line number of the configuration stream being parsed.
- */
+/* Returns the line number of the configuration stream being parsed. */
 unsigned int pr_parser_get_lineno(void);
 
 /* This is the main function to be used by consumers of the Parser
@@ -85,12 +82,11 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 #define PR_PARSER_FL_DYNAMIC_CONFIG	0x0001
 
 /* The dispatching of configuration data to the registered configuration
- * handlers is done using a cmd_rec.  This function calls pr_parse_read_line()
- * to obtain the next line of configuration text, then allocates a cmd_rec
- * from the given pool p and populates the struct with data from the
- * line of text.
+ * handlers is done using a cmd_rec.  This function parses the given line of
+ * text, then allocates a cmd_rec from the given pool p and populates the
+ * struct with data from the line of text.
  */
-cmd_rec *pr_parser_parse_line(pool *p);
+cmd_rec *pr_parser_parse_line(pool *p, const char *text, size_t text_len);
 
 /* This convenience function reads the next line from the configuration
  * stream, performing any necessary transformations on the text (e.g.

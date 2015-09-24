@@ -363,7 +363,7 @@ MODRET add_include(cmd_rec *cmd) {
       "unable to use path for configuration file '", cmd->argv[1], "'", NULL));
   }
 
-  if (parse_config_path(cmd->tmp_pool, cmd->argv[1]) == -1) {
+  if (parse_config_path(cmd->tmp_pool, cmd->argv[1]) < 0) {
     int xerrno = errno;
 
     if (xerrno != EINVAL) {
