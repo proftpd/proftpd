@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,8 +80,8 @@ struct config_struc {
 
 #define CURRENT_CONF		(session.dir_config ? session.dir_config->subset \
 				 : (session.anon_config ? session.anon_config->subset \
-                                    : main_server->conf))
-#define TOPLEVEL_CONF		(session.anon_config ? session.anon_config->subset : main_server->conf)
+                                    : main_server ? main_server->conf : NULL))
+#define TOPLEVEL_CONF		(session.anon_config ? session.anon_config->subset : (main_server ? main_server->conf : NULL))
 
 /* Prototypes */
 

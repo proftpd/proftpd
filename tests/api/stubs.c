@@ -45,6 +45,34 @@ char *dir_realpath(pool *p, const char *path) {
   return NULL;
 }
 
+void init_dirtree(void) {
+  pool *main_pool;
+  xaset_t *servers;
+
+  main_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(main_pool, "testsuite#main_server pool");
+
+  servers = xaset_create(main_pool, NULL);
+
+  main_server = (server_rec *) pcalloc(main_pool, sizeof(server_rec));
+  xaset_insert(servers, (xasetmember_t *) main_server);
+
+  main_server->pool = main_pool;
+  main_server->set = servers;
+  main_server->sid = 1;
+  main_server->notes = pr_table_nalloc(main_pool, 0, 8);
+
+  /* TCP KeepAlive is enabled by default, with the system defaults. */
+  main_server->tcp_keepalive = palloc(main_server->pool,
+    sizeof(struct tcp_keepalive));
+  main_server->tcp_keepalive->keepalive_enabled = TRUE;
+  main_server->tcp_keepalive->keepalive_idle = -1;
+  main_server->tcp_keepalive->keepalive_count = -1;
+  main_server->tcp_keepalive->keepalive_intvl = -1;
+
+  main_server->ServerPort = 21;
+}
+
 int pr_cmd_dispatch(cmd_rec *cmd) {
   return 0;
 }

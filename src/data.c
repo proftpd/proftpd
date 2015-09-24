@@ -107,9 +107,9 @@ static void data_new_xfer(char *filename, int direction) {
   session.xfer.buflen = 0;
 }
 
-static int data_pasv_open(char *reason, off_t size) {
+static int data_passive_open(char *reason, off_t size) {
   conn_t *c;
-  int rev;
+  int rev, xerrno = 0;
 
   if (reason == NULL &&
       session.xfer.filename) {
@@ -200,18 +200,27 @@ static int data_pasv_open(char *reason, off_t size) {
       "connection: %s", strerror(c->xerrno));
   }
 
+  xerrno = session.d->xerrno;
   pr_response_add_err(R_425, _("Unable to build data connection: %s"),
-    strerror(session.d->xerrno));
+    strerror(xerrno));
   destroy_pool(session.d->pool);
   session.d = NULL;
+
+  errno = xerrno;
   return -1;
 }
 
 static int data_active_open(char *reason, off_t size) {
   conn_t *c;
   int bind_port, rev;
-  pr_netaddr_t *bind_addr;
+  pr_netaddr_t *bind_addr = NULL;
   unsigned char *root_revoke = NULL;
+
+  if (session.c->remote_addr == NULL) {
+    /* An opened but unconnected connection? */
+    errno = EINVAL;
+    return -1;
+  }
 
   if (reason == NULL &&
       session.xfer.filename) {
@@ -300,17 +309,20 @@ static int data_active_open(char *reason, off_t size) {
     session.d->local_addr, session.d->listen_fd);
 
   if (pr_inet_connect(session.d->pool, session.d, &session.data_addr,
-      session.data_port) == -1) {
+      session.data_port) < 0) {
+    int xerrno = session.d->xerrno;
+
     pr_log_debug(DEBUG6,
       "Error connecting to %s#%u for active data transfer: %s",
       pr_netaddr_get_ipstr(&session.data_addr), session.data_port,
-      strerror(session.d->xerrno));
+      strerror(xerrno));
     pr_response_add_err(R_425, _("Unable to build data connection: %s"),
-      strerror(session.d->xerrno));
-    errno = session.d->xerrno;
+      strerror(xerrno));
 
     destroy_pool(session.d->pool);
     session.d = NULL;
+
+    errno = xerrno;
     return -1;
   }
 
@@ -472,8 +484,8 @@ void pr_data_init(char *filename, int direction) {
 
   } else {
     if (!(session.sf_flags & SF_PASSIVE)) {
-      pr_log_debug(DEBUG0, "data_init oddity: session.xfer exists in "
-        "non-PASV mode.");
+      pr_log_debug(DEBUG5,
+        "data_init oddity: session.xfer exists in non-PASV mode");
     }
 
     session.xfer.direction = direction;
@@ -485,6 +497,31 @@ void pr_data_init(char *filename, int direction) {
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
+
+  if (session.c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if ((session.sf_flags & SF_PASSIVE) ||
+      (session.sf_flags & SF_EPSV_ALL)) {
+    /* For passive transfers, we expect there to already be an existing
+     * data connection...
+     */
+    if (session.d == NULL) {
+      errno = EINVAL;
+      return -1;
+    }
+
+  } else {
+    /* ...but for active transfers, we expect there to NOT be an existing
+     * data connection.
+     */
+    if (session.d != NULL) {
+      errno = session.d->xerrno = EINVAL;
+      return -1;
+    }
+  }
 
   /* Make sure that any abort flags have been cleared. */
   session.sf_flags &= ~(SF_ABORT|SF_POST_ABORT);
@@ -501,24 +538,12 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   }
 
   /* Passive data transfers... */
-  if (session.sf_flags & SF_PASSIVE ||
-      session.sf_flags & SF_EPSV_ALL) {
-    if (session.d == NULL) {
-      pr_log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
-        "connection listening");
-      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
-    }
-
-    res = data_pasv_open(reason, size);
+  if ((session.sf_flags & SF_PASSIVE) ||
+      (session.sf_flags & SF_EPSV_ALL)) {
+    res = data_passive_open(reason, size);
 
   /* Active data transfers... */
   } else {
-    if (session.d != NULL) {
-      pr_log_pri(PR_LOG_ERR, "Internal error: non-PASV mode, yet data "
-        "connection already exists?!?");
-      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
-    }
-
     res = data_active_open(reason, size);
   }
 
@@ -839,7 +864,7 @@ void pr_data_abort(int err, int quiet) {
     }
 
     pr_log_pri(PR_LOG_NOTICE, "notice: user %s: aborting transfer: %s",
-      session.user, msg);
+      session.user ? session.user : "(unknown)", msg);
 
     /* If we are aborting, then a 426 response has already been sent,
      * and we don't want to add another to the error queue.
