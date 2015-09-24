@@ -128,6 +128,11 @@ int main(int argc, char *argv[]) {
   requested = getenv("PR_TEST_NOFORK");
   if (requested) {
     srunner_set_fork_status(runner, CK_NOFORK);
+  } else {
+    requested = getenv("CK_DEFAULT_TIMEOUT");
+    if (requested == NULL) {
+      setenv("CK_DEFAULT_TIMEOUT", "30", 1);
+    }
   }
 
   srunner_run_all(runner, CK_NORMAL);

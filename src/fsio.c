@@ -537,6 +537,19 @@ static int sys_rmdir(pr_fs_t *fs, const char *path) {
 static int fs_cmp(const void *a, const void *b) {
   pr_fs_t *fsa, *fsb;
 
+  if (a == NULL) {
+    if (b == NULL) {
+      return 0;
+    }
+
+    return 1;
+
+  } else {
+    if (b == NULL) {
+      return -1;
+    }
+  }
+   
   fsa = *((pr_fs_t **) a);
   fsb = *((pr_fs_t **) b);
 
@@ -1107,11 +1120,14 @@ int pr_fs_clear_cache2(const char *path) {
   if (path != NULL) {
     int lstat_count, stat_count;
 
+    res = 0;
+
     stat_count = pr_table_exists(stat_statcache_tab, path);
     if (stat_count > 0) {
       pr_table_remove(stat_statcache_tab, path, NULL);
       pr_trace_msg(statcache_channel, 17, "cleared stat(2) entry for '%s'",
         path);
+      res += stat_count;
     }
 
     lstat_count = pr_table_exists(lstat_statcache_tab, path);
@@ -1119,9 +1135,8 @@ int pr_fs_clear_cache2(const char *path) {
       pr_table_remove(lstat_statcache_tab, path, NULL);
       pr_trace_msg(statcache_channel, 17, "cleared lstat(2) entry for '%s'",
         path);
+      res += lstat_count;
     }
-
-    res = stat_count + lstat_count;
 
   } else {
     /* Caller is requesting that we empty the entire cache. */
@@ -1438,6 +1453,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
 pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
   pr_fs_t *fs = NULL;
+  int xerrno = 0;
 
   /* Sanity check */
   if (p == NULL ||
@@ -1449,22 +1465,28 @@ pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
 
   /* Instantiate an pr_fs_t */
   fs = pr_create_fs(p, name);
-  if (fs != NULL) {
+  xerrno = errno;
 
-    /* Call pr_insert_fs() from here */
-    if (!pr_insert_fs(fs, path)) {
+  if (fs != NULL) {
+    if (pr_insert_fs(fs, path) == FALSE) {
+      xerrno = errno;
+
       pr_trace_msg(trace_channel, 4, "error inserting FS '%s' at path '%s'",
         name, path);
 
       destroy_pool(fs->fs_pool);
       fs->fs_pool = NULL;
+
+      errno = xerrno;
       return NULL;
     }
 
   } else {
-    pr_trace_msg(trace_channel, 6, "error creating FS '%s'", name);
+    pr_trace_msg(trace_channel, 6, "error creating FS '%s': %s", name,
+      strerror(errno));
   }
 
+  errno = xerrno;
   return fs;
 }
 
@@ -1503,6 +1525,12 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
 
 int pr_insert_fs(pr_fs_t *fs, const char *path) {
   char cleaned_path[PR_TUNABLE_PATH_MAX] = {'\0'};
+
+  if (fs == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   if (!fs_map) {
     pool *map_pool = make_sub_pool(permanent_pool);
@@ -1600,7 +1628,7 @@ pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
   }
 
   /* This should never be called before pr_register_fs(), but, just in case...*/
-  if (!fs_map) {
+  if (fs_map == NULL) {
     errno = EACCES;
     return NULL;
   }
@@ -1674,6 +1702,7 @@ pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
     }
   }
 
+  errno = ENOENT;
   return NULL;
 }
 
@@ -1689,9 +1718,7 @@ int pr_unregister_fs(const char *path) {
     return -1;
   }
 
-  /* Call pr_remove_fs() to get the fs for this path removed from the
-   * fs_map.
-   */
+  /* Call pr_remove_fs() to get the fs for this path removed from the map. */
   fs = pr_remove_fs(path);
   if (fs != NULL) {
     destroy_pool(fs->fs_pool);
@@ -4055,7 +4082,8 @@ int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
 int pr_fs_glob(const char *pattern, int flags,
     int (*errfunc)(const char *, int), glob_t *pglob) {
 
-  if (pglob == NULL) {
+  if (pattern == NULL ||
+      pglob == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -4072,7 +4100,9 @@ int pr_fs_glob(const char *pattern, int flags,
 }
 
 void pr_fs_globfree(glob_t *pglob) {
-  globfree(pglob);
+  if (pglob != NULL) {
+    globfree(pglob);
+  }
 }
 
 int pr_fsio_rename_canon(const char *rnfr, const char *rnto) {
@@ -5836,11 +5866,14 @@ void pr_resolve_fs_map(void) {
 
   for (i = 0; i < fs_map->nelts; i++) {
     char *newpath = NULL;
-    unsigned char add_slash = FALSE;
-    pr_fs_t *tmpfs = ((pr_fs_t **) fs_map->elts)[i];
+    int add_slash = FALSE;
+    pr_fs_t *fsi;
+
+    pr_signals_handle();
+    fsi = ((pr_fs_t **) fs_map->elts)[i];
 
     /* Skip if this fs is the root fs. */
-    if (tmpfs == root_fs) {
+    if (fsi == root_fs) {
       continue;
     }
 
@@ -5851,24 +5884,26 @@ void pr_resolve_fs_map(void) {
      * to re-add that slash to the adjusted path -- these trailing slashes
      * are important!
      */
-    if ((strncmp(tmpfs->fs_path, "/", 2) != 0 &&
-        (tmpfs->fs_path)[strlen(tmpfs->fs_path) - 1] == '/')) {
+    if ((strncmp(fsi->fs_path, "/", 2) != 0 &&
+        (fsi->fs_path)[strlen(fsi->fs_path) - 1] == '/')) {
       add_slash = TRUE;
     }
 
-    newpath = dir_realpath(tmpfs->fs_pool, tmpfs->fs_path);
+    newpath = dir_realpath(fsi->fs_pool, fsi->fs_path);
+    if (newpath != NULL) {
 
-    if (add_slash) {
-      newpath = pstrcat(tmpfs->fs_pool, newpath, "/", NULL);
+      if (add_slash) {
+        newpath = pstrcat(fsi->fs_pool, newpath, "/", NULL);
+      }
+
+      /* Note that this does cause a slightly larger memory allocation from
+       * the pr_fs_t's pool, as the original path value was also allocated
+       * from that pool, and that original pointer is being overwritten.
+       * However, as this function is only called once, and that pool
+       * is freed later, I think this may be acceptable.
+       */
+      fsi->fs_path = newpath;
     }
-
-    /* Note that this does cause a slightly larger memory allocation from
-     * the pr_fs_t's pool, as the original path value was also allocated
-     * from that pool, and that original pointer is being overwritten.
-     * However, as this function is only called once, and that pool
-     * is freed later, I think this may be acceptable.
-     */
-    tmpfs->fs_path = newpath;
   }
 
   /* Resort the map */
@@ -6082,8 +6117,25 @@ static void get_fs_info(pool *p, int depth, pr_fs_t *fs,
   dumpf("FS#%u:    %s", depth, get_fs_hooks_str(p, fs));
 }
 
+static void fs_printf(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE+1];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf));
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf)-1, fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  pr_trace_msg(trace_channel, 19, "%s", buf);
+}
+
 void pr_fs_dump(void (*dumpf)(const char *, ...)) {
   pool *p;
+
+  if (dumpf == NULL) {
+    dumpf = fs_printf;
+  }
 
   dumpf("FS#0: 'system' mounted at '/', implementing the following hooks:");
   dumpf("FS#0:    (all)");

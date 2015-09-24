@@ -53,7 +53,6 @@ static void set_up(void) {
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("fsio", 1, 20);
     pr_trace_set_levels("fs.statcache", 1, 20);
   }
@@ -65,17 +64,13 @@ static void tear_down(void) {
     fsio_cwd = NULL;
   }
 
-  if (p) {
-    destroy_pool(p);
-    p = permanent_pool = NULL;
-  }
-
   (void) pr_fsio_guard_chroot(FALSE);
   pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
+  pr_unregister_fs("/testuite");
+
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("fsio", 0, 0);
     pr_trace_set_levels("fs.statcache", 0, 0);
   }
@@ -85,6 +80,12 @@ static void tear_down(void) {
   (void) unlink(fsio_link_path);
   (void) unlink(fsio_unlink_path);
   (void) rmdir(fsio_testdir_path);
+
+  if (p) {
+    destroy_pool(p);
+    p = permanent_pool = NULL;
+  }
+
 }
 
 /* Tests */
@@ -93,12 +94,14 @@ START_TEST (fsio_sys_open_test) {
   int flags;
   pr_fh_t *fh;
 
+  mark_point();
   flags = O_CREAT|O_EXCL|O_RDONLY;
   fh = pr_fsio_open(NULL, flags);
   fail_unless(fh == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   flags = O_RDONLY;
   fh = pr_fsio_open(fsio_test_path, flags);
   fail_unless(fh == NULL, "Failed to handle non-existent file '%s'",
@@ -106,6 +109,7 @@ START_TEST (fsio_sys_open_test) {
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
     strerror(errno), errno);
 
+  mark_point();
   flags = O_RDONLY;
   fh = pr_fsio_open("/etc/resolv.conf", flags);
   fail_unless(fh != NULL, "Failed to /etc/resolv.conf: %s", strerror(errno));
@@ -1508,6 +1512,9 @@ START_TEST (fsio_sys_rename_chroot_guard_test) {
   int res;
   pr_fh_t *fh;
 
+  res = pr_fsio_guard_chroot(TRUE);
+  fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
+
   fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
   fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
     strerror(errno));
@@ -1518,6 +1525,12 @@ START_TEST (fsio_sys_rename_chroot_guard_test) {
   fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
     strerror(errno), errno);
 
+  res = pr_fsio_rename("/etc/foo.bar.baz", fsio_test_path);
+  fail_unless(res < 0, "Renamed '/etc/foo.bar.baz' unexpectedly");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  (void) pr_fsio_guard_chroot(FALSE);
   (void) pr_fsio_unlink(fsio_test_path);
 }
 END_TEST
@@ -1789,7 +1802,328 @@ START_TEST (fsio_sys_closedir_test) {
 }
 END_TEST
 
-/* XXX */
+START_TEST (fsio_statcache_clear_cache_test) {
+  int expected, res;
+  struct stat st;
+
+  mark_point();
+  pr_fs_clear_cache();
+
+  res = pr_fs_clear_cache2("/testsuite");
+  fail_unless(res == 0, "Failed to clear cache: %s", strerror(errno));
+
+  res = pr_fsio_stat("/tmp", &st);
+  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+
+  res = pr_fs_clear_cache2("/tmp");
+  expected = 1;
+  fail_unless(res == expected, "Expected %d, got %d", expected, res);
+
+  res = pr_fs_clear_cache2("/testsuite");
+  expected = 0;
+  fail_unless(res == expected, "Expected %d, got %d", expected, res);
+
+  res = pr_fsio_stat("/tmp", &st);
+  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+
+  res = pr_fsio_lstat("/tmp", &st);
+  fail_unless(res == 0, "Failed to lstat '/tmp': %s", strerror(errno));
+
+  res = pr_fs_clear_cache2("/tmp");
+  expected = 2;
+  fail_unless(res == expected, "Expected %d, got %d", expected, res);
+}
+END_TEST
+
+START_TEST (fsio_statcache_cache_hit_test) {
+  int res;
+  struct stat st;
+
+  /* First is a cache miss...*/
+  res = pr_fsio_stat("/tmp", &st);
+  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+
+  /* This is a cache hit, hopefully. */
+  res = pr_fsio_stat("/tmp", &st);
+  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+
+  pr_fs_clear_cache();
+}
+END_TEST
+
+START_TEST (fsio_statcache_negative_cache_test) {
+  int res;
+  struct stat st;
+
+  /* First is a cache miss...*/
+  res = pr_fsio_stat("/foo.bar.baz.d", &st);
+  fail_unless(res < 0, "Check of '/foo.bar.baz.d' succeeded unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  /* This is a cache hit, hopefully. */
+  res = pr_fsio_stat("/foo.bar.baz.d", &st);
+  fail_unless(res < 0, "Check of '/foo.bar.baz.d' succeeded unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  pr_fs_clear_cache();
+}
+END_TEST
+
+START_TEST (fsio_statcache_expiry_test) {
+  unsigned int max_age;
+  int res;
+  struct stat st;
+
+  max_age = 1;
+
+  pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE, max_age, 0);
+
+  /* First is a cache miss...*/
+  res = pr_fsio_stat("/tmp", &st);
+  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+
+  /* Wait for that cached data to expire...*/
+  sleep(max_age + 1);
+
+  /* This is another cache miss, hopefully. */
+  res = pr_fsio_stat("/tmp", &st);
+  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+
+  pr_fs_clear_cache();
+}
+END_TEST
+
+START_TEST (fsio_statcache_dump_test) {
+  mark_point();
+  pr_fs_statcache_dump();
+}
+END_TEST
+
+START_TEST (fs_create_fs_test) {
+  pr_fs_t *fs;
+
+  fs = pr_create_fs(NULL, NULL);
+  fail_unless(fs == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_create_fs(p, NULL);
+  fail_unless(fs == NULL, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_create_fs(p, "testsuite");
+  fail_unless(fs != NULL, "Failed to create FS: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_insert_fs_test) {
+  pr_fs_t *fs;
+  int res;
+
+  res = pr_insert_fs(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_create_fs(p, "testsuite");
+  fail_unless(fs != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs, NULL);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_insert_fs(fs, "/testsuite");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs, "/testsuite");
+  fail_unless(res == FALSE, "Failed to handle duplicate paths");
+  fail_unless(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+    strerror(errno), errno);
+
+  (void) pr_remove_fs("/testsuite");
+}
+END_TEST
+
+START_TEST (fs_get_fs_test) {
+  pr_fs_t *fs, *fs2;
+  int exact_match = FALSE, res;
+
+  fs = pr_get_fs(NULL, NULL);
+  fail_unless(fs == NULL, "Failed to handle null arguments");
+
+  fs = pr_get_fs("/testsuite", &exact_match);
+  fail_unless(fs != NULL, "Failed to get FS: %s", strerror(errno));
+  fail_unless(exact_match == FALSE, "Expected FALSE, got TRUE");
+
+  fs2 = pr_create_fs(p, "testsuite");
+  fail_unless(fs2 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs2, "/testsuite");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
+  fs = pr_get_fs("/testsuite", &exact_match);
+  fail_unless(fs != NULL, "Failed to get FS: %s", strerror(errno));
+  fail_unless(exact_match == TRUE, "Expected TRUE, got FALSE");
+
+  (void) pr_remove_fs("/testsuite");
+}
+END_TEST
+
+START_TEST (fs_unmount_fs_test) {
+  pr_fs_t *fs, *fs2;
+  int res;
+
+  fs = pr_unmount_fs(NULL, NULL);
+  fail_unless(fs == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_unmount_fs("/testsuite", NULL);
+  fail_unless(fs == NULL, "Failed to handle absent FS");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  fs2 = pr_create_fs(p, "testsuite");
+  fail_unless(fs2 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs2, "/testsuite");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
+  fs = pr_unmount_fs("/testsuite", "foo bar");
+  fail_unless(fs == NULL, "Failed to mismatched path AND name");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  fs = pr_unmount_fs("/testsuite2", NULL);
+  fail_unless(fs == NULL, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  fs2 = pr_unmount_fs("/testsuite", NULL);
+  fail_unless(fs2 != NULL, "Failed to unmount '/testsuite': %s",
+    strerror(errno));
+
+  (void) pr_remove_fs("/testsuite");
+}
+END_TEST
+
+START_TEST (fs_remove_fs_test) {
+  pr_fs_t *fs, *fs2;
+  int res;
+
+  fs = pr_remove_fs(NULL);
+  fail_unless(fs == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_remove_fs("/testsuite");
+  fail_unless(fs == NULL, "Failed to handle absent FS");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  fs2 = pr_create_fs(p, "testsuite");
+  fail_unless(fs2 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs2, "/testsuite");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
+  fs = pr_remove_fs("/testsuite2");
+  fail_unless(fs == NULL, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  fs2 = pr_remove_fs("/testsuite");
+  fail_unless(fs2 != NULL, "Failed to remove '/testsuite': %s",
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_register_fs_test) {
+  pr_fs_t *fs, *fs2;
+
+  fs = pr_register_fs(NULL, NULL, NULL);
+  fail_unless(fs == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_register_fs(p, NULL, NULL);
+  fail_unless(fs == NULL, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_register_fs(p, "testsuite", NULL);
+  fail_unless(fs == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_register_fs(p, "testsuite", "/testsuite");
+  fail_unless(fs != NULL, "Failed to register FS: %s", strerror(errno));
+
+  fs2 = pr_register_fs(p, "testsuite", "/testsuite");
+  fail_unless(fs2 == NULL, "Failed to handle duplicate names");
+  fail_unless(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+    strerror(errno), errno);
+
+  (void) pr_remove_fs("/testsuite");
+}
+END_TEST
+
+START_TEST (fs_unregister_fs_test) {
+  pr_fs_t *fs;
+  int res;
+
+  res = pr_unregister_fs(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_unregister_fs("/testsuite");
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  fs = pr_register_fs(p, "testsuite", "/testsuite");
+  fail_unless(fs != NULL, "Failed to register FS: %s", strerror(errno));
+
+  res = pr_unregister_fs("/testsuite");
+  fail_unless(res == 0, "Failed to unregister '/testsuite': %s",
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_resolve_fs_map_test) {
+  pr_fs_t *fs;
+  int res;
+
+  mark_point();
+  pr_resolve_fs_map();
+
+  fs = pr_register_fs(p, "testsuite", "/testsuite");
+  fail_unless(fs != NULL, "Failed to register FS: %s", strerror(errno));
+
+  mark_point();
+  pr_resolve_fs_map();
+
+  res = pr_unregister_fs("/testsuite");
+  fail_unless(res == 0, "Failed to unregister '/testsuite': %s",
+    strerror(errno));
+
+  mark_point();
+  pr_resolve_fs_map();
+}
+END_TEST
+
+#if defined(PR_USE_DEVEL)
+START_TEST (fs_dump_fs_test) {
+  mark_point();
+  pr_fs_dump(NULL);
+}
+END_TEST
+#endif /* PR_USE_DEVEL */
 
 START_TEST (fs_clean_path_test) {
   char res[PR_TUNABLE_PATH_MAX+1], *path, *expected;
@@ -1958,6 +2292,34 @@ START_TEST (fs_setcwd_test) {
 }
 END_TEST
 
+START_TEST (fs_glob_test) {
+  glob_t pglob;
+  int res;
+
+  res = pr_fs_glob(NULL, 0, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_glob(NULL, 0, NULL, &pglob);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  memset(&pglob, 0, sizeof(pglob));
+  res = pr_fs_glob("?", 0, NULL, &pglob);
+  fail_unless(res == 0, "Failed to glob: %s", strerror(errno));
+  fail_unless(pglob.gl_pathc > 0, "Expected >0, got %lu",
+    (unsigned long) pglob.gl_pathc);
+
+  mark_point();
+  pr_fs_globfree(NULL);
+  if (res == 0) {
+    pr_fs_globfree(&pglob);
+  }
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1967,6 +2329,7 @@ Suite *tests_get_fsio_suite(void) {
   testcase = tcase_create("base");
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
+  /* Main FSIO API tests */
   tcase_add_test(testcase, fsio_sys_open_test);
   tcase_add_test(testcase, fsio_sys_open_canon_test);
   tcase_add_test(testcase, fsio_sys_open_chroot_guard_test);
@@ -2027,22 +2390,34 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_readdir_test);
   tcase_add_test(testcase, fsio_sys_closedir_test);
 
-#if 0
-  /* XXX statcache checks: cache miss, cache hit, negative cache, expiry, dump,
- clear_cache() */
+  /* FSIO statcache tests */
+  tcase_add_test(testcase, fsio_statcache_clear_cache_test);
+  tcase_add_test(testcase, fsio_statcache_cache_hit_test);
+  tcase_add_test(testcase, fsio_statcache_negative_cache_test);
+  tcase_add_test(testcase, fsio_statcache_expiry_test);
+  tcase_add_test(testcase, fsio_statcache_dump_test);
 
-  /* Custom FSIO */
-  /* XXX register_fs, unregister_fs, insert_fs, unmount_fs, remove_fs, get_fs, resolve_fs_map, fs_dump */
-#endif
+  /* Custom FSIO management tests */
+  tcase_add_test(testcase, fs_create_fs_test);
+  tcase_add_test(testcase, fs_insert_fs_test);
+  tcase_add_test(testcase, fs_get_fs_test);
+  tcase_add_test(testcase, fs_unmount_fs_test);
+  tcase_add_test(testcase, fs_remove_fs_test);
+  tcase_add_test(testcase, fs_register_fs_test);
+  tcase_add_test(testcase, fs_unregister_fs_test);
+  tcase_add_test(testcase, fs_resolve_fs_map_test);
+#if defined(PR_USE_DEVEL)
+  tcase_add_test(testcase, fs_dump_fs_test);
+#endif /* PR_USE_DEVEL */
 
+  /* Misc */
   tcase_add_test(testcase, fs_clean_path_test);
   tcase_add_test(testcase, fs_clean_path2_test);
   tcase_add_test(testcase, fs_dircat_test);
   tcase_add_test(testcase, fs_setcwd_test);
+  tcase_add_test(testcase, fs_glob_test);
 
 #if 0
-  /* XXX Include pr_fs_globfree() in this test */
-  tcase_add_test(testcase, fs_glob_test);
   tcase_add_test(testcase, fs_copy_file_test);
   tcase_add_test(testcase, fs_interpolate_test);
   tcase_add_test(testcase, fs_resolve_partial_test);
