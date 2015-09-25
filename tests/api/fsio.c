@@ -328,6 +328,8 @@ START_TEST (fsio_sys_creat_chroot_guard_test) {
 
   fh = pr_fsio_creat("/lib/foo.bar.baz.d/test.dat", flags);
   fail_unless(fh == NULL, "Created /lib/foo.bar.baz.d/test.dat unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -655,6 +657,12 @@ START_TEST (fsio_sys_link_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  (void) pr_fsio_unlink(fsio_link_path);
+  res = pr_fsio_link(fsio_link_path, "/lib/foo/bar/baz");
+  fail_unless(res < 0, "Linked /lib/foo/bar/baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -752,6 +760,12 @@ START_TEST (fsio_sys_symlink_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+  (void) pr_fsio_unlink(fsio_link_path);
+
+  res = pr_fsio_symlink(fsio_link_path, "/lib/foo/bar/baz");
+  fail_unless(res < 0, "Symlinked /lib/foo/bar/baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -1186,6 +1200,11 @@ START_TEST (fsio_sys_truncate_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_truncate("/lib/foo/bar/baz", 0);
+  fail_unless(res < 0, "Truncated /lib/foo/bar/baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -1281,6 +1300,11 @@ START_TEST (fsio_sys_chmod_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_chmod("/lib/foo/bar/baz", mode);
+  fail_unless(res < 0, "Set mode on /lib/foo/bar/baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -1381,6 +1405,11 @@ START_TEST (fsio_sys_chown_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_chown("/lib/foo/bar/baz", uid, gid);
+  fail_unless(res < 0, "Set ownership on /lib/foo/bar/baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -1452,6 +1481,11 @@ START_TEST (fsio_sys_lchown_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_lchown("/lib/foo/bar/baz", uid, gid);
+  fail_unless(res < 0, "Set ownership on /lib/foo/bar/baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -1544,6 +1578,12 @@ START_TEST (fsio_sys_rename_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_rename("/etc/foo/bar/baz", "/lib/quxx/quzz");
+  fail_unless(res < 0, "Renamed '/etc/foo/bar/baz' unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   (void) pr_fsio_unlink(fsio_test_path);
 }
 END_TEST
@@ -1591,6 +1631,11 @@ START_TEST (fsio_sys_utimes_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_utimes("/lib/foo/bar/baz", (struct timeval *) &tvs);
+  fail_unless(res < 0, "Set times on /lib/foo/bar/baz unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -1648,6 +1693,11 @@ START_TEST (fsio_sys_mkdir_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_mkdir("/lib/foo/bar/baz.d", mode);
+  fail_unless(res < 0, "Created /lib/foo/bar/baz.d unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -1687,6 +1737,11 @@ START_TEST (fsio_sys_rmdir_chroot_guard_test) {
     strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
+
+  res = pr_fsio_rmdir("/lib/foo/bar/baz.d");
+  fail_unless(res < 0, "Removed /lib/etc/foo.bar.baz.d unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -2493,7 +2548,8 @@ START_TEST (fs_resolve_partial_test) {
     /* Mac-specific hack */
     const char *prefix = "/private";
 
-    if (strncmp(buf, prefix, strlen(prefix)) != 0) {
+    if (strncmp(buf, prefix, strlen(prefix)) != 0 &&
+        strcmp(buf, "/tmp/") != 0) {
       fail("Expected '%s', got '%s'", path, buf);
     }
   }
