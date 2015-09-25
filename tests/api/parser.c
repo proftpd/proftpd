@@ -29,6 +29,7 @@
 static pool *p = NULL;
 
 static const char *config_path = "/tmp/prt-parser.conf";
+static const char *config_path2 = "/tmp/prt-parser2.conf";
 
 static void set_up(void) {
   if (p == NULL) {
@@ -38,6 +39,7 @@ static void set_up(void) {
   init_fs();
   pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  modules_init();
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("config", 1, 20);
@@ -48,6 +50,7 @@ static void tear_down(void) {
   pr_parser_cleanup();
 
   (void) unlink(config_path);
+  (void) unlink(config_path2);
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("config", 0, 0);
@@ -226,10 +229,24 @@ START_TEST (parser_parse_line_test) {
 }
 END_TEST
 
+MODRET parser_set_testsuite_enabled(cmd_rec *cmd) {
+  return PR_HANDLED(cmd);
+}
+
+MODRET parser_set_testsuite_engine(cmd_rec *cmd) {
+  return PR_HANDLED(cmd);
+}
+
 START_TEST (parser_parse_file_test) {
   int res;
   pr_fh_t *fh;
   char *text;
+  module m;
+  conftable conftab[] = {
+    { "TestSuiteEnabled",	parser_set_testsuite_enabled, NULL },
+    { "TestSuiteEngine",	parser_set_testsuite_engine, NULL },
+    { NULL },
+  };
 
   mark_point();
   res = pr_parser_parse_file(NULL, NULL, NULL, 0);
@@ -252,8 +269,6 @@ START_TEST (parser_parse_file_test) {
   pr_parser_prepare(p, NULL);
   pr_parser_server_ctxt_open("127.0.0.1");
 
-  /* XXX write out custom 2 line config file, e.g. .ftpaccess, parse lines */
-
   fh = pr_fsio_open(config_path, O_CREAT|O_EXCL|O_WRONLY);
   fail_unless(fh != NULL, "Failed to open '%s': %s", config_path,
     strerror(errno));
@@ -266,11 +281,43 @@ START_TEST (parser_parse_file_test) {
   res = pr_fsio_write(fh, text, strlen(text));
   fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
 
+  text = "Include ";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  text = (char *) config_path2;
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  text = "\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
   res = pr_fsio_close(fh);
   fail_unless(res == 0, "Failed to write '%s': %s", config_path,
     strerror(errno));
 
+  fh = pr_fsio_open(config_path2, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", config_path2,
+    strerror(errno));
+
+  text = "TestSuiteOptions Bebugging\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  fail_unless(res == 0, "Failed to write '%s': %s", config_path2,
+    strerror(errno));
+
   mark_point();
+
+  /* Load the module's config handlers. */
+  memset(&m, 0, sizeof(m));
+  m.name = "testsuite";
+  m.conftable = conftab;
+
+  res = pr_module_load_conftab(&m);
+  fail_unless(res == 0, "Failed to load module conftab: %s", strerror(errno));
 
   res = pr_parser_parse_file(p, config_path, NULL, PR_PARSER_FL_DYNAMIC_CONFIG);
   fail_unless(res == 0, "Failed to parse '%s': %s", config_path,
@@ -282,7 +329,9 @@ START_TEST (parser_parse_file_test) {
     strerror(errno), errno);
 
   (void) pr_parser_server_ctxt_close();
+  (void) pr_module_unload(&m);
   (void) pr_fsio_unlink(config_path);
+  (void) pr_fsio_unlink(config_path2);
 }
 END_TEST
 
