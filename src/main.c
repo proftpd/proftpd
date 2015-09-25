@@ -2274,7 +2274,7 @@ int main(int argc, char *argv[], char **envp) {
       break;
 
     case 'l':
-      modules_list(PR_MODULES_LIST_FL_SHOW_STATIC);
+      modules_list2(NULL, PR_MODULES_LIST_FL_SHOW_STATIC);
       exit(0);
       break;
 
@@ -2448,7 +2448,7 @@ int main(int argc, char *argv[], char **envp) {
     printf("  Scoreboard Version: %08x\n", PR_SCOREBOARD_VERSION); 
     printf("  Built: %s\n\n", BUILD_STAMP);
 
-    modules_list(PR_MODULES_LIST_FL_SHOW_VERSION);
+    modules_list2(NULL, PR_MODULES_LIST_FL_SHOW_VERSION);
     exit(0);
   }
 

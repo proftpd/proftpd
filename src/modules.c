@@ -68,6 +68,11 @@ modret_t *pr_module_call(module *m, modret_t *(*func)(cmd_rec *),
 modret_t *mod_create_data(cmd_rec *cmd, void *d) {
   modret_t *res;
 
+  if (cmd == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   res = pcalloc(cmd->tmp_pool, sizeof(modret_t));
   res->data = d;
 
@@ -77,15 +82,20 @@ modret_t *mod_create_data(cmd_rec *cmd, void *d) {
 modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, char *n, char *m) {
   modret_t *res;
 
+  if (cmd == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   res = pcalloc(cmd->tmp_pool, sizeof(modret_t));
   res->mr_handler_module = curr_module;
   res->mr_error = err;
 
-  if (n) {
+  if (n != NULL) {
     res->mr_numeric = pstrdup(cmd->tmp_pool, n);
   }
 
-  if (m) {
+  if (m != NULL) {
     res->mr_message = pstrdup(cmd->tmp_pool, m);
   }
 
@@ -94,6 +104,11 @@ modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, char *n, char *m) {
 
 modret_t *mod_create_error(cmd_rec *cmd, int mr_errno) {
   modret_t *res;
+
+  if (cmd == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   res = pcalloc(cmd->tmp_pool, sizeof(modret_t));
   res->mr_handler_module = curr_module;
@@ -167,49 +182,56 @@ module *pr_module_get(const char *name) {
   return NULL;
 }
 
-void modules_list(int flags) {
+void modules_list2(int (*listf)(const char *, ...), int flags) {
+  if (listf == NULL) {
+    listf = printf;
+  }
 
   if (flags & PR_MODULES_LIST_FL_SHOW_STATIC) {
     register unsigned int i = 0;
 
-    printf("Compiled-in modules:\n");
+    listf("Compiled-in modules:\n");
     for (i = 0; static_modules[i]; i++) {
       module *m = static_modules[i];
 
       if (flags & PR_MODULES_LIST_FL_SHOW_VERSION) {
         char *version = m->module_version;
         if (version) {
-          printf("  %s\n", version);
+          listf("  %s\n", version);
 
         } else {
-          printf("  mod_%s.c\n", m->name);
+          listf("  mod_%s.c\n", m->name);
         }
 
       } else {
-        printf("  mod_%s.c\n", m->name);
+        listf("  mod_%s.c\n", m->name);
       }
     }
 
   } else {
     module *m;
 
-    printf("Loaded modules:\n");
+    listf("Loaded modules:\n");
     for (m = loaded_modules; m; m = m->next) {
 
       if (flags & PR_MODULES_LIST_FL_SHOW_VERSION) {
         char *version = m->module_version;
         if (version) {
-          printf("  %s\n", version);
+          listf("  %s\n", version);
 
         } else {  
-          printf("  mod_%s.c\n", m->name);
+          listf("  mod_%s.c\n", m->name);
         }
 
       } else {
-        printf("  mod_%s.c\n", m->name);
+        listf("  mod_%s.c\n", m->name);
       }
     }
   }
+}
+
+void modules_list(int flags) {
+  modules_list2(NULL, flags);
 }
 
 int pr_module_load_authtab(module *m) {
