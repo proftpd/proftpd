@@ -194,6 +194,26 @@ START_TEST (regexp_exec_test) {
 }
 END_TEST
 
+START_TEST (regexp_cleanup_test) {
+  pr_regex_t *pre, *pre2;
+
+  pre = pr_regexp_alloc(NULL);
+  pre2 = pr_regexp_alloc(NULL);
+
+  mark_point();
+  pr_event_generate("core.restart", NULL);
+
+  mark_point();
+  pr_event_generate("core.exit", NULL);
+
+  mark_point();
+  pr_regexp_free(NULL, pre);
+
+  mark_point();
+  pr_regexp_free(NULL, pre2);
+}
+END_TEST
+
 Suite *tests_get_regexp_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -210,6 +230,7 @@ Suite *tests_get_regexp_suite(void) {
   tcase_add_test(testcase, regexp_exec_test);
   tcase_add_test(testcase, regexp_get_pattern_test);
   tcase_add_test(testcase, regexp_set_limits_test);
+  tcase_add_test(testcase, regexp_cleanup_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

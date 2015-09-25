@@ -93,7 +93,12 @@ START_TEST (add_config_param_test) {
 
   s = pr_parser_server_ctxt_open("127.0.0.1");
   fail_unless(s != NULL, "Failed to open server context: %s", strerror(errno));
-  
+ 
+  c = add_config_param(NULL, 0, NULL);
+  fail_unless(c == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno); 
+
   name = "foo";
 
   mark_point();
@@ -215,8 +220,13 @@ START_TEST (find_config_test) {
 
   c = find_config(NULL, -1, NULL, FALSE);
   fail_unless(c == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
-    errno, strerror(errno));
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  c = find_config_next(NULL, NULL, CONF_PARAM, NULL, FALSE);
+  fail_unless(c == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   mark_point();
 
@@ -234,6 +244,7 @@ START_TEST (find_config_test) {
   mark_point();
 
   /* We expect to find "foo", but a 'next' should be empty. */
+
   name = "foo";
   c = find_config(set, -1, name, FALSE);
   fail_unless(c != NULL, "Failed to find config '%s': %s", name,
@@ -277,6 +288,13 @@ START_TEST (find_config_test) {
   fail_unless(c == NULL, "Found config '%s' unexpectedly", name);
   fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
     errno, strerror(errno));
+
+  name = "other";
+  c = find_config(set, -1, name, TRUE);
+  fail_unless(c == NULL, "Found config '%s' unexpectedly (recurse = true)",
+    name);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -479,6 +497,10 @@ Suite *tests_get_config_suite(void) {
   tcase_add_test(testcase, find_config2_test);
   tcase_add_test(testcase, get_param_ptr_test);
   tcase_add_test(testcase, config_set_get_id_test);
+
+#if 0
+  tcase_add_test(testcase, config_merge_down_test);
+#endif
 
   suite_add_tcase(suite, testcase);
 

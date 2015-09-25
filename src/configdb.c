@@ -774,32 +774,34 @@ config_rec *add_config_param_str(const char *name, int num, ...) {
 
 config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
     int num, ...) {
-  config_rec *c = pr_config_add(s, name, 0);
+  config_rec *c;
   char *arg = NULL;
   void **argv = NULL;
   va_list ap;
 
-  if (c) {
-    c->config_type = CONF_PARAM;
-    c->argc = num;
-    c->argv = pcalloc(c->pool, (num+1) * sizeof(char *));
-
-    argv = c->argv;
-    va_start(ap, num);
-
-    while (num-- > 0) {
-      arg = va_arg(ap, char *);
-      if (arg) {
-        *argv++ = pstrdup(c->pool, arg);
-
-      } else {
-        *argv++ = NULL;
-      }
-    }
-
-    va_end(ap);
+  c = pr_config_add(s, name, 0);
+  if (c == NULL) {
+    return NULL;
   }
 
+  c->config_type = CONF_PARAM;
+  c->argc = num;
+  c->argv = pcalloc(c->pool, (num+1) * sizeof(char *));
+
+  argv = c->argv;
+  va_start(ap, num);
+
+  while (num-- > 0) {
+    arg = va_arg(ap, char *);
+    if (arg) {
+      *argv++ = pstrdup(c->pool, arg);
+
+    } else {
+      *argv++ = NULL;
+    }
+  }
+
+  va_end(ap);
   return c;
 }
 
