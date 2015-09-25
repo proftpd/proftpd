@@ -2814,8 +2814,14 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
 
 int pr_fs_use_encoding(int bool) {
   int curr_setting = use_encoding;
-  use_encoding = bool;
 
+  if (bool != TRUE &&
+      bool != FALSE) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  use_encoding = bool;
   return curr_setting;
 }
 
@@ -2880,6 +2886,12 @@ char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
   pr_trace_msg("encode", 5, "decoded '%s' into '%s'", path, res);
   return res;
 #else
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   return (char *) path;
 #endif /* PR_USE_NLS */
 }
@@ -2940,6 +2952,12 @@ char *pr_fs_encode_path(pool *p, const char *path) {
   pr_trace_msg("encode", 5, "encoded '%s' into '%s'", path, res);
   return res;
 #else
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   return (char *) path;
 #endif /* PR_USE_NLS */
 }
@@ -5616,6 +5634,11 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
   struct statvfs fs;
 #  endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
 
+  if (fs_size == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   if (path != NULL) {
     pr_trace_msg(trace_channel, 18, "using statvfs() on '%s'", path);
 
@@ -5667,6 +5690,11 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
 
+  if (fs_size == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   if (path != NULL) {
     pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
 
@@ -5717,6 +5745,11 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
 
 # elif defined(HAVE_STATFS)
   struct statfs fs;
+
+  if (fs_size == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   if (path != NULL) {
     pr_trace_msg(trace_channel, 18, "using statfs() on '%s'", path);
@@ -5782,7 +5815,8 @@ off_t pr_fs_getsize(char *path) {
 
   res = pr_fs_getsize2(path, &fs_size);
   if (res < 0) {
-    fs_size = 0;
+    errno = EINVAL;
+    fs_size = -1;
   }
 
   return fs_size;

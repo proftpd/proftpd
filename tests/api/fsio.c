@@ -2611,6 +2611,260 @@ START_TEST (fs_resolve_path_test) {
 }
 END_TEST
 
+START_TEST (fs_use_encoding_test) {
+  int res;
+
+  res = pr_fs_use_encoding(-1);
+  fail_unless(res < 0, "Failed to handle invalid setting");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_use_encoding(TRUE);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+
+  res = pr_fs_use_encoding(FALSE);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+
+  res = pr_fs_use_encoding(TRUE);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+}
+END_TEST
+
+START_TEST (fs_decode_path2_test) {
+  int flags = 0;
+  char junk[32], *res;
+  const char *path;
+
+  res = pr_fs_decode_path(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_decode_path(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_fs_decode_path2(p, path, flags);
+  fail_unless(res != NULL, "Failed to decode path '%s': %s", path,
+    strerror(errno));
+
+  path = "/tmp";
+  res = pr_fs_decode_path2(p, path, flags);
+  fail_unless(res != NULL, "Failed to decode path '%s': %s", path,
+    strerror(errno));
+
+  /* Test a path that cannot be decoded, using junk data from the stack */
+  junk[sizeof(junk)-1] = '\0';
+  path = junk;
+  res = pr_fs_decode_path2(p, path, flags);
+  fail_unless(res != NULL, "Failed to decode path: %s", strerror(errno));
+
+  /* XXX Use the FSIO_DECODE_FL_TELL_ERRORS flags, AND set the encode
+   * policy to use PR_ENCODE_POLICY_FL_REQUIRE_VALID_ENCODING.
+   */
+}
+END_TEST
+
+START_TEST (fs_encode_path_test) {
+  char junk[32], *res;
+  const char *path;
+
+  res = pr_fs_encode_path(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_encode_path(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_fs_encode_path(p, path);
+  fail_unless(res != NULL, "Failed to encode path '%s': %s", path,
+    strerror(errno));
+
+  /* Test a path that cannot be encoded, using junk data from the stack */
+  junk[sizeof(junk)-1] = '\0';
+  path = junk;
+  res = pr_fs_encode_path(p, path);
+  fail_unless(res != NULL, "Failed to encode path: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_virtual_path_test) {
+  const char *path;
+  char buf[PR_TUNABLE_PATH_MAX];
+
+  mark_point();
+  pr_fs_virtual_path(NULL, NULL, 0);
+
+  mark_point();
+  path = "/tmp";
+  pr_fs_virtual_path(path, NULL, 0);
+
+  mark_point();
+  memset(buf, '\0', sizeof(buf));
+  pr_fs_virtual_path(path, buf, 0);
+  fail_unless(*buf == '\0', "Expected empty buffer, got '%s'", buf);
+
+  mark_point();
+  memset(buf, '\0', sizeof(buf));
+  pr_fs_virtual_path(path, buf, sizeof(buf)-1);
+  fail_unless(strcmp(buf, path) == 0, "Expected '%s', got '%s'", path, buf);
+
+  mark_point();
+  memset(buf, '\0', sizeof(buf));
+  path = "tmp";
+  pr_fs_virtual_path(path, buf, sizeof(buf)-1);
+  fail_unless(strcmp(buf, "/tmp") == 0, "Expected '/tmp', got '%s'", path, buf);
+
+  mark_point();
+  memset(buf, '\0', sizeof(buf));
+  path = "/tmp/././";
+  pr_fs_virtual_path(path, buf, sizeof(buf)-1);
+  fail_unless(strcmp(buf, "/tmp") == 0 || strcmp(buf, "/tmp/") == 0,
+    "Expected '/tmp', got '%s'", path, buf);
+
+  mark_point();
+  memset(buf, '\0', sizeof(buf));
+  path = "tmp/../../";
+  pr_fs_virtual_path(path, buf, sizeof(buf)-1);
+  fail_unless(strcmp(buf, "/") == 0, "Expected '/', got '%s'", path, buf);
+}
+END_TEST
+
+START_TEST (fs_get_usable_fd_test) {
+  int fd, res;
+
+  fd = -1;
+  res = pr_fs_get_usable_fd(fd);
+  fail_unless(res < 0, "Failed to handle bad fd");
+  fail_unless(errno == EBADF || errno == EINVAL,
+    "Expected EBADF (%d) or EINVAL (%d), got %s (%d)", EBADF, EINVAL,
+    strerror(errno), errno);
+
+  fd = STDERR_FILENO + 1;
+  res = pr_fs_get_usable_fd(fd);
+  fail_unless(res == fd, "Expected %d, got %d", fd, res);
+
+  fd = STDERR_FILENO - 1;
+  res = pr_fs_get_usable_fd(fd);
+  fail_unless(res > STDERR_FILENO, "Failed to get usable fd for %d: %s", fd,
+    strerror(errno));
+  (void) close(res);
+}
+END_TEST
+
+START_TEST (fs_get_usable_fd2_test) {
+  int fd, res;
+
+  res = pr_fs_get_usable_fd2(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fd = -1;
+  res = pr_fs_get_usable_fd2(&fd);
+  fail_unless(res < 0, "Failed to handle bad fd");
+  fail_unless(errno == EBADF || errno == EINVAL,
+    "Expected EBADF (%d) or EINVAL (%d), got %s (%d)", EBADF, EINVAL,
+    strerror(errno), errno);
+
+  fd = STDERR_FILENO + 1;
+  res = pr_fs_get_usable_fd2(&fd);
+  fail_unless(res == 0, "Failed to handle fd: %s", strerror(errno));
+  fail_unless(fd == (STDERR_FILENO + 1), "Expected %d, got %d",
+    STDERR_FILENO + 1, fd);
+
+  fd = STDERR_FILENO - 1;
+  res = pr_fs_get_usable_fd2(&fd);
+  fail_unless(res == 0, "Failed to handle fd: %s", strerror(errno));
+  fail_unless(fd > STDERR_FILENO, "Expected >%d, got %d", STDERR_FILENO, fd);
+  (void) close(fd);
+}
+END_TEST
+
+START_TEST (fs_getsize_test) {
+  off_t res;
+  char *path;
+
+  res = pr_fs_getsize(NULL);
+  fail_unless(res == (off_t) -1, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_fs_getsize(path);
+  fail_unless(res != (off_t) -1, "Failed to get fs size for '%s': %s", path,
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_getsize2_test) {
+  int res;
+  char *path;
+  off_t sz = 0;
+
+  res = pr_fs_getsize2(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_fs_getsize2(path, NULL);
+  fail_unless(res < 0, "Failed to handle null size argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_getsize2(path, &sz);
+  fail_unless(res == 0, "Failed to get fs size for '%s': %s", path,
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_fgetsize_test) {
+  int fd = -1, res;
+  off_t fs_sz = 0;
+
+  mark_point();
+  res = pr_fs_fgetsize(fd, &fs_sz);
+  fail_unless(res < 0, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  mark_point();
+  fd = 0;
+  fs_sz = 0;
+  res = pr_fs_fgetsize(fd, NULL);
+  fail_unless(res < 0, "Failed to handle null size argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  fd = 0;
+  fs_sz = 0;
+  res = pr_fs_fgetsize(fd, &fs_sz);
+  fail_unless(res == 0, "Failed to get fs size for fd %d: %s", fd,
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_is_nfs_test) {
+  int res;
+
+  res = pr_fs_is_nfs(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_is_nfs("/tmp");
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -2711,16 +2965,9 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_interpolate_test);
   tcase_add_test(testcase, fs_resolve_partial_test);
   tcase_add_test(testcase, fs_resolve_path_test);
-
-#if 0
   tcase_add_test(testcase, fs_use_encoding_test);
-
-  /* XXX Especially test a path that cannot be decoded */
   tcase_add_test(testcase, fs_decode_path2_test);
-
-  /* XXX Especially test a path that cannot be encoded */
   tcase_add_test(testcase, fs_encode_path_test);
-
   tcase_add_test(testcase, fs_virtual_path_test);
   tcase_add_test(testcase, fs_get_usable_fd_test);
   tcase_add_test(testcase, fs_get_usable_fd2_test);
@@ -2728,6 +2975,9 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_getsize2_test);
   tcase_add_test(testcase, fs_fgetsize_test);
   tcase_add_test(testcase, fs_is_nfs_test);
+
+#if 0
+  tcase_add_test(testcase, fs_is_valid_path_test);
 
   /* XXX With and without use_mkdtemp() */
   tcase_add_test(testcase, fsio_smkdir_test);
