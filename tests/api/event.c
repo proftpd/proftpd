@@ -72,6 +72,7 @@ static void event_dump(const char *fmt, ...) {
 START_TEST (event_register_test) {
   int res;
   const char *event = "foo";
+  module m;
 
   res = pr_event_register(NULL, NULL, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
@@ -91,6 +92,23 @@ START_TEST (event_register_test) {
   res = pr_event_register(NULL, event, event_cb, NULL);
   fail_unless(res == -1, "Failed to handle duplicate registration");
   fail_unless(errno == EEXIST, "Failed to set errno to EEXIST");
+
+  memset(&m, 0, sizeof(m));
+  m.name = "testsuite";
+
+  (void) pr_event_unregister(NULL, event, NULL);
+
+  res = pr_event_register(&m, event, event_cb, NULL);
+  fail_unless(res == 0, "Failed to register event with module: %s",
+    strerror(errno));
+
+  res = pr_event_register(&m, event, event_cb2, NULL);
+  fail_unless(res == 0, "Failed to register event with module: %s",
+    strerror(errno));
+
+  pr_event_unregister(&m, event, event_cb);
+  pr_event_unregister(&m, event, event_cb2);
+  pr_event_unregister(&m, NULL, NULL);
 }
 END_TEST
 
