@@ -1574,7 +1574,8 @@ START_TEST (auth_chroot_test) {
   path = "tmp";
   res = pr_auth_chroot(path);
   fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  fail_unless(errno == EINVAL || errno == ENOENT,
+    "Expected EINVAL (%d) or ENOENT (%d), got %s (%d)", EINVAL, ENOENT,
     strerror(errno), errno);
 
   path = "/tmp";
