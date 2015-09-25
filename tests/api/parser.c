@@ -80,6 +80,17 @@ START_TEST (parser_server_ctxt_test) {
 
   pr_parser_prepare(p, NULL);
 
+  ctx = pr_parser_server_ctxt_get();
+  fail_unless(ctx == NULL, "Found server context unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_parser_server_ctxt_close();
+  fail_unless(res == NULL, "Closed server context unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno));
+
   mark_point();
   res = pr_parser_server_ctxt_open("127.0.0.1");
   fail_unless(res != NULL, "Failed to open server context: %s",
@@ -101,6 +112,12 @@ START_TEST (parser_config_ctxt_test) {
   config_rec *ctx, *res;
 
   pr_parser_prepare(p, NULL);
+
+  ctx = pr_parser_config_ctxt_get();
+  fail_unless(ctx == NULL, "Found config context unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   pr_parser_server_ctxt_open("127.0.0.1");
 
   res = pr_parser_config_ctxt_open(NULL);

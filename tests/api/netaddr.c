@@ -113,17 +113,17 @@ START_TEST (netaddr_get_addr_test) {
   fail_unless(res == NULL, "Failed to handle null name");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  name = "127.0.0.1";
+  name = "134.289.999.0";
 
   res = pr_netaddr_get_addr(NULL, name, NULL);
   fail_unless(res == NULL, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   res = pr_netaddr_get_addr(p, name, NULL);
-  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
-    strerror(errno));
-  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
-    AF_INET, res->na_family);
+  fail_unless(res == NULL, "Unexpected got address for '%s'", name);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
 
   name = "localhost";
 
@@ -138,6 +138,38 @@ START_TEST (netaddr_get_addr_test) {
     strerror(errno));
   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
     AF_INET, res->na_family);
+
+  name = "127.0.0.1";
+
+  res = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+    AF_INET, res->na_family);
+
+  res = pr_netaddr_get_addr(p, name, &addrs);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+    AF_INET, res->na_family);
+  fail_unless(addrs == NULL, "Expected no additional addresses for '%s'", name);
+
+#if defined(PR_USE_IPV6)
+  name = "::1";
+
+  res = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET6, "Expected family %d, got %d",
+    AF_INET6, res->na_family);
+
+  res = pr_netaddr_get_addr(p, name, &addrs);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET6, "Expected family %d, got %d",
+    AF_INET6, res->na_family);
+  fail_unless(addrs == NULL, "Expected no additional addresses for '%s'", name);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 

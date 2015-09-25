@@ -249,8 +249,9 @@ config_rec *pr_parser_config_ctxt_close(int *empty) {
 }
 
 config_rec *pr_parser_config_ctxt_get(void) {
-  if (parser_curr_config)
+  if (parser_curr_config) {
     return *parser_curr_config;
+  }
 
   errno = ENOENT;
   return NULL;
