@@ -139,8 +139,7 @@ START_TEST (parser_get_lineno_test) {
 END_TEST
 
 START_TEST (parser_read_line_test) {
-  char *buf, *res;
-  size_t buflen = 0;
+  char *res;
 
   res = pr_parser_read_line(NULL, 0);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -150,7 +149,6 @@ START_TEST (parser_read_line_test) {
 END_TEST
 
 START_TEST (parser_parse_line_test) {
-  int res;
   cmd_rec *cmd;
   char *text;
   unsigned int lineno;

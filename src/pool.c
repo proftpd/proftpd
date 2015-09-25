@@ -62,6 +62,8 @@ static union block_hdr *block_freelist = NULL;
 static unsigned int stat_malloc = 0;	/* incr when malloc required */
 static unsigned int stat_freehit = 0;	/* incr when freelist used */
 
+static const char *trace_channel = "pool";
+
 #ifdef PR_USE_DEVEL
 /* Debug flags */
 static int debug_flags = 0;
@@ -355,13 +357,36 @@ static void debug_pool_info(void (*debugf)(const char *, ...)) {
   debugf("%u blocks reused", stat_freehit);
 }
 
+static void pool_printf(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf));
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  pr_trace_msg(trace_channel, 5, "%s", buf);
+}
+
 void pr_pool_debug_memory(void (*debugf)(const char *, ...)) {
+  if (debugf == NULL) {
+    debugf = pool_printf;
+  }
+
   debugf("Memory pool allocation:");
   debugf("Total %lu bytes allocated", walk_pools(permanent_pool, 0, debugf));
   debug_pool_info(debugf);
 }
 
 int pr_pool_debug_set_flags(int flags) {
+  if (flags < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
   debug_flags = flags;
   return 0;
 }
@@ -777,7 +802,13 @@ typedef struct cleanup {
 
 void register_cleanup(pool *p, void *data, void (*plain_cleanup_cb)(void*),
     void (*child_cleanup_cb)(void *)) {
-  cleanup_t *c = pcalloc(p, sizeof(cleanup_t));
+  cleanup_t *c;
+
+  if (p == NULL) {
+    return;
+  }
+
+  c = pcalloc(p, sizeof(cleanup_t));
   c->data = data;
   c->plain_cleanup_cb = plain_cleanup_cb;
   c->child_cleanup_cb = child_cleanup_cb;
@@ -788,8 +819,14 @@ void register_cleanup(pool *p, void *data, void (*plain_cleanup_cb)(void*),
 }
 
 void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
-  cleanup_t *c = p->cleanups;
-  cleanup_t **lastp = &p->cleanups;
+  cleanup_t *c, **lastp;
+
+  if (p == NULL) {
+    return;
+  }
+
+  c = p->cleanups;
+  lastp = &p->cleanups;
 
   while (c) {
     if (c->data == data &&
@@ -809,7 +846,10 @@ void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
 
 static void run_cleanups(cleanup_t *c) {
   while (c) {
-    (*c->plain_cleanup_cb)(c->data);
+    if (c->plain_cleanup_cb) {
+      (*c->plain_cleanup_cb)(c->data);
+    }
+
     c = c->next;
   }
 }
