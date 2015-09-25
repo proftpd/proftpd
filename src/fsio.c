@@ -1182,11 +1182,6 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
-  if (pr_fsio_set_block(src_fh) < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "error putting '%s' into blocking mode: %s", src, strerror(errno));
-  }
-
   /* Do not allow copying of directories. open(2) may not fail when
    * opening the source path, since it is only doing a read-only open,
    * which does work on directories.
@@ -1210,12 +1205,29 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
+  if (pr_fsio_set_block(src_fh) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error putting '%s' into blocking mode: %s", src, strerror(errno));
+  }
+
   /* We use stat() here, not lstat(), since open() would follow a symlink
    * to its target, and what we really want to know here is whether the
    * ultimate destination file exists or not.
    */
   pr_fs_clear_cache2(dst);
   if (pr_fsio_stat(dst, &dst_st) == 0) {
+    if (S_ISDIR(dst_st.st_mode)) {
+      int xerrno = EISDIR;
+
+      (void) pr_fsio_close(src_fh);
+
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: cannot copy to destination '%s': %s", dst, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
     dst_existed = TRUE;
     pr_fs_clear_cache2(dst);
   }
@@ -1227,7 +1239,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   if (dst_fh == NULL) {
     int xerrno = errno;
 
-    pr_fsio_close(src_fh);
+    (void) pr_fsio_close(src_fh);
 
     pr_log_pri(PR_LOG_WARNING, "error opening destination file '%s' "
       "for copying: %s", dst, strerror(xerrno));
@@ -2168,7 +2180,9 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
   size_t currlen, pathlen;
   char user[PR_TUNABLE_LOGIN_MAX+1];
 
-  if (path == NULL) {
+  if (path == NULL ||
+      buf == NULL ||
+      buflen == 0) {
     errno = EINVAL;
     return -1;
   }
@@ -2213,7 +2227,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
      * which it is.
      */
 
-    if (pr_fsio_stat(path, &st) == -1) {
+    if (pr_fsio_stat(path, &st) < 0) {
        /* Must be a user, if anything...otherwise it's probably a typo.
         *
         * The user name, then, is everything just past the '~' character.
@@ -2299,14 +2313,15 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
        workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'},
        namebuf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
        *where = NULL, *ptr = NULL, *last = NULL;
-
   pr_fs_t *fs = NULL;
   int len = 0, fini = 1, link_cnt = 0;
   ino_t prev_inode = 0;
   dev_t prev_device = 0;
   struct stat sbuf;
 
-  if (path == NULL) {
+  if (path == NULL ||
+      buf == NULL ||
+      buflen == 0) {
     errno = EINVAL;
     return -1;
   }
@@ -2314,13 +2329,13 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
   if (*path != '/') {
     if (*path == '~') {
       switch (pr_fs_interpolate(path, curpath, sizeof(curpath)-1)) {
-      case -1:
-        return -1;
+        case -1:
+          return -1;
 
-      case 0:
-        sstrncpy(curpath, path, sizeof(curpath));
-        sstrncpy(workpath, cwd, sizeof(workpath));
-        break;
+        case 0:
+          sstrncpy(curpath, path, sizeof(curpath));
+          sstrncpy(workpath, cwd, sizeof(workpath));
+          break;
       }
 
     } else {
@@ -2499,15 +2514,15 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
        workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'},
        namebuf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
        *where = NULL, *ptr = NULL, *last = NULL;
-
   pr_fs_t *fs = NULL;
-
   int len = 0, fini = 1, link_cnt = 0;
   ino_t prev_inode = 0;
   dev_t prev_device = 0;
   struct stat sbuf;
 
-  if (path == NULL) {
+  if (path == NULL ||
+      buf == NULL ||
+      buflen == 0) {
     errno = EINVAL;
     return -1;
   }

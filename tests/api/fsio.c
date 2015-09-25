@@ -2334,6 +2334,226 @@ START_TEST (fs_glob_test) {
 }
 END_TEST
 
+START_TEST (fs_copy_file_test) {
+  int res;
+  char *src_path, *dst_path, *text;
+  pr_fh_t *fh;
+
+  res = pr_fs_copy_file(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  src_path = "/tmp/prt-fs-src.dat";
+  res = pr_fs_copy_file(src_path, NULL);
+  fail_unless(res < 0, "Failed to handle null destination path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  dst_path = "/tmp/prt-fs-dst.dat";
+  res = pr_fs_copy_file(src_path, dst_path);
+  fail_unless(res < 0, "Failed to handle null destination path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  res = pr_fs_copy_file("/tmp", dst_path);
+  fail_unless(res < 0, "Failed to handle directory source path");
+  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));
+
+  text = "Hello, World!\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s' to '%s': %s", text, src_path,
+    strerror(errno));
+
+  res = pr_fsio_close(fh);
+  fail_unless(res == 0, "Failed to close '%s': %s", src_path, strerror(errno));
+
+  res = pr_fs_copy_file(src_path, "/tmp");
+  fail_unless(res < 0, "Failed to handle directory destination path");
+  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_copy_file(src_path, src_path);
+  fail_unless(res == 0, "Failed to copy file to itself: %s", strerror(errno));
+
+  mark_point();
+  res = pr_fs_copy_file(src_path, dst_path);
+  fail_unless(res == 0, "Failed to copy file: %s", strerror(errno));
+
+  (void) pr_fsio_unlink(src_path);
+  (void) pr_fsio_unlink(dst_path);
+}
+END_TEST
+
+START_TEST (fs_interpolate_test) {
+  int res;
+  char buf[PR_TUNABLE_PATH_MAX], *path;
+
+  memset(buf, '\0', sizeof(buf));
+
+  res = pr_fs_interpolate(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_fs_interpolate(path, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_interpolate(path, buf, 0);
+  fail_unless(res < 0, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  fail_unless(res == 1, "Failed to interpolate path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(buf, path) == 0, "Expected '%s', got '%s'", path, buf);
+
+  path = "~/foo/bar/baz/quzz/quzz.d";
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  fail_unless(res == 1, "Failed to interpolate path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(buf, path+1) == 0, "Expected '%s', got '%s'", path+1, buf);
+
+  path = "~";
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  fail_unless(res == 1, "Failed to interpolate path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(buf, "/") == 0, "Expected '/', got '%s'", buf);
+
+  session.chroot_path = "/tmp";
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  fail_unless(res == 1, "Failed to interpolate path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(buf, session.chroot_path) == 0, "Expected '%s', got '%s'",
+    session.chroot_path, buf);
+
+  session.chroot_path = NULL;
+
+  path = "~foo.bar.baz.quzz";
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  fail_unless(res < 0, "Interpolated '%s' unexpectedly", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  session.user = "testsuite";
+  path = "~/tmp.d/test.d/foo.d/bar.d";
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  fail_unless(res < 0, "Interpolated '%s' unexpectedly", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+  session.user = NULL;
+}
+END_TEST
+
+START_TEST (fs_resolve_partial_test) {
+  int op = FSIO_FILE_STAT, res;
+  char buf[PR_TUNABLE_PATH_MAX], *path;
+
+  res = pr_fs_resolve_partial(NULL, NULL, 0, op);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_fs_resolve_partial(path, NULL, 0, op);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  memset(buf, '\0', sizeof(buf));
+  res = pr_fs_resolve_partial(path, buf, 0, op);
+  fail_unless(res < 0, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_resolve_partial(path, buf, sizeof(buf)-1, op);
+  fail_unless(res == 0, "Failed to resolve '%s': %s", path, strerror(errno));
+  if (strcmp(buf, path) != 0) {
+    /* Mac-specific hack */
+    const char *prefix = "/private";
+
+    if (strncmp(buf, prefix, strlen(prefix)) != 0) {
+      fail("Expected '%s', got '%s'", path, buf);
+    }
+  }
+
+  path = "/tmp/.////./././././.";
+  res = pr_fs_resolve_partial(path, buf, sizeof(buf)-1, op);
+  fail_unless(res == 0, "Failed to resolve '%s': %s", path, strerror(errno));
+  if (strcmp(buf, path) != 0) {
+    /* Mac-specific hack */
+    const char *prefix = "/private";
+
+    if (strncmp(buf, prefix, strlen(prefix)) != 0) {
+      fail("Expected '%s', got '%s'", path, buf);
+    }
+  }
+
+  path = "/../../../.././..///../";
+  res = pr_fs_resolve_partial(path, buf, sizeof(buf)-1, op);
+  fail_unless(res == 0, "Failed to resolve '%s': %s", path, strerror(errno));
+  if (strcmp(buf, "/") != 0) {
+    /* Mac-specific hack */
+    const char *prefix = "/private";
+
+    if (strncmp(buf, prefix, strlen(prefix)) != 0) {
+      fail("Expected '%s', got '%s'", path, buf);
+    }
+  }
+
+  path = "/tmp/.///../../..../";
+  res = pr_fs_resolve_partial(path, buf, sizeof(buf)-1, op);
+  fail_unless(res < 0, "Resolved '%s' unexpectedly", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+}
+END_TEST
+
+START_TEST (fs_resolve_path_test) {
+  int op = FSIO_FILE_STAT, res;
+  char buf[PR_TUNABLE_PATH_MAX], *path;
+
+  memset(buf, '\0', sizeof(buf));
+
+  res = pr_fs_resolve_path(NULL, NULL, 0, op);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_fs_resolve_path(path, NULL, 0, op);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_resolve_path(path, buf, 0, op);
+  fail_unless(res < 0, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fs_resolve_path(path, buf, sizeof(buf)-1, op);
+  fail_unless(res == 0, "Failed to resolve path '%s': %s", path,
+    strerror(errno));
+  if (strcmp(buf, path) != 0) {
+    /* Mac-specific hack */
+    const char *prefix = "/private";
+
+    if (strncmp(buf, prefix, strlen(prefix)) != 0) {
+      fail("Expected '%s', got '%s'", path, buf);
+    }
+  }
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -2430,13 +2650,12 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_dircat_test);
   tcase_add_test(testcase, fs_setcwd_test);
   tcase_add_test(testcase, fs_glob_test);
-
-#if 0
   tcase_add_test(testcase, fs_copy_file_test);
   tcase_add_test(testcase, fs_interpolate_test);
   tcase_add_test(testcase, fs_resolve_partial_test);
   tcase_add_test(testcase, fs_resolve_path_test);
 
+#if 0
   tcase_add_test(testcase, fs_use_encoding_test);
 
   /* XXX Especially test a path that cannot be decoded */
