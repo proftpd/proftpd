@@ -139,6 +139,16 @@ START_TEST (netaddr_get_addr_test) {
   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
     AF_INET, res->na_family);
 
+  /* Google: the Dial Tone of the Internet. */
+  name = "www.google.com";
+
+  res = pr_netaddr_get_addr(p, name, &addrs);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+    AF_INET, res->na_family);
+  fail_unless(addrs != NULL, "Expected additional addresses for '%s'", name);
+
   name = "127.0.0.1";
 
   res = pr_netaddr_get_addr(p, name, NULL);
