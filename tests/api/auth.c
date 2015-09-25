@@ -1580,9 +1580,9 @@ START_TEST (auth_chroot_test) {
   path = "/tmp";
   res = pr_auth_chroot(path);
   fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
-  fail_unless(errno == ENOENT || errno == EINVAL,
-    "Expected ENOENT (%d) or EINVAL (%d), got %s (%d)", ENOENT, EINVAL,
-    strerror(errno), errno);
+  fail_unless(errno == ENOENT || errno == EPERM || errno == EINVAL,
+    "Expected ENOENT (%d), EPERM (%d) or EINVAL (%d), got %s (%d)",
+    ENOENT, EPERM, EINVAL, strerror(errno), errno);
 }
 END_TEST
 
