@@ -1569,15 +1569,16 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
       pr_signals_handle();
 
       config_anon_name = get_param_ptr(c->subset, "UserName", FALSE);
-
-      if (!config_anon_name)
+      if (config_anon_name == NULL) {
         config_anon_name = config_user_name;
+      }
 
       if (config_anon_name &&
           strcmp(config_anon_name, *login_name) == 0) {
-         if (anon_name)
-           *anon_name = config_anon_name;
-         break;
+        if (anon_name != NULL) {
+          *anon_name = config_anon_name;
+        }
+        break;
       }
  
     } while ((c = find_config_next(c, c->next, CONF_ANON, NULL,
@@ -1624,23 +1625,32 @@ int pr_auth_banned_by_ftpusers(xaset_t *ctx, const char *user) {
   int res = FALSE;
   unsigned char *use_ftp_users;
 
-  use_ftp_users = get_param_ptr(ctx, "UseFtpUsers", FALSE);
+  if (user == NULL) {
+    return res;
+  }
 
+  use_ftp_users = get_param_ptr(ctx, "UseFtpUsers", FALSE);
   if (use_ftp_users == NULL ||
       *use_ftp_users == TRUE) {
     FILE *fh = NULL;
-    char buf[256];
+    char buf[512];
+    int xerrno;
 
     PRIVS_ROOT
     fh = fopen(PR_FTPUSERS_PATH, "r");
+    xerrno = errno;
     PRIVS_RELINQUISH
 
-    if (fh == NULL)
+    if (fh == NULL) {
+      pr_trace_msg(trace_channel, 14,
+        "error opening '%s' for checking user '%s': %s", PR_FTPUSERS_PATH,
+        user, strerror(xerrno));
       return res;
+    }
 
     memset(buf, '\0', sizeof(buf));
 
-    while (fgets(buf, sizeof(buf)-1, fh)) {
+    while (fgets(buf, sizeof(buf)-1, fh) != NULL) {
       char *ptr;
 
       pr_signals_handle();
@@ -1688,13 +1698,14 @@ int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
     char buf[256];
 
     fh = fopen(PR_VALID_SHELL_PATH, "r");
-    if (fh == NULL)
+    if (fh == NULL) {
       return res;
+    }
 
     res = FALSE;
     memset(buf, '\0', sizeof(buf));
 
-    while (fgets(buf, sizeof(buf)-1, fh)) {
+    while (fgets(buf, sizeof(buf)-1, fh) != NULL) {
       pr_signals_handle();
 
       buf[sizeof(buf)-1] = '\0';
@@ -1717,6 +1728,11 @@ int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
 int pr_auth_chroot(const char *path) {
   int res, xerrno = 0;
   time_t now;
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
 #if defined(HAVE_SETENV) && \
     defined(__GLIBC__) && \
@@ -1757,7 +1773,7 @@ int pr_auth_chroot(const char *path) {
 
   if (res < 0) {
     pr_log_pri(PR_LOG_ERR, "chroot to '%s' failed for user '%s': %s", path,
-      session.user, strerror(xerrno));
+      session.user ? session.user : "(unknown)", strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -1864,8 +1880,9 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   }
 #endif /* PR_DEVEL_COREDUMP */
 
-  if (tmp_pool)
+  if (tmp_pool) {
     destroy_pool(tmp_pool);
+  }
 
   return res;
 }
@@ -1975,7 +1992,7 @@ int pr_auth_cache_set(int enable, unsigned int flags) {
     }
 
     if (flags & PR_AUTH_CACHE_FL_AUTH_MODULE) {
-      auth_caching &= ~PR_AUTH_CACHE_FL_AUTH_MODULE;
+      auth_caching |= PR_AUTH_CACHE_FL_AUTH_MODULE;
       pr_trace_msg(trace_channel, 7, "auth module caching (authcache) enabled");
     }
 
@@ -2124,14 +2141,22 @@ char *pr_auth_get_home(pool *p, char *pw_dir) {
   config_rec *c;
   char *home_dir;
 
+  if (p == NULL ||
+      pw_dir == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   home_dir = pw_dir;
 
   c = find_config(main_server->conf, CONF_PARAM, "RewriteHome", FALSE);
-  if (c == NULL)
+  if (c == NULL) {
     return home_dir;
+  }
 
-  if (*((int *) c->argv[0]) == FALSE)
+  if (*((int *) c->argv[0]) == FALSE) {
     return home_dir;
+  }
 
   /* Rather than using a cmd_rec dispatched to mod_rewrite's PRE_CMD handler,
    * we use an approach with looser coupling to mod_rewrite: stash the
@@ -2174,7 +2199,7 @@ char *pr_auth_get_home(pool *p, char *pw_dir) {
 
 /* Internal use only.  To be called in the session process. */
 int init_auth(void) {
-  if (!auth_pool) {
+  if (auth_pool == NULL) {
     auth_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(auth_pool, "Auth API");
   }

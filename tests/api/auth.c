@@ -348,6 +348,7 @@ static void set_up(void) {
 
   init_stash();
   init_auth();
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_DEFAULT);
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("auth", 1, 20);
@@ -387,6 +388,8 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_DEFAULT);
+
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("auth", 0, 0);
   }
@@ -1248,8 +1251,61 @@ START_TEST (auth_cache_name2gid_failed_test) {
 }
 END_TEST
 
+START_TEST (auth_cache_clear_test) {
+  int res;
+  gid_t gid;
+  authtable authtab;
+  char *sym_name = "name2gid";
+
+  mark_point();
+  pr_auth_cache_clear();
+
+  /* Load the appropriate AUTH symbol, and call it. */
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = decline_name2gid;
+  authtab.m = &unit_tests_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  mark_point();
+  gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
+  fail_unless(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
+  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+    name2gid_count);
+
+  mark_point();
+  pr_auth_cache_clear();
+}
+END_TEST
+
+START_TEST (auth_cache_set_test) {
+  int res;
+  unsigned int flags = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME|PR_AUTH_CACHE_FL_AUTH_MODULE|PR_AUTH_CACHE_FL_NAME2UID|PR_AUTH_CACHE_FL_NAME2GID|PR_AUTH_CACHE_FL_BAD_UID2NAME|PR_AUTH_CACHE_FL_BAD_GID2NAME|PR_AUTH_CACHE_FL_BAD_NAME2UID|PR_AUTH_CACHE_FL_BAD_NAME2GID;
+
+  res = pr_auth_cache_set(-1, 0);
+  fail_unless(res < 0, "Failed to handle invalid setting");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_cache_set(TRUE, flags);
+  fail_unless(res == 0, "Failed to enable all auth cache settings: %s",
+    strerror(errno));
+
+  res = pr_auth_cache_set(FALSE, flags);
+  fail_unless(res == 0, "Failed to disable all auth cache settings: %s",
+    strerror(errno));
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_DEFAULT);
+}
+END_TEST
+
 START_TEST (auth_clear_auth_only_module_test) {
   int res;
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_clear_auth_only_modules();
   fail_unless(res < 0, "Failed to handle no auth module list");
@@ -1261,6 +1317,8 @@ END_TEST
 START_TEST (auth_add_auth_only_module_test) {
   int res;
   const char *name = "foo.bar";
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_add_auth_only_module(NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -1285,6 +1343,8 @@ END_TEST
 START_TEST (auth_remove_auth_only_module_test) {
   int res;
   const char *name = "foo.bar";
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_remove_auth_only_module(NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -1492,6 +1552,100 @@ START_TEST (auth_requires_pass_test) {
 }
 END_TEST
 
+START_TEST (auth_get_anon_config_test) {
+  config_rec *c;
+
+  c = pr_auth_get_anon_config(NULL, NULL, NULL, NULL);
+  fail_unless(c == NULL, "Failed to handle null arguments");
+
+  /* XXX Need to exercise more of this function. */
+}
+END_TEST
+
+START_TEST (auth_chroot_test) {
+  int res;
+  const char *path;
+
+  res = pr_auth_chroot(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "tmp";
+  res = pr_auth_chroot(path);
+  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_auth_chroot(path);
+  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  fail_unless(errno == ENOENT || errno == EINVAL,
+    "Expected ENOENT (%d) or EINVAL (%d), got %s (%d)", ENOENT, EINVAL,
+    strerror(errno), errno);
+}
+END_TEST
+
+START_TEST (auth_banned_by_ftpusers_test) {
+  const char *name;
+  int res;
+  xaset_t *ctx;
+
+  res = pr_auth_banned_by_ftpusers(NULL, NULL);
+  fail_unless(res == FALSE, "Failed to handle null arguments");
+
+  ctx = xaset_create(p, NULL);
+  res = pr_auth_banned_by_ftpusers(ctx, NULL);
+  fail_unless(res == FALSE, "Failed to handle null user");
+
+  name = "testsuite";
+  res = pr_auth_banned_by_ftpusers(ctx, name);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+}
+END_TEST
+
+START_TEST (auth_is_valid_shell_test) {
+  const char *shell;
+  int res;
+  xaset_t *ctx;
+
+  res = pr_auth_is_valid_shell(NULL, NULL);
+  fail_unless(res == TRUE, "Failed to handle null arguments");
+
+  ctx = xaset_create(p, NULL);
+  res = pr_auth_is_valid_shell(ctx, NULL);
+  fail_unless(res == TRUE, "Failed to handle null shell");
+
+  shell = "/foo/bar";
+  res = pr_auth_is_valid_shell(ctx, shell);
+  fail_unless(res == FALSE, "Failed to handle invalid shell (got %d)", res);
+
+  shell = "/bin/bash";
+  res = pr_auth_is_valid_shell(ctx, shell);
+  fail_unless(res == TRUE, "Failed to handle valid shell (got %d)", res);
+}
+END_TEST
+
+START_TEST (auth_get_home_test) {
+  char *home, *res;
+
+  res = pr_auth_get_home(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_get_home(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null home");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  home = "/testsuite";
+  res = pr_auth_get_home(p, home);
+  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
+  fail_unless(strcmp(home, res) == 0, "Expected '%s', got '%s'", home, res);  
+}
+END_TEST
+
 Suite *tests_get_auth_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1527,6 +1681,8 @@ Suite *tests_get_auth_suite(void) {
   tcase_add_test(testcase, auth_cache_gid2name_failed_test);
   tcase_add_test(testcase, auth_cache_name2uid_failed_test);
   tcase_add_test(testcase, auth_cache_name2gid_failed_test);
+  tcase_add_test(testcase, auth_cache_clear_test);
+  tcase_add_test(testcase, auth_cache_set_test);
 
   /* Auth modules */
   tcase_add_test(testcase, auth_clear_auth_only_module_test);
@@ -1538,6 +1694,13 @@ Suite *tests_get_auth_suite(void) {
   tcase_add_test(testcase, auth_authorize_test);
   tcase_add_test(testcase, auth_check_test);
   tcase_add_test(testcase, auth_requires_pass_test);
+
+  /* Misc */
+  tcase_add_test(testcase, auth_get_anon_config_test);
+  tcase_add_test(testcase, auth_chroot_test);
+  tcase_add_test(testcase, auth_banned_by_ftpusers_test);
+  tcase_add_test(testcase, auth_is_valid_shell_test);
+  tcase_add_test(testcase, auth_get_home_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
