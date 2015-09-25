@@ -127,6 +127,7 @@ struct fs_rec {
   int (*faccess)(pr_fh_t *, int, uid_t, gid_t, array_header *);
   int (*utimes)(pr_fs_t *, const char *, struct timeval *);
   int (*futimes)(pr_fh_t *, int, struct timeval *);
+  int (*fsync)(pr_fh_t *, int);
 
   /* For actual operations on the directory (or subdirs)
    * we cast the return from opendir to DIR* in src/fs.c, so
@@ -273,6 +274,7 @@ int pr_fsio_access(const char *, int, uid_t, gid_t, array_header *);
 int pr_fsio_faccess(pr_fh_t *, int, uid_t, gid_t, array_header *);
 int pr_fsio_utimes(const char *, struct timeval *);
 int pr_fsio_futimes(pr_fh_t *, struct timeval *);
+int pr_fsio_fsync(pr_fh_t *fh);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
 
 /* Set a flag determining whether we guard against write operations in
@@ -288,7 +290,7 @@ int pr_fsio_set_use_mkdtemp(int);
 
 /* FS-related functions */
 
-char *pr_fsio_getline(char *, int, pr_fh_t *, unsigned int *);
+char *pr_fsio_getline(char *, size_t, pr_fh_t *, unsigned int *);
 char *pr_fsio_getpipebuf(pool *, int, long *);
 char *pr_fsio_gets(char *, size_t, pr_fh_t *);
 int pr_fsio_puts(const char *, pr_fh_t *);

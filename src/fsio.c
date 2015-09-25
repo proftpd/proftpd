@@ -477,6 +477,19 @@ static int sys_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
 #endif
 }
 
+static int sys_fsync(pr_fh_t *fh, int fd) {
+  int res;
+
+#ifdef HAVE_FSYNC
+  res = fsync(fd);
+#else
+  errno = ENOSYS;
+  res = -1;
+#endif /* HAVE_FSYNC */
+
+  return res;
+}
+
 static int sys_chroot(pr_fs_t *fs, const char *path) {
   if (chroot(path) < 0)
     return -1;
@@ -2967,8 +2980,13 @@ char *pr_fs_encode_path(pool *p, const char *path) {
  * the path is considered invalid.
  */
 int pr_fs_valid_path(const char *path) {
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
-  if (fs_map && fs_map->nelts > 0) {
+  if (fs_map != NULL &&
+      fs_map->nelts > 0) {
     pr_fs_t *fsi = NULL, **fs_objs = (pr_fs_t **) fs_map->elts;
     register int i;
 
@@ -2986,7 +3004,7 @@ int pr_fs_valid_path(const char *path) {
     return 0;
   }
 
-  errno = EINVAL;
+  errno = ENOENT;
   return -1;
 }
 
@@ -3424,6 +3442,12 @@ int pr_fsio_guard_chroot(int guard) {
 int pr_fsio_set_use_mkdtemp(int value) {
   int prev_value;
 
+  if (value != TRUE &&
+      value != FALSE) {
+    errno = EINVAL;
+    return -1;
+  }
+
   prev_value = fsio_use_mkdtemp;
 
 #ifdef HAVE_MKDTEMP
@@ -3601,7 +3625,8 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
   char *dst_dir, *tmpl;
   size_t dst_dirlen, tmpl_len;
 
-  if (path == NULL) {
+  if (p == NULL ||
+      path == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -5209,6 +5234,33 @@ int pr_fsio_futimes(pr_fh_t *fh, struct timeval *tvs) {
   return res;
 }
 
+int pr_fsio_fsync(pr_fh_t *fh) {
+  int res;
+  pr_fs_t *fs;
+
+  if (fh == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fsync handler.  If there are none,
+   * use the system fsync.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fsync) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s fsync() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fsync)(fh, fh->fh_fd);
+  if (res == 0) {
+    pr_fs_clear_cache2(fh->fh_path);
+  }
+
+  return res;
+}
+
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
  * pr_fs_ts currently registered in the fs_map will have their paths
  * rewritten to reflect the new root.
@@ -5319,6 +5371,11 @@ char *pr_fsio_getpipebuf(pool *p, int fd, long *bufsz) {
     return NULL;
   }
 
+  if (fd < 0) {
+    errno = EBADF;
+    return NULL;
+  }
+
 #if defined(PIPE_BUF)
   buflen = PIPE_BUF;
 
@@ -5350,8 +5407,8 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
   pr_buffer_t *pbuf = NULL;
 
   if (buf == NULL ||
-      fh  == NULL ||
-      size <= 0) {
+      fh == NULL ||
+      size == 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -5434,19 +5491,29 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
  * file is being read in, so that errors can be reported with line numbers
  * correctly.
  */
-char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
+char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
     unsigned int *lineno) {
   int inlen;
-  char *start = buf;
+  char *start;
 
-  while (pr_fsio_gets(buf, buflen, fh)) {
+  if (buf == NULL ||
+      fh == NULL ||
+      buflen == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  start = buf;
+  while (pr_fsio_gets(buf, buflen, fh) != NULL) {
     pr_signals_handle();
 
     inlen = strlen(buf);
 
     if (inlen >= 1) {
       if (buf[inlen - 1] == '\n') {
-        (*lineno)++;
+        if (lineno != NULL) {
+          (*lineno)++;
+        }
 
         if (inlen >= 2 && buf[inlen - 2] == '\\') {
           char *bufp;
@@ -5479,7 +5546,7 @@ char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
     buf[0] = 0;
   }
 
-  return (buf > start ? start : 0);
+  return (buf > start ? start : NULL);
 }
 
 /* Be generous in the maximum allowed number of dup fds, in our search for
@@ -5901,8 +5968,11 @@ int pr_fsio_set_block(pr_fh_t *fh) {
   }
 
   flags = fcntl(fh->fh_fd, F_GETFL);
-  res = fcntl(fh->fh_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
+  if (flags < 0) {
+    return -1;
+  }
 
+  res = fcntl(fh->fh_fd, F_SETFL, flags & (U32BITS ^ O_NONBLOCK));
   return res;
 }
 
@@ -6003,6 +6073,7 @@ int init_fs(void) {
   root_fs->faccess = sys_faccess;
   root_fs->utimes = sys_utimes;
   root_fs->futimes = sys_futimes;
+  root_fs->fsync = sys_fsync;
 
   root_fs->chdir = sys_chdir;
   root_fs->chroot = sys_chroot;
@@ -6124,7 +6195,11 @@ static const char *get_fs_hooks_str(pool *p, pr_fs_t *fs) {
   }
 
   if (fs->futimes) {
-    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "futimes(3)", NULL);
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "futimes(2)", NULL);
+  }
+
+  if (fs->fsync) {
+    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "fsync(2)", NULL);
   }
 
   if (fs->chdir) {

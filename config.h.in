@@ -306,6 +306,9 @@
 /* Define if you have the freeaddrinfo function.  */
 #undef HAVE_FREEADDRINFO
 
+/* Define if you have the fsync function.  */
+#undef HAVE_FSYNC
+
 /* Define if you have the futimes function.  */
 #undef HAVE_FUTIMES
 

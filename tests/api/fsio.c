@@ -38,6 +38,12 @@ static const char *fsio_testdir_path = "/tmp/prt-fsio-test.d";
 /* Fixtures */
 
 static void set_up(void) {
+  (void) unlink(fsio_test_path);
+  (void) unlink(fsio_test2_path);
+  (void) unlink(fsio_link_path);
+  (void) unlink(fsio_unlink_path);
+  (void) rmdir(fsio_testdir_path);
+
   if (fsio_cwd != NULL) {
     free(fsio_cwd);
   }
@@ -56,6 +62,7 @@ static void set_up(void) {
     pr_trace_set_levels("fsio", 1, 20);
     pr_trace_set_levels("fs.statcache", 1, 20);
   }
+
 }
 
 static void tear_down(void) {
@@ -85,7 +92,6 @@ static void tear_down(void) {
     destroy_pool(p);
     p = permanent_pool = NULL;
   }
-
 }
 
 /* Tests */
@@ -1664,6 +1670,34 @@ START_TEST (fsio_sys_futimes_test) {
 }
 END_TEST
 
+START_TEST (fsio_sys_fsync_test) {
+  int res;
+  pr_fh_t *fh;
+
+  res = pr_fsio_fsync(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_fsync(fh);
+#ifdef HAVE_FSYNC
+  fail_unless(res == 0, "fsync of '%s' failed: %s", fsio_test_path,
+    strerror(errno));
+#else
+  fail_unless(res < 0, "fsync of '%s' succeeded unexpectedly", fsio_test_path);
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* HAVE_FSYNC */
+
+  (void) pr_fsio_close(fh);
+  (void) pr_fsio_unlink(fsio_test_path);
+}
+END_TEST
+
 START_TEST (fsio_sys_mkdir_test) {
   int res;
   mode_t mode = 0755;
@@ -2865,6 +2899,270 @@ START_TEST (fs_is_nfs_test) {
 }
 END_TEST
 
+START_TEST (fs_valid_path_test) {
+  int res;
+  const char *path;
+
+  res = pr_fs_valid_path(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+  res = pr_fs_valid_path(path);
+  fail_unless(res == 0, "'%s' is not a valid path: %s", path, strerror(errno));
+
+  path = ":tmp";
+  res = pr_fs_valid_path(path);
+  fail_unless(res < 0, "Failed to handle invalid path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+}
+END_TEST
+
+START_TEST (fsio_smkdir_test) {
+  int res;
+  const char *path;
+  mode_t mode = 0755;
+  uid_t uid = getuid();
+  gid_t gid = getgid();
+
+  res = pr_fsio_smkdir(NULL, NULL, mode, uid, gid);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_smkdir(p, NULL, mode, uid, gid);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_testdir_path;
+  res = pr_fsio_smkdir(p, path, mode, uid, gid);
+  fail_unless(res == 0, "Failed to securely create '%s': %s", fsio_testdir_path,
+    strerror(errno));
+  (void) pr_fsio_rmdir(fsio_testdir_path);
+
+  res = pr_fsio_set_use_mkdtemp(-1);
+  fail_unless(res < 0, "Failed to handle invalid setting");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+#ifdef HAVE_MKDTEMP
+  res = pr_fsio_set_use_mkdtemp(FALSE);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+
+  res = pr_fsio_smkdir(p, path, mode, uid, gid);
+  fail_unless(res == 0, "Failed to securely create '%s': %s", fsio_testdir_path,
+    strerror(errno));
+  (void) pr_fsio_rmdir(fsio_testdir_path);
+
+  res = pr_fsio_set_use_mkdtemp(TRUE);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+#else
+  res = pr_fsio_set_use_mkdtemp(TRUE);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+
+  res = pr_fsio_set_use_mkdtemp(FALSE);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+#endif /* HAVE_MKDTEMP */
+
+  (void) pr_fsio_rmdir(fsio_testdir_path);
+}
+END_TEST
+
+START_TEST (fsio_getpipebuf_test) {
+  char *res;
+  int fd = -1;
+  long bufsz = 0;
+
+  res = pr_fsio_getpipebuf(NULL, fd, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_getpipebuf(p, fd, NULL);
+  fail_unless(res == NULL, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  fd = 0;
+  res = pr_fsio_getpipebuf(p, fd, NULL);
+  fail_unless(res != NULL, "Failed to get pipebuf for fd %d: %s", fd,
+    strerror(errno));
+
+  res = pr_fsio_getpipebuf(p, fd, &bufsz);
+  fail_unless(res != NULL, "Failed to get pipebuf for fd %d: %s", fd,
+    strerror(errno));
+  fail_unless(bufsz > 0, "Expected >0, got %ld", bufsz);
+}
+END_TEST
+
+START_TEST (fsio_gets_test) {
+  char buf[PR_TUNABLE_PATH_MAX], *res, *text;
+  pr_fh_t *fh;
+  int res2;
+
+  res = pr_fsio_gets(NULL, 0, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_gets(buf, 0, NULL);
+  fail_unless(res == NULL, "Failed to handle null file handle");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_gets(buf, 0, fh);
+  fail_unless(res == NULL, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  text = "Hello, World!\n";
+  res2 = pr_fsio_puts(text, fh);
+  fail_if(res2 < 0, "Error writing to '%s': %s", fsio_test_path,
+    strerror(errno));
+  pr_fsio_fsync(fh);
+  pr_fsio_lseek(fh, 0, SEEK_SET);
+
+  memset(buf, '\0', sizeof(buf));
+  res = pr_fsio_gets(buf, sizeof(buf)-1, fh);
+  fail_if(res == NULL, "Failed reading from '%s': %s", fsio_test_path,
+    strerror(errno));
+  fail_unless(strcmp(res, text) == 0, "Expected '%s', got '%s'", text, res);
+
+  (void) pr_fsio_close(fh);
+  (void) pr_fsio_unlink(fsio_test_path);
+}
+END_TEST
+
+START_TEST (fsio_getline_test) {
+  char buf[PR_TUNABLE_PATH_MAX], *res, *text;
+  pr_fh_t *fh;
+  unsigned int lineno = 0;
+  int res2;
+
+  res = pr_fsio_getline(NULL, 0, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_getline(buf, 0, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle file handle");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_getline(buf, 0, fh, NULL);
+  fail_unless(res == NULL, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_getline(buf, sizeof(buf)-1, fh, &lineno);
+  fail_unless(res == NULL, "Failed to read empty '%s' file", fsio_test_path);
+
+  text = "Hello, World!\n";
+  res2 = pr_fsio_puts(text, fh);
+  fail_if(res2 < 0, "Error writing to '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  text = "How\\\n are you?\n";
+  res2 = pr_fsio_puts(text, fh);
+  fail_if(res2 < 0, "Error writing to '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  pr_fsio_fsync(fh);
+  pr_fsio_lseek(fh, 0, SEEK_SET);
+
+  memset(buf, '\0', sizeof(buf));
+  res = pr_fsio_getline(buf, sizeof(buf)-1, fh, &lineno);
+  fail_if(res == NULL, "Failed to read line from '%s': %s", fsio_test_path,
+    strerror(errno));
+  fail_unless(strcmp(res, "Hello, World!\n") == 0,
+    "Expected 'Hello, World!\n', got '%s'", res);
+  fail_unless(lineno == 1, "Expected 1, got %u", lineno);
+
+  memset(buf, '\0', sizeof(buf));
+  res = pr_fsio_getline(buf, sizeof(buf)-1, fh, &lineno);
+  fail_if(res == NULL, "Failed to read line from '%s': %s", fsio_test_path,
+    strerror(errno));
+  fail_unless(strcmp(res, "How are you?\n") == 0,
+    "Expected 'How are you?\n', got '%s'", res);
+  fail_unless(lineno == 3, "Expected 3, got %u", lineno);
+
+  (void) pr_fsio_close(fh);
+  (void) pr_fsio_unlink(fsio_test_path);
+}
+END_TEST
+
+START_TEST (fsio_puts_test) {
+  int res;
+  const char *text;
+  pr_fh_t *fh;
+
+  res = pr_fsio_puts(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  text = "Hello, World!\n";
+  res = pr_fsio_puts(text, NULL);
+  fail_unless(res < 0, "Failed to handle null file handle");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_puts(NULL, fh);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) pr_fsio_close(fh);
+  (void) pr_fsio_unlink(fsio_test_path);
+}
+END_TEST
+
+START_TEST (fsio_blocking_test) {
+  int fd, res;
+  pr_fh_t *fh;
+
+  res = pr_fsio_set_block(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  fd = fh->fh_fd;
+  fh->fh_fd = -1;
+
+  res = pr_fsio_set_block(fh);
+  fail_unless(res < 0, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  fh->fh_fd = fd;
+  res = pr_fsio_set_block(fh);
+  fail_unless(res == 0, "Failed to make '%s' blocking: %s", fsio_test_path,
+    strerror(errno));
+
+  (void) pr_fsio_close(fh);
+  (void) pr_fsio_unlink(fsio_test_path);
+}
+END_TEST
+
 Suite *tests_get_fsio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -2924,6 +3222,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_utimes_test);
   tcase_add_test(testcase, fsio_sys_utimes_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_futimes_test);
+  tcase_add_test(testcase, fsio_sys_fsync_test);
   tcase_add_test(testcase, fsio_sys_mkdir_test);
   tcase_add_test(testcase, fsio_sys_mkdir_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_rmdir_test);
@@ -2975,24 +3274,13 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_getsize2_test);
   tcase_add_test(testcase, fs_fgetsize_test);
   tcase_add_test(testcase, fs_is_nfs_test);
-
-#if 0
-  tcase_add_test(testcase, fs_is_valid_path_test);
-
-  /* XXX With and without use_mkdtemp() */
+  tcase_add_test(testcase, fs_valid_path_test);
   tcase_add_test(testcase, fsio_smkdir_test);
-
   tcase_add_test(testcase, fsio_getpipebuf_test);
   tcase_add_test(testcase, fsio_gets_test);
-
-  /* XXX include the backslash-newline wrapping/handling */
   tcase_add_test(testcase, fsio_getline_test);
-
   tcase_add_test(testcase, fsio_puts_test);
-
-  /* XXX include set_nonblock in this test */
   tcase_add_test(testcase, fsio_blocking_test);
-#endif
 
   suite_add_tcase(suite, testcase);
   return suite;
