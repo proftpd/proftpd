@@ -238,6 +238,7 @@ END_TEST
 START_TEST (event_dump_test) {
   int res;
   const char *event = "foo";
+  module m;
 
   pr_event_dump(NULL);
   fail_unless(event_dumped == 0, "Expected dumped count of %u, got %u",
@@ -247,7 +248,9 @@ START_TEST (event_dump_test) {
   fail_unless(event_dumped == 0, "Expected dumped count of %u, got %u",
     0, event_dumped);
 
-  res = pr_event_register(NULL, event, event_cb, NULL);
+  memset(&m, 0, sizeof(m));
+  m.name = "testsuite";
+  res = pr_event_register(&m, event, event_cb, NULL);
   fail_unless(res == 0, "Failed to register event '%s', callback %p: %s",
     event, event_cb, strerror(errno));
 
