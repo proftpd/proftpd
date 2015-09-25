@@ -1634,7 +1634,8 @@ START_TEST (fsio_sys_utimes_chroot_guard_test) {
 
   res = pr_fsio_utimes("/lib/foo/bar/baz", (struct timeval *) &tvs);
   fail_unless(res < 0, "Set times on /lib/foo/bar/baz unexpectedly");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s %d", ENOENT,
+  fail_unless(errno == ENOENT || errno == EINVAL,
+    "Expected ENOENT (%d) or EINVAL (%d), got %s %d", ENOENT, EINVAL,
     strerror(errno), errno);
 }
 END_TEST

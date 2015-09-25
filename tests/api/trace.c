@@ -260,19 +260,19 @@ START_TEST (trace_msg_test) {
   int res;
   char *channel, msg[16384];
 
-  res = pr_trace_msg(NULL, -1, NULL, NULL);
+  res = pr_trace_msg(NULL, -1, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   channel = "testsuite";
 
-  res = pr_trace_msg(channel, -1, NULL, NULL);
+  res = pr_trace_msg(channel, -1, NULL);
   fail_unless(res < 0, "Failed to handle bad level");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  res = pr_trace_msg(channel, 1, NULL, NULL);
+  res = pr_trace_msg(channel, 1, NULL);
   fail_unless(res < 0, "Failed to handle null message");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
