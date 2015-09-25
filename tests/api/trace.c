@@ -34,10 +34,15 @@ static void set_up(void) {
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
+
+  init_inet();
 }
 
 static void tear_down(void) {
   (void) unlink(trace_path);
+
+  pr_inet_clear();
+  pr_trace_set_options(PR_TRACE_OPT_DEFAULT);
 
   if (p) {
     destroy_pool(p);
@@ -251,6 +256,53 @@ START_TEST (trace_parse_levels_test) {
 }
 END_TEST
 
+START_TEST (trace_msg_test) {
+  int res;
+  char *channel, msg[16384];
+
+  res = pr_trace_msg(NULL, -1, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  channel = "testsuite";
+
+  res = pr_trace_msg(channel, -1, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle bad level");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_trace_msg(channel, 1, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null message");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  pr_trace_set_levels(channel, 1, 10);
+
+  memset(msg, 'A', sizeof(msg)-1);
+  msg[sizeof(msg)-1] = '\0';
+  pr_trace_msg(channel, 5, "%s", msg);
+
+  session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+  session.c->local_addr = session.c->remote_addr =
+    pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+
+  res = pr_trace_set_options(PR_TRACE_OPT_LOG_CONN_IPS|PR_TRACE_OPT_USE_TIMESTAMP_MILLIS);
+  fail_unless(res == 0, "Failed to set options: %s", strerror(errno));
+  pr_trace_msg(channel, 5, "%s", "alef bet vet?");
+
+  res = pr_trace_set_options(0);
+  fail_unless(res == 0, "Failed to set options: %s", strerror(errno));
+  pr_trace_msg(channel, 5, "%s", "alef bet vet?");
+
+  pr_inet_close(p, session.c);
+  session.c = NULL;
+
+  pr_trace_set_levels(channel, 0, 0);
+}
+END_TEST
+
 START_TEST (trace_set_file_test) {
   int res;
 
@@ -296,6 +348,7 @@ Suite *tests_get_trace_suite(void) {
   tcase_add_test(testcase, trace_get_min_level_test);
   tcase_add_test(testcase, trace_get_level_test);
   tcase_add_test(testcase, trace_parse_levels_test);
+  tcase_add_test(testcase, trace_msg_test);
   tcase_add_test(testcase, trace_set_file_test);
 #endif /* PR_USE_TRACE */
 

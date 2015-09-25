@@ -97,8 +97,9 @@ static int trace_write(const char *channel, int level, const char *msg,
   struct tm *tm;
   int use_conn_ips = FALSE;
 
-  if (trace_logfd < 0)
+  if (trace_logfd < 0) {
     return 0;
+  }
 
   memset(buf, '\0', sizeof(buf));
 
@@ -477,6 +478,10 @@ int pr_trace_use_stderr(int use_stderr) {
     /* Avoid a file descriptor leak by closing any existing fd. */
     (void) close(trace_logfd);
     trace_logfd = res;
+
+  } else {
+    (void) close(trace_logfd);
+    trace_logfd = -1;
   }
 
   return 0;

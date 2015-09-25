@@ -262,7 +262,7 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
   pool *c_pool = NULL, *parent_pool = NULL;
   xaset_t **set = NULL;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -626,8 +626,8 @@ cmd_rec *pr_parser_parse_line(pool *p, const char *text, size_t text_len) {
 
 int pr_parser_prepare(pool *p, xaset_t **parsed_servers) {
 
-  if (!p) {
-    if (!parser_pool) {
+  if (p == NULL) {
+    if (parser_pool == NULL) {
       parser_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(parser_pool, "Parser Pool");
     }
@@ -752,8 +752,9 @@ server_rec *pr_parser_server_ctxt_close(void) {
 }
 
 server_rec *pr_parser_server_ctxt_get(void) {
-  if (parser_curr_server)
+  if (parser_curr_server) {
     return *parser_curr_server;
+  }
 
   errno = ENOENT;
   return NULL;
