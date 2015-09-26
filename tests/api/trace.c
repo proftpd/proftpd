@@ -218,6 +218,15 @@ START_TEST (trace_parse_levels_test) {
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
+  /* Overflow the int data type, in order to get a negative number without
+   * using the dash.
+   */
+  level_str = pstrdup(p, "2147483653");
+  res = pr_trace_parse_levels(level_str, &min_level, &max_level);
+  fail_unless(res < 0, "Failed to handle negative levels string");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
   level_str = pstrdup(p, "0");
   res = pr_trace_parse_levels(level_str, &min_level, &max_level);
   fail_unless(res == 0, "Failed to handle single level zero string");
@@ -330,6 +339,12 @@ START_TEST (trace_set_file_test) {
   (void) unlink(trace_path);
 }
 END_TEST
+
+START_TEST (trace_restart_test) {
+  pr_trace_set_levels("testsuite", 1, 10);
+  pr_event_generate("core.restart", NULL);
+}
+END_TEST
 #endif /* PR_USE_TRACE */
 
 Suite *tests_get_trace_suite(void) {
@@ -350,6 +365,7 @@ Suite *tests_get_trace_suite(void) {
   tcase_add_test(testcase, trace_parse_levels_test);
   tcase_add_test(testcase, trace_msg_test);
   tcase_add_test(testcase, trace_set_file_test);
+  tcase_add_test(testcase, trace_restart_test);
 #endif /* PR_USE_TRACE */
 
   suite_add_tcase(suite, testcase);
