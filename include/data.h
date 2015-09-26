@@ -57,18 +57,20 @@ void pr_data_set_timeout(int, int);
 #ifdef HAVE_SENDFILE
 typedef
 
-#if defined(HAVE_AIX_SENDFILE) || defined(HAVE_HPUX_SENDFILE) || \
+# if defined(HAVE_AIX_SENDFILE) || defined(HAVE_HPUX_SENDFILE) || \
     defined(HAVE_LINUX_SENDFILE) || defined(HAVE_SOLARIS_SENDFILE)
 ssize_t
-#elif defined(HAVE_BSD_SENDFILE) || defined(HAVE_MACOSX_SENDFILE)
+# elif defined(HAVE_BSD_SENDFILE) || defined(HAVE_MACOSX_SENDFILE)
 off_t
-#else
-#error "You have an unknown sendfile implementation."
-#endif
+# else
+#  error "You have an unknown sendfile implementation."
+# endif
 
 pr_sendfile_t;
+#else
+typedef ssize_t pr_sendfile_t;
+#endif /* HAVE_SENDFILE */
 
 pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count);
-#endif /* HAVE_SENDFILE */
 
 #endif /* PR_DATA_H */

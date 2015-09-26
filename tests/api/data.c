@@ -28,26 +28,37 @@
 
 static pool *p = NULL;
 
+static const char *data_test_path = "/tmp/prt-data.dat";
+
 static void set_up(void) {
   if (p == NULL) {
     p = session.pool = permanent_pool = make_sub_pool(NULL);
   }
 
+  init_fs();
   init_netio();
   init_dirtree();
+
   pr_response_set_pool(p);
+  (void) pr_fsio_unlink(data_test_path);
+
+  if (session.c != NULL) {
+    pr_inet_close(p, session.c);
+    session.c = NULL;
+  }
 
   session.sf_flags = 0;
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("data", 1, 20);
   }
 }
 
 static void tear_down(void) {
+  pr_unregister_netio(PR_NETIO_STRM_CTRL|PR_NETIO_STRM_DATA);
+  (void) pr_fsio_unlink(data_test_path);
+
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("data", 0, 0);
   }
 
@@ -128,20 +139,124 @@ START_TEST (data_ignore_ascii_test) {
 }
 END_TEST
 
+static int data_close_cb(pr_netio_stream_t *nstrm) {
+  return 0;
+}
+
+static int data_poll_cb(pr_netio_stream_t *nstrm) {
+  /* Always return >0, to indicate that we haven't timed out, AND that there
+   * is a writable fd available.
+   */
+  return 7;
+}
+
+static int data_write_epipe = FALSE;
+
+static int data_write_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
+  if (data_write_epipe) {
+    data_write_epipe = FALSE;
+    errno = EPIPE;
+    return -1;
+  }
+
+  return buflen;
+}
+
+static int data_open_outstream(conn_t *conn) {
+  int fd = 2, res;
+  pr_netio_t *netio;
+  pr_netio_stream_t *nstrm;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->close = data_close_cb;
+  netio->poll = data_poll_cb;
+  netio->write = data_write_cb;
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_WR);
+  if (nstrm == NULL) {
+    return -1;
+  }
+
+  conn->outstrm = nstrm;
+  return 0;
+}
+
 START_TEST (data_sendfile_test) {
   int fd = -1, res;
+  off_t offset = 0;
+  pr_fh_t *fh;
+  const char *text;
+
+  res = (int) pr_data_sendfile(fd, NULL, 0);
+  if (res < 0 &&
+      errno == ENOSYS) {
+    return;
+  }
+
+  res = pr_data_sendfile(fd, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null offset");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_data_sendfile(fd, &offset, 0);
+  fail_unless(res < 0, "Failed to handle zero count");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   session.xfer.direction = PR_NETIO_IO_RD;
-  res = pr_data_sendfile(fd, NULL, 1);
+  res = pr_data_sendfile(fd, &offset, 1);
   fail_unless(res < 0, "Failed to handle invalid transfer direction");
   fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   session.xfer.direction = PR_NETIO_IO_WR;
-  res = pr_data_sendfile(fd, NULL, 1);
+  res = pr_data_sendfile(fd, &offset, 1);
   fail_unless(res < 0, "Failed to handle lack of data connection");
   fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
+
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = data_open_outstream(session.d);
+  fail_unless(res == 0, "Failed to open outstream: %s", strerror(errno));
+
+  mark_point();
+  res = pr_data_sendfile(fd, &offset, 1);
+  fail_unless(res < 0, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(data_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", data_test_path,
+    strerror(errno));
+
+  text = "Hello, World!\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_unless(res >= 0, "Failed to write to '%s': %s", data_test_path,
+    strerror(errno));
+  res = pr_fsio_close(fh);
+  fail_unless(res == 0, "Failed to close '%s': %s", data_test_path,
+    strerror(errno));
+
+  fd = open(data_test_path, O_RDONLY);
+  fail_unless(fd >= 0, "Failed to open '%s': %s", data_test_path,
+    strerror(errno));
+
+  mark_point();
+  res = pr_data_sendfile(fd, &offset, strlen(text));
+  fail_unless(res < 0, "Failed to handle bad socket");
+  fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
+    ENOTSOCK, strerror(errno), errno);
+
+  (void) close(fd);
+  (void) pr_netio_close(session.d->outstrm);
+  session.d->outstrm = NULL;
+  (void) pr_inet_close(p, session.d);
+  session.d = NULL;
+
+  pr_unregister_netio(PR_NETIO_STRM_DATA);
 }
 END_TEST
 

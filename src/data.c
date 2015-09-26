@@ -1408,6 +1408,12 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   int rc;
 #endif /* HAVE_AIX_SENDFILE */
 
+  if (offset == NULL ||
+      count == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     errno = EPERM;
     return -1;
@@ -1419,7 +1425,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   }
 
   flags = fcntl(PR_NETIO_FD(session.d->outstrm), F_GETFL);
-  if (flags == -1) {
+  if (flags < 0) {
     return -1;
   }
 
@@ -1661,5 +1667,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   total += len;
 
   return total;
+}
+#else
+pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
+  errno = ENOSYS;
+  return -1;
 }
 #endif /* HAVE_SENDFILE */
