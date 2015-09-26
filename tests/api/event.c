@@ -106,8 +106,8 @@ START_TEST (event_register_test) {
   fail_unless(res == 0, "Failed to register event with module: %s",
     strerror(errno));
 
-  pr_event_unregister(&m, event, event_cb);
   pr_event_unregister(&m, event, event_cb2);
+  pr_event_unregister(&m, event, event_cb);
   pr_event_unregister(&m, NULL, NULL);
 }
 END_TEST

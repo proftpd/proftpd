@@ -79,7 +79,6 @@ static void set_up(void) {
   xfer_bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_RD);
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("netio", 1, 20);
   }
 }
@@ -93,7 +92,6 @@ static void tear_down(void) {
   test_cleanup();
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("netio", 0, 0);
   }
 }
@@ -1321,8 +1319,129 @@ static int netio_poll_cb(pr_netio_stream_t *nstrm) {
   return 7;
 }
 
+static int netio_read_eof = FALSE;
+static int netio_read_epipe = FALSE;
+
+static int netio_read_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
+  const char *text;
+  int res;
+
+  if (netio_read_eof) {
+    netio_read_eof = FALSE;
+    return 0;
+  }
+
+  if (netio_read_epipe) {
+    netio_read_epipe = FALSE;
+    errno = EPIPE;
+    return -1;
+  }
+
+  text = "Hello, World!\r\n";
+  sstrncpy(buf, text, buflen);
+
+  res = strlen(text);
+  return res;
+}
+
+static int netio_write_epipe = FALSE;
+
 static int netio_write_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
+  if (netio_write_epipe) {
+    netio_write_epipe = FALSE;
+    errno = EPIPE;
+    return -1;
+  }
+
   return buflen;
+}
+
+static int netio_read_from_stream(int strm_type) {
+  int fd = 2, res;
+  char buf[1024], *expected_text;
+  size_t expected_sz;
+  pr_netio_stream_t *nstrm;
+
+  res = pr_netio_read(NULL, NULL, 0, 0);
+  if (res == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  nstrm = pr_netio_open(p, strm_type, fd, PR_NETIO_IO_RD);
+  if (nstrm == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg("netio", 1, "error opening custom netio stream: %s",
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  res = pr_netio_read(nstrm, NULL, 0, 0);
+  if (res == 0) {
+    pr_netio_close(nstrm);
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_netio_read(nstrm, buf, 0, 0);
+  if (res == 0) {
+    pr_netio_close(nstrm);
+    errno = EINVAL;
+    return -1;
+  }
+
+  expected_text = "Hello, World!\r\n";
+  expected_sz = strlen(expected_text);
+
+  memset(buf, '\0', sizeof(buf));
+  res = pr_netio_read(nstrm, buf, sizeof(buf)-1, 1);
+
+  if (res != (int) expected_sz) {
+    pr_trace_msg("netio", 1, "Expected %lu bytes, got %d",
+      (unsigned long) expected_sz, res);
+    pr_netio_close(nstrm);
+
+    if (res < 0) {
+      return -1;
+    }
+
+    errno = EIO;
+    return -1;
+  }
+
+  if (strcmp(buf, expected_text) != 0) {
+    pr_trace_msg("netio", 1, "Expected '%s', got '%s'", expected_text, buf);
+    pr_netio_close(nstrm);
+
+    errno = EIO;
+    return -1;
+  }
+
+  netio_read_eof = TRUE;
+  res = pr_netio_read(nstrm, buf, sizeof(buf)-1, 1);
+  if (res > 0) {
+    pr_trace_msg("netio", 1, "Expected EOF (0), got %d", res);
+    pr_netio_close(nstrm);
+
+    errno = EIO;
+    return -1;
+  }
+
+  netio_read_epipe = TRUE;
+  res = pr_netio_read(nstrm, buf, sizeof(buf)-1, sizeof(buf)-1);
+  if (res >= 0) {
+    pr_trace_msg("netio", 1, "Expected EPIPE (-1), got %d", res);
+    pr_netio_close(nstrm);
+
+    errno = EIO;
+    return -1;
+  }
+
+  mark_point();
+  pr_netio_close(nstrm);
+  return 0;
 }
 
 static int netio_write_to_stream(int strm_type, int use_async) {
@@ -1330,6 +1449,12 @@ static int netio_write_to_stream(int strm_type, int use_async) {
   char *buf;
   size_t buflen;
   pr_netio_stream_t *nstrm;
+
+  res = pr_netio_write(NULL, NULL, 0);
+  if (res == 0) {
+    errno = EINVAL;
+    return -1;
+  }
 
   nstrm = pr_netio_open(p, strm_type, fd, PR_NETIO_IO_WR);
   if (nstrm == NULL) {
@@ -1341,8 +1466,22 @@ static int netio_write_to_stream(int strm_type, int use_async) {
     return -1;
   }
 
+  res = pr_netio_write(nstrm, NULL, 0);
+  if (res == 0) {
+    pr_netio_close(nstrm);
+    errno = EINVAL;
+    return -1;
+  }
+
   buf = "Hello, World!\n";
   buflen = strlen(buf);
+
+  res = pr_netio_write(nstrm, buf, 0);
+  if (res == 0) {
+    pr_netio_close(nstrm);
+    errno = EINVAL;
+    return -1;
+  }
 
   if (use_async) {
     res = pr_netio_write_async(nstrm, buf, buflen);
@@ -1364,10 +1503,130 @@ static int netio_write_to_stream(int strm_type, int use_async) {
     return -1;
   }
 
+  netio_write_epipe = TRUE;
+  res = pr_netio_write(nstrm, buf, buflen);
+  if (res >= 0) {
+    pr_trace_msg("netio", 1, "Expected EPIPE (-1), got %d", res);
+    pr_netio_close(nstrm);
+    errno = EIO;
+    return -1;
+  }
+
   mark_point();
   pr_netio_close(nstrm);
   return 0;
 }
+
+START_TEST (netio_read_test) {
+  int res;
+  pr_netio_t *netio, *netio2;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = netio_poll_cb;
+  netio->read = netio_read_cb;
+
+  /* Write to control stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  netio2 = pr_get_netio(PR_NETIO_STRM_CTRL);
+  fail_unless(netio2 != NULL, "Failed to get custom ctrl NetIO: %s",
+    strerror(errno));
+  fail_unless(netio2 == netio, "Expected custom ctrl NetIO %p, got %p",
+    netio, netio2);
+
+  res = netio_read_from_stream(PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to read from custom ctrl NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  /* Read from data stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+    strerror(errno));
+
+  netio2 = pr_get_netio(PR_NETIO_STRM_DATA);
+  fail_unless(netio2 != NULL, "Failed to get custom data NetIO: %s",
+    strerror(errno));
+  fail_unless(netio2 == netio, "Expected custom data NetIO %p, got %p",
+    netio, netio2);
+
+  res = netio_read_from_stream(PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to read from custom data NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_DATA);
+
+  /* Read from other stream */
+  res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
+  fail_unless(res == 0, "Failed to register custom other NetIO: %s",
+    strerror(errno));
+
+  netio2 = pr_get_netio(PR_NETIO_STRM_OTHR);
+  fail_unless(netio2 != NULL, "Failed to get custom othr NetIO: %s",
+    strerror(errno));
+  fail_unless(netio2 == netio, "Expected custom othr NetIO %p, got %p",
+    netio, netio2);
+
+  res = netio_read_from_stream(PR_NETIO_STRM_OTHR);
+  fail_unless(res == 0, "Failed to read from custom other NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_OTHR);
+}
+END_TEST
+
+START_TEST (netio_gets_test) {
+  int fd = 2, res;
+  char *buf, *expected, *text;
+  size_t buflen;
+  pr_netio_t *netio;
+  pr_netio_stream_t *nstrm;
+
+  text = pr_netio_gets(NULL, 0, NULL);
+  fail_unless(text == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = netio_poll_cb;
+  netio->read = netio_read_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(nstrm != NULL, "Failed to open stream: %s", strerror(errno));
+
+  text = pr_netio_gets(NULL, 0, nstrm);
+  fail_unless(text == NULL, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  buflen = 1024;
+  buf = pcalloc(p, buflen);
+
+  text = pr_netio_gets(buf, 0, nstrm);
+  fail_unless(text == NULL, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  expected = "Hello, World!\r\n";
+  text = pr_netio_gets(buf, buflen-1, nstrm);
+  fail_unless(text != NULL, "Failed to get text: %s", strerror(errno));
+  fail_unless(strcmp(text, expected) == 0, "Expected '%s', got '%s'",
+    expected, text);
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+}
+END_TEST
 
 START_TEST (netio_write_test) {
   int res;
@@ -1762,7 +2021,6 @@ Suite *tests_get_netio_suite(void) {
   suite = suite_create("netio");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, netio_open_test);
@@ -1771,8 +2029,6 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_lingering_close_test);
   tcase_add_test(testcase, netio_reopen_test);
   tcase_add_test(testcase, netio_buffer_alloc_test);
-
-  /* XXX pr_netio_read, pr_netio_gets tests! */
 
   tcase_add_test(testcase, netio_telnet_gets_args_test);
   tcase_add_test(testcase, netio_telnet_gets_single_line_test);
@@ -1800,6 +2056,8 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_telnet_gets2_single_line_crnul_test);
   tcase_add_test(testcase, netio_telnet_gets2_single_line_lf_test);
 
+  tcase_add_test(testcase, netio_read_test);
+  tcase_add_test(testcase, netio_gets_test);
   tcase_add_test(testcase, netio_write_test);
   tcase_add_test(testcase, netio_write_async_test);
   tcase_add_test(testcase, netio_printf_test);
@@ -1810,6 +2068,5 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_shutdown_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

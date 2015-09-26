@@ -988,7 +988,9 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   pool *sub_pool;
 
   /* Sanity check */
-  if (!nstrm) {
+  if (nstrm == NULL ||
+      buf == NULL ||
+      buflen == 0) {
     errno = EINVAL;
     return -1;
   }
@@ -1265,7 +1267,9 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
   const char *nstrm_mode;
 
   /* Sanity check. */
-  if (nstrm == NULL) {
+  if (nstrm == NULL ||
+      buf == NULL ||
+      buflen == 0) {
     errno = EINVAL;
     return -1;
   }
@@ -1471,7 +1475,9 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
   int toread;
   pr_buffer_t *pbuf = NULL;
 
-  if (buflen == 0) {
+  if (nstrm == NULL ||
+      buf == NULL ||
+      buflen == 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -1498,9 +1504,9 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
         if (bp != buf) {
           *bp = '\0';
           return buf;
+        }
 
-        } else
-          return NULL;
+        return NULL;
       }
 
       pbuf->remaining = pbuf->buflen - toread;
