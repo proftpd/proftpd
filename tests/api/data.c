@@ -163,7 +163,7 @@ static int data_write_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 }
 
 static int data_open_outstream(conn_t *conn) {
-  int fd = 2, res;
+  int fd = 2;
   pr_netio_t *netio;
   pr_netio_stream_t *nstrm;
 
@@ -246,9 +246,10 @@ START_TEST (data_sendfile_test) {
 
   mark_point();
   res = pr_data_sendfile(fd, &offset, strlen(text));
-  fail_unless(res < 0, "Failed to handle bad socket");
-  fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
-    ENOTSOCK, strerror(errno), errno);
+  if (res < 0) {
+    fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
+      ENOTSOCK, strerror(errno), errno);
+  }
 
   (void) close(fd);
   (void) pr_netio_close(session.d->outstrm);
