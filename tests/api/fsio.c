@@ -2029,7 +2029,7 @@ START_TEST (fs_create_fs_test) {
 END_TEST
 
 START_TEST (fs_insert_fs_test) {
-  pr_fs_t *fs;
+  pr_fs_t *fs, *fs2;
   int res;
 
   res = pr_insert_fs(NULL, NULL);
@@ -2053,7 +2053,14 @@ START_TEST (fs_insert_fs_test) {
   fail_unless(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
     strerror(errno), errno);
 
+  fs2 = pr_create_fs(p, "testsuite2");
+  fail_unless(fs2 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs2, "/testsuite2");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
   (void) pr_remove_fs("/testsuite");
+  (void) pr_remove_fs("/testsuite2");
 }
 END_TEST
 
