@@ -381,15 +381,7 @@ int pr_trace_set_file(const char *path) {
 int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
 
   if (channel == NULL) {
-    void *v;
-
     if (trace_tab == NULL) {
-      errno = EINVAL;
-      return -1;
-    }
-
-    v = pr_table_remove(trace_tab, channel, NULL);
-    if (v == NULL) {
       errno = EINVAL;
       return -1;
     }
