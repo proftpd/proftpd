@@ -335,9 +335,9 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
 }
 
 int pr_trace_set_file(const char *path) {
-  int res;
+  int res, xerrno;
 
-  if (!path) {
+  if (path == NULL) {
     if (trace_logfd < 0) {
       errno = EINVAL;
       return -1;
@@ -351,13 +351,15 @@ int pr_trace_set_file(const char *path) {
   pr_signals_block();
   PRIVS_ROOT
   res = pr_log_openfile(path, &trace_logfd, 0660);
+  xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
   if (res < 0) {
     if (res == -1) {
       pr_log_debug(DEBUG1, "unable to open TraceLog '%s': %s", path,
-        strerror(errno));
+        strerror(xerrno));
+      errno = xerrno;
 
     } else if (res == PR_LOG_WRITABLE_DIR) {
       pr_log_debug(DEBUG1,

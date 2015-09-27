@@ -239,6 +239,33 @@ START_TEST (trace_parse_levels_test) {
   fail_unless(min_level == 1, "Expected min level 1, got %d", max_level);
   fail_unless(max_level == 7, "Expected max level 7, got %d", max_level);
 
+  level_str = pstrdup(p, "abc-def");
+  res = pr_trace_parse_levels(level_str, &min_level, &max_level);
+  fail_unless(res < 0, "Failed to handle invalid levels string");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  level_str = pstrdup(p, "1-def");
+  res = pr_trace_parse_levels(level_str, &min_level, &max_level);
+  fail_unless(res < 0, "Failed to handle invalid levels string");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  /* Overflow the int data type, in order to get a negative number without
+   * using the dash.
+   */
+  level_str = pstrdup(p, "2147483653-10");
+  res = pr_trace_parse_levels(level_str, &min_level, &max_level);
+  fail_unless(res < 0, "Failed to handle negative levels string");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  level_str = pstrdup(p, "10-2147483653");
+  res = pr_trace_parse_levels(level_str, &min_level, &max_level);
+  fail_unless(res < 0, "Failed to handle negative levels string");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
   level_str = pstrdup(p, "-7-5");
   res = pr_trace_parse_levels(level_str, &min_level, &max_level);
   fail_unless(res < 0, "Failed to handle negative levels string");
@@ -314,9 +341,23 @@ END_TEST
 
 START_TEST (trace_set_file_test) {
   int res;
+  const char *path;
 
-  res = pr_trace_set_file(trace_path);
-  fail_unless(res == 0, "Failed to set trace file '%s': %s", trace_path,
+  path = "/";
+  res = pr_trace_set_file(path);
+  fail_unless(res < 0, "Failed to handle path '%s'", path);
+  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = pr_trace_set_file(path);
+  fail_unless(res < 0, "Failed to handle path '%s'", path);
+  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  path = trace_path;
+  res = pr_trace_set_file(path);
+  fail_unless(res == 0, "Failed to set trace file '%s': %s", path,
     strerror(errno));
   pr_trace_set_levels("foo", 1, 20);
 

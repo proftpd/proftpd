@@ -149,6 +149,28 @@ void pr_log_pri(int prio, const char *fmt, ...) {
 }
 
 int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
+  int res;
+  struct stat st;
+
+  if (log_file == NULL ||
+      log_fd == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = stat(log_file, &st);
+  if (res < 0) {
+    if (errno != ENOENT) {
+      return -1;
+    }
+
+  } else {
+    if (S_ISDIR(st.st_mode)) {
+      errno = EISDIR;
+      return -1;
+    }
+  }
+
   *log_fd = STDERR_FILENO;
   return 0;
 }
