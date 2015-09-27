@@ -970,6 +970,11 @@ START_TEST (fsio_sys_access_dir_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
     errno);
 
+  res = pr_fsio_access("/baz/bar/foo", X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   /* Make the directory to check; we want it to have perms 771.*/
   perms = (mode_t) 0771;
   res = mkdir(fsio_testdir_path, perms);
@@ -2465,6 +2470,11 @@ START_TEST (fs_copy_file_test) {
   res = pr_fs_copy_file(src_path, "/tmp");
   fail_unless(res < 0, "Failed to handle directory destination path");
   fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  res = pr_fs_copy_file(src_path, "/tmp/foo/bar/baz/quxx/quzz.dat");
+  fail_unless(res < 0, "Failed to handle nonexistent destination path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   mark_point();
