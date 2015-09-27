@@ -36,14 +36,12 @@ static void set_up(void) {
   init_regexp();
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("regexp", 1, 20);
   }
 }
 
 static void tear_down(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("regexp", 0, 0);
   }
 
@@ -90,12 +88,25 @@ START_TEST (regexp_compile_test) {
   res = pr_regexp_compile(pre, pattern, 0); 
   fail_unless(res != 0, "Successfully compiled pattern unexpectedly"); 
 
+  errstrlen = pr_regexp_error(1, NULL, NULL, 0);
+  fail_unless(errstrlen == 0, "Failed to handle null arguments");
+
+  errstrlen = pr_regexp_error(1, pre, NULL, 0);
+  fail_unless(errstrlen == 0, "Failed to handle null buffer");
+
+  errstrlen = pr_regexp_error(1, pre, errstr, 0);
+  fail_unless(errstrlen == 0, "Failed to handle zero buffer length");
+
   errstrlen = pr_regexp_error(res, pre, errstr, sizeof(errstr));
   fail_unless(errstrlen > 0, "Failed to get regex compilation error string");
 
   pattern = "foo";
   res = pr_regexp_compile(pre, pattern, 0);
-  fail_unless(res == 0, "Failed to compile regex pattern");
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
+
+  pattern = "foo";
+  res = pr_regexp_compile(pre, pattern, REG_ICASE);
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
 
   pr_regexp_free(NULL, pre);
 }
@@ -104,7 +115,8 @@ END_TEST
 START_TEST (regexp_compile_posix_test) {
   pr_regex_t *pre = NULL;
   int res;
-  char *pattern;
+  char errstr[256], *pattern;
+  size_t errstrlen;
 
   res = pr_regexp_compile_posix(NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -122,9 +134,16 @@ START_TEST (regexp_compile_posix_test) {
   res = pr_regexp_compile_posix(pre, pattern, 0);
   fail_unless(res != 0, "Successfully compiled pattern unexpectedly");
 
+  errstrlen = pr_regexp_error(res, pre, errstr, sizeof(errstr));
+  fail_unless(errstrlen > 0, "Failed to get regex compilation error string");
+
   pattern = "foo";
   res = pr_regexp_compile_posix(pre, pattern, 0);
-  fail_unless(res == 0, "Failed to compile regex pattern");
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
+
+  pattern = "foo";
+  res = pr_regexp_compile_posix(pre, pattern, REG_ICASE);
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
 
   pr_regexp_free(NULL, pre);
 }
@@ -142,6 +161,12 @@ START_TEST (regexp_get_pattern_test) {
     strerror(errno), errno);
 
   pre = pr_regexp_alloc(NULL);
+
+  str = pr_regexp_get_pattern(pre);
+  fail_unless(str == NULL, "Failed to handle null pattern");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   pattern = "^foo";
   res = pr_regexp_compile(pre, pattern, 0);
   fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
@@ -177,7 +202,7 @@ START_TEST (regexp_exec_test) {
 
   pattern = "^foo";
   res = pr_regexp_compile(pre, pattern, 0);
-  fail_unless(res == 0, "Failed to compile regex pattern");
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
 
   res = pr_regexp_exec(pre, NULL, 0, NULL, 0, 0, 0);
   fail_unless(res != 0, "Failed to handle null string");
@@ -191,14 +216,48 @@ START_TEST (regexp_exec_test) {
   fail_unless(res == 0, "Failed to match string");
 
   pr_regexp_free(NULL, pre);
+
+  pre = pr_regexp_alloc(NULL);
+
+  pattern = "^foo";
+  res = pr_regexp_compile_posix(pre, pattern, REG_ICASE);
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
+
+  res = pr_regexp_exec(pre, NULL, 0, NULL, 0, 0, 0);
+  fail_unless(res != 0, "Failed to handle null string");
+
+  str = "BAR";
+  res = pr_regexp_exec(pre, str, 0, NULL, 0, 0, 0);
+  fail_unless(res != 0, "Matched string unexpectedly");
+
+  str = "FOOBAR";
+  res = pr_regexp_exec(pre, str, 0, NULL, 0, 0, 0);
+  fail_unless(res == 0, "Failed to match string");
+
+  pr_regexp_free(NULL, pre);
 }
 END_TEST
 
 START_TEST (regexp_cleanup_test) {
-  pr_regex_t *pre, *pre2;
+  pr_regex_t *pre, *pre2, *pre3;
+  int res;
+  char *pattern;
+
+  pattern = "^foo";
 
   pre = pr_regexp_alloc(NULL);
+  res = pr_regexp_compile(pre, pattern, 0);
+  fail_unless(res == 0, "Failed to compile regexp pattern '%s'", pattern);
+
+  pattern = "bar$";
   pre2 = pr_regexp_alloc(NULL);
+  res = pr_regexp_compile(pre2, pattern, 0);
+  fail_unless(res == 0, "Failed to compile regexp pattern '%s'", pattern);
+
+  pattern = "&baz$";
+  pre3 = pr_regexp_alloc(NULL);
+  res = pr_regexp_compile_posix(pre3, pattern, 0);
+  fail_unless(res == 0, "Failed to compile POSIX regexp pattern '%s'", pattern);
 
   mark_point();
   pr_event_generate("core.restart", NULL);

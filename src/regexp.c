@@ -306,11 +306,6 @@ const char *pr_regexp_get_pattern(const pr_regex_t *pre) {
 static int regexp_exec_pcre(pr_regex_t *pre, const char *str,
     size_t nmatches, regmatch_t *matches, int flags, unsigned long match_limit,
     unsigned long match_limit_recursion) {
-  if (pre == NULL ||
-      str == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
 
   if (pre->pcre != NULL) {
     int res;
