@@ -22,8 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Configuration API tests
- */
+/* Configuration API tests */
 
 #include "tests.h"
 
@@ -38,14 +37,12 @@ static void set_up(void) {
   pr_parser_prepare(p, NULL);
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("config", 1, 20);
   }
 }
 
 static void tear_down(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("config", 0, 0);
   }
 
@@ -180,7 +177,7 @@ START_TEST (add_config_param_str_test) {
 END_TEST
 
 START_TEST (add_config_set_test) {
-  int res;
+  int flags = PR_CONFIG_FL_INSERT_HEAD, res;
   xaset_t *set = NULL;
   const char *name = NULL;
   config_rec *c = NULL;
@@ -208,6 +205,24 @@ START_TEST (add_config_set_test) {
   name = "bar";
   res = remove_config(set, name, FALSE);
   fail_unless(res == 0, "Removed config '%s' unexpectedly", name,
+    strerror(errno));
+
+  c = pr_config_add_set(&set, name, flags);
+  fail_unless(c != NULL, "Failed to add config '%s' to set: %s", name,
+    strerror(errno));
+
+  /* XXX Note that calling this with recurse=TRUE yields a test timeout,
+   * suggestive of an infinite loop that needs to be tracked down and
+   * fixed.
+   *
+   * I suspect it's in find_config_next2() bit of code near the comment:
+   *
+   *  Restart the search at the previous level if required
+   *
+   * Given the "shallowness" of this particular set.
+   */
+  res = remove_config(set, name, FALSE);
+  fail_unless(res > 0, "Failed to remove config '%s': %s", name,
     strerror(errno));
 }
 END_TEST
@@ -478,6 +493,22 @@ START_TEST (config_set_get_id_test) {
 }
 END_TEST
 
+START_TEST (config_merge_down_test) {
+  xaset_t *set;
+
+  mark_point();
+  pr_config_merge_down(NULL, FALSE);
+
+  mark_point();
+  set = xaset_create(p, NULL);
+  pr_config_merge_down(set, FALSE);
+
+  /* XXX Add a config rec to this set, merge it down */
+  /* XXX Add a config rec with CF_MERGEDOWN to this set, merge it down */
+  /* XXX Add a config rec with CF_MERGEDOWN_MULTI to this set, merge it down */
+}
+END_TEST
+
 Suite *tests_get_config_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -485,7 +516,6 @@ Suite *tests_get_config_suite(void) {
   suite = suite_create("config");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, add_config_test);
@@ -497,12 +527,8 @@ Suite *tests_get_config_suite(void) {
   tcase_add_test(testcase, find_config2_test);
   tcase_add_test(testcase, get_param_ptr_test);
   tcase_add_test(testcase, config_set_get_id_test);
-
-#if 0
   tcase_add_test(testcase, config_merge_down_test);
-#endif
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }
