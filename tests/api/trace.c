@@ -74,6 +74,12 @@ START_TEST (trace_set_levels_test) {
   res = pr_trace_set_levels(channel, min_level, max_level);
   fail_unless(res == 0, "Failed to handle valid channel and levels: %s",
     strerror(errno));
+
+  res = pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, 1, 5);
+  fail_unless(res == 0, "Failed to set default channels: %s", strerror(errno));
+
+  res = pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, 0, 0);
+  fail_unless(res == 0, "Failed to set default channels: %s", strerror(errno));
 }
 END_TEST
 
