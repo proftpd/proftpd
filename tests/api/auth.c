@@ -32,8 +32,11 @@
 #define PR_TEST_AUTH_NOGROUP		"testsuite_nogroup"
 #define PR_TEST_AUTH_UID		500
 #define PR_TEST_AUTH_UID_STR		"500"
+#define PR_TEST_AUTH_NOUID		666
+#define PR_TEST_AUTH_NOUID2		667
 #define PR_TEST_AUTH_GID		500
 #define PR_TEST_AUTH_GID_STR		"500"
+#define PR_TEST_AUTH_NOGID		666
 #define PR_TEST_AUTH_HOME		"/tmp"
 #define PR_TEST_AUTH_SHELL		"/bin/bash"
 #define PR_TEST_AUTH_PASSWD		"password"
@@ -131,11 +134,23 @@ MODRET handle_getpwuid(cmd_rec *cmd) {
   uid = *((uid_t *) cmd->argv[0]);
   getpwuid_count++;
 
-  if (uid != PR_TEST_AUTH_UID) {
-    return PR_DECLINED(cmd);
+  if (uid == PR_TEST_AUTH_UID) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_pwd);
   }
-  
-  return mod_create_data(cmd, &test_pwd);
+
+  if (uid == PR_TEST_AUTH_NOUID) {
+    test_pwd.pw_uid = (uid_t) -1;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  if (uid == PR_TEST_AUTH_NOUID2) {
+    test_pwd.pw_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET decline_name2uid(cmd_rec *cmd) {
@@ -214,11 +229,17 @@ MODRET handle_getgrgid(cmd_rec *cmd) {
   gid = *((gid_t *) cmd->argv[0]);
   getgrgid_count++;
 
-  if (gid != PR_TEST_AUTH_GID) {
-    return PR_DECLINED(cmd);
+  if (gid == PR_TEST_AUTH_GID) {
+    test_grp.gr_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_grp);
   }
-  
-  return mod_create_data(cmd, &test_grp);
+
+  if (gid == PR_TEST_AUTH_NOGID) {
+    test_grp.gr_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_grp);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET decline_name2gid(cmd_rec *cmd) {
@@ -588,13 +609,24 @@ START_TEST (auth_getpwuid_test) {
   fail_unless(getpwuid_count == 1, "Expected call count 1, got %u",
     getpwuid_count);
 
+  pw = pr_auth_getpwuid(p, PR_TEST_AUTH_NOUID);
+  fail_unless(pw == NULL, "Found pwuid for NOUID unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  pw = pr_auth_getpwuid(p, PR_TEST_AUTH_NOUID2);
+  fail_unless(pw == NULL, "Found pwuid for NOUID2 unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   mark_point();
 
   pw = pr_auth_getpwuid(p, 5);
   fail_unless(pw == NULL, "Found pwuid for UID 5 unexpectedly");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
-    errno, strerror(errno));
-  fail_unless(getpwuid_count == 2, "Expected call count 2, got %u",
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  fail_unless(getpwuid_count == 4, "Expected call count 4, got %u",
     getpwuid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
@@ -877,13 +909,19 @@ START_TEST (auth_getgrgid_test) {
   fail_unless(getgrgid_count == 1, "Expected call count 1, got %u",
     getgrgid_count);
 
+  gr = pr_auth_getgrgid(p, PR_TEST_AUTH_NOGID);
+  fail_unless(gr == NULL, "Found grgid for NOGID unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   mark_point();
 
   gr = pr_auth_getgrgid(p, 5);
   fail_unless(gr == NULL, "Found grgid for GID 5 unexpectedly");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
-    errno, strerror(errno));
-  fail_unless(getgrgid_count == 2, "Expected call count 2, got %u",
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  fail_unless(getgrgid_count == 3, "Expected call count 3, got %u",
     getgrgid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);

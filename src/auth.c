@@ -783,6 +783,7 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
     pr_log_pri(PR_LOG_WARNING, "error: UID of -1 not allowed");
+    errno = ENOENT;
     return NULL;
   }
 
