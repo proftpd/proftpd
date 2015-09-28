@@ -758,18 +758,6 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   struct fs_statcache *sc = NULL;
   time_t now;
 
-  /* Sanity checks */
-  if (fs == NULL ||
-      st == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  if (path == NULL) {
-    errno = ENOENT;
-    return -1;
-  }
-
   now = time(NULL);
   memset(cleaned_path, '\0', sizeof(cleaned_path));
   memset(pathbuf, '\0', sizeof(pathbuf));

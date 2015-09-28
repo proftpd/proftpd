@@ -998,6 +998,7 @@ START_TEST (fsio_sys_access_dir_test) {
   uid_t uid = getuid();
   gid_t gid = getgid();
   mode_t perms;
+  array_header *suppl_gids;
 
   res = pr_fsio_access(NULL, X_OK, uid, gid, NULL);
   fail_unless(res < 0, "Failed to handle null path");
@@ -1041,6 +1042,14 @@ START_TEST (fsio_sys_access_dir_test) {
 
   pr_fs_clear_cache2(fsio_testdir_path);
   res = pr_fsio_access(fsio_testdir_path, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to check for execute access on directory: %s",
+    strerror(errno));
+
+  suppl_gids = make_array(p, 1, sizeof(gid_t));
+  *((gid_t *) push_array(suppl_gids)) = gid;
+
+  pr_fs_clear_cache2(fsio_testdir_path);
+  res = pr_fsio_access(fsio_testdir_path, X_OK, uid, 1000, suppl_gids);
   fail_unless(res == 0, "Failed to check for execute access on directory: %s",
     strerror(errno));
 
@@ -2108,8 +2117,18 @@ START_TEST (fs_insert_fs_test) {
   res = pr_insert_fs(fs2, "/testsuite2");
   fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
 
+  fs2 = pr_create_fs(p, "testsuite3");
+  fail_unless(fs2 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  /* Push this FS on top of the previously registered path; FSes can be
+   * stacked like this.
+   */
+  res = pr_insert_fs(fs2, "/testsuite2");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
   (void) pr_remove_fs("/testsuite");
   (void) pr_remove_fs("/testsuite2");
+  (void) pr_remove_fs("/testsuite3");
 }
 END_TEST
 
@@ -2184,6 +2203,27 @@ START_TEST (fs_unmount_fs_test) {
   fail_unless(fs2 != NULL, "Failed to unmount '/testsuite': %s",
     strerror(errno));
 
+  fs2 = pr_create_fs(p, "testsuite");
+  fail_unless(fs2 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs2, "/testsuite");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
+  fs2 = pr_create_fs(p, "testsuite2");
+  fail_unless(fs2 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs2, "/testsuite");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
+  fs2 = pr_unmount_fs("/testsuite", NULL);
+  fail_unless(fs2 != NULL, "Failed to unmount '/testsuite': %s",
+    strerror(errno));
+
+  fs2 = pr_unmount_fs("/testsuite", NULL);
+  fail_unless(fs2 != NULL, "Failed to unmount '/testsuite': %s",
+    strerror(errno));
+
+  (void) pr_remove_fs("/testsuite");
   (void) pr_remove_fs("/testsuite");
 }
 END_TEST
@@ -2303,6 +2343,10 @@ START_TEST (fs_dump_fs_test) {
 
   root_fs = pr_get_fs("/", NULL);
   fs = pr_register_fs(p, "testsuite", "/testsuite");
+
+  mark_point();
+  pr_fs_dump(NULL);
+
   fs->stat = root_fs->stat;
   fs->fstat = root_fs->fstat;
   fs->lstat = root_fs->lstat;
