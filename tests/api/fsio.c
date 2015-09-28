@@ -2296,8 +2296,51 @@ END_TEST
 
 #if defined(PR_USE_DEVEL)
 START_TEST (fs_dump_fs_test) {
+  pr_fs_t *fs, *root_fs;
+
   mark_point();
   pr_fs_dump(NULL);
+
+  root_fs = pr_get_fs("/", NULL);
+  fs = pr_register_fs(p, "testsuite", "/testsuite");
+  fs->stat = root_fs->stat;
+  fs->fstat = root_fs->fstat;
+  fs->lstat = root_fs->lstat;
+  fs->rename = root_fs->rename;
+  fs->unlink = root_fs->unlink;
+  fs->open = root_fs->open;
+  fs->creat = root_fs->creat;
+  fs->close = root_fs->close;
+  fs->read = root_fs->read;
+  fs->write = root_fs->write;
+  fs->lseek = root_fs->lseek;
+  fs->link = root_fs->link;
+  fs->readlink = root_fs->readlink;
+  fs->symlink = root_fs->symlink;
+  fs->ftruncate = root_fs->ftruncate;
+  fs->truncate = root_fs->truncate;
+  fs->chmod = root_fs->chmod;
+  fs->fchmod = root_fs->fchmod;
+  fs->chown = root_fs->chown;
+  fs->fchown = root_fs->fchown;
+  fs->lchown = root_fs->lchown;
+  fs->access = root_fs->access;
+  fs->faccess = root_fs->faccess;
+  fs->utimes = root_fs->utimes;
+  fs->futimes = root_fs->futimes;
+  fs->fsync = root_fs->fsync;
+  fs->chdir = root_fs->chdir;
+  fs->chroot = root_fs->chroot;
+  fs->opendir = root_fs->opendir;
+  fs->closedir = root_fs->closedir;
+  fs->readdir = root_fs->readdir;
+  fs->mkdir = root_fs->mkdir;
+  fs->rmdir = root_fs->rmdir;
+
+  mark_point();
+  pr_fs_dump(NULL);
+
+  pr_unregister_fs("/testsuite");
 }
 END_TEST
 #endif /* PR_USE_DEVEL */
