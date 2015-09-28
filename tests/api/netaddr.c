@@ -189,6 +189,12 @@ START_TEST (netaddr_get_addr2_test) {
   int flags;
 
   flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
+  name = "foobarbaz";
+  res = pr_netaddr_get_addr2(p, name, NULL, flags);
+  fail_unless(res == NULL, "Failed to handle unknown device '%s'", name);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   name = "lo0";
   res = pr_netaddr_get_addr2(p, name, NULL, flags);
   if (res == NULL) {
@@ -719,6 +725,48 @@ START_TEST (netaddr_is_rfc1918_test) {
 }
 END_TEST
 
+START_TEST (netaddr_v6tov4_test) {
+  pr_netaddr_t *addr, *addr2;
+  const char *name, *ipstr;
+
+  addr = pr_netaddr_v6tov4(NULL, NULL);
+  fail_unless(addr == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  addr = pr_netaddr_v6tov4(p, NULL);
+  fail_unless(addr == NULL, "Failed to handle null address");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "127.0.0.1";
+  addr2 = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr2 != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  addr = pr_netaddr_v6tov4(p, addr2);
+  fail_unless(addr == NULL, "Converted '%s' to IPv4 address unexpectedly",
+    name);
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  name = "::ffff:127.0.0.1";
+  addr2 = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr2 != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  addr = pr_netaddr_v6tov4(p, addr2);
+  fail_unless(addr != NULL, "Failed to convert '%s' to IPv4 addres: %s",
+    name, strerror(errno));
+  fail_unless(pr_netaddr_get_family(addr) == AF_INET,
+    "Expected %d, got %d", AF_INET, pr_netaddr_get_family(addr));
+
+  ipstr = pr_netaddr_get_ipstr(addr);
+  fail_unless(strcmp(ipstr, "127.0.0.1") == 0,
+    "Expected '127.0.0.1', got '%s'", ipstr);
+}
+END_TEST
+
 START_TEST (netaddr_disable_ipv6_test) {
   unsigned char use_ipv6;
 
@@ -791,6 +839,7 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_is_v6_test);
   tcase_add_test(testcase, netaddr_is_v4mappedv6_test);
   tcase_add_test(testcase, netaddr_is_rfc1918_test);
+  tcase_add_test(testcase, netaddr_v6tov4_test);
   tcase_add_test(testcase, netaddr_disable_ipv6_test);
   tcase_add_test(testcase, netaddr_enable_ipv6_test);
 
