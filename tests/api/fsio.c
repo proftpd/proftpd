@@ -152,25 +152,59 @@ END_TEST
 START_TEST (fsio_sys_open_chroot_guard_test) {
   int flags, res;
   pr_fh_t *fh;
+  const char *path;
 
   res = pr_fsio_guard_chroot(TRUE);
   fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
 
-  flags = O_CREAT;
-  fh = pr_fsio_open("/etc/resolv.conf", flags);
+  path = "/etc/resolv.conf";
+  flags = O_CREAT|O_RDONLY;
+  fh = pr_fsio_open(path, flags);
   if (fh != NULL) {
     (void) pr_fsio_close(fh);
-    fail("open(2) of /etc/resolv.conf succeeded unexpectedly");
+    fail("open(2) of %s succeeded unexpectedly", path);
   }
 
-  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s %d", EACCES,
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
     strerror(errno), errno);
+
+  path = "/&Z";
+  flags = O_WRONLY;
+  fh = pr_fsio_open(path, flags);
+  if (fh != NULL) {
+    (void) pr_fsio_close(fh);
+    fail("open(2) of %s succeeded unexpectedly", path);
+  }
+
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno));
+
+  path = "/etc";
+  fh = pr_fsio_open(path, flags);
+  if (fh != NULL) {
+    (void) pr_fsio_close(fh);
+    fail("open(2) of %s succeeded unexpectedly", path);
+  }
+
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno));
+
+  path = "/lib";
+  fh = pr_fsio_open(path, flags);
+  if (fh != NULL) {
+    (void) pr_fsio_close(fh);
+    fail("open(2) of %s succeeded unexpectedly", path);
+  }
+
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno));
 
   (void) pr_fsio_guard_chroot(FALSE);
 
-  fh = pr_fsio_open("/etc/resolv.conf", flags);
-  fail_unless(fh != NULL, "Failed to open '/etc/resolv.conf': %s",
-    strerror(errno));
+  path = "/etc/resolv.conf";
+  flags = O_RDONLY;
+  fh = pr_fsio_open(path, flags);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", path, strerror(errno));
   (void) pr_fsio_close(fh);
 }
 END_TEST
@@ -1793,6 +1827,12 @@ START_TEST (fsio_sys_chdir_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_chdir("/etc/resolv.conf", FALSE);
+  fail_unless(res < 0, "Failed to handle file argument");
+  fail_unless(errno == EINVAL || errno == ENOTDIR,
+    "Expected EINVAL (%d) or ENOTDIR (%d), got %s (%d)", EINVAL, ENOTDIR,
+    strerror(errno), errno);
+
   res = pr_fsio_chdir("/tmp", FALSE);
   fail_unless(res == 0, "Failed to chdir to '%s': %s", fsio_cwd,
     strerror(errno));
@@ -1839,7 +1879,8 @@ START_TEST (fsio_sys_chroot_test) {
 END_TEST
 
 START_TEST (fsio_sys_opendir_test) {
-  void *res;
+  void *res = NULL, *res2 = NULL;
+  const char *path;
 
   mark_point();
   res = pr_fsio_opendir(NULL);
@@ -1848,16 +1889,24 @@ START_TEST (fsio_sys_opendir_test) {
     strerror(errno), errno); 
 
   mark_point();
-  res = pr_fsio_opendir("/etc/resolv.conf");
+  path = "/etc/resolv.conf";
+  res = pr_fsio_opendir(path);
   fail_unless(res == NULL, "Failed to handle file argument");
   fail_unless(errno == ENOTDIR, "Expected ENOTDIR (%d), got %s (%d)", ENOTDIR,
     strerror(errno), errno);
 
   mark_point();
-  res = pr_fsio_opendir("/tmp/");
-  fail_unless(res != NULL, "Failed to open '/tmp/': %s", strerror(errno));
+  path = "/tmp/";
+  res = pr_fsio_opendir(path);
+  fail_unless(res != NULL, "Failed to open '%s': %s", path, strerror(errno));
+
+  mark_point();
+  path = "/usr/";
+  res2 = pr_fsio_opendir(path);
+  fail_unless(res != NULL, "Failed to open '%s': %s", path, strerror(errno));
 
   (void) pr_fsio_closedir(res);
+  (void) pr_fsio_closedir(res2);
 }
 END_TEST
 
@@ -2065,7 +2114,7 @@ START_TEST (fs_insert_fs_test) {
 END_TEST
 
 START_TEST (fs_get_fs_test) {
-  pr_fs_t *fs, *fs2;
+  pr_fs_t *fs, *fs2, *fs3;
   int exact_match = FALSE, res;
 
   fs = pr_get_fs(NULL, NULL);
@@ -2085,6 +2134,18 @@ START_TEST (fs_get_fs_test) {
   fail_unless(fs != NULL, "Failed to get FS: %s", strerror(errno));
   fail_unless(exact_match == TRUE, "Expected TRUE, got FALSE");
 
+  fs3 = pr_create_fs(p, "testsuite2");
+  fail_unless(fs3 != NULL, "Failed to create FS: %s", strerror(errno));
+
+  res = pr_insert_fs(fs3, "/testsuite2/");
+  fail_unless(res == TRUE, "Failed to insert FS: %s", strerror(errno));
+
+  exact_match = FALSE;
+  fs = pr_get_fs("/testsuite2/foo/bar/baz", &exact_match);
+  fail_unless(fs != NULL, "Failed to get FS: %s", strerror(errno));
+  fail_unless(exact_match == FALSE, "Expected FALSE, got TRUE");
+
+  (void) pr_remove_fs("/testsuite2");
   (void) pr_remove_fs("/testsuite");
 }
 END_TEST
@@ -2240,6 +2301,32 @@ START_TEST (fs_dump_fs_test) {
 }
 END_TEST
 #endif /* PR_USE_DEVEL */
+
+static int fsio_chroot_cb(pr_fs_t *fs, const char *path) {
+  return 0;
+}
+
+START_TEST (fsio_custom_chroot_test) {
+  pr_fs_t *fs;
+  int res;
+  const char *path;
+
+  fs = pr_register_fs(p, "custom", "/testsuite/");
+  fail_unless(fs != NULL, "Failed to register custom FS: %s", strerror(errno));
+
+  fs->chroot = fsio_chroot_cb;
+
+  mark_point();
+  pr_resolve_fs_map();
+
+  path = "/testsuite/foo/bar";
+  res = pr_fsio_chroot(path);
+  fail_unless(res == 0, "Failed to chroot (via custom FS) to '%s': %s", path,
+    strerror(errno));
+
+  pr_unregister_fs("/testsuite");
+}
+END_TEST
 
 START_TEST (fs_clean_path_test) {
   char res[PR_TUNABLE_PATH_MAX+1], *path, *expected;
@@ -2623,6 +2710,19 @@ START_TEST (fs_resolve_partial_test) {
   fail_unless(res < 0, "Resolved '%s' unexpectedly", path);
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  path = "~foo/.///../../..../";
+  res = pr_fs_resolve_partial(path, buf, sizeof(buf)-1, op);
+  fail_unless(res < 0, "Resolved '%s' unexpectedly", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  path = "../../..../";
+  res = pr_fs_resolve_partial(path, buf, sizeof(buf)-1, op);
+  fail_unless(res < 0, "Resolved '%s' unexpectedly", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
 }
 END_TEST
 
@@ -2919,6 +3019,7 @@ END_TEST
 START_TEST (fs_valid_path_test) {
   int res;
   const char *path;
+  pr_fs_t *fs;
 
   res = pr_fs_valid_path(NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -2934,6 +3035,18 @@ START_TEST (fs_valid_path_test) {
   fail_unless(res < 0, "Failed to handle invalid path");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  fs = pr_register_fs(p, "testsuite", "&");
+  fail_unless(fs != NULL, "Failed to register FS: %s", strerror(errno));
+
+  fs = pr_register_fs(p, "testsuite2", ":");
+  fail_unless(fs != NULL, "Failed to register FS: %s", strerror(errno));
+
+  res = pr_fs_valid_path(path);
+  fail_unless(res == 0, "Failed to handle valid path: %s", strerror(errno));
+
+  (void) pr_remove_fs("/testsuite2");
+  (void) pr_remove_fs("/testsuite");
 }
 END_TEST
 
@@ -3270,6 +3383,9 @@ Suite *tests_get_fsio_suite(void) {
 #if defined(PR_USE_DEVEL)
   tcase_add_test(testcase, fs_dump_fs_test);
 #endif /* PR_USE_DEVEL */
+
+  /* Custom FSIO tests */
+  tcase_add_test(testcase, fsio_custom_chroot_test);
 
   /* Misc */
   tcase_add_test(testcase, fs_clean_path_test);

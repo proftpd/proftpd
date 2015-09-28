@@ -214,8 +214,10 @@ static int sys_open(pr_fh_t *fh, const char *path, int flags) {
 #endif
 
   if (fsio_guard_chroot) {
-    /* If we are creating (or truncating) a file, then we need to check. */
-    if (flags & (O_APPEND|O_CREAT|O_TRUNC)) {
+    /* If we are creating (or truncating) a file, then we need to check.
+     * Note: should O_RDWR be added to this list?
+     */
+    if (flags & (O_APPEND|O_CREAT|O_TRUNC|O_WRONLY)) {
       res = chroot_allow_path(path);
       if (res < 0) {
         return -1;
@@ -491,8 +493,9 @@ static int sys_fsync(pr_fh_t *fh, int fd) {
 }
 
 static int sys_chroot(pr_fs_t *fs, const char *path) {
-  if (chroot(path) < 0)
+  if (chroot(path) < 0) {
     return -1;
+  }
 
   session.chroot_path = (char *) path;
   return 0;
@@ -917,7 +920,7 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
  *  if and only if there is *not* an exactly matching pr_fs_t.
  *
  *  NOTE: this is experimental code, not yet ready for module consumption.
- *  It was present in the older FS code, hence it's presence now.
+ *  It was present in the older FS code, hence its presence now.
  */
 
   /* Is the returned pr_fs_t "close enough"? */
@@ -964,11 +967,6 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
   struct stat st;
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL, res;
   char linkbuf[PR_TUNABLE_PATH_MAX + 1];
-
-  if (path == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
 
   if (strchr(path, '/') != NULL) {
     return lookup_dir_fs(path, op);
@@ -1531,10 +1529,6 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   pr_pool_tag(fs_pool, "FS Pool");
 
   fs = pcalloc(fs_pool, sizeof(pr_fs_t));
-  if (fs == NULL) {
-    return NULL;
-  }
-
   fs->fs_pool = fs_pool;
   fs->fs_next = fs->fs_prev = NULL;
   fs->fs_name = pstrdup(fs->fs_pool, name);
@@ -1557,7 +1551,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
     return -1;
   }
 
-  if (!fs_map) {
+  if (fs_map == NULL) {
     pool *map_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(map_pool, "FSIO Map Pool");
 
@@ -1780,7 +1774,7 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
   /* Basic optimization -- if there're no elements in the fs_map,
    * return the root_fs.
    */
-  if (!fs_map ||
+  if (fs_map == NULL ||
       fs_map->nelts == 0) {
     return root_fs;
   }
@@ -1821,7 +1815,7 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
       return fs;
 
     } else if (res > 0) {
-      if (exact) {
+      if (exact != NULL) {
         *exact = FALSE;
       }
 
@@ -1833,6 +1827,10 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
   }
 
   chk_fs_map = FALSE;
+
+  if (exact != NULL) {
+    *exact = FALSE;
+  }
 
   /* Return best-match by default */
   return best_match_fs;
@@ -5266,7 +5264,7 @@ int pr_fsio_fsync(pr_fh_t *fh) {
  * rewritten to reflect the new root.
  */
 int pr_fsio_chroot(const char *path) {
-  int res = 0;
+  int res = 0, xerrno = 0;
   pr_fs_t *fs;
 
   if (path == NULL) {
@@ -5289,6 +5287,8 @@ int pr_fsio_chroot(const char *path) {
   pr_trace_msg(trace_channel, 8, "using %s chroot() for path '%s'",
     fs->fs_name, path);
   res = (fs->chroot)(fs, path);
+  xerrno = errno;
+
   if (res == 0) {
     unsigned int iter_start = 0;
 
@@ -5359,6 +5359,7 @@ int pr_fsio_chroot(const char *path) {
     chk_fs_map = TRUE;
   }
 
+  errno = xerrno;
   return res;
 }
 
