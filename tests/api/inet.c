@@ -201,7 +201,7 @@ START_TEST (inet_set_proto_cork_test) {
 END_TEST
 
 START_TEST (inet_set_proto_nodelay_test) {
-  int sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
 
   res = pr_inet_set_proto_nodelay(NULL, NULL, 1);
@@ -218,12 +218,24 @@ START_TEST (inet_set_proto_nodelay_test) {
   res = pr_inet_set_proto_nodelay(p, conn, 0);
   fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
 
+  fd = conn->rfd;
+  conn->rfd = 8;
+  res = pr_inet_set_proto_nodelay(p, conn, 0);
+  fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
+  conn->rfd = fd;
+
+  fd = conn->wfd;
+  conn->rfd = 9;
+  res = pr_inet_set_proto_nodelay(p, conn, 0);
+  fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
+  conn->wfd = fd;
+
   pr_inet_close(p, conn);
 }
 END_TEST
 
 START_TEST (inet_set_proto_opts_test) {
-  int sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
 
   mark_point();
@@ -238,6 +250,27 @@ START_TEST (inet_set_proto_opts_test) {
   mark_point();
   res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
   fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+
+  mark_point();
+  fd = conn->rfd;
+  conn->rfd = 8;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->rfd = fd;
+
+  mark_point();
+  fd = conn->wfd;
+  conn->wfd = 9;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->wfd = fd;
+
+  mark_point();
+  fd = conn->listen_fd;
+  conn->listen_fd = 10;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->listen_fd = fd;
 
   pr_inet_close(p, conn);
 }
@@ -263,7 +296,7 @@ START_TEST (inet_set_socket_opts_test) {
 END_TEST
 
 START_TEST (inet_listen_test) {
-  int sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
 
   res = pr_inet_listen(NULL, NULL, 5, 0);
@@ -278,6 +311,14 @@ START_TEST (inet_listen_test) {
 
   conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  fd = conn->listen_fd;
+  conn->listen_fd = 777;
+  res = pr_inet_listen(p, conn, 5, 0);
+  fail_unless(res < 0, "Succeeded in listening on conn unexpectedly");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+  conn->listen_fd = fd;
 
   res = pr_inet_listen(p, conn, 5, 0);
   fail_unless(res == 0, "Failed to listen on conn: %s", strerror(errno));
