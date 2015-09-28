@@ -125,6 +125,11 @@ config_rec *pr_config_add(server_rec *s, const char *name, int flags) {
     s = pr_parser_server_ctxt_get();
   }
 
+  if (s == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   c = pr_parser_config_ctxt_get();
 
   if (c) {

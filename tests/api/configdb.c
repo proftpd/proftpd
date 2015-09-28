@@ -54,7 +54,7 @@ static void tear_down(void) {
   } 
 }
 
-START_TEST (add_config_test) {
+START_TEST (config_add_config_test) {
   int res;
   const char *name = NULL;
   config_rec *c = NULL;
@@ -82,7 +82,7 @@ START_TEST (add_config_test) {
 }
 END_TEST
 
-START_TEST (add_config_param_test) {
+START_TEST (config_add_config_param_test) {
   int res;
   const char *name = NULL;
   config_rec *c = NULL;
@@ -115,7 +115,7 @@ START_TEST (add_config_param_test) {
 }
 END_TEST
 
-START_TEST (add_config_param_set_test) {
+START_TEST (config_add_config_param_set_test) {
   xaset_t *set = NULL;
   const char *name = NULL;
   config_rec *c = NULL;
@@ -148,7 +148,7 @@ START_TEST (add_config_param_set_test) {
 }
 END_TEST
 
-START_TEST (add_config_param_str_test) {
+START_TEST (config_add_config_param_str_test) {
   int res;
   const char *name = NULL;
   config_rec *c = NULL;
@@ -176,7 +176,33 @@ START_TEST (add_config_param_str_test) {
 }
 END_TEST
 
-START_TEST (add_config_set_test) {
+START_TEST (config_add_server_config_param_str_test) {
+  const char *name;
+  config_rec *c;
+  server_rec *s;
+
+  mark_point();
+  c = pr_conf_add_server_config_param_str(NULL, NULL, 0);
+  fail_unless(c == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno));
+
+  mark_point();
+  s = pr_parser_server_ctxt_open("127.0.0.2");
+  fail_unless(s != NULL, "Failed to open server context: %s", strerror(errno));
+
+  mark_point();
+  name = "foo";
+
+  c = pr_conf_add_server_config_param_str(s, name, 1, "bar");
+  fail_unless(c != NULL, "Failed to add config '%s': %s", name,
+    strerror(errno));
+
+  (void) remove_config(s->conf, name, FALSE);
+}
+END_TEST
+
+START_TEST (config_add_config_set_test) {
   int flags = PR_CONFIG_FL_INSERT_HEAD, res;
   xaset_t *set = NULL;
   const char *name = NULL;
@@ -227,7 +253,7 @@ START_TEST (add_config_set_test) {
 }
 END_TEST
 
-START_TEST (find_config_test) {
+START_TEST (config_find_config_test) {
   int res;
   config_rec *c;
   xaset_t *set = NULL;
@@ -313,7 +339,7 @@ START_TEST (find_config_test) {
 }
 END_TEST
 
-START_TEST (find_config2_test) {
+START_TEST (config_find_config2_test) {
   int res;
   config_rec *c;
   xaset_t *set = NULL;
@@ -387,7 +413,7 @@ START_TEST (find_config2_test) {
 }
 END_TEST
 
-START_TEST (get_param_ptr_test) {
+START_TEST (config_get_param_ptr_test) {
   void *res;
   int count;
   xaset_t *set = NULL;
@@ -518,14 +544,15 @@ Suite *tests_get_config_suite(void) {
   testcase = tcase_create("base");
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
-  tcase_add_test(testcase, add_config_test);
-  tcase_add_test(testcase, add_config_param_test);
-  tcase_add_test(testcase, add_config_param_set_test);
-  tcase_add_test(testcase, add_config_param_str_test);
-  tcase_add_test(testcase, add_config_set_test);
-  tcase_add_test(testcase, find_config_test);
-  tcase_add_test(testcase, find_config2_test);
-  tcase_add_test(testcase, get_param_ptr_test);
+  tcase_add_test(testcase, config_add_config_test);
+  tcase_add_test(testcase, config_add_config_param_test);
+  tcase_add_test(testcase, config_add_config_param_set_test);
+  tcase_add_test(testcase, config_add_config_param_str_test);
+  tcase_add_test(testcase, config_add_server_config_param_str_test);
+  tcase_add_test(testcase, config_add_config_set_test);
+  tcase_add_test(testcase, config_find_config_test);
+  tcase_add_test(testcase, config_find_config2_test);
+  tcase_add_test(testcase, config_get_param_ptr_test);
   tcase_add_test(testcase, config_set_get_id_test);
   tcase_add_test(testcase, config_merge_down_test);
 
