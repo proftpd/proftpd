@@ -259,38 +259,450 @@ START_TEST (netaddr_set_family_test) {
 END_TEST
 
 START_TEST (netaddr_cmp_test) {
+  pr_netaddr_t *addr, *addr2;
+  int res;
+  const char *name;
+
+  res = pr_netaddr_cmp(NULL, NULL);
+  fail_unless(res == 0, "Expected 0, got %d", res);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_cmp(addr, NULL);
+  fail_unless(res == 1, "Expected 1, got %d", res);
+
+  res = pr_netaddr_cmp(NULL, addr);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+
+  name = "::1";
+  addr2 = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr2 != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_cmp(addr, addr2);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+
+  res = pr_netaddr_cmp(addr2, addr);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+
+  name = "::ffff:127.0.0.1";
+  addr2 = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr2 != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_cmp(addr, addr2);
+  fail_unless(res == 0, "Expected 0, got %d", res);
+
+  res = pr_netaddr_cmp(addr2, addr);
+  fail_unless(res == 0, "Expected 0, got %d", res);
 }
 END_TEST
 
 START_TEST (netaddr_ncmp_test) {
+  pr_netaddr_t *addr, *addr2;
+  int res;
+  unsigned int nbits = 0;
+  const char *name;
+
+  res = pr_netaddr_ncmp(NULL, NULL, nbits);
+  fail_unless(res == 0, "Expected 0, got %d", res);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_ncmp(addr, NULL, nbits);
+  fail_unless(res == 1, "Expected 1, got %d", res);
+
+  res = pr_netaddr_ncmp(NULL, addr, nbits);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+
+  res = pr_netaddr_ncmp(NULL, addr, nbits);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+
+  nbits = 48;
+  res = pr_netaddr_ncmp(addr, addr, nbits);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "::1";
+  addr2 = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr2 != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  nbits = 0;
+  res = pr_netaddr_ncmp(addr, addr2, nbits);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+
+  res = pr_netaddr_ncmp(addr2, addr, nbits);
+  fail_unless(res == -1, "Expected -1, got %d", res);
+
+  name = "::ffff:127.0.0.1";
+  addr2 = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr2 != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_ncmp(addr, addr2, nbits);
+  fail_unless(res == 0, "Expected 0, got %d", res);
+
+  res = pr_netaddr_ncmp(addr2, addr, nbits);
+  fail_unless(res == 0, "Expected 0, got %d", res);
+
+  nbits = 24;
+  res = pr_netaddr_ncmp(addr2, addr, nbits);
+  fail_unless(res == 0, "Expected 0, got %d", res);
 }
 END_TEST
 
 START_TEST (netaddr_fnmatch_test) {
+  pr_netaddr_t *addr;
+  int flags, res;
+  const char *name;
+
+  res = pr_netaddr_fnmatch(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null address");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "localhost";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_fnmatch(addr, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null pattern");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  flags = PR_NETADDR_MATCH_DNS;
+  res = pr_netaddr_fnmatch(addr, "foo", flags);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+
+  res = pr_netaddr_fnmatch(addr, "LOCAL*", flags);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+
+  flags = PR_NETADDR_MATCH_IP;
+  res = pr_netaddr_fnmatch(addr, "foo", flags);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+
+  res = pr_netaddr_fnmatch(addr, "127.0*", flags);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+
+#ifdef PR_USE_IPV6
+  name = "::ffff:127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_fnmatch(addr, "foo", flags);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+
+  res = pr_netaddr_fnmatch(addr, "127.0.*", flags);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
 START_TEST (netaddr_get_sockaddr_test) {
+  pr_netaddr_t *addr;
+  struct sockaddr *sockaddr;
+  const char *name;
+#ifdef PR_USE_IPV6
+  int family;
+#endif /* PR_USE_IPV6 */
+
+  sockaddr = pr_netaddr_get_sockaddr(NULL);
+  fail_unless(sockaddr == NULL, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  sockaddr = pr_netaddr_get_sockaddr(addr);
+  fail_unless(sockaddr != NULL, "Failed to get sock addr: %s", strerror(errno));
+
+#ifdef PR_USE_IPV6
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  sockaddr = pr_netaddr_get_sockaddr(addr);
+  fail_unless(sockaddr != NULL, "Failed to get sock addr: %s", strerror(errno));
+
+  pr_netaddr_disable_ipv6();
+  sockaddr = pr_netaddr_get_sockaddr(addr);
+  fail_unless(sockaddr == NULL, "Got sock addr for IPv6 addr", strerror(errno));
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_netaddr_enable_ipv6();
+  family = addr->na_family;
+  addr->na_family = 777;
+  sockaddr = pr_netaddr_get_sockaddr(addr);
+  fail_unless(sockaddr == NULL, "Got sock addr for IPv6 addr", strerror(errno));
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+  addr->na_family = family;
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
 START_TEST (netaddr_get_sockaddr_len_test) {
+  pr_netaddr_t *addr;
+  size_t res;
+  const char *name;
+#ifdef PR_USE_IPV6
+  int family;
+#endif /* PR_USE_IPV6 */
+
+  res = pr_netaddr_get_sockaddr_len(NULL);
+  fail_unless(res == (size_t) -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_get_sockaddr_len(addr);
+  fail_unless(res > 0, "Failed to get sockaddr len: %s", strerror(errno));
+
+#ifdef PR_USE_IPV6
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_get_sockaddr_len(addr);
+  fail_unless(res > 0, "Failed to get sockaddr len: %s", strerror(errno));
+
+  pr_netaddr_disable_ipv6();
+  res = pr_netaddr_get_sockaddr_len(addr);
+  fail_unless(res == (size_t) -1, "Got sockaddr len unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_netaddr_enable_ipv6();
+
+  family = addr->na_family;
+  addr->na_family = 777;
+  res = pr_netaddr_get_sockaddr_len(addr);
+  addr->na_family = family;
+
+  fail_unless(res == (size_t) -1, "Got sockaddr len unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
 START_TEST (netaddr_set_sockaddr_test) {
+  pr_netaddr_t *addr;
+  int res;
+  struct sockaddr sa;
+  const char *name;
+#ifdef PR_USE_IPV6
+  int family;
+#endif /* PR_USE_IPV6 */
+
+  res = pr_netaddr_set_sockaddr(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_set_sockaddr(addr, NULL);
+  fail_unless(res < 0, "Failed to handle null sockaddr");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  memset(&sa, 0, sizeof(sa));
+
+  res = pr_netaddr_set_sockaddr(addr, &sa);
+  fail_unless(res == 0, "Failed to set sockaddr: %s", strerror(errno));
+
+#ifdef PR_USE_IPV6
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_set_sockaddr(addr, &sa);
+  fail_unless(res == 0, "Failed to set sockaddr: %s", strerror(errno));
+
+  pr_netaddr_disable_ipv6();
+  res = pr_netaddr_set_sockaddr(addr, &sa);
+  fail_unless(res < 0, "Set sockaddr unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_netaddr_enable_ipv6();
+
+  family = addr->na_family;
+  addr->na_family = 777;
+  res = pr_netaddr_set_sockaddr(addr, &sa);
+  addr->na_family = family;
+
+  fail_unless(res < 0, "Set sockaddr unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
 START_TEST (netaddr_set_sockaddr_any_test) {
+  pr_netaddr_t *addr;
+  int res;
+  const char *name;
+#ifdef PR_USE_IPV6
+  int family;
+#endif /* PR_USE_IPV6 */
+
+  res = pr_netaddr_set_sockaddr_any(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_set_sockaddr_any(addr);
+  fail_unless(res == 0, "Failed to set sockaddr any: %s", strerror(errno));
+
+#ifdef PR_USE_IPV6
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_set_sockaddr_any(addr);
+  fail_unless(res == 0, "Failed to set sockaddr any: %s", strerror(errno));
+
+  pr_netaddr_disable_ipv6();
+  res = pr_netaddr_set_sockaddr_any(addr);
+  fail_unless(res < 0, "Set sockaddr any unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_netaddr_enable_ipv6();
+
+  family = addr->na_family;
+  addr->na_family = 777;
+  res = pr_netaddr_set_sockaddr_any(addr);
+  addr->na_family = family;
+
+  fail_unless(res < 0, "Set sockaddr any unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
 START_TEST (netaddr_get_inaddr_test) {
+  pr_netaddr_t *addr;
+  int family;
+  void *inaddr;
+  const char *name;
+
+  inaddr = pr_netaddr_get_inaddr(NULL);
+  fail_unless(inaddr == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  family = AF_INET;
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  inaddr = pr_netaddr_get_inaddr(addr);
+  fail_unless(inaddr != NULL, "Failed to get inaddr: %s", strerror(errno));
+
+#ifdef PR_USE_IPV6
+  family = AF_INET6;
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  inaddr = pr_netaddr_get_inaddr(addr);
+  fail_unless(inaddr != NULL, "Failed to get inaddr: %s", strerror(errno));
+
+  pr_netaddr_disable_ipv6();
+  inaddr = pr_netaddr_get_inaddr(addr);
+  fail_unless(inaddr == NULL, "Got inaddr unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_netaddr_enable_ipv6();
+
+  family = addr->na_family;
+  addr->na_family = 777;
+  inaddr = pr_netaddr_get_inaddr(addr);
+  addr->na_family = family;
+
+  fail_unless(inaddr == NULL, "Got inaddr unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
 START_TEST (netaddr_get_inaddr_len_test) {
+  pr_netaddr_t *addr;
+  size_t res;
+  const char *name;
+#ifdef PR_USE_IPV6
+  int family;
+#endif /* PR_USE_IPV6 */
+
+  res = pr_netaddr_get_inaddr_len(NULL);
+  fail_unless(res == (size_t) -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_get_inaddr_len(addr);
+  fail_unless(res > 0, "Failed to get inaddr len: %s", strerror(errno));
+
+#ifdef PR_USE_IPV6
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_get_inaddr_len(addr);
+  fail_unless(res > 0, "Failed to get inaddr len: %s", strerror(errno));
+
+  family = addr->na_family;
+  addr->na_family = 777;
+  res = pr_netaddr_get_inaddr_len(addr);
+  addr->na_family = family;
+
+  fail_unless(res == (size_t) -1, "Got inaddr len unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
@@ -566,6 +978,52 @@ START_TEST (netaddr_get_localaddr_str_test) {
 }
 END_TEST
 
+START_TEST (netaddr_is_loopback_test) {
+  pr_netaddr_t *addr;
+  int res;
+  const char *name;
+
+  res = pr_netaddr_is_loopback(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "www.google.com";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_is_loopback(addr);
+  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+
+  name = "127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_is_loopback(addr);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+
+#ifdef PR_USE_IPV6
+  name = "::1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_is_loopback(addr);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+
+  name = "::ffff:127.0.0.1";
+  addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
+    strerror(errno));
+
+  res = pr_netaddr_is_loopback(addr);
+  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+#endif /* PR_USE_IPV6 */
+}
+END_TEST
+
 START_TEST (netaddr_is_v4_test) {
   int res;
   const char *name;
@@ -806,7 +1264,6 @@ Suite *tests_get_netaddr_suite(void) {
   suite = suite_create("netaddr");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, netaddr_alloc_test);
@@ -835,6 +1292,7 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_get_ipstr_test);
   tcase_add_test(testcase, netaddr_validate_dns_str_test);
   tcase_add_test(testcase, netaddr_get_localaddr_str_test);
+  tcase_add_test(testcase, netaddr_is_loopback_test);
   tcase_add_test(testcase, netaddr_is_v4_test);
   tcase_add_test(testcase, netaddr_is_v6_test);
   tcase_add_test(testcase, netaddr_is_v4mappedv6_test);
@@ -844,6 +1302,5 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_enable_ipv6_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

@@ -991,7 +991,7 @@ int pr_netaddr_set_family(pr_netaddr_t *na, int family) {
 }
 
 size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1012,7 +1012,7 @@ size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
 }
 
 size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1032,7 +1032,7 @@ size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
 }
 
 struct sockaddr *pr_netaddr_get_sockaddr(const pr_netaddr_t *na) {
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -1053,7 +1053,8 @@ struct sockaddr *pr_netaddr_get_sockaddr(const pr_netaddr_t *na) {
 }
 
 int pr_netaddr_set_sockaddr(pr_netaddr_t *na, struct sockaddr *addr) {
-  if (!na || !addr) {
+  if (na == NULL ||
+      addr == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1078,7 +1079,7 @@ int pr_netaddr_set_sockaddr(pr_netaddr_t *na, struct sockaddr *addr) {
 }
 
 int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1113,7 +1114,7 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
 }
 
 void *pr_netaddr_get_inaddr(const pr_netaddr_t *na) {
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -1187,14 +1188,20 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
   pr_netaddr_t *a, *b;
   int res;
 
-  if (na1 && !na2)
+  if (na1 != NULL &&
+      na2 == NULL) {
     return 1;
+  }
 
-  if (!na1 && na2)
+  if (na1 == NULL &&
+      na2 != NULL) {
     return -1;
+  }
 
-  if (!na1 && !na2)
+  if (na1 == NULL &&
+      na2 == NULL) {
     return 0;
+  }
 
   if (pr_netaddr_get_family(na1) != pr_netaddr_get_family(na2)) {
 
@@ -1336,15 +1343,18 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
   const unsigned char *in1, *in2;
   int res;
 
-  if (na1 && !na2) {
+  if (na1 != NULL &&
+      na2 == NULL) {
     return 1;
   }
 
-  if (!na1 && na2) {
+  if (na1 == NULL &&
+      na2 != NULL) {
     return -1;
   }
 
-  if (!na1 && !na2) {
+  if (na1 == NULL &&
+      na2 == NULL) {
     return 0;
   }
 
@@ -1455,7 +1465,8 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
    */
   int match_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
 
-  if (!na || !pattern) {
+  if (na == NULL ||
+      pattern == NULL) {
     errno = EINVAL;
     return -1;
   }
