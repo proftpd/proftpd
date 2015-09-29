@@ -422,6 +422,17 @@ START_TEST (fsio_sys_stat_test) {
   fail_unless(res < 0, "Failed to handle nonexistent path");
   fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
     errno);
+
+  /* Stat a symlink path */
+  res = pr_fsio_symlink("/tmp", fsio_link_path);
+  fail_unless(res == 0, "Failed to create symlink to '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  res = pr_fsio_stat(fsio_link_path, &st);
+  fail_unless(res == 0, "Failed to stat '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  (void) unlink(fsio_link_path);
 }
 END_TEST
 
@@ -938,6 +949,17 @@ START_TEST (fsio_sys_lstat_test) {
   fail_unless(res < 0, "Failed to handle nonexistent path");
   fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
     errno);
+
+  /* lstat a symlink path */
+  res = pr_fsio_symlink("/tmp", fsio_link_path);
+  fail_unless(res == 0, "Failed to create symlink to '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  res = pr_fsio_lstat(fsio_link_path, &st);
+  fail_unless(res == 0, "Failed to lstat '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  (void) unlink(fsio_link_path);
 }
 END_TEST
 
@@ -2839,6 +2861,16 @@ START_TEST (fs_resolve_partial_test) {
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
+  /* Resolve a symlink path */
+  res = pr_fsio_symlink("/tmp", fsio_link_path);
+  fail_unless(res == 0, "Failed to create symlink to '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  res = pr_fs_resolve_partial(fsio_link_path, buf, sizeof(buf)-1, op);
+  fail_unless(res == 0, "Failed to resolve '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  (void) unlink(fsio_link_path);
 }
 END_TEST
 
@@ -2875,6 +2907,17 @@ START_TEST (fs_resolve_path_test) {
       fail("Expected '%s', got '%s'", path, buf);
     }
   }
+
+  /* Resolve a symlink path */
+  res = pr_fsio_symlink("/tmp", fsio_link_path);
+  fail_unless(res == 0, "Failed to create symlink to '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  res = pr_fs_resolve_path(fsio_link_path, buf, sizeof(buf)-1, op);
+  fail_unless(res == 0, "Failed to resolve '%s': %s", fsio_link_path,
+    strerror(errno));
+
+  (void) unlink(fsio_link_path);
 }
 END_TEST
 
