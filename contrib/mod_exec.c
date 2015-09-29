@@ -32,7 +32,7 @@
 # include <sys/resource.h>
 #endif
 
-#define MOD_EXEC_VERSION	"mod_exec/0.9.13"
+#define MOD_EXEC_VERSION	"mod_exec/0.9.14"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -40,6 +40,8 @@
 #endif
 
 module exec_module;
+
+#define EXEC_MAX_FD_COUNT		1024
 
 static pool *exec_pool = NULL;
 static int exec_engine = FALSE;
@@ -326,14 +328,14 @@ static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
     exec_log("getrlimit() error: %s", strerror(errno));
 
     /* Pick some arbitrary high number. */
-    nfiles = 1024;
+    nfiles = EXEC_MAX_FD_COUNT;
 
   } else {
     nfiles = rlim.rlim_max;
   }
 
 #else /* no RLIMIT_NOFILE or RLIMIT_OFILE */
-   nfiles = 1024;
+   nfiles = EXEC_MAX_FD_COUNT;
 #endif
 
   /* Yes, using a long for the nfiles variable is not quite kosher; it should
@@ -347,8 +349,9 @@ static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
    * mod_exec's forked processes never return/exit.)
    */
 
-  if (nfiles < 0) {
-    nfiles = 1024;
+  if (nfiles < 0 ||
+      nfiles > EXEC_MAX_FD_COUNT) {
+    nfiles = EXEC_MAX_FD_COUNT;
   }
 
   /* Close the "non-standard" file descriptors. */
