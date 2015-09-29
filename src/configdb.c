@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -748,12 +748,13 @@ config_rec *add_config_param_set(xaset_t **set, const char *name,
 }
 
 config_rec *add_config_param_str(const char *name, int num, ...) {
-  config_rec *c = pr_config_add(NULL, name, 0);
+  config_rec *c;
   char *arg = NULL;
   void **argv = NULL;
   va_list ap;
 
-  if (c) {
+  c = pr_config_add(NULL, name, 0);
+  if (c != NULL) {
     c->config_type = CONF_PARAM;
     c->argc = num;
     c->argv = pcalloc(c->pool, (num+1) * sizeof(char *));

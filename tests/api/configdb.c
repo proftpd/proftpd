@@ -54,6 +54,18 @@ static void tear_down(void) {
   } 
 }
 
+START_TEST (config_init_config_test) {
+  mark_point();
+  init_config();
+
+  mark_point();
+  init_config();
+
+  mark_point();
+  init_config();
+}
+END_TEST
+
 START_TEST (config_add_config_test) {
   int res;
   const char *name = NULL;
@@ -151,7 +163,7 @@ END_TEST
 START_TEST (config_add_config_param_str_test) {
   int res;
   const char *name = NULL;
-  config_rec *c = NULL;
+  config_rec *c = NULL, *c2;
   server_rec *s = NULL;
 
   s = pr_parser_server_ctxt_open("127.0.0.1");
@@ -165,6 +177,9 @@ START_TEST (config_add_config_param_str_test) {
     strerror(errno));
   fail_unless(c->config_type == CONF_PARAM, "Expected config_type %d, got %d",
     CONF_PARAM, c->config_type);
+
+  c2 = add_config_param_str("foo2", 1, NULL);
+  fail_unless(c2 != NULL, "Failed to add config 'foo2': %s", strerror(errno));
 
   mark_point();
   pr_config_dump(NULL, s->conf, NULL);
@@ -477,6 +492,11 @@ START_TEST (config_get_param_ptr_test) {
   res = get_param_ptr_next(name, FALSE);
   fail_unless(res != NULL, "Expected to find another config");
 
+  res = get_param_ptr_next(name, FALSE);
+  fail_unless(res == NULL, "Found another config unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   mark_point();
 
   name = "foo";
@@ -544,6 +564,7 @@ Suite *tests_get_config_suite(void) {
   testcase = tcase_create("base");
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
+  tcase_add_test(testcase, config_init_config_test);
   tcase_add_test(testcase, config_add_config_test);
   tcase_add_test(testcase, config_add_config_param_test);
   tcase_add_test(testcase, config_add_config_param_set_test);
