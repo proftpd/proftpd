@@ -1049,8 +1049,18 @@ START_TEST (fsio_sys_access_dir_test) {
   *((gid_t *) push_array(suppl_gids)) = gid;
 
   pr_fs_clear_cache2(fsio_testdir_path);
-  res = pr_fsio_access(fsio_testdir_path, X_OK, uid, 1000, suppl_gids);
+  res = pr_fsio_access(fsio_testdir_path, X_OK, uid, gid, suppl_gids);
   fail_unless(res == 0, "Failed to check for execute access on directory: %s",
+    strerror(errno));
+
+  pr_fs_clear_cache2(fsio_testdir_path);
+  res = pr_fsio_access(fsio_testdir_path, R_OK, uid, gid, suppl_gids);
+  fail_unless(res == 0, "Failed to check for read access on directory: %s",
+    strerror(errno));
+
+  pr_fs_clear_cache2(fsio_testdir_path);
+  res = pr_fsio_access(fsio_testdir_path, W_OK, uid, gid, suppl_gids);
+  fail_unless(res == 0, "Failed to check for write access on directory: %s",
     strerror(errno));
 
   if (getenv("TRAVIS_CI") == NULL) {
@@ -1096,7 +1106,8 @@ START_TEST (fsio_sys_access_file_test) {
   int fd, res;
   uid_t uid = getuid();
   gid_t gid = getgid();
-  mode_t perms = 0664;
+  mode_t perms = 0665;
+  array_header *suppl_gids;
 
   /* Make the file to check; we want it to have perms 664.*/
   fd = open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
@@ -1129,7 +1140,25 @@ START_TEST (fsio_sys_access_file_test) {
 
   pr_fs_clear_cache2(fsio_test_path);
   res = pr_fsio_access(fsio_test_path, X_OK, uid, gid, NULL);
-  fail_unless(res < 0, "Failed to check for execute access on '%s': %s",
+  fail_unless(res == 0, "Failed to check for execute access on '%s': %s",
+    fsio_test_path, strerror(errno));
+
+  suppl_gids = make_array(p, 1, sizeof(gid_t));
+  *((gid_t *) push_array(suppl_gids)) = gid;
+
+  pr_fs_clear_cache2(fsio_test_path);
+  res = pr_fsio_access(fsio_test_path, X_OK, uid, gid, suppl_gids);
+  fail_unless(res == 0, "Failed to check for execute access on '%s': %s",
+    fsio_test_path, strerror(errno));
+
+  pr_fs_clear_cache2(fsio_test_path);
+  res = pr_fsio_access(fsio_test_path, R_OK, uid, gid, suppl_gids);
+  fail_unless(res == 0, "Failed to check for read access on '%s': %s",
+    fsio_test_path, strerror(errno));
+
+  pr_fs_clear_cache2(fsio_test_path);
+  res = pr_fsio_access(fsio_test_path, W_OK, uid, gid, suppl_gids);
+  fail_unless(res == 0, "Failed to check for write access on '%s': %s",
     fsio_test_path, strerror(errno));
 
   (void) unlink(fsio_test_path);
