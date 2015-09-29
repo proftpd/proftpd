@@ -824,9 +824,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   pr_trace_msg(trace_channel, 8, "using %s %s for path '%s'",
     fs->fs_name, op == FSIO_FILE_STAT ? "stat()" : "lstat()", path);
   retval = mystat(fs, cleaned_path, st);
-  if (retval < 0) {
-    xerrno = errno;
-  }
+  xerrno = errno;
 
   /* Update the cache */
   res = fs_statcache_add(cache_tab, cleaned_path, path_len, st, xerrno, retval,     now);

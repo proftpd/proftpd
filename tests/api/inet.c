@@ -33,10 +33,11 @@ static void set_up(void) {
     p = permanent_pool = make_sub_pool(NULL);
   }
 
+  init_netaddr();
+  init_netio();
   init_inet();
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("inet", 1, 20);
   }
 }
@@ -50,7 +51,6 @@ static void tear_down(void) {
   } 
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("inet", 0, 0);
   }
 }
@@ -114,8 +114,9 @@ START_TEST (inet_create_conn_portrange_test) {
 END_TEST
 
 START_TEST (inet_copy_conn_test) {
-  int sockfd = -1, port = INPORT_ANY;
+  int fd = -1, sockfd = -1, port = INPORT_ANY;
   conn_t *conn, *conn2;
+  const char *name;
 
   conn = pr_inet_copy_conn(NULL, NULL);
   fail_unless(conn == NULL, "Failed to handle null arguments");
@@ -135,11 +136,50 @@ START_TEST (inet_copy_conn_test) {
 
   pr_inet_close(p, conn);
   pr_inet_close(p, conn2);
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  name = "127.0.0.1";
+  conn->remote_addr = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(conn->remote_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+  conn->remote_name = pstrdup(p, name);
+  conn->instrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(conn->instrm != NULL, "Failed to open ctrl reading stream: %s",
+    strerror(errno));
+  conn->outstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_WR);
+  fail_unless(conn->instrm != NULL, "Failed to open ctrl writing stream: %s",
+    strerror(errno));
+
+  conn2 = pr_inet_copy_conn(p, conn);
+  fail_unless(conn2 != NULL, "Failed to copy conn: %s", strerror(errno));
+
+  mark_point();
+  pr_inet_lingering_close(NULL, NULL, 0L);
+
+  pr_inet_lingering_close(p, conn, 0L);
+  pr_inet_close(p, conn2);
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  conn->instrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
+  fail_unless(conn->instrm != NULL, "Failed to open ctrl reading stream: %s",
+    strerror(errno));
+  conn->outstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_WR);
+  fail_unless(conn->instrm != NULL, "Failed to open ctrl writing stream: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_inet_lingering_abort(NULL, NULL, 0L);
+
+  pr_inet_lingering_abort(p, conn, 0L);
 }
 END_TEST
 
 START_TEST (inet_set_async_test) {
-  int sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
 
   res = pr_inet_set_async(NULL, NULL);
@@ -153,6 +193,27 @@ START_TEST (inet_set_async_test) {
   res = pr_inet_set_async(p, conn);
   fail_unless(res == 0, "Failed to set conn %p async: %s", conn,
     strerror(errno));
+
+  fd = conn->rfd;
+  conn->rfd = 77;
+  res = pr_inet_set_async(p, conn);
+  fail_unless(res == 0, "Failed to set conn %p async: %s", conn,
+    strerror(errno));
+  conn->rfd = fd;
+
+  fd = conn->wfd;
+  conn->wfd = 78;
+  res = pr_inet_set_async(p, conn);
+  fail_unless(res == 0, "Failed to set conn %p async: %s", conn,
+    strerror(errno));
+  conn->wfd = fd;
+
+  fd = conn->listen_fd;
+  conn->listen_fd = 79;
+  res = pr_inet_set_async(p, conn);
+  fail_unless(res == 0, "Failed to set conn %p async: %s", conn,
+    strerror(errno));
+  conn->listen_fd = fd;
 
   pr_inet_close(p, conn);
 }
@@ -224,8 +285,20 @@ START_TEST (inet_set_proto_nodelay_test) {
   fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
   conn->rfd = fd;
 
+  fd = conn->rfd;
+  conn->rfd = -2;
+  res = pr_inet_set_proto_nodelay(p, conn, 0);
+  fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
+  conn->rfd = fd;
+
   fd = conn->wfd;
   conn->rfd = 9;
+  res = pr_inet_set_proto_nodelay(p, conn, 0);
+  fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
+  conn->wfd = fd;
+
+  fd = conn->wfd;
+  conn->rfd = -3;
   res = pr_inet_set_proto_nodelay(p, conn, 0);
   fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
   conn->wfd = fd;
@@ -450,6 +523,60 @@ START_TEST (inet_conn_info_test) {
 }
 END_TEST
 
+START_TEST (inet_openrw_test) {
+  int sockfd = -1, port = INPORT_ANY;
+  conn_t *conn, *res;
+  pr_netaddr_t *addr;
+
+  res = pr_inet_openrw(NULL, NULL, NULL, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = pr_inet_openrw(p, conn, NULL, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
+  fail_unless(res == NULL, "Opened rw conn unexpectedly");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  fail_unless(addr != NULL, "Failed to resolve 127.0.0.1: %s", strerror(errno));
+
+  res = pr_inet_openrw(p, conn, addr, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
+  fail_unless(res != NULL, "Failed to open rw conn: %s", strerror(errno));
+  (void) pr_inet_close(p, res);
+
+  res = pr_inet_openrw(p, conn, addr, PR_NETIO_STRM_CTRL, -1, -1, -1, TRUE);
+  fail_unless(res != NULL, "Failed to open rw conn: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (inet_generate_socket_event_test) {
+  int res;
+  const char *name;
+  server_rec *s;
+
+  res = pr_inet_generate_socket_event(NULL, NULL, NULL, -1);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  res = pr_inet_generate_socket_event(name, NULL, NULL, -1);
+  fail_unless(res < 0, "Failed to handle null server_rec");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  s = pcalloc(p, sizeof(server_rec));
+  res = pr_inet_generate_socket_event(name, s, NULL, -1);
+  fail_unless(res < 0, "Failed to handle null address");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+}
+END_TEST
+
 Suite *tests_get_inet_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -475,8 +602,9 @@ Suite *tests_get_inet_suite(void) {
   tcase_add_test(testcase, inet_accept_test);
   tcase_add_test(testcase, inet_accept_nowait_test);
   tcase_add_test(testcase, inet_conn_info_test);
+  tcase_add_test(testcase, inet_openrw_test);
+  tcase_add_test(testcase, inet_generate_socket_event_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

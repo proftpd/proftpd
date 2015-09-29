@@ -607,6 +607,10 @@ void pr_inet_close(pool *p, conn_t *c) {
 
 /* Perform shutdown/read on streams */
 void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
+  if (c == NULL) {
+    return;
+  }
+
   (void) pr_inet_set_block(p, c);
 
   if (c->outstrm) {
@@ -628,6 +632,10 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
 
 /* Similar to a lingering close, perform a lingering abort. */
 void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
+  if (c == NULL) {
+    return;
+  }
+
   (void) pr_inet_set_block(p, c);
 
   if (c->instrm) {
@@ -641,8 +649,9 @@ void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
    * since doing so would result in two 426 responses sent; we only
    * want and need one.
    */
-  if (c->outstrm != c->instrm)
+  if (c->outstrm != c->instrm) {
     pr_netio_close(c->outstrm);
+  }
 
   c->instrm = NULL;
   c->outstrm = NULL;
@@ -1740,7 +1749,6 @@ int pr_inet_generate_socket_event(const char *event, server_rec *s,
 
   return 0;
 }
-
 
 void init_inet(void) {
   struct protoent *pr = NULL;
