@@ -21,7 +21,7 @@ It was inspired by a significant admiration of the Apache web server.
 Unlike most other Unix FTP servers, it has not been derived from the old
 BSD `ftpd` code base, but is a completely new design and implementation.
 
-ProFTPD's extensive configurability provides systems adminstrators great
+ProFTPD's extensive configurability provides systems administrators great
 flexibility in user authentication and access controls, including virtual
 users and easy chroot() ftp sessions for individual users.
 
