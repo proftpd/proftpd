@@ -344,13 +344,16 @@ typedef struct tls_pkey_obj {
   size_t pkeysz;
 
   char *rsa_pkey;
+  int rsa_passlen;
   void *rsa_pkey_ptr;
 
   char *dsa_pkey;
+  int dsa_passlen;
   void *dsa_pkey_ptr;
 
 #ifdef PR_USE_OPENSSL_ECC
   char *ec_pkey;
+  int ec_passlen;
   void *ec_pkey_ptr;
 #endif /* PR_USE_OPENSSL_ECC */
 
@@ -359,6 +362,7 @@ typedef struct tls_pkey_obj {
    * certificate should be in one of the above RSA/DSA buffers.
    */
   char *pkcs12_passwd;
+  int pkcs12_passlen;
   void *pkcs12_passwd_ptr;
 
   unsigned int flags;
@@ -2261,7 +2265,7 @@ static int tls_get_passphrase(server_rec *s, const char *path,
 
     res = tls_get_pkcs12_passwd(s, keyf, prompt, buf, bufsz, flags, &pdata);
 
-    if (keyf) {
+    if (keyf != NULL) {
       fclose(keyf);
       keyf = NULL;
     }
@@ -2282,10 +2286,11 @@ static int tls_get_passphrase(server_rec *s, const char *path,
     ERR_clear_error();
 
     pkey = PEM_read_PrivateKey(keyf, NULL, tls_passphrase_cb, &pdata);
-    if (pkey)
+    if (pkey != NULL) {
       break;
+    }
 
-    if (keyf) {
+    if (keyf != NULL) {
       fseek(keyf, 0, SEEK_SET);
     }
 
@@ -2306,29 +2311,31 @@ static int tls_get_passphrase(server_rec *s, const char *path,
 
   EVP_PKEY_free(pkey);
 
+  if (pdata.buflen > 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x000905000L
-  /* Use the obtained passphrase as additional entropy, ostensibly
-   * unknown to attackers who may be watching the network, for
-   * OpenSSL's PRNG.
-   *
-   * Human language gives about 2-3 bits of entropy per byte (RFC1750).
-   */
-  RAND_add(buf, pdata.buflen, pdata.buflen * 0.25);
+    /* Use the obtained passphrase as additional entropy, ostensibly
+     * unknown to attackers who may be watching the network, for
+     * OpenSSL's PRNG.
+     *
+     * Human language gives about 2-3 bits of entropy per byte (RFC1750).
+     */
+    RAND_add(buf, pdata.buflen, pdata.buflen * 0.25);
 #endif
 
 #ifdef HAVE_MLOCK
-   PRIVS_ROOT
-   if (mlock(buf, bufsz) < 0) {
-     pr_log_debug(DEBUG1, MOD_TLS_VERSION
-       ": error locking passphrase into memory: %s", strerror(errno));
+     PRIVS_ROOT
+     if (mlock(buf, bufsz) < 0) {
+       pr_log_debug(DEBUG1, MOD_TLS_VERSION
+         ": error locking passphrase into memory: %s", strerror(errno));
 
-   } else {
-     pr_log_debug(DEBUG1, MOD_TLS_VERSION ": passphrase locked into memory");
-   }
-   PRIVS_RELINQUISH
+     } else {
+       pr_log_debug(DEBUG1, MOD_TLS_VERSION ": passphrase locked into memory");
+     }
+     PRIVS_RELINQUISH
 #endif
+  }
 
-  return 0;
+  return pdata.buflen;
 }
 
 static int tls_handshake_timeout_cb(CALLBACK_FRAME) {
@@ -2349,27 +2356,31 @@ static tls_pkey_t *tls_lookup_pkey(void) {
        * inherited across forks.
        */
       PRIVS_ROOT
-      if (k->rsa_pkey) {
+      if (k->rsa_pkey != NULL &&
+          k->rsa_passlen > 0) {
         if (mlock(k->rsa_pkey, k->pkeysz) < 0) {
           tls_log("error locking passphrase into memory: %s", strerror(errno));
         }
       }
 
-      if (k->dsa_pkey) {
+      if (k->dsa_pkey != NULL &&
+          k->dsa_passlen > 0) {
         if (mlock(k->dsa_pkey, k->pkeysz) < 0) {
           tls_log("error locking passphrase into memory: %s", strerror(errno));
         }
       }
 
 # ifdef PR_USE_OPENSSL_ECC
-      if (k->ec_pkey) {
+      if (k->ec_pkey != NULL &&
+          k->ec_passlen > 0) {
         if (mlock(k->ec_pkey, k->pkeysz) < 0) {
           tls_log("error locking passphrase into memory: %s", strerror(errno));
         }
       }
 # endif /* PR_USE_OPENSSL_ECC */
 
-      if (k->pkcs12_passwd) {
+      if (k->pkcs12_passwd != NULL &&
+          k->pkcs12_passlen > 0) {
         if (mlock(k->pkcs12_passwd, k->pkeysz) < 0) {
           tls_log("error locking password into memory: %s", strerror(errno));
         }
@@ -2382,30 +2393,34 @@ static tls_pkey_t *tls_lookup_pkey(void) {
     }
 
     /* Otherwise, scrub the passphrase's memory areas. */
-    if (k->rsa_pkey) {
+    if (k->rsa_pkey != NULL) {
       pr_memscrub(k->rsa_pkey, k->pkeysz);
       free(k->rsa_pkey_ptr);
       k->rsa_pkey = k->rsa_pkey_ptr = NULL;
+      k->rsa_passlen = 0;
     }
 
-    if (k->dsa_pkey) {
+    if (k->dsa_pkey != NULL) {
       pr_memscrub(k->dsa_pkey, k->pkeysz);
       free(k->dsa_pkey_ptr);
       k->dsa_pkey = k->dsa_pkey_ptr = NULL;
+      k->dsa_passlen = 0;
     }
 
 # ifdef PR_USE_OPENSSL_ECC
-    if (k->ec_pkey) {
+    if (k->ec_pkey != NULL) {
       pr_memscrub(k->ec_pkey, k->pkeysz);
       free(k->ec_pkey_ptr);
       k->ec_pkey = k->ec_pkey_ptr = NULL;
+      k->ec_passlen = 0;
     }
 # endif /* PR_USE_OPENSSL_ECC */
 
-    if (k->pkcs12_passwd) {
+    if (k->pkcs12_passwd != NULL) {
       pr_memscrub(k->pkcs12_passwd, k->pkeysz);
       free(k->pkcs12_passwd_ptr);
       k->pkcs12_passwd = k->pkcs12_passwd_ptr = NULL;
+      k->pkcs12_passlen = 0;
     }
   }
 
@@ -2415,8 +2430,9 @@ static tls_pkey_t *tls_lookup_pkey(void) {
 static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
   tls_pkey_t *k;
 
-  if (!data)
+  if (data == NULL) {
     return 0;
+  }
 
   k = (tls_pkey_t *) data;
 
@@ -2445,42 +2461,74 @@ static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
 
 static void tls_scrub_pkeys(void) {
   tls_pkey_t *k;
+  unsigned int passphrase_count = 0;
 
-  /* Scrub and free all passphrases in memory. */
-  if (tls_pkey_list) {
-    pr_log_debug(DEBUG5, MOD_TLS_VERSION
-      ": scrubbing %u %s from memory",
-      tls_npkeys, tls_npkeys != 1 ? "passphrases" : "passphrase");
-
-  } else {
+  if (tls_pkey_list == NULL) {
     return;
   }
 
+  /* Scrub and free all passphrases in memory. */
   for (k = tls_pkey_list; k; k = k->next) {
-    if (k->rsa_pkey) {
-      pr_memscrub(k->rsa_pkey, k->pkeysz);
-      free(k->rsa_pkey_ptr);
-      k->rsa_pkey = k->rsa_pkey_ptr = NULL;
+    if (k->rsa_pkey != NULL &&
+        k->rsa_passlen > 0) {
+      passphrase_count++;
     }
 
-    if (k->dsa_pkey) {
-      pr_memscrub(k->dsa_pkey, k->pkeysz);
-      free(k->dsa_pkey_ptr);
-      k->dsa_pkey = k->dsa_pkey_ptr = NULL;
+    if (k->dsa_pkey != NULL &&
+        k->dsa_passlen > 0) {
+      passphrase_count++;
     }
 
 #ifdef PR_USE_OPENSSL_ECC
-    if (k->ec_pkey) {
-      pr_memscrub(k->ec_pkey, k->pkeysz);
-      free(k->ec_pkey_ptr);
-      k->ec_pkey = k->ec_pkey_ptr = NULL;
+    if (k->ec_pkey != NULL &&
+        k->ec_passlen > 0) {
+      passphrase_count++;
     }
 #endif /* PR_USE_OPENSSL_ECC */
 
-    if (k->pkcs12_passwd) {
+    if (k->pkcs12_passwd != NULL &&
+        k->pkcs12_passlen > 0) {
+      passphrase_count++;
+    }
+  }
+
+  if (passphrase_count == 0) {
+    return;
+  }
+
+  pr_log_debug(DEBUG5, MOD_TLS_VERSION
+    ": scrubbing %u %s from memory", passphrase_count,
+    passphrase_count != 1 ? "passphrases" : "passphrase");
+
+  for (k = tls_pkey_list; k; k = k->next) {
+    if (k->rsa_pkey != NULL) {
+      pr_memscrub(k->rsa_pkey, k->pkeysz);
+      free(k->rsa_pkey_ptr);
+      k->rsa_pkey = k->rsa_pkey_ptr = NULL;
+      k->rsa_passlen = 0;
+    }
+
+    if (k->dsa_pkey != NULL) {
+      pr_memscrub(k->dsa_pkey, k->pkeysz);
+      free(k->dsa_pkey_ptr);
+      k->dsa_pkey = k->dsa_pkey_ptr = NULL;
+      k->dsa_passlen = 0;
+    }
+
+#ifdef PR_USE_OPENSSL_ECC
+    if (k->ec_pkey != NULL) {
+      pr_memscrub(k->ec_pkey, k->pkeysz);
+      free(k->ec_pkey_ptr);
+      k->ec_pkey = k->ec_pkey_ptr = NULL;
+      k->ec_passlen = 0;
+    }
+#endif /* PR_USE_OPENSSL_ECC */
+
+    if (k->pkcs12_passwd != NULL) {
       pr_memscrub(k->pkcs12_passwd, k->pkeysz);
       free(k->pkcs12_passwd_ptr);
       k->pkcs12_passwd = k->pkcs12_passwd_ptr = NULL;
+      k->pkcs12_passlen = 0;
     }
   }
 
@@ -10252,6 +10300,7 @@ static void tls_get_passphrases(void) {
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
     config_rec *rsa = NULL, *dsa = NULL, *ec = NULL, *pkcs12 = NULL;
     tls_pkey_t *k = NULL;
+    int res;
 
     /* Find any TLS*CertificateKeyFile directives.  If they aren't present,
      * look for TLS*CertificateFile directives (when appropriate).
@@ -10295,8 +10344,9 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
-      if (tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey,
-          k->pkeysz-1, TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
+      res = tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey, k->pkeysz-1,
+        TLS_PASSPHRASE_FL_RSA_KEY);
+      if (res < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading RSA passphrase: %s", tls_get_errors());
 
@@ -10305,6 +10355,8 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
           NULL);
       }
+
+      k->rsa_passlen = res;
     }
 
     if (dsa) {
@@ -10318,8 +10370,9 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
-      if (tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey,
-          k->pkeysz-1, TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
+      res = tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey, k->pkeysz-1,
+        TLS_PASSPHRASE_FL_DSA_KEY);
+      if (res < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading DSA passphrase: %s", tls_get_errors());
 
@@ -10328,6 +10381,8 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
           NULL);
       }
+
+      k->dsa_passlen = res;
     }
 
 #ifdef PR_USE_OPENSSL_ECC
@@ -10342,8 +10397,9 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
-      if (tls_get_passphrase(s, ec->argv[0], buf, k->ec_pkey,
-          k->pkeysz-1, TLS_PASSPHRASE_FL_EC_KEY) < 0) {
+      res = tls_get_passphrase(s, ec->argv[0], buf, k->ec_pkey, k->pkeysz-1,
+        TLS_PASSPHRASE_FL_EC_KEY);
+      if (res < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading EC passphrase: %s", tls_get_errors());
 
@@ -10352,6 +10408,8 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
           NULL);
       }
+
+      k->ec_passlen = res;
     }
 #endif /* PR_USE_OPENSSL_ECC */
 
@@ -10367,8 +10425,9 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
       }
 
-      if (tls_get_passphrase(s, pkcs12->argv[0], buf, k->pkcs12_passwd,
-          k->pkeysz-1, TLS_PASSPHRASE_FL_PKCS12_PASSWD) < 0) {
+      res = tls_get_passphrase(s, pkcs12->argv[0], buf, k->pkcs12_passwd,
+        k->pkeysz-1, TLS_PASSPHRASE_FL_PKCS12_PASSWD);
+      if (res < 0) {
         pr_log_debug(DEBUG0, MOD_TLS_VERSION
           ": error reading PKCS12 password: %s", tls_get_errors());
 
@@ -10377,6 +10436,8 @@ static void tls_get_passphrases(void) {
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
           NULL);
       }
+
+      k->pkcs12_passlen = res;
     }
 
     k->next = tls_pkey_list;
