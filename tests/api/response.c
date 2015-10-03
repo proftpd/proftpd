@@ -39,9 +39,8 @@ static void set_up(void) {
   init_inet();
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
-    pr_trace_set_levels("netio", 0, 20);
-    pr_trace_set_levels("response", 0, 20);
+    pr_trace_set_levels("netio", 1, 20);
+    pr_trace_set_levels("response", 1, 20);
   }
 }
 
@@ -55,15 +54,14 @@ static void tear_down(void) {
 
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
 
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("netio", 0, 0);
+    pr_trace_set_levels("response", 0, 0);
+  }
+
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
-  }
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
-    pr_trace_set_levels("netio", 0, 0);
-    pr_trace_set_levels("response", 0, 0);
   }
 }
 
@@ -90,7 +88,16 @@ START_TEST (response_add_test) {
   char *resp_code = R_200, *resp_msg = "OK";
 
   pr_response_set_pool(p);
+
+  mark_point();
+  pr_response_add(NULL, NULL);
+
+  mark_point();
+  pr_response_add(NULL, "%s", resp_msg);
+
+  mark_point();
   pr_response_add(resp_code, "%s", resp_msg);
+  pr_response_add(NULL, "%s", resp_msg);
 
   res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
   fail_unless(res == 0, "Failed to get last values: %d (%s)", errno,
@@ -112,6 +119,11 @@ START_TEST (response_add_err_test) {
   char *resp_code = R_450, *resp_msg = "Busy";
 
   pr_response_set_pool(p);
+
+  mark_point();
+  pr_response_add_err(NULL, NULL);
+
+  mark_point();
   pr_response_add_err(resp_code, "%s", resp_msg);
 
   res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
@@ -394,7 +406,6 @@ Suite *tests_get_response_suite(void) {
   suite = suite_create("response");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, response_pool_get_test);
@@ -431,6 +442,5 @@ Suite *tests_get_response_suite(void) {
 #endif /* TEST_BUG3711 */
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }
