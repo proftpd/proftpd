@@ -481,11 +481,15 @@ int pr_encode_set_charset_encoding(const char *charset, const char *codeset) {
 
   res = encode_init();
   if (res < 0) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 1,
       "failed to initialize encoding for local charset %s, encoding %s, "
       "disabling encoding", charset, codeset);
     local_charset = NULL;
     encoding = NULL;
+
+    errno = xerrno;
   }
 
   return res;

@@ -100,7 +100,26 @@ MODRET handle_endpwent(cmd_rec *cmd) {
 
 MODRET handle_getpwent(cmd_rec *cmd) {
   getpwent_count++;
-  return mod_create_data(cmd, &test_pwd);
+
+  if (getpwent_count == 1) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  if (getpwent_count == 2) {
+    test_pwd.pw_uid = (uid_t) -1;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  if (getpwent_count == 3) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
+    test_pwd.pw_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_getpwnam(cmd_rec *cmd) {
@@ -117,10 +136,12 @@ MODRET handle_getpwnam(cmd_rec *cmd) {
 
   if (strcmp(name, PR_TEST_AUTH_NOBODY) == 0) {
     test_pwd.pw_uid = (uid_t) -1;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
     return mod_create_data(cmd, &test_pwd);
   }
 
   if (strcmp(name, PR_TEST_AUTH_NOBODY2) == 0) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
     test_pwd.pw_gid = (gid_t) -1;
     return mod_create_data(cmd, &test_pwd);
   }
@@ -142,10 +163,12 @@ MODRET handle_getpwuid(cmd_rec *cmd) {
 
   if (uid == PR_TEST_AUTH_NOUID) {
     test_pwd.pw_uid = (uid_t) -1;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
     return mod_create_data(cmd, &test_pwd);
   }
 
   if (uid == PR_TEST_AUTH_NOUID2) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
     test_pwd.pw_gid = (gid_t) -1;
     return mod_create_data(cmd, &test_pwd);
   }
@@ -201,7 +224,18 @@ MODRET handle_endgrent(cmd_rec *cmd) {
 
 MODRET handle_getgrent(cmd_rec *cmd) {
   getgrent_count++;
-  return mod_create_data(cmd, &test_grp);
+
+  if (getgrent_count == 1) {
+    test_grp.gr_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_grp);
+  }
+
+  if (getgrent_count == 2) {
+    test_grp.gr_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_grp);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_getgrnam(cmd_rec *cmd) {
@@ -215,7 +249,7 @@ MODRET handle_getgrnam(cmd_rec *cmd) {
     return mod_create_data(cmd, &test_grp);
   }
 
-  if (strcmp(name, PR_TEST_AUTH_NOBODY) == 0) {
+  if (strcmp(name, PR_TEST_AUTH_NOGROUP) == 0) {
     test_grp.gr_gid = (gid_t) -1;
     return mod_create_data(cmd, &test_grp);
   }
@@ -280,12 +314,16 @@ MODRET handle_gid2name(cmd_rec *cmd) {
 
 MODRET handle_getgroups(cmd_rec *cmd) {
   const char *name;
-  array_header *gids;
+  array_header *gids = NULL, *names = NULL;
 
   name = (char *) cmd->argv[0];
 
   if (cmd->argv[1]) {
     gids = (array_header *) cmd->argv[1];
+  }
+
+  if (cmd->argv[2]) {
+    names = (array_header *) cmd->argv[2];
   }
 
   getgroups_count++;
@@ -294,7 +332,14 @@ MODRET handle_getgroups(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  *((gid_t *) push_array(gids)) = PR_TEST_AUTH_GID;
+  if (gids) { 
+    *((gid_t *) push_array(gids)) = PR_TEST_AUTH_GID;
+  }
+
+  if (names) {
+    *((char **) push_array(names)) = pstrdup(p, PR_TEST_AUTH_NAME);
+  }
+
   return mod_create_data(cmd, (void *) &gids->nelts);
 }
 
@@ -487,6 +532,8 @@ START_TEST (auth_getpwent_test) {
   authtable authtab;
   char *sym_name = "getpwent";
 
+  getpwent_count = 0;
+
   pw = pr_auth_getpwent(NULL);
   fail_unless(pw == NULL, "Found pwent unexpectedly");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
@@ -513,6 +560,21 @@ START_TEST (auth_getpwent_test) {
   fail_unless(getpwent_count == 1, "Expected call count 1, got %u",
     getpwent_count);
 
+  pw = pr_auth_getpwent(p);
+  fail_unless(pw == NULL, "Failed to avoid pwent with bad UID");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(getpwent_count == 2, "Expected call count 2, got %u",
+    getpwent_count);
+
+  pw = pr_auth_getpwent(p);
+  fail_unless(pw == NULL, "Failed to avoid pwent with bad GID");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(getpwent_count == 3, "Expected call count 3, got %u",
+    getpwent_count);
+
+  pr_auth_endpwent(p);
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
 }
 END_TEST
@@ -571,6 +633,7 @@ START_TEST (auth_getpwnam_test) {
   fail_unless(getpwnam_count == 4, "Expected call count 4, got %u",
     getpwnam_count);
 
+  pr_auth_endpwent(p);
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
 }
 END_TEST
@@ -818,6 +881,14 @@ START_TEST (auth_getgrent_test) {
   fail_unless(getgrent_count == 1, "Expected call count 1, got %u",
     getgrent_count);
 
+  gr = pr_auth_getgrent(p);
+  fail_unless(gr == NULL, "Failed to avoid grent with bad GID");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(getgrent_count == 2, "Expected call count 2, got %u",
+    getgrent_count);
+
+  pr_auth_endgrent(p);
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
 }
 END_TEST
@@ -1027,7 +1098,7 @@ END_TEST
 
 START_TEST (auth_getgroups_test) {
   int res;
-  array_header *gids = NULL;
+  array_header *gids = NULL, *names = NULL;
   authtable authtab;
   char *sym_name = "getgroups";
 
@@ -1054,13 +1125,13 @@ START_TEST (auth_getgroups_test) {
 
   mark_point();
 
-  res = pr_auth_getgroups(p, PR_TEST_AUTH_NAME, &gids, NULL);
+  res = pr_auth_getgroups(p, PR_TEST_AUTH_NAME, &gids, &names);
   fail_unless(res > 0, "Expected group count 1 for '%s', got %d: %s",
     PR_TEST_AUTH_NAME, res, strerror(errno));
   fail_unless(getgroups_count == 1, "Expected call count 1, got %u",
     getgroups_count);
 
-  res = pr_auth_getgroups(p, "other", &gids, NULL);
+  res = pr_auth_getgroups(p, "other", &gids, &names);
   fail_unless(res < 0, "Found groups for 'other' unexpectedly");
   fail_unless(getgroups_count == 2, "Expected call count 2, got %u",
     getgroups_count);
