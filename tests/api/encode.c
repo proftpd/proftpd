@@ -207,12 +207,23 @@ START_TEST (encode_encoding_test) {
   fail_unless(res == 0, "Failed to enable encoding '%s': %s", encoding,
     strerror(errno));
 
+  encoding = "foo";
+  res = pr_encode_enable_encoding(encoding);
+  fail_unless(res < 0, "Failed to handle bad encoding '%s'", encoding);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   pr_encode_disable_encoding();
 
   encoding = "utf-8";
   res = pr_encode_enable_encoding(encoding);
   fail_unless(res == 0, "Failed to enable encoding '%s': %s", encoding,
     strerror(errno));
+
+  encoding = pr_encode_get_encoding();
+  fail_unless(encoding != NULL, "Failed to get encoding: %s", strerror(errno));
+  fail_unless(strcasecmp(encoding, "utf-8") == 0,
+    "Expected 'utf-8', got '%s'", encoding);
 }
 END_TEST
 
