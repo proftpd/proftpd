@@ -1521,6 +1521,25 @@ START_TEST (auth_authenticate_test) {
   fail_unless(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  authtab.auth_flags |= PR_AUTH_FL_REQUIRED;
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authenticate user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+  authtab.auth_flags &= ~PR_AUTH_FL_REQUIRED;
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
+
+  res = pr_auth_add_auth_only_module("foo.bar");
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authenticate user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  pr_auth_clear_auth_only_modules();
 }
 END_TEST
 
@@ -1561,6 +1580,18 @@ START_TEST (auth_authorize_test) {
   fail_unless(res == PR_AUTH_OK,
     "Failed to authorize user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
+
+  res = pr_auth_add_auth_only_module("foo.bar");
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authorize user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  pr_auth_clear_auth_only_modules();
 }
 END_TEST
 

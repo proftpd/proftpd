@@ -689,6 +689,7 @@ START_TEST (data_xfer_test) {
   session.sf_flags |= SF_ASCII;
 
   mark_point();
+  data_read_eagain = TRUE;
   res = pr_data_xfer(buf, bufsz);
   fail_unless(res == (int) (buflen * 2), "Expected %lu, got %d",
     (unsigned long) (buflen * 2), res);

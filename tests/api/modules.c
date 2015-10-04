@@ -256,6 +256,19 @@ END_TEST
 START_TEST (module_unload_test) {
   int res;
   module m;
+  authtable authtab[] = {
+    { 0, "setpwent", NULL },
+    { 0, NULL, NULL }
+  };
+  cmdtable cmdtab[] = {
+    { CMD, C_RETR, G_READ, NULL, TRUE, FALSE, CL_READ },
+    { HOOK, "foo", G_READ, NULL, FALSE, FALSE },
+    { 0, NULL }
+  };
+  conftable conftab[] = {
+    { "TestSuite", NULL, NULL },
+    { NULL }
+  };
 
   res = pr_module_unload(NULL);
   fail_unless(res < 0, "Failed to handle null argument");
@@ -285,6 +298,14 @@ START_TEST (module_unload_test) {
   fail_unless(res < 0, "Failed to handle nonexistent module");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  m.authtable = authtab;
+  m.cmdtable = cmdtab;
+  m.conftable = conftab;
+  loaded_modules = &m;
+
+  res = pr_module_unload(&m);
+  fail_unless(res == 0, "Failed to unload module: %s", strerror(errno));
 
   loaded_modules = NULL;
 }
@@ -356,7 +377,7 @@ START_TEST (module_load_cmdtab_test) {
 
   m.name = "testsuite";
   m.cmdtable = cmdtab;
-  res = pr_module_load_authtab(&m);
+  res = pr_module_load_cmdtab(&m);
   fail_unless(res == 0, "Failed to load module cmdtab: %s", strerror(errno));
 
   pr_module_unload(&m);
@@ -392,7 +413,7 @@ START_TEST (module_load_conftab_test) {
   fail_unless(res == 0, "Failed to unload module: %s", strerror(errno));
 
   m.conftable = conftab;
-  res = pr_module_load_authtab(&m);
+  res = pr_module_load_conftab(&m);
   fail_unless(res == 0, "Failed to load module conftab: %s", strerror(errno));
 
   pr_module_unload(&m);
