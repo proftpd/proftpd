@@ -244,15 +244,21 @@ static int unlock_scoreboard(void) {
   return res;
 }
 
-static int unlock_entry(int fd) {
+int pr_scoreboard_entry_lock(int fd, int lock_type) {
   unsigned int nattempts = 1;
+  const char *lock_label;
 
-  entry_lock.l_type = F_UNLCK;
+  entry_lock.l_type = lock_type;
   entry_lock.l_whence = SEEK_CUR;
   entry_lock.l_len = sizeof(pr_scoreboard_entry_t);
 
-  pr_trace_msg("lock", 9, "attempting to unlock scoreboard fd %d entry, "
-    "offset %" PR_LU, fd, (pr_off_t) entry_lock.l_start);
+  lock_label = get_lock_type(&entry_lock);
+  if (lock_label == NULL) {
+    return -1;
+  }
+
+  pr_trace_msg("lock", 9, "attempting to %s scoreboard fd %d entry, "
+    "offset %" PR_LU, lock_label, fd, (pr_off_t) entry_lock.l_start);
 
   while (fcntl(fd, F_SETLK, &entry_lock) < 0) {
     int xerrno = errno;
@@ -276,74 +282,38 @@ static int unlock_entry(int fd) {
 
         errno = 0;
         pr_trace_msg("lock", 9,
-          "attempt #%u to to unlock scoreboard fd %d entry, offset %" PR_LU,
-          nattempts, fd, (pr_off_t) entry_lock.l_start);
+          "attempt #%u to to %s scoreboard fd %d entry, offset %" PR_LU,
+          nattempts, lock_label, fd, (pr_off_t) entry_lock.l_start);
         continue;
       }
     }
 
-    pr_trace_msg("lock", 3, "unlock of scoreboard fd %d entry failed: %s", fd,
-      strerror(xerrno));
+    pr_trace_msg("lock", 3, "%s of scoreboard fd %d entry failed: %s",
+      lock_label, fd, strerror(xerrno));
 
     errno = xerrno;
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "unlock of scoreboard fd %d entry, "
-    "offset %" PR_LU " succeeded", fd, (pr_off_t) entry_lock.l_start);
+  pr_trace_msg("lock", 9, "%s of scoreboard fd %d entry, "
+    "offset %" PR_LU " succeeded", lock_label, fd,
+    (pr_off_t) entry_lock.l_start);
 
   return 0;
 }
 
+static int unlock_entry(int fd) {
+  int res;
+
+  res = pr_scoreboard_entry_lock(fd, F_UNLCK); 
+  return res;
+}
+
 static int wlock_entry(int fd) {
-  unsigned int nattempts = 1;
+  int res;
 
-  entry_lock.l_type = F_WRLCK;
-  entry_lock.l_whence = SEEK_CUR;
-  entry_lock.l_len = sizeof(pr_scoreboard_entry_t);
-
-  pr_trace_msg("lock", 9, "attempting to write-lock scoreboard fd %d entry, "
-    "offset %" PR_LU, fd, (pr_off_t) entry_lock.l_start);
-
-  while (fcntl(fd, F_SETLK, &entry_lock) < 0) {
-    int xerrno = errno;
-
-    if (xerrno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    if (xerrno == EAGAIN) {
-      /* Treat this as an interrupted call, call pr_signals_handle() (which
-       * will delay for a few msecs because of EINTR), and try again.
-       * After MAX_LOCK_ATTEMPTS attempts, give up altogether.
-       */
-
-      nattempts++;
-      if (nattempts <= SCOREBOARD_MAX_LOCK_ATTEMPTS) {
-        errno = EINTR;
-
-        pr_signals_handle();
-
-        errno = 0;
-        pr_trace_msg("lock", 9,
-          "attempt #%u to write-lock scoreboard fd %d entry, offset %" PR_LU,
-          nattempts, fd, (pr_off_t) entry_lock.l_start);
-        continue;
-      }
-    }
-
-    pr_trace_msg("lock", 3, "write-lock of scoreboard fd %d entry failed: %s",
-      fd, strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
-
-  pr_trace_msg("lock", 9, "write-lock of scoreboard fd %d entry, "
-    "offset %" PR_LU " succeeded", fd, (pr_off_t) entry_lock.l_start);
-
-  return 0;
+  res = pr_scoreboard_entry_lock(fd, F_UNLCK); 
+  return res;
 }
 
 static int write_entry(int fd) {

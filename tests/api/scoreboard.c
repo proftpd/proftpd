@@ -1460,6 +1460,57 @@ START_TEST (scoreboard_entry_kill_test) {
 }
 END_TEST
 
+START_TEST (scoreboard_entry_lock_test) {
+  int fd = -1, lock_type = -1, res;
+
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res < 0, "Failed to handle bad lock type");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  lock_type = F_RDLCK;
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res < 0, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  fd = open(scoreboard_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fd >= 0, "Failed to open '%s': %s", scoreboard_test_path,
+    strerror(errno));
+
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_WRLCK;
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_UNLCK;
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_WRLCK;
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  /* Note: apparently attempt to lock (again) a file on which a lock
+   * (of the same type) is already held will succeed.  Huh.
+   */
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_RDLCK;
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_UNLCK;
+  res = pr_scoreboard_entry_lock(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  (void) unlink(scoreboard_test_path);
+}
+END_TEST
+
 START_TEST (scoreboard_disabled_test) {
   register unsigned int i = 0;
   const char *paths[4] = {
@@ -1562,6 +1613,7 @@ Suite *tests_get_scoreboard_suite(void) {
   tcase_add_test(testcase, scoreboard_entry_get_test);
   tcase_add_test(testcase, scoreboard_entry_update_test);
   tcase_add_test(testcase, scoreboard_entry_kill_test);
+  tcase_add_test(testcase, scoreboard_entry_lock_test);
   tcase_add_test(testcase, scoreboard_disabled_test);
 
   suite_add_tcase(suite, testcase);

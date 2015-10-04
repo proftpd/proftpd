@@ -149,5 +149,6 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void);
 const char *pr_scoreboard_entry_get(int);
 int pr_scoreboard_entry_kill(pr_scoreboard_entry_t *, int);
 int pr_scoreboard_entry_update(pid_t, ...);
+int pr_scoreboard_entry_lock(int, int);
 
 #endif /* PR_SCOREBOARD_H */
