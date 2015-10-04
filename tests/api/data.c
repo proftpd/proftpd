@@ -49,6 +49,7 @@ static void set_up(void) {
 
   session.sf_flags = 0;
 
+  pr_trace_set_levels("timing", 1, 1);
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("data", 1, 20);
   }
@@ -61,6 +62,7 @@ static void tear_down(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("data", 0, 0);
   }
+  pr_trace_set_levels("timing", 0, 0);
 
   if (session.c != NULL) {
     (void) pr_inet_close(p, session.c);
@@ -160,9 +162,44 @@ static int data_poll_cb(pr_netio_stream_t *nstrm) {
   return 7;
 }
 
+static int data_read_eintr = FALSE;
+static int data_read_epipe = FALSE;
+
+static int data_read_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
+  const char *data = "Hello, World!\n";
+  size_t sz;
+
+  if (data_read_eintr) {
+    data_read_eintr = FALSE;
+    errno = EINTR;
+    return -1;
+  }
+
+  if (data_read_epipe) {
+    data_read_epipe = FALSE;
+    errno = EPIPE;
+    return -1;
+  }
+
+  sz = strlen(data);
+  if (buflen < sz) {
+    sz = buflen;
+  }
+
+  memcpy(buf, data, sz);
+  return (int) sz;
+}
+
+static int data_write_eintr = FALSE;
 static int data_write_epipe = FALSE;
 
 static int data_write_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
+  if (data_write_eintr) {
+    data_write_eintr = FALSE;
+    errno = EINTR;
+    return -1;
+  }
+
   if (data_write_epipe) {
     data_write_epipe = FALSE;
     errno = EPIPE;
@@ -172,7 +209,7 @@ static int data_write_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   return buflen;
 }
 
-static int data_open_outstream(conn_t *conn) {
+static int data_open_streams(conn_t *conn) {
   int fd = 2, res;
   pr_netio_t *netio;
   pr_netio_stream_t *nstrm;
@@ -180,6 +217,7 @@ static int data_open_outstream(conn_t *conn) {
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->close = data_close_cb;
   netio->poll = data_poll_cb;
+  netio->read = data_read_cb;
   netio->write = data_write_cb;
 
   res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
@@ -193,6 +231,13 @@ static int data_open_outstream(conn_t *conn) {
   }
 
   conn->outstrm = nstrm;
+
+  nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
+  if (nstrm == NULL) {
+    return -1;
+  }
+
+  conn->instrm = nstrm;
   return 0;
 }
 
@@ -234,8 +279,8 @@ START_TEST (data_sendfile_test) {
   session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
   fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
 
-  res = data_open_outstream(session.d);
-  fail_unless(res == 0, "Failed to open outstream: %s", strerror(errno));
+  res = data_open_streams(session.d);
+  fail_unless(res == 0, "Failed to open streams: %s", strerror(errno));
 
   mark_point();
   res = pr_data_sendfile(fd, &offset, 1);
@@ -527,7 +572,7 @@ END_TEST
 START_TEST (data_xfer_test) {
   int res;
   char *buf;
-  size_t buflen;
+  size_t buflen, bufsz;
 
   res = pr_data_xfer(NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -552,19 +597,19 @@ START_TEST (data_xfer_test) {
   fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
 
   /* write binary data */
-  session.xfer.p = make_sub_pool(p);
   session.xfer.direction = PR_NETIO_IO_WR;
   session.xfer.buflen = 1024;
   session.xfer.buf = pcalloc(p, session.xfer.buflen);
 
   mark_point();
+  data_write_eintr = TRUE;
   res = pr_data_xfer(buf, buflen);
   fail_unless(res < 0, "Transfered data unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  res = data_open_outstream(session.d);
-  fail_unless(res == 0, "Failed to open outstream on session.d: %s",
+  res = data_open_streams(session.d);
+  fail_unless(res == 0, "Failed to open streams on session.d: %s",
     strerror(errno));
 
   mark_point();
@@ -574,6 +619,12 @@ START_TEST (data_xfer_test) {
 
   /*  write ASCII data */
   session.sf_flags |= SF_ASCII_OVERRIDE;
+  mark_point();
+  res = pr_data_xfer(buf, buflen);
+  fail_unless(res == (int) buflen, "Expected %lu, got %d",
+    (unsigned long) buflen, res);
+
+  session.xfer.p = make_sub_pool(p);
   mark_point();
   res = pr_data_xfer(buf, buflen);
   fail_unless(res == (int) buflen, "Expected %lu, got %d",
@@ -588,8 +639,26 @@ START_TEST (data_xfer_test) {
 
   session.sf_flags &= ~SF_ASCII;
 
-  /* XXX read binary data */
-  /* XXX read ASCII data */
+  /* read binary data */
+  session.xfer.direction = PR_NETIO_IO_RD;
+  bufsz = 1024;
+  buf = palloc(p, bufsz);
+
+  mark_point();
+  data_read_eintr = TRUE;
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res == (int) buflen, "Expected %lu, got %d",
+    (unsigned long) buflen, res);
+
+  /* read ASCII data */
+  session.sf_flags |= SF_ASCII;
+
+  mark_point();
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res == (int) (buflen * 2), "Expected %lu, got %d",
+    (unsigned long) (buflen * 2), res);
+
+  session.sf_flags &= ~SF_ASCII;
 }
 END_TEST
 
