@@ -678,6 +678,8 @@ START_TEST (data_xfer_test) {
   buf = palloc(p, bufsz);
 
   mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "syst"));
+  tests_stubs_set_next_cmd(cmd);
   data_read_eagain = TRUE;
   res = pr_data_xfer(buf, bufsz);
   fail_unless(res == (int) buflen, "Expected %lu, got %d",

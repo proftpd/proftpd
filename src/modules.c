@@ -124,14 +124,18 @@ int modules_session_init(void) {
   module *prev_module = curr_module, *m;
 
   for (m = loaded_modules; m; m = m->next) {
-    if (m && m->sess_init) {
+    if (m->sess_init) {
       curr_module = m;
 
       pr_trace_msg(trace_channel, 12,
         "invoking sess_init callback on mod_%s.c", m->name);
       if (m->sess_init() < 0) {
+        int xerrno = errno;
+
         pr_log_pri(PR_LOG_WARNING, "mod_%s.c: error initializing session: %s",
-          m->name, strerror(errno));
+          m->name, strerror(xerrno));
+
+        errno = xerrno;
         return -1;
       }
     }

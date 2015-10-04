@@ -26,6 +26,8 @@
 
 #include "tests.h"
 
+extern module *loaded_modules;
+
 static pool *p = NULL;
 
 static void set_up(void) {
@@ -37,11 +39,53 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  loaded_modules = NULL;
+
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
   } 
 }
+
+static int sess_init_eperm = FALSE;
+
+static int module_sess_init_cb(void) {
+  if (sess_init_eperm) {
+    sess_init_eperm = FALSE;
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
+START_TEST (module_sess_init_test) {
+  int res;
+  module m;
+
+  res = modules_session_init();
+  fail_unless(res == 0, "Failed to initialize modules: %s", strerror(errno));
+
+  memset(&m, 0, sizeof(m));
+  m.name = "testsuite";
+
+  loaded_modules = &m;
+  res = modules_session_init();
+  fail_unless(res == 0, "Failed to initialize modules: %s", strerror(errno));
+
+  m.sess_init = module_sess_init_cb;
+  res = modules_session_init();
+  fail_unless(res == 0, "Failed to initialize modules: %s", strerror(errno));
+
+  sess_init_eperm = TRUE;
+  res = modules_session_init();
+  fail_unless(res < 0, "Initialized modules unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  loaded_modules = NULL;
+}
+END_TEST
 
 START_TEST (module_command_exists_test) {
   int res;
@@ -82,6 +126,8 @@ START_TEST (module_exists_test) {
   fail_unless(res == FALSE, "Failed to handle nonexistent module");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  loaded_modules = NULL;
 }
 END_TEST
 
@@ -116,6 +162,8 @@ START_TEST (module_get_test) {
   fail_unless(res == NULL, "Failed to handle nonexistent module");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  loaded_modules = NULL;
 }
 END_TEST
 
@@ -126,10 +174,22 @@ static int module_listf(const char *fmt, ...) {
 }
 
 START_TEST (module_list_test) {
+  module m, m2;
+
   mark_point();
   listed = 0;
   modules_list2(module_listf, 0);
   fail_unless(listed > 0, "Expected >0, got %u", listed);
+
+  memset(&m, 0, sizeof(m));
+  m.name = "testsuite";
+  m.module_version = "a.b";
+
+  memset(&m2, 0, sizeof(m2));
+  m2.name = "testsuite2";
+
+  m.next = &m2;
+  loaded_modules = &m;
 
   mark_point();
   listed = 0;
@@ -140,6 +200,8 @@ START_TEST (module_list_test) {
   listed = 0;
   modules_list2(module_listf, PR_MODULES_LIST_FL_SHOW_VERSION);
   fail_unless(listed > 0, "Expected >0, got %u", listed);
+
+  loaded_modules = NULL;
 }
 END_TEST
 
@@ -223,6 +285,8 @@ START_TEST (module_unload_test) {
   fail_unless(res < 0, "Failed to handle nonexistent module");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  loaded_modules = NULL;
 }
 END_TEST
 
@@ -267,6 +331,7 @@ START_TEST (module_load_cmdtab_test) {
   module m;
   cmdtable cmdtab[] = {
     { CMD, C_RETR, G_READ, NULL, TRUE, FALSE, CL_READ },
+    { HOOK, "foo", G_READ, NULL, FALSE, FALSE },
     { 0, NULL }
   };
 
@@ -289,6 +354,7 @@ START_TEST (module_load_cmdtab_test) {
   pr_module_unload(&m);
   fail_unless(res == 0, "Failed to unload module: %s", strerror(errno));
 
+  m.name = "testsuite";
   m.cmdtable = cmdtab;
   res = pr_module_load_authtab(&m);
   fail_unless(res == 0, "Failed to load module cmdtab: %s", strerror(errno));
@@ -464,6 +530,7 @@ Suite *tests_get_modules_suite(void) {
   testcase = tcase_create("module");
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
+  tcase_add_test(testcase, module_sess_init_test);
   tcase_add_test(testcase, module_command_exists_test);
   tcase_add_test(testcase, module_exists_test);
   tcase_add_test(testcase, module_get_test);
