@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* NetACL API tests
- * $Id: netacl.c,v 1.4 2011-05-23 20:50:31 castaglia Exp $
- */
+/* NetACL API tests */
 
 #include "tests.h"
 
@@ -38,13 +36,20 @@ static void set_up(void) {
   }
 
   init_netaddr();
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("netacl", 1, 20);
+  }
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("netacl", 0, 0);
+  }
+
   if (p) {
     destroy_pool(p);
-    p = NULL;
-    permanent_pool = NULL;
+    p = permanent_pool = NULL;
   } 
 }
 
@@ -609,7 +614,6 @@ Suite *tests_get_netacl_suite(void) {
   suite = suite_create("netacl");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, netacl_create_test);
@@ -619,6 +623,5 @@ Suite *tests_get_netacl_suite(void) {
   tcase_add_test(testcase, netacl_get_negated_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

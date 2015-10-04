@@ -882,21 +882,13 @@ void pr_data_abort(int err, int quiet) {
 /* From response.c.  XXX Need to provide these symbols another way. */
 extern pr_response_t *resp_list, *resp_err_list;
 
-/* pr_data_xfer() actually transfers the data on the data connection.  ASCII
- * translation is performed if necessary.  `direction' is set when the data
- * connection was opened.
- *
- * We determine if the client buffer is read from or written to.  Returns 0 if
- * reading and data connection closes, or -1 if error (with errno set).
- */
-int pr_data_xfer(char *cl_buf, size_t cl_size) {
-  int len = 0;
-  int total = 0;
-  int res = 0;
+static void poll_ctrl(void) {
+  int res;
 
-  /* Poll the control channel for any commands we should handle, like
-   * QUIT or ABOR.
-   */
+  if (session.c == NULL) {
+    return;
+  }
+
   pr_trace_msg(trace_channel, 4, "polling for commands on control channel");
   pr_netio_set_poll_interval(session.c->instrm, 0);
   res = pr_netio_poll(session.c->instrm);
@@ -935,8 +927,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
     } else if (cmd != NULL) {
       char *ch;
 
-      for (ch = cmd->argv[0]; *ch; ch++)
+      for (ch = cmd->argv[0]; *ch; ch++) {
         *ch = toupper(*ch);
+      }
 
       cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
 
@@ -1046,6 +1039,30 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       pr_response_send(R_500, _("Invalid command: try being more creative"));
     }
   }
+}
+
+/* pr_data_xfer() actually transfers the data on the data connection.  ASCII
+ * translation is performed if necessary.  `direction' is set when the data
+ * connection was opened.
+ *
+ * We determine if the client buffer is read from or written to.  Returns 0 if
+ * reading and data connection closes, or -1 if error (with errno set).
+ */
+int pr_data_xfer(char *cl_buf, size_t cl_size) {
+  int len = 0;
+  int total = 0;
+  int res = 0;
+
+  if (cl_buf == NULL ||
+      cl_size == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Poll the control channel for any commands we should handle, like
+   * QUIT or ABOR.
+   */
+  poll_ctrl();
 
   /* If we don't have a data connection here (e.g. might have been closed
    * by an ABOR), then return zero (no data transferred).

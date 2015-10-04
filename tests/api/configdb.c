@@ -87,6 +87,11 @@ START_TEST (config_add_config_test) {
   mark_point();
   pr_config_dump(NULL, s->conf, NULL);
 
+  c = add_config_param_set(&(c->subset), "bar", 1, "baz");
+
+  mark_point();
+  pr_config_dump(NULL, s->conf, NULL);
+
   mark_point();
   res = remove_config(s->conf, name, FALSE);
   fail_unless(res > 0, "Failed to remove config '%s': %s", name,
@@ -599,6 +604,10 @@ START_TEST (config_merge_down_test) {
   c->flags |= CF_MERGEDOWN;
 
   c = add_config_param_set(&(dst->subset), name, 2, "bet", "vet");
+  c->flags |= CF_MERGEDOWN;
+
+  c = add_config_param_set(&(src->subset), "Bet", 3, "1", "2", "3");
+  c->config_type = CONF_LIMIT;
   c->flags |= CF_MERGEDOWN;
 
   mark_point();
