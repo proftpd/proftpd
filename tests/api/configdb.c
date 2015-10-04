@@ -552,13 +552,13 @@ START_TEST (config_merge_down_test) {
   pr_config_merge_down(set, FALSE);
 
   name = "foo";
-  c = src = add_config_param_set(&set, name, 0);
+  c = add_config_param_set(&set, name, 0);
 
   mark_point();
   pr_config_merge_down(set, FALSE);
 
   name = "bar";
-  c = dst = add_config_param_set(&set, name, 1, "baz");
+  c = add_config_param_set(&set, name, 1, "baz");
   c->flags |= CF_MERGEDOWN;
 
   mark_point();
@@ -572,6 +572,17 @@ START_TEST (config_merge_down_test) {
   pr_config_merge_down(set, FALSE);
 
   /* Add a config to the subsets, with the same name and same args. */
+  name = "<Anonymous>";
+  src = add_config_param_set(&set, name, 0);
+  src->config_type = CONF_ANON;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  name = "<Directory>";
+  dst = add_config_param_set(&set, name, 1, "/baz");
+  dst->config_type = CONF_DIR;
+
   name = "foo";
   c = add_config_param_set(&(src->subset), name, 1, "alef");
   c->flags |= CF_MERGEDOWN;
