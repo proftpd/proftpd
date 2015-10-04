@@ -128,25 +128,32 @@ static const char *get_lock_type(struct flock *lock) {
       break;
 
     default:
-      lock_type = "[unknown]";
+      errno = EINVAL;
+      lock_type = NULL;
   }
 
   return lock_type;
 }
 
-static int rlock_scoreboard(void) {
+int pr_lock_scoreboard(int mutex_fd, int lock_type) {
   struct flock lock;
   unsigned int nattempts = 1;
+  const char *lock_label;
 
-  lock.l_type = F_RDLCK;
+  lock.l_type = lock_type;
   lock.l_whence = SEEK_SET;
   lock.l_start = 0;
   lock.l_len = 0;
 
-  pr_trace_msg("lock", 9, "attempt #%u to read-lock scoreboard mutex fd %d",
-    nattempts, scoreboard_mutex_fd);
+  lock_label = get_lock_type(&lock);
+  if (lock_label == NULL) {
+    return -1;
+  }
 
-  while (fcntl(scoreboard_mutex_fd, F_SETLK, &lock) < 0) {
+  pr_trace_msg("lock", 9, "attempt #%u to %s-lock scoreboard mutex fd %d",
+    nattempts, lock_label, mutex_fd);
+
+  while (fcntl(mutex_fd, F_SETLK, &lock) < 0) {
     int xerrno = errno;
 
     if (xerrno == EINTR) {
@@ -155,16 +162,16 @@ static int rlock_scoreboard(void) {
     }
 
     pr_trace_msg("lock", 3,
-      "read-lock (attempt #%u) of scoreboard mutex fd %d failed: %s",
-      nattempts, scoreboard_mutex_fd, strerror(xerrno));
+      "%s-lock (attempt #%u) of scoreboard mutex fd %d failed: %s",
+      lock_label, nattempts, mutex_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       struct flock locker;
 
       /* Get the PID of the process blocking this lock. */
-      if (fcntl(scoreboard_mutex_fd, F_GETLK, &locker) == 0) {
+      if (fcntl(mutex_fd, F_GETLK, &locker) == 0) {
         pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
           "scoreboard mutex fd %d", (unsigned long) locker.l_pid,
-          get_lock_type(&locker), scoreboard_mutex_fd);
+          get_lock_type(&locker), mutex_fd);
       }
     }
 
@@ -183,13 +190,13 @@ static int rlock_scoreboard(void) {
 
         errno = 0;
         pr_trace_msg("lock", 9,
-          "attempt #%u to read-lock scoreboard mutex fd %d", nattempts,
-          scoreboard_mutex_fd);
+          "attempt #%u to %s-lock scoreboard mutex fd %d", nattempts,
+          lock_label, mutex_fd);
         continue;
       }
 
-      pr_trace_msg("lock", 9, "unable to acquire read-lock on "
-        "scoreboard mutex fd %d after %u attempts: %s", scoreboard_mutex_fd,
+      pr_trace_msg("lock", 9, "unable to acquire %s-lock on "
+        "scoreboard mutex fd %d after %u attempts: %s", lock_label, mutex_fd,
         nattempts, strerror(xerrno));
     }
 
@@ -198,11 +205,43 @@ static int rlock_scoreboard(void) {
   }
 
   pr_trace_msg("lock", 9,
-    "read-lock of scoreboard mutex fd %d successful after %u %s",
-    scoreboard_mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
+    "%s-lock of scoreboard mutex fd %d successful after %u %s", lock_label,
+    mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
 
-  scoreboard_read_locked = TRUE;
   return 0;
+}
+
+static int rlock_scoreboard(void) {
+  int res;
+
+  res = pr_lock_scoreboard(scoreboard_mutex_fd, F_RDLCK);
+  if (res == 0) {
+    scoreboard_read_locked = TRUE;
+  }
+
+  return res;
+}
+
+static int wlock_scoreboard(void) {
+  int res;
+
+  res = pr_lock_scoreboard(scoreboard_mutex_fd, F_WRLCK);
+  if (res == 0) {
+    scoreboard_write_locked = TRUE;
+  }
+
+  return res;
+}
+
+static int unlock_scoreboard(void) {
+  int res;
+
+  res = pr_lock_scoreboard(scoreboard_mutex_fd, F_UNLCK);
+  if (res == 0) {
+    scoreboard_read_locked = scoreboard_write_locked = FALSE;
+  }
+
+  return res;
 }
 
 static int unlock_entry(int fd) {
@@ -256,78 +295,6 @@ static int unlock_entry(int fd) {
   return 0;
 }
 
-static int unlock_scoreboard(void) {
-  struct flock lock;
-  unsigned int nattempts = 1;
-
-  lock.l_type = F_UNLCK;
-  lock.l_whence = SEEK_SET;
-  lock.l_start = 0;
-  lock.l_len = 0;
-
-  pr_trace_msg("lock", 9, "attempt #%u to unlock scoreboard mutex fd %d",
-    nattempts, scoreboard_mutex_fd);
-
-  while (fcntl(scoreboard_mutex_fd, F_SETLK, &lock) < 0) {
-    int xerrno = errno;
-
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    pr_trace_msg("lock", 3,
-      "unlock (attempt #%u) of scoreboard mutex fd %d failed: %s",
-      nattempts, scoreboard_mutex_fd, strerror(xerrno));
-    if (xerrno == EACCES) {
-      struct flock locker;
-
-      /* Get the PID of the process blocking this lock. */
-      if (fcntl(scoreboard_mutex_fd, F_GETLK, &locker) == 0) {
-        pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
-          "scoreboard mutex fd %d", (unsigned long) locker.l_pid,
-          get_lock_type(&locker), scoreboard_mutex_fd);
-      }
-    }
-
-    if (xerrno == EAGAIN ||
-        xerrno == EACCES) {
-      /* Treat this as an interrupted call, call pr_signals_handle() (which
-       * will delay for a few msecs because of EINTR), and try again.
-       * After MAX_LOCK_ATTEMPTS attempts, give up altogether.
-       */
-
-      nattempts++;
-      if (nattempts <= SCOREBOARD_MAX_LOCK_ATTEMPTS) {
-        errno = EINTR;
-
-        pr_signals_handle();
-
-        errno = 0;
-
-        pr_trace_msg("lock", 9,
-          "attempt #%u to unlock scoreboard mutex fd %d", nattempts,
-          scoreboard_mutex_fd);
-        continue;
-      }
-
-      pr_trace_msg("lock", 9,
-        "unable to unlock scoreboard mutex fd %d after %u attempts: %s",
-        scoreboard_mutex_fd, nattempts, strerror(xerrno));
-    }
-
-    errno = xerrno;
-    return -1;
-  }
-
-  pr_trace_msg("lock", 9,
-    "unlock of scoreboard mutex fd %d successful after %u %s",
-    scoreboard_mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
-
-  scoreboard_read_locked = scoreboard_write_locked = FALSE;
-  return 0;
-}
-
 static int wlock_entry(int fd) {
   unsigned int nattempts = 1;
 
@@ -376,77 +343,6 @@ static int wlock_entry(int fd) {
   pr_trace_msg("lock", 9, "write-lock of scoreboard fd %d entry, "
     "offset %" PR_LU " succeeded", fd, (pr_off_t) entry_lock.l_start);
 
-  return 0;
-}
-
-static int wlock_scoreboard(void) {
-  struct flock lock;
-  unsigned int nattempts = 1;
-
-  lock.l_type = F_WRLCK;
-  lock.l_whence = 0;
-  lock.l_start = 0;
-  lock.l_len = 0;
-
-  pr_trace_msg("lock", 9, "attempt #%u to write-lock scoreboard mutex fd %d",
-    nattempts, scoreboard_mutex_fd);
-
-  while (fcntl(scoreboard_mutex_fd, F_SETLK, &lock) < 0) {
-    int xerrno = errno;
-
-    if (xerrno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    pr_trace_msg("lock", 3,
-      "write-lock (attempt #%u) of scoreboard mutex fd %d failed: %s",
-      nattempts, scoreboard_mutex_fd, strerror(xerrno));
-    if (xerrno == EACCES) {
-      struct flock locker;
-
-      /* Get the PID of the process blocking this lock. */
-      if (fcntl(scoreboard_mutex_fd, F_GETLK, &locker) == 0) {
-        pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
-          "scoreboard mutex fd %d", (unsigned long) locker.l_pid,
-          get_lock_type(&locker), scoreboard_mutex_fd);
-      }
-    }
-
-    if (xerrno == EAGAIN ||
-        xerrno == EACCES) {
-      /* Treat this as an interrupted call, call pr_signals_handle() (which
-       * will delay for a few msecs because of EINTR), and try again.
-       * After MAX_LOCK_ATTEMPTS attempts, give up altogether.
-       */
-
-      nattempts++;
-      if (nattempts <= SCOREBOARD_MAX_LOCK_ATTEMPTS) {
-        errno = EINTR;
-
-        pr_signals_handle();
-
-        errno = 0;
-        pr_trace_msg("lock", 9,
-          "attempt #%u to write-lock scoreboard mutex fd %d", nattempts,
-          scoreboard_mutex_fd);
-        continue;
-      }
-
-      pr_trace_msg("lock", 9, "unable to acquire write-lock on "
-        "scoreboard mutex fd %d after %u attempts: %s", scoreboard_mutex_fd,
-        nattempts, strerror(xerrno));
-    }
-
-    errno = xerrno;
-    return -1;
-  }
-
-  pr_trace_msg("lock", 9,
-    "write-lock of scoreboard mutex fd %d successful after %u %s",
-    scoreboard_mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
-
-  scoreboard_write_locked = TRUE;
   return 0;
 }
 
@@ -1102,8 +998,9 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
 
     /* Do not proceed if we cannot lock the scoreboard. */
     res = rlock_scoreboard();
-    if (res < 0)
+    if (res < 0) {
       return NULL; 
+    }
   }
 
   pr_trace_msg(trace_channel, 5, "reading scoreboard entry");

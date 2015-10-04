@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2012 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source distribution.
  */
 
-/* Scoreboard routines
- * $Id: scoreboard.h,v 1.22 2012-01-27 01:02:58 castaglia Exp $
- */
+/* Scoreboard routines */
 
 #ifndef PR_SCOREBOARD_H
 #define PR_SCOREBOARD_H
@@ -130,6 +128,7 @@ typedef struct {
 
 const char *pr_get_scoreboard(void);
 const char *pr_get_scoreboard_mutex(void);
+int pr_lock_scoreboard(int, int);
 int pr_set_scoreboard(const char *);
 int pr_set_scoreboard_mutex(const char *);
 

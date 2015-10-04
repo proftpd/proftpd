@@ -28,7 +28,11 @@
 
 static pool *p = NULL;
 
+static const char *scoreboard_test_path = "/tmp/prt-scoreboard-mutex.dat";
+
 static void set_up(void) {
+  (void) unlink(scoreboard_test_path);
+
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
@@ -36,15 +40,16 @@ static void set_up(void) {
   ServerType = SERVER_STANDALONE;
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
+    pr_trace_set_levels("lock", 1, 20);
     pr_trace_set_levels("scoreboard", 1, 20);
   }
-
 }
 
 static void tear_down(void) {
+  (void) unlink(scoreboard_test_path);
+
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
+    pr_trace_set_levels("lock", 0, 0);
     pr_trace_set_levels("scoreboard", 0, 0);
   }
 
@@ -278,6 +283,57 @@ START_TEST (scoreboard_open_close_test) {
   (void) unlink(mutex_path);
   (void) unlink(path);
   (void) rmdir(dir);
+}
+END_TEST
+
+START_TEST (scoreboard_lock_test) {
+  int fd = -1, lock_type = -1, res;
+
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res < 0, "Failed to handle bad lock type");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  lock_type = F_RDLCK;
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res < 0, "Failed to handle bad file descriptor");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  fd = open(scoreboard_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fd >= 0, "Failed to open '%s': %s", scoreboard_test_path,
+    strerror(errno));
+
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_WRLCK;
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_UNLCK;
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_WRLCK;
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  /* Note: apparently attempt to lock (again) a file on which a lock
+   * (of the same type) is already held will succeed.  Huh.
+   */
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_RDLCK;
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  lock_type = F_UNLCK;
+  res = pr_lock_scoreboard(fd, lock_type);
+  fail_unless(res == 0, "Failed to lock fd %d: %s", fd, strerror(errno));
+
+  (void) unlink(scoreboard_test_path);
 }
 END_TEST
 
@@ -1487,13 +1543,13 @@ Suite *tests_get_scoreboard_suite(void) {
   suite = suite_create("scoreboard");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, scoreboard_get_test);
   tcase_add_test(testcase, scoreboard_set_test);
   tcase_add_test(testcase, scoreboard_set_mutex_test);
   tcase_add_test(testcase, scoreboard_open_close_test);
+  tcase_add_test(testcase, scoreboard_lock_test);
   tcase_add_test(testcase, scoreboard_delete_test);
   tcase_add_test(testcase, scoreboard_restore_test);
   tcase_add_test(testcase, scoreboard_rewind_test);
@@ -1509,6 +1565,5 @@ Suite *tests_get_scoreboard_suite(void) {
   tcase_add_test(testcase, scoreboard_disabled_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }
