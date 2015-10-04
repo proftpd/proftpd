@@ -311,6 +311,7 @@ START_TEST (stash_dump_test) {
   conftable conftab;
   cmdtable cmdtab, hooktab;
   authtable authtab;
+  module m;
 
   mark_point();
   pr_stash_dump(stash_dump);
@@ -330,8 +331,11 @@ START_TEST (stash_dump_test) {
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add AUTH symbol: %s", strerror(errno));
 
+  memset(&m, 0, sizeof(m));
+  m.name = "testsuite";
   memset(&hooktab, 0, sizeof(hooktab));
   hooktab.command = pstrdup(p, "Hook");
+  hooktab.m = &m;
   res = pr_stash_add_symbol(PR_SYM_HOOK, &hooktab);
   fail_unless(res == 0, "Failed to add HOOK symbol: %s", strerror(errno));
 

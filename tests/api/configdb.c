@@ -541,6 +541,8 @@ END_TEST
 
 START_TEST (config_merge_down_test) {
   xaset_t *set;
+  config_rec *c, *src, *dst;
+  const char *name;
 
   mark_point();
   pr_config_merge_down(NULL, FALSE);
@@ -549,9 +551,47 @@ START_TEST (config_merge_down_test) {
   set = xaset_create(p, NULL);
   pr_config_merge_down(set, FALSE);
 
-  /* XXX Add a config rec to this set, merge it down */
-  /* XXX Add a config rec with CF_MERGEDOWN to this set, merge it down */
-  /* XXX Add a config rec with CF_MERGEDOWN_MULTI to this set, merge it down */
+  name = "foo";
+  c = src = add_config_param_set(&set, name, 0);
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  name = "bar";
+  c = dst = add_config_param_set(&set, name, 1, "baz");
+  c->flags |= CF_MERGEDOWN;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  name = "BAZ";
+  c = add_config_param_set(&set, name, 2, "quxx", "Quzz");
+  c->flags |= CF_MERGEDOWN_MULTI;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  /* Add a config to the subsets, with the same name and same args. */
+  name = "foo";
+  c = add_config_param_set(&(src->subset), name, 1, "alef");
+  c->flags |= CF_MERGEDOWN;
+
+  c = add_config_param_set(&(dst->subset), name, 1, "alef");
+  c->flags |= CF_MERGEDOWN;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  /* Add a config to the subsets, with the same name and diff args. */
+  name = "alef";
+  c = add_config_param_set(&(src->subset), name, 1, "alef");
+  c->flags |= CF_MERGEDOWN;
+
+  c = add_config_param_set(&(dst->subset), name, 2, "bet", "vet");
+  c->flags |= CF_MERGEDOWN;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
 }
 END_TEST
 
