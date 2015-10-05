@@ -1175,10 +1175,22 @@ START_TEST (scoreboard_entry_read_test) {
 END_TEST
 
 START_TEST (scoreboard_entry_get_test) {
+  register unsigned int i;
   int res;
   const char *dir = "/tmp/prt-scoreboard/", *path = "/tmp/prt-scoreboard/test",
     *mutex_path = "/tmp/prt-scoreboard/test.lck";
   const char *val;
+  int scoreboard_fields[] = {
+    PR_SCORE_USER,
+    PR_SCORE_CLIENT_ADDR,
+    PR_SCORE_CLIENT_NAME,
+    PR_SCORE_CLASS,
+    PR_SCORE_CWD,
+    PR_SCORE_CMD,
+    PR_SCORE_CMD_ARG,
+    PR_SCORE_PROTOCOL,
+    -1
+  };
 
   res = mkdir(dir, 0775);
   fail_unless(res == 0, "Failed to create directory '%s': %s", dir,
@@ -1272,16 +1284,6 @@ START_TEST (scoreboard_entry_get_test) {
     fail("Unexpectedly read value from scoreboard entry");
   }
 
-  /* XXX pr_scoreboard_entry_get:
-   *   PR_SCORE_USER
-   *   PR_SCORE_CLIENT_ADDR
-   *   PR_SCORE_CLIENT_NAME
-   *   PR_SCORE_CLASS
-   *   PR_SCORE_CMD
-   *   PR_SCORE_CMD_ARG
-   *   PR_SCORE_CMD_PROTOCOL
-   */
-
   if (errno != ENOENT) {
     int xerrno = errno;
 
@@ -1290,6 +1292,12 @@ START_TEST (scoreboard_entry_get_test) {
     (void) rmdir(dir);
 
     fail("Failed to set errno to ENOENT (got %d)", xerrno);
+  }
+
+  for (i = 0; scoreboard_fields[i] != -1; i++) {
+    val = pr_scoreboard_entry_get(scoreboard_fields[i]);
+    fail_unless(val != NULL, "Failed to read scoreboard field %d: %s",
+      scoreboard_fields[i], strerror(errno));
   }
 
   (void) unlink(path);
@@ -1437,6 +1445,26 @@ START_TEST (scoreboard_entry_update_test) {
 
     fail("Expected '%s', got '%s'", "cwd", val);
   }
+
+  /* XXX also update:
+   *   PR_SCORE_USER
+   *   PR_SCORE_CLIENT_ADDR
+   *   PR_SCORE_CLIENT_NAME
+   *   PR_SCORE_CLASS
+   *   PR_SCORE_CWD (done)
+   *   PR_SCORE_CMD
+   *   PR_SCORE_CMD_ARG
+   *   PR_SCORE_SERVER_PORT
+   *   PR_SCORE_SERVER_ADDR
+   *   PR_SCORE_SERVER_LABEL
+   *   PR_SCORE_BEGIN_IDLE
+   *   PR_SCORE_BEGIN_SESSION
+   *   PR_SCORE_XFER_DONE
+   *   PR_SCORE_XFER_SIZE
+   *   PR_SCORE_XFER_LEN
+   *   PR_SCORE_XFER_ELAPSED
+   *   PR_SCORE_PROTOCOL
+   */
 
   (void) unlink(path);
   (void) unlink(mutex_path);
