@@ -815,11 +815,12 @@ START_TEST (scoreboard_entry_update_test) {
   fail_unless(res == 0, "Failed to update PR_SCORE_CLASS: %s", strerror(errno));
 
   val = "USER";
-  res = pr_scoreboard_entry_update(pid, PR_SCORE_CMD, "%s", val);
+  res = pr_scoreboard_entry_update(pid, PR_SCORE_CMD, "%s", val, NULL, NULL);
   fail_unless(res == 0, "Failed to update PR_SCORE_CMD: %s", strerror(errno));
 
   val = "foo bar";
-  res = pr_scoreboard_entry_update(pid, PR_SCORE_CMD_ARG, "%s", val);
+  res = pr_scoreboard_entry_update(pid, PR_SCORE_CMD_ARG, "%s", val, NULL,
+    NULL);
   fail_unless(res == 0, "Failed to update PR_SCORE_CMD_ARG: %s",
     strerror(errno));
 
