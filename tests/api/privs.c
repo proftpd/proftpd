@@ -41,14 +41,12 @@ static void set_up(void) {
   privs_gid = getgid();
 
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(TRUE);
     pr_trace_set_levels("privs", 1, 20);
   }
 }
 
 static void tear_down(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
     pr_trace_set_levels("privs", 0, 0);
   }
 
