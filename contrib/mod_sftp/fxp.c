@@ -11354,7 +11354,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 static int fxp_handle_write(struct fxp_packet *fxp) {
   unsigned char *buf, *data, *ptr;
   char cmd_arg[256], *file, *name, *ptr2;
-  int res;
+  int res, xerrno = 0;
   uint32_t buflen, bufsz, datalen, status_code;
   uint64_t offset;
   struct fxp_handle *fxh;
@@ -11531,7 +11531,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   if (S_ISREG(fxh->fh_st->st_mode)) {
     if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
       const char *reason;
-      int xerrno = errno;
+      xerrno = errno;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error seeking to offset (%" PR_LU " bytes) for '%s': %s",
@@ -11579,6 +11579,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   pr_throttle_init(cmd2);
   
   res = pr_fsio_write(fxh->fh, (char *) data, datalen);
+  xerrno = errno;
 
   /* Increment the "on-disk" file size with the number of bytes written.
    * We do this, rather than using fstat(2), to avoid performance penalties
@@ -11611,7 +11612,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   if (res < 0) {
     const char *reason;
-    int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "WRITE, user '%s' (UID %s, GID %s): "
       "error writing to '%s': %s", session.user,
@@ -11655,11 +11655,11 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
       if (fxh->fh_st->st_size > nbytes_max_store) {
         const char *reason;
 #if defined(EFBIG)
-        int xerrno = EFBIG;
+        xerrno = EFBIG;
 #elif defined(ENOSPC)
-        int xerrno = ENOSPC;
+        xerrno = ENOSPC;
 #else
-        int xerno = EIO;
+        xerrno = EIO;
 #endif
 
         pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
