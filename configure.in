@@ -1530,17 +1530,6 @@ AC_TYPE_MODE_T
 AC_TYPE_OFF_T
 AC_TYPE_GETGROUPS
 
-dnl Check to see if timer_t is already defined
-AC_CACHE_CHECK([for timer_t], pr_cv_header_timer_t,
-	AC_EGREP_HEADER([.*typedef.*timer_t;],sys/types.h,
-			pr_cv_header_timer_t="yes",
-	AC_EGREP_HEADER([.*typedef.*timer_t;],limits.h,
-			pr_cv_header_timer_t="yes",pr_cv_header_timer_t="no")))
-
-if test "$pr_cv_header_timer_t" = "yes"; then
-  AC_DEFINE(HAVE_TIMER_T, 1, [Define if you have the timer_t type])
-fi
-
 AC_HEADER_TIME
 AC_STRUCT_TM
 

@@ -273,14 +273,6 @@ char *strchr(),*strrchr();
 
 #include "options.h"
 
-/* Solaris 2.5 seems to already have a typedef for 'timer_t', so
- * #define timer_t to something else as a workaround.  However, on AIX,
- * we do NOT want to do this.
- */
-#if defined(HAVE_TIMER_T) && !defined(AIX7)
-# define timer_t p_timer_t
-#endif
-
 /* AIX, when compiled using -D_NO_PROTO, lacks some prototypes without
  * which ProFTPD may do some funny (and not good) things.  Provide the
  * prototypes as necessary here.

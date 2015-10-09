@@ -26812,56 +26812,6 @@ _ACEOF
 
 
 
-{ echo "$as_me:$LINENO: checking for timer_t" >&5
-echo $ECHO_N "checking for timer_t... $ECHO_C" >&6; }
-if test "${pr_cv_header_timer_t+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <sys/types.h>
-
-_ACEOF
-if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
-  $EGREP ".*typedef.*timer_t;" >/dev/null 2>&1; then
-  pr_cv_header_timer_t="yes"
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <limits.h>
-
-_ACEOF
-if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
-  $EGREP ".*typedef.*timer_t;" >/dev/null 2>&1; then
-  pr_cv_header_timer_t="yes"
-else
-  pr_cv_header_timer_t="no"
-fi
-rm -f conftest*
-
-fi
-rm -f conftest*
-
-fi
-{ echo "$as_me:$LINENO: result: $pr_cv_header_timer_t" >&5
-echo "${ECHO_T}$pr_cv_header_timer_t" >&6; }
-
-if test "$pr_cv_header_timer_t" = "yes"; then
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_TIMER_T 1
-_ACEOF
-
-fi
-
 { echo "$as_me:$LINENO: checking whether time.h and sys/time.h may both be included" >&5
 echo $ECHO_N "checking whether time.h and sys/time.h may both be included... $ECHO_C" >&6; }
 if test "${ac_cv_header_time+set}" = set; then
