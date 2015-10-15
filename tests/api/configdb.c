@@ -87,6 +87,11 @@ START_TEST (config_add_config_test) {
   mark_point();
   pr_config_dump(NULL, s->conf, NULL);
 
+  c = add_config_param_set(&(c->subset), "bar", 1, "baz");
+
+  mark_point();
+  pr_config_dump(NULL, s->conf, NULL);
+
   mark_point();
   res = remove_config(s->conf, name, FALSE);
   fail_unless(res > 0, "Failed to remove config '%s': %s", name,
@@ -541,6 +546,8 @@ END_TEST
 
 START_TEST (config_merge_down_test) {
   xaset_t *set;
+  config_rec *c, *src, *dst;
+  const char *name;
 
   mark_point();
   pr_config_merge_down(NULL, FALSE);
@@ -549,9 +556,62 @@ START_TEST (config_merge_down_test) {
   set = xaset_create(p, NULL);
   pr_config_merge_down(set, FALSE);
 
-  /* XXX Add a config rec to this set, merge it down */
-  /* XXX Add a config rec with CF_MERGEDOWN to this set, merge it down */
-  /* XXX Add a config rec with CF_MERGEDOWN_MULTI to this set, merge it down */
+  name = "foo";
+  c = add_config_param_set(&set, name, 0);
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  name = "bar";
+  c = add_config_param_set(&set, name, 1, "baz");
+  c->flags |= CF_MERGEDOWN;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  name = "BAZ";
+  c = add_config_param_set(&set, name, 2, "quxx", "Quzz");
+  c->flags |= CF_MERGEDOWN_MULTI;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  /* Add a config to the subsets, with the same name and same args. */
+  name = "<Anonymous>";
+  src = add_config_param_set(&set, name, 0);
+  src->config_type = CONF_ANON;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  name = "<Directory>";
+  dst = add_config_param_set(&set, name, 1, "/baz");
+  dst->config_type = CONF_DIR;
+
+  name = "foo";
+  c = add_config_param_set(&(src->subset), name, 1, "alef");
+  c->flags |= CF_MERGEDOWN;
+
+  c = add_config_param_set(&(dst->subset), name, 1, "alef");
+  c->flags |= CF_MERGEDOWN;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
+
+  /* Add a config to the subsets, with the same name and diff args. */
+  name = "alef";
+  c = add_config_param_set(&(src->subset), name, 1, "alef");
+  c->flags |= CF_MERGEDOWN;
+
+  c = add_config_param_set(&(dst->subset), name, 2, "bet", "vet");
+  c->flags |= CF_MERGEDOWN;
+
+  c = add_config_param_set(&(src->subset), "Bet", 3, "1", "2", "3");
+  c->config_type = CONF_LIMIT;
+  c->flags |= CF_MERGEDOWN;
+
+  mark_point();
+  pr_config_merge_down(set, FALSE);
 }
 END_TEST
 

@@ -63,14 +63,14 @@ static unsigned int name2gid_count = 0;
 static unsigned int gid2name_count = 0;
 static unsigned int getgroups_count = 0;
 
-static module unit_tests_module = {
+static module testsuite_module = {
   NULL, NULL,
 
   /* Module API version */
   0x20,
 
   /* Module name */
-  "unit_tests",
+  "testsuite",
 
   /* Module configuration directive table */
   NULL,
@@ -100,7 +100,26 @@ MODRET handle_endpwent(cmd_rec *cmd) {
 
 MODRET handle_getpwent(cmd_rec *cmd) {
   getpwent_count++;
-  return mod_create_data(cmd, &test_pwd);
+
+  if (getpwent_count == 1) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  if (getpwent_count == 2) {
+    test_pwd.pw_uid = (uid_t) -1;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  if (getpwent_count == 3) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
+    test_pwd.pw_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_pwd);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_getpwnam(cmd_rec *cmd) {
@@ -117,10 +136,12 @@ MODRET handle_getpwnam(cmd_rec *cmd) {
 
   if (strcmp(name, PR_TEST_AUTH_NOBODY) == 0) {
     test_pwd.pw_uid = (uid_t) -1;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
     return mod_create_data(cmd, &test_pwd);
   }
 
   if (strcmp(name, PR_TEST_AUTH_NOBODY2) == 0) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
     test_pwd.pw_gid = (gid_t) -1;
     return mod_create_data(cmd, &test_pwd);
   }
@@ -142,10 +163,12 @@ MODRET handle_getpwuid(cmd_rec *cmd) {
 
   if (uid == PR_TEST_AUTH_NOUID) {
     test_pwd.pw_uid = (uid_t) -1;
+    test_pwd.pw_gid = PR_TEST_AUTH_GID;
     return mod_create_data(cmd, &test_pwd);
   }
 
   if (uid == PR_TEST_AUTH_NOUID2) {
+    test_pwd.pw_uid = PR_TEST_AUTH_UID;
     test_pwd.pw_gid = (gid_t) -1;
     return mod_create_data(cmd, &test_pwd);
   }
@@ -201,7 +224,18 @@ MODRET handle_endgrent(cmd_rec *cmd) {
 
 MODRET handle_getgrent(cmd_rec *cmd) {
   getgrent_count++;
-  return mod_create_data(cmd, &test_grp);
+
+  if (getgrent_count == 1) {
+    test_grp.gr_gid = PR_TEST_AUTH_GID;
+    return mod_create_data(cmd, &test_grp);
+  }
+
+  if (getgrent_count == 2) {
+    test_grp.gr_gid = (gid_t) -1;
+    return mod_create_data(cmd, &test_grp);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 MODRET handle_getgrnam(cmd_rec *cmd) {
@@ -215,7 +249,7 @@ MODRET handle_getgrnam(cmd_rec *cmd) {
     return mod_create_data(cmd, &test_grp);
   }
 
-  if (strcmp(name, PR_TEST_AUTH_NOBODY) == 0) {
+  if (strcmp(name, PR_TEST_AUTH_NOGROUP) == 0) {
     test_grp.gr_gid = (gid_t) -1;
     return mod_create_data(cmd, &test_grp);
   }
@@ -280,12 +314,16 @@ MODRET handle_gid2name(cmd_rec *cmd) {
 
 MODRET handle_getgroups(cmd_rec *cmd) {
   const char *name;
-  array_header *gids;
+  array_header *gids = NULL, *names = NULL;
 
   name = (char *) cmd->argv[0];
 
   if (cmd->argv[1]) {
     gids = (array_header *) cmd->argv[1];
+  }
+
+  if (cmd->argv[2]) {
+    names = (array_header *) cmd->argv[2];
   }
 
   getgroups_count++;
@@ -294,9 +332,18 @@ MODRET handle_getgroups(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  *((gid_t *) push_array(gids)) = PR_TEST_AUTH_GID;
+  if (gids) { 
+    *((gid_t *) push_array(gids)) = PR_TEST_AUTH_GID;
+  }
+
+  if (names) {
+    *((char **) push_array(names)) = pstrdup(p, PR_TEST_AUTH_NAME);
+  }
+
   return mod_create_data(cmd, (void *) &gids->nelts);
 }
+
+static int authn_rfc2228 = FALSE;
 
 MODRET handle_authn(cmd_rec *cmd) {
   const char *user, *cleartext_passwd;
@@ -306,6 +353,11 @@ MODRET handle_authn(cmd_rec *cmd) {
 
   if (strcmp(user, PR_TEST_AUTH_NAME) == 0) {
     if (strcmp(cleartext_passwd, PR_TEST_AUTH_PASSWD) == 0) {
+      if (authn_rfc2228) {
+        authn_rfc2228 = FALSE;
+        return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+      }
+
       return PR_HANDLED(cmd);
     }
 
@@ -327,6 +379,8 @@ MODRET handle_authz(cmd_rec *cmd) {
   return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
 }
 
+static int check_rfc2228 = FALSE;
+
 MODRET handle_check(cmd_rec *cmd) {
   const char *user, *cleartext_passwd, *ciphertext_passwd;
 
@@ -337,6 +391,11 @@ MODRET handle_check(cmd_rec *cmd) {
   if (strcmp(user, PR_TEST_AUTH_NAME) == 0) {
     if (ciphertext_passwd != NULL &&
         strcmp(ciphertext_passwd, cleartext_passwd) == 0) {
+      if (check_rfc2228) {
+        check_rfc2228 = FALSE;
+        return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+      }
+
       return PR_HANDLED(cmd);
     }
 
@@ -440,7 +499,7 @@ START_TEST (auth_setpwent_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_setpwent;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -449,7 +508,7 @@ START_TEST (auth_setpwent_test) {
   fail_unless(setpwent_count == 1, "Expected call count 1, got %u",
     setpwent_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -468,7 +527,7 @@ START_TEST (auth_endpwent_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_endpwent;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -477,7 +536,7 @@ START_TEST (auth_endpwent_test) {
   fail_unless(endpwent_count == 1, "Expected call count 1, got %u",
     endpwent_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -486,6 +545,8 @@ START_TEST (auth_getpwent_test) {
   struct passwd *pw;
   authtable authtab;
   char *sym_name = "getpwent";
+
+  getpwent_count = 0;
 
   pw = pr_auth_getpwent(NULL);
   fail_unless(pw == NULL, "Found pwent unexpectedly");
@@ -503,7 +564,7 @@ START_TEST (auth_getpwent_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_getpwent;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -513,7 +574,22 @@ START_TEST (auth_getpwent_test) {
   fail_unless(getpwent_count == 1, "Expected call count 1, got %u",
     getpwent_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pw = pr_auth_getpwent(p);
+  fail_unless(pw == NULL, "Failed to avoid pwent with bad UID");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(getpwent_count == 2, "Expected call count 2, got %u",
+    getpwent_count);
+
+  pw = pr_auth_getpwent(p);
+  fail_unless(pw == NULL, "Failed to avoid pwent with bad GID");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(getpwent_count == 3, "Expected call count 3, got %u",
+    getpwent_count);
+
+  pr_auth_endpwent(p);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -539,7 +615,7 @@ START_TEST (auth_getpwnam_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_getpwnam;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -571,7 +647,8 @@ START_TEST (auth_getpwnam_test) {
   fail_unless(getpwnam_count == 4, "Expected call count 4, got %u",
     getpwnam_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_auth_endpwent(p);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -597,7 +674,7 @@ START_TEST (auth_getpwuid_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_getpwuid;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -629,7 +706,7 @@ START_TEST (auth_getpwuid_test) {
   fail_unless(getpwuid_count == 4, "Expected call count 4, got %u",
     getpwuid_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -657,7 +734,7 @@ START_TEST (auth_name2uid_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_name2uid;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -680,7 +757,7 @@ START_TEST (auth_name2uid_test) {
   fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
     name2uid_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -712,7 +789,7 @@ START_TEST (auth_uid2name_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_uid2name;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -726,7 +803,7 @@ START_TEST (auth_uid2name_test) {
   fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -745,7 +822,7 @@ START_TEST (auth_setgrent_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_setgrent;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -754,7 +831,7 @@ START_TEST (auth_setgrent_test) {
   fail_unless(setgrent_count == 1, "Expected call count 1, got %u",
     setgrent_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -773,7 +850,7 @@ START_TEST (auth_endgrent_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_endgrent;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -782,7 +859,7 @@ START_TEST (auth_endgrent_test) {
   fail_unless(endgrent_count == 1, "Expected call count 1, got %u",
     endgrent_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -808,7 +885,7 @@ START_TEST (auth_getgrent_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_getgrent;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -818,7 +895,15 @@ START_TEST (auth_getgrent_test) {
   fail_unless(getgrent_count == 1, "Expected call count 1, got %u",
     getgrent_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  gr = pr_auth_getgrent(p);
+  fail_unless(gr == NULL, "Failed to avoid grent with bad GID");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(getgrent_count == 2, "Expected call count 2, got %u",
+    getgrent_count);
+
+  pr_auth_endgrent(p);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -844,7 +929,7 @@ START_TEST (auth_getgrnam_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_getgrnam;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -871,7 +956,7 @@ START_TEST (auth_getgrnam_test) {
   fail_unless(getgrnam_count == 3, "Expected call count 3, got %u",
     getgrnam_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -897,7 +982,7 @@ START_TEST (auth_getgrgid_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_getgrgid;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -924,7 +1009,7 @@ START_TEST (auth_getgrgid_test) {
   fail_unless(getgrgid_count == 3, "Expected call count 3, got %u",
     getgrgid_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -952,7 +1037,7 @@ START_TEST (auth_name2gid_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_name2gid;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -975,7 +1060,7 @@ START_TEST (auth_name2gid_test) {
   fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1007,7 +1092,7 @@ START_TEST (auth_gid2name_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_gid2name;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1021,13 +1106,13 @@ START_TEST (auth_gid2name_test) {
   fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
 START_TEST (auth_getgroups_test) {
   int res;
-  array_header *gids = NULL;
+  array_header *gids = NULL, *names = NULL;
   authtable authtab;
   char *sym_name = "getgroups";
 
@@ -1047,25 +1132,25 @@ START_TEST (auth_getgroups_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_getgroups;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
-  res = pr_auth_getgroups(p, PR_TEST_AUTH_NAME, &gids, NULL);
+  res = pr_auth_getgroups(p, PR_TEST_AUTH_NAME, &gids, &names);
   fail_unless(res > 0, "Expected group count 1 for '%s', got %d: %s",
     PR_TEST_AUTH_NAME, res, strerror(errno));
   fail_unless(getgroups_count == 1, "Expected call count 1, got %u",
     getgroups_count);
 
-  res = pr_auth_getgroups(p, "other", &gids, NULL);
+  res = pr_auth_getgroups(p, "other", &gids, &names);
   fail_unless(res < 0, "Found groups for 'other' unexpectedly");
   fail_unless(getgroups_count == 2, "Expected call count 2, got %u",
     getgroups_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1080,7 +1165,7 @@ START_TEST (auth_cache_uid2name_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_uid2name;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1103,7 +1188,7 @@ START_TEST (auth_cache_uid2name_test) {
   fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1118,7 +1203,7 @@ START_TEST (auth_cache_gid2name_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_gid2name;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1141,7 +1226,7 @@ START_TEST (auth_cache_gid2name_test) {
   fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1156,7 +1241,7 @@ START_TEST (auth_cache_uid2name_failed_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = decline_uid2name;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1179,7 +1264,7 @@ START_TEST (auth_cache_uid2name_failed_test) {
   fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1194,7 +1279,7 @@ START_TEST (auth_cache_gid2name_failed_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = decline_gid2name;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1217,7 +1302,7 @@ START_TEST (auth_cache_gid2name_failed_test) {
   fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1232,7 +1317,7 @@ START_TEST (auth_cache_name2uid_failed_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = decline_name2uid;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1251,7 +1336,7 @@ START_TEST (auth_cache_name2uid_failed_test) {
   fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
     name2uid_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1266,7 +1351,7 @@ START_TEST (auth_cache_name2gid_failed_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = decline_name2gid;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1285,7 +1370,7 @@ START_TEST (auth_cache_name2gid_failed_test) {
   fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
-  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &unit_tests_module);
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1303,7 +1388,7 @@ START_TEST (auth_cache_clear_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = decline_name2gid;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1431,7 +1516,7 @@ START_TEST (auth_authenticate_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_authn;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1450,6 +1535,34 @@ START_TEST (auth_authenticate_test) {
   fail_unless(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  authtab.auth_flags |= PR_AUTH_FL_REQUIRED;
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authenticate user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+  authtab.auth_flags &= ~PR_AUTH_FL_REQUIRED;
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
+
+  res = pr_auth_add_auth_only_module("foo.bar");
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_auth_add_auth_only_module(testsuite_module.name);
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authenticate user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  pr_auth_clear_auth_only_modules();
+
+  authn_rfc2228 = TRUE;
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(res == PR_AUTH_RFC2228_OK,
+    "Failed to authenticate user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_RFC2228_OK, res);
 }
 END_TEST
 
@@ -1476,7 +1589,7 @@ START_TEST (auth_authorize_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_authz;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1490,6 +1603,21 @@ START_TEST (auth_authorize_test) {
   fail_unless(res == PR_AUTH_OK,
     "Failed to authorize user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
+
+  res = pr_auth_add_auth_only_module("foo.bar");
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_auth_add_auth_only_module(testsuite_module.name);
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
+  fail_unless(res == PR_AUTH_OK,
+    "Failed to authorize user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  (void) pr_auth_clear_auth_only_modules();
 }
 END_TEST
 
@@ -1525,7 +1653,7 @@ START_TEST (auth_check_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_check;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
@@ -1545,6 +1673,22 @@ START_TEST (auth_check_test) {
   ciphertext_passwd = PR_TEST_AUTH_PASSWD;
   res = pr_auth_check(p, ciphertext_passwd, name, cleartext_passwd);
   fail_unless(res == PR_AUTH_OK, "Expected %d, got %d", PR_AUTH_OK, res);
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
+
+  res = pr_auth_add_auth_only_module("foo.bar");
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_auth_add_auth_only_module(testsuite_module.name);
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  check_rfc2228 = TRUE;
+  res = pr_auth_check(p, ciphertext_passwd, name, cleartext_passwd);
+  fail_unless(res == PR_AUTH_RFC2228_OK,
+    "Failed to check user '%s' (expected %d, got %d)", name,
+    PR_AUTH_RFC2228_OK, res);
+
+  (void) pr_auth_clear_auth_only_modules();
 }
 END_TEST
 
@@ -1574,7 +1718,7 @@ START_TEST (auth_requires_pass_test) {
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_requires_pass;
-  authtab.m = &unit_tests_module;
+  authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));

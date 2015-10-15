@@ -36,6 +36,13 @@ module *static_modules[] = { NULL };
 module *loaded_modules = NULL;
 xaset_t *server_list = NULL;
 
+static cmd_rec *next_cmd = NULL;
+
+int tests_stubs_set_next_cmd(cmd_rec *cmd) {
+  next_cmd = cmd;
+  return 0;
+}
+
 int tests_stubs_set_main_server(server_rec *s) {
   main_server = s;
   return 0;
@@ -78,7 +85,14 @@ int pr_cmd_dispatch(cmd_rec *cmd) {
 }
 
 int pr_cmd_read(cmd_rec **cmd) {
-  *cmd = NULL;
+  if (next_cmd != NULL) {
+    *cmd = next_cmd;
+    next_cmd = NULL;
+
+  } else {
+    *cmd = NULL;
+  }
+
   return 0;
 }
 

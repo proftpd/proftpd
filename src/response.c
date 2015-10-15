@@ -202,22 +202,27 @@ void pr_response_flush(pr_response_t **head) {
 
 void pr_response_add_err(const char *numeric, const char *fmt, ...) {
   pr_response_t *resp = NULL, **head = NULL;
+  int res;
   va_list msg;
 
+  if (fmt == NULL) {
+    return;
+  }
+
   va_start(msg, fmt);
-  vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
+  res = vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
   va_end(msg);
   
   resp_buf[sizeof(resp_buf) - 1] = '\0';
   
   resp = (pr_response_t *) pcalloc(resp_pool, sizeof(pr_response_t));
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
-  resp->msg = pstrdup(resp_pool, resp_buf);
+  resp->msg = pstrndup(resp_pool, resp_buf, res);
 
   if (numeric != R_DUP) {
     resp_last_response_code = pstrdup(resp_pool, resp->num);
   }
-  resp_last_response_msg = pstrdup(resp_pool, resp->msg);
+  resp_last_response_msg = pstrndup(resp_pool, resp->msg, res);
 
   pr_trace_msg(trace_channel, 7, "error response added to pending list: %s %s",
     resp->num ? resp->num : "(null)", resp->msg);
@@ -241,6 +246,7 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
     *head &&
     (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
     !(numeric && !(*head)->num && head == &resp_err_list);
+
   head = &(*head)->next);
 
   resp->next = *head;
@@ -249,22 +255,27 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
 
 void pr_response_add(const char *numeric, const char *fmt, ...) {
   pr_response_t *resp = NULL, **head = NULL;
+  int res;
   va_list msg;
 
+  if (fmt == NULL) {
+    return;
+  }
+
   va_start(msg, fmt);
-  vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
+  res = vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
   va_end(msg);
 
   resp_buf[sizeof(resp_buf) - 1] = '\0';
   
   resp = (pr_response_t *) pcalloc(resp_pool, sizeof(pr_response_t));
   resp->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
-  resp->msg = pstrdup(resp_pool, resp_buf);
+  resp->msg = pstrndup(resp_pool, resp_buf, res);
 
   if (numeric != R_DUP) {
     resp_last_response_code = pstrdup(resp_pool, resp->num);
   }
-  resp_last_response_msg = pstrdup(resp_pool, resp->msg);
+  resp_last_response_msg = pstrndup(resp_pool, resp->msg, res);
 
   pr_trace_msg(trace_channel, 7, "response added to pending list: %s %s",
     resp->num ? resp->num : "(null)", resp->msg);

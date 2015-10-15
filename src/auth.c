@@ -591,8 +591,9 @@ struct passwd *pr_auth_getpwent(pool *p) {
   }
 
   /* Sanity check */
-  if (res == NULL)
+  if (res == NULL) {
     return NULL;
+  }
 
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {

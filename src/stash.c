@@ -836,7 +836,12 @@ static unsigned int stash_dump_syms(xaset_t **symbol_table, const char *type,
     struct stash *sym;
     xaset_t *syms;
 
+    pr_signals_handle();
+
     syms = symbol_table[i];
+    if (syms == NULL) {
+      continue;
+    }
 
     for (sym = (struct stash *) syms->xas_list; sym; sym = sym->next) {
       nrow_syms++;

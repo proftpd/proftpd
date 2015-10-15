@@ -39,8 +39,7 @@ static void set_up(void) {
 static void tear_down(void) {
   if (p) {
     destroy_pool(p);
-    p = NULL;
-    permanent_pool = NULL;
+    p = permanent_pool = NULL;
   } 
 }
 
@@ -303,6 +302,64 @@ START_TEST (stash_get_symbol2_test) {
 }
 END_TEST
 
+#ifdef PR_USE_DEVEL
+static void stash_dump(const char *fmt, ...) {
+}
+
+START_TEST (stash_dump_test) {
+  int res;
+  conftable conftab;
+  cmdtable cmdtab, hooktab;
+  authtable authtab;
+  module m;
+
+  mark_point();
+  pr_stash_dump(stash_dump);
+
+  memset(&conftab, 0, sizeof(conftab));
+  conftab.directive = pstrdup(p, "Conf");
+  res = pr_stash_add_symbol(PR_SYM_CONF, &conftab);
+  fail_unless(res == 0, "Failed to add CONF symbol: %s", strerror(errno));
+
+  memset(&cmdtab, 0, sizeof(cmdtab));
+  cmdtab.command = pstrdup(p, "Cmd");
+  res = pr_stash_add_symbol(PR_SYM_CMD, &cmdtab);
+  fail_unless(res == 0, "Failed to add CMD symbol: %s", strerror(errno));
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = pstrdup(p, "Auth");
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add AUTH symbol: %s", strerror(errno));
+
+  memset(&m, 0, sizeof(m));
+  m.name = "testsuite";
+  memset(&hooktab, 0, sizeof(hooktab));
+  hooktab.command = pstrdup(p, "Hook");
+  hooktab.m = &m;
+  res = pr_stash_add_symbol(PR_SYM_HOOK, &hooktab);
+  fail_unless(res == 0, "Failed to add HOOK symbol: %s", strerror(errno));
+
+  mark_point();
+  pr_stash_dump(stash_dump);
+
+  res = pr_stash_remove_symbol(PR_SYM_CONF, "Conf", NULL);
+  fail_unless(res > 0, "Failed to remove CONF symbol: %s", strerror(errno));
+
+  res = pr_stash_remove_symbol(PR_SYM_CMD, "Cmd", NULL);
+  fail_unless(res > 0, "Failed to remove CMD symbol: %s", strerror(errno));
+
+  res = pr_stash_remove_symbol(PR_SYM_AUTH, "Auth", NULL);
+  fail_unless(res > 0, "Failed to remove AUTH symbol: %s", strerror(errno));
+
+  res = pr_stash_remove_symbol(PR_SYM_HOOK, "Hook", NULL);
+  fail_unless(res > 0, "Failed to remove HOOK symbol: %s", strerror(errno));
+
+  mark_point();
+  pr_stash_dump(stash_dump);
+}
+END_TEST
+#endif /* PR_USE_DEVEL */
+
 START_TEST (stash_remove_symbol_test) {
   int res;
   conftable conftab;
@@ -539,6 +596,9 @@ Suite *tests_get_stash_suite(void) {
   tcase_add_test(testcase, stash_get_symbol_test);
   tcase_add_test(testcase, stash_get_symbol2_test);
   tcase_add_test(testcase, stash_remove_symbol_test);
+#ifdef PR_USE_DEVEL
+  tcase_add_test(testcase, stash_dump_test);
+#endif /* PR_USE_DEVEL */
 
   tcase_add_test(testcase, stash_remove_conf_test);
   tcase_add_test(testcase, stash_remove_cmd_test);
