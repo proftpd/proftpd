@@ -606,6 +606,7 @@ cmd_rec *pr_parser_parse_line(pool *p, const char *text, size_t text_len) {
       }
 
       cp = cmd->argv[0];
+      cp_len = strlen(cp);
       if (*(cp + cp_len-1) != '>') {
         cmd->argv[0] = pstrcat(cmd->pool, cp, ">", NULL);
       }
