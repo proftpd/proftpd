@@ -96,6 +96,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       "authentication request for user '%s' blocked by '%s' handler",
       orig_user, (char *) pass_cmd->argv[0]);
 
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): blocked by '%s' handler", orig_user,
+      (char *) pass_cmd->argv[0]);
+
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 

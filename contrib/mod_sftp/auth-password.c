@@ -55,6 +55,12 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
         "cipher algorithm '%s' or MAC algorithm '%s' unacceptable for "
         "password authentication, denying password authentication request",
         cipher_algo, mac_algo);
+
+      pr_log_auth(PR_LOG_NOTICE,
+        "USER %s (Login failed): cipher algorithm '%s' or MAC algorithm '%s' "
+        "unsupported for password authentication", user,
+        cipher_algo, mac_algo);
+
       *send_userauth_fail = TRUE;
       errno = EPERM;
       return 0;
@@ -78,6 +84,10 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "authentication request for user '%s' blocked by '%s' handler",
       orig_user, (char *) pass_cmd->argv[0]);
+
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): blocked by '%s' handler", orig_user,
+      (char *) pass_cmd->argv[0]);
 
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);

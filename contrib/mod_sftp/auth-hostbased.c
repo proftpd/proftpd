@@ -53,6 +53,10 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       "authentication request for user '%s' blocked by '%s' handler",
       orig_user, (char *) pass_cmd->argv[0]);
 
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): blocked by '%s' handler", orig_user,
+      (char *) pass_cmd->argv[0]);
+
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
@@ -109,6 +113,10 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported host key algorithm '%s' requested, rejecting request",
       hostkey_algo);
+
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): unsupported host key algorithm '%s' requested",
+      user, hostkey_algo);
 
     *send_userauth_fail = TRUE;
     errno = EINVAL;
@@ -176,6 +184,9 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
    */
 
   if (sftp_blacklist_reject_key(pkt->pool, hostkey_data, hostkey_datalen)) {
+    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): requested host "
+      "key is blacklisted", user);
+
     *send_userauth_fail = TRUE;
     errno = EACCES;
     return 0;
@@ -188,6 +199,9 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   if (sftp_keystore_verify_host_key(pkt->pool, user, host_fqdn, host_user,
       hostkey_data, hostkey_datalen) < 0) {
+    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
+      "via '%s' host key failed", user, hostkey_algo);
+
     *send_userauth_fail = TRUE;
     errno = EACCES;
     return 0;
@@ -224,7 +238,12 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "failed to verify '%s' signature on hostbased auth request for "
       "user '%s', host %s", hostkey_algo, orig_user, host_fqdn);
+
+    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): signature "
+      "verification of '%s' host key failed", user, hostkey_algo);
+
     *send_userauth_fail = TRUE;
+    errno = EACCES;
     return 0;
   }
 
