@@ -716,9 +716,7 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
   DIR *dirh;
   server_rec *s;
-#ifdef HAVE_LIBINTL_H
   const char *locale_path = NULL;
-#endif
 
   c = find_config(main_server->conf, CONF_PARAM, "LangEngine", FALSE);
   if (c) {
@@ -888,6 +886,7 @@ static void lang_postparse_ev(const void *event_data, void *user_data) {
 
 static void lang_restart_ev(const void *event_data, void *user_data) {
   destroy_pool(lang_pool);
+  lang_curr = LANG_DEFAULT_LANG;
   lang_list = NULL;
   lang_aliases = NULL;
 
