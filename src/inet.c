@@ -707,7 +707,8 @@ int pr_inet_set_proto_nodelay(pool *p, conn_t *conn, int nodelay) {
   if (conn->rfd != -1) {
     res = setsockopt(conn->rfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
       sizeof(nodelay));
-    if (res < 0) {
+    if (res < 0 &&
+        errno != EBADF) {
       pr_log_pri(PR_LOG_NOTICE, "error setting read fd %d TCP_NODELAY %d: %s",
        conn->rfd, nodelay, strerror(errno));
     }
@@ -716,7 +717,8 @@ int pr_inet_set_proto_nodelay(pool *p, conn_t *conn, int nodelay) {
   if (conn->wfd != -1) {
     res = setsockopt(conn->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
       sizeof(nodelay));
-    if (res < 0) {
+    if (res < 0 &&
+        errno != EBADF) {
       pr_log_pri(PR_LOG_NOTICE, "error setting write fd %d TCP_NODELAY %d: %s",
        conn->wfd, nodelay, strerror(errno));
     }
@@ -769,24 +771,31 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
     if (c->rfd != -1) {
       if (setsockopt(c->rfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0) {
-        pr_log_pri(PR_LOG_NOTICE, "error setting read fd %d TCP_NODELAY: %s",
-          c->rfd, strerror(errno));
+        if (errno != EBADF) {
+          pr_log_pri(PR_LOG_NOTICE, "error setting read fd %d TCP_NODELAY: %s",
+            c->rfd, strerror(errno));
+        }
       }
     }
 
     if (c->wfd != -1) {
       if (setsockopt(c->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0) {
-        pr_log_pri(PR_LOG_NOTICE, "error setting write fd %d TCP_NODELAY: %s",
-          c->wfd, strerror(errno));
+        if (errno != EBADF) {
+          pr_log_pri(PR_LOG_NOTICE, "error setting write fd %d TCP_NODELAY: %s",
+            c->wfd, strerror(errno));
+        }
       }
     }
 
     if (c->listen_fd != -1) {
       if (setsockopt(c->listen_fd, tcp_level, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0) {
-        pr_log_pri(PR_LOG_NOTICE, "error setting listen fd %d TCP_NODELAY: %s",
-          c->listen_fd, strerror(errno));
+        if (errno != EBADF) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "error setting listen fd %d TCP_NODELAY: %s",
+            c->listen_fd, strerror(errno));
+        }
       }
     }
   }
