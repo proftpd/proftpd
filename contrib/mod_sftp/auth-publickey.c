@@ -96,6 +96,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       "authentication request for user '%s' blocked by '%s' handler",
       orig_user, (char *) pass_cmd->argv[0]);
 
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): blocked by '%s' handler", orig_user,
+      (char *) pass_cmd->argv[0]);
+
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
@@ -151,6 +155,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported public key algorithm '%s' requested, rejecting request",
       pubkey_algo);
+
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): unsupported public key algorithm '%s' requested",
+      user, pubkey_algo);
 
     *send_userauth_fail = TRUE;
     errno = EINVAL;
@@ -268,6 +276,9 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
      */
 
     if (sftp_blacklist_reject_key(pkt->pool, pubkey_data, pubkey_len)) {
+      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): requested public "
+        "key is blacklisted", user);
+
       *send_userauth_fail = TRUE;
       errno = EPERM;
       return 0;
@@ -293,6 +304,9 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
     if (sftp_keystore_verify_user_key(pkt->pool, user, pubkey_data,
         pubkey_len) < 0) {
+      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
+        "via '%s' public key failed", user, pubkey_algo);
+
       *send_userauth_fail = TRUE;
       errno = EACCES;
       return 0;
@@ -336,6 +350,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "failed to verify '%s' signature on public key auth request for "
         "user '%s'", pubkey_algo, orig_user);
+
+      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): signature "
+        "verification of '%s' public key failed", user, pubkey_algo);
+
       *send_userauth_fail = TRUE;
       errno = EACCES;
       return 0;
@@ -368,6 +386,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "publickey request reused previously verified publickey "
         "(fingerprint %s), rejecting", fp);
+
+      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): public key request "
+       "reused previously verified public key (fingerprint %s)", user, fp);
+
       *send_userauth_fail = TRUE;
       errno = EACCES;
       return 0;
