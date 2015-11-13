@@ -164,12 +164,13 @@ int pr_namebind_create(server_rec *server, const char *name,
  * bindings while searching.
  */
 pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
-  unsigned char skip_inactive);
+  unsigned int port, unsigned char skip_inactive);
 
 /* Find the server_rec associated with the given name.  If none are found,
  * default to the server_rec of the containing pr_ipbind_t.
  */
-server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr);
+server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
+  unsigned int port);
 
 /* Opens the pr_namebind_t with the given name. */
 int pr_namebind_open(const char *name, pr_netaddr_t *addr);

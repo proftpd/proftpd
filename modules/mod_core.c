@@ -4626,7 +4626,8 @@ MODRET core_host(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  named_server = pr_namebind_get_server(host, main_server->addr);
+  named_server = pr_namebind_get_server(host, main_server->addr,
+    session.c->local_port);
   if (named_server == NULL) {
     pr_log_debug(DEBUG0, "Unknown host '%s' requested on %s#%d, "
       "refusing HOST command", host, local_ipstr, main_server->ServerPort);

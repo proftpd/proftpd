@@ -759,6 +759,7 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
 
 int pr_namebind_close(const char *name, pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
+  unsigned int port;
 
   if (name == NULL||
       addr == NULL) {
@@ -766,7 +767,8 @@ int pr_namebind_close(const char *name, pr_netaddr_t *addr) {
     return -1;
   }
 
-  namebind = pr_namebind_find(name, addr, FALSE);
+  port = ntohs(pr_netaddr_get_port(addr));
+  namebind = pr_namebind_find(name, addr, port, FALSE);
   if (namebind == NULL) {
     errno = ENOENT;
     return -1;
@@ -788,11 +790,8 @@ int pr_namebind_create(server_rec *server, const char *name,
     return -1;
   }
 
-  /* First, find the ipbind to hold this namebind.  Note that namebinds are,
-   * by definition, name-specific; the port number (for lookup) is not as
-   * important.
-   */
-  port = 0;
+  /* First, find the ipbind to hold this namebind. */
+  port = ntohs(pr_netaddr_get_port(addr));
   ipbind = pr_ipbind_find(addr, port, FALSE);
 
   if (ipbind == NULL) {
@@ -910,18 +909,15 @@ int pr_namebind_create(server_rec *server, const char *name,
 }
 
 pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
-    unsigned char skip_inactive) {
+    unsigned int port, unsigned char skip_inactive) {
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL;
-  unsigned int port;
 
   if (name == NULL ||
       addr == NULL) {
     errno = EINVAL;
     return NULL;
   }
-
-  port = 0;
 
   /* First, find an active ipbind for the given address. */
   ipbind = pr_ipbind_find(addr, port, skip_inactive);
@@ -950,6 +946,10 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
       ipbind = pr_ipbind_find(&wildcard_addr, port, FALSE);
     }
 #endif /* PR_USE_IPV6 */
+  } else {
+    pr_trace_msg(trace_channel, 17,
+      "found ipbind %p (server %p) for %s#%u", ipbind, ipbind->ib_server,
+      pr_netaddr_get_ipstr(addr), port);
   }
 
   if (ipbind == NULL) {
@@ -957,20 +957,32 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
     return NULL;
   }
 
-  if (!ipbind->ib_namebinds) {
+  if (ipbind->ib_namebinds == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "ipbind %p (server %p) for %s#%u has no namebinds", ipbind,
+      ipbind->ib_server, pr_netaddr_get_ipstr(addr), port);
     return NULL;
 
   } else {
     register unsigned int i = 0;
     pr_namebind_t **namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
 
+    pr_trace_msg(trace_channel, 17,
+      "ipbind %p (server %p) for %s#%u has namebinds (%d)", ipbind,
+      ipbind->ib_server, pr_netaddr_get_ipstr(addr), port,
+      ipbind->ib_namebinds->nelts);
+
     for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
       namebind = namebinds[i];
+      if (namebind == NULL) {
+        continue;
+      }
 
       /* Skip inactive namebinds */
       if (skip_inactive == TRUE &&
-          namebind != NULL &&
           namebind->nb_isactive == FALSE) {
+        pr_trace_msg(trace_channel, 17,
+          "namebind #%u: %s is inactive, skipping", i, namebind->nb_name);
         continue;
       }
 
@@ -980,8 +992,9 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
        * that scheme, however, is specific to DNS; should any other naming
        * scheme be desired, that sort of matching will be unnecessary.
        */
-      if (namebind != NULL &&
-          namebind->nb_name != NULL) {
+      if (namebind->nb_name != NULL) {
+        pr_trace_msg(trace_channel, 17,
+          "namebind #%u: %s", i, namebind->nb_name);
 
         if (namebind->nb_iswildcard == FALSE) {
           if (strcasecmp(namebind->nb_name, name) == 0) {
@@ -1009,11 +1022,13 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
   return NULL;
 }
 
-server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr) {
+server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
+    unsigned int port) {
   pr_namebind_t *namebind = NULL;
 
   /* Basically, just a wrapper around pr_namebind_find() */
-  namebind = pr_namebind_find(name, addr, TRUE);
+
+  namebind = pr_namebind_find(name, addr, port, TRUE);
   if (namebind == NULL) {
     return NULL;
   }
@@ -1040,6 +1055,7 @@ unsigned int pr_namebind_count(server_rec *srv) {
 
 int pr_namebind_open(const char *name, pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
+  unsigned int port;
 
   if (name == NULL ||
       addr == NULL) {
@@ -1047,7 +1063,8 @@ int pr_namebind_open(const char *name, pr_netaddr_t *addr) {
     return -1;
   }
 
-  namebind = pr_namebind_find(name, addr, FALSE);
+  port = ntohs(pr_netaddr_get_port(addr));
+  namebind = pr_namebind_find(name, addr, port, FALSE);
   if (namebind == NULL) {
     errno = ENOENT;
     return -1;
