@@ -192,11 +192,13 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
   while (res < 0) {
     int xerrno = errno;
 
-    /* Watch for EAGAIN, and handle it by delaying temporarily. */
-    if (xerrno == EAGAIN) {
-      errno = EINTR;
-      pr_signals_handle();
-      continue;
+    if (!(nstrm->strm_flags & PR_NETIO_SESS_INTR)) {
+      /* Watch for EAGAIN, and handle it by delaying temporarily. */
+      if (xerrno == EAGAIN) {
+        errno = EINTR;
+        pr_signals_handle();
+        continue;
+      }
     }
 
     errno = nstrm->strm_errno = xerrno;
@@ -824,6 +826,10 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
           nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
           return 1;
+        }
+
+        if (nstrm->strm_flags & PR_NETIO_SESS_INTR) {
+          return -1;
         }
 
         /* Otherwise, restart the call */
