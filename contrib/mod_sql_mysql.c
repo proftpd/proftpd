@@ -295,8 +295,8 @@ static int sql_timer_cb(CALLBACK_FRAME) {
 
     if (entry->timer == p2) {
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
-      cmd = _sql_make_cmd( conn_pool, 2, entry->name, "1" );
-      cmd_close( cmd );
+      cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
+      cmd_close(cmd);
       SQL_FREE_CMD(cmd);
       entry->timer = 0;
     }
@@ -655,7 +655,8 @@ MODRET cmd_close(cmd_rec *cmd) {
   }
 
   /* get the named connection */
-  if (!(entry = _sql_get_connection( cmd->argv[0] ))) {
+  entry = _sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_close");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
@@ -675,7 +676,7 @@ MODRET cmd_close(cmd_rec *cmd) {
    * close the connection, explicitly set the counter to 0, and remove any
    * timers.
    */
-  if (((--entry->connections) == 0 ) || ((cmd->argc == 2) && (cmd->argv[1]))) {
+  if (((--entry->connections) == 0) || ((cmd->argc == 2) && (cmd->argv[1]))) {
     mysql_close(conn->mysql);
     conn->mysql = NULL;
     entry->connections = 0;
