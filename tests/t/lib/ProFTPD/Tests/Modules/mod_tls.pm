@@ -985,6 +985,7 @@ sub tls_dh_ciphersuite {
       my $ssl_opts = {
         # Results in set_tmp_dh_callback() keylength of 1024 BITS
         SSL_cipher_list => 'DHE-RSA-AES256-SHA',
+        SSL_ca_file => $ca_file,
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
@@ -1136,6 +1137,7 @@ sub tls_crl_file_ok {
           SSL_use_cert => 1,
           SSL_cert_file => $client_cert,
           SSL_key_file => $client_cert,
+          SSL_ca_file => $ca_cert,
         };
 
         $client = Net::FTPSSL->new('127.0.0.1',
@@ -1575,6 +1577,7 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
       };
 
       $client = Net::FTPSSL->new('127.0.0.1',
@@ -1735,6 +1738,7 @@ sub tls_list_ok_tls_required_by_dir_bug2178 {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
       };
 
       $client = Net::FTPSSL->new('127.0.0.1',
@@ -1905,6 +1909,7 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
       };
 
       $client = Net::FTPSSL->new('127.0.0.1',
@@ -2075,6 +2080,7 @@ sub tls_list_ok_tls_required_by_ftpaccess_bug2178 {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
       };
 
       $client = Net::FTPSSL->new('127.0.0.1',
@@ -2801,6 +2807,7 @@ sub tls_opts_std_env_vars_client_vars {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_file,
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
@@ -2977,6 +2984,7 @@ sub tls_opts_ipaddr_required_ipv4 {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_file,
       };
 
       my $client;
@@ -3133,6 +3141,7 @@ sub tls_opts_ipaddr_required_ipv6 {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_file,
       };
 
       my $client;
@@ -5423,6 +5432,7 @@ sub tls_opts_commonname_required_bug3512 {
         SSL_use_cert => 1,
         SSL_cert_file => $bad_client_cert,
         SSL_key_file => $bad_client_cert,
+        SSL_ca_file => $ca_file,
       };
 
       my $client;
@@ -5589,6 +5599,7 @@ sub tls_opts_dns_name_required {
         SSL_use_cert => 1,
         SSL_cert_file => $bad_client_cert,
         SSL_key_file => $bad_client_cert,
+        SSL_ca_file => $ca_file,
       };
 
       my $client;
@@ -5755,6 +5766,7 @@ sub tls_opts_ip_addr_dns_name_cn_required {
         SSL_use_cert => 1,
         SSL_cert_file => $bad_client_cert,
         SSL_key_file => $bad_client_cert,
+        SSL_ca_file => $ca_file,
       };
 
       my $client;
@@ -7223,6 +7235,7 @@ sub tls_verify_order_crl_bug3658 {
           SSL_use_cert => 1,
           SSL_cert_file => $client_cert,
           SSL_key_file => $client_cert,
+          SSL_ca_file => $ca_cert,
         };
 
         $client = Net::FTPSSL->new('127.0.0.1',
@@ -7390,6 +7403,7 @@ sub tls_verify_order_ocsp {
           SSL_use_cert => 1,
           SSL_cert_file => $client_cert,
           SSL_key_file => $client_cert,
+          SSL_ca_file => $ca_cert,
         };
 
         $client = Net::FTPSSL->new('127.0.0.1',
@@ -7560,6 +7574,7 @@ sub tls_verify_order_ocsp_https {
           SSL_use_cert => 1,
           SSL_cert_file => $client_cert,
           SSL_key_file => $client_cert,
+          SSL_ca_file => $ca_cert,
         };
 
         $client = Net::FTPSSL->new('127.0.0.1',
@@ -7718,6 +7733,7 @@ sub tls_client_cert_verify_failed_selfsigned_cert_only_bug3742 {
           SSL_use_cert => 1,
           SSL_cert_file => $client_cert,
           SSL_key_file => $client_key,
+          SSL_ca_file => $ca_cert,
         };
 
         eval {
@@ -8266,6 +8282,7 @@ sub tls_opts_allow_dot_login {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
@@ -8703,6 +8720,7 @@ sub tls_config_tlsdhparamfile_bug3868 {
       my $ssl_opts = {
         # Results in set_tmp_dh_callback() keylength of 1024 BITS
         SSL_cipher_list => 'DHE-RSA-AES256-SHA',
+        SSL_ca_file => $ca_file,
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
@@ -9014,6 +9032,7 @@ EOC
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
       };
 
       my $debug = 0;
@@ -9188,6 +9207,7 @@ sub tls_config_tlsusername_bug3899 {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',

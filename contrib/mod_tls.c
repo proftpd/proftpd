@@ -560,6 +560,7 @@ static char *tls_get_subj_name(SSL *);
 
 static int tls_openlog(void);
 static int tls_seed_prng(void);
+static int tls_sess_init(void);
 static void tls_setup_environ(SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
 static int tls_verify_crl(int, X509_STORE_CTX *);
@@ -8542,37 +8543,6 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET tls_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    /* XXX HOST after AUTH?
-     * Make the SNI check, close the connection if failed.
-     */
-
-    /* XXX HOST before AUTH?  Re-init mod_tls. */
-
-    /* XXX Has a TLS handshake already been performed?  If so, do some stuff. */
-
-    /* XXX Perform SNI check */
-
-    tls_reset_state();
-    pr_event_unregister(&tls_module, "core.exit", tls_exit_ev);
-
-    res = tls_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&tls_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 MODRET tls_post_pass(cmd_rec *cmd) {
   config_rec *protocols_config;
 
@@ -10149,6 +10119,30 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
 }
 #endif /* PR_SHARED_MODULE */
 
+static void tls_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* If the client has already established a TLS session, then do nothing;
+   * we cannot easily force a re-handshake using different credentials very
+   * easily.  (Right?)
+   */
+  if (session.rfc2228_mech != NULL) {
+    return;
+  }
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&tls_module, "core.exit", tls_exit_ev);
+  pr_event_unregister(&tls_module, "core.session-reinit", tls_sess_reinit_ev);
+
+  tls_reset_state();
+  res = tls_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_SESSION_INIT_FAILED,
+      NULL);
+  }
+}
+
 /* Daemon PID */
 extern pid_t mpid;
 
@@ -10716,6 +10710,9 @@ static int tls_sess_init(void) {
   int res = 0;
   unsigned char *tmp = NULL;
   config_rec *c = NULL;
+
+  pr_event_register(&tls_module, "core.session-reinit", tls_sess_reinit_ev,
+    NULL);
 
   /* First, check to see whether mod_tls is even enabled. */
   tmp = get_param_ptr(main_server->conf, "TLSEngine", FALSE);
@@ -11393,7 +11390,6 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
   { CMD,	"SSCN",	G_NONE,	tls_sscn,	TRUE,	FALSE,	CL_SEC },
-  { POST_CMD,	C_HOST,	G_NONE,	tls_post_host,	FALSE,	FALSE },
   { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE },
   { 0,	NULL }
 };
