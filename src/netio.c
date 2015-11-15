@@ -738,7 +738,6 @@ void pr_netio_reset_poll_interval(pr_netio_stream_t *nstrm) {
 
 void pr_netio_set_poll_interval(pr_netio_stream_t *nstrm, unsigned int secs) {
   if (nstrm == NULL) {
-    errno = EINVAL;
     return;
   }
 
@@ -829,6 +828,7 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         }
 
         if (nstrm->strm_flags & PR_NETIO_SESS_INTR) {
+          errno = nstrm->strm_errno = xerrno;
           return -1;
         }
 
