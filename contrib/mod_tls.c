@@ -7841,6 +7841,10 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
         if (bwritten > 0) {
           session.total_raw_out += bwritten;
         }
+
+      } else {
+        pr_trace_msg(trace_channel, 3,
+          "no SSL found in stream notes for '%s'", TLS_NETIO_NOTE);
       }
     }
   }
