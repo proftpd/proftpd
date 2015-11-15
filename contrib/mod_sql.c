@@ -6511,8 +6511,7 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
 
   /* handle EXIT queries */
   c = find_config(main_server->conf, CONF_PARAM, "SQLLog_EXIT", FALSE);
-
-  while (c) {
+  while (c != NULL) {
     pr_signals_handle();
 
     /* Since we're exiting the process here (or soon, anyway), we can
