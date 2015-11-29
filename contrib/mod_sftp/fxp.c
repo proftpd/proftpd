@@ -248,14 +248,14 @@ static size_t fxp_packet_data_allocsz = 0;
 #define FXP_MAX_PACKET_LEN			(1024 * 512)
 #define FXP_MAX_EXTENDED_ATTRIBUTES		100
 
+/* Maximum length of SFTP extended attribute name OR value. */
+#define FXP_MAX_EXTENDED_ATTR_LEN		1024
+
 struct fxp_extpair {
   char *ext_name;
   uint32_t ext_datalen;
   unsigned char *ext_data;
 };
-
-/* Maximum length of SFTP extension name, AND of the extension value. */
-#define SFTP_EXT_MAX_LEN			1024
 
 static pool *fxp_pool = NULL;
 static int fxp_use_gmt = TRUE;
@@ -1256,10 +1256,10 @@ static struct fxp_extpair *fxp_msg_read_extpair(pool *p, unsigned char **buf,
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
-  if (namelen > SFTP_EXT_MAX_LEN) {
+  if (namelen > FXP_MAX_EXTENDED_ATTR_LEN) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "received too-long SFTP extension name (%lu > max %lu), ignoring",
-      (unsigned long) namelen, (unsigned long) SFTP_EXT_MAX_LEN);
+      "received too-long extended attribute name (%lu > max %lu), ignoring",
+      (unsigned long) namelen, (unsigned long) FXP_MAX_EXTENDED_ATTR_LEN);
     errno = EINVAL;
     return NULL;
   }
@@ -1272,10 +1272,11 @@ static struct fxp_extpair *fxp_msg_read_extpair(pool *p, unsigned char **buf,
 
   datalen = sftp_msg_read_int(p, buf, buflen);
   if (datalen > 0) {
-    if (datalen > SFTP_EXT_MAX_LEN) {
+    if (datalen > FXP_MAX_EXTENDED_ATTR_LEN) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "received too-long SFTP extension '%s' data (%lu > max %lu), ignoring",
-        name, (unsigned long) datalen, (unsigned long) SFTP_EXT_MAX_LEN);
+        "received too-long extended attribute '%s' value (%lu > max %lu), "
+        "ignoring", name, (unsigned long) datalen,
+        (unsigned long) FXP_MAX_EXTENDED_ATTR_LEN);
       errno = EINVAL;
       return NULL;
     }
