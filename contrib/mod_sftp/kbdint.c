@@ -330,7 +330,7 @@ int sftp_kbdint_recv_response(pool *p, uint32_t expected_count,
     *((char **) push_array(list)) = pstrdup(p, sftp_utf8_decode_str(p, resp));
   }
 
-  *rcvd_count = (unsigned int) resp_count;
+  *rcvd_count = resp_count;
   *responses = ((const char **) list->elts);
   destroy_pool(pkt->pool);
 
