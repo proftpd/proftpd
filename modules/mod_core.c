@@ -868,6 +868,7 @@ MODRET set_defaultserver(cmd_rec *cmd) {
 
 MODRET set_masqueradeaddress(cmd_rec *cmd) {
   config_rec *c = NULL;
+  const char *name;
   pr_netaddr_t *masq_addr = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
@@ -877,11 +878,18 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
   /* We can only masquerade as one address, so we don't need to know if the
    * given name might map to multiple addresses.
    */
-  masq_addr = pr_netaddr_get_addr2(cmd->server->pool, cmd->argv[1], NULL,
-    addr_flags);
+  name = cmd->argv[1];
+  masq_addr = pr_netaddr_get_addr2(cmd->server->pool, name, NULL, addr_flags);
   if (masq_addr == NULL) {
-    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
-      ": unable to resolve \"", cmd->argv[1], "\"", NULL));
+
+    /* If the requested name cannot be resolved because it is not known AT
+     * THIS TIME, then do not fail to start the server.  We will simply try
+     * again later (Bug#4104).
+     */
+    if (errno != ENOENT) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve '", name, "'",
+        NULL));
+    }
   }
 
   c = add_config_param(cmd->argv[0], 2, (void *) masq_addr, NULL);
@@ -3613,14 +3621,18 @@ MODRET core_pasv(cmd_rec *cmd) {
       c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE);
       if (c != NULL) {
-        addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+        if (c->argv[0] != NULL) {
+          addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+        }
       }
     }
 
   } else {
     c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
-      addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+      if (c->argv[0] != NULL) {
+        addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+      }
     }
   }
 
@@ -3773,14 +3785,18 @@ MODRET core_port(cmd_rec *cmd) {
       c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE);
       if (c != NULL) {
-        listen_addr = c->argv[0];
+        if (c->argv[0] != NULL) {
+          listen_addr = c->argv[0];
+        }
       }
     }
 
   } else {
     c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
-      listen_addr = c->argv[0];
+      if (c->argv[0] != NULL) {
+        listen_addr = c->argv[0];
+      }
     }
   }
  
@@ -4089,14 +4105,18 @@ MODRET core_eprt(cmd_rec *cmd) {
       c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE);
       if (c != NULL) {
-        listen_addr = c->argv[0];
+        if (c->argv[0] != NULL) {
+          listen_addr = c->argv[0];
+        }
       }
     }
 
   } else {
     c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
-      listen_addr = c->argv[0];
+      if (c->argv[0] != NULL) {
+        listen_addr = c->argv[0];
+      }
     }
   }
 

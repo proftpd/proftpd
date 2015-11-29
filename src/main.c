@@ -159,8 +159,15 @@ void shutdown_end_session(void *d1, void *d2, void *d3, void *d4) {
 
     c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
-      pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
-      serveraddress = pr_netaddr_get_ipstr(masq_addr);
+      pr_netaddr_t *masq_addr = NULL;
+
+      if (c->argv[0] != NULL) {
+        masq_addr = c->argv[0];
+      }
+
+      if (masq_addr != NULL) {
+        serveraddress = pr_netaddr_get_ipstr(masq_addr);
+      }
     }
 
     time(&now);
@@ -1325,8 +1332,15 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE);
       if (c != NULL) {
-        pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
-        serveraddress = pr_netaddr_get_ipstr(masq_addr);
+        pr_netaddr_t *masq_addr = NULL;
+
+        if (c->argv[0] != NULL) {
+          masq_addr = c->argv[0];
+        }
+
+        if (masq_addr != NULL) {
+          serveraddress = pr_netaddr_get_ipstr(masq_addr);
+        }
       }
 
       reason = sreplace(permanent_pool, shutmsg,

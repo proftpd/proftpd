@@ -2841,9 +2841,17 @@ int fixup_servers(xaset_t *list) {
 
     c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
+      const char *masq_addr;
+
+      if (c->argv[0] != NULL) {
+        masq_addr = pr_netaddr_get_ipstr(c->argv[0]);
+
+      } else {
+        masq_addr = c->argv[1];
+      }
+
       pr_log_pri(PR_LOG_INFO, "%s:%d masquerading as %s",
-        pr_netaddr_get_ipstr(s->addr), s->ServerPort,
-        pr_netaddr_get_ipstr((pr_netaddr_t *) c->argv[0]));
+        pr_netaddr_get_ipstr(s->addr), s->ServerPort, masq_addr);
     }
 
     /* Honor the DefaultServer directive only if SocketBindTight is not

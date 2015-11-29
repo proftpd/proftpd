@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2014 The ProFTPD Project team
+ * Copyright (c) 2009-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * copyright holders give permission to link this program with OpenSSL, and
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
- *
- * $Id: session.c,v 1.16 2013-08-25 21:16:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -257,8 +255,34 @@ void pr_session_send_banner(server_rec *s, int flags) {
 
   masq = find_config(s->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
   if (masq != NULL) {
-    pr_netaddr_t *masq_addr = (pr_netaddr_t *) masq->argv[0];
-    serveraddress = pr_netaddr_get_ipstr(masq_addr);
+    pr_netaddr_t *masq_addr = NULL;
+
+    if (masq->argv[0] != NULL) {
+      masq_addr = masq->argv[0];
+
+    } else {
+      const char *name;
+
+      /* Here we do a delayed lookup, to see if the configured name
+       * can be resolved yet (e.g. the network is now up); see Bug#4104.
+       */
+
+      name = masq->argv[1];
+      masq_addr = pr_netaddr_get_addr(session.pool, name, NULL);
+      if (masq_addr != NULL) {
+        /* Stash the resolved pr_netaddr_t in the config_rec, so that other
+         * code paths will find it (within this session process).
+         */
+        masq->argv[0] = masq_addr;
+
+      } else {
+        pr_log_debug(DEBUG5, "unable to resolve '%s'", name);
+      }
+    }
+
+    if (masq_addr != NULL) {
+      serveraddress = pr_netaddr_get_ipstr(masq_addr);
+    }
   }
 
   c = find_config(s->conf, CONF_PARAM, "ServerIdent", FALSE);
