@@ -268,6 +268,9 @@ void pr_session_send_banner(server_rec *s, int flags) {
        */
 
       name = masq->argv[1];
+
+      pr_log_debug(DEBUG10,
+        "performing delayed resolution of MasqueradeAddress '%s'", name);
       masq_addr = pr_netaddr_get_addr(session.pool, name, NULL);
       if (masq_addr != NULL) {
         /* Stash the resolved pr_netaddr_t in the config_rec, so that other
