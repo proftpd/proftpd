@@ -255,6 +255,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_delay)],
     },
 
+    't/modules/mod_dynmasq.t' => {
+      order => ++$order,
+      test_class => [qw(mod_dynmasq)],
+    },
+
     't/modules/mod_exec.t' => {
       order => ++$order,
       test_class => [qw(mod_exec)],

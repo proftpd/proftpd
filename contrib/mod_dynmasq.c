@@ -94,7 +94,7 @@ static void dynmasq_refresh(void) {
         }
  
       } else {
-        pr_log_pri(PR_LOG_NOTICE, MOD_DYNMASQ_VERSION
+        pr_log_pri(PR_LOG_INFO, MOD_DYNMASQ_VERSION
           ": unable to resolve '%s', keeping previous address", masq_addr);
       }
     }
