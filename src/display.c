@@ -270,8 +270,15 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
 
   c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
   if (c) {
-    pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
-    serverfqdn = pr_netaddr_get_dnsstr(masq_addr);
+    pr_netaddr_t *masq_addr = NULL;
+
+    if (c->argv[0] != NULL) {
+      masq_addr = c->argv[0];
+    }
+
+    if (masq_addr != NULL) {
+      serverfqdn = pr_netaddr_get_dnsstr(masq_addr);
+    }
   }
 
   /* "Stringify" the file number for this session. */

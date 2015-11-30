@@ -620,6 +620,10 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
               "unable to resolve '%s' to an IPv6 address: %s", name,
               pr_gai_strerror(res));
 
+            if (res == EAI_NONAME) {
+              xerrno = ENOENT;
+            }
+
           } else {
             pr_trace_msg(trace_channel, 1,
               "IPv6 getaddrinfo '%s' system error: [%d] %s", name,
@@ -630,10 +634,17 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
       } else {
         pr_trace_msg(trace_channel, 1, "IPv4 getaddrinfo '%s' error: %s",
           name, pr_gai_strerror(res));
+
+        if (res == EAI_NONAME) {
+          xerrno = ENOENT;
+        }
       }
 #else
       pr_trace_msg(trace_channel, 1, "IPv4 getaddrinfo '%s' error: %s",
         name, pr_gai_strerror(res));
+      if (res == EAI_NONAME) {
+        xerrno = ENOENT;
+      }
 #endif /* PR_USE_IPV6 */
 
     } else {
