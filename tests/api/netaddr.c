@@ -164,6 +164,14 @@ START_TEST (netaddr_get_addr_test) {
     AF_INET, res->na_family);
   fail_unless(addrs == NULL, "Expected no additional addresses for '%s'", name);
 
+  /* Deliberately test an unresolvable name (related to Bug#4104). */
+  name = "foo.bar.castaglia.example.com";
+
+  res = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(res == NULL, "Resolved '%s' unexpectedly", name);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
 #if defined(PR_USE_IPV6)
   name = "::1";
 
