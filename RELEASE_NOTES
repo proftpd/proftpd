@@ -13,7 +13,7 @@ ChangeLog files.
 
     AllowEmptyPasswords (Bug#4139)
       Note that this applies to mod_sftp password-based logins as well.
-      Mention new "BanOnEvent EmptyPassword" rule added for this as well.
+      Mention new "BanOnEvent EmptyPassword" rule added for this.
 
   + Changed Modules
 
@@ -24,6 +24,7 @@ ChangeLog files.
 
   + Changed Configuration Directives:
 
+    MasqueradeAddress (Bug#4104)
     SFTPAuthMethods (Bug#4153)
     SFTPExtensions hardlink (hardlink@openssh.com support)
     TLSProtocol (Bug#4189)
