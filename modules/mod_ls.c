@@ -633,6 +633,27 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       t = pr_localtime(p, (time_t *) &sort_time);
     }
 
+    unsigned char *emulate_windows = NULL;
+    emulate_windows = get_param_ptr(TOPLEVEL_CONF, "EmulateWindows", FALSE);
+    if (emulate_windows != NULL && *emulate_windows == TRUE) {
+      char time_str[18], dir_str[13];
+      char nameline[(PR_TUNABLE_PATH_MAX * 2) + 128] = {'\0'};
+      memset(time_str, 0, sizeof(time_str));
+      memset(dir_str, 0, sizeof(dir_str));
+
+      strftime(time_str, sizeof(time_str), "%m-%d-%y  %I:%M%p", t);
+
+      if (S_ISDIR(st.st_mode)) {
+        strcpy(dir_str,  "<DIR>");
+        rval = 1;
+      }
+
+      snprintf(nameline, sizeof(nameline)-1, "%s%12s%9llu %s", time_str, dir_str, (pr_off_t) st.st_size, display_name);
+      addfile(cmd, nameline, suffix, sort_time, st.st_size);
+
+      return rval;
+    }
+
     if (opt_F) {
       if (S_ISLNK(st.st_mode)) {
         suffix[0] = '@';
@@ -3348,6 +3369,26 @@ MODRET set_dirfakemode(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET set_emulatewindows(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+  c->flags |= CF_MERGEDOWN;
+
+  return PR_HANDLED(cmd);
+}
+
+
 MODRET set_listoptions(cmd_rec *cmd) {
   config_rec *c = NULL;
   unsigned long flags = 0;
@@ -3505,6 +3546,9 @@ static conftable ls_conftab[] = {
   { "ListOptions",	set_listoptions,			NULL },
   { "ShowSymlinks",	set_showsymlinks,			NULL },
   { "UseGlobbing",	set_useglobbing,			NULL },
+
+  { "EmulateWindows",	set_emulatewindows,			NULL },
+
   { NULL,		NULL,					NULL }
 };
 
