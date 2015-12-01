@@ -67,7 +67,7 @@ Major Features
 
 - If supported by the capabilities the host system, it can run as a non-privileged user in stand-alone mode, thwarting attacks aimed at exploiting "root" privileges.
 
-- GPL source license.  The source code is available to audit. 
+- GPLv2 source license.  The source code is available to audit.
 
 Documentation
 -------------
