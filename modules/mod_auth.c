@@ -92,7 +92,7 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
    * TimeoutLogin has been exceeded to the log here, in addition to the
    * scheduled session exit message.
    */
-  pr_log_pri(PR_LOG_NOTICE, "%s", "Login timeout exceeded, disconnected");
+  pr_log_pri(PR_LOG_INFO, "%s", "Login timeout exceeded, disconnected");
   pr_event_generate("core.timeout-login", NULL);
 
   pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_TIMEOUT,
@@ -108,7 +108,7 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
     _("Session Timeout (%d seconds): closing control connection"),
     TimeoutSession);
 
-  pr_log_pri(PR_LOG_NOTICE, "%s", "FTP session timed out, disconnected");
+  pr_log_pri(PR_LOG_INFO, "%s", "FTP session timed out, disconnected");
   pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_TIMEOUT,
     "TimeoutSession");
 
