@@ -66,12 +66,6 @@ char *dir_canonical_path(pool *, const char *);
 char *dir_canonical_vpath(pool *, const char *);
 char *dir_best_path(pool *, const char *);
 
-/* Per RFC959, directory responses for MKD and PWD should be
- * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
- * the add'l quotes must be duplicated.
- */
-const char *quote_dir(pool *p, char *dir);
-
 /* Schedulables. */
 void schedule(void (*f)(void *, void *, void *, void *), int, void *, void *,
   void *, void *);

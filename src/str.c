@@ -167,6 +167,16 @@ static char *str_vreplace(pool *p, unsigned int max_replaces, char *s,
   return pbuf;
 }
 
+const char *quote_dir(pool *p, char *path) {
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  return sreplace(p, path, "\"", "\"\"", NULL);
+}
+
 char *pr_str_replace(pool *p, unsigned int max_replaces, char *s, ...) {
   va_list args;
   char *res = NULL;

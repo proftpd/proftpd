@@ -31,6 +31,12 @@
 /* Default maximum number of replacements that will do in a given string. */
 #define PR_STR_MAX_REPLACEMENTS                 8
 
+/* Per RFC959, directory responses for MKD and PWD should be "dir_name" (with
+ * quotes).  For directories that CONTAIN quotes, the additional quotes must
+ * be duplicated.
+ */
+const char *quote_dir(pool *p, char *dir);
+
 char *sstrcat(char *, const char *, size_t);
 char *sreplace(pool *, char *, ...);
 

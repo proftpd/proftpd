@@ -1272,6 +1272,36 @@ START_TEST (gid2str_test) {
 }
 END_TEST
 
+START_TEST (quote_dir_test) {
+  const char *res;
+  char *expected, *path;
+
+  res = quote_dir(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = quote_dir(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp/";
+  expected = path;
+  res = quote_dir(p, path);
+  fail_unless(res != NULL, "Failed to quote '%s': %s", path, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  path = "/\"tmp\"/";
+  expected = "/\"\"tmp\"\"/";
+  res = quote_dir(p, path);
+  fail_unless(res != NULL, "Failed to quote '%s': %s", path, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1279,7 +1309,6 @@ Suite *tests_get_str_suite(void) {
   suite = suite_create("str");
 
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, sstrncpy_test);
@@ -1307,8 +1336,8 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, str2gid_test);
   tcase_add_test(testcase, uid2str_test);
   tcase_add_test(testcase, gid2str_test);
+  tcase_add_test(testcase, quote_dir_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }
