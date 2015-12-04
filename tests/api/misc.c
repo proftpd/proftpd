@@ -393,9 +393,9 @@ START_TEST (check_shutmsg_test) {
 
   /* XXX More testing needed */
 
-  (void) unlink(misc_test_shutmsg);
   path = misc_test_shutmsg;
 
+  (void) unlink(path);
   res = write_shutmsg(path,
     "1970 1 1 0 0 0 0000 0000\nGoodbye, cruel world!\n");
   fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
@@ -416,6 +416,7 @@ START_TEST (check_shutmsg_test) {
   fail_unless(strcmp(shutdown_msg, "Goodbye, cruel world!") == 0,
     "Expected 'Goodbye, cruel world!', got '%s'", shutdown_msg);
 
+  (void) unlink(path);
   res = write_shutmsg(path,
     "2340 1 1 0 0 0 0000 0000\nGoodbye, cruel world!\n");
   fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
@@ -424,7 +425,9 @@ START_TEST (check_shutmsg_test) {
   res = check_shutmsg(path, NULL, NULL, NULL, NULL, 0);
   fail_unless(res == 1, "Expected 1, got %d", res);
 
-  res = write_shutmsg(path, "Goodbye, cruel world!\n");
+  (void) unlink(path);
+  res = write_shutmsg(path,
+    "0 0 0 0 0 0 0000 0000\nGoodbye, cruel world!\n");
   fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
 
   mark_point();
