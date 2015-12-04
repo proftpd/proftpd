@@ -264,6 +264,12 @@ char *dir_best_path(pool *p, const char *path) {
   char *target = NULL, *ntarget;
   int fini = 0;
 
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (*path == '~') {
     if (pr_fs_interpolate(path, workpath, sizeof(workpath)-1) != 1) {
       if (pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path) < 0) {
@@ -324,6 +330,12 @@ char *dir_canonical_path(pool *p, const char *path) {
   char buf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
   char work[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (*path == '~') {
     if (pr_fs_interpolate(path, work, sizeof(work)-1) != 1) {
       if (pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path) < 0) {
@@ -344,6 +356,12 @@ char *dir_canonical_path(pool *p, const char *path) {
 char *dir_canonical_vpath(pool *p, const char *path) {
   char buf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
   char work[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   if (*path == '~') {
     if (pr_fs_interpolate(path, work, sizeof(work)-1) != 1) {
@@ -368,6 +386,12 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 char *dir_realpath(pool *p, const char *path) {
   char buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (pr_fs_resolve_partial(path, buf, sizeof(buf)-1, 0) < 0) {
     return NULL;
   }
@@ -382,7 +406,8 @@ char *dir_realpath(pool *p, const char *path) {
 char *dir_abs_path(pool *p, const char *path, int interpolate) {
   char *res = NULL;
 
-  if (path == NULL) {
+  if (p == NULL ||
+      path == NULL) {
     errno = EINVAL;
     return NULL;
   }

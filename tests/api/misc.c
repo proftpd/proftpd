@@ -179,6 +179,128 @@ START_TEST (dir_interpolate_test) {
 }
 END_TEST
 
+START_TEST (dir_best_path_test) {
+  char *res;
+  const char *path;
+
+  res = dir_best_path(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = dir_best_path(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = "/foo";
+  res = dir_best_path(p, path);
+  fail_unless(path != NULL, "Failed to get best path for '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
+}
+END_TEST
+
+START_TEST (dir_canonical_path_test) {
+  char *res;
+  const char *path;
+
+  res = dir_canonical_path(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = dir_canonical_path(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = "/foo";
+  res = dir_canonical_path(p, path);
+  fail_unless(path != NULL, "Failed to get canonical path for '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
+}
+END_TEST
+
+START_TEST (dir_canonical_vpath_test) {
+  char *res;
+  const char *path;
+
+  res = dir_canonical_vpath(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = dir_canonical_vpath(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = "/foo";
+  res = dir_canonical_vpath(p, path);
+  fail_unless(path != NULL, "Failed to get canonical vpath for '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
+}
+END_TEST
+
+START_TEST (dir_realpath_test) {
+  char *res;
+  const char *path;
+
+  res = dir_realpath(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = dir_realpath(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = "/foo";
+  res = dir_realpath(p, path);
+  fail_unless(res == NULL, "Got real path for '%s' unexpectedly", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  path = "/";
+  res = dir_realpath(p, path);
+  fail_unless(res != NULL, "Failed to get real path for '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
+}
+END_TEST
+
+START_TEST (dir_abs_path_test) {
+  char *res;
+  const char *path;
+
+  res = dir_abs_path(NULL, NULL, TRUE);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = dir_abs_path(p, NULL, TRUE);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = "/foo";
+  res = dir_abs_path(p, path, TRUE);
+  fail_unless(path != NULL, "Failed to get absolute path for '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
+}
+END_TEST
+
 START_TEST (safe_token_test) {
   char *res, *text, *expected;
 
@@ -249,7 +371,6 @@ START_TEST (check_shutmsg_test) {
 END_TEST
 
 START_TEST (memscrub_test) {
-  void *ptr;
   size_t len;
   char *expected, *text;
 
@@ -482,13 +603,11 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, schedule_test);
   tcase_add_test(testcase, get_name_max_test);
   tcase_add_test(testcase, dir_interpolate_test);
-#if 0
   tcase_add_test(testcase, dir_best_path_test);
   tcase_add_test(testcase, dir_canonical_path_test);
   tcase_add_test(testcase, dir_canonical_vpath_test);
   tcase_add_test(testcase, dir_realpath_test);
   tcase_add_test(testcase, dir_abs_path_test);
-#endif
   tcase_add_test(testcase, symlink_mode_test);
   tcase_add_test(testcase, file_mode_test);
   tcase_add_test(testcase, exists_test);
