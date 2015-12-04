@@ -115,6 +115,7 @@ START_TEST (display_file_test) {
   int res;
   const char *path = NULL, *resp_code = NULL;
   char *last_resp_code = NULL, *last_resp_msg = NULL;
+  pr_class_t *conn_class;
 
   res = pr_display_file(NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -146,6 +147,11 @@ START_TEST (display_file_test) {
   fail_unless(res == 0, "Failed to write display file: %s", strerror(errno));
 
   pr_response_set_pool(p);
+
+  conn_class = pcalloc(p, sizeof(pr_class_t));
+  conn_class->cls_pool = p;
+  conn_class->cls_name = "foo.bar";
+  session.conn_class = conn_class;
 
   mark_point();
   res = pr_display_file(path, NULL, resp_code, 0);
@@ -210,6 +216,45 @@ START_TEST (display_fh_test) {
 
   fail_unless(last_resp_msg != NULL,
     "Last response message is unexpectedly null");
+
+  /* Send the display file NOW */
+  mark_point();
+  res = pr_display_fh(fh, NULL, resp_code, PR_DISPLAY_FL_SEND_NOW);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
+
+  mark_point();
+  res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
+  fail_unless(res == 0, "Failed to get last response values: %s (%d)",
+    strerror(errno), errno);
+
+  fail_unless(last_resp_code != NULL,
+    "Last response code is unexpectedly null");
+  fail_unless(strcmp(last_resp_code, resp_code) == 0,
+    "Expected response code '%s', got '%s'", resp_code, last_resp_code);
+
+  fail_unless(last_resp_msg != NULL,
+    "Last response message is unexpectedly null");
+
+  /* Send the display file NOW, with no EOM */
+
+  mark_point();
+  res = pr_display_fh(fh, NULL, resp_code,
+    PR_DISPLAY_FL_SEND_NOW|PR_DISPLAY_FL_NO_EOM);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
+
+  mark_point();
+  res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
+  fail_unless(res == 0, "Failed to get last response values: %s (%d)",
+    strerror(errno), errno);
+
+  fail_unless(last_resp_code != NULL,
+    "Last response code is unexpectedly null");
+  fail_unless(strcmp(last_resp_code, resp_code) == 0,
+    "Expected response code '%s', got '%s'", resp_code, last_resp_code);
+
+  fail_unless(last_resp_msg != NULL,
+    "Last response message is unexpectedly null");
+
 }
 END_TEST
 
