@@ -43,9 +43,9 @@ typedef struct sched_obj {
   struct sched_obj *next, *prev;
 
   pool *pool;
-  void (*f)(void*,void*,void*,void*);
-  int loops;
-  void *a1,*a2,*a3,*a4;
+  void (*cb)(void *, void *, void *, void *);
+  int nloops;
+  void *arg1, *arg2, *arg3, *arg4;
 } sched_t;
 
 static xaset_t *scheds = NULL;
@@ -116,10 +116,15 @@ void pr_signals_unblock(void) {
   sigs_nblocked--;
 }
 
-void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
-    void *a2, void *a3, void *a4) {
+void schedule(void (*cb)(void *, void *, void *, void *), int nloops,
+    void *arg1, void *arg2, void *arg3, void *arg4) {
   pool *p, *sub_pool;
   sched_t *s;
+
+  if (cb == NULL ||
+      nloops < 0) {
+    return;
+  }
 
   if (scheds == NULL) {
     p = make_sub_pool(permanent_pool);
@@ -135,12 +140,12 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
 
   s = pcalloc(sub_pool, sizeof(sched_t));
   s->pool = sub_pool;
-  s->f = f;
-  s->a1 = a1;
-  s->a2 = a2;
-  s->a3 = a3;
-  s->a4 = a4;
-  s->loops = nloops;
+  s->cb = cb;
+  s->arg1 = arg1;
+  s->arg2 = arg2;
+  s->arg3 = arg3;
+  s->arg4 = arg4;
+  s->nloops = nloops;
   xaset_insert(scheds, (xasetmember_t *) s);
 }
 
@@ -155,8 +160,10 @@ void run_schedule(void) {
   for (s = (sched_t *) scheds->xas_list; s; s = snext) {
     snext = s->next;
 
-    if (s->loops-- <= 0) {
-      s->f(s->a1, s->a2, s->a3, s->a4);
+    pr_signals_handle();
+
+    if (s->nloops-- <= 0) {
+      s->cb(s->arg1, s->arg2, s->arg3, s->arg4);
       xaset_remove(scheds, (xasetmember_t *) s);
       destroy_pool(s->pool);
     }
@@ -428,10 +435,10 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
  */
 static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
   char buf[PR_TUNABLE_PATH_MAX + 1];
-  struct stat sbuf;
+  struct stat st;
   int i;
 
-  if (++rcount >= 32) {
+  if (++rcount >= PR_FSIO_MAX_LINK_COUNT) {
     errno = ELOOP;
     return 0;
   }
@@ -445,17 +452,18 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
   buf[i] = '\0';
 
   pr_fs_clear_cache2(buf);
-  if (pr_fsio_lstat(buf, &sbuf) != -1) {
-    if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
+  if (pr_fsio_lstat(buf, &st) >= 0) {
+    if (st.st_ino > 0 &&
+        (ino_t) st.st_ino == last_inode) {
       errno = ELOOP;
       return 0;
     }
 
-    if (S_ISLNK(sbuf.st_mode)) {
-      return _symlink(buf, (ino_t) sbuf.st_ino, rcount);
+    if (S_ISLNK(st.st_mode)) {
+      return _symlink(buf, (ino_t) st.st_ino, rcount);
     }
 
-    return sbuf.st_mode;
+    return st.st_mode;
   }
 
   return 0;
@@ -463,6 +471,7 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
 
 mode_t symlink_mode(const char *path) {
   if (path == NULL) {
+    errno = EINVAL;
     return 0;
   }
 
@@ -470,48 +479,56 @@ mode_t symlink_mode(const char *path) {
 }
 
 mode_t file_mode(const char *path) {
-  struct stat sbuf;
-  mode_t res = 0;
+  struct stat st;
+  mode_t mode = 0;
 
   if (path == NULL) {
-    return res;
+    errno = EINVAL;
+    return mode;
   }
 
   pr_fs_clear_cache2(path);
-  if (pr_fsio_lstat(path, &sbuf) != -1) {
-    if (S_ISLNK(sbuf.st_mode)) {
-      res = _symlink(path, (ino_t) 0, 0);
-
-      if (res == 0) {
+  if (pr_fsio_lstat(path, &st) >= 0) {
+    if (S_ISLNK(st.st_mode)) {
+      mode = _symlink(path, (ino_t) 0, 0);
+      if (mode == 0) {
 	/* a dangling symlink, but it exists to rename or delete. */
-	res = sbuf.st_mode;
+	mode = st.st_mode;
       }
 
     } else {
-      res = sbuf.st_mode;
+      mode = st.st_mode;
     }
   }
 
-  return res;
+  return mode;
 }
 
-/* If DIRP == 1, fail unless PATH is an existing directory.
- * If DIRP == 0, fail unless PATH is an existing non-directory.
- * If DIRP == -1, fail unless PATH exists; the caller doesn't care whether
+/* If flags == 1, fail unless PATH is an existing directory.
+ * If flags == 0, fail unless PATH is an existing non-directory.
+ * If flags == -1, fail unless PATH exists; the caller doesn't care whether
  * PATH is a file or a directory.
  */
-static int _exists(const char *path, int dirp) {
-  mode_t fmode;
+static int _exists(const char *path, int flags) {
+  mode_t mode;
 
-  fmode = file_mode(path);
-  if (fmode != 0) {
-    if (dirp == 1 &&
-        !S_ISDIR(fmode)) {
-      return FALSE;
+  mode = file_mode(path);
+  if (mode != 0) {
+    switch (flags) {
+      case 1:
+        if (!S_ISDIR(mode)) {
+          return FALSE;
+        }
+        break;
 
-    } else if (dirp == 0 &&
-               S_ISDIR(fmode)) {
-      return FALSE;
+      case 0:
+        if (S_ISDIR(mode)) {
+          return FALSE;
+        }
+        break;
+
+      default:
+        break; 
     }
 
     return TRUE;
@@ -719,10 +736,18 @@ void pr_getopt_reset(void) {
   }
 }
 
-struct tm *pr_gmtime(pool *p, const time_t *t) {
+struct tm *pr_gmtime(pool *p, const time_t *now) {
   struct tm *sys_tm, *dup_tm;
 
-  sys_tm = gmtime(t);
+  if (now == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  sys_tm = gmtime(now);
+  if (sys_tm == NULL) {
+    return NULL;
+  }
 
   /* If the caller provided a pool, make a copy of the struct tm using that
    * pool.  Otherwise, return the struct tm as is.
@@ -738,7 +763,7 @@ struct tm *pr_gmtime(pool *p, const time_t *t) {
   return dup_tm;
 }
 
-struct tm *pr_localtime(pool *p, const time_t *t) {
+struct tm *pr_localtime(pool *p, const time_t *now) {
   struct tm *sys_tm, *dup_tm;
 
 #ifdef HAVE_TZNAME
@@ -772,7 +797,15 @@ struct tm *pr_localtime(pool *p, const time_t *t) {
   memcpy(&tzname_dup, tzname, sizeof(tzname_dup));
 #endif /* HAVE_TZNAME */
 
-  sys_tm = localtime(t);
+  if (now == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  sys_tm = localtime(now);
+  if (sys_tm == NULL) {
+    return NULL;
+  }
 
   if (p) {
     /* If the caller provided a pool, make a copy of the returned
@@ -821,13 +854,9 @@ const char *pr_strtime2(time_t t, int use_gmtime) {
     snprintf(buf, sizeof(buf), "%s %s %02d %02d:%02d:%02d %d",
       days[tr->tm_wday], mons[tr->tm_mon], tr->tm_mday, tr->tm_hour,
       tr->tm_min, tr->tm_sec, tr->tm_year + 1900);
-
-  } else {
-    buf[0] = '\0';
   }
 
   buf[sizeof(buf)-1] = '\0';
-
   return buf;
 }
 
