@@ -89,6 +89,7 @@ TEST_API_OBJS=\
   api/encode.o \
   api/privs.o \
   api/display.o \
+  api/misc.o \
   api/stubs.o \
   api/tests.o
 
