@@ -118,6 +118,101 @@ START_TEST (schedule_test) {
 }
 END_TEST
 
+START_TEST (get_name_max_test) {
+  size_t res;
+  char *path;
+  int fd;
+
+  res = get_name_max(NULL, -1);
+  fail_unless(res == (size_t) -1, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+  res = get_name_max(path, -1);
+  fail_unless(res == (size_t) -1, "Couldn't get name max for '%s': %s", path,
+    strerror(errno));
+
+  fd = 1;
+  res = get_name_max(NULL, fd);
+  fail_unless(res == (size_t) -1, "Couldn't get name max for fd %d: %s", fd,
+    strerror(errno));
+  fail_unless(res != NAME_MAX_GUESS, "Expected other than %lu, got %lu",
+    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
+
+  fd = 777;
+  res = get_name_max(NULL, fd);
+  fail_unless(res == (size_t) -1, "Couldn't get name max for fd %d: %s", fd,
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (safe_token_test) {
+  char *res, *text, *expected;
+
+  mark_point();
+  expected = "";
+  res = safe_token(NULL);
+  fail_unless(res != NULL, "Failed to handle null arguments");
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  mark_point();
+  text = "";
+  expected = "";
+  res = safe_token(&text);
+  fail_unless(res != NULL, "Failed to handle null arguments");
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  mark_point();
+  text = "foo";
+  expected = text;
+  res = safe_token(&text);
+  fail_unless(res != NULL, "Failed to handle null arguments");
+  fail_unless(res == expected, "Expected '%s', got '%s'", expected, res);
+  fail_unless(strcmp(text, "") == 0, "Expected '', got '%s'", text);
+
+  mark_point();
+  text = "  foo";
+  expected = text + 2;
+  res = safe_token(&text);
+  fail_unless(res != NULL, "Failed to handle null arguments");
+  fail_unless(res == expected, "Expected '%s', got '%s'", expected, res);
+  fail_unless(strcmp(text, "") == 0, "Expected '', got '%s'", text);
+
+  mark_point();
+  text = "  \t";
+  expected = "";
+  res = safe_token(&text);
+  fail_unless(res != NULL, "Failed to handle null arguments");
+  fail_unless(res == expected, "Expected '%s', got '%s'", expected, res);
+}
+END_TEST
+
+START_TEST (memscrub_test) {
+  void *ptr;
+  size_t len;
+  char *expected, *text;
+
+  mark_point();
+  pr_memscrub(NULL, 1);
+
+  expected = "Hello, World!";
+  text = pstrdup(p, expected);
+
+  mark_point();
+  pr_memscrub(text, 0);
+
+  len = strlen(text);
+
+  mark_point();
+  pr_memscrub(text, len);
+  fail_unless(strncmp(text, expected, len + 1) != 0,
+    "Expected other than '%s'", expected);
+}
+END_TEST
+
 START_TEST (getopt_reset_test) {
   mark_point();
   pr_getopt_reset();
@@ -327,8 +422,8 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, schedule_test);
-#if 0
   tcase_add_test(testcase, get_name_max_test);
+#if 0
   tcase_add_test(testcase, dir_interpolate_test);
   tcase_add_test(testcase, dir_best_path_test);
   tcase_add_test(testcase, dir_canonical_path_test);
@@ -341,11 +436,11 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, exists_test);
   tcase_add_test(testcase, dir_exists_test);
   tcase_add_test(testcase, file_exists_test);
-#if 0
   tcase_add_test(testcase, safe_token_test);
+#if 0
   tcase_add_test(testcase, check_shutmsg_test);
-  tcase_add_test(testcase, memscrub_test);
 #endif
+  tcase_add_test(testcase, memscrub_test);
   tcase_add_test(testcase, getopt_reset_test);
   tcase_add_test(testcase, gmtime_test);
   tcase_add_test(testcase, localtime_test);

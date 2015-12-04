@@ -198,6 +198,7 @@ size_t get_name_max(char *dirname, int dir_fd) {
   } else
 # endif
   /* No data provided to use either pathconf() or fpathconf() */
+  errno = EINVAL;
   return -1;
 
   if (res < 0) {
