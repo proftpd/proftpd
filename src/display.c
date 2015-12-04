@@ -188,11 +188,12 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
   max_clients = get_param_ptr(s, "MaxClients", FALSE);
 
   v = pr_table_get(session.notes, "client-count", NULL);
-  if (v) {
+  if (v != NULL) {
     current_clients = v;
   }
 
-  snprintf(mg_cur, sizeof(mg_cur), "%u", current_clients ? *current_clients: 1);
+  snprintf(mg_cur, sizeof(mg_cur), "%u",
+    current_clients ? *current_clients : 1);
 
   if (session.conn_class != NULL &&
       session.conn_class->cls_name != NULL) {
@@ -201,7 +202,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
     unsigned int maxclients = 0;
 
     v = pr_table_get(session.notes, "class-client-count", NULL);
-    if (v) {
+    if (v != NULL) {
       class_clients = v;
     }
 
@@ -216,7 +217,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
     maxc = find_config(main_server->conf, CONF_PARAM, "MaxClientsPerClass",
       FALSE);
 
-    while (maxc) {
+    while (maxc != NULL) {
       pr_signals_handle();
 
       if (strcmp(maxc->argv[0], session.conn_class->cls_name) != 0) {
@@ -231,9 +232,9 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
 
     if (maxclients == 0) {
       maxc = find_config(main_server->conf, CONF_PARAM, "MaxClients", FALSE);
-
-      if (maxc)
+      if (maxc != NULL) {
         maxclients = *((unsigned int *) maxc->argv[0]);
+      }
     }
 
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", maxclients);
@@ -265,11 +266,12 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
   snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-  if (user == NULL)
+  if (user == NULL) {
     user = "";
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
-  if (c) {
+  if (c != NULL) {
     pr_netaddr_t *masq_addr = NULL;
 
     if (c->argv[0] != NULL) {
