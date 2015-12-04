@@ -207,38 +207,42 @@ size_t get_name_max(char *dirname, int dir_fd) {
   return (size_t) res;
 }
 
-
 /* Interpolates a pathname, expanding ~ notation if necessary
  */
 char *dir_interpolate(pool *p, const char *path) {
   struct passwd *pw;
-  char *user,*tmp;
+  char *user, *res;
+
   char *ret = (char *)path;
 
-  if (!ret)
+  if (path == NULL) {
+    errno = EINVAL;
     return NULL;
+  }
 
-  if (*ret == '~') {
-    user = pstrdup(p, ret+1);
-    tmp = strchr(user, '/');
+  if (*path == '~') {
+    char *ptr;
 
-    if (tmp)
-      *tmp++ = '\0';
+    user = pstrdup(p, path + 1);
+    ptr = strchr(user, '/');
+    if (ptr) {
+      *ptr++ = '\0';
+    }
 
-    if (!*user)
+    if (!*user) {
       user = session.user;
+    }
 
     pw = pr_auth_getpwnam(p, user);
-
-    if (!pw) {
+    if (pw == NULL) {
       errno = ENOENT;
       return NULL;
     }
 
-    ret = pdircat(p, pw->pw_dir, tmp, NULL);
+    res = pdircat(p, pw->pw_dir, ptr, NULL);
   }
 
-  return ret;
+  return res;
 }
 
 /* dir_best_path() creates the "most" fully canonicalized path possible
@@ -252,47 +256,55 @@ char *dir_best_path(pool *p, const char *path) {
 
   if (*path == '~') {
     if (pr_fs_interpolate(path, workpath, sizeof(workpath)-1) != 1) {
-      if (pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path) < 0)
+      if (pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path) < 0) {
         return NULL;
+      }
     }
 
   } else {
-    if (pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path) < 0)
+    if (pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path) < 0) {
       return NULL;
+    }
   }
 
   pr_fs_clean_path(pstrdup(p, workpath), workpath, sizeof(workpath)-1);
 
   while (!fini && *workpath) {
     if (pr_fs_resolve_path(workpath, realpath_buf,
-        sizeof(realpath_buf)-1, 0) != -1)
+        sizeof(realpath_buf)-1, 0) != -1) {
       break;
+    }
 
     ntarget = strrchr(workpath, '/');
     if (ntarget) {
       if (target) {
-        if (pr_fs_dircat(workpath, sizeof(workpath), workpath, target) < 0)
+        if (pr_fs_dircat(workpath, sizeof(workpath), workpath, target) < 0) {
           return NULL;
+        }
       }
 
       target = ntarget;
       *target++ = '\0';
 
-    } else
+    } else {
       fini++;
+    }
   }
 
   if (!fini && *workpath) {
     if (target) {
-      if (pr_fs_dircat(workpath, sizeof(workpath), realpath_buf, target) < 0)
+      if (pr_fs_dircat(workpath, sizeof(workpath), realpath_buf, target) < 0) {
         return NULL;
+      }
 
-    } else
+    } else {
       sstrncpy(workpath, realpath_buf, sizeof(workpath));
+    }
 
   } else {
-    if (pr_fs_dircat(workpath, sizeof(workpath), "/", target) < 0)
+    if (pr_fs_dircat(workpath, sizeof(workpath), "/", target) < 0) {
       return NULL;
+    }
   }
 
   return pstrdup(p, workpath);
@@ -304,13 +316,15 @@ char *dir_canonical_path(pool *p, const char *path) {
 
   if (*path == '~') {
     if (pr_fs_interpolate(path, work, sizeof(work)-1) != 1) {
-      if (pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path) < 0)
+      if (pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path) < 0) {
         return NULL;
+      }
     }
 
   } else {
-    if (pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path) < 0)
+    if (pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path) < 0) {
       return NULL;
+    }
   }
 
   pr_fs_clean_path(work, buf, sizeof(buf)-1);
@@ -323,13 +337,15 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 
   if (*path == '~') {
     if (pr_fs_interpolate(path, work, sizeof(work)-1) != 1) {
-      if (pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path) < 0)
+      if (pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path) < 0) {
         return NULL;
+      }
     }
 
   } else {
-    if (pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path) < 0)
+    if (pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path) < 0) {
       return NULL;
+    }
   }
 
   pr_fs_clean_path(work, buf, sizeof(buf)-1);
@@ -342,8 +358,9 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 char *dir_realpath(pool *p, const char *path) {
   char buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
-  if (pr_fs_resolve_partial(path, buf, sizeof(buf)-1, 0) == -1)
+  if (pr_fs_resolve_partial(path, buf, sizeof(buf)-1, 0) < 0) {
     return NULL;
+  }
 
   return pstrdup(p, buf);
 }
@@ -422,8 +439,9 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
   memset(buf, '\0', sizeof(buf));
 
   i = pr_fsio_readlink(path, buf, sizeof(buf) - 1);
-  if (i == -1)
-    return (mode_t)0;
+  if (i < 0) {
+    return (mode_t) 0;
+  }
   buf[i] = '\0';
 
   pr_fs_clear_cache2(buf);
@@ -522,23 +540,29 @@ int exists(const char *path) {
 char *safe_token(char **s) {
   char *res = "";
 
-  if (!s || !*s)
+  if (s == NULL ||
+      !*s) {
     return res;
+  }
 
-  while (PR_ISSPACE(**s) && **s)
+  while (PR_ISSPACE(**s) && **s) {
     (*s)++;
+  }
 
   if (**s) {
     res = *s;
 
-    while (!PR_ISSPACE(**s) && **s)
+    while (!PR_ISSPACE(**s) && **s) {
       (*s)++;
+    }
 
-    if (**s)
+    if (**s) {
       *(*s)++ = '\0';
+    }
 
-    while (PR_ISSPACE(**s) && **s)
+    while (PR_ISSPACE(**s) && **s) {
       (*s)++;
+    }
   }
 
   return res;
@@ -549,15 +573,18 @@ char *safe_token(char **s) {
  * existing ones.
  */
 int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
-                  size_t msg_size) {
+    size_t msg_size) {
   FILE *fp;
-  char *deny_str,*disc_str,*cp, buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
+  char *deny_str, *disc_str, *cp, buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   char hr[3] = {'\0'}, mn[3] = {'\0'};
-  time_t now,shuttime = (time_t)0;
+  time_t now,shuttime = (time_t) 0;
   struct tm tm;
 
-  if (file_exists(PR_SHUTMSG_PATH) && (fp = fopen(PR_SHUTMSG_PATH, "r"))) {
-    if ((cp = fgets(buf, sizeof(buf),fp)) != NULL) {
+  if (file_exists(PR_SHUTMSG_PATH) &&
+      (fp = fopen(PR_SHUTMSG_PATH, "r"))) {
+
+    cp = fgets(buf, sizeof(buf), fp);
+    if (cp != NULL) {
       buf[sizeof(buf)-1] = '\0'; CHOP(cp);
 
       /* We use this to fill in dst, timezone, etc */
@@ -574,29 +601,34 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       deny_str = safe_token(&cp);
       disc_str = safe_token(&cp);
 
-      if ((shuttime = mktime(&tm)) == (time_t) - 1) {
+      shuttime = mktime(&tm);
+      if (shuttime == (time_t) - 1) {
         fclose(fp);
         return 0;
       }
 
-      if (deny) {
+      if (deny != NULL) {
         if (strlen(deny_str) == 4) {
           sstrncpy(hr,deny_str,sizeof(hr)); hr[2] = '\0'; deny_str += 2;
           sstrncpy(mn,deny_str,sizeof(mn)); mn[2] = '\0';
 
           *deny = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
-        } else
+
+        } else {
           *deny = shuttime;
+        }
       }
 
-      if (disc) {
+      if (disc != NULL) {
         if (strlen(disc_str) == 4) {
           sstrncpy(hr,disc_str,sizeof(hr)); hr[2] = '\0'; disc_str += 2;
           sstrncpy(mn,disc_str,sizeof(mn)); mn[2] = '\0';
 
           *disc = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
-        } else
+
+        } else {
           *disc = shuttime;
+        }
       }
 
       if (fgets(buf, sizeof(buf),fp) && msg) {
@@ -607,8 +639,10 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
     }
 
     fclose(fp);
-    if (shut)
+    if (shut != NULL) {
       *shut = shuttime;
+    }
+
     return 1;
   }
 
@@ -655,8 +689,9 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
     memscrub_ctr += (17 + (unsigned char)((intptr_t) p & 0xF));
   }
 
-  if (memchr(ptr, memscrub_ctr, ptrlen))
+  if (memchr(ptr, memscrub_ctr, ptrlen)) {
     memscrub_ctr += 63;
+  }
 #endif
 }
 
@@ -812,11 +847,6 @@ int pr_timeval2millis(struct timeval *tv, uint64_t *millis) {
 
 int pr_gettimeofday_millis(uint64_t *millis) {
   struct timeval tv;
-
-  if (millis == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
 
   if (gettimeofday(&tv, NULL) < 0) {
     return -1;
