@@ -400,16 +400,18 @@ START_TEST (check_shutmsg_test) {
     "1970 1 1 0 0 0 0000 0000\nGoodbye, cruel world!\n");
   fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
 
-  mark_point();
   memset(shutdown_msg, '\0', sizeof(shutdown_msg));
+  pr_env_set(p, "TZ", "GMT");
+
+  mark_point();
   res = check_shutmsg(path, &when_shutdown, &when_deny, &when_disconnect,
     shutdown_msg, sizeof(shutdown_msg));
   fail_unless(res == 1, "Expected 1, got %d", res);
-  fail_unless(when_shutdown != (time_t) 0, "Expected 0, got %lu",
+  fail_unless(when_shutdown == (time_t) 0, "Expected 0, got %lu",
     (unsigned long) when_shutdown);
-  fail_unless(when_deny != (time_t) 0, "Expected 0, got %lu",
+  fail_unless(when_deny == (time_t) 0, "Expected 0, got %lu",
     (unsigned long) when_deny);
-  fail_unless(when_disconnect != (time_t) 0, "Expected 0, got %lu",
+  fail_unless(when_disconnect == (time_t) 0, "Expected 0, got %lu",
     (unsigned long) when_disconnect);
   fail_unless(strcmp(shutdown_msg, "Goodbye, cruel world!") == 0,
     "Expected 'Goodbye, cruel world!', got '%s'", shutdown_msg);
