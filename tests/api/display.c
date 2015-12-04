@@ -33,6 +33,14 @@ static pool *p = NULL;
 
 static const char *display_test_file = "/tmp/prt-display.txt";
 
+static const char *display_lines[] = {
+  "Hello, %U\n",
+  "Environment: %{env:FOO} (%{env:NO_FOO})\n",
+  "Variable: %{BAR}\n",
+  "Time: %{time:%Y%m%d}\n",
+  NULL
+};
+
 /* Fixtures */
 
 static void set_up(void) {
@@ -76,11 +84,11 @@ static void tear_down(void) {
   }
 }
 
-static int write_display_file(const char *path) {
+static int write_file(const char *path, const char **lines,
+    unsigned int nlines) {
+  register unsigned int i;
   FILE *fh;
   int res;
-  const char *msg;
-  size_t msg_len;
 
   /* Write out a test Display file. */
   fh = fopen(path, "w+");
@@ -88,9 +96,14 @@ static int write_display_file(const char *path) {
     return -1;
   }
 
-  msg = "Hello, %U!\n";
-  msg_len = strlen(msg);
-  fwrite(msg, msg_len, 1, fh);
+  for (i = 0; i < nlines; i++) {
+    const char *line;
+    size_t line_len;
+
+    line = lines[i];
+    line_len = strlen(line);
+    fwrite(line, line_len, 1, fh);
+  }
 
   res = fclose(fh);
   return res; 
@@ -129,7 +142,7 @@ START_TEST (display_file_test) {
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
-  res = write_display_file(path);
+  res = write_file(path, display_lines, 4);
   fail_unless(res == 0, "Failed to write display file: %s", strerror(errno));
 
   pr_response_set_pool(p);
@@ -165,7 +178,7 @@ START_TEST (display_fh_test) {
     strerror(errno), errno);
 
   (void) unlink(display_test_file);
-  res = write_display_file(display_test_file);
+  res = write_file(display_test_file, display_lines, 4);
   fail_unless(res == 0, "Failed to write display file: %s", strerror(errno));
 
   path = display_test_file;
