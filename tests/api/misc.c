@@ -432,7 +432,6 @@ START_TEST (check_shutmsg_test) {
 
   mark_point();
   res = check_shutmsg(path, NULL, NULL, NULL, NULL, 0);
-  fail_unless(res == 0, "Expected 0, got %d", res);
 
   (void) unlink(misc_test_shutmsg);
 }
