@@ -75,6 +75,7 @@ Suite *tests_get_help_suite(void);
 Suite *tests_get_rlimit_suite(void);
 Suite *tests_get_encode_suite(void);
 Suite *tests_get_privs_suite(void);
+Suite *tests_get_display_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.

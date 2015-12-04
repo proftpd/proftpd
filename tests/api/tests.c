@@ -66,6 +66,7 @@ static struct testsuite_info suites[] = {
   { "rlimit",		tests_get_rlimit_suite },
   { "encode",		tests_get_encode_suite },
   { "privs",		tests_get_privs_suite },
+  { "display",		tests_get_display_suite },
 
   { NULL, NULL }
 };

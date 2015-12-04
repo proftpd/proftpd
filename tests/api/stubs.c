@@ -48,10 +48,6 @@ int tests_stubs_set_main_server(server_rec *s) {
   return 0;
 }
 
-char *dir_realpath(pool *p, const char *path) {
-  return NULL;
-}
-
 void init_dirtree(void) {
   pool *main_pool;
   xaset_t *servers;
@@ -118,10 +114,6 @@ int pr_config_get_server_xfer_bufsz(int direction) {
 
 int pr_ctrls_unregister(module *m, const char *action) {
   return 0;
-}
-
-struct tm *pr_localtime(pool *p, const time_t *t) {
-  return localtime(t);
 }
 
 void pr_log_debug(int level, const char *fmt, ...) {
@@ -208,46 +200,4 @@ int pr_session_set_idle(void) {
 }
 
 void pr_signals_handle(void) {
-}
-
-void pr_signals_block(void) {
-}
-
-void pr_signals_unblock(void) {
-}
-
-int pr_timeval2millis(struct timeval *tv, uint64_t *millis) {
-  if (tv == NULL ||
-      millis == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  /* Make sure to use 64-bit multiplication to avoid overflow errors,
-   * as much as we can.
-   */
-  *millis = (tv->tv_sec * (uint64_t) 1000) + (tv->tv_usec / (uint64_t) 1000);
-  return 0;
-}
-
-int pr_gettimeofday_millis(uint64_t *millis) {
-  struct timeval tv;
-
-  if (millis == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  if (gettimeofday(&tv, NULL) < 0) {
-    return -1;
-  }
-
-  if (pr_timeval2millis(&tv, millis) < 0) {
-    return -1;
-  }
-
-  return 0;
-}
-
-void run_schedule(void) {
 }

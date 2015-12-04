@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2014 The ProFTPD Project team
+ * Copyright (c) 2004-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -137,7 +137,7 @@ static int display_flush_lines(pool *p, const char *resp_code, int flags) {
   return 0;
 }
 
-static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
+static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
     int flags) {
   struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
@@ -415,38 +415,40 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *code,
        * response chains to be flushed, which won't work (i.e. DisplayConnect
        * and DisplayQuit).
        */
-      display_add_line(p, code, outs);
+      display_add_line(p, resp_code, outs);
 
     } else {
-      pr_response_add(code, "%s", outs);
+      pr_response_add(resp_code, "%s", outs);
     }
   }
 
   if (flags & PR_DISPLAY_FL_SEND_NOW) {
-    display_flush_lines(p, code, flags);
+    display_flush_lines(p, resp_code, flags);
   }
 
   destroy_pool(p);
   return 0;
 }
 
-int pr_display_fh(pr_fh_t *fh, const char *fs, const char *code, int flags) {
-  if (!fh || !code) {
+int pr_display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
+    int flags) {
+  if (fh == NULL ||
+      resp_code == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  return display_fh(fh, fs, code, flags);
+  return display_fh(fh, fs, resp_code, flags);
 }
 
-int pr_display_file(const char *path, const char *fs, const char *code,
+int pr_display_file(const char *path, const char *fs, const char *resp_code,
     int flags) {
   pr_fh_t *fh = NULL;
   int res, xerrno;
   struct stat st;
 
   if (path == NULL ||
-      code == NULL) {
+      resp_code == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -458,7 +460,11 @@ int pr_display_file(const char *path, const char *fs, const char *code,
 
   res = pr_fsio_fstat(fh, &st);
   if (res < 0) {
+    xerrno = errno;
+
     pr_fsio_close(fh);
+
+    errno = xerrno;
     return -1;
   }
 
@@ -468,7 +474,7 @@ int pr_display_file(const char *path, const char *fs, const char *code,
     return -1;
   }
 
-  res = display_fh(fh, fs, code, flags);
+  res = display_fh(fh, fs, resp_code, flags);
   xerrno = errno;
 
   pr_fsio_close(fh);

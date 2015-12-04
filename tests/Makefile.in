@@ -17,6 +17,7 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/sets.o \
   $(top_srcdir)/src/timers.o \
   $(top_srcdir)/src/table.o \
+  $(top_srcdir)/src/support.o \
   $(top_srcdir)/src/var.o \
   $(top_srcdir)/src/event.o \
   $(top_srcdir)/src/env.o \
@@ -45,7 +46,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/inet.o \
   $(top_srcdir)/src/data.o \
   $(top_srcdir)/src/ascii.o \
-  $(top_srcdir)/src/help.o
+  $(top_srcdir)/src/help.o \
+  $(top_srcdir)/src/display.o
 
 TEST_API_LIBS=-lcheck
 
@@ -86,6 +88,7 @@ TEST_API_OBJS=\
   api/rlimit.o \
   api/encode.o \
   api/privs.o \
+  api/display.o \
   api/stubs.o \
   api/tests.o
 
