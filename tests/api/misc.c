@@ -186,7 +186,8 @@ START_TEST (safe_token_test) {
   expected = "";
   res = safe_token(&text);
   fail_unless(res != NULL, "Failed to handle null arguments");
-  fail_unless(res == expected, "Expected '%s', got '%s'", expected, res);
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
 }
 END_TEST
 
