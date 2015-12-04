@@ -30,10 +30,13 @@
 static pool *p = NULL;
 
 static unsigned int schedule_called = 0;
+static const char *misc_test_shutmsg = "/tmp/prt-shutmsg.dat";
 
 /* Fixtures */
 
 static void set_up(void) {
+  (void) unlink(misc_test_shutmsg);
+
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
@@ -51,6 +54,8 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  (void) unlink(misc_test_shutmsg);
+
   pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
@@ -345,9 +350,29 @@ START_TEST (safe_token_test) {
 }
 END_TEST
 
+static int write_shutmsg(const char *path, const char *line) {
+  FILE *fh;
+  int res;
+  size_t line_len;
+
+  fh = fopen(path, "w+");
+  if (fh == NULL) {
+    return -1;
+  }
+
+
+  line_len = strlen(line);
+  fwrite(line, line_len, 1, fh);
+
+  res = fclose(fh);
+  return res;
+}
+
 START_TEST (check_shutmsg_test) {
   int res;
   const char *path;
+  time_t when_shutdown = 0, when_deny = 0, when_disconnect = 0;
+  char shutdown_msg[PR_TUNABLE_BUFFER_SIZE];
 
   res = check_shutmsg(NULL, NULL, NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -367,6 +392,44 @@ START_TEST (check_shutmsg_test) {
     strerror(errno), errno);
 
   /* XXX More testing needed */
+
+  (void) unlink(misc_test_shutmsg);
+  path = misc_test_shutmsg;
+
+  res = write_shutmsg(path,
+    "1970 1 1 0 0 0 0000 0000\nGoodbye, cruel world!\n");
+  fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
+
+  mark_point();
+  memset(shutdown_msg, '\0', sizeof(shutdown_msg));
+  res = check_shutmsg(path, &when_shutdown, &when_deny, &when_disconnect,
+    shutdown_msg, sizeof(shutdown_msg));
+  fail_unless(res == 1, "Expected 1, got %d", res);
+  fail_unless(when_shutdown != (time_t) 0, "Expected 0, got %lu",
+    (unsigned long) when_shutdown);
+  fail_unless(when_deny != (time_t) 0, "Expected 0, got %lu",
+    (unsigned long) when_deny);
+  fail_unless(when_disconnect != (time_t) 0, "Expected 0, got %lu",
+    (unsigned long) when_disconnect);
+  fail_unless(strcmp(shutdown_msg, "Goodbye, cruel world!") == 0,
+    "Expected 'Goodbye, cruel world!', got '%s'", shutdown_msg);
+
+  res = write_shutmsg(path,
+    "2340 1 1 0 0 0 0000 0000\nGoodbye, cruel world!\n");
+  fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
+
+  mark_point();
+  res = check_shutmsg(path, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res == 1, "Expected 1, got %d", res);
+
+  res = write_shutmsg(path, "Goodbye, cruel world!\n");
+  fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
+
+  mark_point();
+  res = check_shutmsg(path, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res == 0, "Expected 0, got %d", res);
+
+  (void) unlink(misc_test_shutmsg);
 }
 END_TEST
 
