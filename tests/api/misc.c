@@ -147,6 +147,38 @@ START_TEST (get_name_max_test) {
 }
 END_TEST
 
+START_TEST (dir_interpolate_test) {
+  char *res;
+  const char *path;
+
+  res = dir_interpolate(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = dir_interpolate(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = "/foo";
+  res = dir_interpolate(p, path);
+  fail_unless(path != NULL, "Failed to interpolate '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
+
+  mark_point();
+  path = "~foo.bar.bar.quxx.quzz/foo";
+  res = dir_interpolate(p, path);
+  fail_unless(path != NULL, "Failed to interpolate '%s': %s", path,
+    strerror(errno));
+  fail_unless(*path == '~', "Interpolated path with unknown user unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+}
+END_TEST
+
 START_TEST (safe_token_test) {
   char *res, *text, *expected;
 
@@ -188,6 +220,31 @@ START_TEST (safe_token_test) {
   fail_unless(res != NULL, "Failed to handle null arguments");
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
     res);
+}
+END_TEST
+
+START_TEST (check_shutmsg_test) {
+  int res;
+  const char *path;
+
+  res = check_shutmsg(NULL, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/foo/bar/baz/quxx/quzz";
+  res = check_shutmsg(path, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle nonexistent path");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  path = "/";
+  res = check_shutmsg(path, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle directory path");
+  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  /* XXX More testing needed */
 }
 END_TEST
 
@@ -424,8 +481,8 @@ Suite *tests_get_misc_suite(void) {
 
   tcase_add_test(testcase, schedule_test);
   tcase_add_test(testcase, get_name_max_test);
-#if 0
   tcase_add_test(testcase, dir_interpolate_test);
+#if 0
   tcase_add_test(testcase, dir_best_path_test);
   tcase_add_test(testcase, dir_canonical_path_test);
   tcase_add_test(testcase, dir_canonical_vpath_test);
@@ -438,9 +495,7 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, dir_exists_test);
   tcase_add_test(testcase, file_exists_test);
   tcase_add_test(testcase, safe_token_test);
-#if 0
   tcase_add_test(testcase, check_shutmsg_test);
-#endif
   tcase_add_test(testcase, memscrub_test);
   tcase_add_test(testcase, getopt_reset_test);
   tcase_add_test(testcase, gmtime_test);

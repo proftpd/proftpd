@@ -82,7 +82,7 @@ int dir_exists(const char *);
 int exists(const char *);
 
 char *safe_token(char **);
-int check_shutmsg(time_t *, time_t *, time_t *, char *, size_t);
+int check_shutmsg(const char *, time_t *, time_t *, time_t *, char *, size_t);
 
 void pr_memscrub(void *, size_t);
 

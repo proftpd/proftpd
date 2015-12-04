@@ -219,17 +219,16 @@ size_t get_name_max(char *dirname, int dir_fd) {
  */
 char *dir_interpolate(pool *p, const char *path) {
   struct passwd *pw;
-  char *user, *res;
+  char *res = NULL;
 
-  char *ret = (char *)path;
-
-  if (path == NULL) {
+  if (p == NULL ||
+      path == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
   if (*path == '~') {
-    char *ptr;
+    char *ptr, *user;
 
     user = pstrdup(p, path + 1);
     ptr = strchr(user, '/');
@@ -248,6 +247,9 @@ char *dir_interpolate(pool *p, const char *path) {
     }
 
     res = pdircat(p, pw->pw_dir, ptr, NULL);
+
+  } else {
+    res = pstrdup(p, path);
   }
 
   return res;
@@ -590,16 +592,30 @@ char *safe_token(char **s) {
  * filled with the times to deny new connections and disconnect
  * existing ones.
  */
-int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
-    size_t msg_size) {
+int check_shutmsg(const char *path, time_t *shut, time_t *deny, time_t *disc,
+    char *msg, size_t msg_size) {
   FILE *fp;
   char *deny_str, *disc_str, *cp, buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   char hr[3] = {'\0'}, mn[3] = {'\0'};
-  time_t now,shuttime = (time_t) 0;
+  time_t now, shuttime = (time_t) 0;
   struct tm tm;
 
-  if (file_exists(PR_SHUTMSG_PATH) &&
-      (fp = fopen(PR_SHUTMSG_PATH, "r"))) {
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fp = fopen(path, "r");
+  if (fp != NULL) {
+    struct stat st;
+
+    if (fstat(fileno(fp), &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        fclose(fp);
+        errno = EISDIR;
+        return -1;
+      }
+    }
 
     cp = fgets(buf, sizeof(buf), fp);
     if (cp != NULL) {
@@ -607,7 +623,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
 
       /* We use this to fill in dst, timezone, etc */
       time(&now);
-      tm = *(localtime(&now));
+      tm = *(pr_localtime(NULL, &now));
 
       tm.tm_year = atoi(safe_token(&cp)) - 1900;
       tm.tm_mon = atoi(safe_token(&cp)) - 1;
@@ -620,15 +636,15 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       disc_str = safe_token(&cp);
 
       shuttime = mktime(&tm);
-      if (shuttime == (time_t) - 1) {
+      if (shuttime == (time_t) -1) {
         fclose(fp);
         return 0;
       }
 
       if (deny != NULL) {
         if (strlen(deny_str) == 4) {
-          sstrncpy(hr,deny_str,sizeof(hr)); hr[2] = '\0'; deny_str += 2;
-          sstrncpy(mn,deny_str,sizeof(mn)); mn[2] = '\0';
+          sstrncpy(hr, deny_str, sizeof(hr)); hr[2] = '\0'; deny_str += 2;
+          sstrncpy(mn, deny_str, sizeof(mn)); mn[2] = '\0';
 
           *deny = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
 
@@ -639,8 +655,8 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
 
       if (disc != NULL) {
         if (strlen(disc_str) == 4) {
-          sstrncpy(hr,disc_str,sizeof(hr)); hr[2] = '\0'; disc_str += 2;
-          sstrncpy(mn,disc_str,sizeof(mn)); mn[2] = '\0';
+          sstrncpy(hr, disc_str, sizeof(hr)); hr[2] = '\0'; disc_str += 2;
+          sstrncpy(mn, disc_str, sizeof(mn)); mn[2] = '\0';
 
           *disc = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
 
@@ -649,7 +665,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
         }
       }
 
-      if (fgets(buf, sizeof(buf),fp) && msg) {
+      if (fgets(buf, sizeof(buf), fp) && msg) {
         buf[sizeof(buf)-1] = '\0';
 	CHOP(buf);
         sstrncpy(msg, buf, msg_size-1);
@@ -664,7 +680,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
     return 1;
   }
 
-  return 0;
+  return -1;
 }
 
 #if !defined(PR_USE_OPENSSL) || OPENSSL_VERSION_NUMBER <= 0x000907000L

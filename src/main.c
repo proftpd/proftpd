@@ -144,7 +144,8 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
 }
 
 void shutdown_end_session(void *d1, void *d2, void *d3, void *d4) {
-  if (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg)) == 1) {
+  if (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
+      sizeof(shutmsg)) == 1) {
     char *user;
     time_t now;
     char *msg;
@@ -1503,7 +1504,8 @@ static void daemon_loop(void) {
     maxfd = semaphore_fds(&listenfds, maxfd);
 
     /* Check for ftp shutdown message file */
-    switch (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg))) {
+    switch (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
+        sizeof(shutmsg))) {
       case 1:
         if (!shutting_down) {
           disc_children();
@@ -1511,7 +1513,7 @@ static void daemon_loop(void) {
         shutting_down = TRUE;
         break;
 
-      case 0:
+      default:
         shutting_down = FALSE;
         deny = disc = (time_t) 0;
         break;
@@ -1793,7 +1795,8 @@ static void inetd_main(void) {
   init_bindings();
 
   /* Check our shutdown status */
-  if (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg)) == 1) {
+  if (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
+      sizeof(shutmsg)) == 1) {
     shutting_down = TRUE;
   }
 
