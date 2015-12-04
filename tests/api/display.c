@@ -169,6 +169,44 @@ START_TEST (display_file_test) {
 
   fail_unless(last_resp_msg != NULL,
     "Last response message is unexpectedly null");
+
+  /* Send the display file NOW */
+  mark_point();
+  res = pr_display_file(path, NULL, resp_code, PR_DISPLAY_FL_SEND_NOW);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
+
+  mark_point();
+  res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
+  fail_unless(res == 0, "Failed to get last response values: %s (%d)",
+    strerror(errno), errno);
+
+  fail_unless(last_resp_code != NULL,
+    "Last response code is unexpectedly null");
+  fail_unless(strcmp(last_resp_code, resp_code) == 0,
+    "Expected response code '%s', got '%s'", resp_code, last_resp_code);
+
+  fail_unless(last_resp_msg != NULL,
+    "Last response message is unexpectedly null");
+
+  /* Send the display file NOW, with no EOM */
+
+  mark_point();
+  res = pr_display_file(path, NULL, resp_code,
+    PR_DISPLAY_FL_SEND_NOW|PR_DISPLAY_FL_NO_EOM);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
+
+  mark_point();
+  res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
+  fail_unless(res == 0, "Failed to get last response values: %s (%d)",
+    strerror(errno), errno);
+
+  fail_unless(last_resp_code != NULL,
+    "Last response code is unexpectedly null");
+  fail_unless(strcmp(last_resp_code, resp_code) == 0,
+    "Expected response code '%s', got '%s'", resp_code, last_resp_code);
+
+  fail_unless(last_resp_msg != NULL,
+    "Last response message is unexpectedly null");
 }
 END_TEST
 
@@ -216,45 +254,6 @@ START_TEST (display_fh_test) {
 
   fail_unless(last_resp_msg != NULL,
     "Last response message is unexpectedly null");
-
-  /* Send the display file NOW */
-  mark_point();
-  res = pr_display_fh(fh, NULL, resp_code, PR_DISPLAY_FL_SEND_NOW);
-  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
-
-  mark_point();
-  res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
-  fail_unless(res == 0, "Failed to get last response values: %s (%d)",
-    strerror(errno), errno);
-
-  fail_unless(last_resp_code != NULL,
-    "Last response code is unexpectedly null");
-  fail_unless(strcmp(last_resp_code, resp_code) == 0,
-    "Expected response code '%s', got '%s'", resp_code, last_resp_code);
-
-  fail_unless(last_resp_msg != NULL,
-    "Last response message is unexpectedly null");
-
-  /* Send the display file NOW, with no EOM */
-
-  mark_point();
-  res = pr_display_fh(fh, NULL, resp_code,
-    PR_DISPLAY_FL_SEND_NOW|PR_DISPLAY_FL_NO_EOM);
-  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
-
-  mark_point();
-  res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
-  fail_unless(res == 0, "Failed to get last response values: %s (%d)",
-    strerror(errno), errno);
-
-  fail_unless(last_resp_code != NULL,
-    "Last response code is unexpectedly null");
-  fail_unless(strcmp(last_resp_code, resp_code) == 0,
-    "Expected response code '%s', got '%s'", resp_code, last_resp_code);
-
-  fail_unless(last_resp_msg != NULL,
-    "Last response message is unexpectedly null");
-
 }
 END_TEST
 
