@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014 The ProFTPD Project team
+ * Copyright (c) 2014-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -162,14 +162,15 @@ static void handle_terminate_other(void) {
 #ifdef PR_DEVEL_STACK_TRACE
 static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   register unsigned i;
-  ucontext_t *uc = (ucontext_t *) ptr;
+# if defined(HAVE_UCONTEXT_H)
+  ucontext_t *uc = NULL;
+# endif /* !HAVE_UCONTEXT_H */
   void *trace[PR_TUNABLE_CALLER_DEPTH];
   char **strings;
   int tracesz;
 
   /* Call the "normal" signal handler. */
   table_handling_signal(TRUE);
-  sig_terminate(signo);
 
   pr_log_pri(PR_LOG_ERR, "-----BEGIN STACK TRACE-----");
 
@@ -178,12 +179,15 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
     pr_log_pri(PR_LOG_ERR, "backtrace(3) error: %s", strerror(errno));
   }
 
+# if defined(HAVE_UCONTEXT_H)
   /* Overwrite sigaction with caller's address */
-#if defined(REG_EIP)
+  uc = (ucontext_t *) ptr;
+#  if defined(REG_EIP)
   trace[1] = (void *) uc->uc_mcontext.gregs[REG_EIP];
-#elif defined(REG_RIP)
+#  elif defined(REG_RIP)
   trace[1] = (void *) uc->uc_mcontext.gregs[REG_RIP];
-#endif
+#  endif
+# endif /* !HAVE_UCONTEXT_H */
 
   strings = backtrace_symbols(trace, tracesz);
   if (strings == NULL) {
@@ -197,6 +201,7 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
 
   pr_log_pri(PR_LOG_ERR, "-----END STACK TRACE-----");
 
+  sig_terminate(signo);
   finish_terminate();
 }
 #endif /* PR_DEVEL_STACK_TRACE */
@@ -324,7 +329,6 @@ static RETSIGTYPE sig_terminate(int signo) {
   }
 
   /* Ignore future occurrences of this signal; we'll be terminating anyway. */
-
   if (signal(signo, SIG_IGN) == SIG_ERR) {
     pr_log_pri(PR_LOG_NOTICE,
       "unable to install handler for signal %d: %s", signo, strerror(errno));
@@ -339,12 +343,23 @@ static void install_stacktrace_handler(void) {
   action.sa_sigaction = handle_stacktrace_signal;
   action.sa_flags = SA_SIGINFO;
 
-  /* Ideally we would check the return value here. */
-  sigaction(SIGSEGV, &action, NULL);
+  if (sigaction(SIGSEGV, &action, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGSEGV stacktrace signal handler: %s",
+      strerror(errno));
+  }
 # ifdef SIGBUS
-  sigaction(SIGBUS, &action, NULL);
+  if (sigaction(SIGBUS, &action, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGBUS stacktrace signal handler: %s",
+      strerror(errno));
+  }
 # endif /* SIGBUS */
-  sigaction(SIGXCPU, &action, NULL);
+  if (sigaction(SIGXCPU, &action, NULL) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGXCPU stacktrace signal handler: %s",
+      strerror(errno));
+  }
 }
 #endif /* PR_DEVEL_STACK_TRACE */
 
