@@ -426,11 +426,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-number %s JSON field in '%s'", key, json_str);
+       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   if (bme->version != BAN_MCACHE_VALUE_VERSION) {
@@ -450,11 +457,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-number %s JSON field in '%s'", key, json_str);
+       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   key = BAN_MCACHE_JSON_KEY_IP_ADDR;
@@ -465,11 +479,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-string %s JSON field in '%s'", key, json_str);
+       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   if (bme->ip_addr == NULL) {
@@ -488,11 +509,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-number %s JSON field in '%s'", key, json_str);
+       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   if (bme->port <= 0 ||
@@ -533,11 +561,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-string %s JSON field in '%s'", key, json_str);
+       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   key = BAN_MCACHE_JSON_KEY_NAME;
@@ -548,11 +583,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-string %s JSON field in '%s'", key, json_str);
+       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   key = BAN_MCACHE_JSON_KEY_REASON;
@@ -563,11 +605,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-string %s JSON field in '%s'", key, json_str);
+       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   key = BAN_MCACHE_JSON_KEY_MESSAGE;
@@ -578,11 +627,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-string %s JSON field in '%s'", key, json_str);
+       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   key = BAN_MCACHE_JSON_KEY_EXPIRES_TS;
@@ -593,11 +649,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-number %s JSON field in '%s'", key, json_str);
+       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   key = BAN_MCACHE_JSON_KEY_SERVER_ID;
@@ -608,11 +671,18 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
 
     } else {
       pr_trace_msg(trace_channel, 3,
-       "ignoring non-number %s JSON field in '%s'", key, json_str);
+       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
       json_delete(json);
       errno = EINVAL;
       return -1;
     }
+
+  } else {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
   }
 
   if (bme->be_sid <= 0) {
