@@ -1325,7 +1325,8 @@ static int ban_list_exists(pool *p, unsigned int type, unsigned int sid,
        * cache.
        */
       time(&now);
-      if (bme.be_expires <= (uint32_t) now) {
+      if (bme.be_expires != 0 &&
+          bme.be_expires <= (uint32_t) now) {
         pr_trace_msg(trace_channel, 3,
           "purging expired entry from cache: %lu <= now %lu",
           (unsigned long) bme.be_expires, (unsigned long) now);
