@@ -37,7 +37,9 @@ ChangeLog files.
 
   + Changed Configuration Directives:
 
-    BanOnEvent EmptyPassword
+    BanCacheOptions UseJSON (Bug#4056)
+
+    BanOnEvent
       The mod_ban module can now be configured to ban clients which attempt
       to use empty passwords, when the new AllowEmptyPasswords directive is
       set to "false", via the new EmptyPassword BanOnEvent rule.  See
