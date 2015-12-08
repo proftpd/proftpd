@@ -208,11 +208,11 @@ struct ban_mcache_entry {
   int be_sid;
 };
 
-#define BAN_MCACHE_VALUE_VERSION	1
+#define BAN_MCACHE_VALUE_VERSION	2
 
 /* These are tpl format strings */
 #define BAN_MCACHE_TPL_KEY_FMT		"vs"
-#define BAN_MCACHE_TPL_VALUE_FMT	"S(ivsiisssvi)"
+#define BAN_MCACHE_TPL_VALUE_FMT	"S(iusiisssui)"
 
 /* These are the JSON format field names */
 #define BAN_MCACHE_JSON_KEY_VERSION	"version"
@@ -264,17 +264,14 @@ static void ban_handle_event(unsigned int, int, const char *,
  * e.g. memcached.
  */
 
-static int ban_mcache_key_get(pool *p, unsigned int type, const char *name,
+static int ban_mcache_get_tpl_key(pool *p, unsigned int type, const char *name,
     void **key, size_t *keysz) {
+  int res;
   void *data = NULL;
   size_t datasz = 0;
-  int res;
 
   res = tpl_jot(TPL_MEM, &data, &datasz, BAN_MCACHE_TPL_KEY_FMT, &type, &name);
   if (res < 0) {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "error constructing cache lookup key for type %u, name %s", type,
-      name);
     return -1;
   }
 
@@ -286,18 +283,60 @@ static int ban_mcache_key_get(pool *p, unsigned int type, const char *name,
   return 0;
 }
 
+static int ban_mcache_get_json_key(pool *p, unsigned int type, const char *name,
+    void **key, size_t *keysz) {
+  JsonNode *json;
+  char *json_str;
+
+  json = json_mkobject();
+  json_append_member(json, "ban_type_id", json_mknumber((double) type));
+  json_append_member(json, "ban_name", json_mkstring(name));
+
+  json_str = json_stringify(json, "");
+  *keysz = strlen(json_str);
+  *key = pstrndup(p, json_str, *keysz);
+  free(json_str);
+  json_delete(json);
+
+  return 0;
+}
+
+static int ban_mcache_get_key(pool *p, unsigned int type, const char *name,
+    void **key, size_t *keysz) {
+  int res;
+  const char *key_type = "unknown";
+
+  if (ban_cache_opts & BAN_CACHE_OPT_USE_JSON) {
+    key_type = "JSON";
+    res = ban_mcache_get_json_key(p, type, name, key, keysz);
+
+  } else {
+    key_type = "TPL";
+    res = ban_mcache_get_tpl_key(p, type, name, key, keysz);
+  }
+
+  if (res < 0) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "error constructing cache %s lookup key for type %u, name %s", key_type,
+      type, name);
+    return -1;
+  }
+
+  return 0;
+}
+
 static int ban_mcache_entry_delete(pool *p, unsigned int type,
     const char *name) {
   int res;
   void *key = NULL;
   size_t keysz = 0;
 
-  res = ban_mcache_key_get(p, type, name, &key, &keysz);
+  res = ban_mcache_get_key(p, type, name, &key, &keysz);
   if (res < 0) {
     return -1;
   }
 
-  res = pr_memcache_kremove(mcache, &ban_module, key, keysz, 1);
+  res = pr_memcache_kremove(mcache, &ban_module, key, keysz, 0);
   return res;
 }
 
@@ -595,7 +634,7 @@ static int ban_mcache_entry_get(pool *p, unsigned int type, const char *name,
   size_t keysz = 0, valuesz = 0;
   uint32_t flags = 0;
 
-  res = ban_mcache_key_get(p, type, name, &key, &keysz);
+  res = ban_mcache_get_key(p, type, name, &key, &keysz);
   if (res < 0) {
     return -1;
   }
@@ -618,6 +657,11 @@ static int ban_mcache_entry_get(pool *p, unsigned int type, const char *name,
 
   } else {
     res = ban_mcache_entry_decode_tpl(p, value, valuesz, bme);
+  }
+
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 9, "retrieved ban entry in cache using %s",
+      ban_cache_opts & BAN_CACHE_OPT_USE_JSON ? "JSON" : "TPL");
   }
 
   return res;
@@ -701,6 +745,7 @@ static int ban_mcache_entry_encode_json(pool *p, void **value, size_t *valuesz,
   json_str = json_stringify(json, "");
   *valuesz = strlen(json_str);
   *value = pstrndup(p, json_str, *valuesz);
+  free(json_str);
   json_delete(json);
 
   return 0;
@@ -724,7 +769,7 @@ static int ban_mcache_entry_set(pool *p, struct ban_mcache_entry *bme) {
     return -1;
   }
 
-  res = ban_mcache_key_get(p, bme->be_type, bme->be_name, &key, &keysz);
+  res = ban_mcache_get_key(p, bme->be_type, bme->be_name, &key, &keysz);
   if (res < 0) {
     free(value);
     return -1;
@@ -745,6 +790,8 @@ static int ban_mcache_entry_set(pool *p, struct ban_mcache_entry *bme) {
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 9, "stored ban entry in cache using %s",
+    ban_cache_opts & BAN_CACHE_OPT_USE_JSON ? "JSON" : "TPL");
   return 0;
 }
 
@@ -3548,20 +3595,21 @@ static int ban_sess_init(void) {
   /* Check to see if the BanEngine directive is set to 'off'. */
   c = find_config(main_server->conf, CONF_PARAM, "BanEngine", FALSE);
   if (c) {
-    int use_bans = *((int *) c->argv[0]);
+    int use_bans;
 
-    if (!use_bans) {
+    use_bans = *((int *) c->argv[0]);
+    if (use_bans == FALSE) {
       ban_engine = FALSE;
       return 0;
     }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "BanCache", FALSE);
-  if (c) {
+  if (c != NULL) {
     char *driver;
 
     driver = c->argv[0];
-    if (strcmp(driver, "memcache") == 0) {
+    if (strcasecmp(driver, "memcache") == 0) {
       mcache = pr_memcache_conn_get();
       if (mcache == NULL) {
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
@@ -3572,12 +3620,12 @@ static int ban_sess_init(void) {
        * driver is acceptable.
        */
       c = find_config(main_server->conf, CONF_PARAM, "BanCacheOptions", FALSE);
-      if (c) {
+      if (c != NULL) {
         ban_cache_opts = *((unsigned long *) c->argv[0]);
       }
 
       /* Configure a namespace prefix for our memcached keys. */
-      if (pr_memcache_conn_set_namespace(mcache, &ban_module, "mod_ban") < 0) {
+      if (pr_memcache_conn_set_namespace(mcache, &ban_module, "mod_ban.") < 0) {
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
           "error setting memcache namespace prefix: %s", strerror(errno));
       }

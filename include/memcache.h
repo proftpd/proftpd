@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2014 The ProFTPD Project team
+ * Copyright (c) 2010-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Memcache support
- */
+/* Memcache support */
 
 #ifndef PR_MEMCACHE_H
 #define PR_MEMCACHE_H

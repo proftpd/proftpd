@@ -467,7 +467,11 @@ int main(int argc, char **argv) {
 
     json = get_json();
     if (json != NULL) {
-      fprintf(stdout, "%s\n", json_stringify(json, "  "));
+      char *json_str;
+
+      json_str = json_stringify(json, "  ");
+      fprintf(stdout, "%s\n", json_str);
+      free(json_str);
       json_delete(json);
     }
 

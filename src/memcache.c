@@ -283,10 +283,11 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
   }
 
   memcached_servers_reset(clone);
+
+  /* XXX Find out why this segfaults, on Mac OSX, using libmemcached-1.0.18. */
   memcached_server_push(clone, configured_server_list);
 
   server_count = memcached_server_count(clone);
-
   pr_trace_msg(trace_channel, 16,
     "pinging %lu memcached %s", (unsigned long) server_count,
     server_count != 1 ? "servers" : "server");
@@ -491,10 +492,10 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
     return NULL;
   }
 
-  sub_pool = pr_pool_create_sz(p, 128);
+  sub_pool = make_sub_pool(p);
   pr_pool_tag(sub_pool, "Memcache connection pool");
 
-  mcache = palloc(sub_pool, sizeof(pr_memcache_t));
+  mcache = pcalloc(sub_pool, sizeof(pr_memcache_t));
   mcache->pool = sub_pool;
   mcache->owner = m;
   mcache->mc = mc;
