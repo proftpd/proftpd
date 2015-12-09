@@ -1166,15 +1166,17 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
     if (strncmp(key, "%{time:", 7) == 0) {
       char time_str[128], *fmt;
       time_t now;
-      struct tm *time_info;
+      struct tm *tm;
 
       fmt = pstrndup(tmp_pool, key + 7, strlen(key) - 8);
 
       now = time(NULL);
-      time_info = pr_localtime(NULL, &now);
-
       memset(time_str, 0, sizeof(time_str));
-      strftime(time_str, sizeof(time_str), fmt, time_info);
+
+      tm = pr_localtime(NULL, &now);
+      if (tm != NULL) {
+        strftime(time_str, sizeof(time_str), fmt, tm);
+      }
 
       val = pstrdup(tmp_pool, time_str);
 

@@ -623,7 +623,7 @@ int check_shutmsg(const char *path, time_t *shut, time_t *deny, time_t *disc,
   char *deny_str, *disc_str, *cp, buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   char hr[3] = {'\0'}, mn[3] = {'\0'};
   time_t now, shuttime = (time_t) 0;
-  struct tm tm;
+  struct tm *tm;
 
   if (path == NULL) {
     errno = EINVAL;
@@ -648,19 +648,20 @@ int check_shutmsg(const char *path, time_t *shut, time_t *deny, time_t *disc,
 
       /* We use this to fill in dst, timezone, etc */
       time(&now);
-      tm = *(pr_localtime(NULL, &now));
-
-      tm.tm_year = atoi(safe_token(&cp)) - 1900;
-      tm.tm_mon = atoi(safe_token(&cp)) - 1;
-      tm.tm_mday = atoi(safe_token(&cp));
-      tm.tm_hour = atoi(safe_token(&cp));
-      tm.tm_min = atoi(safe_token(&cp));
-      tm.tm_sec = atoi(safe_token(&cp));
+      tm = pr_localtime(NULL, &now);
+      if (tm != NULL) {
+        tm->tm_year = atoi(safe_token(&cp)) - 1900;
+        tm->tm_mon = atoi(safe_token(&cp)) - 1;
+        tm->tm_mday = atoi(safe_token(&cp));
+        tm->tm_hour = atoi(safe_token(&cp));
+        tm->tm_min = atoi(safe_token(&cp));
+        tm->tm_sec = atoi(safe_token(&cp));
+      }
 
       deny_str = safe_token(&cp);
       disc_str = safe_token(&cp);
 
-      shuttime = mktime(&tm);
+      shuttime = mktime(tm);
       if (shuttime == (time_t) -1) {
         fclose(fp);
         return 0;

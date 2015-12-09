@@ -215,9 +215,15 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   ptr = buf;
 
   if (facts_opts & FACTS_OPT_SHOW_MODIFY) {
-    len = snprintf(ptr, bufsz, "modify=%04d%02d%02d%02d%02d%02d;",
-      info->tm->tm_year+1900, info->tm->tm_mon+1, info->tm->tm_mday,
-      info->tm->tm_hour, info->tm->tm_min, info->tm->tm_sec);
+    if (info->tm != NULL) {
+      len = snprintf(ptr, bufsz, "modify=%04d%02d%02d%02d%02d%02d;",
+        info->tm->tm_year+1900, info->tm->tm_mon+1, info->tm->tm_mday,
+        info->tm->tm_hour, info->tm->tm_min, info->tm->tm_sec);
+
+    } else {
+      len = 0;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }

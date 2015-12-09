@@ -1038,22 +1038,21 @@ static const char *fxp_strtime(pool *p, time_t t) {
   static char *mons[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
     "Aug", "Sep", "Oct", "Nov", "Dec" };
   static char *days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-  struct tm *tr;
+  struct tm *tm;
 
   memset(buf, '\0', sizeof(buf));
 
-  tr = pr_gmtime(p, &t);
-  if (tr != NULL) {
+  tm = pr_gmtime(p, &t);
+  if (tm != NULL) {
     snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
-      days[tr->tm_wday], mons[tr->tm_mon], tr->tm_mday, tr->tm_hour,
-      tr->tm_min, tr->tm_sec, tr->tm_year + 1900);
+      days[tm->tm_wday], mons[tm->tm_mon], tm->tm_mday, tm->tm_hour,
+      tm->tm_min, tm->tm_sec, tm->tm_year + 1900);
 
   } else {
     buf[0] = '\0';
   }
 
   buf[sizeof(buf)-1] = '\0';
-
   return buf;
 }
 
@@ -1779,17 +1778,30 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
     if (flags & SSH2_FX_ATTR_ACMODTIME) {
       struct tm *tm;
 
-      tm = pr_gmtime(p, &st->st_atime);
-      snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
-        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
-        tm->tm_sec);
-      buflen = strlen(buf);
-      ptr = buf + buflen;
+      tm = pr_gmtime(p, (const time_t *) &st->st_atime);
+      if (tm != NULL) {
+        snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
+          tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
+          tm->tm_sec);
+        buflen = strlen(buf);
+        ptr = buf + buflen;
 
-      tm = pr_gmtime(p, &st->st_mtime);
-      snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
-        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
-        tm->tm_sec);
+      } else {
+        pr_trace_msg(trace_channel, 1,
+          "error obtaining st_atime GMT timestamp: %s", strerror(errno));
+      }
+
+      tm = pr_gmtime(p, (const time_t *) &st->st_mtime);
+      if (tm != NULL) {
+        snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
+          tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
+          tm->tm_sec);
+
+      } else {
+        pr_trace_msg(trace_channel, 1,
+          "error obtaining st_mtime GMT timestamp: %s", strerror(errno));
+      }
+
       buflen = strlen(buf);
       ptr = buf + buflen;
     }
@@ -1798,10 +1810,17 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
     if (flags & SSH2_FX_ATTR_ACCESSTIME) {
       struct tm *tm;
 
-      tm = pr_gmtime(p, &st->st_atime);
-      snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
-        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
-        tm->tm_sec);
+      tm = pr_gmtime(p, (const time_t *) &st->st_atime);
+      if (tm != NULL) {
+        snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
+          tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
+          tm->tm_sec);
+
+      } else {
+        pr_trace_msg(trace_channel, 1,
+          "error obtaining st_atime GMT timestamp: %s", strerror(errno));
+      }
+
       buflen = strlen(buf);
       ptr = buf + buflen;
     }
@@ -1809,10 +1828,17 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
     if (flags & SSH2_FX_ATTR_MODIFYTIME) {
       struct tm *tm;
 
-      tm = pr_gmtime(p, &st->st_mtime);
-      snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
-        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
-        tm->tm_sec);
+      tm = pr_gmtime(p, (const time_t *) &st->st_mtime);
+      if (tm != NULL) {
+        snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
+          tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
+          tm->tm_sec);
+
+      } else {
+        pr_trace_msg(trace_channel, 1,
+          "error obtaining st_mtime GMT timestamp: %s", strerror(errno));
+      }
+
       buflen = strlen(buf);
       ptr = buf + buflen;
     }
@@ -2474,10 +2500,10 @@ static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st,
   mode_str = fxp_strmode(p, st->st_mode); 
 
   if (fxp_use_gmt) {
-    t = pr_gmtime(p, (time_t *) &st->st_mtime);
+    t = pr_gmtime(p, (const time_t *) &st->st_mtime);
 
   } else {
-    t = pr_localtime(p, (time_t *) &st->st_mtime);
+    t = pr_localtime(p, (const time_t *) &st->st_mtime);
   }
 
   /* Use strftime(3) to format the time entry for us.  Seems some SFTP clients

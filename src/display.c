@@ -344,15 +344,17 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
       if (strncmp(key, "%{time:", 7) == 0) {
         char time_str[128], *fmt;
         time_t now;
-        struct tm *time_info;
+        struct tm *tm;
 
         fmt = pstrndup(p, key + 7, strlen(key) - 8);
 
-        now = time(NULL);
-        time_info = pr_localtime(NULL, &now);
-
+        time(&now);
         memset(time_str, 0, sizeof(time_str));
-        strftime(time_str, sizeof(time_str), fmt, time_info);
+
+        tm = pr_localtime(NULL, &now);
+        if (tm != NULL) {
+          strftime(time_str, sizeof(time_str), fmt, tm);
+        }
 
         val = pstrdup(p, time_str);
 

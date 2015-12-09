@@ -709,20 +709,26 @@ MODRET set_systemlog(cmd_rec *cmd) {
 }
 
 static struct tm *_get_gmtoff(int *tz) {
-  time_t tt = time(NULL);
-  struct tm gmt;
-  struct tm *t;
-  int days, hours, minutes;
+  time_t now;
+  struct tm *tm;
 
-  gmt = *gmtime(&tt);
-  t = pr_localtime(NULL, &tt);
+  time(&now);
+  tm = pr_localtime(NULL, &now);
+  if (tm != NULL) {
+    int days, hours, minutes;
+    struct tm *gmt;
 
-  days = t->tm_yday - gmt.tm_yday;
-  hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)
-          + t->tm_hour - gmt.tm_hour);
-  minutes = hours * 60 + t->tm_min - gmt.tm_min;
-  *tz = minutes;
-  return t;
+    gmt = gmtime(&now);
+    if (gmt != NULL) {
+      days = tm->tm_yday - gmt->tm_yday;
+      hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)
+              + tm->tm_hour - gmt->tm_hour);
+      minutes = hours * 60 + tm->tm_min - gmt->tm_min;
+      *tz = minutes;
+    }
+  }
+
+  return tm;
 }
 
 static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
@@ -1396,14 +1402,16 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
 
       gettimeofday(&now, NULL);
       tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+      if (tm != NULL) {
+        fmt_len = strftime(argp, sizeof(arg), "%Y-%m-%d %H:%M:%S", tm);
+        len += fmt_len;
 
-      fmt_len = strftime(argp, sizeof(arg), "%Y-%m-%d %H:%M:%S", tm);
-      len += fmt_len;
+        /* Convert microsecs to millisecs. */
+        millis = now.tv_usec / 1000;
 
-      /* Convert microsecs to millisecs. */
-      millis = now.tv_usec / 1000;
+        len += snprintf(argp + fmt_len, sizeof(arg), ",%03lu", millis);
+      }
 
-      len += snprintf(argp + fmt_len, sizeof(arg), ",%03lu", millis);
       m++;
       break;
     }

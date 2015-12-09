@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp Display files
- * Copyright (c) 2010-2014 TJ Saunders
+ * Copyright (c) 2010-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -215,15 +215,17 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
       if (strncmp(key, "%{time:", 7) == 0) {
         char time_str[128], *fmt;
         time_t now;
-        struct tm *time_info;
+        struct tm *tm;
 
         fmt = pstrndup(p, key + 7, strlen(key) - 8);
 
         now = time(NULL);
-        time_info = pr_localtime(NULL, &now);
-
         memset(time_str, 0, sizeof(time_str));
-        strftime(time_str, sizeof(time_str), fmt, time_info);
+
+        tm = pr_localtime(NULL, &now);
+        if (tm != NULL) {
+          strftime(time_str, sizeof(time_str), fmt, tm);
+        }
 
         val = pstrdup(p, time_str);
 

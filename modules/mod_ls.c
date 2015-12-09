@@ -627,10 +627,10 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
     }
 
     if (list_times_gmt) {
-      t = pr_gmtime(p, (time_t *) &sort_time);
+      t = pr_gmtime(p, (const time_t *) &sort_time);
 
     } else {
-      t = pr_localtime(p, (time_t *) &sort_time);
+      t = pr_localtime(p, (const time_t *) &sort_time);
     }
 
     if (opt_F) {

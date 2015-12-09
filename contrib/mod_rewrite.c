@@ -315,61 +315,66 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
     /* Always use localtime(3) here. */
     time(&now);
-    tm = pr_localtime(cmd->tmp_pool, &now);
-
     memset(time_str, '\0', sizeof(time_str));
 
-    if (varlen == 7) {
-      /* %{TIME} */
-      snprintf(time_str, sizeof(time_str)-1, "%04d%02d%02d%02d%02d%02d",
-        tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour,
-        tm->tm_min, tm->tm_sec);
+    tm = pr_localtime(cmd->tmp_pool, &now);
+    if (tm != NULL) {
+      if (varlen == 7) {
+        /* %{TIME} */
+        snprintf(time_str, sizeof(time_str)-1, "%04d%02d%02d%02d%02d%02d",
+          tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour,
+          tm->tm_min, tm->tm_sec);
 
-    } else {
-      switch (var[7]) {
-        case 'D':
-          /* %{TIME_DAY} */ 
-          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mday);
-          break;
+      } else {
+        switch (var[7]) {
+          case 'D':
+            /* %{TIME_DAY} */
+            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mday);
+            break;
 
-        case 'H':
-          /* %{TIME_HOUR} */ 
-          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_hour);
-          break;
+          case 'H':
+            /* %{TIME_HOUR} */
+            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_hour);
+            break;
 
-        case 'M':
-          if (var[8] == 'I') {
-            /* %{TIME_MIN} */ 
-            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_min);
+          case 'M':
+            if (var[8] == 'I') {
+              /* %{TIME_MIN} */
+              snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_min);
 
-          } else if (var[8] == 'O') {
-            /* %{TIME_MON} */ 
-            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mon + 1);
-          }
-          break;
+            } else if (var[8] == 'O') {
+              /* %{TIME_MON} */
+              snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mon + 1);
+            }
+            break;
 
-        case 'S':
-          /* %{TIME_SEC} */ 
-          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_sec);
-          break;
+          case 'S':
+            /* %{TIME_SEC} */
+            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_sec);
+            break;
 
-        case 'W':
-          /* %{TIME_WDAY} */ 
-          snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_wday);
-          break;
+          case 'W':
+            /* %{TIME_WDAY} */
+            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_wday);
+            break;
 
-        case 'Y':
-          /* %{TIME_YEAR} */ 
-          snprintf(time_str, sizeof(time_str)-1, "%04d", tm->tm_year + 1900);
-          break;
+          case 'Y':
+            /* %{TIME_YEAR} */
+            snprintf(time_str, sizeof(time_str)-1, "%04d", tm->tm_year + 1900);
+            break;
 
-        default:
-          rewrite_log("unknown variable: '%s'", var); 
-          return NULL;
+          default:
+            rewrite_log("unknown variable: '%s'", var);
+            return NULL;
+        }
       }
     }
 
     return pstrdup(cmd->tmp_pool, time_str);
+
+  } else {
+    pr_trace_msg(trace_channel, 1, "error obtaining local timestamp: %s",
+      strerror(errno));
   }
 
   rewrite_log("unknown variable: '%s'", var); 
