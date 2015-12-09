@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_memcache -- a module which provides a shared SSL session
  *                              cache using memcached servers
  *
- * Copyright (c) 2011-2014 TJ Saunders
+ * Copyright (c) 2011-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,12 +30,13 @@
 #include "conf.h"
 #include "privs.h"
 #include "mod_tls.h"
+#include "lib/json.h"
 
-#define MOD_TLS_MEMCACHE_VERSION		"mod_tls_memcache/0.1"
+#define MOD_TLS_MEMCACHE_VERSION		"mod_tls_memcache/0.2"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030402
-# error "ProFTPD 1.3.4rc2 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030602
+# error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
 module tls_memcache_module;
@@ -49,6 +50,9 @@ module tls_memcache_module;
 # define TLS_MAX_SSL_SESSION_SIZE	1024 * 10
 #endif
 
+static unsigned long tls_mcache_opts = 0UL;
+#define TLS_MCACHE_OPT_USE_JSON			0x0001
+
 struct mcache_entry {
   uint32_t expires;
   unsigned int sess_datalen;
@@ -56,8 +60,13 @@ struct mcache_entry {
 };
 
 /* These are tpl format strings */
-#define TLS_MCACHE_KEY_FMT		"s"
-#define TLS_MCACHE_VALUE_FMT		"S(uic#)"
+#define TLS_MCACHE_TPL_KEY_FMT			"s"
+#define TLS_MCACHE_TPL_VALUE_FMT		"S(uic#)"
+
+/* These are the JSON format field names */
+#define TLS_MCACHE_JSON_KEY_EXPIRES		"expires"
+#define TLS_MCACHE_JSON_KEY_DATA		"data"
+#define TLS_MCACHE_JSON_KEY_DATA_LENGTH		"data_len"
 
 /* The difference between mcache_entry and mcache_large_entry is that the
  * buffers in the latter are dynamically allocated from the heap, not
@@ -113,6 +122,7 @@ static pr_memcache_t *mcache = NULL;
 static const char *trace_channel = "tls.memcache";
 
 static int tls_mcache_close(tls_sess_cache_t *);
+static int tls_mcache_sess_init(void);
 
 static const char *tls_mcache_get_crypto_errors(void) {
   unsigned int count = 0;
@@ -149,7 +159,7 @@ static const char *tls_mcache_get_crypto_errors(void) {
 
 /* Functions for marshalling key/value data to/from memcached. */
 
-static int tls_mcache_key_get(pool *p, unsigned char *sess_id,
+static int tls_mcache_get_tpl_key(pool *p, unsigned char *sess_id,
     unsigned int sess_id_len, void **key, size_t *keysz) {
   register unsigned int i;
   char *sess_id_hex;
@@ -164,10 +174,8 @@ static int tls_mcache_key_get(pool *p, unsigned char *sess_id,
     sprintf((char *) &(sess_id_hex[i*2]), "%02X", sess_id[i]);
   }
 
-  res = tpl_jot(TPL_MEM, &data, &datasz, TLS_MCACHE_KEY_FMT, &sess_id_hex);
+  res = tpl_jot(TPL_MEM, &data, &datasz, TLS_MCACHE_TPL_KEY_FMT, &sess_id_hex);
   if (res < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "error constructing cache lookup key for session ID '%s'", sess_id_hex);
     return -1;
   }
 
@@ -179,15 +187,234 @@ static int tls_mcache_key_get(pool *p, unsigned char *sess_id,
   return 0;
 }
 
+static int tls_mcache_get_json_key(pool *p, unsigned char *sess_id,
+    unsigned int sess_id_len, void **key, size_t *keysz) {
+  register unsigned int i;
+  char *sess_id_hex, *json_str;
+  JsonNode *json;
+  size_t sess_id_hexlen;
+
+  sess_id_hexlen = (sess_id_len * 2) + 1;
+  sess_id_hex = pcalloc(p, sess_id_hexlen);
+
+  for (i = 0; i < sess_id_len; i++) {
+    sprintf((char *) &(sess_id_hex[i*2]), "%02X", sess_id[i]);
+  }
+
+  json = json_mkobject();
+  json_append_member(json, "id", json_mkstring(sess_id_hex));
+
+  json_str = json_stringify(json, "");
+
+  /* Include the terminating NUL in the key. */
+  *keysz = strlen(json_str) + 1;
+  *key = pstrndup(p, json_str, *keysz - 1);
+  free(json_str);
+  json_delete(json);
+
+  return 0;
+}
+
+static int tls_mcache_get_key(pool *p, unsigned char *sess_id,
+    unsigned int sess_id_len, void **key, size_t *keysz) {
+  int res;
+  const char *key_type = "unknown";
+
+  if (tls_mcache_opts & TLS_MCACHE_OPT_USE_JSON) {
+    key_type = "JSON";
+    res = tls_mcache_get_json_key(p, sess_id, sess_id_len, key, keysz);
+
+  } else {
+    key_type = "TPL";
+    res = tls_mcache_get_tpl_key(p, sess_id, sess_id_len, key, keysz);
+  }
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error constructing cache %s lookup key for session ID (%lu bytes)",
+      key_type, (unsigned long) keysz);
+    return -1;
+  }
+
+  return 0;
+}
+
+static int tls_mcache_entry_decode_tpl(pool *p, void *value, size_t valuesz,
+    struct mcache_entry *me) {
+  int res;
+  tpl_node *tn;
+
+  tn = tpl_map(TLS_MCACHE_TPL_VALUE_FMT, me, TLS_MAX_SSL_SESSION_SIZE);
+  if (tn == NULL) {
+    tls_log(MOD_TLS_MEMCACHE_VERSION
+      ": error allocating tpl_map for format '%s'", TLS_MCACHE_TPL_VALUE_FMT);
+    errno = ENOMEM;
+    return -1;
+  }
+
+  res = tpl_load(tn, TPL_MEM, value, valuesz);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 3, "%s",
+      "error loading TPL memcache session data");
+    tpl_free(tn);
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = tpl_unpack(tn, 0);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 3, "%s",
+      "error unpacking TPL memcache session data");
+    tpl_free(tn);
+    errno = EINVAL;
+    return -1;
+  }
+
+  tpl_free(tn);
+
+  return 0;
+}
+
+static int tls_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
+    struct mcache_entry *me) {
+  JsonNode *field, *json;
+  const char *json_str, *key;
+
+  json_str = value;
+  if (json_validate(json_str) == FALSE) {
+    tls_log(MOD_TLS_MEMCACHE_VERSION
+      ": unable to decode invalid JSON cache entry: '%s'", json_str);
+    errno = EINVAL;
+    return -1;
+  }
+
+  json = json_decode(json_str);
+
+  key = TLS_MCACHE_JSON_KEY_EXPIRES;
+  field = json_find_member(json, key);
+  if (field != NULL) {
+    if (field->tag == JSON_NUMBER) {
+      me->expires = (uint32_t) field->number_;
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
+      json_delete(json);
+      errno = EINVAL;
+      return -1;
+    }
+
+  } else {
+    tls_log(MOD_TLS_MEMCACHE_VERSION
+      ": missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
+  }
+
+  key = TLS_MCACHE_JSON_KEY_DATA;
+  field = json_find_member(json, key);
+  if (field != NULL) {
+    if (field->tag == JSON_STRING) {
+      int have_padding = FALSE, res;
+      char *base64_data;
+      size_t base64_datalen;
+      unsigned char *data;
+
+      base64_data = pstrdup(p, field->string_);
+      if (base64_data == NULL) {
+        tls_log(MOD_TLS_MEMCACHE_VERSION
+          ": invalid/empty '%s' JSON key in '%s', rejecting cache entry",
+          key, json_str);
+        json_delete(json);
+        errno = EINVAL;
+        return -1;
+      }
+
+      base64_datalen = strlen(base64_data);
+
+      /* Due to Base64's padding, we need to detect if the last block was
+       * padded with zeros; we do this by looking for '=' characters at the
+       * end of the text being decoded.  If we see these characters, then we
+       * will "trim" off any trailing zero values in the decoded data, on the
+       * ASSUMPTION that they are the auto-added padding bytes.
+       */
+      if (base64_data[base64_datalen-1] == '=') {
+        have_padding = TRUE;
+      }
+
+      data = me->sess_data;
+      res = EVP_DecodeBlock(data, (unsigned char *) base64_data,
+        (int) base64_datalen);
+      if (res <= 0) {
+        /* Base64-decoding error. */
+        pr_trace_msg(trace_channel, 5,
+          "error base64-decoding session data in '%s', rejecting", json_str);
+        errno = EINVAL;
+        return -1;
+      }
+
+      if (have_padding) {
+        /* Assume that only one or two zero bytes of padding were added. */
+        if (data[res-1] == '\0') {
+          res -= 1;
+
+          if (data[res-1] == '\0') {
+            res -= 1;
+          }
+        }
+      }
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
+      json_delete(json);
+      errno = EINVAL;
+      return -1;
+    }
+
+  } else {
+    tls_log(MOD_TLS_MEMCACHE_VERSION
+      ": missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
+  }
+
+  key = TLS_MCACHE_JSON_KEY_DATA_LENGTH;
+  field = json_find_member(json, key);
+  if (field != NULL) {
+    if (field->tag == JSON_NUMBER) {
+      me->sess_datalen = (unsigned int) field->number_;
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
+      json_delete(json);
+      errno = EINVAL;
+      return -1;
+    }
+
+  } else {
+    tls_log(MOD_TLS_MEMCACHE_VERSION
+      ": missing required '%s' JSON field in '%s'", key, json_str);
+    json_delete(json);
+    errno = EINVAL;
+    return -1;
+  }
+
+  json_delete(json);
+  return 0;
+}
+
 static int tls_mcache_entry_get(pool *p, unsigned char *sess_id,
     unsigned int sess_id_len, struct mcache_entry *me) {
-  tpl_node *tn;
   int res;
   void *key = NULL, *value = NULL;
   size_t keysz = 0, valuesz = 0;
   uint32_t flags = 0;
 
-  res = tls_mcache_key_get(p, sess_id, sess_id_len, &key, &keysz);
+  res = tls_mcache_get_key(p, sess_id, sess_id_len, &key, &keysz);
   if (res < 0) {
     pr_trace_msg(trace_channel, 1,
       "unable to get cache entry: error getting cache key: %s",
@@ -200,51 +427,48 @@ static int tls_mcache_entry_get(pool *p, unsigned char *sess_id,
     keysz, &valuesz, &flags);
   if (value == NULL) {
     pr_trace_msg(trace_channel, 3,
-      "no matching memcache entry found for session ID '%s'", (char *) key);
+      "no matching memcache entry found for session ID (%lu bytes)",
+      (unsigned long) keysz);
     errno = ENOENT;
     return -1;
   }
 
-  /* Unmarshal the session data. */
+  /* Decode the cached session data. */
+  if (tls_mcache_opts & TLS_MCACHE_OPT_USE_JSON) {
+    res = tls_mcache_entry_decode_json(p, value, valuesz, me);
 
-  tn = tpl_map(TLS_MCACHE_VALUE_FMT, me, TLS_MAX_SSL_SESSION_SIZE);
-
-  res = tpl_load(tn, TPL_MEM, value, valuesz);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 3, "%s",
-      "error loading marshalled memcache session data");
-    tpl_free(tn);
-    return -1;
+  } else {
+    res = tls_mcache_entry_decode_tpl(p, value, valuesz, me);
   }
 
-  res = tpl_load(tn, TPL_MEM, value, valuesz);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 3, "%s",
-      "error loading marshalled memcache session data");
-    tpl_free(tn);
-    return -1;
-  }
+  if (res == 0) {
+    time_t now;
 
-  res = tpl_unpack(tn, 0);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 3, "%s",
-      "error unpacking marshalled memcache session data");
-    tpl_free(tn);
-    return -1;
-  }
+    /* Check for expired cache entries. */
+    time(&now);
 
-  tpl_free(tn);
+    if (me->expires <= now) {
+      pr_trace_msg(trace_channel, 4,
+        "ignoring expired cached session data (expires %lu <= now %lu)",
+        (unsigned long) me->expires, (unsigned long) now);
+      errno = EPERM;
+      return -1;
+    }
+
+    pr_trace_msg(trace_channel, 9, "retrieved session data from cache using %s",
+      tls_mcache_opts & TLS_MCACHE_OPT_USE_JSON ? "JSON" : "TPL");
+  }
 
   return 0;
 }
 
-static int tls_mcache_entry_remove(pool *p, unsigned char *sess_id,
+static int tls_mcache_entry_delete(pool *p, unsigned char *sess_id,
     unsigned int sess_id_len) {
   int res;
   void *key = NULL;
   size_t keysz = 0;
 
-  res = tls_mcache_key_get(p, sess_id, sess_id_len, &key, &keysz);
+  res = tls_mcache_get_key(p, sess_id, sess_id_len, &key, &keysz);
   if (res < 0) {
     pr_trace_msg(trace_channel, 1,
       "unable to remove cache entry: error getting cache key: %s",
@@ -259,8 +483,8 @@ static int tls_mcache_entry_remove(pool *p, unsigned char *sess_id,
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "unable to remove memcache entry for session ID '%s': %s", (char *) key,
-      strerror(xerrno));
+      "unable to remove memcache entry for session ID (%lu bytes): %s",
+      (unsigned long) keysz, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -269,64 +493,147 @@ static int tls_mcache_entry_remove(pool *p, unsigned char *sess_id,
   return 0; 
 }
 
-static int tls_mcache_entry_set(pool *p, unsigned char *sess_id,
-    unsigned int sess_id_len, struct mcache_entry *me) {
-  tpl_node *tn;
+static int tls_mcache_entry_encode_tpl(pool *p, void **value, size_t *valuesz,
+    struct mcache_entry *me) {
   int res;
-  void *key = NULL, *value = NULL;
-  size_t keysz = 0, valuesz = 0;
-  uint32_t flags = 0;
+  tpl_node *tn;
+  void *ptr = NULL;
 
-  /* Marshal the SSL session data. */
-
-  tn = tpl_map(TLS_MCACHE_VALUE_FMT, me, TLS_MAX_SSL_SESSION_SIZE);
+  tn = tpl_map(TLS_MCACHE_TPL_VALUE_FMT, me, TLS_MAX_SSL_SESSION_SIZE);
   if (tn == NULL) {
     pr_trace_msg(trace_channel, 1,
-      "error allocating tpl_map for format '%s'", TLS_MCACHE_VALUE_FMT);
+      "error allocating tpl_map for format '%s'", TLS_MCACHE_TPL_VALUE_FMT);
     return -1;
   }
 
   res = tpl_pack(tn, 0);
   if (res < 0) {
     pr_trace_msg(trace_channel, 1, "%s",
-      "error marshalling memcache session data");
+      "error marshalling TPL memcache session data");
     return -1;
   }
 
-  res = tpl_dump(tn, TPL_MEM, &value, &valuesz);
+  res = tpl_dump(tn, TPL_MEM, &ptr, valuesz);
   if (res < 0) {
     pr_trace_msg(trace_channel, 1, "%s",
-      "error dumping marshalled memcache session data");
+      "error dumping marshalled TPL memcache session data");
     return -1;
   }
+
+  /* Duplicate the value using the given pool, so that we can free up the
+   * memory allocated by tpl_dump().
+   */
+  *value = palloc(p, *valuesz);
+  memcpy(*value, ptr, *valuesz);
 
   tpl_free(tn);
+  free(ptr);
 
-  res = tls_mcache_key_get(p, sess_id, sess_id_len, &key, &keysz);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 1,
-      "unable to set cache entry: error getting cache key: %s",
-      strerror(errno));
+  return 0;
+}
 
-    free(value);
+static int tls_mcache_entry_encode_json(pool *p, void **value, size_t *valuesz,
+    struct mcache_entry *me) {
+  JsonNode *json;
+  pool *tmp_pool;
+  char *base64_data = NULL, *json_str;
+
+  json = json_mkobject();
+  json_append_member(json, TLS_MCACHE_JSON_KEY_EXPIRES,
+    json_mknumber((double) me->expires));
+
+  /* Base64-encode the session data.  Note that EVP_EncodeBlock does
+   * NUL-terminate the encoded data.
+   */
+  tmp_pool = make_sub_pool(p);
+  base64_data = pcalloc(tmp_pool, me->sess_datalen * 2);
+
+  EVP_EncodeBlock((unsigned char *) base64_data, me->sess_data,
+    (int) me->sess_datalen);
+  json_append_member(json, TLS_MCACHE_JSON_KEY_DATA,
+    json_mkstring(base64_data));
+
+  json_append_member(json, TLS_MCACHE_JSON_KEY_DATA_LENGTH,
+    json_mknumber((double) me->sess_datalen));
+
+  json_str = json_stringify(json, "");
+  if (json_str == NULL) {
+    destroy_pool(tmp_pool);
+    json_delete(json);
+    errno = ENOMEM;
     return -1;
   }
 
-  res = pr_memcache_kset(mcache, &tls_memcache_module, (const char *) key,
-    keysz, value, valuesz, me->expires, flags);
-  free(value);
+  /* Safety check */
+  if (json_validate(json_str) == FALSE) {
+    pr_trace_msg(trace_channel, 1, "invalid JSON emitted: '%s'", json_str);
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Include the terminating NUL in the value. */
+  *valuesz = strlen(json_str) + 1;
+  *value = pstrndup(p, json_str, *valuesz - 1);
+
+  free(json_str);
+  json_delete(json);
+  destroy_pool(tmp_pool);
+
+  return 0;
+}
+
+static int tls_mcache_entry_set(pool *p, unsigned char *sess_id,
+    unsigned int sess_id_len, struct mcache_entry *me) {
+  int res, xerrno = 0;
+  void *key = NULL, *value = NULL;
+  size_t keysz = 0, valuesz = 0;
+  uint32_t flags = 0;
+
+  /* Encode the SSL session data. */
+  if (tls_mcache_opts & TLS_MCACHE_OPT_USE_JSON) {
+    res = tls_mcache_entry_encode_json(p, &value, &valuesz, me);
+
+  } else {
+    res = tls_mcache_entry_encode_tpl(p, &value, &valuesz, me);
+  }
 
   if (res < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
-    pr_trace_msg(trace_channel, 2,
-      "unable to add memcache entry for session ID '%s': %s", (char *) key,
+    pr_trace_msg(trace_channel, 4, "error %s encoding session data: %s",
+      tls_mcache_opts & TLS_MCACHE_OPT_USE_JSON ? "JSON" : "TPL",
       strerror(xerrno));
 
     errno = xerrno;
     return -1;
   }
 
+  res = tls_mcache_get_key(p, sess_id, sess_id_len, &key, &keysz);
+  xerrno = errno;
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 1,
+      "unable to set cache entry: error getting cache key: %s",
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  res = pr_memcache_kset(mcache, &tls_memcache_module, (const char *) key,
+    keysz, value, valuesz, me->expires, flags);
+  xerrno = errno;
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 2,
+      "unable to add memcache entry for session ID (%lu bytes): %s",
+      (unsigned long) keysz, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 9, "stored session data in cache using %s",
+    tls_mcache_opts & TLS_MCACHE_OPT_USE_JSON ? "JSON" : "TPL");
   return 0;
 }
 
@@ -336,7 +643,8 @@ static int tls_mcache_entry_set(pool *p, unsigned char *sess_id,
 static int tls_mcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   config_rec *c;
 
-  pr_trace_msg(trace_channel, 9, "opening memcache cache %p", cache);
+  pr_trace_msg(trace_channel, 9, "opening memcache cache %p (info '%s')",
+    cache, info ? info : "(none)");
 
   /* This is a little messy, but necessary. The mod_memcache module does
    * not set the configured list of memcached servers until a connection
@@ -367,15 +675,20 @@ static int tls_mcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 
   /* Configure a namespace prefix for our memcached keys. */
   if (pr_memcache_conn_set_namespace(mcache, &tls_memcache_module,
-      "mod_tls_memcache") < 0) {
+      "mod_tls_memcache.") < 0) {
     pr_trace_msg(trace_channel, 2, 
       "error setting memcache namespace prefix: %s", strerror(errno));
   }
 
   cache->cache_pool = make_sub_pool(session.pool);
   pr_pool_tag(cache->cache_pool, MOD_TLS_MEMCACHE_VERSION);
-
   cache->cache_timeout = timeout;
+
+  if (info != NULL &&
+      strcasecmp(info, "/json") == 0) {
+    tls_mcache_opts |= TLS_MCACHE_OPT_USE_JSON;
+  }
+
   return 0;
 }
 
@@ -404,7 +717,7 @@ static int tls_mcache_close(tls_sess_cache_t *cache) {
         }
       }
 
-      tls_mcache_sess_list = NULL;
+      clear_array(tls_mcache_sess_list);
     }
   }
 
@@ -460,11 +773,11 @@ static int tls_mcache_add_large_sess(tls_sess_cache_t *cache,
 
     /* Look for any expired sessions in the list to overwrite/reuse. */
     entries = tls_mcache_sess_list->elts;
-    now = time(NULL);
+    time(&now);
     for (i = 0; i < tls_mcache_sess_list->nelts; i++) {
       entry = &(entries[i]);
 
-      if (entry->expires > now) {
+      if (entry->expires <= now) {
         /* This entry has expired; clear and reuse its slot. */
         entry->expires = 0;
         pr_memscrub(entry->sess_data, entry->sess_datalen);
@@ -501,8 +814,12 @@ static int tls_mcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
   struct mcache_entry entry;
   int sess_len;
   unsigned char *ptr;
+  time_t now;
 
-  pr_trace_msg(trace_channel, 9, "adding session to memcache cache %p", cache);
+  time(&now);
+  pr_trace_msg(trace_channel, 9,
+    "adding session to memcache cache %p (expires = %lu, now = %lu)", cache,
+    (unsigned long) expires, (unsigned long) now);
 
   /* First we need to find out how much space is needed for the serialized
    * session data.  There is no known maximum size for SSL session data;
@@ -575,7 +892,7 @@ static SSL_SESSION *tls_mcache_get(tls_sess_cache_t *cache,
             large_entry->sess_id_len) == 0) {
 
         now = time(NULL);
-        if (large_entry->expires <= now) {
+        if (large_entry->expires > now) {
           TLS_D2I_SSL_SESSION_CONST unsigned char *ptr;
 
           ptr = large_entry->sess_data;
@@ -672,7 +989,7 @@ static int tls_mcache_delete(tls_sess_cache_t *cache,
     }
   }
 
-  res = tls_mcache_entry_remove(cache->cache_pool, sess_id, sess_id_len);
+  res = tls_mcache_entry_delete(cache->cache_pool, sess_id, sess_id_len);
   if (res < 0) {
     return -1;
   }
@@ -691,9 +1008,13 @@ static int tls_mcache_clear(tls_sess_cache_t *cache) {
   register unsigned int i;
   int res = 0;
 
-  pr_trace_msg(trace_channel, 9, "clearing memcache cache %p", cache); 
+  if (mcache == NULL) {
+    pr_trace_msg(trace_channel, 9, "missing required memcached connection");
+    errno = EINVAL;
+    return -1;
+  }
 
-  /* XXX if mcache == NULL, return EINVAL */
+  pr_trace_msg(trace_channel, 9, "clearing memcache cache %p", cache);
 
   if (tls_mcache_sess_list != NULL) {
     struct mcache_large_entry *entries;
@@ -716,6 +1037,7 @@ static int tls_mcache_clear(tls_sess_cache_t *cache) {
 static int tls_mcache_remove(tls_sess_cache_t *cache) {
   int res;
 
+  pr_trace_msg(trace_channel, 9, "clearing memcache");
   res = tls_mcache_clear(cache);
   /* XXX close memcache conn */
 
@@ -878,7 +1200,7 @@ static int tls_mcache_init(void) {
   memset(&tls_mcache, 0, sizeof(tls_mcache));
 
   tls_mcache.cache_name = "memcache";
-  tls_mcache.cache_pool = pr_pool_create_sz(permanent_pool, 256);
+  tls_mcache.cache_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(tls_mcache.cache_pool, MOD_TLS_MEMCACHE_VERSION);
 
   tls_mcache.open = tls_mcache_open;
@@ -890,12 +1212,12 @@ static int tls_mcache_init(void) {
   tls_mcache.remove = tls_mcache_remove;
   tls_mcache.status = tls_mcache_status;
 
-#ifdef SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
+#ifdef SSL_SESS_CACHE_NO_INTERNAL
   /* Take a chance, and inform OpenSSL that it does not need to use its own
-   * internal session cache lookups; using the external session cache (i.e. us)
-   * will be enough.
+   * internal session cache lookups/storage; using the external session cache
+   * (i.e. us) will be enough.
    */
-  tls_mcache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
+  tls_mcache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL;
 #endif
 
 #ifdef PR_USE_MEMCACHE
@@ -910,6 +1232,18 @@ static int tls_mcache_init(void) {
   pr_log_debug(DEBUG1, MOD_TLS_MEMCACHE_VERSION
     ": unable to register 'memcache' SSL session cache: Memcache support not enabled");
 #endif /* PR_USE_MEMCACHE */
+
+  return 0;
+}
+
+static int tls_mcache_sess_init(void) {
+  if (mcache != NULL) {
+    /* Reset our memcache handle. */
+    if (pr_memcache_conn_clone(session.pool, mcache) < 0) {
+      tls_log(MOD_TLS_MEMCACHE_VERSION
+        ": error resetting memcache handle: %s", strerror(errno));
+    }
+  }
 
   return 0;
 }
@@ -939,7 +1273,7 @@ module tls_memcache_module = {
   tls_mcache_init,
 
   /* Session initialization function */
-  NULL,
+  tls_mcache_sess_init,
 
   /* Module version */
   MOD_TLS_MEMCACHE_VERSION
