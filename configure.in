@@ -40,8 +40,10 @@ if test "$OSTYPE" = "$OSREL" ; then
   platform="\"$ostype\""
 fi
 
-AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, "`echo "$ac_configure_args"`")
+BUILD_OPTS=`echo "$ac_configure_args"`
+AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, "$BUILD_OPTS")
 AC_DEFINE_UNQUOTED(PR_PLATFORM, $platform)
+AC_SUBST(BUILD_OPTS)
 AC_SUBST(OSREL)
 AC_SUBST(OSTYPE)
 
@@ -164,7 +166,7 @@ dnl problems for certain builds of proftpd, e.g. ProFTPD and MySQL (which
 dnl itself similarly bundles a getopt implementation).  Thus, we need to
 dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
-LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o tpl.o json.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o hanson-tpl.o ccan-json.o"
 
 AC_ARG_WITH(getopt,
   [AC_HELP_STRING(

@@ -28,6 +28,7 @@
 
 #ifdef PR_USE_MEMCACHE
 
+#include "hanson-tpl.h"
 #include <libmemcached/memcached.h>
 
 #if defined(LIBMEMCACHED_VERSION_HEX)

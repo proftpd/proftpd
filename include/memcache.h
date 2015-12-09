@@ -28,7 +28,6 @@
 #define PR_MEMCACHE_H
 
 #include "conf.h"
-#include "lib/tpl.h"
 
 typedef struct mcache_rec pr_memcache_t;
 

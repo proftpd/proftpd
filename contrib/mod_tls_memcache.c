@@ -30,7 +30,8 @@
 #include "conf.h"
 #include "privs.h"
 #include "mod_tls.h"
-#include "lib/json.h"
+#include "ccan-json.h"
+#include "hanson-tpl.h"
 
 #define MOD_TLS_MEMCACHE_VERSION		"mod_tls_memcache/0.2"
 
