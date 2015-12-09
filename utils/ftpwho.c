@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file. */
 
 #include "utils.h"
-#include "lib/json.h"
+#include "ccan-json.h"
 
 #define MAX_CLASSES 100
 struct scoreboard_class {

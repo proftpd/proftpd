@@ -29,10 +29,11 @@
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
+#include "ccan-json.h"
+#include "hanson-tpl.h"
 
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include "lib/json.h"
 
 #define MOD_BAN_VERSION			"mod_ban/0.7"
 
