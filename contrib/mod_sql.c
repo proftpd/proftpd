@@ -749,8 +749,7 @@ static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
    * the form "{digest}hash".
    */
 
-  EVP_MD_CTX md_ctxt;
-  EVP_ENCODE_CTX base64_ctxt;
+  EVP_MD_CTX md_ctx;
   const EVP_MD *md;
 
   /* According to RATS, the output buffer (buf) for EVP_EncodeBlock() needs to
@@ -791,12 +790,11 @@ static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  EVP_DigestInit(&md_ctxt, md);
-  EVP_DigestUpdate(&md_ctxt, plaintext, strlen(plaintext));
-  EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
+  EVP_DigestInit(&md_ctx, md);
+  EVP_DigestUpdate(&md_ctx, plaintext, strlen(plaintext));
+  EVP_DigestFinal(&md_ctx, mdval, &mdlen);
 
   memset(buf, '\0', sizeof(buf));
-  EVP_EncodeInit(&base64_ctxt);
   EVP_EncodeBlock(buf, mdval, (int) mdlen);
 
   if (strcmp((char *) buf, hashvalue) == 0) {
