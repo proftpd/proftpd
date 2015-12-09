@@ -2410,15 +2410,22 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
 
     memset(buf, '\0', sizeof(buf));
     gettimeofday(&now, NULL);
+
     tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+    if (tm != NULL) {
+      fmt_len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
+      len += fmt_len;
 
-    fmt_len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
-    len += fmt_len;
+      /* Convert microsecs to millisecs. */
+      millis = now.tv_usec / 1000;
 
-    /* Convert microsecs to millisecs. */
-    millis = now.tv_usec / 1000;
+      len += snprintf(buf + fmt_len, sizeof(buf) - fmt_len, ",%03lu", millis);
 
-    len += snprintf(buf + fmt_len, sizeof(buf) - fmt_len, ",%03lu", millis);
+    } else {
+      pr_trace_msg(trace_channel, 1,
+        "error obtaining local timestamp: %s", strerror(errno));
+    }
+
     long_tag = pstrndup(cmd->tmp_pool, buf, len);
   }
 
@@ -2490,14 +2497,20 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
       strncmp(tag, "time:", 5) == 0) {
     char time_str[128], *fmt;
     time_t now;
-    struct tm *time_info;
+    struct tm *tm;
 
     fmt = pstrdup(cmd->tmp_pool, tag + 5);
-    now = time(NULL);
-    time_info = pr_localtime(NULL, &now);
-
+    time(&now);
     memset(time_str, 0, sizeof(time_str));
-    strftime(time_str, sizeof(time_str), fmt, time_info);
+
+    tm = pr_localtime(NULL, &now);
+    if (tm != NULL) {
+      strftime(time_str, sizeof(time_str), fmt, tm);
+
+    } else {
+      pr_trace_msg(trace_channel, 1,
+        "error obtaining local timestamp: %s", strerror(errno));
+    }
 
     long_tag = pstrdup(cmd->tmp_pool, time_str);
   }

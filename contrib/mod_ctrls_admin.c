@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2014 TJ Saunders
+ * Copyright (c) 2000-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,21 +22,19 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * This is mod_controls, contrib software for proftpd 1.2 and above.
+ * This is mod_controls, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_ctrls_admin.c,v 1.47 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.7"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.8"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030001
-# error "ProFTPD 1.3.0rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030602
+# error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
 #ifndef PR_USE_CTRLS
@@ -770,11 +768,17 @@ static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
       struct tm *tm;
 
       tm = pr_gmtime(ctrl->ctrls_tmp_pool, &ctrls_admin_start);
-      pr_ctrls_add_response(ctrl,
-        "server restarted %u %s since %04d-%02d-%02d %02d:%02d:%02d GMT",
-        ctrls_admin_nrestarts, ctrls_admin_nrestarts != 1 ? "times" : "time",
-        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
-        tm->tm_sec);
+      if (tm != NULL) {
+        pr_ctrls_add_response(ctrl,
+          "server restarted %u %s since %04d-%02d-%02d %02d:%02d:%02d GMT",
+          ctrls_admin_nrestarts, ctrls_admin_nrestarts != 1 ? "times" : "time",
+          tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
+          tm->tm_sec);
+      } else {
+        pr_ctrls_add_response(ctrl, "error obtaining GMT timestamp: %s",
+          strerror(errno));
+        return -1;
+      }
 
     } else {
       pr_ctrls_add_response(ctrl, "unsupported parameter '%s'", reqargv[0]);
