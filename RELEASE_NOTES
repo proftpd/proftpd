@@ -85,6 +85,8 @@ ChangeLog files.
       The doc/contrib/mod_tls.html#TLSProtocol documentation has more
       details.
 
+    TLSSessionCache memcache:/json (Bug#4057)
+
 
 1.3.6rc1
 ---------
