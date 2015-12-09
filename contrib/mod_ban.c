@@ -293,8 +293,10 @@ static int ban_mcache_get_json_key(pool *p, unsigned int type, const char *name,
   json_append_member(json, "ban_name", json_mkstring(name));
 
   json_str = json_stringify(json, "");
-  *keysz = strlen(json_str);
-  *key = pstrndup(p, json_str, *keysz);
+
+  /* Include the terminating NUL in the key. */
+  *keysz = strlen(json_str) + 1;
+  *key = pstrndup(p, json_str, *keysz - 1);
   free(json_str);
   json_delete(json);
 
@@ -741,6 +743,7 @@ static int ban_mcache_entry_encode_tpl(pool *p, void **value, size_t *valuesz,
     struct ban_mcache_entry *bme) {
   int res;
   tpl_node *tn;
+  void *ptr = NULL;
 
   tn = tpl_map(BAN_MCACHE_TPL_VALUE_FMT, bme);
   if (tn == NULL) {
@@ -756,14 +759,22 @@ static int ban_mcache_entry_encode_tpl(pool *p, void **value, size_t *valuesz,
     return -1;
   }
 
-  res = tpl_dump(tn, TPL_MEM, value, valuesz);
+  res = tpl_dump(tn, TPL_MEM, &ptr, valuesz);
   if (res < 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION, "%s",
       "error dumping TPL ban memcache data");
     return -1;
   }
 
+  /* Duplicate the value using the given pool, so that we can free up the
+   * memory allocated by tpl_dump().
+   */
+  *value = palloc(p, *valuesz);
+  memcpy(*value, ptr, *valuesz);
+
   tpl_free(tn);
+  free(ptr);
+
   return 0;
 }
 
@@ -813,8 +824,10 @@ static int ban_mcache_entry_encode_json(pool *p, void **value, size_t *valuesz,
     json_mknumber((double) bme->be_sid));
 
   json_str = json_stringify(json, "");
-  *valuesz = strlen(json_str);
-  *value = pstrndup(p, json_str, *valuesz);
+
+  /* Include the terminating NUL in the value. */
+  *valuesz = strlen(json_str) + 1;
+  *value = pstrndup(p, json_str, *valuesz - 1);
   free(json_str);
   json_delete(json);
 
@@ -841,13 +854,11 @@ static int ban_mcache_entry_set(pool *p, struct ban_mcache_entry *bme) {
 
   res = ban_mcache_get_key(p, bme->be_type, bme->be_name, &key, &keysz);
   if (res < 0) {
-    free(value);
     return -1;
   }
 
   res = pr_memcache_kset(mcache, &ban_module, (const char *) key, keysz,
     value, valuesz, bme->be_expires, flags);
-  free(value);
 
   if (res < 0) {
     int xerrno = errno;

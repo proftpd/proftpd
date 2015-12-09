@@ -37,6 +37,7 @@ utils/*.[0-9]
 *.patch
 *.rej
 *~
+*.swo
 *.swp
 .DS_Store
 .libs
