@@ -180,14 +180,37 @@ static int mcache_set_options(pr_memcache_t *mcache, unsigned long flags,
 
   /* Use the binary protocol by default, unless explicitly requested not to. */
   val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL);
+  pr_trace_msg(trace_channel, 16,
+    "found BINARY_PROTOCOL=%s default behavior (val %lu) for connection",
+    val != 1 ? "false" : "true", (unsigned long) val);
+
   if (val != 1) {
     if (!(flags & PR_MEMCACHE_FL_NO_BINARY_PROTOCOL)) {
       res = memcached_behavior_set(mcache->mc,
         MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, 1);
       if (res != MEMCACHED_SUCCESS) {
         pr_trace_msg(trace_channel, 4,
-          "error setting BINARY_PROTOCOL behavior on connection: %s",
+          "error setting BINARY_PROTOCOL=true behavior on connection: %s",
           memcached_strerror(mcache->mc, res));
+
+      } else {
+        pr_trace_msg(trace_channel, 16, "%s",
+          "set BINARY_PROTOCOL=true for connection");
+      }
+    }
+
+  } else {
+    if (flags & PR_MEMCACHE_FL_NO_BINARY_PROTOCOL) {
+      res = memcached_behavior_set(mcache->mc,
+        MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, 0);
+      if (res != MEMCACHED_SUCCESS) {
+        pr_trace_msg(trace_channel, 4,
+          "error setting BINARY_PROTOCOL=false behavior on connection: %s",
+          memcached_strerror(mcache->mc, res));
+
+      } else {
+        pr_trace_msg(trace_channel, 16, "%s",
+          "set BINARY_PROTOCOL=false for connection");
       }
     }
   }
@@ -566,6 +589,31 @@ int pr_memcache_conn_close(pr_memcache_t *mcache) {
     }
   }
 
+  return 0;
+}
+
+int pr_memcache_conn_clone(pool *p, pr_memcache_t *mcache) {
+  memcached_st *old_mc = NULL, *new_mc = NULL;
+
+  if (p == NULL ||
+      mcache == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memcached_quit(mcache->mc);
+  old_mc = mcache->mc;
+
+  new_mc = memcached_clone(NULL, old_mc);
+  if (new_mc == NULL) {
+    errno = ENOMEM;
+    return -1;
+  }
+
+  /* Now free up the previous context; we don't need it anymore. */
+  memcached_free(old_mc);
+
+  mcache->mc = new_mc;
   return 0;
 }
 
@@ -969,6 +1017,10 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
     return -1;
   }
 
+  /* Note: libmemcached automatically handles the case where value might be
+   * NULL.
+   */
+
   mcache_set_module_namespace(mcache, m);
   res = memcached_decrement(mcache->mc, key, keysz, decr, value);
   mcache_set_module_namespace(mcache, NULL);
@@ -1028,6 +1080,7 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
   char *data = NULL;
   void *ptr = NULL;
   memcached_return res;
+  int xerrno = 0;
 
   if (mcache == NULL ||
       m == NULL ||
@@ -1040,6 +1093,7 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
 
   mcache_set_module_namespace(mcache, m);
   data = memcached_get(mcache->mc, key, keysz, valuesz, flags, &res);
+  xerrno = errno;
   mcache_set_module_namespace(mcache, NULL);
 
   if (data == NULL) {
@@ -1052,7 +1106,6 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
 
       case MEMCACHED_ERRNO:
         if (errno != EINPROGRESS) {
-          int xerrno = errno;
           pr_trace_msg(trace_channel, 3,
             "no data found for key (%lu bytes): system error: %s",
             (unsigned long) keysz, strerror(xerrno));
@@ -1110,6 +1163,7 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
   char *data = NULL, *ptr = NULL;
   size_t valuesz = 0;
   memcached_return res;
+  int xerrno = 0;
 
   if (mcache == NULL ||
       m == NULL ||
@@ -1121,6 +1175,7 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
 
   mcache_set_module_namespace(mcache, m);
   data = memcached_get(mcache->mc, key, keysz, &valuesz, flags, &res);
+  xerrno = errno;
   mcache_set_module_namespace(mcache, NULL);
 
   if (data == NULL) {
@@ -1133,8 +1188,6 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
 
       case MEMCACHED_ERRNO:
         if (errno != EINPROGRESS) {
-          int xerrno = errno;
-
           pr_trace_msg(trace_channel, 3,
             "no data found for key (%lu bytes): system error: %s",
             (unsigned long) keysz, strerror(xerrno));
@@ -1198,6 +1251,10 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
     errno = EINVAL;
     return -1;
   }
+
+  /* Note: libmemcached automatically handles the case where value might be
+   * NULL.
+   */
 
   mcache_set_module_namespace(mcache, m);
   res = memcached_increment(mcache->mc, key, keysz, incr, value);
@@ -1343,7 +1400,8 @@ int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
   }
 
   mcache_set_module_namespace(mcache, m);
-  res = memcached_set(mcache->mc, key, keysz, value, valuesz, expires, flags); 
+  res = memcached_set(mcache->mc, key, keysz, (const char *) value, valuesz,
+    expires, flags);
   mcache_set_module_namespace(mcache, NULL);
 
   switch (res) {
@@ -1493,6 +1551,11 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
 }
 
 int pr_memcache_conn_close(pr_memcache_t *mcache) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_memcache_conn_clone(pool *p, pr_memcache_t *mcache) {
   errno = ENOSYS;
   return -1;
 }
