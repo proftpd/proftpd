@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2015 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.317 2013-12-29 20:17:09 castaglia Exp $
- */
+/* Authentication module for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -591,7 +589,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
        */
       if (session.c->local_port < 1024) {
         pr_log_debug(DEBUG0,
-          "RootRevoke in effect, disabling active transfers");
+          "RootRevoke in effect, active data transfers may not succeed");
       }
     }
 
