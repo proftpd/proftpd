@@ -627,7 +627,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
        */
       if (session.c->local_port < 1024) {
         pr_log_debug(DEBUG0,
-          "RootRevoke in effect, disabling active transfers");
+          "RootRevoke in effect, active data transfers may not succeed");
       }
     }
 
