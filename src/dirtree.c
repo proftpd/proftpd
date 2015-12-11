@@ -2682,7 +2682,7 @@ int parse_config_path(pool *p, const char *path) {
       }
     }
 
-    pr_log_pri(PR_LOG_INFO, "processing configuration directory '%s'",
+    pr_log_pri(PR_LOG_DEBUG, "processing configuration directory '%s'",
       dup_path);
 
     dirh = pr_fsio_opendir(dup_path);
