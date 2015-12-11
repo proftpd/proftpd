@@ -470,23 +470,40 @@ sub get_passwd {
 
   } else {
 
-    # prompt for the password to be used
+    # Install a SIGINT handler, for cases where Ctrl-C may be used to abort
+    # the prompt.
+    $SIG{INT} = sub {
+      # Restore the file permissions.
+      unless (chmod(0440, $output_file)) {
+        print STDERR "$program: unable to set permissions on $output_file: $!";
+      }
+
+      # Restore the terminal echo behavior, too.
+      system "stty echo";
+
+      exit 1;
+    };
+
+    # Prompt for the password to be used
     system "stty -echo";
     print STDOUT "\nPassword: ";
 
-    # open the tty for reading (is this portable?)
+    # Open the tty for reading (is this portable?)
     open(TTY, "/dev/tty") or die "$program: unable to open /dev/tty: $!\n";
     chomp($passwd = <TTY>);
     print STDOUT "\n";
     system "stty echo";
 
-    # prompt again, to make sure the user typed in the password correctly
+    # Prompt again, to make sure the user typed in the password correctly
     system "stty -echo";
     print STDOUT "Re-type password: ";
     chomp($passwd2 = <TTY>);
     print STDOUT "\n\n";
     system "stty echo";
     close(TTY);
+
+    # Restore default SIGINT handling
+    $SIG{INT} = 'DEFAULT';
 
     if ($passwd2 ne $passwd) {
       print STDOUT "Passwords do not match.  Please try again.\n";
@@ -850,7 +867,7 @@ sub open_output_file {
 
   if (-f $output_file) {
     # make sure we can write/update the file first
-    unless (chmod 0644, $output_file) {
+    unless (chmod(0644, $output_file)) {
       die "$program: unable to set permissions on $output_file to 0644: $!\n";
     }
 
