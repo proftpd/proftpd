@@ -1381,6 +1381,9 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
     pr_fsio_closedir(dirh);
 
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
+
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
