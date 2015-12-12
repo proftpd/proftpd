@@ -1232,7 +1232,14 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   /* Open data connection */
   if (pr_data_open(NULL, C_MLSD, PR_NETIO_IO_WR, 0) < 0) {
+    int xerrno = errno;
+
     pr_fsio_closedir(dirh);
+
+    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
+
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
   session.sf_flags |= SF_ASCII_OVERRIDE;
