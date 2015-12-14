@@ -3712,7 +3712,7 @@ MODRET core_port(cmd_rec *cmd) {
       *root_revoke == 1 &&
       session.c->local_port < 1024) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
-      "port %d for active transfer", session.c->local_port);
+      "port %d for active transfer", session.c->local_port-1);
     pr_response_add_err(R_500, _("Unable to service PORT commands"));
 
     pr_cmd_set_errno(cmd, EPERM);
@@ -3939,7 +3939,7 @@ MODRET core_eprt(cmd_rec *cmd) {
       *root_revoke == 1 &&
       session.c->local_port < 1024) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
-      "port %d for active transfer", session.c->local_port);
+      "port %d for active transfer", session.c->local_port-1);
     pr_response_add_err(R_500, _("Unable to service EPRT commands"));
 
     pr_cmd_set_errno(cmd, EPERM);
