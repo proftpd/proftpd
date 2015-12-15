@@ -842,6 +842,7 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
 
   } else if (strncmp(pkey_type, "ssh-dss", 8) == 0) {
+#if !defined(OPENSSL_NO_DSA)
     DSA *dsa;
 
     pkey = EVP_PKEY_new();
@@ -871,6 +872,12 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
       EVP_PKEY_free(pkey);
       return NULL;
     }
+#else
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported public key algorithm '%s'", pkey_type);
+    errno = EINVAL;
+    return NULL;
+#endif /* !OPENSSL_NO_DSA */
 
 #ifdef PR_USE_OPENSSL_ECC
   } else if (strncmp(pkey_type, "ecdsa-sha2-nistp256", 20) == 0 ||
@@ -1388,6 +1395,7 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
         break;
       }
 
+#if !defined(OPENSSL_NO_DSA)
       case EVP_PKEY_DSA: {
         DSA *client_dsa, *file_dsa;
 
@@ -1433,6 +1441,7 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
 
         break;
       }
+#endif /* !OPENSSL_NO_DSA */
 
 #ifdef PR_USE_OPENSSL_ECC
       case EVP_PKEY_EC: {
@@ -2080,6 +2089,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       break;
     }
 
+#if !defined(OPENSSL_NO_DSA)
     case SFTP_KEY_DSA: {
       DSA *dsa;
 
@@ -2101,6 +2111,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       DSA_free(dsa);
       break;
     }
+#endif /* !OPENSSL_NO_DSA */
 
 #ifdef PR_USE_OPENSSL_ECC
     case SFTP_KEY_ECDSA_256: {
@@ -2438,6 +2449,7 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
 #define SFTP_DSA_INTEGER_LEN			20
 #define SFTP_DSA_SIGNATURE_LEN			(SFTP_DSA_INTEGER_LEN * 2)
 
+#if !defined(OPENSSL_NO_DSA)
 static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   DSA *dsa;
@@ -2521,6 +2533,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
   *siglen = (bufsz - buflen);
   return ptr;
 }
+#endif /* !OPENSSL_NO_DSA */
 
 #ifdef PR_USE_OPENSSL_ECC
 static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
@@ -2666,9 +2679,11 @@ const unsigned char *sftp_keys_sign_data(pool *p,
       res = rsa_sign_data(p, data, datalen, siglen);
       break;
 
+#if !defined(OPENSSL_NO_DSA)
     case SFTP_KEY_DSA:
       res = dsa_sign_data(p, data, datalen, siglen);
       break;
+#endif /* !OPENSSL_NO_DSA */
 
 #ifdef PR_USE_OPENSSL_ECC
     case SFTP_KEY_ECDSA_256:
@@ -2879,6 +2894,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       res = -1;
     }
 
+#if !defined(OPENSSL_NO_DSA)
   } else if (strncmp(sig_type, "ssh-dss", 8) == 0) {
     sig_len = sftp_msg_read_int(p, &signature, &signaturelen);
 
@@ -2941,6 +2957,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         "error verifying DSA signature: missing signature data");
       res = -1;
     }
+#endif /* !OPENSSL_NO_DSA */
 
 #ifdef PR_USE_OPENSSL_ECC
   } else if (strncmp(sig_type, "ecdsa-sha2-nistp256", 20) == 0 ||

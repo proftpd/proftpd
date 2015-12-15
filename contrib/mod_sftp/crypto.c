@@ -120,8 +120,11 @@ static struct sftp_cipher ciphers[] = {
   { "arcfour",		"rc4",		0,	EVP_rc4, FALSE, FALSE },
 #endif
 
+#if !defined(OPENSSL_NO_DES)
   { "3des-ctr",		NULL,		0,	NULL, TRUE, TRUE },
   { "3des-cbc",		"des-ede3-cbc",	0,	EVP_des_ede3_cbc, TRUE, TRUE },
+#endif /* !OPENSSL_NO_DES */
+
   { "none",		"null",		0,	EVP_enc_null, FALSE, TRUE },
   { NULL, NULL, 0, NULL, FALSE, FALSE }
 };
@@ -331,6 +334,8 @@ static const EVP_CIPHER *get_bf_ctr_cipher(void) {
 #endif /* !OPENSSL_NO_BF */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
+
+# if !defined(OPENSSL_NO_DES)
 /* 3DES CTR mode implementation */
 
 struct des3_ctr_ex {
@@ -480,6 +485,7 @@ static const EVP_CIPHER *get_des3_ctr_cipher(void) {
 
   return &des3_ctr_cipher;
 }
+# endif /* !OPENSSL_NO_DES */
 
 /* AES CTR mode implementation */
 struct aes_ctr_ex {
@@ -791,7 +797,14 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
       } else if (strncmp(name, "3des-ctr", 9) == 0) {
+# if !defined(OPENSSL_NO_DES)
         cipher = get_des3_ctr_cipher();
+# else
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "'%s' cipher unsupported", name);
+        errno = ENOENT;
+        return NULL;
+# endif /* !OPENSSL_NO_DES */
 
       } else if (strncmp(name, "aes256-ctr", 11) == 0) {
         cipher = get_aes_ctr_cipher(32);

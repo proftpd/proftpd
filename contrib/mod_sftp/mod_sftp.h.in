@@ -68,14 +68,18 @@
 #endif /* !OPENSSL_NO_BF */
 #include <openssl/bn.h>
 #include <openssl/conf.h>
-#include <openssl/des.h>
+#if !defined(OPENSSL_NO_DES)
+# include <openssl/des.h>
+#endif /* !OPENSSL_NO_DES */
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/pem.h>
-#include <openssl/dsa.h>
+#if !defined(OPENSSL_NO_DSA)
+# include <openssl/dsa.h>
+#endif /* !OPENSSL_NO_DSA */
 #include <openssl/rsa.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 # include <openssl/aes.h>
