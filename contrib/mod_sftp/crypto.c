@@ -100,7 +100,10 @@ static struct sftp_cipher ciphers[] = {
   { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc, TRUE, FALSE },
 #endif /* !OPENSSL_NO_BF */
 
+#if !defined(OPENSSL_NO_CAST)
   { "cast128-cbc",	"cast5-cbc",	0,	EVP_cast5_cbc, TRUE, FALSE },
+#endif /* !OPENSSL_NO_CAST */
+
 #if !defined(OPENSSL_NO_RC4)
   { "arcfour256",	"rc4",		1536,	EVP_rc4, TRUE, FALSE },
   { "arcfour128",	"rc4",		1536,	EVP_rc4, TRUE, FALSE },
