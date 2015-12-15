@@ -163,7 +163,9 @@ static struct sftp_digest digests[] = {
   { "hmac-sha1-96",	"sha1",		EVP_sha1,	12,	TRUE, TRUE },
   { "hmac-md5",		"md5",		EVP_md5,	0,	TRUE, FALSE },
   { "hmac-md5-96",	"md5",		EVP_md5,	12,	TRUE, FALSE },
+#if !defined(OPENSSL_NO_RIPEMD)
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	TRUE, FALSE },
+#endif /* !OPENSSL_NO_RIPEMD */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
   { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
