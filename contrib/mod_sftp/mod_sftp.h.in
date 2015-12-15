@@ -63,7 +63,9 @@
 #endif
 
 #include <openssl/bio.h>
-#include <openssl/blowfish.h>
+#if !defined(OPENSSL_NO_BF)
+# include <openssl/blowfish.h>
+#endif /* !OPENSSL_NO_BF */
 #include <openssl/bn.h>
 #include <openssl/conf.h>
 #include <openssl/des.h>
