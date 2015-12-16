@@ -1,6 +1,3 @@
-<!-- $Id: mod_sql.html,v 1.32 2014-01-21 22:32:31 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_sql</title>
@@ -336,7 +333,7 @@ Use &quot;mysql&quot; for the <code>mod_sql_mysql</code> module, and
 <p>
 <hr>
 <h2><a name="SQLConnectInfo">SQLConnectInfo</a></h2>
-<strong>Syntax:</strong> SQLConnectInfo <em>connection-info [username] [password] [policy]</em><br>
+<strong>Syntax:</strong> SQLConnectInfo <em>connection-info [username] [password] [policy] [ssl-ca:&lt;path&gt;] [ssl-cert:&lt;path&gt;] [ssl-key:&gt;path&lt;] [ssl-ciphers:&lt;list&gt;]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql<br>
@@ -444,6 +441,33 @@ library will try to use Unix domain socket communications for that host,
 these connections).
 
 <p>
+In <code>proftpd-1.3.6rc2</code> and later, it is possible to configure SSL/TLS
+parameters for a given connection, which tells <code>mod_sql</code> to try
+to open an SSL session with the database server.  Most of the time, all that
+is needed for the SSL session is the CA (Certificate Authority) to use, for
+verifying the certificate presented by the database server.  Thus:
+<pre>
+  SQLConnectInfo ... ssl-ca:/path/to/cacert.pem
+</pre>
+If your database server is configured to require SSL/TLS mutual authentication
+(also called "client auth"), you may need the <code>ssl-cert:</code> and
+<code>ssl-key:</code> parameters as well:
+<pre>
+  SQLConnectInfo ... ssl-ca:/path/to/cacert.pem \
+    ssl-cert:/path/to/client-cert.pem \
+    ssl-key:/path/to/client-key.pem
+</pre>
+Finally, some database clients (such as MySQL) allow you to configure the
+specific SSL/TLS ciphersuites that should be used; the <code>ssl-ciphers:</code>
+parameter can be used for this:
+<pre>
+  SQLConnectInfo ... ssl-ca:/path/to/cacert.pem \
+    ssl-cert:/path/to/client-cert.pem \
+    ssl-key:/path/to/client-key.pem \
+    ssl-ciphers:DEFAULT:!EXPORT:!DES
+</pre>
+
+<p>
 Examples:
 <pre>
   # Connect to the database 'ftpusers' via the default port at host
@@ -465,6 +489,12 @@ Examples:
   # Use a username of 'admin' and a password of 'mypassword' when
   # connecting.  A 30 second timer of connection inactivity is activated.
   SQLConnectInfo ftpusers@foo.com:3000 admin mypassword 30
+
+  # Connect to the database 'ftpusers' via port 3000 at host 'foo.com'.
+  # Use a username of 'admin' and a password of 'mypassword' when
+  # connection.  A 30 second inactivity/idle timer is used.  In addition,
+  # use SSL for the connection.
+  SQLConnectInfo ftpusers@foo.com:3000 admin mypassword 30 ssl-ca:/path/to/cacert.pem
 </pre>
 Backends may require different information in the <em>connection-info</em>
 field; check your backend module for more detailed information.
@@ -894,7 +924,7 @@ See also: <a href="#SQLDefaultUID"><code>SQLDefaultUID</code></a>
 <p>
 <hr>
 <h2><a name="SQLNamedConnectInfo">SQLNamedConnectInfo</a></h2>
-<strong>Syntax:</strong> SQLConnectInfo <em>connection-name</em> <em>sql-backend</em> <em>connection-info [username] [password] [policy]</em><br>
+<strong>Syntax:</strong> SQLConnectInfo <em>connection-name</em> <em>sql-backend</em> <em>connection-info [username] [password] [policy] [ssl-ca:&lt;path&gt;] [ssl-cert:&lt;path&gt;] [ssl-key:&gt;path&lt;] [ssl-ciphers:&lt;list&gt;]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql<br>
@@ -913,11 +943,11 @@ other backend-specific information.  The optional <em>username</em> and
 connecting to the database.  Both default to <code>NULL</code>, which the
 backend will treat in some backend-specific manner. If you specify a password,
 you <b>must</b> specify a username.  Multiple <code>SQLNamedConnectInfo</code>
-directives can be configured.
+directives may be configured.
 
 <p>
-<b>Note</b> that <code>SQLNamedConnectInfo</code> directives will only be
-honored if a <a href="#SQLConnectInfo"><code>SQLConnectInfo</code></a>
+<b>Note</b> that <code>SQLNamedConnectInfo</code> directives <b>will only be
+honored</b> if a <a href="#SQLConnectInfo"><code>SQLConnectInfo</code></a>
 directive is configured.
 
 <p>
@@ -1486,13 +1516,8 @@ only, and should be removed from any production configuration.
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-01-21 22:32:31 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2000-2014 The ProFTPD Project<br>
+&copy; Copyright 2000-2015 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_sqlite -- Support for connecting to SQLite databases
  *
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2015 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_sql_sqlite.c,v 1.24 2013-10-07 05:51:29 castaglia Exp $
- * $Libraries: -lsqlite3 $
+ * $Libraries: -lsqlite3$
  */
 
 #define MOD_SQL_SQLITE_VERSION		"mod_sql_sqlite/0.4"
@@ -34,8 +33,8 @@
 #include <sqlite3.h>
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030001
-# error "ProFTPD 1.3.0rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030602
+# error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
 module sql_sqlite_module;
@@ -448,13 +447,15 @@ MODRET sql_sqlite_def_conn(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_defineconnection");
 
-  if (cmd->argc < 4 || cmd->argc > 5 || !cmd->argv[0]) {
+  if (cmd->argc < 4 ||
+      cmd->argc > 10 ||
+      !cmd->argv[0]) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_defineconnection");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION, "badly formed request");
   }
 
-  if (!conn_pool) {
-    pr_log_pri(PR_LOG_WARNING, "warning: the mod_sql_sqlite module has not "
+  if (conn_pool == NULL) {
+    pr_log_pri(PR_LOG_WARNING, "WARNING: the mod_sql_sqlite module has not "
       "been properly intialized.  Please make sure your --with-modules "
       "configure option lists mod_sql *before* mod_sql_sqlite, and recompile.");
 
@@ -481,7 +482,7 @@ MODRET sql_sqlite_def_conn(cmd_rec *cmd) {
       "named connection already exists");
   }
 
-  if (cmd->argc == 5) {
+  if (cmd->argc >= 5) {
     entry->ttl = (int) strtol(cmd->argv[4], (char **) NULL, 10);
     if (entry->ttl >= 1) {
       pr_sql_conn_policy = SQL_CONN_POLICY_TIMER;
@@ -977,7 +978,7 @@ MODRET sql_sqlite_checkauth(cmd_rec *cmd) {
     "SQLite does not support the 'Backend' SQLAuthType");
 }
 
-MODRET sql_sqlite_identify(cmd_rec * cmd) {
+MODRET sql_sqlite_identify(cmd_rec *cmd) {
   sql_data_t *sd = NULL;
 
   sd = (sql_data_t *) pcalloc(cmd->tmp_pool, sizeof(sql_data_t));

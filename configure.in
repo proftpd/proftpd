@@ -2547,6 +2547,54 @@ if test x"$pr_use_mysql" = xyes; then
     ]
   )
 
+  AC_MSG_CHECKING([for MySQL's mysql_ssl_set])
+  AC_TRY_LINK(
+    [
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <mysql.h>
+    ],
+    [
+      MYSQL *mysql = NULL;
+      (void) mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_MYSQL_MYSQL_SSL_SET, 1, [Define if you have MySQL's mysql_ssl_set function])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  AC_MSG_CHECKING([for MySQL's mysql_get_ssl_cipher])
+  AC_TRY_LINK(
+    [
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <mysql.h>
+    ],
+    [
+      MYSQL *mysql = NULL;
+      (void) mysql_get_ssl_cipher(mysql);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_MYSQL_MYSQL_GET_SSL_CIPHER, 1, [Define if you have MySQL's mysql_get_ssl_cipher function])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
   dnl Restore CPPFLAGS, LDFLAGS
   CPPFLAGS="$saved_cppflags"
   LDFLAGS="$saved_ldflags"
@@ -2776,8 +2824,6 @@ if test x"$pr_use_postgres" = xyes; then
   saved_libs="$LIBS"
   saved_cppflags="$CPPFLAGS"
 
-  AC_MSG_CHECKING([for Postgres's PQescapeStringConn])
-
   # fiddle with CPPFLAGS, LDFLAGS
   CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
@@ -2786,6 +2832,7 @@ if test x"$pr_use_postgres" = xyes; then
   LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lm -lpq"
 
+  AC_MSG_CHECKING([for Postgres's PQescapeStringConn])
   AC_TRY_LINK(
     [
       #ifdef HAVE_STDLIB_H
@@ -2806,6 +2853,58 @@ if test x"$pr_use_postgres" = xyes; then
     [
       AC_MSG_RESULT(yes)
       AC_DEFINE(HAVE_POSTGRES_PQESCAPESTRINGCONN, 1, [Define if you have Postgres's PQescapeStringConn])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  AC_MSG_CHECKING([for Postgres's PQgetssl])
+  AC_TRY_LINK(
+    [
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <libpq-fe.h>
+    ],
+    [
+      const PGconn *pg = NULL;
+      (void) PQgetssl(pg);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_POSTGRES_PQGETSSL, 1, [Define if you have Postgres's PQgetssl])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  # restore CPPFLAGS, LDFLAGS
+  CPPFLAGS="$saved_cppflags"
+  LDFLAGS="$saved_ldflags"
+
+  AC_MSG_CHECKING([for Postgres's PQinitOpenSSL])
+  AC_TRY_LINK(
+    [
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <libpq-fe.h>
+    ],
+    [
+      int init_ssl = 0, init_crypto = 0;
+      PQinitOpenSSL(init_ssl, init_crypto);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_POSTGRES_PQINITOPENSSL, 1, [Define if you have Postgres's PQinitOpenSSL])
     ],
     [
       AC_MSG_RESULT(no)
