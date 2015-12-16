@@ -995,6 +995,9 @@
  */
 #undef PR_USE_OPENSSL_NPN
 
+/* Define if OpenSSL OCSP support, if available, should be used.  */
+#undef PR_USE_OPENSSL_OCSP
+
 /* Define if using PCRE support.  */
 #undef PR_USE_PCRE
 

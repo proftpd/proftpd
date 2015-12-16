@@ -56,7 +56,9 @@
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 # include <openssl/engine.h>
-# include <openssl/ocsp.h>
+# ifdef PR_USE_OPENSSL_OCSP
+#  include <openssl/ocsp.h>
+# endif /* PR_USE_OPENSSL_OCSP */
 #endif
 #ifdef PR_USE_OPENSSL_ECC
 # include <openssl/ec.h>
@@ -67,11 +69,11 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.6.1"
+#define MOD_TLS_VERSION		"mod_tls/2.7"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030504 
-# error "ProFTPD 1.3.5rc4 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030602
+# error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
 extern session_t session;
@@ -401,6 +403,9 @@ static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
+#if defined(PR_USE_OPENSSL_OCSP)
+static int tls_stapling = FALSE;
+#endif
 
 static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_TIMEOUT		10
@@ -2807,6 +2812,44 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
   return SSL_TLSEXT_ERR_OK;
 }
 #endif /* !OPENSSL_NO_TLSEXT */
+
+#if defined(PR_USE_OPENSSL_OCSP)
+static int tls_ocsp_cb(SSL *ssl, void *user_data) {
+  OCSP_RESPONSE *resp;
+  int resp_derlen;
+  unsigned char *resp_der = NULL;
+
+  if (tls_stapling == FALSE) {
+    /* OCSP stapling disabled; do nothing. */
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  /* XXX For now, always send a fake "tryLater" response.
+   *
+   * Note that as the implementation progresses, this generation of the
+   * fake tryLater response should be pushed into the wrapper/cache provider
+   * interface, rather than being here.  But NOT in the cache providers
+   * themselves.  That way, we ALWAYS get an OCSP response, when we call the
+   * cache provider APIs from here.
+   */
+  resp = OCSP_response_create(OCSP_RESPONSE_STATUS_TRYLATER, NULL);
+  resp_derlen = i2d_OCSP_RESPONSE(resp, &resp_der);
+
+  /* Success or failure, now that we're done with the OCSP response,
+   * free it up.  (What are the ramifications for this for the OCSP cache
+   * providers?)
+   */
+  OCSP_RESPONSE_free(resp);
+
+  if (resp_derlen <= 0) {
+    tls_log("error determining OCSP response length: %s", tls_get_errors());
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  SSL_set_tlsext_status_ocsp_resp(ssl, resp_der, resp_derlen);
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* PR_USE_OPENSSL_OCSP */
 
 #if defined(PR_USE_OPENSSL_ECC)
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
@@ -6270,7 +6313,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   return ok;
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && defined(PR_USE_OPENSSL_OCSP)
 static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     const char *url) {
   BIO *conn;
@@ -6765,7 +6808,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 #endif
 
 static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && defined(PR_USE_OPENSSL_OCSP)
   register unsigned int i;
   X509 *cert;
   const char *subj;
@@ -9132,7 +9175,7 @@ MODRET set_tlseccertfile(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", (char *) cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have EC support", NULL));
+    "does not have EC support", NULL));
 #endif /* PR_USE_OPENSSL_ECC */
 }
 
@@ -9165,7 +9208,7 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", (char *) cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have EC support", NULL));
+    "does not have EC support", NULL));
 #endif /* PR_USE_OPENSSL_ECC */
 }
 
@@ -9213,7 +9256,7 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have EC support", NULL));
+    "does not have EC support", NULL));
 #endif /* PR_USE_OPENSSL_ECC */
 }
 
@@ -9293,7 +9336,7 @@ MODRET set_tlsnextprotocol(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have NPN/ALPN support", NULL));
+    "does not have NPN/ALPN support", NULL));
 #endif /* !OPENSSL_NO_TLSEXT */
 }
 
@@ -9663,10 +9706,11 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "required") == 0) {
-      int bool = get_boolean(cmd, i+1);
+      int required;
 
-      if (bool != -1) {
-        *((unsigned char *) c->argv[3]) = bool;
+      required = get_boolean(cmd, i+1);
+      if (required != -1) {
+        *((unsigned char *) c->argv[3]) = required;
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
@@ -9703,7 +9747,7 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 
 /* usage: TLSRequired on|off|both|control|ctrl|[!]data|auth|auth+data */
 MODRET set_tlsrequired(cmd_rec *cmd) {
-  int bool = -1;
+  int required = -1;
   int on_auth = 0, on_ctrl = 0, on_data = 0;
   config_rec *c = NULL;
 
@@ -9711,8 +9755,8 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
     CONF_DYNDIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  required = get_boolean(cmd, 1);
+  if (required == -1) {
     if (strcmp(cmd->argv[1], "control") == 0 ||
         strcmp(cmd->argv[1], "ctrl") == 0) {
       on_auth = 1;
@@ -9750,7 +9794,7 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
       CONF_ERROR(cmd, "bad parameter");
 
   } else {
-    if (bool == TRUE) {
+    if (required == TRUE) {
       on_auth = 1;
       on_ctrl = 1;
       on_data = 1;
@@ -9826,7 +9870,7 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
 
 /* usage: TLSServerCipherPreference on|off */
 MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
-  int bool = -1;
+  int use_server_prefs = -1;
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
   config_rec *c = NULL;
 #endif
@@ -9834,15 +9878,15 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  use_server_prefs = get_boolean(cmd, 1);
+  if (use_server_prefs == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = use_server_prefs;
 
 #else
   pr_log_debug(DEBUG0,
@@ -9924,6 +9968,32 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSStapling on|off */
+MODRET set_tlsstapling(cmd_rec *cmd) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  int stapling = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  stapling = get_boolean(cmd, 1);
+  if (stapling == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = stapling;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does not have OCSP support", NULL));
+#endif /* PR_USE_OPENSSL_OCSP */
+}
+
 /* usage: TLSTimeoutHandshake <secs> */
 MODRET set_tlstimeouthandshake(cmd_rec *cmd) {
   int timeout = -1;
@@ -9974,19 +10044,20 @@ MODRET set_tlsusername(cmd_rec *cmd) {
 
 /* usage: TLSVerifyClient on|off */
 MODRET set_tlsverifyclient(cmd_rec *cmd) {
-  int bool = -1;
+  int verify_client = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  verify_client = get_boolean(cmd, 1);
+  if (verify_client == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = verify_client;
 
   return PR_HANDLED(cmd);
 }
@@ -11010,6 +11081,11 @@ static int tls_sess_init(void) {
   SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
 #endif /* !OPENSSL_NO_TLSEXT */
 
+#if defined(PR_USE_OPENSSL_OCSP)
+  SSL_CTX_set_tlsext_status_cb(ssl_ctx, tls_ocsp_cb);
+  SSL_CTX_set_tlsext_status_arg(ssl_ctx, NULL);
+#endif /* PR_USE_OPENSSL_OCSP */
+
 #ifdef PR_USE_OPENSSL_ECC
 # if defined(SSL_CTX_set_ecdh_auto)
   if (tls_opts & TLS_OPT_NO_AUTO_ECDH) {
@@ -11066,14 +11142,21 @@ static int tls_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSRequired", FALSE);
-  if (c) {
+  if (c != NULL) {
     tls_required_on_ctrl = *((int *) c->argv[0]);
     tls_required_on_data = *((int *) c->argv[1]);
     tls_required_on_auth = *((int *) c->argv[2]);
   }
 
+#if defined(PR_USE_OPENSSL_OCSP)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSStapling", FALSE);
+  if (c != NULL) {
+    tls_stapling = *((int *) c->argv[0]);
+  }
+#endif /* PR_USE_OPENSSL_OCSP */
+
   c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake", FALSE);
-  if (c) {
+  if (c != NULL) {
     tls_handshake_timeout = *((unsigned int *) c->argv[0]);
   }
 
@@ -11374,6 +11457,7 @@ static conftable tls_conftab[] = {
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
   { "TLSServerCipherPreference",set_tlsservercipherpreference,NULL },
   { "TLSSessionCache",		set_tlssessioncache,	NULL },
+  { "TLSStapling",		set_tlsstapling,	NULL },
   { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
   { "TLSUserName",		set_tlsusername,	NULL },
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
