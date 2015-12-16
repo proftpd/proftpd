@@ -2219,7 +2219,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-      pr_log_auth(PR_LOG_NOTICE, "Connection refused (MaxHostsPerHost %u)",
+      pr_log_auth(PR_LOG_NOTICE, "Connection refused (MaxHostsPerUser %u)",
         *max);
       pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
         "Denied by MaxHostsPerUser");
