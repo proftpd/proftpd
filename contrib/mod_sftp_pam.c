@@ -27,7 +27,7 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * -----DO NOT EDIT BELOW THIS LINE-----
- * $Libraries: -lpam $
+ * $Libraries: -lpam$
  */
 
 #include "conf.h"

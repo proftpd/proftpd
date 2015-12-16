@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Libraries: -lm -lpq $
+ * $Libraries: -lm -lpq$
  */
 
 /* Internal define used for debug and logging.  All backends are encouraged

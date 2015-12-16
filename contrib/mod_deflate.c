@@ -25,7 +25,7 @@
  * This is mod_deflate, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Libraries: -lz $
+ * $Libraries: -lz$
  */
 
 #include <zlib.h>
