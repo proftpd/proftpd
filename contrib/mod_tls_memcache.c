@@ -676,7 +676,7 @@ static int tls_mcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 
   /* Configure a namespace prefix for our memcached keys. */
   if (pr_memcache_conn_set_namespace(mcache, &tls_memcache_module,
-      "mod_tls_memcache.") < 0) {
+      "mod_tls_memcache.sessions.") < 0) {
     pr_trace_msg(trace_channel, 2, 
       "error setting memcache namespace prefix: %s", strerror(errno));
   }
