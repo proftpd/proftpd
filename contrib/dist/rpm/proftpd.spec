@@ -118,8 +118,8 @@ BuildRequires: openssl-devel
 BuildRequires: /usr/include/tcpd.h
 %endif
 
-# Assume init is systemd if /run/lock exists, else SysV
-%global use_systemd %([ -d /run/lock ] && echo 1 || echo 0)
+# Assume init is systemd if /run/console exists, else SysV
+%global use_systemd %([ -d /run/console ] && echo 1 || echo 0)
 
 # rundir is /run/proftpd under systemd, else %%{_localstatedir}/run/proftpd
 %if %{use_systemd}
@@ -354,10 +354,14 @@ install -p -m 644 contrib/dist/rpm/proftpd.pam %{buildroot}/etc/pam.d/proftpd
 install -m 644 contrib/dist/rpm/basic-pam.conf %{buildroot}/etc/proftpd.conf
 
 %if %{use_systemd}
-# Systemd unit file
+# Systemd unit files
 mkdir -p %{buildroot}%{_unitdir}
 install -p -m 644 contrib/dist/rpm/proftpd.service \
     %{buildroot}%{_unitdir}/proftpd.service
+install -p -m 644 contrib/dist/systemd/proftpd@.service \
+    %{buildroot}%{_unitdir}/proftpd@.service
+install -p -m 644 contrib/dist/systemd/proftpd.socket \
+    %{buildroot}%{_unitdir}/proftpd.socket
 # Ensure /run/proftpd exists
 mkdir -p %{buildroot}%{_sysconfdir}/tmpfiles.d
 install -p -m 644 contrib/dist/rpm/proftpd-tmpfs.conf \
@@ -482,6 +486,8 @@ rm -rf %{_builddir}/%{name}-%{version}
 %dir %{_localstatedir}/ftp/pub/
 %if %{use_systemd}
 %{_unitdir}/proftpd.service
+%{_unitdir}/proftpd@.service
+%{_unitdir}/proftpd.socket
 %{_sysconfdir}/tmpfiles.d/proftpd.conf
 %else
 %{_sysconfdir}/rc.d/init.d/proftpd
@@ -493,10 +499,11 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) %{_sysconfdir}/logrotate.d/proftpd
 %config(noreplace) %{_sysconfdir}/xinetd.d/proftpd
 
-%doc COPYING CREDITS ChangeLog NEWS README RELEASE_NOTES
+%doc COPYING CREDITS ChangeLog NEWS README.md RELEASE_NOTES
 %doc README.DSO README.modules README.IPv6 README.PAM
 %doc README.capabilities README.classes README.controls README.facl
 %doc contrib/README.contrib contrib/README.ratio
+%doc contrib/dist/systemd/README.systemd
 %doc doc/* sample-configurations/
 %{_mandir}/man5/proftpd.conf.5*
 %{_mandir}/man5/xferlog.5*
@@ -548,6 +555,12 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_mandir}/man1/ftpwho.1*
 
 %changelog
+* Fri Dec 11 2015 Paul Howarth <paul@city-fan.org>
+- Include systemd unit files for native inetd operation (bug 3661)
+- Use /run/console rather than /run/lock for systemd detection, because the
+  'mock' build tool may create /run/lock itself
+- Fix bogus dates in spec changelog
+
 * Fri Jun 28 2013 Paul Howarth <paul@city-fan.org>
 - Support arbitrary tarball compression types using %%{srcext} macro
 - Package proftpd.conf manpage
@@ -575,7 +588,7 @@ rm -rf %{_builddir}/%{name}-%{version}
   - Create new utils subpackage
   - Lots of minor fixes
 
-* Mon Sep 11 2007 Philip Prindeville <philipp_subx@redfish-solutions.com>
+* Mon Sep 10 2007 Philip Prindeville <philipp_subx@redfish-solutions.com>
 - Cleaned up the .spec file to work with more recent releases of RPM.  Moved
   header files into separate component.
 
@@ -619,16 +632,16 @@ rm -rf %{_builddir}/%{name}-%{version}
   For details see http://bugs.proftpd.org/show_bug.cgi?id=1048
 - release: 1.2.1-2
 
-* Wed Mar 01 2001 Daniel Roesen <droesen@entire-systems.com>
+* Thu Mar 01 2001 Daniel Roesen <droesen@entire-systems.com>
 - Update to 1.2.1
 - release: 1.2.1-1
 
-* Wed Feb 27 2001 Daniel Roesen <droesen@entire-systems.com>
+* Tue Feb 27 2001 Daniel Roesen <droesen@entire-systems.com>
 - added "Obsoletes: proftpd-core" to make migration to new RPMs easier.
   Thanks to Sébastien Prud'homme <prudhomme@easy-flying.com> for the hint.
 - release: 1.2.0-3
 
-* Wed Feb 26 2001 Daniel Roesen <droesen@entire-systems.com>
+* Mon Feb 26 2001 Daniel Roesen <droesen@entire-systems.com>
 - cleaned up .spec formatting (cosmetics)
 - fixed CFLAGS (fixes /etc/shadow support)
 - included COPYING, CREDITS, ChangeLog and NEWS
@@ -641,7 +654,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 - removed /ftp/ftpusers from package management. Deinstalling ProFTPD
   should _not_ result in removal of this file.
 
-* Thu Oct 03 1999 O.Elliyasa <osman@Cable.EU.org>
+* Sun Oct 03 1999 O.Elliyasa <osman@Cable.EU.org>
 - Multi package creation.
   Created core, standalone, inetd (&doc) package creations.
   Added startup script for init.d
