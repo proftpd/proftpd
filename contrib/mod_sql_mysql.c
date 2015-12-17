@@ -23,7 +23,7 @@
  * the source distribution.
  *
  * -----DO NOT EDIT-----
- * $Libraries: -lm -lmysqlclient -lz $
+ * $Libraries: -lm -lmysqlclient -lz$
  */
 
 /* INTRO:

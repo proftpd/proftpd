@@ -95,11 +95,19 @@ static struct sftp_cipher ciphers[] = {
   { "aes128-cbc",	"aes-128-cbc",	0,	EVP_aes_128_cbc, TRUE, TRUE },
 #endif
 
+#if !defined(OPENSSL_NO_BF)
   { "blowfish-ctr",	NULL,		0,	NULL,	TRUE, FALSE },
   { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc, TRUE, FALSE },
+#endif /* !OPENSSL_NO_BF */
+
+#if !defined(OPENSSL_NO_CAST)
   { "cast128-cbc",	"cast5-cbc",	0,	EVP_cast5_cbc, TRUE, FALSE },
+#endif /* !OPENSSL_NO_CAST */
+
+#if !defined(OPENSSL_NO_RC4)
   { "arcfour256",	"rc4",		1536,	EVP_rc4, TRUE, FALSE },
   { "arcfour128",	"rc4",		1536,	EVP_rc4, TRUE, FALSE },
+#endif /* !OPENSSL_NO_RC4 */
 
 #if 0
   /* This cipher is explicitly NOT supported because it does not discard
@@ -112,8 +120,11 @@ static struct sftp_cipher ciphers[] = {
   { "arcfour",		"rc4",		0,	EVP_rc4, FALSE, FALSE },
 #endif
 
+#if !defined(OPENSSL_NO_DES)
   { "3des-ctr",		NULL,		0,	NULL, TRUE, TRUE },
   { "3des-cbc",		"des-ede3-cbc",	0,	EVP_des_ede3_cbc, TRUE, TRUE },
+#endif /* !OPENSSL_NO_DES */
+
   { "none",		"null",		0,	EVP_enc_null, FALSE, TRUE },
   { NULL, NULL, 0, NULL, FALSE, FALSE }
 };
@@ -155,7 +166,9 @@ static struct sftp_digest digests[] = {
   { "hmac-sha1-96",	"sha1",		EVP_sha1,	12,	TRUE, TRUE },
   { "hmac-md5",		"md5",		EVP_md5,	0,	TRUE, FALSE },
   { "hmac-md5-96",	"md5",		EVP_md5,	12,	TRUE, FALSE },
+#if !defined(OPENSSL_NO_RIPEMD)
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	TRUE, FALSE },
+#endif /* !OPENSSL_NO_RIPEMD */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
   { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
@@ -181,6 +194,7 @@ static void ctr_incr(unsigned char *ctr, size_t len) {
   }
 }
 
+#if !defined(OPENSSL_NO_BF)
 /* Blowfish CTR mode implementation */
 
 struct bf_ctr_ex {
@@ -317,9 +331,11 @@ static const EVP_CIPHER *get_bf_ctr_cipher(void) {
 
   return &bf_ctr_cipher;
 }
+#endif /* !OPENSSL_NO_BF */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 
+# if !defined(OPENSSL_NO_DES)
 /* 3DES CTR mode implementation */
 
 struct des3_ctr_ex {
@@ -469,6 +485,7 @@ static const EVP_CIPHER *get_des3_ctr_cipher(void) {
 
   return &des3_ctr_cipher;
 }
+# endif /* !OPENSSL_NO_DES */
 
 /* AES CTR mode implementation */
 struct aes_ctr_ex {
@@ -769,11 +786,25 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
       const EVP_CIPHER *cipher;
 
       if (strncmp(name, "blowfish-ctr", 13) == 0) {
+#if !defined(OPENSSL_NO_BF)
         cipher = get_bf_ctr_cipher();
+#else
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "'%s' cipher unsupported", name);
+        errno = ENOENT;
+        return NULL;
+#endif /* !OPENSSL_NO_BF */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
       } else if (strncmp(name, "3des-ctr", 9) == 0) {
+# if !defined(OPENSSL_NO_DES)
         cipher = get_des3_ctr_cipher();
+# else
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "'%s' cipher unsupported", name);
+        errno = ENOENT;
+        return NULL;
+# endif /* !OPENSSL_NO_DES */
 
       } else if (strncmp(name, "aes256-ctr", 11) == 0) {
         cipher = get_aes_ctr_cipher(32);
@@ -802,8 +833,9 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
         }
       }
 
-      if (discard_len)
+      if (discard_len) {
         *discard_len = ciphers[i].discard_len;
+      }
 
       return cipher;
     }
@@ -811,6 +843,7 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "no cipher matching '%s' found", name);
+  errno = ENOENT;
   return NULL;
 }
 
