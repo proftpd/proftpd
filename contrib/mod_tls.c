@@ -2416,15 +2416,15 @@ static int tls_get_passphrase(server_rec *s, const char *path,
 #endif
 
 #ifdef HAVE_MLOCK
-     PRIVS_ROOT
-     if (mlock(buf, bufsz) < 0) {
-       pr_log_debug(DEBUG1, MOD_TLS_VERSION
-         ": error locking passphrase into memory: %s", strerror(errno));
+    PRIVS_ROOT
+    if (mlock(buf, bufsz) < 0) {
+      pr_log_debug(DEBUG1, MOD_TLS_VERSION
+        ": error locking passphrase into memory: %s", strerror(errno));
 
-     } else {
-       pr_log_debug(DEBUG1, MOD_TLS_VERSION ": passphrase locked into memory");
-     }
-     PRIVS_RELINQUISH
+    } else {
+      pr_log_debug(DEBUG1, MOD_TLS_VERSION ": passphrase locked into memory");
+    }
+    PRIVS_RELINQUISH
 #endif
   }
 
@@ -2586,6 +2586,8 @@ static void tls_scrub_pkeys(void) {
   }
 
   if (passphrase_count == 0) {
+    tls_pkey_list = NULL;
+    tls_npkeys = 0;
     return;
   }
 
@@ -11827,8 +11829,9 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
     tls_data_netio = NULL;
   }
 
-  if (mpid != getpid())
+  if (mpid != getpid()) {
     tls_scrub_pkeys();
+  }
 
   tls_closelog();
   return;
