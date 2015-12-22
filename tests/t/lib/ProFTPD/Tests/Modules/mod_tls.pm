@@ -10267,11 +10267,8 @@ sub tls_stapling_on_fscache_bug4175 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'tls');
 
-#  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
-#  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
-my $cert_file = '/Users/tj/kiban/sre/certificates/dev/afero-dev-2015-11-24.crt';
-my $key_file = '/Users/tj/kiban/sre/certificates/dev/afero-dev-2015-11-24.key';
-my $ca_file = '/Users/tj/kiban/sre/certificates/dev/afero-dev-2015-11-24-DigiCertCA.crt';
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $cache_tab = File::Spec->rel2abs("$tmpdir/var/tls/cache/ocsp");
   mkpath($cache_tab);
@@ -10297,7 +10294,6 @@ my $ca_file = '/Users/tj/kiban/sre/certificates/dev/afero-dev-2015-11-24-DigiCer
         TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
-TLSRSACertificateKeyFile => $key_file,
         TLSCACertificateFile => $ca_file,
         TLSOptions => 'EnableDiags',
         TLSStapling => 'on',
