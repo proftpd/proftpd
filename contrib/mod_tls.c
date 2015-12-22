@@ -3041,7 +3041,7 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
 
 #if defined(PR_USE_OPENSSL_OCSP)
 static OCSP_RESPONSE *ocsp_send_request(pool *p, BIO *bio, const char *host,
-    const char *uri, OCSP_REQUEST *req) {
+    const char *uri, OCSP_REQUEST *req, unsigned int request_timeout) {
   int fd, res;
   OCSP_RESPONSE *resp = NULL;
   OCSP_REQ_CTX *ctx = NULL;
@@ -3139,10 +3139,14 @@ static OCSP_RESPONSE *ocsp_send_request(pool *p, BIO *bio, const char *host,
       break;
     }
 
+    if (request_timeout == 0) {
+      break;
+    }
+
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
     tv.tv_usec = 0;
-    tv.tv_sec = tls_stapling_timeout;
+    tv.tv_sec = request_timeout;
 
     if (BIO_should_read(bio)) {
       res = select(fd + 1, (void *) &fds, NULL, NULL, &tv);
@@ -3267,17 +3271,9 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
   return issuer;
 }
 
-static OCSP_REQUEST *ocsp_get_request(pool *p, X509 *cert, X509 *issuer,
-    SSL *ssl) {
+static OCSP_REQUEST *ocsp_get_request(pool *p, X509 *cert, X509 *issuer) {
   OCSP_REQUEST *req = NULL;
   OCSP_CERTID *cert_id = NULL;
-
-  if (issuer == NULL) {
-    issuer = ocsp_get_issuing_cert(p, cert, ssl);
-    if (issuer == NULL) {
-      return NULL;
-    }
-  }
 
   req = OCSP_REQUEST_new();
   if (req == NULL) {
@@ -3329,19 +3325,12 @@ static OCSP_REQUEST *ocsp_get_request(pool *p, X509 *cert, X509 *issuer,
   return req;
 }
 
-static int ocsp_check_cert_status(pool *p, X509 *cert, SSL *ssl,
-    OCSP_BASICRESP *basic_resp) {
+static int ocsp_check_cert_status(pool *p, X509 *cert, X509 *issuer,
+    OCSP_BASICRESP *basic_resp, int *ocsp_status, int *ocsp_reason) {
   int res, status, reason;
-  X509 *issuer;
   OCSP_CERTID *cert_id = NULL;
   ASN1_GENERALIZEDTIME *this_update = NULL, *next_update = NULL,
     *revoked_at = NULL;
-
-  issuer = ocsp_get_issuing_cert(p, cert, ssl);
-  if (issuer == NULL) {
-    errno = EPERM;
-    return -1;
-  }
 
   cert_id = OCSP_cert_to_id(NULL, cert, issuer);
   if (cert_id == NULL) {
@@ -3368,7 +3357,8 @@ static int ocsp_check_cert_status(pool *p, X509 *cert, SSL *ssl,
 
   OCSP_CERTID_free(cert_id);
 
-  res = OCSP_check_validity(this_update, next_update, 300, -1);
+  res = OCSP_check_validity(this_update, next_update,
+    TLS_OCSP_RESP_MAX_AGE_SECS, -1);
   if (res != 1) {
     pr_trace_msg(trace_channel, 3,
       "failed time-based validity check of OCSP response: %s",
@@ -3392,26 +3382,24 @@ static int ocsp_check_cert_status(pool *p, X509 *cert, SSL *ssl,
     }
   }
 
+  if (ocsp_status != NULL) {
+    *ocsp_status = status;
+  }
+
+  if (ocsp_reason != NULL) {
+    *ocsp_reason = reason;
+  }
+
   return 0;
 }
 
 static int ocsp_check_response(pool *p, X509 *cert, X509 *issuer, SSL *ssl,
     OCSP_REQUEST *req, OCSP_RESPONSE *resp) {
-  int flags = 0, res = 0;
+  int flags = 0, res = 0, resp_status;
   OCSP_BASICRESP *basic_resp = NULL;
   SSL_CTX *ctx = NULL;
   X509_STORE *store = NULL;
   STACK_OF(X509) *chain = NULL;
-
-  res = OCSP_response_status(resp);
-  if (res != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-    pr_trace_msg(trace_channel, 3,
-      "OCSP response not successful: %s (%d)", OCSP_response_status_str(res),
-      res);
-
-    errno = EINVAL;
-    return -1;
-  }
 
   ctx = SSL_get_SSL_CTX(ssl);
   if (ctx == NULL) {
@@ -3503,49 +3491,72 @@ static int ocsp_check_response(pool *p, X509 *cert, X509 *issuer, SSL *ssl,
     sk_X509_free(chain);
   }
 
-  res = ocsp_check_cert_status(p, cert, ssl, basic_resp);
+  /* Now that we have verified the response, we can check the response status.
+   * If we only looked at the status first, then a malicious responder
+   * could be tricking us, e.g.:
+   *
+   *  http://www.thoughtcrime.org/papers/ocsp-attack.pdf
+   */
+
+  resp_status = OCSP_response_status(resp);
+  if (resp_status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    pr_trace_msg(trace_channel, 3,
+      "OCSP response not successful: %s (%d)",
+      OCSP_response_status_str(resp_status), resp_status);
+
+    OCSP_BASICRESP_free(basic_resp);
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = ocsp_check_cert_status(p, cert, issuer, basic_resp, NULL, NULL);
   OCSP_BASICRESP_free(basic_resp);
 
   return res;
 }
 
-static int ocsp_connect(pool *p, BIO *bio) {
+static int ocsp_connect(pool *p, BIO *bio, unsigned int request_timeout) {
   int fd, res;
-  struct timeval tv;
-  fd_set fds;
 
-  BIO_set_nbio(bio, 1);
+  if (request_timeout > 0) {
+    BIO_set_nbio(bio, 1);
+  }
 
   res = BIO_do_connect(bio);
   if (res <= 0 &&
-      !BIO_should_retry(bio)) {
+      (request_timeout == 0 || !BIO_should_retry(bio))) {
     pr_trace_msg(trace_channel, 4,
       "error connecting to OCSP responder: %s", tls_get_errors());
     return -1;
   }
 
-  res = BIO_get_fd(bio, &fd);
-  if (res <= 0) {
+  if (BIO_get_fd(bio, &fd) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error obtaining OCSP responder socket fd: %s", tls_get_errors());
     return -1;
   }
 
-  FD_ZERO(&fds);
-  FD_SET(fd, &fds);
-  tv.tv_usec = 0;
-  tv.tv_sec = tls_stapling_timeout;
-  res = select(fd + 1, NULL, (void *) &fds, NULL, &tv);
-  if (res == 0) {
-    errno = ETIMEDOUT;
-    return -1;
+  if (request_timeout > 0 &&
+      res <= 0) {
+    struct timeval tv;
+    fd_set fds;
+
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    tv.tv_usec = 0;
+    tv.tv_sec = request_timeout;
+    res = select(fd + 1, NULL, (void *) &fds, NULL, &tv);
+    if (res == 0) {
+      errno = ETIMEDOUT;
+      return -1;
+    }
   }
 
   return 0;
 }
 
 static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
-    const char *url) {
+    const char *url, unsigned int request_timeout) {
   BIO *bio;
   SSL_CTX *ctx = NULL;
   X509 *issuer = NULL;
@@ -3625,7 +3636,7 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     bio = BIO_push(ssl_bio, bio);
   }
 
-  res = ocsp_connect(p, bio);
+  res = ocsp_connect(p, bio, request_timeout);
   if (res < 0) {
     BIO_free_all(bio);
     OPENSSL_free(host);
@@ -3634,7 +3645,7 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     return NULL;
   }
 
-  req = ocsp_get_request(p, cert, issuer, NULL);
+  req = ocsp_get_request(p, cert, issuer);
   if (req == NULL) {
     BIO_free_all(bio);
     OPENSSL_free(host);
@@ -3643,7 +3654,7 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     return NULL;
   }
 
-  resp = ocsp_send_request(p, bio, host, uri, req);
+  resp = ocsp_send_request(p, bio, host, uri, req, request_timeout);
 
   OPENSSL_free(host);
   OPENSSL_free(port);
@@ -3828,7 +3839,8 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
                 "found OCSP responder URL '%s' in certificate "
                 "(fingerprint '%s')", ocsp_url, fingerprint);
 
-              fresh_resp = ocsp_request_response(p, cert, ssl, ocsp_url);
+              fresh_resp = ocsp_request_response(p, cert, ssl, ocsp_url,
+                tls_stapling_timeout);
               if (fresh_resp != NULL) {
                 resp = fresh_resp;
               }
@@ -7413,14 +7425,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   X509_NAME *subj = NULL;
   const char *subj_name;
   char *host = NULL, *port = NULL, *uri = NULL;
-  int ok = FALSE, res = 0 , use_ssl = 0, ocsp_status, ocsp_cert_status,
-    ocsp_reason;
+  int ok = FALSE, res = 0 , use_ssl = 0;
+  int ocsp_status, ocsp_cert_status, ocsp_reason;
   OCSP_REQUEST *req = NULL;
-  OCSP_CERTID *cert_id = NULL;
   OCSP_RESPONSE *resp = NULL;
   OCSP_BASICRESP *basic_resp = NULL;
   SSL_CTX *ocsp_ssl_ctx = NULL;
-  ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
 
   if (cert == NULL ||
       url == NULL) {
@@ -7441,20 +7451,10 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 
   if (port == NULL) {
     if (use_ssl == 1) {
-#ifdef OPENSSL_strdup
       port = OPENSSL_strdup("443");
-#else
-      port = OPENSSL_malloc(4);
-      sstrncpy(port, "443", 3);
-#endif /* OPENSSL_strdup */
 
     } else {
-#ifdef OPENSSL_strdup
       port = OPENSSL_strdup("80");
-#else
-      port = OPENSSL_malloc(3);
-      sstrncpy(port, "80", 2);
-#endif /* OPENSSL_strdup */
     }
   }
 
@@ -7496,8 +7496,8 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     }
   }
 
-  res = BIO_do_connect(conn);
-  if (res != 1) {
+  res = ocsp_connect(session.pool, conn, 0);
+  if (res < 0) {
     tls_log("error connecting to OCSP URL '%s': %s", url, tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {
@@ -7539,53 +7539,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return FALSE;
   }
 
-  /* Note that the cert_id value will be freed when the request is freed. */
-  cert_id = OCSP_cert_to_id(NULL, cert, issuing_cert);
-  if (cert_id == NULL) {
-    const char *issuer_subj_name = tls_x509_name_oneline(
-      X509_get_subject_name(issuing_cert));
-
-    tls_log("error converting client cert '%s' and its issuing cert '%s' "
-      "to an OCSP cert ID: %s", subj_name, issuer_subj_name, tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  req = OCSP_REQUEST_new();
+  req = ocsp_get_request(session.pool, cert, issuing_cert);
   if (req == NULL) {
-    tls_log("unable to allocate OCSP request: %s", tls_get_errors());
-
     if (ocsp_ssl_ctx != NULL) {
       SSL_CTX_free(ocsp_ssl_ctx);
     }
 
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  if (OCSP_request_add0_id(req, cert_id) == NULL) {
-    tls_log("error adding cert ID to OCSP request: %s", tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_REQUEST_free(req);
     X509_free(issuing_cert);
     BIO_free_all(conn);
     OPENSSL_free(host);
@@ -7618,24 +7577,6 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   }
 # endif
 
-  res = OCSP_request_add1_nonce(req, NULL, 0);
-  if (res != 1) {
-    tls_log("error adding nonce to OCSP request: %s", tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_REQUEST_free(req);
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
   if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
     BIO *bio;
 
@@ -7656,8 +7597,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     }
   }
 
-  resp = OCSP_sendreq_bio(conn, uri, req);
-
+  resp = ocsp_send_request(session.pool, conn, host, uri, req, 0);
   if (resp == NULL) {
     tls_log("error receiving response from OCSP responder at '%s': %s", url,
       tls_get_errors());
@@ -7708,27 +7648,6 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
       SSL_CTX_free(ocsp_ssl_ctx);
     }
 
-    OCSP_RESPONSE_free(resp);
-    OCSP_REQUEST_free(req);
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  res = OCSP_check_nonce(req, basic_resp);
-  if (res != 1) {
-    tls_log("unable to use response from OCSP responder at '%s': bad nonce",
-      url);
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_BASICRESP_free(basic_resp);
     OCSP_RESPONSE_free(resp);
     OCSP_REQUEST_free(req);
     X509_free(issuing_cert);
@@ -7809,32 +7728,9 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return ok;
   }
 
-  res = OCSP_resp_find_status(basic_resp, cert_id, &ocsp_cert_status,
-    &ocsp_reason, &revtime, &thisupd, &nextupd);
-  if (res != 1) {
+  if (ocsp_check_cert_status(session.pool, cert, issuing_cert, basic_resp,
+      &ocsp_cert_status, &ocsp_reason) < 0) {
     tls_log("unable to retrieve cert status from OCSP response: %s",
-      tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_REQUEST_free(req);
-    OCSP_BASICRESP_free(basic_resp);
-    OCSP_RESPONSE_free(resp);
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  /* Check the validity of the timestamps on the response. */
-  res = OCSP_check_validity(thisupd, nextupd, TLS_OCSP_RESP_MAX_AGE_SECS, -1);
-  if (res != 1) {
-    tls_log("unable validate OCSP response timestamps: %s",
       tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {
