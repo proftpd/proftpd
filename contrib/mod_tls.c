@@ -3054,7 +3054,7 @@ static OCSP_RESPONSE *ocsp_send_request(pool *p, BIO *bio, const char *host,
     return NULL;
   }
 
-  ctx = OCSP_sendreq_new(bio, uri, NULL, -1);
+  ctx = OCSP_sendreq_new(bio, (char *) uri, NULL, -1);
   if (ctx == NULL) {
     pr_trace_msg(trace_channel, 4,
       "error allocating OCSP request context: %s", tls_get_errors());
@@ -8287,9 +8287,11 @@ struct tls_ocache {
   tls_ocsp_cache_t *cache;
 };
 
+#if defined(PR_USE_OPENSSL_OCSP)
 static pool *tls_ocsp_cache_pool = NULL;
 static struct tls_ocache *tls_ocsp_caches = NULL;
 static unsigned int tls_ocsp_ncaches = 0;
+#endif /* PR_USE_OPENSSL_OCSP */
 
 int tls_ocsp_cache_register(const char *name, tls_ocsp_cache_t *cache) {
 #if defined(PR_USE_OPENSSL_OCSP)
@@ -8633,8 +8635,73 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   return -1;
 }
 
+static int tls_handle_ocspcache_info(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int flags = 0, optc, res;
+  const char *opts = "v";
+
+  pr_getopt_reset();
+
+  while ((optc = getopt(reqargc, reqargv, opts)) != -1) {
+    switch (optc) {
+      case '?':
+        pr_ctrls_add_response(ctrl,
+          "tls ocspcache: unsupported parameter: '%s'", reqargv[1]);
+        return -1;
+    }
+  }
+
+  res = tls_ocsp_cache_status(ctrl, flags);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls ocspcache: error obtaining OCSP cache status: %s",
+      strerror(errno));
+
+  } else {
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_ocspcache_clear(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int res;
+
+  res = tls_ocsp_cache_clear();
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls ocspcache: error clearing OCSP cache: %s", strerror(errno));
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls ocspcache: cleared %d %s from '%s' "
+      "OCSP cache", res, res != 1 ? "responses" : "response",
+      tls_ocsp_cache->cache_name);
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_ocspcache_remove(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int res;
+
+  res = tls_ocsp_cache_remove();
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls ocspcache: error removing OCSP cache: %s", strerror(errno));
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls sesscache: removed '%s' OCSP cache",
+      tls_ocsp_cache->cache_name);
+    res = 0;
+  }
+
+  return res;
+}
+
 static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
-# if defined(PR_USE_OPENSSL_OCSP)
   /* Sanity check */
   if (reqargc == 0 ||
       reqargv == NULL) {
@@ -8676,10 +8743,6 @@ static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   pr_ctrls_add_response(ctrl, "tls ocspcache: unknown ocspcache action: '%s'",
     reqargv[0]);
   return -1;
-# else
-  pr_ctrls_add_response(ctrl, "%s", "tls ocspcache: unsupported action");
-  return -1;
-# endif /* PR_USE_OPENSSL_OCSP */
 }
 
 /* Our main ftpdctl action handler */
@@ -11432,6 +11495,7 @@ MODRET set_tlsstaplingcache(cmd_rec *cmd) {
 
 /* usage: TLSStaplingOptions opt1 opt2 ... */
 MODRET set_tlsstaplingoptions(cmd_rec *cmd) {
+#if defined(PR_USE_OPENSSL_OCSP)
   config_rec *c = NULL;
   register unsigned int i = 0;
   unsigned long opts = 0UL;
@@ -11459,6 +11523,7 @@ MODRET set_tlsstaplingoptions(cmd_rec *cmd) {
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+#endif /* PR_USE_OPENSSL_OCSP */
 
   return PR_HANDLED(cmd);
 }
