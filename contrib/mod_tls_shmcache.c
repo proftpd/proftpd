@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_shmcache -- a module which provides a shared SSL session
  *                              cache using SysV shared memory
  *
- * Copyright (c) 2009-2014 TJ Saunders
+ * Copyright (c) 2009-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,11 +38,11 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_SHMCACHE_VERSION		"mod_tls_shmcache/0.1"
+#define MOD_TLS_SHMCACHE_VERSION		"mod_tls_shmcache/0.2"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030301
-# error "ProFTPD 1.3.3rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030602
+# error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
 module tls_shmcache_module;
@@ -69,7 +69,7 @@ module tls_shmcache_module;
  * bytes (500KB).
  */
 
-struct shmcache_entry {
+struct sesscache_entry {
   time_t expires;
   unsigned int sess_id_len;
   unsigned char sess_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
@@ -83,7 +83,7 @@ struct shmcache_entry {
  * storing sessions which don't fit into the normal entry struct; this also
  * means that these large entries are NOT shared across processes.
  */
-struct shmcache_large_entry {
+struct sesscache_large_entry {
   time_t expires;
   unsigned int sess_id_len;
   unsigned char *sess_id;
@@ -94,7 +94,7 @@ struct shmcache_large_entry {
 /* The number of entries in the list is determined at run-time, based on
  * the maximum desired size of the shared memory segment.
  */
-struct shmcache_data {
+struct sesscache_data {
 
   /* Cache metadata. */
   unsigned int nhits;
@@ -123,41 +123,54 @@ struct shmcache_data {
   unsigned int sd_listlen, sd_listsz;
 
   /* It is important that this field be the last in the struct! */
-  struct shmcache_entry *sd_entries;
+  struct sesscache_entry *sd_entries;
 };
 
-static tls_sess_cache_t shmcache;
+static tls_sess_cache_t sess_cache;
+static struct sesscache_data *sesscache_data = NULL;
+static size_t sesscache_datasz = 0;
+static int sesscache_shmid = -1;
+static pr_fh_t *sesscache_fh = NULL;
 
-static struct shmcache_data *shmcache_data = NULL;
-static size_t shmcache_datasz = 0;
-static int shmcache_shmid = -1;
-static pr_fh_t *shmcache_fh = NULL;
-
-static array_header *shmcache_sess_list = NULL;
+static array_header *sesscache_sess_list = NULL;
 
 static const char *trace_channel = "tls.shmcache";
 
-static int shmcache_close(tls_sess_cache_t *);
+static int sess_cache_close(tls_sess_cache_t *);
 
-static const char *shmcache_get_crypto_errors(void) {
+static const char *shmcache_get_errors(void) {
   unsigned int count = 0;
-  unsigned long e = ERR_get_error();
+  unsigned long error_code;
   BIO *bio = NULL;
   char *data = NULL;
   long datalen;
-  const char *str = "(unknown)";
+  const char *error_data = NULL, *str = "(unknown)";
+  int error_flags = 0;
 
   /* Use ERR_print_errors() and a memory BIO to build up a string with
    * all of the error messages from the error queue.
    */
 
-  if (e)
+  error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
+  if (error_code) {
     bio = BIO_new(BIO_s_mem());
+  }
 
-  while (e) {
+  while (error_code) {
     pr_signals_handle();
-    BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
-    e = ERR_get_error();
+
+    if (error_flags & ERR_TXT_STRING) {
+      BIO_printf(bio, "\n  (%u) %s [%s]", ++count,
+        ERR_error_string(error_code, NULL), error_data);
+
+    } else {
+      BIO_printf(bio, "\n  (%u) %s", ++count,
+        ERR_error_string(error_code, NULL));
+    }
+
+    error_data = NULL;
+    error_flags = 0;
+    error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
   }
 
   datalen = BIO_get_mem_data(bio, &data);
@@ -166,8 +179,9 @@ static const char *shmcache_get_crypto_errors(void) {
     str = pstrdup(permanent_pool, data);
   }
 
-  if (bio)
+  if (bio != NULL) {
     BIO_free(bio);
+  }
 
   return str;
 }
@@ -211,7 +225,7 @@ static int shmcache_lock_shm(int lock_type) {
   lock.l_start = 0;
   lock.l_len = 0;
 
-  fd = PR_FH_FD(shmcache_fh);
+  fd = PR_FH_FD(sesscache_fh);
   lock_desc = shmcache_get_lock_desc(lock_type);
 
   pr_trace_msg(trace_channel, 9, "attempting to %s shmcache fd %d", lock_desc,
@@ -289,11 +303,11 @@ static unsigned int shmcache_hash(unsigned char *sess_id,
   return i;
 }
 
-static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
+static struct sesscache_data *sess_cache_get_shm(pr_fh_t *fh,
     size_t requested_size) {
   int rem, shmid, xerrno = 0;
   int shm_existed = FALSE;
-  struct shmcache_data *data = NULL;
+  struct sesscache_data *data = NULL;
   size_t shm_size;
   unsigned int shm_sess_max = 0;
   key_t key;
@@ -303,10 +317,10 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
    * calculate the shm segment size to allocate to hold that number of
    * sessions.  Round the segment size up to the nearest SHMLBA boundary.
    */
-  shm_sess_max = (requested_size - sizeof(struct shmcache_data)) /
-    (sizeof(struct shmcache_entry));
-  shm_size = sizeof(struct shmcache_data) +
-    (shm_sess_max * sizeof(struct shmcache_entry));
+  shm_sess_max = (requested_size - sizeof(struct sesscache_data)) /
+    (sizeof(struct sesscache_entry));
+  shm_size = sizeof(struct sesscache_data) +
+    (shm_sess_max * sizeof(struct sesscache_entry));
 
   rem = shm_size % SHMLBA;
   if (rem != 0) {
@@ -378,7 +392,7 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
     "attempting to attach to shm ID %d", shmid);
 
   PRIVS_ROOT
-  data = (struct shmcache_data *) shmat(shmid, NULL, 0);
+  data = (struct sesscache_data *) shmat(shmid, NULL, 0);
   xerrno = errno;
   PRIVS_RELINQUISH
 
@@ -444,7 +458,7 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
           ": remove existing shmcache using 'ftpdctl tls sesscache remove' "
           "before using new size");
 
-        shmcache_close(NULL);
+        sess_cache_close(NULL);
 
         errno = EINVAL;
         return NULL;
@@ -471,13 +485,13 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
     }
   }
 
-  shmcache_datasz = shm_size;
+  sesscache_datasz = shm_size;
 
-  shmcache_shmid = shmid;
+  sesscache_shmid = shmid;
   pr_trace_msg(trace_channel, 9,
-    "using shm ID %d for shmcache path '%s'", shmcache_shmid, fh->fh_path);
+    "using shm ID %d for sesscache path '%s'", sesscache_shmid, fh->fh_path);
 
-  data->sd_entries = (struct shmcache_entry *) (data + sizeof(struct shmcache_data));
+  data->sd_entries = (struct sesscache_entry *) (data + sizeof(struct sesscache_data));
   data->sd_listsz = shm_sess_max;
 
   return data;
@@ -489,7 +503,7 @@ static struct shmcache_data *shmcache_get_shm(pr_fh_t *fh,
  * NOTE: Callers are assumed to handle the locking of the shm before/after
  * calling this function!
  */
-static unsigned int shmcache_flush(void) {
+static unsigned int sess_cache_flush(void) {
   register unsigned int i;
   unsigned int flushed = 0;
   time_t now, next_expiring = 0;
@@ -497,12 +511,12 @@ static unsigned int shmcache_flush(void) {
   now = time(NULL);
 
   /* We always scan the in-memory large session entry list. */
-  if (shmcache_sess_list != NULL) {
-    struct shmcache_large_entry *entries;
+  if (sesscache_sess_list != NULL) {
+    struct sesscache_large_entry *entries;
 
-    entries = shmcache_sess_list->elts;
-    for (i = 0; i < shmcache_sess_list->nelts; i++) {
-      struct shmcache_large_entry *entry;
+    entries = sesscache_sess_list->elts;
+    for (i = 0; i < sesscache_sess_list->nelts; i++) {
+      struct sesscache_large_entry *entry;
 
       entry = &(entries[i]);
 
@@ -517,21 +531,21 @@ static unsigned int shmcache_flush(void) {
   /* If now is earlier than the earliest expiring session in the cache,
    * then a scan will be pointless.
    */
-  if (now < shmcache_data->next_expiring) {
+  if (now < sesscache_data->next_expiring) {
     unsigned int secs;
 
-    secs = shmcache_data->next_expiring - now;
+    secs = sesscache_data->next_expiring - now;
     tls_log("shmcache: no expired sessions to flush; %u secs to next "
       "expiration", secs);
     return 0;
   }
 
-  tls_log("shmcache: flushing cache of expired sessions");
+  tls_log("shmcache: flushing session cache of expired sessions");
 
-  for (i = 0; i < shmcache_data->sd_listsz; i++) {
-    struct shmcache_entry *entry;
+  for (i = 0; i < sesscache_data->sd_listsz; i++) {
+    struct sesscache_entry *entry;
 
-    entry = &(shmcache_data->sd_entries[i]);
+    entry = &(sesscache_data->sd_entries[i]);
     if (entry->expires > 0) {
       if (entry->expires > now) {
         if (entry->expires < next_expiring) {
@@ -544,17 +558,17 @@ static unsigned int shmcache_flush(void) {
         pr_memscrub(entry->sess_data, entry->sess_datalen);
 
         /* Don't forget to update the stats. */
-        shmcache_data->nexpired++;
+        sesscache_data->nexpired++;
 
-        if (shmcache_data->sd_listlen > 0) {
-          shmcache_data->sd_listlen--;
+        if (sesscache_data->sd_listlen > 0) {
+          sesscache_data->sd_listlen--;
         }
 
         flushed++;
       }
     }
 
-    shmcache_data->next_expiring = next_expiring;
+    sesscache_data->next_expiring = next_expiring;
   }
 
   tls_log("shmcache: flushed %u expired %s from cache", flushed,
@@ -562,10 +576,10 @@ static unsigned int shmcache_flush(void) {
   return flushed;
 }
 
-/* Cache implementation callbacks.
+/* SSL session cache implementation callbacks.
  */
 
-static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
+static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   int fd, xerrno;
   char *ptr;
   size_t requested_size;
@@ -611,8 +625,8 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
         size_t min_size;
 
         /* The bare minimum size MUST be able to hold at least one session. */
-        min_size = sizeof(struct shmcache_data) +
-          sizeof(struct shmcache_entry);
+        min_size = sizeof(struct sesscache_data) +
+          sizeof(struct sesscache_entry);
 
         if (size < min_size) {
           pr_trace_msg(trace_channel, 1,
@@ -655,18 +669,18 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
     return -1;
   }
 
-  /* If shmcache_fh is not null, then we are a restarted server.  And if
+  /* If sesscache_fh is not null, then we are a restarted server.  And if
    * the 'info' path does not match that previous fh, then the admin
    * has changed the configuration.
    *
    * For now, we complain about this, and tell the admin to manually remove
    * the old file/shm.
    */
-  if (shmcache_fh != NULL &&
-      strcmp(shmcache_fh->fh_path, info) != 0) {
+  if (sesscache_fh != NULL &&
+      strcmp(sesscache_fh->fh_path, info) != 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_SHMCACHE_VERSION
       ": file '%s' does not match previously configured file '%s'",
-      info, shmcache_fh->fh_path);
+      info, sesscache_fh->fh_path);
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_SHMCACHE_VERSION
       ": remove existing shmcache using 'ftpdctl tls sesscache remove' "
       "before using new file");
@@ -676,11 +690,11 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   }
 
   PRIVS_ROOT
-  shmcache_fh = pr_fsio_open(info, O_RDWR|O_CREAT);
+  sesscache_fh = pr_fsio_open(info, O_RDWR|O_CREAT);
   xerrno = errno;
   PRIVS_RELINQUISH
 
-  if (shmcache_fh == NULL) {
+  if (sesscache_fh == NULL) {
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
       ": error: unable to open file '%s': %s", info, strerror(xerrno));
 
@@ -688,14 +702,14 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
     return -1;
   }
 
-  if (pr_fsio_fstat(shmcache_fh, &st) < 0) {
+  if (pr_fsio_fstat(sesscache_fh, &st) < 0) {
     xerrno = errno;
 
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
       ": error: unable to stat file '%s': %s", info, strerror(xerrno));
 
-    pr_fsio_close(shmcache_fh);
-    shmcache_fh = NULL;
+    pr_fsio_close(sesscache_fh);
+    sesscache_fh = NULL;
 
     errno = EINVAL;
     return -1;
@@ -707,8 +721,8 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
       ": error: unable to use file '%s': %s", info, strerror(xerrno));
 
-    pr_fsio_close(shmcache_fh);
-    shmcache_fh = NULL;
+    pr_fsio_close(sesscache_fh);
+    sesscache_fh = NULL;
     
     errno = EINVAL;
     return -1;
@@ -718,7 +732,7 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
    * descriptors (stdin/stdout/stderr), as can happen especially if the
    * server has restarted.
    */
-  fd = PR_FH_FD(shmcache_fh);
+  fd = PR_FH_FD(sesscache_fh);
   if (fd <= STDERR_FILENO) {
     int res;
 
@@ -730,27 +744,27 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
  
     } else {
       close(fd);
-      PR_FH_FD(shmcache_fh) = res;
+      PR_FH_FD(sesscache_fh) = res;
     }
   }
 
   pr_trace_msg(trace_channel, 9,
-    "requested shmcache file: %s (fd %d)", shmcache_fh->fh_path,
-    PR_FH_FD(shmcache_fh));
+    "requested session cache file: %s (fd %d)", sesscache_fh->fh_path,
+    PR_FH_FD(sesscache_fh));
   pr_trace_msg(trace_channel, 9, 
     "requested shmcache size: %lu bytes", (unsigned long) requested_size);
 
-  shmcache_data = shmcache_get_shm(shmcache_fh, requested_size);
-  if (shmcache_data == NULL) {
+  sesscache_data = sess_cache_get_shm(sesscache_fh, requested_size);
+  if (sesscache_data == NULL) {
     xerrno = errno;
 
     pr_trace_msg(trace_channel, 1,
-      "unable to allocate shm: %s", strerror(xerrno));
+      "unable to allocate session shm: %s", strerror(xerrno));
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-      ": unable to allocate shm: %s", strerror(xerrno));
+      ": unable to allocate session shm: %s", strerror(xerrno));
 
-    pr_fsio_close(shmcache_fh);
-    shmcache_fh = NULL;
+    pr_fsio_close(sesscache_fh);
+    sesscache_fh = NULL;
 
     errno = EINVAL;
     return -1;
@@ -763,7 +777,7 @@ static int shmcache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   return 0;
 }
 
-static int shmcache_close(tls_sess_cache_t *cache) {
+static int sess_cache_close(tls_sess_cache_t *cache) {
 
   if (cache != NULL) {
     pr_trace_msg(trace_channel, 9, "closing shmcache cache %p", cache);
@@ -773,13 +787,13 @@ static int shmcache_close(tls_sess_cache_t *cache) {
       cache->cache_pool != NULL) {
     destroy_pool(cache->cache_pool);
 
-    if (shmcache_sess_list != NULL) {
+    if (sesscache_sess_list != NULL) {
       register unsigned int i;
-      struct shmcache_large_entry *entries;
+      struct sesscache_large_entry *entries;
 
-      entries = shmcache_sess_list->elts;
-      for (i = 0; i < shmcache_sess_list->nelts; i++) {
-        struct shmcache_large_entry *entry;
+      entries = sesscache_sess_list->elts;
+      for (i = 0; i < sesscache_sess_list->nelts; i++) {
+        struct sesscache_large_entry *entry;
 
         entry = &(entries[i]);
         if (entry->expires > 0) {
@@ -787,39 +801,40 @@ static int shmcache_close(tls_sess_cache_t *cache) {
         }
       }
 
-      shmcache_sess_list = NULL;
+      sesscache_sess_list = NULL;
     }
   }
 
-  if (shmcache_shmid >= 0) {
+  if (sesscache_shmid >= 0) {
     int res, xerrno = 0;
 
     PRIVS_ROOT
 #if !defined(_POSIX_SOURCE)
-    res = shmdt((char *) shmcache_data);
+    res = shmdt((char *) sesscache_data);
 #else
-    res = shmdt((const char *) shmcache_data);
+    res = shmdt((const char *) sesscache_data);
 #endif
     xerrno = errno;
     PRIVS_RELINQUISH
 
     if (res < 0) {
       pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-        ": error detaching shm ID %d: %s", shmcache_shmid, strerror(xerrno));
+        ": error detaching session shm ID %d: %s", sesscache_shmid,
+        strerror(xerrno));
     }
 
-    shmcache_data = NULL;
+    sesscache_data = NULL;
   }
 
-  pr_fsio_close(shmcache_fh);
-  shmcache_fh = NULL;
+  pr_fsio_close(sesscache_fh);
+  sesscache_fh = NULL;
   return 0;
 }
 
-static int shmcache_add_large_sess(tls_sess_cache_t *cache,
+static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
     unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
     SSL_SESSION *sess, int sess_len) {
-  struct shmcache_large_entry *entry = NULL;
+  struct sesscache_large_entry *entry = NULL;
 
   if (sess_len > TLS_MAX_SSL_SESSION_SIZE) {
     /* We may get sessions to add to the list which do not exceed the max
@@ -828,9 +843,9 @@ static int shmcache_add_large_sess(tls_sess_cache_t *cache,
      */
 
     if (shmcache_lock_shm(F_WRLCK) == 0) {
-      shmcache_data->nexceeded++;
-      if (sess_len > shmcache_data->exceeded_maxsz) {
-        shmcache_data->exceeded_maxsz = sess_len;
+      sesscache_data->nexceeded++;
+      if (sess_len > sesscache_data->exceeded_maxsz) {
+        sesscache_data->exceeded_maxsz = sess_len;
       }
 
       if (shmcache_lock_shm(F_UNLCK) < 0) {
@@ -844,15 +859,15 @@ static int shmcache_add_large_sess(tls_sess_cache_t *cache,
     }
   }
 
-  if (shmcache_sess_list != NULL) {
+  if (sesscache_sess_list != NULL) {
     register unsigned int i;
-    struct shmcache_large_entry *entries;
+    struct sesscache_large_entry *entries;
     time_t now;
 
     /* Look for any expired sessions in the list to overwrite/reuse. */
-    entries = shmcache_sess_list->elts;
+    entries = sesscache_sess_list->elts;
     now = time(NULL);
-    for (i = 0; i < shmcache_sess_list->nelts; i++) {
+    for (i = 0; i < sesscache_sess_list->nelts; i++) {
       entry = &(entries[i]);
 
       if (entry->expires > now) {
@@ -865,9 +880,9 @@ static int shmcache_add_large_sess(tls_sess_cache_t *cache,
     }
 
   } else {
-    shmcache_sess_list = make_array(cache->cache_pool, 1,
-      sizeof(struct shmcache_large_entry));
-    entry = push_array(shmcache_sess_list);
+    sesscache_sess_list = make_array(cache->cache_pool, 1,
+      sizeof(struct sesscache_large_entry));
+    entry = push_array(sesscache_sess_list);
   }
 
   /* Be defensive, and catch the case where entry might still be null here. */
@@ -887,7 +902,7 @@ static int shmcache_add_large_sess(tls_sess_cache_t *cache,
   return 0;
 }
 
-static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
+static int sess_cache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
     unsigned int sess_id_len, time_t expires, SSL_SESSION *sess) {
   register unsigned int i;
   unsigned int h, idx, last;
@@ -914,17 +929,17 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
      * so that we can cache these large records in the shm segment.
      */
 
-    return shmcache_add_large_sess(cache, sess_id, sess_id_len, expires,
+    return sess_cache_add_large_sess(cache, sess_id, sess_id_len, expires,
       sess, sess_len);
   }
 
-  if (shmcache_data->sd_listlen == shmcache_data->sd_listsz) {
+  if (sesscache_data->sd_listlen == sesscache_data->sd_listsz) {
     /* It appears that the cache is full.  Try flushing any expired
      * sessions.
      */
 
     if (shmcache_lock_shm(F_WRLCK) == 0) {
-      if (shmcache_flush() > 0) {
+      if (sess_cache_flush() > 0) {
         /* If we made room, then do NOT release the lock; we keep the lock
          * so that we can add the session.
          */
@@ -936,7 +951,7 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
           tls_log("shmcache: error unlocking shmcache: %s", strerror(errno));
         }
 
-        return shmcache_add_large_sess(cache, sess_id, sess_id_len, expires,
+        return sess_cache_add_large_sess(cache, sess_id, sess_id_len, expires,
           sess, sess_len);
       }
 
@@ -945,14 +960,14 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
         "shmcache: %s", strerror(errno));
 
       /* Add this session to the "large session" list instead as a fallback. */
-      return shmcache_add_large_sess(cache, sess_id, sess_id_len, expires,
+      return sess_cache_add_large_sess(cache, sess_id, sess_id_len, expires,
         sess, sess_len);
     }
   }
 
   /* Hash the key, start looking for an open slot. */
   h = shmcache_hash(sess_id, sess_id_len);
-  idx = h % shmcache_data->sd_listsz;
+  idx = h % sesscache_data->sd_listsz;
 
   if (need_lock) {
     if (shmcache_lock_shm(F_WRLCK) < 0) {
@@ -960,7 +975,7 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
         "write-locking shmcache: %s", strerror(errno));
 
       /* Add this session to the "large session" list instead as a fallback. */
-      return shmcache_add_large_sess(cache, sess_id, sess_id_len, expires,
+      return sess_cache_add_large_sess(cache, sess_id, sess_id_len, expires,
         sess, sess_len);
     }
   }
@@ -969,12 +984,12 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
   last = idx > 0 ? (idx - 1) : 0;
 
   do {
-    struct shmcache_entry *entry;
+    struct sesscache_entry *entry;
 
     pr_signals_handle();
 
     /* Look for the first open slot (i.e. expires == 0). */
-    entry = &(shmcache_data->sd_entries[i]);
+    entry = &(sesscache_data->sd_entries[i]);
     if (entry->expires == 0) {
       unsigned char *ptr;
 
@@ -986,23 +1001,23 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
       ptr = entry->sess_data;
       i2d_SSL_SESSION(sess, &ptr);
 
-      shmcache_data->sd_listlen++;
-      shmcache_data->nstored++;
+      sesscache_data->sd_listlen++;
+      sesscache_data->nstored++;
 
-      if (shmcache_data->next_expiring > 0) {
-        if (expires < shmcache_data->next_expiring) {
-          shmcache_data->next_expiring = expires;
+      if (sesscache_data->next_expiring > 0) {
+        if (expires < sesscache_data->next_expiring) {
+          sesscache_data->next_expiring = expires;
         }
 
       } else {
-        shmcache_data->next_expiring = expires;
+        sesscache_data->next_expiring = expires;
       }
 
       found_slot = TRUE;
       break;
     }
 
-    if (i < shmcache_data->sd_listsz) {
+    if (i < sesscache_data->sd_listsz) {
       i++;
 
     } else {
@@ -1016,7 +1031,7 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
    * an open slot at this point, add it to the "large session" list.
    */
   if (!found_slot) {
-    res = shmcache_add_large_sess(cache, sess_id, sess_id_len, expires, sess,
+    res = sess_cache_add_large_sess(cache, sess_id, sess_id_len, expires, sess,
       sess_len);
   }
 
@@ -1029,7 +1044,7 @@ static int shmcache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
   return res;
 }
 
-static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
+static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
     unsigned char *sess_id, unsigned int sess_id_len) {
   unsigned int h, idx;
   SSL_SESSION *sess = NULL;
@@ -1038,13 +1053,13 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
     cache); 
 
   /* Look for the requested session in the "large session" list first. */
-  if (shmcache_sess_list != NULL) {
+  if (sesscache_sess_list != NULL) {
     register unsigned int i;
-    struct shmcache_large_entry *entries;
+    struct sesscache_large_entry *entries;
 
-    entries = shmcache_sess_list->elts;
-    for (i = 0; i < shmcache_sess_list->nelts; i++) {
-      struct shmcache_large_entry *entry;
+    entries = sesscache_sess_list->elts;
+    for (i = 0; i < sesscache_sess_list->nelts; i++) {
+      struct sesscache_large_entry *entry;
 
       entry = &(entries[i]);
       if (entry->expires > 0 &&
@@ -1060,7 +1075,7 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
           sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen);
           if (sess == NULL) {
             tls_log("shmcache: error retrieving session from cache: %s",
-              shmcache_get_crypto_errors());
+              shmcache_get_errors());
 
           } else {
             break;
@@ -1075,7 +1090,7 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
   }
 
   h = shmcache_hash(sess_id, sess_id_len);
-  idx = h % shmcache_data->sd_listsz;
+  idx = h % sesscache_data->sd_listsz;
 
   if (shmcache_lock_shm(F_WRLCK) == 0) {
     register unsigned int i;
@@ -1085,11 +1100,11 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
     last = idx > 0 ? (idx -1) : 0;
 
     do {
-      struct shmcache_entry *entry;
+      struct sesscache_entry *entry;
 
       pr_signals_handle();
 
-      entry = &(shmcache_data->sd_entries[i]);
+      entry = &(sesscache_data->sd_entries[i]);
       if (entry->expires > 0 &&
           entry->sess_id_len == sess_id_len &&
           memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
@@ -1104,19 +1119,19 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
           ptr = entry->sess_data;
           sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen);
           if (sess != NULL) {
-            shmcache_data->nhits++;
+            sesscache_data->nhits++;
 
           } else {
             tls_log("shmcache: error retrieving session from cache: %s",
-              shmcache_get_crypto_errors());
-            shmcache_data->nerrors++;
+              shmcache_get_errors());
+            sesscache_data->nerrors++;
           }
         }
 
         break;
       }
 
-      if (i < shmcache_data->sd_listsz) {
+      if (i < sesscache_data->sd_listsz) {
         i++;
 
       } else {
@@ -1126,7 +1141,7 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
     } while (i != last);
 
     if (sess == NULL) {
-      shmcache_data->nmisses++;
+      sesscache_data->nmisses++;
       errno = ENOENT;
     }
 
@@ -1144,7 +1159,7 @@ static SSL_SESSION *shmcache_get(tls_sess_cache_t *cache,
   return sess;
 }
 
-static int shmcache_delete(tls_sess_cache_t *cache,
+static int sess_cache_delete(tls_sess_cache_t *cache,
     unsigned char *sess_id, unsigned int sess_id_len) {
   unsigned int h, idx;
   int res;
@@ -1153,13 +1168,13 @@ static int shmcache_delete(tls_sess_cache_t *cache,
     cache);
 
   /* Look for the requested session in the "large session" list first. */
-  if (shmcache_sess_list != NULL) {
+  if (sesscache_sess_list != NULL) {
     register unsigned int i;
-    struct shmcache_large_entry *entries;
+    struct sesscache_large_entry *entries;
 
-    entries = shmcache_sess_list->elts;
-    for (i = 0; i < shmcache_sess_list->nelts; i++) {
-      struct shmcache_large_entry *entry;
+    entries = sesscache_sess_list->elts;
+    for (i = 0; i < sesscache_sess_list->nelts; i++) {
+      struct sesscache_large_entry *entry;
 
       entry = &(entries[i]);
       if (entry->sess_id_len == sess_id_len &&
@@ -1173,7 +1188,7 @@ static int shmcache_delete(tls_sess_cache_t *cache,
   }
 
   h = shmcache_hash(sess_id, sess_id_len);
-  idx = h % shmcache_data->sd_listsz;
+  idx = h % sesscache_data->sd_listsz;
 
   if (shmcache_lock_shm(F_WRLCK) == 0) {
     register unsigned int i;
@@ -1183,35 +1198,35 @@ static int shmcache_delete(tls_sess_cache_t *cache,
     last = idx > 0 ? (idx - 1) : 0;
 
     do {
-      struct shmcache_entry *entry;
+      struct sesscache_entry *entry;
 
       pr_signals_handle();
 
-      entry = &(shmcache_data->sd_entries[i]);
+      entry = &(sesscache_data->sd_entries[i]);
       if (entry->sess_id_len == sess_id_len &&
           memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
         time_t now;
 
         pr_memscrub(entry->sess_data, entry->sess_datalen);
 
-        if (shmcache_data->sd_listlen > 0) {
-          shmcache_data->sd_listlen--;
+        if (sesscache_data->sd_listlen > 0) {
+          sesscache_data->sd_listlen--;
         }
 
         /* Don't forget to update the stats. */
         now = time(NULL);
         if (entry->expires > now) {
-          shmcache_data->ndeleted++;
+          sesscache_data->ndeleted++;
 
         } else {
-          shmcache_data->nexpired++;
+          sesscache_data->nexpired++;
         }
 
         entry->expires = 0;
         break;
       }
 
-      if (i < shmcache_data->sd_listsz) {
+      if (i < sesscache_data->sd_listsz) {
         i++;
 
       } else {
@@ -1237,23 +1252,23 @@ static int shmcache_delete(tls_sess_cache_t *cache,
   return res;
 }
 
-static int shmcache_clear(tls_sess_cache_t *cache) {
+static int sess_cache_clear(tls_sess_cache_t *cache) {
   register unsigned int i;
   int res;
 
   pr_trace_msg(trace_channel, 9, "clearing shmcache cache %p", cache); 
 
-  if (shmcache_shmid < 0) {
+  if (sesscache_shmid < 0) {
     errno = EINVAL;
     return -1;
   }
 
-  if (shmcache_sess_list != NULL) {
-    struct shmcache_large_entry *entries;
+  if (sesscache_sess_list != NULL) {
+    struct sesscache_large_entry *entries;
     
-    entries = shmcache_sess_list->elts;
-    for (i = 0; i < shmcache_sess_list->nelts; i++) {
-      struct shmcache_large_entry *entry;
+    entries = sesscache_sess_list->elts;
+    for (i = 0; i < sesscache_sess_list->nelts; i++) {
+      struct sesscache_large_entry *entry;
 
       entry = &(entries[i]);
       entry->expires = 0;
@@ -1267,17 +1282,17 @@ static int shmcache_clear(tls_sess_cache_t *cache) {
     return -1;
   }
 
-  for (i = 0; i < shmcache_data->sd_listsz; i++) {
-    struct shmcache_entry *entry;
+  for (i = 0; i < sesscache_data->sd_listsz; i++) {
+    struct sesscache_entry *entry;
 
-    entry = &(shmcache_data->sd_entries[i]);
+    entry = &(sesscache_data->sd_entries[i]);
 
     entry->expires = 0;
     pr_memscrub(entry->sess_data, entry->sess_datalen);
   }
 
-  res = shmcache_data->sd_listlen; 
-  shmcache_data->sd_listlen = 0;
+  res = sesscache_data->sd_listlen; 
+  sesscache_data->sd_listlen = 0;
 
   if (shmcache_lock_shm(F_UNLCK) < 0) {
     tls_log("shmcache: error unlocking shmcache: %s", strerror(errno));
@@ -1286,12 +1301,12 @@ static int shmcache_clear(tls_sess_cache_t *cache) {
   return res;
 }
 
-static int shmcache_remove(tls_sess_cache_t *cache) {
+static int sess_cache_remove(tls_sess_cache_t *cache) {
   int res;
   struct shmid_ds ds;
   const char *cache_file;
 
-  if (shmcache_fh == NULL) {
+  if (sesscache_fh == NULL) {
     return 0;
   }
 
@@ -1299,29 +1314,30 @@ static int shmcache_remove(tls_sess_cache_t *cache) {
     pr_trace_msg(trace_channel, 9, "removing shmcache cache %p", cache); 
   }
 
-  cache_file = shmcache_fh->fh_path;
-  (void) shmcache_close(cache);
+  cache_file = sesscache_fh->fh_path;
+  (void) sess_cache_close(cache);
 
-  if (shmcache_shmid < 0) {
+  if (sesscache_shmid < 0) {
     errno = EINVAL;
     return -1;
   }
 
   pr_log_debug(DEBUG9, MOD_TLS_SHMCACHE_VERSION
-    ": attempting to remove shm ID %d", shmcache_shmid);
+    ": attempting to remove session cache shm ID %d", sesscache_shmid);
 
   PRIVS_ROOT
-  res = shmctl(shmcache_shmid, IPC_RMID, &ds);
+  res = shmctl(sesscache_shmid, IPC_RMID, &ds);
   PRIVS_RELINQUISH
 
   if (res < 0) {
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-      ": error removing shm ID %d: %s", shmcache_shmid, strerror(errno));
+      ": error removing session cache shm ID %d: %s", sesscache_shmid,
+      strerror(errno));
 
   } else {
     pr_log_debug(DEBUG9, MOD_TLS_SHMCACHE_VERSION
-      ": removed shm ID %d", shmcache_shmid);
-    shmcache_shmid = -1;
+      ": removed session cache shm ID %d", sesscache_shmid);
+    sesscache_shmid = -1;
   }
 
   /* Don't forget to remove the on-disk file as well. */
@@ -1330,7 +1346,7 @@ static int shmcache_remove(tls_sess_cache_t *cache) {
   return res;
 }
 
-static int shmcache_status(tls_sess_cache_t *cache,
+static int sess_cache_status(tls_sess_cache_t *cache,
     void (*statusf)(void *, const char *, ...), void *arg, int flags) {
   int res, xerrno = 0;
   struct shmid_ds ds;
@@ -1349,10 +1365,10 @@ static int shmcache_status(tls_sess_cache_t *cache,
   statusf(arg, "%s", "Shared memory (shm) SSL session cache provided by "
     MOD_TLS_SHMCACHE_VERSION);
   statusf(arg, "%s", "");
-  statusf(arg, "Shared memory segment ID: %d", shmcache_shmid);
+  statusf(arg, "Shared memory segment ID: %d", sesscache_shmid);
 
   PRIVS_ROOT
-  res = shmctl(shmcache_shmid, IPC_STAT, &ds);
+  res = shmctl(sesscache_shmid, IPC_STAT, &ds);
   xerrno = errno;
   PRIVS_RELINQUISH
 
@@ -1366,27 +1382,27 @@ static int shmcache_status(tls_sess_cache_t *cache,
 
   } else {
     statusf(arg, "Unable to stat shared memory segment ID %d: %s",
-      shmcache_shmid, strerror(xerrno));
+      sesscache_shmid, strerror(xerrno));
   } 
 
   statusf(arg, "%s", "");
-  statusf(arg, "Max session cache size: %u", shmcache_data->sd_listsz);
-  statusf(arg, "Current session cache size: %u", shmcache_data->sd_listlen);
+  statusf(arg, "Max session cache size: %u", sesscache_data->sd_listsz);
+  statusf(arg, "Current session cache size: %u", sesscache_data->sd_listlen);
   statusf(arg, "%s", "");
-  statusf(arg, "Cache lifetime hits: %u", shmcache_data->nhits);
-  statusf(arg, "Cache lifetime misses: %u", shmcache_data->nmisses);
+  statusf(arg, "Cache lifetime hits: %u", sesscache_data->nhits);
+  statusf(arg, "Cache lifetime misses: %u", sesscache_data->nmisses);
   statusf(arg, "%s", "");
-  statusf(arg, "Cache lifetime sessions stored: %u", shmcache_data->nstored);
-  statusf(arg, "Cache lifetime sessions deleted: %u", shmcache_data->ndeleted);
-  statusf(arg, "Cache lifetime sessions expired: %u", shmcache_data->nexpired);
+  statusf(arg, "Cache lifetime sessions stored: %u", sesscache_data->nstored);
+  statusf(arg, "Cache lifetime sessions deleted: %u", sesscache_data->ndeleted);
+  statusf(arg, "Cache lifetime sessions expired: %u", sesscache_data->nexpired);
   statusf(arg, "%s", "");
   statusf(arg, "Cache lifetime errors handling sessions in cache: %u",
-    shmcache_data->nerrors);
+    sesscache_data->nerrors);
   statusf(arg, "Cache lifetime sessions exceeding max entry size: %u",
-    shmcache_data->nexceeded);
-  if (shmcache_data->nexceeded > 0) {
+    sesscache_data->nexceeded);
+  if (sesscache_data->nexceeded > 0) {
     statusf(arg, "  Largest session exceeding max entry size: %u",
-      shmcache_data->exceeded_maxsz);
+      sesscache_data->exceeded_maxsz);
   }
 
   if (flags & TLS_SESS_CACHE_STATUS_FL_SHOW_SESSIONS) {
@@ -1395,7 +1411,7 @@ static int shmcache_status(tls_sess_cache_t *cache,
     statusf(arg, "%s", "");
     statusf(arg, "%s", "Cached sessions:");
 
-    if (shmcache_data->sd_listlen == 0) {
+    if (sesscache_data->sd_listlen == 0) {
       statusf(arg, "%s", "  (none)");
     }
 
@@ -1409,12 +1425,12 @@ static int shmcache_status(tls_sess_cache_t *cache,
      * of rolling our own printing function.
      */
 
-    for (i = 0; i < shmcache_data->sd_listsz; i++) {
-      struct shmcache_entry *entry;
+    for (i = 0; i < sesscache_data->sd_listsz; i++) {
+      struct sesscache_entry *entry;
 
       pr_signals_handle();
 
-      entry = &(shmcache_data->sd_entries[i]);
+      entry = &(sesscache_data->sd_entries[i]);
       if (entry->expires > 0) {
         SSL_SESSION *sess;
         TLS_D2I_SSL_SESSION_CONST unsigned char *ptr;
@@ -1425,7 +1441,7 @@ static int shmcache_status(tls_sess_cache_t *cache,
         if (sess == NULL) {
           pr_log_pri(PR_LOG_NOTICE, MOD_TLS_SHMCACHE_VERSION
             ": error retrieving session from cache: %s",
-            shmcache_get_crypto_errors());
+            shmcache_get_errors());
           continue;
         }
 
@@ -1508,7 +1524,7 @@ static void shmcache_shutdown_ev(const void *event_data, void *user_data) {
      * resumed cached sessions from a more relaxed security config is not a 
      * Good Thing at all.
      */
-    shmcache_remove(NULL);
+    sess_cache_remove(NULL);
   }
 }
 
@@ -1521,7 +1537,7 @@ static void shmcache_mod_unload_ev(const void *event_data, void *user_data) {
     /* This clears our cache by detaching and destroying the shared memory
      * segment.
      */
-    shmcache_remove(NULL);
+    sess_cache_remove(NULL);
   }
 }
 #endif /* !PR_SHARED_MODULE */
@@ -1532,7 +1548,7 @@ static void shmcache_restart_ev(const void *event_data, void *user_data) {
    * resumed cached sessions from a more relaxed security config is not a 
    * Good Thing at all.
    */
-  shmcache_clear(NULL);
+  sess_cache_clear(NULL);
 }
 
 /* Initialization functions
@@ -1549,26 +1565,26 @@ static int tls_shmcache_init(void) {
     NULL);
 
   /* Prepare our cache handler. */
-  memset(&shmcache, 0, sizeof(shmcache));
-  shmcache.open = shmcache_open;
-  shmcache.close = shmcache_close;
-  shmcache.add = shmcache_add;
-  shmcache.get = shmcache_get;
-  shmcache.delete = shmcache_delete;
-  shmcache.clear = shmcache_clear;
-  shmcache.remove = shmcache_remove;
-  shmcache.status = shmcache_status;
+  memset(&sess_cache, 0, sizeof(sess_cache));
+  sess_cache.open = sess_cache_open;
+  sess_cache.close = sess_cache_close;
+  sess_cache.add = sess_cache_add;
+  sess_cache.get = sess_cache_get;
+  sess_cache.delete = sess_cache_delete;
+  sess_cache.clear = sess_cache_clear;
+  sess_cache.remove = sess_cache_remove;
+  sess_cache.status = sess_cache_status;
 
 #ifdef SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
   /* Take a chance, and inform OpenSSL that it does not need to use its own
    * internal session cache lookups; using the external session cache (i.e. us)
    * will be enough.
    */
-  shmcache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
+  sess_cache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
 #endif
 
   /* Register ourselves with mod_tls. */
-  if (tls_sess_cache_register("shm", &shmcache) < 0) {
+  if (tls_sess_cache_register("shm", &sess_cache) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_SHMCACHE_VERSION
       ": notice: error registering 'shm' SSL session cache: %s",
       strerror(errno));
@@ -1581,7 +1597,7 @@ static int tls_shmcache_init(void) {
 static int tls_shmcache_sess_init(void) {
 
 #ifdef HAVE_MLOCK
-  if (shmcache_data != NULL) {
+  if (sesscache_data != NULL) {
     int res, xerrno = 0;
 
     /* Make sure the memory is pinned in RAM where possible.
@@ -1591,19 +1607,19 @@ static int tls_shmcache_sess_init(void) {
      * when the session process exits.
      */
     PRIVS_ROOT
-    res = mlock(shmcache_data, shmcache_datasz);
+    res = mlock(sesscache_data, sesscache_datasz);
     xerrno = errno;
     PRIVS_RELINQUISH
 
     if (res < 0) {
       pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
-        ": error locking 'shm' cache (%lu bytes) into memory: %s",
-        (unsigned long) shmcache_datasz, strerror(xerrno));
+        ": error locking 'shm' session cache (%lu bytes) into memory: %s",
+        (unsigned long) sesscache_datasz, strerror(xerrno));
 
     } else {
       pr_log_debug(DEBUG5, MOD_TLS_SHMCACHE_VERSION
-        ": 'shm' cache locked into memory (%lu bytes)",
-        (unsigned long) shmcache_datasz);
+        ": 'shm' session cache locked into memory (%lu bytes)",
+        (unsigned long) sesscache_datasz);
     }
   }
 #endif
