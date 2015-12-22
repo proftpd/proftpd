@@ -59,10 +59,71 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
+sub starttls_ftp {
+  my $port = shift;
+  my $ssl_opts = shift;
+
+  my $client = IO::Socket::INET->new(
+    PeerHost => '127.0.0.1',
+    PeerPort => $port,
+    Proto => 'tcp',
+    Type => SOCK_STREAM,
+    Timeout => 10
+  );
+  unless ($client) {
+    croak("Can't connect to 127.0.0.1:$port: $!");
+  }
+
+  # Read the banner
+  my $banner = <$client>;
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Received banner: $banner\n";
+  }
+
+  # Send the AUTH command
+  my $cmd = "AUTH TLS\r\n";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Sending command: $cmd";
+  }
+
+  $client->print($cmd);
+  $client->flush();
+
+  # Read the AUTH response
+  my $resp = <$client>;
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Received response: $resp\n";
+  }
+
+  my $expected = "234 AUTH TLS successful\r\n";
+  unless ($expected eq $resp) {
+    croak("Expected response '$expected', got '$resp'");
+  }
+
+  # Now perform the SSL handshake
+  if ($ENV{TEST_VERBOSE}) {
+    $IO::Socket::SSL::DEBUG = 3;
+  }
+
+  my $res = IO::Socket::SSL->start_SSL($client, $ssl_opts);
+  unless ($res) {
+    croak("Failed SSL handshake: " . IO::Socket::SSL::errstr());
+  }
+
+  $cmd = "QUIT\r\n";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Sending command: $cmd";
+  }
+
+  print $client $cmd;
+  $client->flush();
+  $client->close();
+}
+
 sub tls_stapling_on_fscache_bug4175 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'tls');
+  my $setup = test_setup($tmpdir, 'tls_fscache');
 
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
