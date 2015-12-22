@@ -47,24 +47,37 @@ static const char *trace_channel = "tls.fscache";
 
 static const char *get_errors(void) {
   unsigned int count = 0;
-  unsigned long e = ERR_get_error();
+  unsigned long error_code;
   BIO *bio = NULL;
   char *data = NULL;
   long datalen;
-  const char *str = "(unknown)";
+  const char *error_data = NULL, *str = "(unknown)";
+  int error_flags = 0;
 
   /* Use ERR_print_errors() and a memory BIO to build up a string with
    * all of the error messages from the error queue.
    */
 
-  if (e) {
+  error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
+  if (error_code) {
     bio = BIO_new(BIO_s_mem());
   }
 
-  while (e) {
+  while (error_code) {
     pr_signals_handle();
-    BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
-    e = ERR_get_error();
+
+    if (error_flags & ERR_TXT_STRING) {
+      BIO_printf(bio, "\n  (%u) %s [%s]", ++count,
+        ERR_error_string(error_code, NULL), error_data);
+
+    } else {
+      BIO_printf(bio, "\n  (%u) %s", ++count,
+        ERR_error_string(error_code, NULL));
+    }
+
+    error_data = NULL;
+    error_flags = 0;
+    error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
   }
 
   datalen = BIO_get_mem_data(bio, &data);
@@ -186,7 +199,7 @@ static int ocsp_cache_close(tls_ocsp_cache_t *cache) {
   return 0;
 }
 
-static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *cert_fingerprint,
+static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
     OCSP_RESPONSE *resp, time_t resp_age) {
   int fd, res, resp_derlen = -1, xerrno = 0;
   unsigned char *resp_der = NULL;
@@ -283,7 +296,7 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *cert_fingerprint,
   }
 
   /* Atomically rename the temporary file into place. */
-  path = pstrcat(tmp_pool, cache_dir, "/", cert_fingerprint, ".der", NULL);
+  path = pstrcat(tmp_pool, cache_dir, "/", fingerprint, ".der", NULL);
   res = rename(tmpl, path);
   if (res < 0) {
     xerrno = errno;
@@ -304,7 +317,7 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *cert_fingerprint,
 }
 
 static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
-    const char *cert_fingerprint, time_t *resp_age) {
+    const char *fingerprint, time_t *resp_age) {
   int res, xerrno = 0;
   const char *cache_dir, *path;
   pool *tmp_pool;
@@ -319,7 +332,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   tmp_pool = make_sub_pool(cache->cache_pool);
   pr_pool_tag(tmp_pool, "OCSP fscache retrieval pool");
 
-  path = pstrcat(tmp_pool, cache_dir, "/", cert_fingerprint, ".der", NULL);
+  path = pstrcat(tmp_pool, cache_dir, "/", fingerprint, ".der", NULL);
   pr_trace_msg(trace_channel, 15, "getting OCSP response at path '%s'", path);
 
   res = lstat(path, &st);
@@ -386,8 +399,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   return resp;
 }
 
-static int ocsp_cache_delete(tls_ocsp_cache_t *cache,
-    const char *cert_fingerprint) {
+static int ocsp_cache_delete(tls_ocsp_cache_t *cache, const char *fingerprint) {
   int res, xerrno = 0;
   const char *cache_dir, *path;
   pool *tmp_pool;
@@ -399,7 +411,7 @@ static int ocsp_cache_delete(tls_ocsp_cache_t *cache,
   tmp_pool = make_sub_pool(cache->cache_pool);
   pr_pool_tag(tmp_pool, "OCSP fscache delete pool");
 
-  path = pstrcat(tmp_pool, cache_dir, "/", cert_fingerprint, ".der", NULL);
+  path = pstrcat(tmp_pool, cache_dir, "/", fingerprint, ".der", NULL);
   pr_trace_msg(trace_channel, 15, "deleting OCSP response at path '%s'", path);
 
   /* XXX Do we need root privs here?  Should we use the FSIO API? */
@@ -580,44 +592,6 @@ static void fscache_mod_unload_ev(const void *event_data, void *user_data) {
 }
 #endif /* !PR_SHARED_MODULE */
 
-static void fscache_postparse_ev(const void *event_data, void *user_data) {
-  server_rec *s;
-
-  /* XXX How to know whether we SHOULD scan (i.e. are we enabled?), and
-   * what path/directory to scan?
-   */
-
-  /* XXX Determine which cached responses are no longer necessary; delete
-   * them.
-   */
-
-  /* XXX Should we re-implement tls_get_cert_fingerprint() here, or should
-   * mod_tls expose that API for sub-module's use?  Or maybe, better,
-   * mod_tls's config handlers for these directives can get the fingerprint
-   * there, and stash it in the config_rec.
-   */
-
-  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
-    config_rec *c;
-
-    c = find_config(s->conf, CONF_PARAM, "TLSRSACertificateFile", FALSE);
-    if (c != NULL) {
-    }
-
-    c = find_config(s->conf, CONF_PARAM, "TLSDSACertificateFile", FALSE);
-    if (c != NULL) {
-    }
-
-    c = find_config(s->conf, CONF_PARAM, "TLSECCertificateFile", FALSE);
-    if (c != NULL) {
-    }
-  }
-}
-
-static void fscache_restart_ev(const void *event_data, void *user_data) {
-  /* XXX ??? */
-}
-
 /* Initialization functions
  */
 
@@ -627,10 +601,6 @@ static int tls_fscache_init(void) {
   pr_event_register(&tls_fscache_module, "core.module-unload",
     fscache_mod_unload_ev, NULL);
 # endif /* !PR_SHARED_MODULE */
-  pr_event_register(&tls_fscache_module, "core.postparse", fscache_postparse_ev,
-    NULL);
-  pr_event_register(&tls_fscache_module, "core.restart", fscache_restart_ev,
-    NULL);
 
   /* Prepare our cache handler. */
   memset(&ocsp_cache, 0, sizeof(ocsp_cache));
