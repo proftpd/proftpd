@@ -412,16 +412,73 @@ static int ocsp_cache_delete(tls_ocsp_cache_t *cache,
 }
 
 static int ocsp_cache_clear(tls_ocsp_cache_t *cache) {
+  int res, xerrno = 0;
+  const char *cache_dir;
+  pool *tmp_pool;
+  DIR *dirh;
+  struct dirent *dent;
 
   pr_trace_msg(trace_channel, 9, "clearing fscache cache %p", cache); 
 
-  /* XXX TODO:
-   *  Iterate through all *.der files in the cache_dir directory, and
-   *  unlink them.
-   */
+  cache_dir = cache->cache_data;
 
-  errno = ENOSYS;
-  return -1;
+  dirh = opendir(cache_dir);
+  if (dirh == NULL) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "unable to open directory '%s': %s",
+      cache_dir, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(cache->cache_pool);
+  pr_pool_tag(tmp_pool, "OCSP fscache clear pool");
+
+  dent = readdir(dirh);
+  while (dent != NULL) {
+    struct stat st;
+
+    pr_signals_handle();
+
+    /* Skip any path which does not end in ".der". */
+    if (pr_strnrstr(dent->d_name, dent->d_namlen, ".der", 4, 0) == TRUE) {
+      char *path;
+
+      path = pstrcat(tmp_pool, cache_dir, "/", dent->d_name, ".der", NULL);
+
+      res = lstat(path, &st);
+      if (res < 0) {
+        pr_trace_msg(trace_channel, 3, "error checking path '%s': %s", path,
+          strerror(errno));
+
+      } else {
+        if (S_ISREG(st.st_mode) ||
+            S_ISLNK(st.st_mode)) {
+
+          pr_trace_msg(trace_channel, 15, "deleting OCSP response at path '%s'",
+            path);
+          res = unlink(path);
+          if (res < 0) {
+            pr_trace_msg(trace_channel, 3, "error deleting path '%s': %s", path,
+              strerror(errno));
+          }
+
+        } else {
+          pr_trace_msg(trace_channel, 3, "ignoring non-file/symlink path '%s'",
+            path);
+        }
+      }
+    }
+
+    dent = readdir(dirh);
+  }
+
+  (void) closedir(dirh);
+  destroy_pool(tmp_pool);
+
+  return 0;
 }
 
 static int ocsp_cache_remove(tls_ocsp_cache_t *cache) {
@@ -437,17 +494,77 @@ static int ocsp_cache_remove(tls_ocsp_cache_t *cache) {
 
 static int ocsp_cache_status(tls_ocsp_cache_t *cache,
     void (*statusf)(void *, const char *, ...), void *arg, int flags) {
+  int res, xerrno = 0;
+  unsigned int resp_count = 0;
+  const char *cache_dir;
+  pool *tmp_pool;
+  DIR *dirh;
+  struct dirent *dent;
 
   pr_trace_msg(trace_channel, 9, "checking fscache cache %p", cache); 
 
   /* XXX TODO:
-   *  Iterate through all *.der files, get a count of cached responses.
    *  If flags says "SHOW RESPONSES", print out the PEM versions of the
    *  responses?
    */
 
-  errno = ENOSYS;
-  return -1;
+  cache_dir = cache->cache_data;
+
+  dirh = opendir(cache_dir);
+  if (dirh == NULL) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "unable to open directory '%s': %s",
+      cache_dir, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(cache->cache_pool);
+  pr_pool_tag(tmp_pool, "OCSP fscache status pool");
+
+  dent = readdir(dirh);
+  while (dent != NULL) {
+    struct stat st;
+
+    pr_signals_handle();
+
+    /* Skip any path which does not end in ".der". */
+    if (pr_strnrstr(dent->d_name, dent->d_namlen, ".der", 4, 0) == TRUE) {
+      char *path;
+
+      path = pstrcat(tmp_pool, cache_dir, "/", dent->d_name, ".der", NULL);
+
+      res = lstat(path, &st);
+      if (res < 0) {
+        pr_trace_msg(trace_channel, 3, "error checking path '%s': %s", path,
+          strerror(errno));
+
+      } else {
+        if (S_ISREG(st.st_mode) ||
+            S_ISLNK(st.st_mode)) {
+          resp_count++;
+
+        } else {
+          pr_trace_msg(trace_channel, 3, "ignoring non-file/symlink path '%s'",
+            path);
+        }
+      }
+    }
+
+    dent = readdir(dirh);
+  }
+
+  (void) closedir(dirh);
+  destroy_pool(tmp_pool);
+
+  statusf(arg, "%s", "Filesystem (fs) OCSP response cache provided by "
+    MOD_TLS_FSCACHE_VERSION);
+  statusf(arg, "%s", "");
+  statusf(arg, "Current OCSP responses cached: %u", resp_count);
+
+  return 0;
 }
 #endif /* PR_USE_OPENSSL_OCSP */
 
