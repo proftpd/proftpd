@@ -3785,7 +3785,7 @@ static int ocsp_add_cached_response(pool *p, const char *fingerprint,
 static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
   X509 *cert;
   const char *fingerprint = NULL;
-  OCSP_RESPONSE *resp = NULL;
+  OCSP_RESPONSE *resp = NULL, *cached_resp = NULL;
 
   /* We need to find a cached OCSP response for the server cert in question,
    * thus we need to find out which server cert is used for this session.
@@ -3798,10 +3798,31 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
       pr_trace_msg(trace_channel, 3,
         "using fingerprint '%s' for server cert", fingerprint);
       if (tls_ocsp_cache != NULL) {
-        OCSP_RESPONSE *cached_resp, *fresh_resp = NULL;
+        OCSP_RESPONSE *fresh_resp = NULL;
 
         cached_resp = ocsp_get_cached_response(p, fingerprint);
         if (cached_resp != NULL) {
+          if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+            BIO *diags_bio;
+
+            diags_bio = BIO_new(BIO_s_mem());
+            if (diags_bio != NULL) {
+              if (OCSP_RESPONSE_print(diags_bio, cached_resp, 0) == 1) {
+                char *data = NULL;
+                long datalen = 0;
+
+                datalen = BIO_get_mem_data(diags_bio, &data);
+                if (data != NULL) {
+                  data[datalen] = '\0';
+                  tls_log("cached OCSP response (%ld bytes):\n%s", datalen,
+                    data);
+                }
+              }
+            }
+
+            BIO_free(diags_bio);
+          }
+
           resp = cached_resp;
         }
 
@@ -3857,9 +3878,14 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
     }
   }
 
-  if (ocsp_add_cached_response(p, fingerprint, resp) < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "error caching OCSP response: %s", strerror(errno));
+  /* If this response is not the one we just pulled from the cache, then
+   * add it.
+   */
+  if (resp != cached_resp) {
+    if (ocsp_add_cached_response(p, fingerprint, resp) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error caching OCSP response: %s", strerror(errno));
+    }
   }
 
   return resp;
