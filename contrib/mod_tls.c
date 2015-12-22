@@ -408,6 +408,7 @@ static int tls_stapling = FALSE;
 static unsigned long tls_stapling_opts = 0UL;
 # define TLS_STAPLING_OPT_NO_NONCE	0x0001
 # define TLS_STAPLING_OPT_NO_VERIFY	0x0002
+static const char *tls_stapling_responder = NULL;
 static unsigned int tls_stapling_timeout = 10;
 #endif
 
@@ -3570,37 +3571,14 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     return NULL;
   }
 
+  /* Current OpenSSL implementation of OCSP_parse_url() guarantees that
+   * host, port, and uri will never be NULL.  Nice.
+   */
   res = OCSP_parse_url((char *) url, &host, &port, &uri, &use_ssl);
   if (res != 1) {
     pr_trace_msg(trace_channel, 4, "error parsing OCSP URL '%s': %s", url,
       tls_get_errors());
     return NULL;
-  }
-
-  if (host == NULL) {
-    if (port != NULL) {
-      OPENSSL_free(port);
-    }
-
-    if (uri != NULL) {
-      OPENSSL_free(uri);
-    }
-
-    pr_trace_msg(trace_channel, 4, "no host found in OCSP URL '%s'", url);
-    return NULL;
-  }
-
-  if (port == NULL) {
-    if (use_ssl) {
-      port = OPENSSL_strdup("443");
-
-    } else {
-      port = OPENSSL_strdup("80");
-    }
-  }
-
-  if (uri == NULL) {
-    uri = OPENSSL_strdup("/");
   }
 
   bio = BIO_new_connect(host);
@@ -3833,12 +3811,21 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
           if (xerrno == ENOENT) {
             const char *ocsp_url;
 
-            ocsp_url = ocsp_get_responder_url(p, cert);
-            if (ocsp_url != NULL) {
-              pr_trace_msg(trace_channel, 8,
-                "found OCSP responder URL '%s' in certificate "
-                "(fingerprint '%s')", ocsp_url, fingerprint);
+            if (tls_stapling_responder == NULL) {
+              ocsp_url = ocsp_get_responder_url(p, cert);
+              if (ocsp_url != NULL) {
+                pr_trace_msg(trace_channel, 8,
+                  "found OCSP responder URL '%s' in certificate "
+                  "(fingerprint '%s')", ocsp_url, fingerprint);
+              }
 
+            } else {
+              ocsp_url = tls_stapling_responder;
+              pr_trace_msg(trace_channel, 8,
+                "using configured OCSP responder URL '%s'", ocsp_url);
+            }
+
+            if (ocsp_url != NULL) {
               fresh_resp = ocsp_request_response(p, cert, ssl, ocsp_url,
                 tls_stapling_timeout);
               if (fresh_resp != NULL) {
@@ -7442,20 +7429,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 
   tls_log("checking OCSP URL '%s' for client cert '%s'", url, subj_name);
 
+  /* Current OpenSSL implementation of OCSP_parse_url() guarantees that
+   * host, port, and uri will never be NULL.  Nice.
+   */
   if (OCSP_parse_url((char *) url, &host, &port, &uri, &use_ssl) != 1) {
     tls_log("error parsing OCSP URL '%s': %s", url, tls_get_errors());
     return FALSE;
-  }
-
-  /* XXX Need to check for NULL host, uri. */
-
-  if (port == NULL) {
-    if (use_ssl == 1) {
-      port = OPENSSL_strdup("443");
-
-    } else {
-      port = OPENSSL_strdup("80");
-    }
   }
 
   tls_log("connecting to OCSP responder at host '%s', port '%s', URI '%s'%s",
@@ -11424,6 +11403,31 @@ MODRET set_tlsstaplingoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSStaplingResponder url */
+MODRET set_tlsstaplingresponder(cmd_rec *cmd) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  char *host = NULL, *port = NULL, *uri = NULL, *url;
+  int use_ssl = 0;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  url = cmd->argv[1];
+  if (OCSP_parse_url(url, &host, &port, &uri, &use_ssl) != 1) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing URL '", url, "': ",
+      tls_get_errors(), NULL));
+  }
+
+  OPENSSL_free(host);
+  OPENSSL_free(port);
+  OPENSSL_free(uri);
+
+  add_config_param_str(cmd->argv[0], 1, url);
+#endif /* PR_USE_OPENSSL_OCSP */
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSStaplingTimeout secs */
 MODRET set_tlsstaplingtimeout(cmd_rec *cmd) {
   int timeout = -1;
@@ -12545,6 +12549,11 @@ static int tls_sess_init(void) {
     c = find_config_next(c, c->next, CONF_PARAM, "TLSStaplingOptions", FALSE);
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingResponder", FALSE);
+  if (c != NULL) {
+    tls_stapling_responder = c->argv[0];
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingTimeout", FALSE);
   if (c != NULL) {
     tls_stapling_timeout = *((unsigned int *) c->argv[0]);
@@ -12617,6 +12626,13 @@ static int tls_sess_init(void) {
   }
 
 #if defined(PR_USE_OPENSSL_OCSP)
+  /* If a TLSStaplingCache has been configured, then TLSStapling should
+   * be enabled by default.
+   */
+  if (tls_ocsp_cache != NULL) {
+    tls_stapling = TRUE;
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "TLSStapling", FALSE);
   if (c != NULL) {
     tls_stapling = *((int *) c->argv[0]);
@@ -12928,6 +12944,7 @@ static conftable tls_conftab[] = {
   { "TLSStapling",		set_tlsstapling,	NULL },
   { "TLSStaplingCache",		set_tlsstaplingcache,	NULL },
   { "TLSStaplingOptions",	set_tlsstaplingoptions,	NULL },
+  { "TLSStaplingResponder",	set_tlsstaplingresponder, NULL },
   { "TLSStaplingTimeout",	set_tlsstaplingtimeout,	NULL },
   { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
   { "TLSUserName",		set_tlsusername,	NULL },
