@@ -1697,9 +1697,11 @@ speeds up TLS handshakes when
 The <em>type</em> and <em>info</em> parameters all depend on the module
 implementing the external OCSP response cache being configured.  For example,
 for using a filesystem-based external OCSP response cache, see the
-<a href="mod_tls_fscache.html"><code>mod_tls_fscache</code></a> documentation;
+<a href="mod_tls_fscache.html"><code>mod_tls_fscache</code></a> documentation,
 or see <a href="mod_tls_shmcache.html"><code>mod_tls_shmcache</code></a> for
-a shared memory-based OCSP response cache.
+a shared memory-based OCSP response cache, or
+<a href="mod_tls_memcache.html"><code>mod_tls_memcache</code></a> for using
+memcached servers as an OCSP response cache.
 
 <p>
 <hr>

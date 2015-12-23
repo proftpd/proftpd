@@ -20,6 +20,9 @@ Installation instructions are discussed <a href="#Installation">here</a>.
 This submodule a memcached-based implementation of an external SSL session
 cache for use by the <code>mod_tls</code> module's
 <a href="mod_tls.html#TLSSessionCache"><code>TLSSessionCache</code></a>
+directive.  The module also implements a memcached-based implementation of an
+external OCSP response cache for the
+<a href="mod_tls.html#TLSStaplingCache"><code>TLSStaplingCache</code></a>
 directive.
 
 <p>
@@ -55,6 +58,15 @@ If memcache support has not been enabled in your proftpd, this configuration
 <b>cannot</b> be used.
 
 <p>
+The <code>mod_tls_memcache</code> module also supports the &quot;memcache&quot;
+string for the <em>type</em> parameter of the
+<a href="mod_tls.html#TLSStaplingCache"><code>TLStaplingCache</code></a>
+configuration directive, <i>e.g.</i>:
+<pre>
+  TLSStaplingCache memcache:
+</pre>
+
+<p>
 <b>Examples</b><br>
 
 <p>
@@ -70,6 +82,7 @@ If memcache support has not been enabled in your proftpd, this configuration
     &lt;IfModule mod_tls_memcache.c&gt;
       # Store the data formatted as JSON
       TLSSessionCache memcache:/json
+      TLSStaplingCache memcache:
     &lt;/IfModule&gt;
   &lt;/IfModule&gt;
 </pre>
@@ -122,4 +135,3 @@ a shared module:
 
 </body>
 </html>
-
