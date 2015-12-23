@@ -2699,7 +2699,7 @@ if test x"$pr_use_openssl" = xyes; then
     ]
   )
 
-  AC_MSG_CHECKING([whether linking with OpenSSL has complete ECC support])
+  AC_MSG_CHECKING([whether OpenSSL has complete ECC support])
   saved_libs="$LIBS"
 
   dnl Splice out -lsupp, since that library hasn't been built yet
@@ -2732,7 +2732,7 @@ if test x"$pr_use_openssl" = xyes; then
   )
   LIBS="$saved_libs"
 
-  AC_MSG_CHECKING([whether linking with OpenSSL has ALPN support])
+  AC_MSG_CHECKING([whether OpenSSL has ALPN support])
   saved_libs="$LIBS"
 
   dnl Splice out -lsupp, since that library hasn't been built yet
@@ -2757,7 +2757,7 @@ if test x"$pr_use_openssl" = xyes; then
   )
   LIBS="$saved_libs"
 
-  AC_MSG_CHECKING([whether linking with OpenSSL has NPN support])
+  AC_MSG_CHECKING([whether OpenSSL has NPN support])
   saved_libs="$LIBS"
 
   dnl Splice out -lsupp, since that library hasn't been built yet
@@ -2775,6 +2775,33 @@ if test x"$pr_use_openssl" = xyes; then
     [
       AC_MSG_RESULT(yes)
       AC_DEFINE(PR_USE_OPENSSL_NPN, 1, [Define if your OpenSSL supports NPN])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether OpenSSL has OCSP support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+      #include <openssl/ocsp.h>
+    ],
+    [
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_tlsext_status_cb(ctx, NULL);
+      SSL_CTX_set_tlsext_status_arg(ctx, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_OCSP, 1, [Define if your OpenSSL supports OCSP])
     ],
     [
       AC_MSG_RESULT(no)

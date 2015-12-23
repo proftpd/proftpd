@@ -71,5 +71,6 @@ modules/mod_sql_passwd.c
 modules/mod_sql_postgres.c
 modules/mod_sql_sqlite.c
 modules/mod_tls.c
+modules/mod_tls_fscache.c
 modules/mod_tls_memcache.c
 modules/mod_tls_shmcache.c

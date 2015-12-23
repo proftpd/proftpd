@@ -71,6 +71,11 @@ is based.  His module can be found here:
   <li><a href="#TLSRSACertificateKeyFile">TLSRSACertificateKeyFile</a>
   <li><a href="#TLSServerCipherPreference">TLSServerCipherPreference</a>
   <li><a href="#TLSSessionCache">TLSSessionCache</a>
+  <li><a href="#TLSStapling">TLSStapling</a>
+  <li><a href="#TLSStaplingCache">TLSStaplingCache</a>
+  <li><a href="#TLSStaplingOptions">TLSStaplingOptions</a>
+  <li><a href="#TLSStaplingResponder">TLSStaplingResponder</a>
+  <li><a href="#TLSStaplingTimeout">TLSStaplingTimeout</a>
   <li><a href="#TLSTimeoutHandshake">TLSTimeoutHandshake</a>
   <li><a href="#TLSUserName">TLSUserName</a>
   <li><a href="#TLSVerifyClient">TLSVerifyClient</a>
@@ -1598,7 +1603,7 @@ For example:
 
 <p>
 The <code>TLSSessionCache</code> directive configures an external SSL session
-cache, which can be used for storing and shared SSL sessions across multiple
+cache, which can be used for storing and sharing SSL sessions across multiple
 processes.  An external SSL session cache is an optional facility which speeds
 up parallel FTPS session connections.
 
@@ -1648,6 +1653,121 @@ Use of SSL session caching can be disabled entirely by using:
 <pre>
   TLSSessionCache off
 </pre>
+
+<p>
+<hr>
+<h2><a name="TLSStapling">TLSStapling</a></h2>
+<strong>Syntax:</strong> TLStapling <em>on|off</em><br>
+<strong>Default:</strong> off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>TLSStapling</code> directive enables
+<a href="https://en.wikipedia.org/wiki/OCSP_stapling">OCSP stapling</a>,
+as defined by the "Certificate Status Request" TLS extension
+(<a href="http://www.faqs.org/rfcs/rfc6066.html">RFC 6066</a>).  If
+<code>TLSStapling</code> is enabled, <b>and</b> the certificate status request
+extension is used by the SSL/TLS client, then <code>mod_tls</code> will
+include an OCSP response for the server certificate, in the TLS handshake.
+
+<p>
+By default, <code>TLSStapling</code> is <em>off</em>, but will automatically
+be enabled if a <a href="#TLSStaplingCache"><code>TLSStaplingCache</code></a>
+is configured.
+
+<p>
+<hr>
+<h2><a name="TLSStaplingCache">TLSStaplingCache</a></h2>
+<strong>Syntax:</strong> TLStaplingCache <em>type:/info</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>TLSStaplingCache</code> directive configures an external OCSP response
+cache, which can be used for storing and sharing OCSP responses across multiple
+processes.  An external OCSP response cache is an optional facility which
+speeds up TLS handshakes when
+<a href="#TLSStapling"><code>TLSStapling</code></a> is enabled.
+
+<p>
+The <em>type</em> and <em>info</em> parameters all depend on the module
+implementing the external OCSP response cache being configured.  For example,
+for using a filesystem-based external OCSP response cache, see the
+<a href="mod_tls_fscache.html"><code>mod_tls_fscache</code></a> documentation,
+or see <a href="mod_tls_shmcache.html"><code>mod_tls_shmcache</code></a> for
+a shared memory-based OCSP response cache, or
+<a href="mod_tls_memcache.html"><code>mod_tls_memcache</code></a> for using
+memcached servers as an OCSP response cache.
+
+<p>
+<hr>
+<h2><a name="TLSStaplingOptions">TLSStaplingOptions</a></h2>
+<strong>Syntax:</strong> TLStaplingOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>TLSStaplingOptions</code> directive configures various optional
+behaviors of <code>mod_tls</code> when querying OCSP responders.
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>NoNonce</code><br>
+    <p>
+    To defend against replay attacks of OCSP responses, the protocol allows
+    for a nonce to be included in the request; this nonce is then expected
+    to be in the OCSP response.  However, many OCSP responders pre-generate
+    the OCSP responses, as it less computationally expensive to do so.  Thus
+    to tell <code>mod_tls</code> to not include a nonce in its OCSP request
+    (and not expect to see that nonce in the OCSP response), use this option:
+    <pre>
+  # Many OCSP responders pregenerate their responses, and thus cannot
+  # include nonces in the response.
+  TLSStaplingOptions NoNonce
+    </pre>
+  </li>
+</ul>
+
+<p>
+<hr>
+<h2><a name="TLSStaplingResponder">TLSStaplingResponder</a></h2>
+<strong>Syntax:</strong> TLStaplingResponder <em>url<br>
+<strong>Default:</strong> none<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>TLSStaplingResponder</code> directive overrides the URL of the OCSP
+responder specified in the “Authority Information Access” certificate extension.
+
+<p>
+Example:
+<pre>
+  # Use our own custom OCSP responder
+  TLSStaplingResponder http://gw.example.com/ocsp/
+</pre>
+
+<p>
+<hr>
+<h2><a name="TLSStaplingTimeout">TLSStaplingTimeout</a></h2>
+<strong>Syntax:</strong> TLStaplingTimeout <em>secs</em><br>
+<strong>Default:</strong> 10s<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>TLSStaplingTimeout</code> directive sets the timeout for queries
+to OCSP responders when <code>TLSStapling</code> is enabled, and
+<code>mod_tls</code> is querying a responder for OCSP stapling purposes.
 
 <p>
 <hr>

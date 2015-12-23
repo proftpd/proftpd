@@ -12,6 +12,7 @@ ChangeLog files.
   + SSH RSA hostkeys smaller than 2048 bits now work properly.
   + MLSD response lines are now properly CRLF terminated.
   + Faster/more efficient FTP ASCII mode conversion code.
+  + Support for OCSP stapling.
 
   + New Configuration Directives:
 
@@ -28,11 +29,19 @@ ChangeLog files.
       Note that this applies to mod_sftp password-based logins as well.
 
 
+    TLSStapling (Bug#4175)
+      TLSStaplingCache, TLSStaplingOptions, TLSStaplingResponder,
+      TLSStaplingTimeout
+
+
   + Changed Modules
 
     The mod_sftp module now supports the LINK_COUNT attribute in SFTP STAT
     requests, for clients using SFTP protocol version 6.  It also supports the
     "hardlink@openssh.com" SFTP extension.
+
+    The mod_tls_memcache and mod_tls_shmcache modules now provide OCSP
+    responder caches.
 
 
   + Changed Configuration Directives:

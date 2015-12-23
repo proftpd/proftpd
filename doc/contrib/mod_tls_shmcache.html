@@ -1,6 +1,3 @@
-<!-- $Id: mod_tls_shmcache.html,v 1.3 2013-11-05 21:33:21 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls_shmcache.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_tls_shmcache</title>
@@ -23,6 +20,9 @@ Installation instructions are discussed <a href="#Installation">here</a>.
 This submodule provides a SysV shared memory-based implementation of
 an external SSL session cache for use by the <code>mod_tls</code> module's
 <a href="mod_tls.html#TLSSessionCache"><code>TLSSessionCache</code></a>
+directive.  The module also implements a SysV shared memory-based
+implementation of an external OCSP response cache for the
+<a href="mod_tls.html#TLSStaplingCache"><code>TLSStaplingCache</code></a>
 directive.
 
 <p>
@@ -53,6 +53,22 @@ configure a different size, in bytes.  Note that the configured size
 is configured, that size will be ignored and the default size will be used.
 
 <p>
+The <code>mod_tls_shmcache</code> module also supports the &quot;shm&quot;
+string for the <em>type</em> parameter of the
+<a href="mod_tls.html#TLSStaplingCache"><code>TLStaplingCache</code></a>
+configuration directive.  The <em>info</em> parameter for
+<code>mod_tls_shmcache</code> must be formatted like:
+<pre>
+  /file=<i>/path/to/cache/file</i>[&amp;size=<i>bytes</i>]
+</pre>
+The configured path is used for synchronizing access to the shared memory
+segment among the various server processes.  The default shared memory
+segment size allocated is 1.5MB; use the optional <em>size</em> key to
+configure a different size, in bytes.  Note that the configured size
+<i>must</i> be able to hold at least one cached OCSP response; if a too-small
+size is configured, that size will be ignored and the default size will be used.
+
+<p>
 <b>Examples</b><br>
 
 <p>
@@ -62,7 +78,8 @@ Use the default shared memory segment size and timeout:
     ...
 
     &lt;IfModule mod_tls_shmcache.c&gt;
-      TLSSessionCache shm:/file=/var/ftpd/sesscache
+      TLSSessionCache shm:/file=/var/ftpd/sess_cache
+      TLSStaplingCache shm:/file=/var/ftpd/ocsp_pcache
     &lt;/IfModule&gt;
   &lt;/IfModule&gt;
 </pre>
@@ -74,7 +91,8 @@ Use a larger shared memory segment size:
     ...
 
     &lt;IfModule mod_tls_shmcache.c&gt;
-      TLSSessionCache shm:/file=/var/ftpd/sesscache&amp;size=2097152
+      TLSSessionCache shm:/file=/var/ftpd/sess_cache&amp;size=2097152
+      TLSStaplingCache shm:/file=/var/ftpd/ocsp_cache&amp;size=2097152
     &lt;/IfModule&gt;
   &lt;/IfModule&gt;
 </pre>
@@ -86,7 +104,10 @@ Use a smaller shared memory size, and a shorter timeout:
     ...
 
     &lt;IfModule mod_tls_shmcache.c&gt;
-      TLSSessionCache shm:/file=/var/ftpd/sesscache&amp;size=512000 600
+      TLSSessionCache shm:/file=/var/ftpd/sess_cache&amp;size=512000 600
+
+      # Note that TLSStaplingCache does not use a timeout
+      TLSStaplingCache shm:/file=/var/ftpd/ocsp_cache&amp;size=512000
     &lt;/IfModule&gt;
   &lt;/IfModule&gt;
 </pre>
@@ -120,7 +141,7 @@ sure that this module is loaded <i>after</i> the <code>mod_tls</code> module,
   # Load mod_tls first
   LoadModule mod_tls.c
  
-  # Then load any SSL session caching modules
+  # Then load any SSL caching modules
   LoadModule mod_tls_shmcache.c
 </pre>
 
@@ -174,12 +195,8 @@ your config looks something like this:
 
 <p>
 <hr>
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-11-05 21:33:21 $</i><br>
-
-<hr>
 <font size=2><b><i>
-&copy; Copyright 2009-2014 TJ Saunders<br>
+&copy; Copyright 2009-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
@@ -187,4 +204,3 @@ Last Updated: <i>$Date: 2013-11-05 21:33:21 $</i><br>
 
 </body>
 </html>
-
