@@ -42,10 +42,14 @@ extern xaset_t *server_list;
 
 module tls_fscache_module;
 
+#if defined(PR_USE_OPENSSL_OCSP)
 static tls_ocsp_cache_t ocsp_cache;
+#endif /* PR_USE_OPENSSL_OCSP */
+
 static const char *trace_channel = "tls.fscache";
 
-static const char *get_errors(void) {
+#if defined(PR_USE_OPENSSL_OCSP)
+static const char *fscache_get_errors(void) {
   unsigned int count = 0;
   unsigned long error_code;
   BIO *bio = NULL;
@@ -92,8 +96,6 @@ static const char *get_errors(void) {
 
   return str;
 }
-
-#if defined(PR_USE_OPENSSL_OCSP)
 
 /* OCSP Cache implementation callbacks.
  */
@@ -214,7 +216,7 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
   resp_derlen = i2d_OCSP_RESPONSE(resp, &resp_der);
   if (resp_derlen <= 0) {
     pr_trace_msg(trace_channel, 1,
-      "error DER-encoding OCSP response: %s", get_errors());
+      "error DER-encoding OCSP response: %s", fscache_get_errors());
     errno = EINVAL;
     return -1;
   }
@@ -368,7 +370,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
     xerrno = errno;
 
     tls_log(MOD_TLS_FSCACHE_VERSION ": BIO_new_file('%s') failed: %s", path,
-      get_errors());
+      fscache_get_errors());
     destroy_pool(tmp_pool);
 
     errno = xerrno;
@@ -379,7 +381,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   if (resp == NULL) {
     pr_trace_msg(trace_channel, 3,
       "error reading valid OCSP response from path '%s': %s", path,
-      get_errors());
+      fscache_get_errors());
 
     /* If we can't read a valid OCSP response from this file, delete it. */
     (void) unlink(path);
