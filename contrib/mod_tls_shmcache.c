@@ -1,6 +1,7 @@
 /*
- * ProFTPD: mod_tls_shmcache -- a module which provides a shared SSL session
- *                              cache using SysV shared memory
+ * ProFTPD: mod_tls_shmcache -- a module which provides shared SSL session
+ *                              and OCSP response caches using SysV shared
+ *                              memory segments
  *
  * Copyright (c) 2009-2015 TJ Saunders
  *
