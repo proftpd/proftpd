@@ -38763,8 +38763,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
 
-  { echo "$as_me:$LINENO: checking whether linking with OpenSSL has complete ECC support" >&5
-echo $ECHO_N "checking whether linking with OpenSSL has complete ECC support... $ECHO_C" >&6; }
+  { echo "$as_me:$LINENO: checking whether OpenSSL has complete ECC support" >&5
+echo $ECHO_N "checking whether OpenSSL has complete ECC support... $ECHO_C" >&6; }
   saved_libs="$LIBS"
 
     LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
@@ -38840,8 +38840,8 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
   LIBS="$saved_libs"
 
-  { echo "$as_me:$LINENO: checking whether linking with OpenSSL has ALPN support" >&5
-echo $ECHO_N "checking whether linking with OpenSSL has ALPN support... $ECHO_C" >&6; }
+  { echo "$as_me:$LINENO: checking whether OpenSSL has ALPN support" >&5
+echo $ECHO_N "checking whether OpenSSL has ALPN support... $ECHO_C" >&6; }
   saved_libs="$LIBS"
 
     LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
@@ -38909,8 +38909,8 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
   LIBS="$saved_libs"
 
-  { echo "$as_me:$LINENO: checking whether linking with OpenSSL has NPN support" >&5
-echo $ECHO_N "checking whether linking with OpenSSL has NPN support... $ECHO_C" >&6; }
+  { echo "$as_me:$LINENO: checking whether OpenSSL has NPN support" >&5
+echo $ECHO_N "checking whether OpenSSL has NPN support... $ECHO_C" >&6; }
   saved_libs="$LIBS"
 
     LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
@@ -38960,6 +38960,77 @@ echo "${ECHO_T}yes" >&6; }
 
 cat >>confdefs.h <<\_ACEOF
 #define PR_USE_OPENSSL_NPN 1
+_ACEOF
+
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+      { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+  LIBS="$saved_libs"
+
+  { echo "$as_me:$LINENO: checking whether OpenSSL has OCSP support" >&5
+echo $ECHO_N "checking whether OpenSSL has OCSP support... $ECHO_C" >&6; }
+  saved_libs="$LIBS"
+
+    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+      #include <openssl/ssl.h>
+      #include <openssl/ocsp.h>
+
+int
+main ()
+{
+
+      SSL_CTX *ctx = NULL;
+      SSL_CTX_set_tlsext_status_cb(ctx, NULL);
+      SSL_CTX_set_tlsext_status_arg(ctx, NULL);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+
+      { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_OPENSSL_OCSP 1
 _ACEOF
 
 

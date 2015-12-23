@@ -56,7 +56,9 @@
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 # include <openssl/engine.h>
-# include <openssl/ocsp.h>
+# ifdef PR_USE_OPENSSL_OCSP
+#  include <openssl/ocsp.h>
+# endif /* PR_USE_OPENSSL_OCSP */
 #endif
 #ifdef PR_USE_OPENSSL_ECC
 # include <openssl/ec.h>
@@ -67,11 +69,11 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.6.1"
+#define MOD_TLS_VERSION		"mod_tls/2.7"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030504 
-# error "ProFTPD 1.3.5rc4 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030602
+# error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
 extern session_t session;
@@ -401,6 +403,14 @@ static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
+#if defined(PR_USE_OPENSSL_OCSP)
+static int tls_stapling = FALSE;
+static unsigned long tls_stapling_opts = 0UL;
+# define TLS_STAPLING_OPT_NO_NONCE	0x0001
+# define TLS_STAPLING_OPT_NO_VERIFY	0x0002
+static const char *tls_stapling_responder = NULL;
+static unsigned int tls_stapling_timeout = 10;
+#endif
 
 static char *tls_passphrase_provider = NULL;
 #define TLS_PASSPHRASE_TIMEOUT		10
@@ -533,6 +543,7 @@ static pr_netio_stream_t *tls_data_rd_nstrm = NULL;
 static pr_netio_stream_t *tls_data_wr_nstrm = NULL;
 
 static tls_sess_cache_t *tls_sess_cache = NULL;
+static tls_ocsp_cache_t *tls_ocsp_cache = NULL;
 
 /* OpenSSL variables */
 static SSL *ctrl_ssl = NULL;
@@ -585,6 +596,16 @@ static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, unsigned char *, int,
   int *);
 static void tls_sess_cache_delete_sess_cb(SSL_CTX *, SSL_SESSION *);
 
+/* OCSP response cache API */
+static tls_ocsp_cache_t *tls_ocsp_cache_get_cache(const char *);
+static int tls_ocsp_cache_open(char *);
+static int tls_ocsp_cache_close(void);
+#ifdef PR_USE_CTRLS
+static int tls_ocsp_cache_clear(void);
+static int tls_ocsp_cache_remove(void);
+static int tls_ocsp_cache_status(pr_ctrls_t *, int);
+#endif /* PR_USE_CTRLS */
+
 #ifdef PR_USE_CTRLS
 static pool *tls_act_pool = NULL;
 static ctrls_acttab_t tls_acttab[];
@@ -595,6 +616,78 @@ static int tls_data_need_init_handshake = TRUE;
 
 static const char *trace_channel = "tls";
 static const char *timing_channel = "timing";
+
+static const char * tls_get_fingerprint(pool *p, X509 *cert) {
+  register unsigned int i;
+  const EVP_MD *md = EVP_sha1();
+  unsigned char fp[EVP_MAX_MD_SIZE];
+  unsigned int fp_len = 0;
+  char *fp_hex = NULL;
+
+  if (X509_digest(cert, md, fp, &fp_len) != 1) {
+    pr_trace_msg(trace_channel, 1,
+      "error obtaining %s digest of X509 cert: %s", OBJ_nid2sn(EVP_MD_type(md)),
+      tls_get_errors());
+    errno = EINVAL;
+    return NULL;
+  }
+
+  fp_hex = pcalloc(p, (fp_len * 2) + 1);
+
+  /* Encode the SHA1 digest data as hex, for easier display. */
+  for (i = 0; i < fp_len; i++) {
+    sprintf((char *) &(fp_hex[i*2]), "%02x", fp[i]);
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "%s fingerprint: %s", OBJ_nid2sn(EVP_MD_type(md)), fp_hex);
+  return fp_hex;
+}
+
+static const char *tls_get_fingerprint_from_file(pool *p, const char *path) {
+  FILE *fh;
+  X509 *cert = NULL;
+  const char *fingerprint;
+
+  fh = fopen(path, "rb");
+  if (fh == NULL) {
+    return NULL;
+  }
+
+  cert = PEM_read_X509(fh, &cert, NULL, NULL);
+  (void) fclose(fh);
+
+  if (cert == NULL) {
+    pr_trace_msg(trace_channel, 1, "error obtaining X509 cert from '%s': %s",
+      path, tls_get_errors());
+    errno = ENOENT;
+    return NULL;
+  }
+
+  fingerprint = tls_get_fingerprint(p, cert);
+  return fingerprint;
+}
+
+#if defined(PR_USE_OPENSSL_OCSP)
+static const char *ocsp_get_responder_url(pool *p, X509 *cert) {
+  register unsigned int i;
+  STACK_OF(OPENSSL_STRING) *strs;
+  char *ocsp_url = NULL;
+
+  strs = X509_get1_ocsp(cert);
+  for (i = 0; i < sk_OPENSSL_STRING_num(strs); i++) {
+    if (ocsp_url == NULL) {
+      ocsp_url = pstrdup(p, sk_OPENSSL_STRING_value(strs, i));
+      break;
+    }
+  }
+
+  /* Yes, this says "email", but it Does The Right Thing(tm) for our needs. */
+  X509_email_free(strs);
+
+  return ocsp_url;
+}
+#endif /* PR_USE_OPENSSL_OCSP */
 
 static void tls_reset_state(void) {
   if (ssl_ctx != NULL) {
@@ -2747,7 +2840,8 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   return dh;
 }
 
-#if !defined(OPENSSL_NO_TLSEXT) && defined(TLSEXT_MAXLEN_host_name)
+#if !defined(OPENSSL_NO_TLSEXT)
+# if defined(TLSEXT_MAXLEN_host_name)
 static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
   const char *server_name = NULL;
 
@@ -2808,7 +2902,1025 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
 
   return SSL_TLSEXT_ERR_OK;
 }
+# endif /* !TLSEXT_MAXLEN_host_name */
+
+static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
+    unsigned char *tlsext_data, int tlsext_datalen, void *data) {
+  char *extension_name = "(unknown)";
+
+  switch (type) {
+    case TLSEXT_TYPE_server_name:
+        extension_name = "server name";
+        break;
+
+    case TLSEXT_TYPE_max_fragment_length:
+        extension_name = "max fragment length";
+        break;
+
+    case TLSEXT_TYPE_client_certificate_url:
+        extension_name = "client certificate URL";
+        break;
+
+    case TLSEXT_TYPE_trusted_ca_keys:
+        extension_name = "trusted CA keys";
+        break;
+
+    case TLSEXT_TYPE_truncated_hmac:
+        extension_name = "truncated HMAC";
+        break;
+
+    case TLSEXT_TYPE_status_request:
+        extension_name = "status request";
+        break;
+
+# ifdef TLSEXT_TYPE_user_mapping
+    case TLSEXT_TYPE_user_mapping:
+        extension_name = "user mapping";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_client_authz
+    case TLSEXT_TYPE_client_authz:
+        extension_name = "client authz";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_server_authz
+    case TLSEXT_TYPE_server_authz:
+        extension_name = "server authz";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_cert_type
+    case TLSEXT_TYPE_cert_type:
+        extension_name = "cert type";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_elliptic_curves
+    case TLSEXT_TYPE_elliptic_curves:
+        extension_name = "elliptic curves";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_ec_point_formats
+    case TLSEXT_TYPE_ec_point_formats:
+        extension_name = "EC point formats";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_srp
+    case TLSEXT_TYPE_srp:
+        extension_name = "SRP";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_signature_algorithms
+    case TLSEXT_TYPE_signature_algorithms:
+        extension_name = "signature algorithms";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_use_srtp
+    case TLSEXT_TYPE_use_srtp:
+        extension_name = "use SRTP";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_heartbeat
+    case TLSEXT_TYPE_heartbeat:
+        extension_name = "heartbeat";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_session_ticket
+    case TLSEXT_TYPE_session_ticket:
+        extension_name = "session ticket";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_renegotiate
+    case TLSEXT_TYPE_renegotiate:
+        extension_name = "renegotiation info";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_opaque_prf_input
+    case TLSEXT_TYPE_opaque_prf_input:
+        extension_name = "opaque PRF input";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_next_proto_neg
+    case TLSEXT_TYPE_next_proto_neg:
+        extension_name = "next protocol";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+    case TLSEXT_TYPE_application_layer_protocol_negotiation:
+        extension_name = "application layer protocol";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_padding
+    case TLSEXT_TYPE_padding:
+        extension_name = "TLS padding";
+        break;
+# endif
+
+    default:
+      break;
+  }
+
+  pr_trace_msg(trace_channel, 6,
+    "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)",
+    client_server ? "server" : "client", extension_name, type, tlsext_datalen,
+    tlsext_datalen != 1 ? "bytes" : "byte");
+}
 #endif /* !OPENSSL_NO_TLSEXT */
+
+#if defined(PR_USE_OPENSSL_OCSP)
+static OCSP_RESPONSE *ocsp_send_request(pool *p, BIO *bio, const char *host,
+    const char *uri, OCSP_REQUEST *req, unsigned int request_timeout) {
+  int fd, res;
+  OCSP_RESPONSE *resp = NULL;
+  OCSP_REQ_CTX *ctx = NULL;
+  const char *header_name, *header_value;
+
+  res = BIO_get_fd(bio, &fd);
+  if (res <= 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error obtaining OCSP responder socket fd: %s", tls_get_errors());
+    return NULL;
+  }
+
+  ctx = OCSP_sendreq_new(bio, (char *) uri, NULL, -1);
+  if (ctx == NULL) {
+    pr_trace_msg(trace_channel, 4,
+      "error allocating OCSP request context: %s", tls_get_errors());
+    return NULL;
+  }
+
+  header_name = "Host";
+  header_value = host;
+  res = OCSP_REQ_CTX_add1_header(ctx, header_name, header_value);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 4,
+      "error adding '%s: %s' header to OCSP request context: %s", header_name,
+      header_value, tls_get_errors());
+    OCSP_REQ_CTX_free(ctx);
+    return NULL;
+  }
+
+  header_name = "Accept";
+  header_value = "application/ocsp-response";
+  res = OCSP_REQ_CTX_add1_header(ctx, header_name, header_value);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 4,
+      "error adding '%s: %s' header to OCSP request context: %s", header_name,
+      header_value, tls_get_errors());
+    OCSP_REQ_CTX_free(ctx);
+    return NULL;
+  }
+
+  header_name = "User-Agent";
+  header_value = "proftpd+" MOD_TLS_VERSION;
+  res = OCSP_REQ_CTX_add1_header(ctx, header_name, header_value);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 4,
+      "error adding '%s: %s' header to OCSP request context: %s", header_name,
+      header_value, tls_get_errors());
+    OCSP_REQ_CTX_free(ctx);
+    return NULL;
+  }
+
+  /* If we are using nonces, then we need to explicitly request that no
+   * caches along the way interfere.
+   */
+  if (!(tls_stapling_opts & TLS_STAPLING_OPT_NO_NONCE)) {
+    header_name = "Pragma";
+    header_value = "no-cache";
+    res = OCSP_REQ_CTX_add1_header(ctx, header_name, header_value);
+    if (res != 1) {
+      pr_trace_msg(trace_channel, 4,
+        "error adding '%s: %s' header to OCSP request context: %s", header_name,
+        header_value, tls_get_errors());
+      OCSP_REQ_CTX_free(ctx);
+      return NULL;
+    }
+
+    header_name = "Cache-Control";
+    header_value = "no-cache, no-store";
+    res = OCSP_REQ_CTX_add1_header(ctx, header_name, header_value);
+    if (res != 1) {
+      pr_trace_msg(trace_channel, 4,
+        "error adding '%s: %s' header to OCSP request context: %s", header_name,
+        header_value, tls_get_errors());
+      OCSP_REQ_CTX_free(ctx);
+      return NULL;
+    }
+  }
+
+  /* Only add the request after we've added our headers. */
+  res = OCSP_REQ_CTX_set1_req(ctx, req);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 4,
+      "error adding OCSP request to context: %s", tls_get_errors());
+    OCSP_REQ_CTX_free(ctx);
+    return NULL;
+  }
+
+  while (TRUE) {
+    fd_set fds;
+    struct timeval tv;
+
+    res = OCSP_sendreq_nbio(&resp, ctx);
+    if (res != -1) {
+      break;
+    }
+
+    if (request_timeout == 0) {
+      break;
+    }
+
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    tv.tv_usec = 0;
+    tv.tv_sec = request_timeout;
+
+    if (BIO_should_read(bio)) {
+      res = select(fd + 1, (void *) &fds, NULL, NULL, &tv);
+
+    } else if (BIO_should_write(bio)) {
+      res = select(fd + 1, NULL, (void *) &fds, NULL, &tv);
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+        "unexpected retry condition when talking to OCSP responder '%s%s'",
+        host, uri);
+      res = -1;
+      break;
+    }
+
+    if (res == 0) {
+      pr_trace_msg(trace_channel, 3,
+         "timed out talking to OCSP responder '%s%s'", host, uri);
+      errno = ETIMEDOUT;
+      res = -1;
+      break;
+    }
+  }
+
+  OCSP_REQ_CTX_free(ctx);
+
+  if (res) {
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      BIO *diags_bio;
+
+      diags_bio = BIO_new(BIO_s_mem());
+      if (diags_bio != NULL) {
+        if (OCSP_RESPONSE_print(diags_bio, resp, 0) == 1) {
+          char *data = NULL;
+          long datalen = 0;
+
+          datalen = BIO_get_mem_data(diags_bio, &data);
+          if (data != NULL) {
+            data[datalen] = '\0';
+            tls_log("received OCSP response (%ld bytes):\n%s", datalen, data);
+          }
+        }
+      }
+
+      BIO_free(diags_bio);
+    }
+
+    return resp;
+  }
+
+  pr_trace_msg(trace_channel, 4,
+    "error obtaining OCSP response from responder: %s", tls_get_errors());
+  return NULL;
+}
+
+static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
+  int res;
+  X509 *issuer = NULL;
+  SSL_CTX *ctx;
+  X509_STORE *store;
+  X509_STORE_CTX *store_ctx;
+
+  if (ssl == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  ctx = SSL_get_SSL_CTX(ssl);
+  if (ctx == NULL) {
+    pr_trace_msg(trace_channel, 4,
+      "no SSL_CTX found for SSL session: %s", tls_get_errors());
+    errno = EINVAL;
+    return NULL;
+  }
+
+  store = SSL_CTX_get_cert_store(ctx);
+  if (store == NULL) {
+    pr_trace_msg(trace_channel, 4,
+      "no certificate store found for SSL_CTX: %s", tls_get_errors());
+    errno = EINVAL;
+    return NULL;
+  }
+
+  store_ctx = X509_STORE_CTX_new();
+  if (store_ctx == NULL) {
+    pr_trace_msg(trace_channel, 4,
+      "error allocating certificate store context: %s", tls_get_errors());
+    errno = ENOMEM;
+    return NULL;
+  }
+
+  res = X509_STORE_CTX_init(store_ctx, store, NULL, NULL);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 4,
+      "error initializing certificate store context: %s", tls_get_errors());
+    X509_STORE_CTX_free(store_ctx);
+    errno = ENOMEM;
+    return NULL;
+  }
+
+  res = X509_STORE_CTX_get1_issuer(&issuer, store_ctx, cert);
+  if (res == -1) {
+    pr_trace_msg(trace_channel, 4,
+      "error finding issuing certificate: %s", tls_get_errors());
+    X509_STORE_CTX_free(store_ctx);
+
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 4,
+      "no issuing certificate found: %s", tls_get_errors());
+    X509_STORE_CTX_free(store_ctx);
+
+    errno = ENOENT;
+    return NULL;
+  }
+
+  X509_STORE_CTX_free(store_ctx);
+  pr_trace_msg(trace_channel, 14, "found issuer %p for certificate", issuer);
+  return issuer;
+}
+
+static OCSP_REQUEST *ocsp_get_request(pool *p, X509 *cert, X509 *issuer) {
+  OCSP_REQUEST *req = NULL;
+  OCSP_CERTID *cert_id = NULL;
+
+  req = OCSP_REQUEST_new();
+  if (req == NULL) {
+    pr_trace_msg(trace_channel, 4, "error allocating OCSP request: %s",
+      tls_get_errors());
+    return NULL;
+  }
+
+  cert_id = OCSP_cert_to_id(NULL, cert, issuer);
+  if (cert_id == NULL) {
+    pr_trace_msg(trace_channel, 4, "error obtaining ID for cert: %s",
+      tls_get_errors());
+    OCSP_REQUEST_free(req);
+    return NULL;
+  }
+
+  if (OCSP_request_add0_id(req, cert_id) == NULL) {
+    pr_trace_msg(trace_channel, 4, "error adding ID to OCSP request: %s",
+      tls_get_errors());
+    OCSP_CERTID_free(cert_id);
+    OCSP_REQUEST_free(req);
+    return NULL;
+  }
+
+  if (!(tls_stapling_opts & TLS_STAPLING_OPT_NO_NONCE)) {
+    OCSP_request_add1_nonce(req, NULL, -1);
+  }
+
+  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    BIO *diags_bio;
+
+    diags_bio = BIO_new(BIO_s_mem());
+    if (diags_bio != NULL) {
+      if (OCSP_REQUEST_print(diags_bio, req, 0) == 1) {
+        char *data = NULL;
+        long datalen = 0;
+
+        datalen = BIO_get_mem_data(diags_bio, &data);
+        if (data != NULL) {
+          data[datalen] = '\0';
+          tls_log("sending OCSP request (%ld bytes):\n%s", datalen, data);
+        }
+      }
+    }
+
+    BIO_free(diags_bio);
+  }
+
+  return req;
+}
+
+static int ocsp_check_cert_status(pool *p, X509 *cert, X509 *issuer,
+    OCSP_BASICRESP *basic_resp, int *ocsp_status, int *ocsp_reason) {
+  int res, status, reason;
+  OCSP_CERTID *cert_id = NULL;
+  ASN1_GENERALIZEDTIME *this_update = NULL, *next_update = NULL,
+    *revoked_at = NULL;
+
+  cert_id = OCSP_cert_to_id(NULL, cert, issuer);
+  if (cert_id == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error obtaining cert ID from basic OCSP response: %s", tls_get_errors());
+
+    errno = xerrno;
+    return -1;
+  }
+
+  res = OCSP_resp_find_status(basic_resp, cert_id, &status, &reason,
+    &revoked_at, &this_update, &next_update);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3,
+      "error locating certificate status in OCSP response: %s",
+      tls_get_errors());
+
+    OCSP_CERTID_free(cert_id);
+    errno = ENOENT;
+    return -1;
+  }
+
+  OCSP_CERTID_free(cert_id);
+
+  res = OCSP_check_validity(this_update, next_update,
+    TLS_OCSP_RESP_MAX_AGE_SECS, -1);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3,
+      "failed time-based validity check of OCSP response: %s",
+      tls_get_errors());
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Valid or not, we still want to cache this response, AND communicate
+   * the certificate status, as is, backed to the client via the stapled
+   * response.
+   */
+
+  pr_trace_msg(trace_channel, 8,
+    "found certificate status '%s' in OCSP response",
+    OCSP_cert_status_str(status));
+  if (status == V_OCSP_CERTSTATUS_REVOKED) {
+    if (reason != -1) {
+      pr_trace_msg(trace_channel, 8, "revocation reason: %s",
+        OCSP_crl_reason_str(reason));
+    }
+  }
+
+  if (ocsp_status != NULL) {
+    *ocsp_status = status;
+  }
+
+  if (ocsp_reason != NULL) {
+    *ocsp_reason = reason;
+  }
+
+  return 0;
+}
+
+static int ocsp_check_response(pool *p, X509 *cert, X509 *issuer, SSL *ssl,
+    OCSP_REQUEST *req, OCSP_RESPONSE *resp) {
+  int flags = 0, res = 0, resp_status;
+  OCSP_BASICRESP *basic_resp = NULL;
+  SSL_CTX *ctx = NULL;
+  X509_STORE *store = NULL;
+  STACK_OF(X509) *chain = NULL;
+
+  ctx = SSL_get_SSL_CTX(ssl);
+  if (ctx == NULL) {
+    pr_trace_msg(trace_channel, 4,
+      "no SSL_CTX found for SSL session: %s", tls_get_errors());
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  store = SSL_CTX_get_cert_store(ctx);
+  if (store == NULL) {
+    pr_trace_msg(trace_channel, 4,
+      "no certificate store found for SSL_CTX: %s", tls_get_errors());
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  basic_resp = OCSP_response_get1_basic(resp);
+  if (basic_resp == NULL) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error getting basic OCSP response: %s", tls_get_errors());
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (!(tls_stapling_opts & TLS_STAPLING_OPT_NO_NONCE)) {
+    res = OCSP_check_nonce(req, basic_resp);
+    if (res < 0) {
+      pr_trace_msg(trace_channel, 1,
+        "WARNING: OCSP response is missing request nonce");
+
+    } else if (res == 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error verifying OCSP response nonce: %s", tls_get_errors());
+
+      OCSP_BASICRESP_free(basic_resp);
+      errno = EINVAL;
+      return -1;
+    }
+  }
+
+  chain = sk_X509_new_null();
+  if (chain != NULL) {
+    STACK_OF(X509) *extra_certs = NULL;
+
+    sk_X509_push(chain, issuer);
+
+# if OPENSSL_VERSION_NUMBER >= 0x10001000L
+    SSL_CTX_get_extra_chain_certs(ctx, &extra_certs);
+# else
+    extra_certs = ctx->extra_certs;
+# endif
+
+    if (extra_certs != NULL) {
+      register unsigned int i;
+
+      for (i = 0; i < sk_X509_num(extra_certs); i++) {
+        sk_X509_push(chain, sk_X509_value(extra_certs, i));
+      }
+    }
+  }
+
+  flags = OCSP_TRUSTOTHER;
+  if (tls_stapling_opts & TLS_STAPLING_OPT_NO_VERIFY) {
+    flags = OCSP_NOVERIFY;
+  }
+
+  res = OCSP_basic_verify(basic_resp, chain, store, flags);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3,
+      "error verifying basic OCSP response data: %s", tls_get_errors());
+
+    OCSP_BASICRESP_free(basic_resp);
+
+    if (chain != NULL) {
+      sk_X509_free(chain);
+    }
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (chain != NULL) {
+    sk_X509_free(chain);
+  }
+
+  /* Now that we have verified the response, we can check the response status.
+   * If we only looked at the status first, then a malicious responder
+   * could be tricking us, e.g.:
+   *
+   *  http://www.thoughtcrime.org/papers/ocsp-attack.pdf
+   */
+
+  resp_status = OCSP_response_status(resp);
+  if (resp_status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    pr_trace_msg(trace_channel, 3,
+      "OCSP response not successful: %s (%d)",
+      OCSP_response_status_str(resp_status), resp_status);
+
+    OCSP_BASICRESP_free(basic_resp);
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = ocsp_check_cert_status(p, cert, issuer, basic_resp, NULL, NULL);
+  OCSP_BASICRESP_free(basic_resp);
+
+  return res;
+}
+
+static int ocsp_connect(pool *p, BIO *bio, unsigned int request_timeout) {
+  int fd, res;
+
+  if (request_timeout > 0) {
+    BIO_set_nbio(bio, 1);
+  }
+
+  res = BIO_do_connect(bio);
+  if (res <= 0 &&
+      (request_timeout == 0 || !BIO_should_retry(bio))) {
+    pr_trace_msg(trace_channel, 4,
+      "error connecting to OCSP responder: %s", tls_get_errors());
+    return -1;
+  }
+
+  if (BIO_get_fd(bio, &fd) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error obtaining OCSP responder socket fd: %s", tls_get_errors());
+    return -1;
+  }
+
+  if (request_timeout > 0 &&
+      res <= 0) {
+    struct timeval tv;
+    fd_set fds;
+
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    tv.tv_usec = 0;
+    tv.tv_sec = request_timeout;
+    res = select(fd + 1, NULL, (void *) &fds, NULL, &tv);
+    if (res == 0) {
+      errno = ETIMEDOUT;
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
+    const char *url, unsigned int request_timeout) {
+  BIO *bio;
+  SSL_CTX *ctx = NULL;
+  X509 *issuer = NULL;
+  char *host = NULL, *port = NULL, *uri = NULL;
+  int res, use_ssl = FALSE;
+  OCSP_REQUEST *req = NULL;
+  OCSP_RESPONSE *resp = NULL;
+
+  issuer = ocsp_get_issuing_cert(p, cert, ssl);
+  if (issuer == NULL) {
+    return NULL;
+  }
+
+  /* Current OpenSSL implementation of OCSP_parse_url() guarantees that
+   * host, port, and uri will never be NULL.  Nice.
+   */
+  res = OCSP_parse_url((char *) url, &host, &port, &uri, &use_ssl);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 4, "error parsing OCSP URL '%s': %s", url,
+      tls_get_errors());
+    return NULL;
+  }
+
+  bio = BIO_new_connect(host);
+  if (bio == NULL) {
+    pr_trace_msg(trace_channel, 4, "error allocating connect BIO: %s",
+      tls_get_errors());
+
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+    return NULL;
+  }
+
+  BIO_set_conn_port(bio, port);
+
+  if (use_ssl) {
+    BIO *ssl_bio;
+
+    ctx = SSL_CTX_new(SSLv23_client_method());
+    if (ctx == NULL) {
+      pr_trace_msg(trace_channel, 4, "error allocating SSL context: %s",
+        tls_get_errors());
+
+      BIO_free_all(bio);
+      OPENSSL_free(host);
+      OPENSSL_free(port);
+      OPENSSL_free(uri);
+      return NULL;
+    }
+
+    SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
+    ssl_bio = BIO_new_ssl(ctx, 1);
+    bio = BIO_push(ssl_bio, bio);
+  }
+
+  res = ocsp_connect(p, bio, request_timeout);
+  if (res < 0) {
+    BIO_free_all(bio);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+    return NULL;
+  }
+
+  req = ocsp_get_request(p, cert, issuer);
+  if (req == NULL) {
+    BIO_free_all(bio);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
+    return NULL;
+  }
+
+  resp = ocsp_send_request(p, bio, host, uri, req, request_timeout);
+
+  OPENSSL_free(host);
+  OPENSSL_free(port);
+  OPENSSL_free(uri);
+
+  if (ctx != NULL) {
+    SSL_CTX_free(ctx);
+  }
+
+  if (bio != NULL) {
+    BIO_free_all(bio);
+  }
+
+  if (resp == NULL) {
+    return NULL;
+  }
+
+  if (ocsp_check_response(p, cert, issuer, ssl, req, resp) < 0) {
+    if (errno != ENOSYS) {
+      OCSP_REQUEST_free(req);
+      OCSP_RESPONSE_free(resp);
+      errno = EINVAL;
+      return NULL;
+    }
+  }
+
+  OCSP_REQUEST_free(req);
+  return resp;
+}
+
+static int ocsp_expired_cached_response(pool *p, OCSP_RESPONSE *resp,
+    time_t age) {
+  int res = -1, status;
+  time_t expired = 0;
+
+  status = OCSP_response_status(resp);
+
+  /* If we received a SUCCESSFUL response from the OCSP responder, then
+   * we expire the response after 1 hour (hardcoded).  Otherwise, we expire
+   * the cached entry after 5 minutes (hardcoded).
+   */
+
+  if (status == OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    if (age > 3600) {
+      expired = age - 3600;
+      res = 0;
+    }
+
+  } else {
+    if (age > 300) {
+      expired = age - 300;
+      res = 0;
+    }
+  }
+
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 8,
+      "cached %s OCSP response expired %lu %s ago",
+      OCSP_response_status_str(status), (unsigned long) expired,
+      expired != 1 ? "secs" : "sec");
+  }
+
+  return res;
+}
+
+static OCSP_RESPONSE *ocsp_get_cached_response(pool *p,
+    const char *fingerprint) {
+  OCSP_RESPONSE *resp = NULL;
+  time_t resp_age = 0;
+
+  if (tls_ocsp_cache == NULL) {
+    errno = ENOSYS;
+    return NULL;
+  }
+
+  resp = (tls_ocsp_cache->get)(tls_ocsp_cache, fingerprint, &resp_age);
+  if (resp != NULL) {
+    time_t now = 0, age = 0;
+    int res;
+
+    time(&now);
+    age = now - resp_age;
+    pr_trace_msg(trace_channel, 9,
+      "found cached OCSP response for fingerprint '%s': %lu %s old",
+      fingerprint, (unsigned long) age, age != 1 ? "secs" : "sec");
+
+    res = ocsp_expired_cached_response(p, resp, age);
+    if (res == 0) {
+      /* Cached response has expired; request a new one. */
+      res = (tls_ocsp_cache->delete)(tls_ocsp_cache, fingerprint);
+      if (res < 0) {
+        pr_trace_msg(trace_channel, 3,
+          "error deleting OCSP response from '%s' cache for "
+          "fingerprint '%s': %s", tls_ocsp_cache->cache_name, fingerprint,
+          strerror(errno));
+      }
+
+      OCSP_RESPONSE_free(resp);
+      resp = NULL;
+    }
+
+  } else {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error retrieving OCSP response from '%s' cache for "
+      "fingerprint '%s': %s", tls_ocsp_cache->cache_name, fingerprint,
+      strerror(xerrno));
+
+    errno = xerrno;
+  }
+
+  return resp;
+}
+
+static int ocsp_add_cached_response(pool *p, const char *fingerprint,
+    OCSP_RESPONSE *resp) {
+  int res;
+  time_t resp_age = 0;
+
+  if (fingerprint == NULL ||
+      tls_ocsp_cache == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Cache this fake response, so that we don't have to keep redoing this
+   * for a short amount of time (e.g. 5 minutes).
+   */
+  time(&resp_age);
+  res = (tls_ocsp_cache->add)(tls_ocsp_cache, fingerprint, resp, resp_age);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error adding OCSP response to '%s' cache for fingerprint '%s': %s",
+      tls_ocsp_cache->cache_name, fingerprint, strerror(xerrno));
+
+    errno = xerrno;
+
+  } else {
+    pr_trace_msg(trace_channel, 15,
+      "added OCSP response to '%s' cache for fingerprint '%s'",
+      tls_ocsp_cache->cache_name, fingerprint);
+  }
+
+  return res;
+}
+
+static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
+  X509 *cert;
+  const char *fingerprint = NULL;
+  OCSP_RESPONSE *resp = NULL, *cached_resp = NULL;
+
+  /* We need to find a cached OCSP response for the server cert in question,
+   * thus we need to find out which server cert is used for this session.
+   */
+  cert = SSL_get_certificate(ssl);
+  if (cert != NULL) {
+    fingerprint = tls_get_fingerprint(p, cert);
+    if (fingerprint != NULL) {
+
+      pr_trace_msg(trace_channel, 3,
+        "using fingerprint '%s' for server cert", fingerprint);
+      if (tls_ocsp_cache != NULL) {
+        OCSP_RESPONSE *fresh_resp = NULL;
+
+        cached_resp = ocsp_get_cached_response(p, fingerprint);
+        if (cached_resp != NULL) {
+          if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+            BIO *diags_bio;
+
+            diags_bio = BIO_new(BIO_s_mem());
+            if (diags_bio != NULL) {
+              if (OCSP_RESPONSE_print(diags_bio, cached_resp, 0) == 1) {
+                char *data = NULL;
+                long datalen = 0;
+
+                datalen = BIO_get_mem_data(diags_bio, &data);
+                if (data != NULL) {
+                  data[datalen] = '\0';
+                  tls_log("cached OCSP response (%ld bytes):\n%s", datalen,
+                    data);
+                }
+              }
+            }
+
+            BIO_free(diags_bio);
+          }
+
+          resp = cached_resp;
+        }
+
+        if (cached_resp == NULL) {
+          int xerrno = errno;
+
+          if (xerrno == ENOENT) {
+            const char *ocsp_url;
+
+            if (tls_stapling_responder == NULL) {
+              ocsp_url = ocsp_get_responder_url(p, cert);
+              if (ocsp_url != NULL) {
+                pr_trace_msg(trace_channel, 8,
+                  "found OCSP responder URL '%s' in certificate "
+                  "(fingerprint '%s')", ocsp_url, fingerprint);
+              }
+
+            } else {
+              ocsp_url = tls_stapling_responder;
+              pr_trace_msg(trace_channel, 8,
+                "using configured OCSP responder URL '%s'", ocsp_url);
+            }
+
+            if (ocsp_url != NULL) {
+              fresh_resp = ocsp_request_response(p, cert, ssl, ocsp_url,
+                tls_stapling_timeout);
+              if (fresh_resp != NULL) {
+                resp = fresh_resp;
+              }
+
+            } else {
+              pr_trace_msg(trace_channel, 5,
+                "no OCSP responder URL found in certificate (fingerprint '%s')",
+                fingerprint);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (resp == NULL) {
+    pr_trace_msg(trace_channel, 5, "returning fake tryLater OCSP response");
+
+    /* If we have not found an OCSP response, then fall back to using
+     * a fake "tryLater" response.
+     */
+    resp = OCSP_response_create(OCSP_RESPONSE_STATUS_TRYLATER, NULL);
+    if (resp == NULL) {
+      pr_trace_msg(trace_channel, 1,
+        "error allocating fake 'tryLater' OCSP response: %s", tls_get_errors());
+      return NULL;
+    }
+  }
+
+  /* If this response is not the one we just pulled from the cache, then
+   * add it.
+   */
+  if (resp != cached_resp) {
+    if (ocsp_add_cached_response(p, fingerprint, resp) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error caching OCSP response: %s", strerror(errno));
+    }
+  }
+
+  return resp;
+}
+
+static int tls_ocsp_cb(SSL *ssl, void *user_data) {
+  OCSP_RESPONSE *resp;
+  int resp_derlen;
+  unsigned char *resp_der = NULL;
+  pool *ocsp_pool;
+
+  if (tls_stapling == FALSE) {
+    /* OCSP stapling disabled; do nothing. */
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  ocsp_pool = make_sub_pool(session.pool);
+  pr_pool_tag(ocsp_pool, "Session OCSP response pool");
+
+  resp = ocsp_get_response(ocsp_pool, ssl);
+  resp_derlen = i2d_OCSP_RESPONSE(resp, &resp_der);
+  destroy_pool(ocsp_pool);
+
+  /* Success or failure, we're done with the OCSP response. */
+  OCSP_RESPONSE_free(resp);
+
+  if (resp_derlen <= 0) {
+    tls_log("error determining OCSP response length: %s", tls_get_errors());
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  SSL_set_tlsext_status_ocsp_resp(ssl, resp_der, resp_derlen);
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* PR_USE_OPENSSL_OCSP */
 
 #if defined(PR_USE_OPENSSL_ECC)
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
@@ -3139,6 +4251,30 @@ static int tls_init_ctx(void) {
 
     SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
     SSL_CTX_set_timeout(ssl_ctx, timeout);
+  }
+
+  /* Set up OCSP response caching */
+  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingCache", FALSE);
+  if (c != NULL) {
+    const char *provider;
+
+    /* Look up and initialize the configured OCSP cache provider. */
+    provider = c->argv[0];
+
+    if (provider != NULL) {
+      tls_ocsp_cache = tls_ocsp_cache_get_cache(provider);
+
+      pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSStaplingCache",
+        provider);
+
+      if (tls_ocsp_cache_open(c->argv[1]) < 0 &&
+          errno != ENOSYS) {
+        pr_log_debug(DEBUG1, MOD_TLS_VERSION
+          ": error opening '%s' TLSStaplingCache: %s", provider,
+          strerror(errno));
+        tls_ocsp_cache = NULL;
+      }
+    }
   }
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
@@ -4026,6 +5162,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   SSL_set_bio(ssl, rbio, wbio);
 
+#if !defined(OPENSSL_NO_TLSEXT)
+  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    SSL_set_tlsext_debug_callback(ssl, tls_tlsext_cb);
+  }
+#endif /* !OPENSSL_NO_TLSEXT */
+
   /* If configured, set a timer for the handshake. */
   if (tls_handshake_timeout) {
     tls_handshake_timer_id = pr_timer_add(tls_handshake_timeout, -1,
@@ -4739,6 +5881,7 @@ static int tls_connect(conn_t *conn) {
 static void tls_cleanup(int flags) {
 
   tls_sess_cache_close();
+  tls_ocsp_cache_close();
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   if (tls_crypto_device) {
@@ -4977,23 +6120,37 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
 
 static const char *tls_get_errors(void) {
   unsigned int count = 0;
-  unsigned long e = ERR_get_error();
+  unsigned long error_code;
   BIO *bio = NULL;
   char *data = NULL;
   long datalen;
-  const char *str = "(unknown)";
+  const char *error_data = NULL, *str = "(unknown)";
+  int error_flags = 0;
 
   /* Use ERR_print_errors() and a memory BIO to build up a string with
    * all of the error messages from the error queue.
    */
 
-  if (e)
+  error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
+  if (error_code) {
     bio = BIO_new(BIO_s_mem());
+  }
 
-  while (e) {
+  while (error_code) {
     pr_signals_handle();
-    BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
-    e = ERR_get_error(); 
+
+    if (error_flags & ERR_TXT_STRING) {
+      BIO_printf(bio, "\n  (%u) %s [%s]", ++count,
+        ERR_error_string(error_code, NULL), error_data);
+
+    } else {
+      BIO_printf(bio, "\n  (%u) %s", ++count,
+        ERR_error_string(error_code, NULL));
+    }
+
+    error_data = NULL;
+    error_flags = 0;
+    error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
   }
 
   datalen = BIO_get_mem_data(bio, &data);
@@ -5002,8 +6159,9 @@ static const char *tls_get_errors(void) {
     str = pstrdup(session.pool, data);
   }
 
-  if (bio)
+  if (bio) {
     BIO_free(bio);
+  }
 
   return str;
 }
@@ -6272,7 +7430,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   return ok;
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && defined(PR_USE_OPENSSL_OCSP)
 static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     const char *url) {
   BIO *conn;
@@ -6280,14 +7438,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   X509_NAME *subj = NULL;
   const char *subj_name;
   char *host = NULL, *port = NULL, *uri = NULL;
-  int ok = FALSE, res = 0 , use_ssl = 0, ocsp_status, ocsp_cert_status,
-    ocsp_reason;
+  int ok = FALSE, res = 0 , use_ssl = 0;
+  int ocsp_status, ocsp_cert_status, ocsp_reason;
   OCSP_REQUEST *req = NULL;
-  OCSP_CERTID *cert_id = NULL;
   OCSP_RESPONSE *resp = NULL;
   OCSP_BASICRESP *basic_resp = NULL;
   SSL_CTX *ocsp_ssl_ctx = NULL;
-  ASN1_GENERALIZEDTIME *revtime, *thisupd, *nextupd;
 
   if (cert == NULL ||
       url == NULL) {
@@ -6299,30 +7455,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 
   tls_log("checking OCSP URL '%s' for client cert '%s'", url, subj_name);
 
+  /* Current OpenSSL implementation of OCSP_parse_url() guarantees that
+   * host, port, and uri will never be NULL.  Nice.
+   */
   if (OCSP_parse_url((char *) url, &host, &port, &uri, &use_ssl) != 1) {
     tls_log("error parsing OCSP URL '%s': %s", url, tls_get_errors());
     return FALSE;
-  }
-
-  /* XXX Need to check for NULL host, uri. */
-
-  if (port == NULL) {
-    if (use_ssl == 1) {
-#ifdef OPENSSL_strdup
-      port = OPENSSL_strdup("443");
-#else
-      port = OPENSSL_malloc(4);
-      sstrncpy(port, "443", 3);
-#endif /* OPENSSL_strdup */
-
-    } else {
-#ifdef OPENSSL_strdup
-      port = OPENSSL_strdup("80");
-#else
-      port = OPENSSL_malloc(3);
-      sstrncpy(port, "80", 2);
-#endif /* OPENSSL_strdup */
-    }
   }
 
   tls_log("connecting to OCSP responder at host '%s', port '%s', URI '%s'%s",
@@ -6363,8 +7501,8 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     }
   }
 
-  res = BIO_do_connect(conn);
-  if (res != 1) {
+  res = ocsp_connect(session.pool, conn, 0);
+  if (res < 0) {
     tls_log("error connecting to OCSP URL '%s': %s", url, tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {
@@ -6406,53 +7544,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return FALSE;
   }
 
-  /* Note that the cert_id value will be freed when the request is freed. */
-  cert_id = OCSP_cert_to_id(NULL, cert, issuing_cert);
-  if (cert_id == NULL) {
-    const char *issuer_subj_name = tls_x509_name_oneline(
-      X509_get_subject_name(issuing_cert));
-
-    tls_log("error converting client cert '%s' and its issuing cert '%s' "
-      "to an OCSP cert ID: %s", subj_name, issuer_subj_name, tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  req = OCSP_REQUEST_new();
+  req = ocsp_get_request(session.pool, cert, issuing_cert);
   if (req == NULL) {
-    tls_log("unable to allocate OCSP request: %s", tls_get_errors());
-
     if (ocsp_ssl_ctx != NULL) {
       SSL_CTX_free(ocsp_ssl_ctx);
     }
 
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  if (OCSP_request_add0_id(req, cert_id) == NULL) {
-    tls_log("error adding cert ID to OCSP request: %s", tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_REQUEST_free(req);
     X509_free(issuing_cert);
     BIO_free_all(conn);
     OPENSSL_free(host);
@@ -6485,24 +7582,6 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   }
 # endif
 
-  res = OCSP_request_add1_nonce(req, NULL, 0);
-  if (res != 1) {
-    tls_log("error adding nonce to OCSP request: %s", tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_REQUEST_free(req);
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
   if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
     BIO *bio;
 
@@ -6523,8 +7602,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     }
   }
 
-  resp = OCSP_sendreq_bio(conn, uri, req);
-
+  resp = ocsp_send_request(session.pool, conn, host, uri, req, 0);
   if (resp == NULL) {
     tls_log("error receiving response from OCSP responder at '%s': %s", url,
       tls_get_errors());
@@ -6575,27 +7653,6 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
       SSL_CTX_free(ocsp_ssl_ctx);
     }
 
-    OCSP_RESPONSE_free(resp);
-    OCSP_REQUEST_free(req);
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  res = OCSP_check_nonce(req, basic_resp);
-  if (res != 1) {
-    tls_log("unable to use response from OCSP responder at '%s': bad nonce",
-      url);
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_BASICRESP_free(basic_resp);
     OCSP_RESPONSE_free(resp);
     OCSP_REQUEST_free(req);
     X509_free(issuing_cert);
@@ -6676,32 +7733,9 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return ok;
   }
 
-  res = OCSP_resp_find_status(basic_resp, cert_id, &ocsp_cert_status,
-    &ocsp_reason, &revtime, &thisupd, &nextupd);
-  if (res != 1) {
+  if (ocsp_check_cert_status(session.pool, cert, issuing_cert, basic_resp,
+      &ocsp_cert_status, &ocsp_reason) < 0) {
     tls_log("unable to retrieve cert status from OCSP response: %s",
-      tls_get_errors());
-
-    if (ocsp_ssl_ctx != NULL) {
-      SSL_CTX_free(ocsp_ssl_ctx);
-    }
-
-    OCSP_REQUEST_free(req);
-    OCSP_BASICRESP_free(basic_resp);
-    OCSP_RESPONSE_free(resp);
-    X509_free(issuing_cert);
-    BIO_free_all(conn);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
-
-    return FALSE;
-  }
-
-  /* Check the validity of the timestamps on the response. */
-  res = OCSP_check_validity(thisupd, nextupd, TLS_OCSP_RESP_MAX_AGE_SECS, -1);
-  if (res != 1) {
-    tls_log("unable validate OCSP response timestamps: %s",
       tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {
@@ -6767,7 +7801,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 #endif
 
 static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && defined(PR_USE_OPENSSL_OCSP)
   register unsigned int i;
   X509 *cert;
   const char *subj;
@@ -7143,8 +8177,252 @@ static int tls_sess_cache_status(pr_ctrls_t *ctrl, int flags) {
   pr_ctrls_add_response(ctrl, "No TLSSessionCache configured");
   return res;
 }
+#endif /* PR_USE_CTRLS */
 
-static int tls_handle_clear(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+/* OCSP response cache API */
+
+struct tls_ocache {
+  struct tls_ocache *next, *prev;
+
+  const char *name;
+  tls_ocsp_cache_t *cache;
+};
+
+#if defined(PR_USE_OPENSSL_OCSP)
+static pool *tls_ocsp_cache_pool = NULL;
+static struct tls_ocache *tls_ocsp_caches = NULL;
+static unsigned int tls_ocsp_ncaches = 0;
+#endif /* PR_USE_OPENSSL_OCSP */
+
+int tls_ocsp_cache_register(const char *name, tls_ocsp_cache_t *cache) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  struct tls_ocache *oc;
+
+  if (name == NULL ||
+      cache == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (tls_ocsp_cache_pool == NULL) {
+    tls_ocsp_cache_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(tls_ocsp_cache_pool, "TLS OCSP Response Cache API Pool");
+  }
+
+  /* Make sure this cache has not already been registered. */
+  if (tls_ocsp_cache_get_cache(name) != NULL) {
+    errno = EEXIST;
+    return -1;
+  }
+
+  oc = pcalloc(tls_ocsp_cache_pool, sizeof(struct tls_ocache));
+
+  /* XXX Should this name string be dup'd from the tls_ocsp_cache_pool? */
+  oc->name = name;
+  cache->cache_name = pstrdup(tls_ocsp_cache_pool, name);
+  oc->cache = cache;
+
+  if (tls_ocsp_caches != NULL) {
+    oc->next = tls_ocsp_caches;
+
+  } else {
+    oc->next = NULL;
+  }
+
+  tls_ocsp_caches = oc;
+  tls_ocsp_ncaches++;
+
+  return 0;
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* PR_USE_OPENSSL_OCSP */
+}
+
+int tls_ocsp_cache_unregister(const char *name) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  struct tls_ocache *oc;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  for (oc = tls_ocsp_caches; oc; oc = oc->next) {
+    if (strcmp(oc->name, name) == 0) {
+
+      if (oc->prev) {
+        oc->prev->next = oc->next;
+
+      } else {
+        /* If prev is NULL, this is the head of the list. */
+        tls_ocsp_caches = oc->next;
+      }
+
+      if (oc->next) {
+        oc->next->prev = oc->prev;
+      }
+
+      oc->next = oc->prev = NULL;
+      tls_ocsp_ncaches--;
+
+      /* If the OCSP response cache being unregistered is in use, update the
+       * ocsp-cache-in-use pointer.
+       */
+      if (oc->cache == tls_ocsp_cache) {
+        tls_ocsp_cache_close();
+        tls_ocsp_cache = NULL;
+      }
+
+      /* NOTE: a counter should be kept of the number of unregistrations,
+       * as the memory for a registration is not freed on unregistration.
+       */
+
+      return 0;
+    }
+  }
+
+  errno = ENOENT;
+  return -1;
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* PR_USE_OPENSSL_OCSP */
+}
+
+static tls_ocsp_cache_t *tls_ocsp_cache_get_cache(const char *name) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  struct tls_ocache *oc;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  for (oc = tls_ocsp_caches; oc; oc = oc->next) {
+    if (strcmp(oc->name, name) == 0) {
+      return oc->cache;
+    }
+  }
+
+  errno = ENOENT;
+  return NULL;
+#else
+  errno = ENOSYS;
+  return NULL;
+#endif /* PR_USE_OPENSSL_OCSP */
+}
+
+static int tls_ocsp_cache_open(char *info) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  int res;
+
+  if (tls_ocsp_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_ocsp_cache->open)(tls_ocsp_cache, info);
+  return res;
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* PR_USE_OPENSSL_OCSP */
+}
+
+static int tls_ocsp_cache_close(void) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  int res;
+
+  if (tls_ocsp_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_ocsp_cache->close)(tls_ocsp_cache);
+  return res;
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* PR_USE_OPENSSL_OCSP */
+}
+
+#ifdef PR_USE_CTRLS
+static int tls_ocsp_cache_clear(void) {
+# if defined(PR_USE_OPENSSL_OCSP)
+  int res;
+
+  if (tls_ocsp_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_ocsp_cache->clear)(tls_ocsp_cache);
+  return res;
+# else
+  errno = ENOSYS;
+  return -1;
+# endif /* PR_USE_OPENSSL_OCSP */
+}
+
+static int tls_ocsp_cache_remove(void) {
+# if defined(PR_USE_OPENSSL_OCSP)
+  int res;
+
+  if (tls_ocsp_cache == NULL) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  res = (tls_ocsp_cache->remove)(tls_ocsp_cache);
+  return res;
+# else
+  errno = ENOSYS;
+  return -1;
+# endif /* PR_USE_OPENSSL_OCSP */
+}
+
+# if defined(PR_USE_OPENSSL_OCSP)
+static void ocsp_cache_printf(void *ctrl, const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+  va_list msg;
+
+  memset(buf, '\0', sizeof(buf));
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  pr_ctrls_add_response(ctrl, "%s", buf);
+}
+# endif /* PR_USE_OPENSSL_OCSP */
+
+static int tls_ocsp_cache_status(pr_ctrls_t *ctrl, int flags) {
+# if defined(PR_USE_OPENSSL_OCSP)
+  int res = 0;
+
+  if (tls_ocsp_cache != NULL) {
+    res = (tls_ocsp_cache->status)(tls_ocsp_cache, ocsp_cache_printf, ctrl,
+      flags);
+    return res;
+  }
+
+  pr_ctrls_add_response(ctrl, "No TLSStaplingCache configured");
+  return res;
+# else
+  errno = ENOSYS;
+  return -1;
+# endif /* PR_USE_OPENSSL_OCSP */
+}
+#endif /* PR_USE_CTRLS */
+
+/* Controls
+ */
+
+#ifdef PR_USE_CTRLS
+static int tls_handle_sesscache_clear(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
   int res;
 
   res = tls_sess_cache_clear();
@@ -7162,7 +8440,8 @@ static int tls_handle_clear(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   return res;
 }
 
-static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+static int tls_handle_sesscache_info(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
   int flags = 0, optc, res;
   const char *opts = "v";
 
@@ -7194,7 +8473,8 @@ static int tls_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   return res;
 }
 
-static int tls_handle_remove(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+static int tls_handle_sesscache_remove(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
   int res;
 
   res = tls_sess_cache_remove();
@@ -7228,7 +8508,7 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
       return -1;
     }
 
-    return tls_handle_info(ctrl, reqargc, reqargv);
+    return tls_handle_sesscache_info(ctrl, reqargc, reqargv);
 
   } else if (strncmp(reqargv[0], "clear", 6) == 0) {
 
@@ -7238,7 +8518,7 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
       return -1;
     }
 
-    return tls_handle_clear(ctrl, reqargc, reqargv);
+    return tls_handle_sesscache_clear(ctrl, reqargc, reqargv);
 
   } else if (strncmp(reqargv[0], "remove", 7) == 0) {
 
@@ -7248,10 +8528,120 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
       return -1;
     }
 
-    return tls_handle_remove(ctrl, reqargc, reqargv);
+    return tls_handle_sesscache_remove(ctrl, reqargc, reqargv);
   }
 
   pr_ctrls_add_response(ctrl, "tls sesscache: unknown sesscache action: '%s'",
+    reqargv[0]);
+  return -1;
+}
+
+static int tls_handle_ocspcache_info(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int flags = 0, optc, res;
+  const char *opts = "v";
+
+  pr_getopt_reset();
+
+  while ((optc = getopt(reqargc, reqargv, opts)) != -1) {
+    switch (optc) {
+      case '?':
+        pr_ctrls_add_response(ctrl,
+          "tls ocspcache: unsupported parameter: '%s'", reqargv[1]);
+        return -1;
+    }
+  }
+
+  res = tls_ocsp_cache_status(ctrl, flags);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls ocspcache: error obtaining OCSP cache status: %s",
+      strerror(errno));
+
+  } else {
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_ocspcache_clear(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int res;
+
+  res = tls_ocsp_cache_clear();
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls ocspcache: error clearing OCSP cache: %s", strerror(errno));
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls ocspcache: cleared %d %s from '%s' "
+      "OCSP cache", res, res != 1 ? "responses" : "response",
+      tls_ocsp_cache->cache_name);
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_ocspcache_remove(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int res;
+
+  res = tls_ocsp_cache_remove();
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "tls ocspcache: error removing OCSP cache: %s", strerror(errno));
+
+  } else {
+    pr_ctrls_add_response(ctrl, "tls sesscache: removed '%s' OCSP cache",
+      tls_ocsp_cache->cache_name);
+    res = 0;
+  }
+
+  return res;
+}
+
+static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
+  /* Sanity check */
+  if (reqargc == 0 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "tls ocspcache: missing required parameters");
+    return -1;
+  }
+
+  if (strncmp(reqargv[0], "info", 5) == 0) {
+
+    /* Check the ACLs. */
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "info")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_ocspcache_info(ctrl, reqargc, reqargv);
+
+  } else if (strncmp(reqargv[0], "clear", 6) == 0) {
+
+    /* Check the ACLs. */
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "clear")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_ocspcache_clear(ctrl, reqargc, reqargv);
+
+  } else if (strncmp(reqargv[0], "remove", 7) == 0) {
+
+    /* Check the ACLs. */
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "remove")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_ocspcache_remove(ctrl, reqargc, reqargv);
+  }
+
+  pr_ctrls_add_response(ctrl, "tls ocspcache: unknown ocspcache action: '%s'",
     reqargv[0]);
   return -1;
 }
@@ -7275,6 +8665,17 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
     }
 
     return tls_handle_sesscache(ctrl, --reqargc, ++reqargv);
+  }
+
+  if (strncmp(reqargv[0], "ocspcache", 10) == 0) {
+
+    /* Check the ACLs. */
+    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "ocspcache")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return tls_handle_ocspcache(ctrl, --reqargc, ++reqargv);
   }
 
   pr_ctrls_add_response(ctrl, "tls: unknown tls action: '%s'", reqargv[0]);
@@ -9053,28 +10454,27 @@ MODRET set_tlsdhparamfile(cmd_rec *cmd) {
 
 /* usage: TLSDSACertificateFile file */
 MODRET set_tlsdsacertfile(cmd_rec *cmd) {
-  int res;
   char *path;
+  const char *fingerprint;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   path = cmd->argv[1];
-
-  PRIVS_ROOT
-  res = file_exists(path);
-  PRIVS_RELINQUISH
-
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
-  }
-
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
   }
 
-  add_config_param_str(cmd->argv[0], 1, path);
+  PRIVS_ROOT
+  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path);
+  PRIVS_RELINQUISH
+
+  if (fingerprint == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path,
+      "' does not exist or does not contain a certificate", NULL));
+  }
+
+  add_config_param_str(cmd->argv[0], 2, path, fingerprint);
   return PR_HANDLED(cmd);
 }
 
@@ -9108,33 +10508,32 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
 /* usage: TLSECCertificateFile file */
 MODRET set_tlseccertfile(cmd_rec *cmd) {
 #ifdef PR_USE_OPENSSL_ECC
-  int res;
   char *path;
+  const char *fingerprint;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   path = cmd->argv[1];
-
-  PRIVS_ROOT
-  res = file_exists(path);
-  PRIVS_RELINQUISH
-
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
-  }
-
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
   }
 
-  add_config_param_str(cmd->argv[0], 1, path);
+  PRIVS_ROOT
+  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path);
+  PRIVS_RELINQUISH
+
+  if (fingerprint == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path,
+      "' does not exist or does not contain a certificate", NULL));
+  }
+
+  add_config_param_str(cmd->argv[0], 2, path, fingerprint);
   return PR_HANDLED(cmd);
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", (char *) cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have EC support", NULL));
+    "does not have EC support", NULL));
 #endif /* PR_USE_OPENSSL_ECC */
 }
 
@@ -9167,7 +10566,7 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", (char *) cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have EC support", NULL));
+    "does not have EC support", NULL));
 #endif /* PR_USE_OPENSSL_ECC */
 }
 
@@ -9215,7 +10614,7 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have EC support", NULL));
+    "does not have EC support", NULL));
 #endif /* PR_USE_OPENSSL_ECC */
 }
 
@@ -9295,7 +10694,7 @@ MODRET set_tlsnextprotocol(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
-    "does have NPN/ALPN support", NULL));
+    "does not have NPN/ALPN support", NULL));
 #endif /* !OPENSSL_NO_TLSEXT */
 }
 
@@ -9665,10 +11064,11 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "required") == 0) {
-      int bool = get_boolean(cmd, i+1);
+      int required;
 
-      if (bool != -1) {
-        *((unsigned char *) c->argv[3]) = bool;
+      required = get_boolean(cmd, i+1);
+      if (required != -1) {
+        *((unsigned char *) c->argv[3]) = required;
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
@@ -9705,7 +11105,7 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 
 /* usage: TLSRequired on|off|both|control|ctrl|[!]data|auth|auth+data */
 MODRET set_tlsrequired(cmd_rec *cmd) {
-  int bool = -1;
+  int required = -1;
   int on_auth = 0, on_ctrl = 0, on_data = 0;
   config_rec *c = NULL;
 
@@ -9713,8 +11113,8 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
     CONF_DYNDIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  required = get_boolean(cmd, 1);
+  if (required == -1) {
     if (strcmp(cmd->argv[1], "control") == 0 ||
         strcmp(cmd->argv[1], "ctrl") == 0) {
       on_auth = 1;
@@ -9752,7 +11152,7 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
       CONF_ERROR(cmd, "bad parameter");
 
   } else {
-    if (bool == TRUE) {
+    if (required == TRUE) {
       on_auth = 1;
       on_ctrl = 1;
       on_data = 1;
@@ -9774,28 +11174,27 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
 
 /* usage: TLSRSACertificateFile file */
 MODRET set_tlsrsacertfile(cmd_rec *cmd) {
-  int res;
   char *path;
+  const char *fingerprint;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   path = cmd->argv[1];
-
-  PRIVS_ROOT
-  res = file_exists(path);
-  PRIVS_RELINQUISH
-
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
-  }
-
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
   }
 
-  add_config_param_str(cmd->argv[0], 1, path);
+  PRIVS_ROOT
+  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path);
+  PRIVS_RELINQUISH
+
+  if (fingerprint == NULL) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path,
+      "' does not exist or does not contain a certificate", NULL));
+  }
+
+  add_config_param_str(cmd->argv[0], 2, path, fingerprint);
   return PR_HANDLED(cmd);
 }
 
@@ -9828,7 +11227,7 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
 
 /* usage: TLSServerCipherPreference on|off */
 MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
-  int bool = -1;
+  int use_server_prefs = -1;
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
   config_rec *c = NULL;
 #endif
@@ -9836,15 +11235,15 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  use_server_prefs = get_boolean(cmd, 1);
+  if (use_server_prefs == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = use_server_prefs;
 
 #else
   pr_log_debug(DEBUG0,
@@ -9926,7 +11325,156 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TLSTimeoutHandshake <secs> */
+/* usage: TLSStapling on|off */
+MODRET set_tlsstapling(cmd_rec *cmd) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  int stapling = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  stapling = get_boolean(cmd, 1);
+  if (stapling == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = stapling;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does not have OCSP support", NULL));
+#endif /* PR_USE_OPENSSL_OCSP */
+}
+
+/* usage: TLSStaplingCache "off"|type:/info */
+MODRET set_tlsstaplingcache(cmd_rec *cmd) {
+  char *provider = NULL, *info = NULL;
+  config_rec *c;
+  int enabled = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  /* Has OCSP response caching been explicitly turned off? */
+  enabled = get_boolean(cmd, 1);
+  if (enabled != FALSE) {
+    char *ptr;
+
+    /* Separate the type/info parameter into pieces. */
+    ptr = strchr(cmd->argv[1], ':');
+    if (ptr == NULL) {
+      CONF_ERROR(cmd, "badly formatted parameter");
+    }
+
+    *ptr = '\0';
+    provider = cmd->argv[1];
+    info = ptr + 1;
+
+    /* Verify that the requested cache type has been registered. */
+    if (tls_ocsp_cache_get_cache(provider) == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "OCSP stapling cache type '",
+        provider, "' not available", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  if (provider != NULL) {
+    c->argv[0] = pstrdup(c->pool, provider);
+  }
+
+  if (info != NULL) {
+    c->argv[1] = pstrdup(c->pool, info);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: TLSStaplingOptions opt1 opt2 ... */
+MODRET set_tlsstaplingoptions(cmd_rec *cmd) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "NoNonce") == 0) {
+      opts |= TLS_STAPLING_OPT_NO_NONCE;
+
+    } else if (strcmp(cmd->argv[i], "NoVerify") == 0) {
+      opts |= TLS_STAPLING_OPT_NO_VERIFY;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSStaplingOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+#endif /* PR_USE_OPENSSL_OCSP */
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: TLSStaplingResponder url */
+MODRET set_tlsstaplingresponder(cmd_rec *cmd) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  char *host = NULL, *port = NULL, *uri = NULL, *url;
+  int use_ssl = 0;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  url = cmd->argv[1];
+  if (OCSP_parse_url(url, &host, &port, &uri, &use_ssl) != 1) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing URL '", url, "': ",
+      tls_get_errors(), NULL));
+  }
+
+  OPENSSL_free(host);
+  OPENSSL_free(port);
+  OPENSSL_free(uri);
+
+  add_config_param_str(cmd->argv[0], 1, url);
+#endif /* PR_USE_OPENSSL_OCSP */
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: TLSStaplingTimeout secs */
+MODRET set_tlsstaplingtimeout(cmd_rec *cmd) {
+  int timeout = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (pr_str_get_duration(cmd->argv[1], &timeout) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = timeout;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: TLSTimeoutHandshake secs */
 MODRET set_tlstimeouthandshake(cmd_rec *cmd) {
   int timeout = -1;
   config_rec *c = NULL;
@@ -9976,19 +11524,20 @@ MODRET set_tlsusername(cmd_rec *cmd) {
 
 /* usage: TLSVerifyClient on|off */
 MODRET set_tlsverifyclient(cmd_rec *cmd) {
-  int bool = -1;
+  int verify_client = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  verify_client = get_boolean(cmd, 1);
+  if (verify_client == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = verify_client;
 
   return PR_HANDLED(cmd);
 }
@@ -11013,6 +12562,33 @@ static int tls_sess_init(void) {
   SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
 #endif /* !OPENSSL_NO_TLSEXT */
 
+#if defined(PR_USE_OPENSSL_OCSP)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    tls_stapling_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSStaplingOptions", FALSE);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingResponder", FALSE);
+  if (c != NULL) {
+    tls_stapling_responder = c->argv[0];
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingTimeout", FALSE);
+  if (c != NULL) {
+    tls_stapling_timeout = *((unsigned int *) c->argv[0]);
+  }
+
+  SSL_CTX_set_tlsext_status_cb(ssl_ctx, tls_ocsp_cb);
+  SSL_CTX_set_tlsext_status_arg(ssl_ctx, NULL);
+#endif /* PR_USE_OPENSSL_OCSP */
+
 #ifdef PR_USE_OPENSSL_ECC
 # if defined(SSL_CTX_set_ecdh_auto)
   if (tls_opts & TLS_OPT_NO_AUTO_ECDH) {
@@ -11069,14 +12645,28 @@ static int tls_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSRequired", FALSE);
-  if (c) {
+  if (c != NULL) {
     tls_required_on_ctrl = *((int *) c->argv[0]);
     tls_required_on_data = *((int *) c->argv[1]);
     tls_required_on_auth = *((int *) c->argv[2]);
   }
 
+#if defined(PR_USE_OPENSSL_OCSP)
+  /* If a TLSStaplingCache has been configured, then TLSStapling should
+   * be enabled by default.
+   */
+  if (tls_ocsp_cache != NULL) {
+    tls_stapling = TRUE;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSStapling", FALSE);
+  if (c != NULL) {
+    tls_stapling = *((int *) c->argv[0]);
+  }
+#endif /* PR_USE_OPENSSL_OCSP */
+
   c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake", FALSE);
-  if (c) {
+  if (c != NULL) {
     tls_handshake_timeout = *((unsigned int *) c->argv[0]);
   }
 
@@ -11377,6 +12967,11 @@ static conftable tls_conftab[] = {
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
   { "TLSServerCipherPreference",set_tlsservercipherpreference,NULL },
   { "TLSSessionCache",		set_tlssessioncache,	NULL },
+  { "TLSStapling",		set_tlsstapling,	NULL },
+  { "TLSStaplingCache",		set_tlsstaplingcache,	NULL },
+  { "TLSStaplingOptions",	set_tlsstaplingoptions,	NULL },
+  { "TLSStaplingResponder",	set_tlsstaplingresponder, NULL },
+  { "TLSStaplingTimeout",	set_tlsstaplingtimeout,	NULL },
   { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
   { "TLSUserName",		set_tlsusername,	NULL },
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
