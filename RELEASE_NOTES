@@ -28,7 +28,6 @@ ChangeLog files.
       See doc/modules/mod_auth.html#AllowEmptyPasswords for details.
       Note that this applies to mod_sftp password-based logins as well.
 
-
     TLSStapling (Bug#4175)
       TLSStaplingCache, TLSStaplingOptions, TLSStaplingResponder,
       TLSStaplingTimeout
@@ -83,6 +82,9 @@ ChangeLog files.
         SFTPExtensions -hardlink
 
       See doc/contrib/mod_sftp.html#SFTPExtensions for details.
+
+    SQLConnectInfo, SQLNamedConnectInfo (Bug#4200)
+      SSL connection parameters/configuration
 
     TLSProtocol
       The mod_tls module now supports excluding of particular SSL/TLS
