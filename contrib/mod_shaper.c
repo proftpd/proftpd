@@ -1628,7 +1628,7 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error rewinding scoreboard: %s", strerror(errno));
 
-    while ((score = pr_scoreboard_read_entry()) != NULL) {
+    while ((score = pr_scoreboard_entry_read()) != NULL) {
       pr_signals_handle();
 
       if (strcmp(score->sce_user, user) == 0) {
@@ -1665,7 +1665,7 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error rewinding scoreboard: %s", strerror(errno));
 
-    while ((score = pr_scoreboard_read_entry()) != NULL) {
+    while ((score = pr_scoreboard_entry_read()) != NULL) {
       pr_signals_handle();
 
       if (strcmp(score->sce_client_addr, addr) == 0) {
@@ -1692,7 +1692,7 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error rewinding scoreboard: %s", strerror(errno));
 
-    while ((score = pr_scoreboard_read_entry()) != NULL) {
+    while ((score = pr_scoreboard_entry_read()) != NULL) {
       pr_signals_handle();
 
       if (strcmp(score->sce_class, class) == 0) {

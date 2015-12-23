@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_odbc -- Support for connecting to databases via ODBC
  *
- * Copyright (c) 2003-2013 TJ Saunders
+ * Copyright (c) 2003-2015 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * As a special exemption, TJ Saunders gives permission to link this program
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
- *
- * $Id: mod_sql_odbc.c,v 1.15 2013-09-25 04:25:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -30,8 +28,8 @@
 #define MOD_SQL_ODBC_VERSION    "mod_sql_odbc/0.3.3"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030001
-# error "ProFTPD 1.3.0rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030602
+# error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
 #include "sql.h"
@@ -1075,7 +1073,9 @@ MODRET sqlodbc_def_conn(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \todbc cmd_defineconnection");
 
-  if (cmd->argc < 4 || cmd->argc > 5 || !cmd->argv[0]) {
+  if (cmd->argc < 4 ||
+      cmd->argc > 10 ||
+      !cmd->argv[0]) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_defineconnection");
     return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "badly formed request");
   }
@@ -1095,7 +1095,7 @@ MODRET sqlodbc_def_conn(cmd_rec *cmd) {
       "named connection already exists");
   }
 
-  if (cmd->argc == 5) { 
+  if (cmd->argc >= 5) {
     entry->ttl = (int) strtol(cmd->argv[4], (char **) NULL, 10);
     if (entry->ttl >= 1) {
       pr_sql_conn_policy = SQL_CONN_POLICY_TIMER;
@@ -1646,7 +1646,7 @@ MODRET sqlodbc_checkauth(cmd_rec *cmd) {
   return PR_ERROR(cmd);
 }
 
-MODRET sqlodbc_identify(cmd_rec * cmd) {
+MODRET sqlodbc_identify(cmd_rec *cmd) {
   sql_data_t *sd = NULL;
 
   sd = (sql_data_t *) pcalloc(cmd->tmp_pool, sizeof(sql_data_t));

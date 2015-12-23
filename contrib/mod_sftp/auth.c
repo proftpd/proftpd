@@ -639,7 +639,7 @@ static int setup_env(pool *p, char *user) {
     build_dyn_config(p, session.cwd, &st, TRUE);
   }
 
-  pr_scoreboard_update_entry(session.pid,
+  pr_scoreboard_entry_update(session.pid,
     PR_SCORE_USER, session.user,
     PR_SCORE_CWD, session.cwd,
     NULL);

@@ -29,16 +29,6 @@
 
 /* Legacy redefines, for compatibility (for a while). */
 
-/* The following macros first appeared in 1.3.2rc1. */
-#define pr_scoreboard_add_entry		pr_scoreboard_entry_add
-#define pr_scoreboard_del_entry		pr_scoreboard_entry_del
-#define pr_scoreboard_read_entry	pr_scoreboard_entry_read
-#define pr_scoreboard_update_entry	pr_scoreboard_entry_update
-
-/* The following macros first appeared in 1.3.2rc2. */
-#define pr_inet_validate		pr_netaddr_validate_dns_str
-#define call_module			pr_module_call
-
 /* The following macros first appeared in 1.3.3rc1. */
 #define ctrls_check_acl			pr_ctrls_check_acl
 #define ctrls_check_group_acl		pr_ctrls_check_group_acl
@@ -56,5 +46,8 @@
 
 /* The following macros first appeared in 1.3.4rc2. */
 #define end_login			pr_session_end
+
+/* The following macros first appeared in 1.3.6rc2. */
+#define _sql_make_cmd			sql_make_cmd
 
 #endif /* PR_COMPAT_H */

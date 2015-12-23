@@ -161,16 +161,21 @@ module sql_mysql_module;
 struct db_conn_struct {
 
   /* MySQL-specific members */
+  const char *host;
+  const char *user;
+  const char *pass;
+  const char *db;
+  const char *port;
+  const char *unix_sock;
 
-  char *host;
-  char *user;
-  char *pass;
-  char *db;
-  char *port;
-  char *unix_sock;
+  /* For configuring the SSL/TLS session to the MySQL server. */
+  const char *ssl_cert_file;
+  const char *ssl_key_file;
+  const char *ssl_ca_file;
+  const char *ssl_ca_dir;
+  const char *ssl_ciphers;
 
   MYSQL *mysql;
-
 };
 
 typedef struct db_conn_struct db_conn_t;
@@ -183,16 +188,14 @@ typedef struct db_conn_struct db_conn_t;
  */
 
 struct conn_entry_struct {
-  char *name;
+  const char *name;
   void *data;
 
-  /* timer handling */
-
+  /* Timer handling */
   int timer;
   int ttl;
 
-  /* connection handling */
-
+  /* Connection handling */
   unsigned int connections;
 };
 
@@ -203,24 +206,24 @@ typedef struct conn_entry_struct conn_entry_t;
 static pool *conn_pool = NULL;
 static array_header *conn_cache = NULL;
 
-/*
- *  _sql_get_connection: walks the connection cache looking for the named
+/*  sql_get_connection: walks the connection cache looking for the named
  *   connection.  Returns NULL if unsuccessful, a pointer to the conn_entry_t
  *   if successful.
  */
-static conn_entry_t *_sql_get_connection(char *name) {
+static conn_entry_t *sql_get_connection(const char *conn_name) {
   register unsigned int i;
 
-  if (name == NULL) {
+  if (conn_name == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
   /* walk the array looking for our entry */
   for (i = 0; i < conn_cache->nelts; i++) {
-    conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
+    conn_entry_t *entry;
 
-    if (strcmp(name, entry->name) == 0) {
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    if (strcmp(conn_name, entry->name) == 0) {
       return entry;
     }
   }
@@ -229,16 +232,15 @@ static conn_entry_t *_sql_get_connection(char *name) {
   return NULL;
 }
 
-/* 
- * _sql_add_connection: internal helper function to maintain a cache of 
- *  connections.  Since we expect the number of named connections to
- *  be small, simply use an array header to hold them.  We don't allow 
- *  duplicate connection names.
+/* sql_add_connection: internal helper function to maintain a cache of
+ *  connections.  Since we expect the number of named connections to be small,
+ *  simply use an array header to hold them.  We don't allow duplicate
+ *  connection names.
  *
  * Returns: NULL if the insertion was unsuccessful, a pointer to the 
  *  conn_entry_t that was created if successful.
  */
-static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn) {
+static void *sql_add_connection(pool *p, const char *name, db_conn_t *conn) {
   conn_entry_t *entry = NULL;
 
   if (name == NULL ||
@@ -248,28 +250,25 @@ static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn) {
     return NULL;
   }
 
-  if (_sql_get_connection(name)) {
-    /* duplicated name */
+  if (sql_get_connection(name) != NULL) {
     errno = EEXIST;
     return NULL;
   }
 
   entry = (conn_entry_t *) pcalloc(p, sizeof(conn_entry_t));
-  entry->name = name;
+  entry->name = pstrdup(p, name);
   entry->data = conn;
 
   *((conn_entry_t **) push_array(conn_cache)) = entry;
-
   return entry;
 }
 
-/* _sql_check_cmd: tests to make sure the cmd_rec is valid and is 
- *  properly filled in.  If not, it's grounds for the daemon to
- *  shutdown.
+/* sql_check_cmd: tests to make sure the cmd_rec is valid and is properly
+ *  filled in.  If not, it's grounds for the daemon to shutdown.
  */
-static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
-  if (!cmd || 
-      !cmd->tmp_pool) {
+static void sql_check_cmd(cmd_rec *cmd, char *msg) {
+  if (cmd == NULL ||
+      cmd->tmp_pool == NULL) {
     pr_log_pri(PR_LOG_ERR, MOD_SQL_MYSQL_VERSION
       ": '%s' was passed an invalid cmd_rec (internal bug); shutting down",
       msg);
@@ -281,8 +280,7 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
   return;
 }
 
-/*
- * sql_timer_cb: when a timer goes off, this is the function that gets called.
+/* sql_timer_cb: when a timer goes off, this is the function that gets called.
  * This function makes assumptions about the db_conn_t members.
  */
 static int sql_timer_cb(CALLBACK_FRAME) {
@@ -295,7 +293,7 @@ static int sql_timer_cb(CALLBACK_FRAME) {
 
     if (entry->timer == p2) {
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
-      cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
+      cmd = sql_make_cmd(conn_pool, 2, entry->name, "1");
       cmd_close(cmd);
       SQL_FREE_CMD(cmd);
       entry->timer = 0;
@@ -305,29 +303,28 @@ static int sql_timer_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-/* _build_error: constructs a modret_t filled with error information;
+/* build_error: constructs a modret_t filled with error information;
  *  mod_sql_mysql calls this function and returns the resulting mod_ret_t
  *  whenever a call to the database results in an error.  Other backends
  *  may want to use a different method to return error information.
  */
-static modret_t *_build_error(cmd_rec *cmd, db_conn_t *conn) {
+static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
   char num[20] = {'\0'};
 
-  if (!conn)
+  if (conn == NULL) {
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
+  }
 
   snprintf(num, 20, "%u", mysql_errno(conn->mysql));
-
   return PR_ERROR_MSG(cmd, num, (char *) mysql_error(conn->mysql));
 }
 
-/*
- * _build_data: both cmd_select and cmd_procedure potentially
+/* build_data: both cmd_select and cmd_procedure potentially
  *  return data to mod_sql; this function builds a modret to return
  *  that data.  This is MySQL specific; other backends may choose 
  *  to do things differently.
  */
-static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
+static modret_t *build_data(cmd_rec *cmd, db_conn_t *conn) {
   modret_t *mr = NULL;
   MYSQL *mysql = NULL;
   MYSQL_RES *result = NULL;
@@ -337,8 +334,9 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   unsigned long cnt = 0;
   unsigned long i = 0;
 
-  if (!conn) 
+  if (conn == NULL) {
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
+  }
 
   mysql = conn->mysql;
 
@@ -348,7 +346,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
 
   result = mysql_store_result(mysql);
   if (!result) {
-    return _build_error(cmd, conn);
+    return build_error(cmd, conn);
   }
   
   sd = (sql_data_t *) pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
@@ -366,8 +364,8 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   /* At this point either we finished correctly or an error occurred in the
    * fetch.  Do the right thing.
    */
-  if (mysql_errno(mysql)) {
-    mr = _build_error(cmd, conn);
+  if (mysql_errno(mysql) != 0) {
+    mr = build_error(cmd, conn);
     mysql_free_result(result);
     return mr;
   }
@@ -417,19 +415,20 @@ MODRET cmd_open(cmd_rec *cmd) {
 #ifdef PR_USE_NLS
   const char *encoding = NULL;
 #endif
+#ifdef HAVE_MYSQL_MYSQL_GET_SSL_CIPHER
+  const char *ssl_cipher = NULL;
+#endif
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_open");
 
-  _sql_check_cmd(cmd, "cmd_open");
+  sql_check_cmd(cmd, "cmd_open");
 
   if (cmd->argc < 1) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }    
 
-  /* get the named connection */
-
-  entry = _sql_get_connection(cmd->argv[0]);
+  entry = sql_get_connection(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
@@ -505,20 +504,50 @@ MODRET cmd_open(cmd_rec *cmd) {
   client_flags |= CLIENT_MULTI_RESULTS;
 #endif
 
+#if defined(HAVE_MYSQL_MYSQL_SSL_SET)
+  /* Per the MySQL docs, this function always returns success.  Errors are
+   * reported when we actually attempt to connect.
+   *
+   * Note: There are some other TLS-related options, in newer versions of
+   * MySQL, which might be interest (although they require the use of the
+   * mysql_options() function, not mysql_ssl_set()):
+   *
+   *  MYSQL_OPT_SSL_ENFORCE (boolean, defaults to 'false')
+   *  MYSQL_OPT_SSL_VERIFY_SERVER_CERT (boolean, defaults to 'false')
+   *  MYSQL_OPT_TLS_VERSION (char *, for configuring the protocol versions)
+   */
+  (void) mysql_ssl_set(conn->mysql, conn->ssl_key_file, conn->ssl_cert_file,
+    conn->ssl_ca_file, conn->ssl_ca_dir, conn->ssl_ciphers);
+#endif
+
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
       conn->db, (int) strtol(conn->port, (char **) NULL, 10),
       conn->unix_sock, client_flags)) {
 
     /* If it didn't work, return an error. */
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-    return _build_error(cmd, conn);
+    return build_error(cmd, conn);
   }
 
   sql_log(DEBUG_FUNC, "MySQL client version: %s", mysql_get_client_info());
   sql_log(DEBUG_FUNC, "MySQL server version: %s",
     mysql_get_server_info(conn->mysql));
 
-#ifdef PR_USE_NLS
+#if defined(HAVE_MYSQL_MYSQL_GET_SSL_CIPHER)
+  ssl_cipher = mysql_get_ssl_cipher(conn->mysql);
+  /* XXX Should we fail the connection here, if we expect an SSL session to
+   * have been successfully completed/required?
+   */
+  if (ssl_cipher != NULL) {
+    sql_log(DEBUG_FUNC, "%s", "MySQL SSL connection: true");
+    sql_log(DEBUG_FUNC, "MySQL SSL cipher: %s", ssl_cipher);
+
+  } else {
+    sql_log(DEBUG_FUNC, "%s", "MySQL SSL connection: false");
+  }
+#endif
+
+#if defined(PR_USE_NLS)
   encoding = pr_encode_get_encoding();
   if (encoding != NULL) {
 
@@ -546,7 +575,7 @@ MODRET cmd_open(cmd_rec *cmd) {
 
     if (mysql_set_character_set(conn->mysql, encoding) != 0) {
       sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-      return _build_error(cmd, conn);
+      return build_error(cmd, conn);
     }
 
     sql_log(DEBUG_FUNC, "MySQL connection character set now '%s' (from '%s')",
@@ -647,15 +676,14 @@ MODRET cmd_close(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_close");
 
-  _sql_check_cmd(cmd, "cmd_close");
+  sql_check_cmd(cmd, "cmd_close");
 
   if ((cmd->argc < 1) || (cmd->argc > 2)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_close");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  /* get the named connection */
-  entry = _sql_get_connection(cmd->argv[0]);
+  entry = sql_get_connection(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_close");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
@@ -697,8 +725,7 @@ MODRET cmd_close(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/*
- * cmd_defineconnection: takes all information about a database
+/* cmd_defineconnection: takes all information about a database
  *  connection and stores it for later use.
  *
  * Inputs:
@@ -706,8 +733,14 @@ MODRET cmd_close(cmd_rec *cmd) {
  *  cmd->argv[1]: username portion of the SQLConnectInfo directive
  *  cmd->argv[2]: password portion of the SQLConnectInfo directive
  *  cmd->argv[3]: info portion of the SQLConnectInfo directive
+ *
  * Optional:
  *  cmd->argv[4]: time-to-live in seconds
+ *  cmd->argv[5]: SSL client cert file
+ *  cmd->argv[6]: SSL client key file
+ *  cmd->argv[7]: SSL CA file
+ *  cmd->argv[8]: SSL CA directory
+ *  cmd->argv[9]: SSL ciphers
  *
  * Returns:
  *  either a properly filled error modret_t if the connection could not
@@ -721,32 +754,26 @@ MODRET cmd_close(cmd_rec *cmd) {
  *  associated timer.
  */
 MODRET cmd_defineconnection(cmd_rec *cmd) {
-  char *info = NULL;
-  char *name = NULL;
-
-  char *db = NULL;
-  char *host = NULL;
-  char *port = NULL;
-
-  char *havehost = NULL;
-  char *haveport = NULL;
-
+  char *have_host = NULL, *have_port = NULL, *info = NULL, *name = NULL;
+  const char *db = NULL, *host = NULL, *port = NULL;
+  const char *ssl_cert_file = NULL, *ssl_key_file = NULL, *ssl_ca_file = NULL;
+  const char *ssl_ca_dir = NULL, *ssl_ciphers = NULL;
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL; 
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_defineconnection");
 
-  _sql_check_cmd(cmd, "cmd_defineconnection");
+  sql_check_cmd(cmd, "cmd_defineconnection");
 
   if (cmd->argc < 4 ||
-      cmd->argc > 5 ||
+      cmd->argc > 10 ||
       !cmd->argv[0]) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  if (!conn_pool) {
-    pr_log_pri(PR_LOG_WARNING, "warning: the mod_sql_mysql module has not been "
+  if (conn_pool == NULL) {
+    pr_log_pri(PR_LOG_WARNING, "WARNING: the mod_sql_mysql module has not been "
       "properly initialized.  Please make sure your --with-modules configure "
       "option lists mod_sql *before* mod_sql_mysql, and recompile.");
 
@@ -768,27 +795,27 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
 
   db = pstrdup(cmd->tmp_pool, info);
 
-  havehost = strchr(db, '@');
-  haveport = strchr(db, ':');
+  have_host = strchr(db, '@');
+  have_port = strchr(db, ':');
 
-  /* If haveport, parse it, otherwise default it. 
-   * If haveport, set it to '\0'.
+  /* If have_port, parse it, otherwise default it.
+   * If have_port, set it to '\0'.
    *
-   * If havehost, parse it, otherwise default it.
-   * If havehost, set it to '\0'.
+   * If have_host, parse it, otherwise default it.
+   * If have_host, set it to '\0'.
    */
 
-  if (haveport) {
-    port = haveport + 1;
-    *haveport = '\0';
+  if (have_port != NULL) {
+    port = have_port + 1;
+    *have_port = '\0';
 
   } else {
     port = _MYSQL_PORT;
   }
 
-  if (havehost) {
-    host = havehost + 1;
-    *havehost = '\0';
+  if (have_host != NULL) {
+    host = have_host + 1;
+    *have_host = '\0';
 
   } else {
     host = "localhost";
@@ -805,18 +832,53 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
     conn->host = pstrdup(conn_pool, host);
   }
 
-  conn->db   = pstrdup(conn_pool, db);
+  conn->db = pstrdup(conn_pool, db);
   conn->port = pstrdup(conn_pool, port);
 
-  /* Insert the new conn_info into the connection hash */
-  entry = _sql_add_connection(conn_pool, name, (void *) conn);
-  if (!entry) {
+  /* SSL parameters, if configured. */
+  if (cmd->argc >= 6) {
+    ssl_cert_file = cmd->argv[5];
+    if (ssl_cert_file != NULL) {
+      conn->ssl_cert_file = pstrdup(conn_pool, ssl_cert_file);
+    }
+  }
+
+  if (cmd->argc >= 7) {
+    ssl_key_file = cmd->argv[6];
+    if (ssl_key_file != NULL) {
+      conn->ssl_key_file = pstrdup(conn_pool, ssl_key_file);
+    }
+  }
+
+  if (cmd->argc >= 8) {
+    ssl_ca_file = cmd->argv[7];
+    if (ssl_ca_file != NULL) {
+      conn->ssl_ca_file = pstrdup(conn_pool, ssl_ca_file);
+    }
+  }
+
+  if (cmd->argc >= 9) {
+    ssl_ca_dir = cmd->argv[8];
+    if (ssl_ca_dir != NULL) {
+      conn->ssl_ca_dir = pstrdup(conn_pool, ssl_ca_dir);
+    }
+  }
+
+  if (cmd->argc >= 10) {
+    ssl_ciphers = cmd->argv[9];
+    if (ssl_ciphers != NULL) {
+      conn->ssl_ciphers = pstrdup(conn_pool, ssl_ciphers);
+    }
+  }
+
+  entry = sql_add_connection(conn_pool, name, (void *) conn);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION,
       "named connection already exists");
   }
 
-  if (cmd->argc == 5) { 
+  if (cmd->argc >= 5) {
     entry->ttl = (int) strtol(cmd->argv[4], (char **) NULL, 10);
     if (entry->ttl >= 1) {
       pr_sql_conn_policy = SQL_CONN_POLICY_TIMER;
@@ -832,16 +894,36 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
   sql_log(DEBUG_INFO, "  name: '%s'", entry->name);
   sql_log(DEBUG_INFO, "  user: '%s'", conn->user);
 
-  if (conn->host) {
+  if (conn->host != NULL) {
     sql_log(DEBUG_INFO, "  host: '%s'", conn->host);
 
-  } else if (conn->unix_sock) {
+  } else if (conn->unix_sock != NULL) {
     sql_log(DEBUG_INFO, "socket: '%s'", conn->unix_sock);
   }
 
   sql_log(DEBUG_INFO, "    db: '%s'", conn->db);
   sql_log(DEBUG_INFO, "  port: '%s'", conn->port);
   sql_log(DEBUG_INFO, "   ttl: '%d'", entry->ttl);
+
+  if (conn->ssl_cert_file != NULL) {
+    sql_log(DEBUG_INFO, "   ssl: client cert = '%s'", conn->ssl_cert_file);
+  }
+
+  if (conn->ssl_key_file != NULL) {
+    sql_log(DEBUG_INFO, "   ssl: client key = '%s'", conn->ssl_key_file);
+  }
+
+  if (conn->ssl_ca_file != NULL) {
+    sql_log(DEBUG_INFO, "   ssl: CA file = '%s'", conn->ssl_ca_file);
+  }
+
+  if (conn->ssl_ca_dir != NULL) {
+    sql_log(DEBUG_INFO, "   ssl: CA dir = '%s'", conn->ssl_ca_dir);
+  }
+
+  if (conn->ssl_ciphers != NULL) {
+    sql_log(DEBUG_INFO, "   ssl: ciphers = '%s'", conn->ssl_ciphers);
+  }
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
   return PR_HANDLED(cmd);
@@ -862,17 +944,19 @@ static modret_t *cmd_exit(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_exit");
 
   for (i = 0; i < conn_cache->nelts; i++) {
-    conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
+    conn_entry_t *entry;
 
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
     if (entry->connections > 0) {
-      cmd_rec *close_cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
+      cmd_rec *close_cmd;
+
+      close_cmd = sql_make_cmd(conn_pool, 2, entry->name, "1");
       cmd_close(close_cmd);
       destroy_pool(close_cmd->pool);
     }
   }
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_exit");
-
   return PR_HANDLED(cmd);
 }
 
@@ -933,16 +1017,15 @@ MODRET cmd_select(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_select");
 
-  _sql_check_cmd(cmd, "cmd_select");
+  sql_check_cmd(cmd, "cmd_select");
 
   if (cmd->argc < 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  /* get the named connection */
-  entry = _sql_get_connection(cmd->argv[0]);
-  if (!entry) {
+  entry = sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
@@ -995,10 +1078,10 @@ MODRET cmd_select(cmd_rec *cmd) {
   /* Perform the query.  if it doesn't work, log the error, close the
    * connection then return the error from the query processing.
    */
-  if (mysql_real_query(conn->mysql, query, strlen(query))) {
-    dmr = _build_error(cmd, conn);
+  if (mysql_real_query(conn->mysql, query, strlen(query)) != 0) {
+    dmr = build_error(cmd, conn);
 
-    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+    close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
@@ -1009,19 +1092,19 @@ MODRET cmd_select(cmd_rec *cmd) {
   /* Get the data. if it doesn't work, log the error, close the
    * connection then return the error from the data processing.
    */
-  dmr = _build_data(cmd, conn);
+  dmr = build_data(cmd, conn);
   if (MODRET_ERROR(dmr)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
 
-    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+    close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
     return dmr;
-  }    
+  }
 
   /* close the connection, return the data. */
-  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+  close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
  
@@ -1070,16 +1153,15 @@ MODRET cmd_insert(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_insert");
 
-  _sql_check_cmd(cmd, "cmd_insert");
+  sql_check_cmd(cmd, "cmd_insert");
 
   if ((cmd->argc != 2) && (cmd->argc != 4)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_insert");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  /* get the named connection */
-  entry = _sql_get_connection(cmd->argv[0]);
-  if (!entry) {
+  entry = sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_insert");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
@@ -1095,23 +1177,22 @@ MODRET cmd_insert(cmd_rec *cmd) {
   /* construct the query string */
   if (cmd->argc == 2) {
     query = pstrcat(cmd->tmp_pool, "INSERT ", cmd->argv[1], NULL);
+
   } else {
-    query = pstrcat( cmd->tmp_pool, "INSERT INTO ", cmd->argv[1], " (",
-		     cmd->argv[2], ") VALUES (", cmd->argv[3], ")",
-		     NULL );
+    query = pstrcat(cmd->tmp_pool, "INSERT INTO ", cmd->argv[1], " (",
+      cmd->argv[2], ") VALUES (", cmd->argv[3], ")", NULL);
   }
 
-  /* log the query string */
   sql_log(DEBUG_INFO, "query \"%s\"", query);
 
   /* perform the query.  if it doesn't work, log the error, close the
    * connection (and log any errors there, too) then return the error
    * from the query processing.
    */
-  if (mysql_real_query(conn->mysql, query, strlen(query))) {
-    dmr = _build_error(cmd, conn);
+  if (mysql_real_query(conn->mysql, query, strlen(query)) != 0) {
+    dmr = build_error(cmd, conn);
 
-    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+    close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
@@ -1120,7 +1201,7 @@ MODRET cmd_insert(cmd_rec *cmd) {
   }
 
   /* close the connection and return HANDLED. */
-  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+  close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
 
@@ -1168,16 +1249,15 @@ MODRET cmd_update(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_update");
 
-  _sql_check_cmd(cmd, "cmd_update");
+  sql_check_cmd(cmd, "cmd_update");
 
   if ((cmd->argc < 2) || (cmd->argc > 4)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_update");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  /* get the named connection */
-  entry = _sql_get_connection(cmd->argv[0]);
-  if (!entry) {
+  entry = sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_update");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
@@ -1192,12 +1272,14 @@ MODRET cmd_update(cmd_rec *cmd) {
 
   if (cmd->argc == 2) {
     query = pstrcat(cmd->tmp_pool, "UPDATE ", cmd->argv[1], NULL);
+
   } else {
-    /* construct the query string */
-    query = pstrcat( cmd->tmp_pool, "UPDATE ", cmd->argv[1], " SET ",
-		     cmd->argv[2], NULL );
-    if ((cmd->argc > 3) && (cmd->argv[3]))
-      query = pstrcat( cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL );
+    query = pstrcat(cmd->tmp_pool, "UPDATE ", cmd->argv[1], " SET ",
+      cmd->argv[2], NULL);
+    if (cmd->argc > 3 &&
+        cmd->argv[3]) {
+      query = pstrcat(cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL);
+    }
   }
 
   /* Log the query string */
@@ -1206,10 +1288,10 @@ MODRET cmd_update(cmd_rec *cmd) {
   /* Perform the query.  if it doesn't work close the connection, then
    * return the error from the query processing.
    */
-  if (mysql_real_query(conn->mysql, query, strlen(query))) {
-    dmr = _build_error(cmd, conn);
+  if (mysql_real_query(conn->mysql, query, strlen(query)) != 0) {
+    dmr = build_error(cmd, conn);
 
-    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+    close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
@@ -1218,7 +1300,7 @@ MODRET cmd_update(cmd_rec *cmd) {
   }
 
   /* Close the connection, return HANDLED.  */
-  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+  close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
 
@@ -1247,7 +1329,7 @@ MODRET cmd_update(cmd_rec *cmd) {
 MODRET cmd_procedure(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_procedure");
 
-  _sql_check_cmd(cmd, "cmd_procedure");
+  sql_check_cmd(cmd, "cmd_procedure");
 
   if (cmd->argc != 3) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_procedure");
@@ -1291,16 +1373,15 @@ MODRET cmd_query(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_query");
 
-  _sql_check_cmd(cmd, "cmd_query");
+  sql_check_cmd(cmd, "cmd_query");
 
   if (cmd->argc != 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  /* get the named connection */
-  entry = _sql_get_connection(cmd->argv[0]);
-  if (!entry) {
+  entry = sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
@@ -1321,10 +1402,10 @@ MODRET cmd_query(cmd_rec *cmd) {
   /* Perform the query.  if it doesn't work close the connection, then
    * return the error from the query processing.
    */
-  if (mysql_real_query(conn->mysql, query, strlen(query))) {
-    dmr = _build_error(cmd, conn);
+  if (mysql_real_query(conn->mysql, query, strlen(query)) != 0) {
+    dmr = build_error(cmd, conn);
     
-    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+    close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
     
@@ -1336,8 +1417,8 @@ MODRET cmd_query(cmd_rec *cmd) {
    * connection then return the error from the data processing.
    */
 
-  if (mysql_field_count(conn->mysql)) {
-    dmr = _build_data(cmd, conn);
+  if (mysql_field_count(conn->mysql) > 0) {
+    dmr = build_data(cmd, conn);
     if (MODRET_ERROR(dmr)) {
       sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
     }
@@ -1347,7 +1428,7 @@ MODRET cmd_query(cmd_rec *cmd) {
   }
   
   /* close the connection, return the data. */
-  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+  close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
 
@@ -1391,16 +1472,15 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_escapestring");
 
-  _sql_check_cmd(cmd, "cmd_escapestring");
+  sql_check_cmd(cmd, "cmd_escapestring");
 
   if (cmd->argc != 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_escapestring");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  /* get the named connection */
-  entry = _sql_get_connection(cmd->argv[0]);
-  if (!entry) {
+  entry = sql_get_connection(cmd->argv[0]);
+  if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_escapestring");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
@@ -1428,7 +1508,7 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   mysql_escape_string(escaped, unescaped, strlen(unescaped));
 #endif
 
-  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
+  close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
 
@@ -1467,7 +1547,7 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_checkauth");
 
-  _sql_check_cmd(cmd, "cmd_checkauth");
+  sql_check_cmd(cmd, "cmd_checkauth");
 
   if (cmd->argc != 3) {
     sql_log(DEBUG_FUNC, "exiting \tmysql cmd_checkauth");
@@ -1475,7 +1555,7 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
   }
 
   /* get the named connection -- not used in this case, but for consistency */
-  entry = _sql_get_connection(cmd->argv[0]);
+  entry = sql_get_connection(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
@@ -1577,10 +1657,10 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
 MODRET cmd_identify(cmd_rec * cmd) {
   sql_data_t *sd = NULL;
 
-  _sql_check_cmd(cmd, "cmd_identify");
+  sql_check_cmd(cmd, "cmd_identify");
 
-  sd = (sql_data_t *) pcalloc( cmd->tmp_pool, sizeof(sql_data_t));
-  sd->data = (char **) pcalloc( cmd->tmp_pool, sizeof(char *) * 2);
+  sd = (sql_data_t *) pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+  sd->data = (char **) pcalloc(cmd->tmp_pool, sizeof(char *) * 2);
 
   sd->rnum = 1;
   sd->fnum = 2;
