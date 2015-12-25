@@ -78,6 +78,7 @@
 
 extern session_t session;
 extern xaset_t *server_list;
+extern int ServerUseReverseDNS;
 
 /* DH parameters.  These are generated using:
  *
@@ -329,8 +330,9 @@ static DH *get_dh2048(void) {
 # define M_ASN1_BIT_STRING_cmp ASN1_BIT_STRING_cmp
 #endif
 
-/* From src/dirtree.c */
-extern int ServerUseReverseDNS;
+#if defined(SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB)
+# define TLS_USE_SESSION_TICKETS
+#endif
 
 module tls_module;
 
@@ -605,6 +607,40 @@ static int tls_ocsp_cache_clear(void);
 static int tls_ocsp_cache_remove(void);
 static int tls_ocsp_cache_status(pr_ctrls_t *, int);
 #endif /* PR_USE_CTRLS */
+
+#if defined(TLS_USE_SESSION_TICKETS)
+/* Default maximum ticket key age: 12 hours */
+static unsigned int tls_ticket_key_max_age = 43200;
+
+/* Maximum number of session ticket keys: 25 (1 per hour, plus leeway) */
+static unsigned int tls_ticket_key_max_count = 25;
+static unsigned int tls_ticket_key_curr_count = 0;
+
+struct tls_ticket_key {
+  struct tls_ticket_key *next, *prev;
+
+  /* Memory page pointer and size, for locking. */
+  void *page_ptr;
+  size_t pagesz;
+  int locked;
+  time_t created;
+
+  /* 16 bytes for the key name, per OpenSSL implementation. */
+  unsigned char key_name[16];
+  unsigned char cipher_key[32];
+  unsigned char hmac_key[32];
+};
+
+/* In-memory list of session ticket keys, newest key first.  Note that the
+ * memory pages used for a ticket key will be mlock(2)'d into memory, where
+ * possible.
+ *
+ * Ticket keys will be generated randomly, based on the timeout.  Expired
+ * ticket keys will be destroyed when a new key is generated.  Tickets
+ * encrypted with older keys will be renewed using the newest key.
+ */
+static xaset_t *tls_ticket_keys = NULL;
+#endif
 
 #ifdef PR_USE_CTRLS
 static pool *tls_act_pool = NULL;
@@ -1098,6 +1134,12 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
             case 2:
               tls_log("[msg] %s %s 'ServerHello' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
+              break;
+
+            case 4:
+              tls_log("[msg] %s %s 'NewSessionTicket' Handshake message "
+                "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                bytes_str);
               break;
 
             case 11:
@@ -3755,7 +3797,7 @@ static int ocsp_add_cached_response(pool *p, const char *fingerprint,
 
   if (fingerprint == NULL ||
       tls_ocsp_cache == NULL) {
-    errno = EINVAL;
+    errno = ENOSYS;
     return -1;
   }
 
@@ -3883,8 +3925,10 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
    */
   if (resp != cached_resp) {
     if (ocsp_add_cached_response(p, fingerprint, resp) < 0) {
-      pr_trace_msg(trace_channel, 3,
-        "error caching OCSP response: %s", strerror(errno));
+      if (errno != ENOSYS) {
+        pr_trace_msg(trace_channel, 3,
+          "error caching OCSP response: %s", strerror(errno));
+      }
     }
   }
 
@@ -3921,6 +3965,418 @@ static int tls_ocsp_cb(SSL *ssl, void *user_data) {
   return SSL_TLSEXT_ERR_OK;
 }
 #endif /* PR_USE_OPENSSL_OCSP */
+
+#if defined(TLS_USE_SESSION_TICKETS)
+static int tls_ticket_key_cmp(xasetmember_t *a, xasetmember_t *b) {
+  struct tls_ticket_key *k1, *k2;
+
+  k1 = (struct tls_ticket_key *) a;
+  k2 = (struct tls_ticket_key *) b;
+
+  if (k1->created == k2->created) {
+    return 0;
+  }
+
+  if (k1->created < k2->created) {
+    return -1;
+  }
+
+  return 1;
+}
+
+static struct tls_ticket_key *create_ticket_key(void) {
+  struct tls_ticket_key *k;
+  void *page_ptr;
+  size_t pagesz;
+  char *ptr;
+# ifdef HAVE_MLOCK
+  int res, xerrno = 0;
+# endif /* HAVE_MLOCK */
+
+  pagesz = sizeof(struct tls_ticket_key);
+  ptr = tls_get_page(pagesz, &page_ptr);
+  if (ptr == NULL) {
+    return NULL;
+  }
+
+  k = (void *) ptr;
+  time(&(k->created));
+
+  if (RAND_bytes(k->key_name, 16) != 1) {
+    pr_log_debug(DEBUG1, MOD_TLS_VERSION
+      ": error generating random bytes: %s", tls_get_errors());
+    free(page_ptr);
+    errno = EPERM;
+    return NULL;
+  }
+
+  if (RAND_bytes(k->cipher_key, 32) != 1) {
+    pr_log_debug(DEBUG1, MOD_TLS_VERSION
+      ": error generating random bytes: %s", tls_get_errors());
+    free(page_ptr);
+    errno = EPERM;
+    return NULL;
+  }
+
+  if (RAND_bytes(k->hmac_key, 32) != 1) {
+    pr_log_debug(DEBUG1, MOD_TLS_VERSION
+      ": error generating random bytes: %s", tls_get_errors());
+    free(page_ptr);
+    errno = EPERM;
+    return NULL;
+  }
+
+# ifdef HAVE_MLOCK
+  PRIVS_ROOT
+  res = mlock(page_ptr, pagesz);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_log_debug(DEBUG1, MOD_TLS_VERSION
+      ": error locking session ticket key into memory: %s", strerror(xerrno));
+    free(page_ptr);
+    errno = xerrno;
+    return NULL;
+  }
+# endif /* HAVE_MLOCK */
+
+  k->page_ptr = page_ptr;
+  k->pagesz = pagesz;
+  return k;
+}
+
+static void destroy_ticket_key(struct tls_ticket_key *k) {
+  void *page_ptr;
+  size_t pagesz;
+# ifdef HAVE_MLOCK
+  int res, xerrno = 0;
+# endif /* HAVE_MLOCK */
+
+  if (k == NULL) {
+    return;
+  }
+
+  page_ptr = k->page_ptr;
+  pagesz = k->pagesz;
+
+  pr_memscrub(k->page_ptr, k->pagesz);
+
+# ifdef HAVE_MLOCK
+  PRIVS_ROOT
+  res = munlock(page_ptr, pagesz);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_log_debug(DEBUG1, MOD_TLS_VERSION
+      ": error unlocking session ticket key memory: %s", strerror(xerrno));
+  }
+# endif /* HAVE_MLOCK */
+
+  free(page_ptr);
+}
+
+static int remove_expired_ticket_keys(void) {
+  struct tls_ticket_key *k = NULL;
+  int expired_count = 0;
+  time_t now;
+
+  if (tls_ticket_key_curr_count < 2) {
+    /* Always keep at least one key. */
+    return 0;
+  }
+
+  time(&now);
+
+  for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
+       k;
+       k = k->next) {
+    time_t key_age;
+
+    key_age = now - k->created;
+    if (key_age > tls_ticket_key_max_age) {
+      if (xaset_remove(tls_ticket_keys, (xasetmember_t *) k) == 0) {
+        expired_count++;
+        tls_ticket_key_curr_count--;
+      }
+    }
+  }
+
+  return expired_count;
+}
+
+static int remove_oldest_ticket_key(void) {
+  struct tls_ticket_key *k = NULL;
+  int res;
+
+  if (tls_ticket_key_curr_count < 2) {
+    /* Always keep at least one key. */
+    return 0;
+  }
+
+  /* Remove the last ticket key in the set. */
+  for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
+       k && k->next != NULL;
+       k = k->next);
+
+  res = xaset_remove(tls_ticket_keys, (xasetmember_t *) k);
+  if (res == 0) {
+    tls_ticket_key_curr_count--;
+  }
+
+  return res;
+}
+
+static int add_ticket_key(struct tls_ticket_key *k) {
+  int res;
+
+  res = remove_expired_ticket_keys();
+  if (res > 0) {
+    pr_trace_msg(trace_channel, 9, "removed %d expired %s", res,
+      res != 1 ? "keys" : "key");
+  }
+
+  if (tls_ticket_key_curr_count == tls_ticket_key_max_count) {
+    res = remove_oldest_ticket_key();
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  res = xaset_insert_sort(tls_ticket_keys, (xasetmember_t *) k, FALSE);
+  if (res == 0) {
+    tls_ticket_key_curr_count++;
+  }
+
+  return res;
+}
+
+/* Note: This lookup routine is where we might look in external storage,
+ * e.g. memcache, for clustered/shared pool of ticket keys generated by
+ * other servers.
+ */
+static struct tls_ticket_key *get_ticket_key(unsigned char *key_name,
+    size_t key_namelen) {
+  struct tls_ticket_key *k = NULL;
+
+  if (tls_ticket_keys == NULL) {
+    return NULL;
+  }
+
+  for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
+       k;
+       k = k->next) {
+    if (memcmp(key_name, k->key_name, key_namelen) == 0) {
+      break;
+    }
+  }
+
+  return k;
+}
+
+static int new_ticket_key_timer_cb(CALLBACK_FRAME) {
+  struct tls_ticket_key *k;
+
+  pr_log_debug(DEBUG9, MOD_TLS_VERSION
+    ": generating new TLS session ticket key");
+
+  k = create_ticket_key();
+  if (k == NULL) {
+    pr_log_debug(DEBUG0, MOD_TLS_VERSION
+      ": unable to generate new session ticket key: %s", strerror(errno));
+
+  } else {
+    add_ticket_key(k);
+  }
+
+  /* Always restart this timer. */
+  return 1;
+}
+
+/* Remember that mlock(2) locks are not inherited across forks, thus
+ * we want to renew those locks for session processes.
+ */
+static void lock_ticket_keys(void) {
+# ifdef HAVE_MLOCK
+  struct tls_ticket_key *k;
+
+  if (tls_ticket_keys == NULL) {
+    return;
+  }
+
+  for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
+       k;
+       k = k->next) {
+    if (k->locked == FALSE) {
+      int res, xerrno = 0;
+
+      PRIVS_ROOT
+      res = mlock(k->page_ptr, k->pagesz);
+      xerrno = errno;
+      PRIVS_RELINQUISH
+
+      if (res < 0) {
+        pr_log_debug(DEBUG1, MOD_TLS_VERSION
+          ": error locking session ticket key into memory: %s",
+          strerror(xerrno));
+
+      } else {
+        k->locked = TRUE;
+      }
+    }
+  }
+# endif /* HAVE_MLOCK */
+}
+
+static void scrub_ticket_keys(void) {
+  struct tls_ticket_key *k, *next_k;
+
+  if (tls_ticket_keys == NULL) {
+    return;
+  }
+
+  for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list; k; k = next_k) {
+    next_k = k->next;
+    destroy_ticket_key(k);
+  }
+
+  tls_ticket_keys = NULL;
+}
+
+static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
+    unsigned char *iv, EVP_CIPHER_CTX *cipher_ctx, HMAC_CTX *hmac_ctx,
+    int mode) {
+  register unsigned int i;
+  struct tls_ticket_key *k;
+  char key_name_str[33];
+
+  /* Note: should we have a list of ciphers from which we randomly choose,
+   * when creating a key?  I.e. should the keys themselves hold references
+   * to their ciphers, digests?
+   */
+  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
+# ifdef OPENSSL_NO_SHA256
+  const EVP_MD *md = EVP_sha1();
+# else
+  const EVP_MD *md = EVP_sha256();
+# endif
+
+  if (mode == 1) {
+    int ticket_key_len, sess_key_len;
+
+    if (tls_ticket_keys == NULL) {
+      return -1;
+    }
+
+    /* Creating a new session ticket.  Always use the first key in the set. */
+    k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
+
+    for (i = 0; i < 16; i++) {
+      sprintf((char *) &(key_name_str[i*2]), "%02x", k->key_name[i]);
+    }
+    key_name_str[sizeof(key_name_str)-1] = '\0';
+
+    pr_trace_msg(trace_channel, 3,
+      "TLS session ticket: encrypting using key '%s' for %s session",
+      key_name_str, SSL_session_reused(ssl) ? "reused" : "new");
+
+    /* Warn loudly if the ticket key we are using is not as strong (based on
+     * cipher key length) as the one negotiated for the session.
+     */
+    ticket_key_len = EVP_CIPHER_key_length(cipher) * 8;
+    sess_key_len = SSL_get_cipher_bits(ssl, NULL);
+    if (ticket_key_len < sess_key_len) {
+      pr_log_pri(PR_LOG_INFO, MOD_TLS_VERSION
+        ": WARNING: TLS session tickets encrypted with weaker key than "
+        "session: ticket key = %s (%d bytes), session key = %s (%d bytes)",
+        OBJ_nid2sn(EVP_CIPHER_type(cipher)), ticket_key_len,
+        SSL_get_cipher_name(ssl), sess_key_len);
+    }
+
+    if (RAND_bytes(iv, 16) != 1) {
+      pr_trace_msg(trace_channel, 3,
+        "unable to initialize session ticket key IV: %s", tls_get_errors());
+      return -1;
+    }
+
+    if (EVP_EncryptInit_ex(cipher_ctx, cipher, NULL, k->cipher_key, iv) != 1) {
+      pr_trace_msg(trace_channel, 3,
+        "unable to initialize session ticket key cipher: %s", tls_get_errors());
+      return -1;
+    }
+
+    if (HMAC_Init_ex(hmac_ctx, k->hmac_key, 32, md, NULL) != 1) {
+      pr_trace_msg(trace_channel, 3,
+        "unable to initialize session ticket key HMAC: %s", tls_get_errors());
+      return -1;
+    }
+
+    memcpy(key_name, k->key_name, 16);
+    return 0;
+  }
+
+  if (mode == 0) {
+    struct tls_ticket_key *newest_key;
+    time_t key_age, now;
+
+    for (i = 0; i < 16; i++) {
+      sprintf((char *) &(key_name_str[i*2]), "%02x", key_name[i]);
+    }
+    key_name_str[sizeof(key_name_str)-1] = '\0';
+
+    k = get_ticket_key(key_name, 16);
+    if (k == NULL) {
+      /* No matching key found. */
+      pr_trace_msg(trace_channel, 3,
+        "TLS session ticket: decrypting ticket using key '%s': key not found",
+        key_name_str);
+      return 0;
+    }
+
+    pr_trace_msg(trace_channel, 3,
+      "TLS session ticket: decrypting ticket using key '%s'", key_name_str);
+
+    if (HMAC_Init_ex(hmac_ctx, k->hmac_key, 32, md, NULL) != 1) {
+      pr_trace_msg(trace_channel, 3,
+        "unable to initialize session ticket key HMAC: %s", tls_get_errors());
+      return 0;
+    }
+
+    if (EVP_DecryptInit_ex(cipher_ctx, cipher, NULL, k->cipher_key, iv) != 1) {
+      pr_trace_msg(trace_channel, 3,
+        "unable to initialize session ticket key cipher: %s", tls_get_errors());
+      return 0;
+    }
+
+    /* If the key we found is older than the newest key, tell the client to
+     * get a new ticket.  This helps to reduce the window of time a given
+     * ticket key is used.
+     */
+    time(&now);
+    key_age = now - k->created;
+
+    newest_key = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
+    if (k != newest_key) {
+      time_t newest_age;
+
+      newest_age = now - newest_key->created;
+
+      pr_trace_msg(trace_channel, 3,
+        "key '%s' age (%lu %s) older than newest key (%lu %s), requesting "
+        "ticket renewal", key_name_str, (unsigned long) key_age,
+        key_age != 1 ? "secs" : "sec", (unsigned long) newest_age,
+        newest_age != 1 ? "secs" : "sec");
+      return 2;
+    }
+
+    return 1;
+  }
+
+  pr_trace_msg(trace_channel, 3, "TLS session ticket: unknown mode (%d)", mode);
+  return -1;
+}
+#endif /* TLS_USE_SESSION_TICKETS */
 
 #if defined(PR_USE_OPENSSL_ECC)
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
@@ -4111,11 +4567,6 @@ static int tls_init_ctx(void) {
   ssl_opts |= SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
 #endif
 
-  /* Disable SSL tickets, for now. */
-#ifdef SSL_OP_NO_TICKET
-  ssl_opts |= SSL_OP_NO_TICKET;
-#endif
-
   /* Disable SSL compression. */
 #ifdef SSL_OP_NO_COMPRESSION
   ssl_opts |= SSL_OP_NO_COMPRESSION;
@@ -4276,6 +4727,70 @@ static int tls_init_ctx(void) {
       }
     }
   }
+
+#if defined(TLS_USE_SESSION_TICKETS)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSSessionTicketKeys", FALSE);
+  if (c != NULL) {
+    tls_ticket_key_max_age = *((unsigned int *) c->argv[0]);
+    tls_ticket_key_max_count = *((unsigned int *) c->argv[1]);
+  }
+
+  /* Generate a random session ticket key, if necessary.  Maybe this list
+   * of keys could be stored as ex/app data in the SSL_CTX?
+   */
+  if (tls_ticket_keys == NULL) {
+    struct tls_ticket_key *k;
+    int new_ticket_key_intvl;
+
+    pr_log_debug(DEBUG9, MOD_TLS_VERSION
+      ": generating initial TLS session ticket key");
+
+    k = create_ticket_key();
+    if (k == NULL) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": unable to generate initial session ticket key: %s",
+        strerror(errno));
+
+    } else {
+      tls_ticket_keys = xaset_create(permanent_pool, tls_ticket_key_cmp);
+      add_ticket_key(k);
+    }
+
+    /* Also register a timer, to generate new keys every hour (or just under
+     * the max age of a key, whichever is smaller).
+     */
+
+    new_ticket_key_intvl = 3600;
+    if (tls_ticket_key_max_age < new_ticket_key_intvl) {
+      /* Try to get a new ticket a little before one expires. */
+      new_ticket_key_intvl = tls_ticket_key_max_age - 1;
+    }
+
+    pr_log_debug(DEBUG9, MOD_TLS_VERSION
+      ": scheduling new TLS session ticket key every %d %s",
+      new_ticket_key_intvl, new_ticket_key_intvl != 1 ? "secs" : "sec");
+
+    pr_timer_add(new_ticket_key_intvl, -1, NULL, new_ticket_key_timer_cb,
+      "New TLS Session Ticket Key");
+
+  } else {
+    struct tls_ticket_key *k;
+
+    /* Generate a new key on restart, as part of a good cryptographic
+     * hygiene.
+     */
+    pr_log_debug(DEBUG9, MOD_TLS_VERSION ": generating TLS session ticket key");
+
+    k = create_ticket_key();
+    if (k == NULL) {
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": unable to generate new session ticket key: %s", strerror(errno));
+
+    } else {
+      add_ticket_key(k);
+    }
+  }
+#endif /* TLS_USE_SESSION_TICKETS */
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
@@ -5125,6 +5640,32 @@ static int tls_get_block(conn_t *conn) {
   return TRUE;
 }
 
+static int tls_compare_session_ids(SSL_SESSION *ctrl_sess,
+    SSL_SESSION *data_sess) {
+  int res = -1;
+
+#if OPENSSL_VERSION_NUMBER < 0x000907000L
+  /* In the OpenSSL source code, SSL_SESSION_cmp() ultimately uses memcmp(3)
+   * to check, and thus returns memcmp(3)'s return value.
+   */
+  res = SSL_SESSION_cmp(ctrl_sess, data_sess);
+#else
+  unsigned char *sess_id;
+  unsigned int sess_id_len;
+
+# if OPENSSL_VERSION_NUMBER > 0x000908000L
+  sess_id = (unsigned char *) SSL_SESSION_get_id(data_sess, &sess_id_len);
+# else
+  /* XXX Directly accessing these fields cannot be a Good Thing. */
+  sess_id = data_sess->session_id;
+  sess_id_len = data_sess->session_id_length;
+# endif
+  res = SSL_has_matching_session_id(ctrl_ssl, sess_id, sess_id_len);
+#endif
+
+  return res;
+}
+
 static int tls_accept(conn_t *conn, unsigned char on_data) {
   static unsigned char logged_data = FALSE;
   int blocking, res = 0, xerrno = 0;
@@ -5559,31 +6100,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
         data_sess = SSL_get_session(ssl);
         if (data_sess != NULL) {
-          int matching_sess_id = -1;
+          int matching_sess = -1;
 
-#if OPENSSL_VERSION_NUMBER < 0x000907000L
-          /* In the OpenSSL source code, SSL_SESSION_cmp() ultimately uses
-           * memcmp(3) to check, and thus returns memcmp(3)'s return value.
-           */
-          matching_sess_id = SSL_SESSION_cmp(ctrl_sess, data_sess);
-          if (matching_sess_id != 0) {
-#else
-          unsigned char *sess_id;
-          unsigned int sess_id_len;
-
-# if OPENSSL_VERSION_NUMBER > 0x000908000L
-          sess_id = (unsigned char *) SSL_SESSION_get_id(data_sess,
-            &sess_id_len);
-# else
-          /* XXX Directly accessing these fields cannot be a Good Thing. */
-          sess_id = data_sess->session_id;
-          sess_id_len = data_sess->session_id_length;
-# endif
- 
-          matching_sess_id = SSL_has_matching_session_id(ctrl_ssl, sess_id,
-            sess_id_len);
-          if (matching_sess_id == 0) {
-#endif
+          matching_sess = tls_compare_session_ids(ctrl_sess, data_sess);
+          if (matching_sess != 0) {
             tls_log("Client did not reuse SSL session from control channel, "
               "rejecting data connection (see the NoSessionReuseRequired "
               "TLSOptions parameter)");
@@ -11325,6 +11845,98 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSSessionTicketKeys [age secs] [count num] */
+MODRET set_tlssessionticketkeys(cmd_rec *cmd) {
+#if defined(TLS_USE_SESSION_TICKETS)
+  register unsigned int i;
+  int max_age = -1, max_nkeys = -1;
+  config_rec *c = NULL;
+
+  if (cmd->argc != 3 &&
+      cmd->argc != 5) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcasecmp(cmd->argv[i], "age") == 0) {
+      if (pr_str_get_duration(cmd->argv[i+1], &max_age) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing age value '",
+          cmd->argv[i+1], "': ", strerror(errno), NULL));
+      }
+
+      /* Note that we do not allow ticket keys to age out faster than 1
+       * minute.  Less than that is a bit ridiculous, no?
+       */
+      if (max_age < 60) {
+        CONF_ERROR(cmd, "max key age must be at least 60sec");
+      }
+
+      i++;
+
+    } else if (strcasecmp(cmd->argv[i], "count") == 0) {
+      max_nkeys = atoi(cmd->argv[i+1]);
+      if (max_nkeys < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing count value '",
+          cmd->argv[i+1], "': ", strerror(EINVAL), NULL));
+      }
+
+      /* Note that we need at least ONE ticket key for session tickets to
+       * even work.
+       */
+      if (max_nkeys < 2) {
+        CONF_ERROR(cmd, "max key count must be at least 1");
+      }
+
+      i++;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown parameter: ",
+        (char *) cmd->argv[i], NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = max_age;
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[1]) = max_nkeys;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does not have session ticket support", NULL));
+#endif /* TLS_USE_SESSION_TICKETS */
+}
+
+/* usage; TLSSessionTickets on|off */
+MODRET set_tlssessiontickets(cmd_rec *cmd) {
+#if defined(TLS_USE_SESSION_TICKETS)
+  int session_tickets = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  session_tickets = get_boolean(cmd, 1);
+  if (session_tickets == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = session_tickets;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as your OpenSSL version "
+    "does not have session ticket support", NULL));
+#endif /* TLS_USE_SESSION_TICKETS */
+}
+
 /* usage: TLSStapling on|off */
 MODRET set_tlsstapling(cmd_rec *cmd) {
 #if defined(PR_USE_OPENSSL_OCSP)
@@ -11640,6 +12252,11 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
     /* Unregister ourselves from all events. */
     pr_event_unregister(&tls_module, NULL, NULL);
 
+    pr_timer_remove(-1, &tls_module);
+# if defined(TLS_USE_SESSION_TICKETS)
+    scrub_ticket_keys();
+# endif /* TLS_USE_SESSION_TICKETS */
+
 # ifdef PR_USE_CTRLS
     /* Unregister any control actions. */
     pr_ctrls_unregister(&tls_module, "tls");
@@ -11700,6 +12317,9 @@ extern pid_t mpid;
 static void tls_shutdown_ev(const void *event_data, void *user_data) {
   if (mpid == getpid()) {
     tls_scrub_pkeys();
+#if defined(TLS_USE_SESSION_TICKETS)
+    scrub_ticket_keys();
+#endif /* TLS_USE_SESSION_TICKETS */
   }
 
   /* Write out a new RandomSeed file, for use later. */
@@ -12263,6 +12883,10 @@ static int tls_sess_init(void) {
   unsigned char *tmp = NULL;
   config_rec *c = NULL;
 
+#if defined(TLS_USE_SESSION_TICKETS)
+  lock_ticket_keys();
+#endif /* TLS_USE_SESSION_TICKETS */
+
   pr_event_register(&tls_module, "core.session-reinit", tls_sess_reinit_ev,
     NULL);
 
@@ -12588,6 +13212,36 @@ static int tls_sess_init(void) {
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, tls_ocsp_cb);
   SSL_CTX_set_tlsext_status_arg(ssl_ctx, NULL);
 #endif /* PR_USE_OPENSSL_OCSP */
+
+#if defined(TLS_USE_SESSION_TICKETS)
+  c = find_config(main_server->conf, CONF_PARAM, "TLSSessionTickets", FALSE);
+  if (c != NULL) {
+    int session_tickets;
+
+    session_tickets = *((int *) c->argv[0]);
+
+# ifdef SSL_OP_NO_TICKET
+    if (session_tickets == TRUE) {
+      if (SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, tls_ticket_key_cb) == 0) {
+        pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
+          ": mod_tls compiled with Session Ticket support, but linked to "
+          "an OpenSSL library without tlsext support, therefore Session "
+          "Tickets are not available");
+      }
+
+    } else {
+      /* Disable session tickets. */
+      SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
+    }
+# endif
+
+  } else {
+    /* Disable session tickets. */
+# ifdef SSL_OP_NO_TICKET
+    SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
+# endif
+  }
+#endif /* TLS_USE_SESSION_TICKETS */
 
 #ifdef PR_USE_OPENSSL_ECC
 # if defined(SSL_CTX_set_ecdh_auto)
@@ -12965,8 +13619,10 @@ static conftable tls_conftab[] = {
   { "TLSRequired",		set_tlsrequired,	NULL },
   { "TLSRSACertificateFile",	set_tlsrsacertfile,	NULL },
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
-  { "TLSServerCipherPreference",set_tlsservercipherpreference,NULL },
+  { "TLSServerCipherPreference",set_tlsservercipherpreference, NULL },
   { "TLSSessionCache",		set_tlssessioncache,	NULL },
+  { "TLSSessionTicketKeys",	set_tlssessionticketkeys, NULL },
+  { "TLSSessionTickets",	set_tlssessiontickets,	NULL },
   { "TLSStapling",		set_tlsstapling,	NULL },
   { "TLSStaplingCache",		set_tlsstaplingcache,	NULL },
   { "TLSStaplingOptions",	set_tlsstaplingoptions,	NULL },
