@@ -71,6 +71,8 @@ is based.  His module can be found here:
   <li><a href="#TLSRSACertificateKeyFile">TLSRSACertificateKeyFile</a>
   <li><a href="#TLSServerCipherPreference">TLSServerCipherPreference</a>
   <li><a href="#TLSSessionCache">TLSSessionCache</a>
+  <li><a href="#TLSSessionTicketKeys">TLSSessionTicketKeys</a>
+  <li><a href="#TLSSessionTickets">TLSSessionTickets</a>
   <li><a href="#TLSStapling">TLSStapling</a>
   <li><a href="#TLSStaplingCache">TLSStaplingCache</a>
   <li><a href="#TLSStaplingOptions">TLSStaplingOptions</a>
@@ -1653,6 +1655,66 @@ Use of SSL session caching can be disabled entirely by using:
 
 <p>
 <hr>
+<h2><a name="TLSSessionTicketKeys">TLSSessionTicketKeys</a></h2>
+<strong>Syntax:</strong> TLSSessionTicketKeys [age <em>secs</em>] [count <em>number</em>]<br>
+<strong>Default:</strong> TLSSessionTicketKeys age 12h count 25<br>
+<strong>Context:</strong> server config</br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>TLSSessionTicketKeys</code> directive can be used to control how
+often <code>mod_tls</code> generates new session ticket keys (assuming that
+<a href="#TLSSessionTickets"><code>TLSSessionTickets</code></a> is enabled),
+and how many ticket keys will be kept in one time in memory.
+
+<p>
+By default, <code>mod_tls</code> expires a session ticket key after 12 hours;
+this can be changed using the <em>age</em> parameter, to specify a maximum
+age.  <b>Note</b> that the <i>minimum</i> key age is 60 seconds.
+
+<p>
+Only a maximum of 25 session ticket keys will be kept in memory by default;
+older/expired keys will be destroyed.  This maximum count of keys can
+be changed using the <em>count</em> parameter.  <b>Note</b> that there is a
+minimum count (1) of ticket keys; attemping to specify a smaller <em>count</em>
+is a configuration error.
+
+<p>
+<hr>
+<h2><a name="TLSSessionTickets">TLSSessionTickets</a></h2>
+<strong>Syntax:</strong> TLSSessionTickets <em>on|off</em><br>
+<strong>Default:</strong> off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>TLSSessionTickets</code> directive enables the use of TLS
+"session tickets" (see <a href="http://www.faqs.org/rfcs/rfc5077.html">RFC 5077</a>), which allow for session resumption, similar to TLS session caching.
+
+<p>
+The <code>mod_tls</code> module does <b>not</b> support configuration/use of
+a static session ticket <em>key</em>, unlike Apache or nginx.  Instead,
+<code>mod_tls</code> <i>always</i> randomly generates its own session ticket
+keys.  These keys are only kept in memory, and are automatically generated
+on a schedule; older keys are destroyed automatically.
+
+<p>
+When a session is resumed using a session ticket encrypted with an older
+session ticket key (which has not yet expired), the <code>mod_tls</code> will
+honor that session ticket, <i>but</i> will also <b>renew</b> the encryption
+of the session ticket using a newer session ticket key.  Session tickets
+encrypted with keys which have expired will not be honored, and a full TLS
+handshake will occur.
+
+<p>
+For control over the key expiration and generation schedule, use the
+<a href="#TLSSessionTicketKeys"><code>TLSSessionTicketKeys</code></a>
+directive.
+
+<p>
+<hr>
 <h2><a name="TLSStapling">TLSStapling</a></h2>
 <strong>Syntax:</strong> TLStapling <em>on|off</em><br>
 <strong>Default:</strong> off<br>
@@ -1673,6 +1735,12 @@ include an OCSP response for the server certificate, in the TLS handshake.
 By default, <code>TLSStapling</code> is <em>off</em>, but will automatically
 be enabled if a <a href="#TLSStaplingCache"><code>TLSStaplingCache</code></a>
 is configured.
+
+<p>
+See also: <a href="#TLSStaplingCache"><code>TLSStaplingCache</code></a>,
+<a href="#TLSStaplingOptions"><code>TLSStaplingOptions</code></a>,
+<a href="#TLSStaplingResponder"><code>TLSStaplingResponder</code></a>, and
+<a href="#TLSStaplingTimeout"><code>TLSStaplingTimeout</code></a>
 
 <p>
 <hr>
