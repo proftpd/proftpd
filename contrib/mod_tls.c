@@ -471,7 +471,6 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_SESS_VERIFY_SERVER_NO_DNS		0x2000
 
 /* mod_tls option flags */
-#define TLS_OPT_NO_CERT_REQUEST				0x0001
 #define TLS_OPT_VERIFY_CERT_FQDN			0x0002
 #define TLS_OPT_VERIFY_CERT_IP_ADDR			0x0004
 #define TLS_OPT_ALLOW_DOT_LOGIN				0x0008
@@ -4887,7 +4886,7 @@ static int tls_init_server(void) {
   config_rec *c = NULL;
   char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
   X509 *server_ec_cert = NULL, *server_dsa_cert = NULL, *server_rsa_cert = NULL;
-  int verify_mode = SSL_VERIFY_PEER;
+  int verify_mode = 0;
   unsigned int enabled_proto_count = 0, tls_protocol = TLS_PROTO_DEFAULT;
   int disabled_proto;
   const char *enabled_proto_str = NULL;
@@ -4945,17 +4944,7 @@ static int tls_init_server(void) {
      * the protocol allows for the client to disregard a request for
      * its cert by the server.
      */
-    verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-
-    if (tls_opts & TLS_OPT_NO_CERT_REQUEST) {
-      /* Warn about the incompatibility of using "TLSVerifyClient on" and
-       * "TLSOption NoCertRequest" at the same time.
-       */
-      tls_log("TLSVerifyClient in effect, ignoring NoCertRequest TLSOption");
-    }
-
-  } else if (tls_opts & TLS_OPT_NO_CERT_REQUEST) {
-    verify_mode = 0;
+    verify_mode = (SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
   }
 
   if (verify_mode != 0) {
@@ -6026,11 +6015,11 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     int reused;
 
     subj = tls_get_subj_name(ctrl_ssl);
-    if (subj)
+    if (subj) {
       tls_log("Client: %s", subj);
+    }
 
-    if (!(tls_opts & TLS_OPT_NO_CERT_REQUEST)) {
-
+    if (tls_flags & TLS_SESS_VERIFY_CLIENT) {
       /* Now we can go on with our post-handshake, application level
        * requirement checks.
        */
@@ -7663,8 +7652,9 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
   int verify_err = 0;
 
   /* We can configure the server to skip the peer's cert verification */
-  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT))
-     return 1;
+  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT)) {
+    return 1;
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyOrder", FALSE);
   if (c) {
@@ -11253,7 +11243,8 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
       opts |= TLS_OPT_EXPORT_CERT_DATA;
 
     } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
-      opts |= TLS_OPT_NO_CERT_REQUEST;
+      pr_log_debug(DEBUG0, MOD_TLS_VERSION
+        ": NoCertRequest TLSOption is deprecated");
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
     } else if (strcmp(cmd->argv[i], "NoEmptyFragments") == 0) {
