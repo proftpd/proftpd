@@ -89,6 +89,8 @@ ChangeLog files.
     SQLConnectInfo, SQLNamedConnectInfo (Bug#4200)
       SSL connection parameters/configuration
 
+    TLSOptions NoCertRequest (Bug#4213)
+
     TLSProtocol
       The mod_tls module now supports excluding of particular SSL/TLS
       versions via the TLSProtocol directive, e.g.:
