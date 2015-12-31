@@ -899,23 +899,25 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
 }
 
 MODRET set_maxinstances(cmd_rec *cmd) {
-  int max;
+  int max_instances;
   char *endp;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
-  if (strcasecmp(cmd->argv[1], "none") == 0)
-    max = 0;
+  if (strcasecmp(cmd->argv[1], "none") == 0) {
+    max_instances = 0;
 
-  else {
-    max = (int)strtol(cmd->argv[1], &endp, 10);
+  } else {
+    max_instances = (int) strtol(cmd->argv[1], &endp, 10);
 
-    if ((endp && *endp) || max < 1)
+    if ((endp && *endp) ||
+        max_instances < 1) {
       CONF_ERROR(cmd, "argument must be 'none' or a number greater than 0");
+    }
   }
 
-  ServerMaxInstances = max;
+  ServerMaxInstances = max_instances;
   return PR_HANDLED(cmd);
 }
 
