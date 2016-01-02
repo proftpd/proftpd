@@ -31,7 +31,7 @@
 #ifdef PR_USE_REGEX
 
 #ifdef PR_USE_PCRE
-#include "pcre.h"
+#include <pcre.h>
 
 struct regexp_rec {
   pool *regex_pool;
