@@ -74,6 +74,26 @@ static array_header *regexp_list = NULL;
 
 static const char *trace_channel = "regexp";
 
+static void regexp_free(pr_regex_t *pre) {
+#ifdef PR_USE_PCRE
+  if (pre->pcre != NULL) {
+    pcre_free_study(pre->pcre_extra);
+    pre->pcre_extra = NULL;
+    pcre_free(pre->pcre);
+    pre->pcre = NULL;
+  }
+#endif /* PR_USE_PCRE */
+
+  if (pre->re != NULL) {
+    /* This frees memory associated with this pointer by regcomp(3). */
+    regfree(pre->re);
+    pre->re = NULL;
+  }
+
+  pre->pattern = NULL;
+  destroy_pool(pre->regex_pool);
+}
+
 static void regexp_cleanup(void) {
   /* Only perform this cleanup if necessary */
   if (regexp_pool) {
@@ -82,24 +102,8 @@ static void regexp_cleanup(void) {
 
     for (i = 0; i < regexp_list->nelts; i++) {
       if (pres[i] != NULL) {
-
-#ifdef PR_USE_PCRE
-        if (pres[i]->pcre != NULL) {
-          pcre_free_study(pres[i]->pcre_extra);
-          pres[i]->pcre_extra = NULL;
-          pcre_free(pres[i]->pcre);
-          pres[i]->pcre = NULL;
-        }
-#endif /* PR_USE_PCRE */
-
-        if (pres[i]->re != NULL) {
-          /* This frees memory associated with this pointer by regcomp(3). */
-          regfree(pres[i]->re);
-          pres[i]->re = NULL;
-        }
-
-        /* This frees the memory allocated for the object itself. */
-        destroy_pool(pres[i]->regex_pool);
+        regexp_free(pres[i]);
+        pres[i] = NULL;
       }
     }
 
@@ -162,26 +166,7 @@ void pr_regexp_free(module *m, pr_regex_t *pre) {
 
     if ((pre != NULL && pres[i] == pre) ||
         (m != NULL && pres[i]->m == m)) {
-
-#ifdef PR_USE_PCRE
-      if (pres[i]->pcre != NULL) {
-        pcre_free_study(pres[i]->pcre_extra);
-        pres[i]->pcre_extra = NULL;
-        pcre_free(pres[i]->pcre);
-        pres[i]->pcre = NULL;
-      }
-#endif /* PR_USE_PCRE */
-
-      if (pres[i]->re != NULL) {
-        /* This frees memory associated with this pointer by regcomp(3). */
-        regfree(pres[i]->re);
-        pres[i]->re = NULL;
-      }
-
-      pres[i]->pattern = NULL;
-
-      /* This frees the memory allocated for the object itself. */
-      destroy_pool(pres[i]->regex_pool);
+      regexp_free(pres[i]);
       pres[i] = NULL;
     }
   }
