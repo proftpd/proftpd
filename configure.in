@@ -1838,6 +1838,15 @@ dnl NLS/LANG support
 if test x"$enable_nls" = xyes; then
   ac_static_modules="$ac_static_modules mod_lang.o"
   ac_build_static_modules="$ac_build_static_modules modules/mod_lang.o"
+
+  dnl Make sure that mod_ifsession, if present in the list, appears at the end.
+  if test x"$ifsession_requested" = xtrue; then
+    ac_static_modules=`echo "$ac_static_modules" | sed -e 's/mod_ifsession\.o//g'`
+    ac_static_modules="$ac_static_modules mod_ifsession.o"
+
+    ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e 's/modules\/mod_ifsession\.o//g'`
+    ac_build_static_modules="$ac_build_static_modules modules/mod_ifsession.o";
+  fi
 fi
 
 dnl Controls-related checks
