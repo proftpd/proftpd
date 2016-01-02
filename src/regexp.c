@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -85,7 +85,8 @@ static void regexp_cleanup(void) {
 
 #ifdef PR_USE_PCRE
         if (pres[i]->pcre != NULL) {
-          /* This frees memory associated with this pointer by regcomp(3). */
+          pcre_free_study(pres[i]->pcre_extra);
+          pres[i]->pcre_extra = NULL;
           pcre_free(pres[i]->pcre);
           pres[i]->pcre = NULL;
         }
@@ -164,7 +165,8 @@ void pr_regexp_free(module *m, pr_regex_t *pre) {
 
 #ifdef PR_USE_PCRE
       if (pres[i]->pcre != NULL) {
-        /* This frees memory associated with this pointer by regcomp(3). */
+        pcre_free_study(pres[i]->pcre_extra);
+        pres[i]->pcre_extra = NULL;
         pcre_free(pres[i]->pcre);
         pres[i]->pcre = NULL;
       }
