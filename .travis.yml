@@ -29,6 +29,7 @@ install:
   - sudo apt-get install -y libsqlite3-dev sqlite3
   # for PCRE support
   - sudo apt-get install -y libpcre3-dev
+  - apt show libpcre3-dev
   # for static code analysis
   - sudo apt-get install -y cppcheck rats
   # for test code coverage
