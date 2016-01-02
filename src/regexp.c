@@ -193,7 +193,6 @@ static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
 
   pre->pcre = pcre_compile(pattern, flags, &(pre->pcre_errstr), &err_offset,
     NULL);
-
   if (pre->pcre == NULL) {
     pr_trace_msg(trace_channel, 4,
       "error compiling pattern '%s' into PCRE regex: %s", pattern,
@@ -208,6 +207,14 @@ static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
   pr_trace_msg(trace_channel, 9, "studying pattern '%s' for PCRE extra data",
     pattern);
   pre->pcre_extra = pcre_study(pre->pcre, study_flags, &(pre->pcre_errstr));
+  if (pre->pcre_extra == NULL) {
+    if (pre->pcre_errstr != NULL) {
+      pr_trace_msg(trace_channel, 4,
+        "error studying pattern '%s' for PCRE regex: %s", pattern,
+        pre->pcre_errstr);
+    }
+  }
+
   return 0;
 }
 #endif /* PR_USE_PCRE */
