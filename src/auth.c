@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1730,6 +1730,7 @@ int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
 int pr_auth_chroot(const char *path) {
   int res, xerrno = 0;
   time_t now;
+  char *tz = NULL;
 
   if (path == NULL) {
     errno = EINVAL;
@@ -1740,7 +1741,6 @@ int pr_auth_chroot(const char *path) {
     defined(__GLIBC__) && \
     defined(__GLIBC_MINOR__) && \
     __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
-  char *tz;
 
   tz = pr_env_get(session.pool, "TZ"); 
   if (tz == NULL) {
@@ -1755,6 +1755,8 @@ int pr_auth_chroot(const char *path) {
   } else {
     pr_log_debug(DEBUG10, "TZ environment variable already set to '%s'", tz);
   }
+#else
+  (void) tz;
 #endif
 
   pr_log_debug(DEBUG1, "Preparing to chroot to directory '%s'", path);
