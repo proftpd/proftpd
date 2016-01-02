@@ -79,7 +79,9 @@ static const char *trace_channel = "regexp";
 static void regexp_free(pr_regex_t *pre) {
 #ifdef PR_USE_PCRE
   if (pre->pcre != NULL) {
+# if defined(HAVE_PCRE_PCRE_FREE_STUDY)
     pcre_free_study(pre->pcre_extra);
+# endif /* HAVE_PCRE_PCRE_FREE_STUDY */
     pre->pcre_extra = NULL;
     pcre_free(pre->pcre);
     pre->pcre = NULL;
