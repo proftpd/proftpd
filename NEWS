@@ -40,6 +40,7 @@
 - Bug 4176 - Support for TLS session tickets.
 - Bug 4200 - Support TLS client configuration for SQL servers.
 - Bug 4213 - Deprecate the NoCertRequest TLSOption.
+- Bug 4214 - Allow UseEncoding to be set on a per-user basis.
 
 1.3.6rc1 - Released 27-May-2015
 --------------------------------

@@ -103,6 +103,8 @@ ChangeLog files.
 
     TLSSessionCache memcache:/json (Bug#4057)
 
+    UseEncoding per-user/group/class (Bug#4214)
+
 
 1.3.6rc1
 ---------
