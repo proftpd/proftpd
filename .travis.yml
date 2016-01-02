@@ -60,7 +60,3 @@ after_success:
   - lcov --list coverage.info
   # upload coverage info to coveralls
   - coveralls-lcov --repo-token AQqbgCW8kiFf9Wavusk36Xwf22BKdlZzK coverage.info
-
-notifications:
-  email:
-    - proftp-committers@lists.sourceforge.net
