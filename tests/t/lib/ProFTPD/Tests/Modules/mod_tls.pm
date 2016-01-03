@@ -181,6 +181,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_ccc_before_login => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   tls_opts_commonname_required_bug3512 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -5347,6 +5352,180 @@ sub tls_ccc_list_bug3465 {
   }
 
   unlink($log_file);
+}
+
+sub tls_ccc_before_login {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSProtocol => 'TLSv1',
+        TLSRequired => 'off',
+        TLSOptions => 'NoSessionReuseRequired',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client_opts = {
+        PeerHost => '127.0.0.1',
+        PeerPort => $port,
+        Proto => 'tcp',
+        Type => SOCK_STREAM,
+        Timeout => 10
+      };
+
+      my $ssl_opts = {
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+      };
+
+      my $client = IO::Socket::INET->new(%$client_opts);
+      unless ($client) {
+        die("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      # Read the banner
+      my $banner = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received banner: $banner";
+      }
+
+      # Send the AUTH command
+      my $cmd = "AUTH TLS\r\n";
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Sending command: $cmd";
+      }
+      $client->print($cmd);
+      $client->flush();
+
+      # Read the AUTH response
+      my $resp = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received response: $resp";
+      }
+
+      my $expected = "234 AUTH TLS successful\r\n";
+      unless ($expected eq $resp) {
+        die("Expected response '$expected', got '$resp'");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        $IO::Socket::SSL::DEBUG = 3;
+      }
+
+      my $res = IO::Socket::SSL->start_SSL($client, $ssl_opts);
+      unless ($res) {
+        croak("Failed SSL handshake: " . IO::Socket::SSL::errstr());
+      }
+
+      $cmd = "CCC\r\n";
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Sending command: $cmd";
+      }
+      $client->print($cmd);
+      $client->flush();
+
+      $resp = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received response: $resp";
+      }
+
+      $expected = "530 Please login with USER and PASS\r\n";
+      unless ($expected eq $resp) {
+        die("Expected response '$expected', got '$resp'");
+      }
+
+      $res = $client->stop_SSL();
+      unless ($res) {
+        croak("Failed SSL shutdown: " . IO::Socket::SSL::errstr());
+      }
+
+      $cmd = "QUIT\r\n";
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Sending command: $cmd";
+      }
+      $client->print($cmd);
+      $client->flush();
+
+      $resp = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received response: $resp";
+      }
+
+      if ($resp) {
+        die("Received response unexpectedly");
+      }
+
+      $client->close();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_opts_commonname_required_bug3512 {
