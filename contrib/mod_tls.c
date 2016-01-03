@@ -461,7 +461,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_SESS_ON_DATA			0x0002
 #define TLS_SESS_PBSZ_OK			0x0004
 #define TLS_SESS_TLS_REQUIRED			0x0010
-#define TLS_SESS_VERIFY_CLIENT			0x0020
+#define TLS_SESS_VERIFY_CLIENT_REQUIRED		0x0020
 #define TLS_SESS_NO_PASSWD_NEEDED		0x0040
 #define TLS_SESS_NEED_DATA_PROT			0x0100
 #define TLS_SESS_CTRL_RENEGOTIATING		0x0200
@@ -469,6 +469,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_SESS_HAVE_CCC			0x0800
 #define TLS_SESS_VERIFY_SERVER			0x1000
 #define TLS_SESS_VERIFY_SERVER_NO_DNS		0x2000
+#define TLS_SESS_VERIFY_CLIENT_OPTIONAL		0x4000
 
 /* mod_tls option flags */
 #define TLS_OPT_VERIFY_CERT_FQDN			0x0002
@@ -1597,7 +1598,7 @@ static int tls_check_client_cert(SSL *ssl, conn_t *conn) {
   int ok = -1;
 
   /* Only perform these more stringent checks if asked to verify clients. */
-  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT)) {
+  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED)) {
     return 0;
   }
 
@@ -4939,12 +4940,16 @@ static int tls_init_server(void) {
     }
   }
 
-  if (tls_flags & TLS_SESS_VERIFY_CLIENT) {
+  if (tls_flags & TLS_SESS_VERIFY_CLIENT_OPTIONAL) {
+    verify_mode = SSL_VERIFY_PEER;
+  }
+
+  if (tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED) {
     /* If we are verifying clients, make sure the client sends a cert;
      * the protocol allows for the client to disregard a request for
      * its cert by the server.
      */
-    verify_mode = (SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
+    verify_mode |= (SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
   }
 
   if (verify_mode != 0) {
@@ -6019,7 +6024,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       tls_log("Client: %s", subj);
     }
 
-    if (tls_flags & TLS_SESS_VERIFY_CLIENT) {
+    if (tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED) {
       /* Now we can go on with our post-handshake, application level
        * requirement checks.
        */
@@ -7652,7 +7657,8 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
   int verify_err = 0;
 
   /* We can configure the server to skip the peer's cert verification */
-  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT)) {
+  if (!(tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED) &&
+      !(tls_flags & TLS_SESS_VERIFY_CLIENT_OPTIONAL)) {
     return 1;
   }
 
@@ -12125,7 +12131,7 @@ MODRET set_tlsusername(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TLSVerifyClient on|off */
+/* usage: TLSVerifyClient on|off|optional */
 MODRET set_tlsverifyclient(cmd_rec *cmd) {
   int verify_client = -1;
   config_rec *c = NULL;
@@ -12135,7 +12141,11 @@ MODRET set_tlsverifyclient(cmd_rec *cmd) {
 
   verify_client = get_boolean(cmd, 1);
   if (verify_client == -1) {
-    CONF_ERROR(cmd, "expected Boolean parameter");
+    if (strcasecmp(cmd->argv[1], "optional") != 0) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+
+    verify_client = 2;
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -13254,10 +13264,26 @@ static int tls_sess_init(void) {
   }
 #endif /* PR_USE_OPENSSL_ECC */
 
-  tmp = get_param_ptr(main_server->conf, "TLSVerifyClient", FALSE);
-  if (tmp != NULL &&
-      *tmp == TRUE) {
-    tls_flags |= TLS_SESS_VERIFY_CLIENT;
+  c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyClient", FALSE);
+  if (c != NULL) {
+    unsigned char verify_client;
+
+    verify_client = *((unsigned char *) c->argv[0]);
+    switch (verify_client) {
+      case 0:
+        break;
+
+      case 1:
+        tls_flags |= TLS_SESS_VERIFY_CLIENT_REQUIRED;
+        break;
+
+      case 2:
+        tls_flags |= TLS_SESS_VERIFY_CLIENT_OPTIONAL;
+        break;
+
+      default:
+        break;
+    }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyServer", FALSE);
@@ -13280,7 +13306,7 @@ static int tls_sess_init(void) {
   }
 
   /* If TLSVerifyClient/Server is on, look up the verification depth. */
-  if (tls_flags & (TLS_SESS_VERIFY_CLIENT|TLS_SESS_VERIFY_SERVER|TLS_SESS_VERIFY_SERVER_NO_DNS)) {
+  if (tls_flags & (TLS_SESS_VERIFY_CLIENT_REQUIRED|TLS_SESS_VERIFY_SERVER|TLS_SESS_VERIFY_SERVER_NO_DNS)) {
     int *depth = NULL;
 
     depth = get_param_ptr(main_server->conf, "TLSVerifyDepth", FALSE);

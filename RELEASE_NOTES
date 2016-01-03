@@ -90,6 +90,7 @@ ChangeLog files.
       SSL connection parameters/configuration
 
     TLSOptions NoCertRequest (Bug#4213)
+      TLSVerifyClient optional
 
     TLSProtocol
       The mod_tls module now supports excluding of particular SSL/TLS
