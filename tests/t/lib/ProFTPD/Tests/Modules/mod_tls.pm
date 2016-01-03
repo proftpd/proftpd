@@ -2788,6 +2788,7 @@ sub tls_opts_std_env_vars_client_vars {
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
         TLSOptions => 'StdEnvVars',
+        TLSVerifyClient => 'optional',
       },
     },
   };
@@ -8261,7 +8262,7 @@ sub tls_opts_allow_dot_login {
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
-
+        TLSVerifyClient => 'optional',
         TLSOptions => 'AllowDotLogin',
       },
     },
@@ -9186,6 +9187,7 @@ sub tls_config_tlsusername_bug3899 {
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
+        TLSVerifyClient => 'optional',
 
         TLSUserName => 'CommonName',
       },

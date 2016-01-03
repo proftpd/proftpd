@@ -1886,7 +1886,7 @@ Note that for the <code>TLSUserName</code> directive to be effective,
 certificates, <i>i.e.</i>:
 <pre>
   # Verify clients
-  TLSVerifyClient on
+  TLSVerifyClient optional
 
   # and possibly verify the user based on the client certs
   TLSUserName CommonName
@@ -1898,7 +1898,7 @@ See also: <a href="#TLSVerifyClient"><code>TLSVerifyClient</code></a>
 <p>
 <hr>
 <h2><a name="TLSVerifyClient">TLSVerifyClient</a></h2>
-<strong>Syntax:</strong> TLSVerifyClient <em>on|off</em><br>
+<strong>Syntax:</strong> TLSVerifyClient <em>on|off|optional</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
@@ -1910,7 +1910,9 @@ handles certificates presented by clients.  If <em>off</em>, the module
 will not request the client certificate while establishing an SSL/TLS session.
 If <em>on</em>, the module will verify a client's certificate and, furthermore,
 will fail all SSL handshake attempts <b>unless</b> the client presents a
-certificate when the server requests one.
+certificate when the server requests one.  If <em>optional</em>, then
+<code>mod_tls</code> will <i>request</i> that a client send its certificate,
+but will not fail the handshake if the client fails to provide a certificate.
 
 <p>
 See also: <a href="#TLSOptions"><code>TLSOptions</code></a>
@@ -2222,7 +2224,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2015 TJ Saunders<br>
+&copy; Copyright 2002-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
