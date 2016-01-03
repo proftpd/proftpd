@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2015 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2016 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -13657,7 +13657,7 @@ static conftable tls_conftab[] = {
 static cmdtable tls_cmdtab[] = {
   { PRE_CMD,	C_ANY,	G_NONE,	tls_any,	FALSE,	FALSE },
   { CMD,	C_AUTH,	G_NONE,	tls_auth,	FALSE,	FALSE,	CL_SEC },
-  { CMD,	C_CCC,	G_NONE,	tls_ccc,	FALSE,	FALSE,	CL_SEC },
+  { CMD,	C_CCC,	G_NONE,	tls_ccc,	TRUE,	FALSE,	CL_SEC },
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
   { CMD,	"SSCN",	G_NONE,	tls_sscn,	TRUE,	FALSE,	CL_SEC },
