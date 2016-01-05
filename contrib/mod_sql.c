@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2331,12 +2331,25 @@ MODRET sql_pre_pass(cmd_rec *cmd) {
 }
 
 MODRET sql_post_pass(cmd_rec *cmd) {
+  int res;
+
   if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
   }
 
-  sql_getuserprimarykey(cmd, session.user);
-  sql_getgroupprimarykey(cmd, session.group);
+  res = sql_getuserprimarykey(cmd, session.user);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 9,
+      "error getting primary lookup key for user '%s': %s", session.user,
+      strerror(errno));
+  }
+
+  res = sql_getgroupprimarykey(cmd, session.group);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 9,
+      "error getting primary lookup key for group '%s': %s", session.group,
+      strerror(errno));
+  }
 
   return PR_DECLINED(cmd);
 }
@@ -6858,6 +6871,10 @@ static int sql_sess_init(void) {
     return -1;
   }
 
+  if (ptr != NULL) {
+    pr_trace_msg(trace_channel, 9, "loaded '%s' SQL backend", ptr);
+  }
+
   /* Construct our internal cache structure for this session. */
   memset(&cmap, 0, sizeof(cmap));
 
@@ -6886,7 +6903,7 @@ static int sql_sess_init(void) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_sess_init");
 
-  if (!sql_pool) {
+  if (sql_pool == NULL) {
     sql_pool = make_sub_pool(session.pool);
     pr_pool_tag(sql_pool, MOD_SQL_VERSION);
   }
