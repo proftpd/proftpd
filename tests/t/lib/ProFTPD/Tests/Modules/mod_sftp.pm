@@ -391,7 +391,7 @@ my $TESTS = {
     test_class => [qw(forking ssh2)],
   },
 
-  ssh2_auth_passwd_failed => {
+  ssh2_auth_password_failed => {
     order => ++$order,
     test_class => [qw(bug forking ssh2)],
   },
@@ -12383,7 +12383,7 @@ sub ssh2_auth_no_authorized_keys {
   unlink($log_file);
 }
 
-sub ssh2_auth_passwd_failed {
+sub ssh2_auth_password_failed {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'sftp');
