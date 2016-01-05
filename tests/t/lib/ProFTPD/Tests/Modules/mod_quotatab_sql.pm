@@ -216,6 +216,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  quotatab_sql_odbc => {
+    order => ++$order,
+    test_class => [qw(forking mod_sql_odbc)],
+  },
+
 };
 
 sub new {
@@ -9697,6 +9702,188 @@ EOS
   }
 
   unlink($log_file);
+}
+
+# See:
+#  https://forums.proftpd.org/smf/index.php/topic,11862.0.html
+#
+# Note that this is more for diagnosing ODBC issues than quotatab issues.
+sub quotatab_sql_odbc {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'quotatab');
+
+  my $odbcini_path = File::Spec->rel2abs("t/etc/modules/mod_sql_odbc/odbc.ini");
+  my $odbcinst_path = File::Spec->rel2abs("t/etc/modules/mod_sql_odbc/odbcinst.ini");
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE quotalimits (
+  name TEXT NOT NULL PRIMARY KEY,
+  quota_type TEXT NOT NULL,
+  per_session TEXT NOT NULL,
+  limit_type TEXT NOT NULL,
+  bytes_in_avail REAL NOT NULL,
+  bytes_out_avail REAL NOT NULL,
+  bytes_xfer_avail REAL NOT NULL,
+  files_in_avail INTEGER NOT NULL,
+  files_out_avail INTEGER NOT NULL,
+  files_xfer_avail INTEGER NOT NULL
+);
+INSERT INTO quotalimits (name, quota_type, per_session, limit_type, bytes_in_avail, bytes_out_avail, bytes_xfer_avail, files_in_avail, files_out_avail, files_xfer_avail) VALUES ('$setup->{user}', 'user', 'false', 'soft', 32, 0, 0, 2, 0, 0);
+
+CREATE TABLE quotatallies (
+  name TEXT NOT NULL PRIMARY KEY,
+  quota_type TEXT NOT NULL,
+  bytes_in_used REAL NOT NULL,
+  bytes_out_used REAL NOT NULL,
+  bytes_xfer_used REAL NOT NULL,
+  files_in_used INTEGER NOT NULL,
+  files_out_used INTEGER NOT NULL,
+  files_xfer_used INTEGER NOT NULL
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+    DefaultChdir => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_quotatab_sql.c' => [
+        'SQLNamedQuery get-quota-limit SELECT "name, quota_type, per_session, limit_type, bytes_in_avail, bytes_out_avail, bytes_xfer_avail, files_in_avail, files_out_avail, files_xfer_avail FROM quotalimits WHERE name = \'%{0}\' AND quota_type = \'%{1}\'"',
+        'SQLNamedQuery get-quota-tally SELECT "name, quota_type, bytes_in_used, bytes_out_used, bytes_xfer_used, files_in_used, files_out_used, files_xfer_used FROM quotatallies WHERE name = \'%{0}\' AND quota_type = \'%{1}\'"',
+        'SQLNamedQuery update-quota-tally UPDATE "bytes_in_used = bytes_in_used + %{0}, bytes_out_used = bytes_out_used + %{1}, bytes_xfer_used = bytes_xfer_used + %{2}, files_in_used = files_in_used + %{3}, files_out_used = files_out_used + %{4}, files_xfer_used = files_xfer_used + %{5} WHERE name = \'%{6}\' AND quota_type = \'%{7}\'" quotatallies',
+        'SQLNamedQuery insert-quota-tally INSERT "%{0}, %{1}, %{2}, %{3}, %{4}, %{5}, %{6}, %{7}" quotatallies',
+
+        'QuotaEngine on',
+        "QuotaLog $setup->{log_file}",
+        'QuotaLimitTable sql:/get-quota-limit',
+        'QuotaTallyTable sql:/get-quota-tally/update-quota-tally/insert-quota-tally',
+      ],
+
+      'mod_sql.c' => {
+        SQLAuthenticate => 'off',
+        SQLEngine => 'on',
+        SQLBackend => 'odbc',
+        SQLConnectInfo => "mysql proftpd developer PERCONNECTION",
+        SQLLogFile => $setup->{log_file},
+        SQLOptions => 'NoDisconnectOnError',
+      },
+
+      'mod_sql_odbc.c' => {
+        SQLODBCVersion => '2',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+# Necessary ODBC environment variables
+SetEnv ODBCINST $odbcinst_path
+SetEnv ODBCINI $odbcini_path
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("Failed to STOR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = "Hello, World\n";
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;
