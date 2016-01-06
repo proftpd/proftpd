@@ -540,7 +540,6 @@ sub hidegroup_explicit_group_mlsd {
 
       $expected = {
         '.' => 1,
-        '..' => 1,
         'config.pid' => 1,
         'config.scoreboard' => 1,
         'config.scoreboard.lck' => 1,
@@ -725,6 +724,7 @@ sub hidegroup_session_group {
         'config.conf' => 1,
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
         'config.passwd' => 1,
         'config.group' => 1,
       };
@@ -903,6 +903,7 @@ sub hidegroup_not_session_group {
       $expected = {
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -1095,6 +1096,7 @@ sub hidegroup_hidenoaccess_on_bug3530 {
       $expected = {
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -1288,6 +1290,7 @@ sub hidegroup_hideuser_bug3530 {
       $expected = {
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -1396,13 +1399,13 @@ sub hidegroup_virtual_group_bug3934 {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
     TraceLog => $log_file,
-    Trace => 'DEFAULT:10',
+    Trace => 'auth:10 fsio:20 fileperms:10',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
 
     Directory => {
-      '/' => {
+      '~/test.txt' => {
         HideGroup => $group,
       },
     },
@@ -1434,7 +1437,7 @@ sub hidegroup_virtual_group_bug3934 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      my $conn = $client->list_raw('');
+      my $conn = $client->list_raw();
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());

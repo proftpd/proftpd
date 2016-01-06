@@ -360,6 +360,7 @@ sub hideuser_session_user {
         'config.conf' => 1,
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
         'config.passwd' => 1,
         'config.group' => 1,
       };
