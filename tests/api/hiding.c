@@ -78,6 +78,13 @@ START_TEST (hiding_register_unregister_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  hiding_finish();
+  res = pr_hiding_register(NULL, handler_name, hider1, NULL);
+  fail_unless(res < 0, "Failed to handle uninitialized API");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  hiding_init();
   res = pr_hiding_register(NULL, handler_name, hider1, NULL);
   fail_unless(res == 0, "Failed to register handler '%s': %s", handler_name,
     strerror(errno));
