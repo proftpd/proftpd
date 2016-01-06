@@ -234,12 +234,14 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     res = dir_check(p, cmd, cmd->group, fullpath, hidden);
   }
 
-  if (session.dir_config) {
-    unsigned char *tmp = get_param_ptr(session.dir_config->subset,
-      "ShowSymlinks", FALSE);
+  if (session.dir_config != NULL) {
+    unsigned char *show_symlinks;
 
-    if (tmp)
-      list_show_symlinks = *tmp;
+    show_symlinks = get_param_ptr(session.dir_config->subset, "ShowSymlinks",
+      FALSE);
+    if (show_symlinks != NULL) {
+      list_show_symlinks = *show_symlinks;
+    }
   }
 
   fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
@@ -278,12 +280,14 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
 
   res = dir_check(p, cmd, cmd->group, fullpath, hidden);
 
-  if (session.dir_config) {
-    unsigned char *tmp = get_param_ptr(session.dir_config->subset,
-      "ShowSymlinks", FALSE);
+  if (session.dir_config != NULL) {
+    unsigned char *show_symlinks;
 
-    if (tmp)
-      list_show_symlinks = *tmp;
+    show_symlinks = get_param_ptr(session.dir_config->subset, "ShowSymlinks",
+      FALSE);
+    if (show_symlinks != NULL) {
+      list_show_symlinks = *show_symlinks;
+    }
   }
 
   fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE);
@@ -541,11 +545,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         }
 
         len = pr_fsio_readlink(name, m, sizeof(m) - 1);
-        if (len < 0)
+        if (len < 0) {
           return 0;
+        }
 
-        if (len >= sizeof(m))
+        if (len >= sizeof(m)) {
           return 0;
+        }
 
         m[len] = '\0';
 
@@ -763,7 +769,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
               } else if (st.st_mode & 0111) {
                 suffix[0] = '*';
               }
-           }
+            }
           }
 
           if (!opt_L && list_show_symlinks) {
@@ -1306,7 +1312,6 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
       }
 
       if (opt_R && d == 0) {
-
         /* This is a nasty hack.  If listfile() returns a zero, and we
          * will be recursing (-R option), make sure we don't try to list
          * this file again by changing the first character of the path
@@ -2151,7 +2156,6 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
     }
 
     if (ls_perms_full(cmd->tmp_pool, cmd, ".", NULL)) {
-
       if (opt_d) {
         if (listfile(cmd, NULL, resp_code, ".") < 0) {
           ls_terminate();
@@ -2196,8 +2200,9 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
    * here, not just file names.  And that is not what dir_hide_file() is
    * expecting.
    */
-  if (dir_hide_file(file))
+  if (dir_hide_file(file)) {
     return 1;
+  }
 
   display_name = pstrdup(cmd->tmp_pool, file);
 
@@ -2386,12 +2391,14 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     }
 
     if (ls_perms(workp, cmd, dir_best_path(cmd->tmp_pool, f), &hidden)) {
-      if (hidden)
+      if (hidden) {
         continue;
+      }
 
       mode = file_mode(f);
-      if (mode == 0)
+      if (mode == 0) {
         continue;
+      }
 
       if (!curdir) {
         char *str = NULL;
