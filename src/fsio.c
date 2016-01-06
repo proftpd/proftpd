@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project
+ * Copyright (c) 2001-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -990,7 +990,7 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
   /* Three characters are reserved at the end of linkbuf for some path
    * characters (and a trailing NUL).
    */
-  res = pr_fsio_readlink(path, &linkbuf[2], sizeof(linkbuf)-3);
+  res = (fs->readlink)(fs, path, &linkbuf[2], sizeof(linkbuf)-3);
   if (res != -1) {
     linkbuf[res] = '\0';
 
