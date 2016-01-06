@@ -835,7 +835,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   } else if (res > 0) {
     pr_trace_msg(trace_channel, 18,
       "added cached stat for path '%s' (retval %d, errno %s)", path,
-      retval, strerror(xerrno));
+      retval, strerror(0));
   }
 
   if (retval < 0) {
