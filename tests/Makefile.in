@@ -47,7 +47,8 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/data.o \
   $(top_srcdir)/src/ascii.o \
   $(top_srcdir)/src/help.o \
-  $(top_srcdir)/src/display.o
+  $(top_srcdir)/src/display.o \
+  $(top_srcdir)/src/hiding.o
 
 TEST_API_LIBS=-lcheck
 
@@ -89,6 +90,7 @@ TEST_API_OBJS=\
   api/encode.o \
   api/privs.o \
   api/display.o \
+  api/hiding.o \
   api/misc.o \
   api/stubs.o \
   api/tests.o
