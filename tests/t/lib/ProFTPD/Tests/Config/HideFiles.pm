@@ -3751,6 +3751,8 @@ sub hidefiles_list_symlink_bug3924 {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'fsio:20 fs.statcache:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
