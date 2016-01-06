@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,17 +60,17 @@ static array_header *defines_perm_list = NULL;
 
 static int allow_dyn_config(const char *path) {
   config_rec *c = NULL;
-  unsigned int ctxt_precedence = 0;
+  unsigned int ctx_precedence = 0;
   unsigned char allow = TRUE, found_config = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "AllowOverride", FALSE);
   while (c) {
     pr_signals_handle();
 
-    if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+    if (*((unsigned int *) c->argv[1]) > ctx_precedence) {
 
       /* Set the context precedence. */
-      ctxt_precedence = *((unsigned int *) c->argv[1]);
+      ctx_precedence = *((unsigned int *) c->argv[1]);
 
       allow = *((int *) c->argv[0]);
 
@@ -275,7 +275,7 @@ unsigned char dir_hide_file(const char *path) {
   config_rec *c = NULL;
   pr_regex_t *pre = NULL;
   pool *tmp_pool;
-  unsigned int ctxt_precedence = 0;
+  unsigned int ctx_precedence = 0;
   unsigned char have_user_regex, have_group_regex, have_class_regex,
     have_all_regex, negated = FALSE;
 
@@ -330,8 +330,8 @@ unsigned char dir_hide_file(const char *path) {
       if (strncmp(c->argv[3], "user", 5) == 0) {
         if (pr_expr_eval_user_or((char **) &c->argv[4]) == TRUE) {
 
-          if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
-            ctxt_precedence = *((unsigned int *) c->argv[2]);
+          if (*((unsigned int *) c->argv[2]) > ctx_precedence) {
+            ctx_precedence = *((unsigned int *) c->argv[2]);
 
             pre = *((pr_regex_t **) c->argv[0]);
             negated = *((unsigned char *) c->argv[1]);
@@ -344,8 +344,8 @@ unsigned char dir_hide_file(const char *path) {
       /* ...then for a "group" classifier... */
       } else if (strncmp(c->argv[3], "group", 6) == 0) {
         if (pr_expr_eval_group_and((char **) &c->argv[4]) == TRUE) {
-          if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
-            ctxt_precedence = *((unsigned int *) c->argv[2]);
+          if (*((unsigned int *) c->argv[2]) > ctx_precedence) {
+            ctx_precedence = *((unsigned int *) c->argv[2]);
 
             pre = *((pr_regex_t **) c->argv[0]);
             negated = *((unsigned char *) c->argv[1]);
@@ -362,8 +362,8 @@ unsigned char dir_hide_file(const char *path) {
        */
       } else if (strncmp(c->argv[3], "class", 6) == 0) {
         if (pr_expr_eval_class_or((char **) &c->argv[4]) == TRUE) {
-          if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
-            ctxt_precedence = *((unsigned int *) c->argv[2]);
+          if (*((unsigned int *) c->argv[2]) > ctx_precedence) {
+            ctx_precedence = *((unsigned int *) c->argv[2]);
 
             pre = *((pr_regex_t **) c->argv[0]);
             negated = *((unsigned char *) c->argv[1]);
@@ -381,8 +381,8 @@ unsigned char dir_hide_file(const char *path) {
       return FALSE;
 
     } else {
-      if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
-        ctxt_precedence = *((unsigned int *) c->argv[2]);
+      if (*((unsigned int *) c->argv[2]) > ctx_precedence) {
+        ctx_precedence = *((unsigned int *) c->argv[2]);
 
         pre = *((pr_regex_t **) c->argv[0]);
         negated = *((unsigned char *) c->argv[1]);
@@ -404,18 +404,15 @@ unsigned char dir_hide_file(const char *path) {
       have_class_regex ? "class" : "session");
 
     if (pre == NULL) {
-      destroy_pool(tmp_pool);
-
       /* HideFiles none for this user/group/class */
 
       pr_log_debug(DEBUG9, "file '%s' did not match HideFiles pattern 'none'",
         file_name);
+      destroy_pool(tmp_pool);
       return FALSE;
     }
 
     if (pr_regexp_exec(pre, file_name, 0, NULL, 0, 0, 0) != 0) {
-      destroy_pool(tmp_pool);
-
       pr_log_debug(DEBUG9, "file '%s' did not match %sHideFiles pattern",
         file_name, negated ? "negated " : "");
 
@@ -423,11 +420,10 @@ unsigned char dir_hide_file(const char *path) {
        * be treated as a "visible" file.  If the regex was negated, though,
        * switch the result.
        */
+      destroy_pool(tmp_pool);
       return (negated ? TRUE : FALSE);
 
     } else {
-      destroy_pool(tmp_pool);
-
       pr_log_debug(DEBUG9, "file '%s' matched %sHideFiles pattern", file_name,
         negated ? "negated " : "");
 
@@ -435,6 +431,7 @@ unsigned char dir_hide_file(const char *path) {
        * considered a "hidden" file.  If the regex was negated, though,
        * switch the result.
        */
+      destroy_pool(tmp_pool);
       return (negated ? FALSE : TRUE);
     }
   }
@@ -2080,12 +2077,13 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
    * session.dir_config.
    */
   session.dir_config = c = dir_match_path(p, fullpath);
-  if (session.dir_config) {
+  if (session.dir_config != NULL) {
     pr_trace_msg("directory", 2, "matched <Directory %s> for '%s'",
       session.dir_config->name, fullpath);
   }
 
-  if (!c && session.anon_config) {
+  if (c == NULL &&
+      session.anon_config != NULL) {
     c = session.anon_config;
   }
 
