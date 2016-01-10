@@ -181,7 +181,7 @@ static int get_pbkdf2_config(char *algo, const EVP_MD **md,
   }
 
 #if OPENSSL_VERSION_NUMBER < 0x1000003f
-  /* The necesary OpenSSL support for non-SHA1 digests for PBKDF2 appeared in
+  /* The necessary OpenSSL support for non-SHA1 digests for PBKDF2 appeared in
    * 1.0.0c.
    */
   if (EVP_MD_type(*md) != EVP_MD_type(EVP_sha1())) {
