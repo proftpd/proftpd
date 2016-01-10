@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_memcache -- a module which provides shared SSL session
  *                              and OCSP response caches using memcached servers
  *
- * Copyright (c) 2011-2015 TJ Saunders
+ * Copyright (c) 2011-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -252,15 +252,10 @@ static int sess_cache_get_tpl_key(pool *p, unsigned char *sess_id,
   register unsigned int i;
   char *sess_id_hex;
   void *data = NULL;
-  size_t datasz = 0, sess_id_hexlen;
+  size_t datasz = 0;
   int res;
 
-  sess_id_hexlen = (sess_id_len * 2) + 1;
-  sess_id_hex = pcalloc(p, sess_id_hexlen);
-
-  for (i = 0; i < sess_id_len; i++) {
-    sprintf((char *) &(sess_id_hex[i*2]), "%02X", sess_id[i]);
-  }
+  sess_id_hex = pr_str_hex(p, sess_id, sess_id_len, 0);
 
   res = tpl_jot(TPL_MEM, &data, &datasz, SESS_CACHE_TPL_KEY_FMT, &sess_id_hex);
   if (res < 0) {
@@ -280,15 +275,8 @@ static int sess_cache_get_json_key(pool *p, unsigned char *sess_id,
   register unsigned int i;
   char *sess_id_hex, *json_str;
   JsonNode *json;
-  size_t sess_id_hexlen;
 
-  sess_id_hexlen = (sess_id_len * 2) + 1;
-  sess_id_hex = pcalloc(p, sess_id_hexlen);
-
-  for (i = 0; i < sess_id_len; i++) {
-    sprintf((char *) &(sess_id_hex[i*2]), "%02X", sess_id[i]);
-  }
-
+  sess_id_hex = pr_str_hex(p, sess_id, sess_id_len, 0);
   json = json_mkobject();
   json_append_member(json, "id", json_mkstring(sess_id_hex));
 
@@ -1206,27 +1194,19 @@ static int sess_cache_status(tls_sess_cache_t *cache,
 
         /* XXX Directly accessing these fields cannot be a Good Thing. */
         if (sess->session_id_length > 0) {
-          register unsigned int j;
           char *sess_id_str;
 
-          sess_id_str = pcalloc(tmp_pool, (sess->session_id_length * 2) + 1);
-
-          for (j = 0; j < sess->session_id_length; j++) {
-            sprintf((char *) &(sess_id_str[j*2]), "%02X", sess->session_id[j]);
-          }
+          sess_id_str = pr_str2hex(tmp_pool, sess->session_id,
+            sess->session_id_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID: %s", sess_id_str);
         }
 
         if (sess->sid_ctx_length > 0) {
-          register unsigned int j;
           char *sid_ctx_str;
 
-          sid_ctx_str = pcalloc(tmp_pool, (sess->sid_ctx_length * 2) + 1);
-
-          for (j = 0; j < sess->sid_ctx_length; j++) {
-            sprintf((char *) &(sid_ctx_str[j*2]), "%02X", sess->sid_ctx[j]);
-          }
+          sid_ctx_str = pr_str2hex(tmp_pool, sess->sid_ctx,
+            sess->sid_ctx_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID Context: %s", sid_ctx_str);
         }
@@ -1585,7 +1565,7 @@ static int ocsp_cache_mcache_entry_set(pool *p, const char *fingerprint,
 
   if (res < 0) {
     pr_trace_msg(trace_channel, 2,
-      "unable to add memcache entry for fingeprint '%s': %s", fingerprint,
+      "unable to add memcache entry for fingerprint '%s': %s", fingerprint,
       strerror(xerrno));
 
     errno = xerrno;

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -510,6 +510,42 @@ static int parse_ul(const char *val, unsigned long *num) {
 
   *num = res;
   return 0;
+}
+
+char *pr_str_hex(pool *p, const unsigned char *buf, size_t len, int flags) {
+  static const char *hex_lc = "0123456789abcdef", *hex_uc = "0123456789ABCDEF";
+  register unsigned int i;
+  const char *hex_vals;
+  char *hex, *ptr;
+  size_t hex_len;
+
+  if (p == NULL ||
+      buf == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (len == 0) {
+    return pstrdup(p, "");
+  }
+
+  /* By default, we use lowercase hex values. */
+  hex_vals = hex_lc;
+  if (flags & PR_STR_FL_HEX_USE_UC) {
+    hex_vals = hex_uc;
+  }
+
+  hex_len = (len * 2) + 1;
+  hex = palloc(p, hex_len);
+
+  ptr = hex;
+  for (i = 0; i < len; i++) {
+    *ptr++ = hex_vals[buf[i] >> 4];
+    *ptr++ = hex_vals[buf[i] % 16];
+  }
+  *ptr = '\0';
+
+  return hex;
 }
 
 int pr_str2uid(const char *val, uid_t *uid) {

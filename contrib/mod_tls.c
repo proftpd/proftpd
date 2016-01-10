@@ -668,12 +668,7 @@ static const char * tls_get_fingerprint(pool *p, X509 *cert) {
     return NULL;
   }
 
-  fp_hex = pcalloc(p, (fp_len * 2) + 1);
-
-  /* Encode the SHA1 digest data as hex, for easier display. */
-  for (i = 0; i < fp_len; i++) {
-    sprintf((char *) &(fp_hex[i*2]), "%02x", fp[i]);
-  }
+  fp_hex = pr_str_hex(p, fp, fp_len, 0);
 
   pr_trace_msg(trace_channel, 8,
     "%s fingerprint: %s", OBJ_nid2sn(EVP_MD_type(md)), fp_hex);
@@ -13091,7 +13086,7 @@ static int tls_sess_init(void) {
 
     /* Ensure that it is all hex encoded data */
     for (i = 0; i < key_len; i++) {
-      if (isxdigit((int) key_buf[i]) == 0) {
+      if (PR_ISXDIGIT((int) key_buf[i]) == 0) {
         valid_hex = FALSE;
         break;
       }
