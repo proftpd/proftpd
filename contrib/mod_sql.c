@@ -6872,7 +6872,7 @@ static int sql_sess_init(void) {
   }
 
   if (ptr != NULL) {
-    pr_trace_msg(trace_channel, 9, "loaded '%s' SQL backend", ptr);
+    pr_trace_msg(trace_channel, 9, "loaded '%s' SQL backend", (char *) ptr);
   }
 
   /* Construct our internal cache structure for this session. */

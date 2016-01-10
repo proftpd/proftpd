@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2015 TJ Saunders
+ * Copyright (c) 2009-2016 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -303,38 +303,27 @@ static unsigned char *sql_passwd_decode(pool *p, unsigned int encoding,
 
 static char *sql_passwd_encode(pool *p, unsigned int encoding,
     unsigned char *data, size_t data_len) {
-  char *buf;
-
-  /* According to RATS, the output buffer for EVP_EncodeBlock() needs to be
-   * 4/3 the size of the input buffer (which is usually EVP_MAX_MD_SIZE).
-   * Let's make it easy, and use an output buffer that's twice the size of the
-   * input buffer.
-   */
-  buf = pcalloc(p, (2 * data_len) + 1);
+  char *buf = NULL;
 
   switch (encoding) {
     case SQL_PASSWD_ENC_USE_BASE64: {
+      /* According to RATS, the output buffer for EVP_EncodeBlock() needs to be
+       * 4/3 the size of the input buffer (which is usually EVP_MAX_MD_SIZE).
+       * Let's make it easy, and use an output buffer that's twice the size of
+       * the input buffer.
+       */
+      buf = pcalloc(p, (2 * data_len) + 1);
       EVP_EncodeBlock((unsigned char *) buf, data, (int) data_len);
       break;
     }
 
     case SQL_PASSWD_ENC_USE_HEX_LC: {
-      register unsigned int i;
-
-      for (i = 0; i < data_len; i++) {
-        sprintf((char *) &(buf[i*2]), "%02x", data[i]);
-      }
-
+      buf = pr_str_hex(p, data, data_len, PR_STR_FL_HEX_USE_LC);
       break;
     }
 
     case SQL_PASSWD_ENC_USE_HEX_UC: {
-      register unsigned int i;
-
-      for (i = 0; i < data_len; i++) {
-        sprintf((char *) &(buf[i*2]), "%02X", data[i]);
-      }
-
+      buf = pr_str_hex(p, data, data_len, PR_STR_FL_HEX_USE_UC);
       break;
     }
 

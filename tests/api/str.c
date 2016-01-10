@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1240,6 +1240,50 @@ START_TEST (strnrstr_test) {
 }
 END_TEST
 
+START_TEST (hex_test) {
+  char *expected, *res, *str;
+
+  res = pr_str_hex(NULL, NULL, 0, 0);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_str_hex(p, NULL, 0, 0);
+  fail_unless(res == NULL, "Failed to handle null data argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* Empty string. */
+  str = "foobar";
+  expected = "";
+  res = pr_str_hex(p, str, 0, 0);
+  fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
+    expected, res);
+
+  /* default (lowercase) */
+  expected = "666f6f626172";
+  res = pr_str_hex(p, str, strlen(str), 0);
+  fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
+    expected, res);
+
+  /* lowercase */
+  expected = "666f6f626172";
+  res = pr_str_hex(p, str, strlen(str), 0);
+  fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
+    expected, res);
+
+  /* uppercase */
+  expected = "666F6F626172";
+  res = pr_str_hex(p, str, strlen(str), PR_STR_FL_HEX_USE_UC);
+  fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
+    expected, res);
+}
+END_TEST
+
 START_TEST (str2uid_test) {
   int res;
 
@@ -1331,6 +1375,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, is_fnmatch_test);
   tcase_add_test(testcase, get_nbytes_test);
   tcase_add_test(testcase, get_duration_test);
+  tcase_add_test(testcase, hex_test);
   tcase_add_test(testcase, strnrstr_test);
   tcase_add_test(testcase, str2uid_test);
   tcase_add_test(testcase, str2gid_test);

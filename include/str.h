@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,6 +71,17 @@ char *pr_str_get_word(char **, int);
  * A "time string" is formatted as "hh:mm:ss".
  */
 int pr_str_get_duration(const char *str, int *duration);
+
+/* Encode the given buffer of data as a hex string.  The flags indicate whether
+ * to use uppercase or lowercase hex values; the default is to use lowercase
+ * values.
+ *
+ * Returns NULL on error, or the successfully encoded string, allocated out of
+ * the given pool, on success.
+ */
+char *pr_str_hex(pool *p, const unsigned char *buf, size_t len, int flags);
+#define PR_STR_FL_HEX_USE_UC			0x0001
+#define PR_STR_FL_HEX_USE_LC			0x0002
 
 /* Converts a string to a uid_t/gid_t, respectively. */
 int pr_str2uid(const char *, uid_t *);

@@ -3,7 +3,7 @@
  *                              and OCSP response caches using SysV shared
  *                              memory segments
  *
- * Copyright (c) 2009-2015 TJ Saunders
+ * Copyright (c) 2009-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1561,27 +1561,19 @@ static int sess_cache_status(tls_sess_cache_t *cache,
 
         /* XXX Directly accessing these fields cannot be a Good Thing. */
         if (sess->session_id_length > 0) {
-          register unsigned int j;
           char *sess_id_str;
 
-          sess_id_str = pcalloc(tmp_pool, (sess->session_id_length * 2) + 1);
-
-          for (j = 0; j < sess->session_id_length; j++) {
-            sprintf((char *) &(sess_id_str[j*2]), "%02X", sess->session_id[j]);
-          }
+          sess_id_str = pr_str_hex(tmp_pool, sess->session_id,
+            sess->session_id_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID: %s", sess_id_str);
         }
 
         if (sess->sid_ctx_length > 0) {
-          register unsigned int j;
           char *sid_ctx_str;
 
-          sid_ctx_str = pcalloc(tmp_pool, (sess->sid_ctx_length * 2) + 1);
-
-          for (j = 0; j < sess->sid_ctx_length; j++) {
-            sprintf((char *) &(sid_ctx_str[j*2]), "%02X", sess->sid_ctx[j]);
-          }
+          sid_ctx_str = pr_str_hex(tmp_pool, sess->sid_ctx,
+            sess->sid_ctx_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID Context: %s", sid_ctx_str);
         }
