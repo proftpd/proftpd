@@ -512,7 +512,7 @@ static int parse_ul(const char *val, unsigned long *num) {
   return 0;
 }
 
-char *pr_str_hex(pool *p, const unsigned char *buf, size_t len, int flags) {
+char *pr_str_bin2hex(pool *p, const unsigned char *buf, size_t len, int flags) {
   static const char *hex_lc = "0123456789abcdef", *hex_uc = "0123456789ABCDEF";
   register unsigned int i;
   const char *hex_vals;

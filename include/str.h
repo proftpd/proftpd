@@ -72,14 +72,14 @@ char *pr_str_get_word(char **, int);
  */
 int pr_str_get_duration(const char *str, int *duration);
 
-/* Encode the given buffer of data as a hex string.  The flags indicate whether
- * to use uppercase or lowercase hex values; the default is to use lowercase
- * values.
+/* Encode the given buffer of binary data as a hex string.  The flags indicate
+ * whether to use uppercase or lowercase hex values; the default is to use
+ * lowercase values.
  *
  * Returns NULL on error, or the successfully encoded string, allocated out of
  * the given pool, on success.
  */
-char *pr_str_hex(pool *p, const unsigned char *buf, size_t len, int flags);
+char *pr_str_bin2hex(pool *p, const unsigned char *buf, size_t len, int flags);
 #define PR_STR_FL_HEX_USE_UC			0x0001
 #define PR_STR_FL_HEX_USE_LC			0x0002
 

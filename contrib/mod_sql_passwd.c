@@ -318,12 +318,12 @@ static char *sql_passwd_encode(pool *p, unsigned int encoding,
     }
 
     case SQL_PASSWD_ENC_USE_HEX_LC: {
-      buf = pr_str_hex(p, data, data_len, PR_STR_FL_HEX_USE_LC);
+      buf = pr_str_bin2hex(p, data, data_len, PR_STR_FL_HEX_USE_LC);
       break;
     }
 
     case SQL_PASSWD_ENC_USE_HEX_UC: {
-      buf = pr_str_hex(p, data, data_len, PR_STR_FL_HEX_USE_UC);
+      buf = pr_str_bin2hex(p, data, data_len, PR_STR_FL_HEX_USE_UC);
       break;
     }
 

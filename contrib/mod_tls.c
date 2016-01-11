@@ -668,7 +668,7 @@ static const char * tls_get_fingerprint(pool *p, X509 *cert) {
     return NULL;
   }
 
-  fp_hex = pr_str_hex(p, fp, fp_len, 0);
+  fp_hex = pr_str_bin2hex(p, fp, fp_len, 0);
 
   pr_trace_msg(trace_channel, 8,
     "%s fingerprint: %s", OBJ_nid2sn(EVP_MD_type(md)), fp_hex);

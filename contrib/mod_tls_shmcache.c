@@ -1563,7 +1563,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
         if (sess->session_id_length > 0) {
           char *sess_id_str;
 
-          sess_id_str = pr_str_hex(tmp_pool, sess->session_id,
+          sess_id_str = pr_str_bin2hex(tmp_pool, sess->session_id,
             sess->session_id_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID: %s", sess_id_str);
@@ -1572,7 +1572,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
         if (sess->sid_ctx_length > 0) {
           char *sid_ctx_str;
 
-          sid_ctx_str = pr_str_hex(tmp_pool, sess->sid_ctx,
+          sid_ctx_str = pr_str_bin2hex(tmp_pool, sess->sid_ctx,
             sess->sid_ctx_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID Context: %s", sid_ctx_str);

@@ -1243,12 +1243,12 @@ END_TEST
 START_TEST (hex_test) {
   char *expected, *res, *str;
 
-  res = pr_str_hex(NULL, NULL, 0, 0);
+  res = pr_str_bin2hex(NULL, NULL, 0, 0);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  res = pr_str_hex(p, NULL, 0, 0);
+  res = pr_str_bin2hex(p, NULL, 0, 0);
   fail_unless(res == NULL, "Failed to handle null data argument");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -1256,28 +1256,28 @@ START_TEST (hex_test) {
   /* Empty string. */
   str = "foobar";
   expected = "";
-  res = pr_str_hex(p, str, 0, 0);
+  res = pr_str_bin2hex(p, str, 0, 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* default (lowercase) */
   expected = "666f6f626172";
-  res = pr_str_hex(p, str, strlen(str), 0);
+  res = pr_str_bin2hex(p, str, strlen(str), 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* lowercase */
   expected = "666f6f626172";
-  res = pr_str_hex(p, str, strlen(str), 0);
+  res = pr_str_bin2hex(p, str, strlen(str), 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* uppercase */
   expected = "666F6F626172";
-  res = pr_str_hex(p, str, strlen(str), PR_STR_FL_HEX_USE_UC);
+  res = pr_str_bin2hex(p, str, strlen(str), PR_STR_FL_HEX_USE_UC);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);

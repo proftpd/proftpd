@@ -255,7 +255,7 @@ static int sess_cache_get_tpl_key(pool *p, unsigned char *sess_id,
   size_t datasz = 0;
   int res;
 
-  sess_id_hex = pr_str_hex(p, sess_id, sess_id_len, 0);
+  sess_id_hex = pr_str_bin2hex(p, sess_id, sess_id_len, 0);
 
   res = tpl_jot(TPL_MEM, &data, &datasz, SESS_CACHE_TPL_KEY_FMT, &sess_id_hex);
   if (res < 0) {
@@ -276,7 +276,7 @@ static int sess_cache_get_json_key(pool *p, unsigned char *sess_id,
   char *sess_id_hex, *json_str;
   JsonNode *json;
 
-  sess_id_hex = pr_str_hex(p, sess_id, sess_id_len, 0);
+  sess_id_hex = pr_str_bin2hex(p, sess_id, sess_id_len, 0);
   json = json_mkobject();
   json_append_member(json, "id", json_mkstring(sess_id_hex));
 
