@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4850,6 +4850,11 @@ MODRET core_post_host(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET core_clnt(cmd_rec *cmd) {
+  pr_response_add(R_200, _("OK"));
+  return PR_HANDLED(cmd);
+}
+
 MODRET core_syst(cmd_rec *cmd) {
   pr_response_add(R_215, "UNIX Type: L8");
   return PR_HANDLED(cmd);
@@ -5297,8 +5302,7 @@ MODRET core_cdup(cmd_rec *cmd) {
   return _chdir(cmd, "..");
 }
 
-/* Returns the modification time of a file, as per RFC3659.
- */
+/* Returns the modification time of a file, as per RFC3659. */
 MODRET core_mdtm(cmd_rec *cmd) {
   char *decoded_path, *path;
   struct stat st;
@@ -6759,6 +6763,8 @@ static cmdtable core_cmdtab[] = {
   { POST_CMD, C_PASS, G_NONE, core_post_pass, FALSE, FALSE },
   { CMD, C_HOST, G_NONE,  core_host,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD, C_HOST, G_NONE, core_post_host, FALSE, FALSE },
+  { CMD, C_CLNT, G_NONE,  core_clnt,	FALSE,	FALSE,	CL_INFO },
+
   { 0, NULL }
 };
 
