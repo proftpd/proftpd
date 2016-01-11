@@ -13,6 +13,7 @@ ChangeLog files.
   + MLSD response lines are now properly CRLF terminated.
   + Faster/more efficient FTP ASCII mode conversion code.
   + Support for OCSP stapling.
+  + Support for the common CLNT FTP command.
 
   + New Configuration Directives:
 
