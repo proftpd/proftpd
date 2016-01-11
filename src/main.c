@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,9 +84,9 @@ static int shutting_down = 0;
 static int syntax_check = 0;
 
 /* Command handling */
-static void cmd_loop(server_rec *, conn_t *);
+static void cmd_loop(server_rec *s, conn_t *conn);
 
-static cmd_rec *make_ftp_cmd(pool *, char *, size_t, int);
+static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags);
 
 static const char *config_filename = PR_CONFIG_FILE_PATH;
 
@@ -544,12 +544,16 @@ int pr_cmd_read(cmd_rec **res) {
     }
 
     cmd = make_ftp_cmd(session.pool, ptr, cmd_buflen, flags);
-    if (cmd) {
+    if (cmd != NULL) {
       *res = cmd;
 
       if (pr_cmd_is_http(cmd) == TRUE) {
         cmd->is_ftp = FALSE;
         cmd->protocol = "HTTP";
+
+      } else if (pr_cmd_is_ssh2(cmd) == TRUE) {
+        cmd->is_ftp = FALSE;
+        cmd->protocol = "SSH2";
 
       } else if (pr_cmd_is_smtp(cmd) == TRUE) {
         cmd->is_ftp = FALSE;

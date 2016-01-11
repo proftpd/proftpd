@@ -502,6 +502,10 @@ int pr_cmd_is_ssh2(cmd_rec *cmd) {
   }
 
   cmd_name = cmd->argv[0];
+  if (cmd_name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
 
   if (cmd->cmd_id == 0) {
     cmd->cmd_id = pr_cmd_get_id(cmd_name);

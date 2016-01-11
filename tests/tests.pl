@@ -54,6 +54,9 @@ if (scalar(@ARGV) > 0) {
 
 } else {
   $test_files = [qw(
+    t/http.t
+    t/smtp.t
+    t/ssh2.t
     t/logins.t
     t/commands/user.t
     t/commands/pass.t
