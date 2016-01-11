@@ -95,5 +95,6 @@ modules/mod_tls_fscache.c
 modules/mod_tls_memcache.c
 modules/mod_tls_shmcache.c
 modules/mod_unique_id.c
+modules/mod_wrap.c
 modules/mod_wrap2_file.c
 modules/mod_wrap2_sql.c

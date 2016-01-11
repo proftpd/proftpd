@@ -586,6 +586,40 @@ START_TEST (cmd_is_smtp_test) {
 }
 END_TEST
 
+START_TEST (cmd_is_ssh2_test) {
+  int res;
+  cmd_rec *cmd;
+
+  res = pr_cmd_is_ssh2(NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, C_SYST);
+  cmd->argv[0] = NULL;
+  res = pr_cmd_is_ssh2(cmd);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  cmd->argv[0] = C_SYST;
+  res = pr_cmd_is_ssh2(cmd);
+  fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, "SSH-2.0-OpenSSH_5.6p1");
+  res = pr_cmd_is_ssh2(cmd);
+  fail_unless(res == TRUE, "Expected TRUE (%d), got %d", TRUE, res);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, "SSH-1.99-JSCH");
+  res = pr_cmd_is_ssh2(cmd);
+  fail_unless(res == TRUE, "Expected TRUE (%d), got %d", TRUE, res);
+}
+END_TEST
+
 Suite *tests_get_cmd_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -604,8 +638,8 @@ Suite *tests_get_cmd_suite(void) {
   tcase_add_test(testcase, cmd_set_name_test);
   tcase_add_test(testcase, cmd_is_http_test);
   tcase_add_test(testcase, cmd_is_smtp_test);
+  tcase_add_test(testcase, cmd_is_ssh2_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }
