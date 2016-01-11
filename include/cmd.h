@@ -116,6 +116,11 @@ int pr_cmd_is_http(cmd_rec *c);
  */
 int pr_cmd_is_smtp(cmd_rec *c);
 
+/* Returns TRUE if the given command appears to be an SSH2 request, FALSE
+ * if not, and -1 if there was an error.
+ */
+int pr_cmd_is_ssh2(cmd_rec *cmd);
+
 int pr_cmd_set_errno(cmd_rec *, int);
 int pr_cmd_set_name(cmd_rec *, const char *);
 

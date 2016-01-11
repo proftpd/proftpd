@@ -453,6 +453,14 @@ int pr_cmd_is_http(cmd_rec *cmd) {
     return -1;
   }
 
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd_name);
+  }
+
+  if (cmd->cmd_id >= 0) {
+    return FALSE;
+  }
+
   cmd_namelen = strlen(cmd_name);
   return is_known_cmd(http_ids, cmd_name, cmd_namelen);
 }
@@ -472,6 +480,40 @@ int pr_cmd_is_smtp(cmd_rec *cmd) {
     return -1;
   }
 
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd_name);
+  }
+
+  if (cmd->cmd_id >= 0) {
+    return FALSE;
+  }
+
   cmd_namelen = strlen(cmd_name);
   return is_known_cmd(smtp_ids, cmd_name, cmd_namelen);
+}
+
+int pr_cmd_is_ssh2(cmd_rec *cmd) {
+  const char *cmd_name;
+
+  if (cmd == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  cmd_name = cmd->argv[0];
+
+  if (cmd->cmd_id == 0) {
+    cmd->cmd_id = pr_cmd_get_id(cmd_name);
+  }
+
+  if (cmd->cmd_id >= 0) {
+    return FALSE;
+  }
+
+  if (strncmp(cmd_name, "SSH-2.0-", 8) == 0 ||
+      strncmp(cmd_name, "SSH-1.99-", 9) == 0) {
+    return TRUE;
+  }
+
+  return FALSE;
 }
