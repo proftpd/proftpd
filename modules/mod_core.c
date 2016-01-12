@@ -5847,7 +5847,6 @@ MODRET core_feat(cmd_rec *cmd) {
   register unsigned int i;
   const char *feat = NULL;
   array_header *feats = NULL;
-  const char **sorted_feats;
 
   CHECK_CMD_ARGS(cmd, 1);
 
@@ -5879,16 +5878,11 @@ MODRET core_feat(cmd_rec *cmd) {
   }
 
   /* Sort the features, for a prettier output. */
-  sorted_feats = palloc(cmd->tmp_pool, sizeof(char *) * feats->nelts);
-  for (i = 0; i < feats->nelts; i++) {
-    sorted_feats[i] = ((char **) feats->elts)[i];
-  }
-
-  qsort(sorted_feats, feats->nelts, sizeof(char *), feat_cmp);
+  qsort(feats->elts, feats->nelts, sizeof(char *), feat_cmp);
 
   pr_response_add(R_211, "%s", _("Features:"));
   for (i = 0; i < feats->nelts; i++) {
-    pr_response_add(R_DUP, "%s", sorted_feats[i]);
+    pr_response_add(R_DUP, "%s", ((const char **) feats->elts)[i]);
   }
   pr_response_add(R_DUP, _("End"));
 
