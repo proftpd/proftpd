@@ -6215,6 +6215,7 @@ static int core_init(void) {
   pr_help_add(C_FEAT, _("(returns feature list)"), TRUE);
   pr_help_add(C_OPTS, _("<sp> command [<sp> options]"), TRUE);
   pr_help_add(C_HOST, _("<cp> hostname"), TRUE);
+  pr_help_add(C_CLNT, _("<cp> client-info"), TRUE);
   pr_help_add(C_AUTH, _("<sp> base64-data"), FALSE);
   pr_help_add(C_CCC, _("(clears protection level)"), FALSE);
   pr_help_add(C_CONF, _("<sp> base64-data"), FALSE);
