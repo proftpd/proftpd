@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2011-2015 The ProFTPD Project team
+ * Copyright (c) 2011-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -201,6 +201,7 @@ static int response_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
 }
 
 static unsigned int resp_nlines = 0;
+static char *resp_line = NULL;
 
 static char *response_handler_cb(pool *cb_pool, const char *fmt, ...) {
   char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
@@ -213,7 +214,8 @@ static char *response_handler_cb(pool *cb_pool, const char *fmt, ...) {
   buf[sizeof(buf)-1] = '\0';
 
   resp_nlines++;
-  return pstrdup(cb_pool, buf);
+  resp_line = pstrdup(cb_pool, buf);
+  return resp_line;
 }
 
 START_TEST (response_flush_test) {
@@ -235,6 +237,7 @@ START_TEST (response_flush_test) {
   pr_response_register_handler(response_handler_cb);
 
   resp_nlines = 0;
+  resp_line = NULL;
   pr_response_set_pool(p);
 
   pr_response_add(R_200, "%s", "OK");
@@ -271,6 +274,7 @@ START_TEST (response_send_test) {
   pr_response_register_handler(response_handler_cb);
 
   resp_nlines = 0;
+  resp_line = NULL;
   pr_response_set_pool(p);
 
   pr_response_send(R_200, "%s", "OK");
@@ -304,6 +308,7 @@ START_TEST (response_send_async_test) {
   pr_response_register_handler(response_handler_cb);
 
   resp_nlines = 0;
+  resp_line = NULL;
   pr_response_set_pool(p);
 
   pr_response_send_async(R_200, "%s", "OK");
@@ -315,6 +320,9 @@ START_TEST (response_send_async_test) {
 
   fail_unless(resp_nlines == 1, "Expected 1 response line flushed, got %u",
     resp_nlines);
+  fail_unless(resp_line != NULL, "Expected response line");
+  fail_unless(strcmp(resp_line, "200 OK\r\n") == 0,
+    "Expected '200 OK', got '%s'", resp_line);
 }
 END_TEST
 
@@ -337,6 +345,7 @@ START_TEST (response_send_raw_test) {
   pr_response_register_handler(response_handler_cb);
 
   resp_nlines = 0;
+  resp_line = NULL;
   pr_response_set_pool(p);
 
   pr_response_send_raw("%s", "OK");

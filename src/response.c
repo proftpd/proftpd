@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@
 pr_response_t *resp_list = NULL, *resp_err_list = NULL;
 
 static int resp_blocked = FALSE;
-
 static pool *resp_pool = NULL;
 
 static char resp_buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
@@ -306,9 +305,10 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
 }
 
 void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
+  int res;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
-  int maxlen;
+  size_t len, max_len;
 
   if (resp_blocked) {
     pr_trace_msg(trace_channel, 19,
@@ -324,20 +324,22 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   }
 
   sstrncpy(buf, resp_numeric, sizeof(buf));
-  sstrcat(buf, " ", sizeof(buf));
+
+  len = strlen(resp_numeric);
+  sstrcat(buf + len, " ", sizeof(buf) - len);
   
-  maxlen = sizeof(buf) - strlen(buf) - 1;
+  max_len = sizeof(buf) - len;
   
   va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), maxlen, fmt, msg);
+  res = vsnprintf(buf + len + 1, max_len, fmt, msg);
   va_end(msg);
   
   buf[sizeof(buf) - 1] = '\0';
 
   resp_last_response_code = pstrdup(resp_pool, resp_numeric);
-  resp_last_response_msg = pstrdup(resp_pool, buf + strlen(resp_numeric) + 1);
+  resp_last_response_msg = pstrdup(resp_pool, buf + len + 1);
 
-  sstrcat(buf, "\r\n", sizeof(buf));
+  sstrcat(buf + res, "\r\n", sizeof(buf));
   RESPONSE_WRITE_STR_ASYNC(session.c->outstrm, "%s", buf)
 }
 
