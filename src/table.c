@@ -943,9 +943,10 @@ int pr_table_empty(pr_table_t *tab) {
   }
 
   for (i = 0; i < tab->nchains; i++) {
-    pr_table_entry_t *e = tab->chains[i];
+    pr_table_entry_t *e;
 
-    while (e) {
+    e = tab->chains[i];
+    while (e != NULL) {
       if (!handling_signal) {
         pr_signals_handle();
       }
