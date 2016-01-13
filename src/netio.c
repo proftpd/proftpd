@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -991,7 +991,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   int bwritten = 0, total = 0;
   const char *nstrm_mode;
   pr_buffer_t *pbuf;
-  pool *sub_pool;
+  pool *tmp_pool;
 
   /* Sanity check */
   if (nstrm == NULL ||
@@ -1019,8 +1019,8 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
    * pr_buffer_t out of that.  Then simply destroy the subpool when done.
    */
 
-  sub_pool = pr_pool_create_sz(nstrm->strm_pool, 64);
-  pbuf = pcalloc(sub_pool, sizeof(pr_buffer_t));
+  tmp_pool = make_sub_pool(nstrm->strm_pool);
+  pbuf = pcalloc(tmp_pool, sizeof(pr_buffer_t));
   pbuf->buf = buf;
   pbuf->buflen = buflen;
   pbuf->current = pbuf->buf;
@@ -1043,7 +1043,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   /* The event listeners may have changed the data to write out. */
   buf = pbuf->buf;
   buflen = pbuf->buflen - pbuf->remaining;
-  destroy_pool(sub_pool);
+  destroy_pool(tmp_pool);
 
   while (buflen) {
 
@@ -1133,6 +1133,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   int bwritten = 0, flags = 0, total = 0;
   const char *nstrm_mode;
   pr_buffer_t *pbuf;
+  pool *tmp_pool;
 
   /* Sanity check */
   if (nstrm == NULL) {
@@ -1161,7 +1162,8 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
    * for any listeners which may want to examine this data.
    */
 
-  pbuf = pcalloc(nstrm->strm_pool, sizeof(pr_buffer_t));
+  tmp_pool = make_sub_pool(nstrm->strm_pool);
+  pbuf = pcalloc(tmp_pool, sizeof(pr_buffer_t));
   pbuf->buf = buf;
   pbuf->buflen = buflen;
   pbuf->current = pbuf->buf;
@@ -1184,6 +1186,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   /* The event listeners may have changed the data to write out. */
   buf = pbuf->buf;
   buflen = pbuf->buflen - pbuf->remaining;
+  destroy_pool(tmp_pool);
 
   while (buflen) {
     do {
@@ -1271,6 +1274,8 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     int bufmin) {
   int bread = 0, total = 0;
   const char *nstrm_mode;
+  pr_buffer_t *pbuf;
+  pool *tmp_pool;
 
   /* Sanity check. */
   if (nstrm == NULL ||
@@ -1403,6 +1408,43 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
       nstrm->strm_errno = 0;
       break;
     }
+
+    /* Before we provide the data from the client, generate an event
+     * for any listeners which may want to examine this data.  To do this, we
+     * need to allocate a pr_buffer_t for sending the buffer data to the
+     * listeners.
+     *
+     * We could just use nstrm->strm_pool, but for a long-lived control
+     * connection, this would amount to a slow memory increase.  So instead,
+     * we create a subpool from the stream's pool, and allocate the
+     * pr_buffer_t out of that.  Then simply destroy the subpool when done.
+     */
+
+    tmp_pool = make_sub_pool(nstrm->strm_pool);
+    pbuf = pcalloc(tmp_pool, sizeof(pr_buffer_t));
+    pbuf->buf = buf;
+    pbuf->buflen = bread;
+    pbuf->current = pbuf->buf;
+    pbuf->remaining = 0;
+
+    switch (nstrm->strm_type) {
+      case PR_NETIO_STRM_CTRL:
+        pr_event_generate("core.ctrl-read", pbuf);
+        break;
+
+      case PR_NETIO_STRM_DATA:
+        pr_event_generate("core.data-read", pbuf);
+        break;
+
+      case PR_NETIO_STRM_OTHR:
+        pr_event_generate("core.othr-read", pbuf);
+        break;
+    }
+
+    /* The event listeners may have changed the data read in out. */
+    buf = pbuf->buf;
+    bread = pbuf->buflen - pbuf->remaining;
+    destroy_pool(tmp_pool);
 
     buf += bread;
     total += bread;

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1107,7 +1107,6 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     char *buf = session.xfer.buf;
-    pr_buffer_t *pbuf;
 
     /* We use ASCII translation if:
      *
@@ -1146,16 +1145,6 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
           return -1;
         }
 
-        /* Before we process the data read from the client, generate an event
-         * for any listeners which may want to examine this data.
-         */
-
-        pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
-        pbuf->buf = buf;
-        pbuf->buflen = len;
-        pbuf->current = pbuf->buf;
-        pbuf->remaining = 0;
-
         if (len > 0 &&
             data_first_byte_read == FALSE) {
           if (pr_trace_get_level(timing_channel)) {
@@ -1171,12 +1160,6 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
           data_first_byte_read = TRUE;
         }
-
-        pr_event_generate("core.data-read", pbuf);
-
-        /* The event listeners may have changed the data to write out. */
-        buf = pbuf->buf;
-        len = pbuf->buflen - pbuf->remaining;
 
         if (len > 0) {
           buflen += len;
@@ -1276,16 +1259,6 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       }
 
       if (len > 0) {
-        /* Before we process the data read from the client, generate an event
-         * for any listeners which may want to examine this data.
-         */
-
-        pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
-        pbuf->buf = buf;
-        pbuf->buflen = len;
-        pbuf->current = pbuf->buf;
-        pbuf->remaining = 0;
-
         if (data_first_byte_read == FALSE) {
           if (pr_trace_get_level(timing_channel)) {
             unsigned long elapsed_ms;
@@ -1300,12 +1273,6 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
           data_first_byte_read = TRUE;
         }
-
-        pr_event_generate("core.data-read", pbuf);
-
-        /* The event listeners may have changed the data to write out. */
-        buf = pbuf->buf;
-        len = pbuf->buflen - pbuf->remaining;
 
         /* Non-ASCII mode doesn't need to use session.xfer.buf */
         if (timeout_stalled) {
