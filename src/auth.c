@@ -530,7 +530,12 @@ void pr_auth_endpwent(pool *p) {
   }
 
   if (auth_tab) {
-    pr_trace_msg(trace_channel, 5, "emptying authcache");
+    int item_count;
+
+    item_count = pr_table_count(auth_tab);
+    pr_trace_msg(trace_channel, 5, "emptying authcache (%d %s)", item_count,
+      item_count != 1 ? "items" : "item");
+
     (void) pr_table_empty(auth_tab);
     (void) pr_table_free(auth_tab);
     auth_tab = NULL;
