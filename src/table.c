@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2015 The ProFTPD Project team
+ * Copyright (c) 2004-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -182,16 +182,10 @@ static void entry_remove(pr_table_entry_t **h, pr_table_entry_t *e) {
 
   if (e->prev) {
     e->prev->next = e->next;
-  }
 
-  if (e == *h) {
-    if (e->next == NULL) {
-      /* This entry is the head, and is the only entry in this chain. */
-      *h = NULL;
-
-    } else {
-      *h = e->next;
-    }
+  } else {
+    /* This entry is the head. */
+    *h = e->next;
   }
 
   e->prev = e->next = NULL;
@@ -349,11 +343,10 @@ static void tab_entry_remove(pr_table_t *tab, pr_table_entry_t *e) {
   pr_table_entry_t *h;
 
   h = tab->chains[e->idx];
-
   tab->entremove(&h, e);
   tab->chains[e->idx] = h;
-  e->key->nents--;
 
+  e->key->nents--;
   if (e->key->nents == 0) {
     tab_key_free(tab, e->key);
     e->key = NULL;
