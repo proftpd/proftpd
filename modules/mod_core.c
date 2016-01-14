@@ -4787,7 +4787,7 @@ MODRET core_post_host(cmd_rec *cmd) {
     config_rec *c;
 
     /* Remove the TimeoutIdle timer. */
-    (void) pr_timer_remove(PR_TIMER_IDLE, NULL);
+    (void) pr_timer_remove(PR_TIMER_IDLE, ANY_MODULE);
 
     /* Restore the original TimeoutLinger value. */
     pr_data_set_linger(PR_TUNABLE_TIMEOUTLINGER);
@@ -5965,7 +5965,7 @@ MODRET core_post_pass(cmd_rec *cmd) {
       pr_timer_remove(PR_TIMER_IDLE, &core_module);
 
       if (timeout > 0) {
-        pr_timer_add(timeout, PR_TIMER_IDLE, NULL, core_idle_timeout_cb,
+        pr_timer_add(timeout, PR_TIMER_IDLE, &core_module, core_idle_timeout_cb,
           "TimeoutIdle");
       }
     }
@@ -6385,8 +6385,8 @@ static int core_sess_init(void) {
 
   timeout_idle = pr_data_get_timeout(PR_DATA_TIMEOUT_IDLE);
   if (timeout_idle) {
-    pr_timer_add(timeout_idle, PR_TIMER_IDLE, NULL, core_idle_timeout_cb,
-      "TimeoutIdle");
+    pr_timer_add(timeout_idle, PR_TIMER_IDLE, &core_module,
+      core_idle_timeout_cb, "TimeoutIdle");
   }
 
   /* Check for a server-specific TimeoutLinger */
