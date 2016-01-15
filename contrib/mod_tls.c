@@ -654,7 +654,6 @@ static const char *trace_channel = "tls";
 static const char *timing_channel = "timing";
 
 static const char * tls_get_fingerprint(pool *p, X509 *cert) {
-  register unsigned int i;
   const EVP_MD *md = EVP_sha1();
   unsigned char fp[EVP_MAX_MD_SIZE];
   unsigned int fp_len = 0;
