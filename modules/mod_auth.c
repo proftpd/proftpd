@@ -2276,6 +2276,10 @@ MODRET auth_user(cmd_rec *cmd) {
   int failnopwprompt = 0, aclp, i;
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
+  if (cmd->argc < 2) {
+    return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
+  }
+
   if (logged_in) {
     /* If the client has already authenticated, BUT the given USER command
      * here is for the exact same user name, then allow the command to
@@ -2290,10 +2294,6 @@ MODRET auth_user(cmd_rec *cmd) {
 
     pr_response_add_err(R_501, "%s", _("Reauthentication not supported"));
     return PR_ERROR(cmd);
-  }
-
-  if (cmd->argc < 2) {
-    return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
   }
 
   user = cmd->arg;
