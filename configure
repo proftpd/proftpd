@@ -38191,7 +38191,13 @@ echo $ECHO_N "checking for duplicate module build requests... $ECHO_C" >&6; }
 for i in $all_modules; do
   once=no;
 
-    if test x"$i" = x"mod_tls"; then
+      if test x"$i" = x"mod_auth_otp"; then
+    pr_use_openssl=yes
+
+  elif test x"$i" = x"mod_digest"; then
+    pr_use_openssl=yes
+
+  elif test x"$i" = x"mod_tls"; then
     pr_use_openssl=yes
 
   elif test x"$i" = x"mod_sftp"; then

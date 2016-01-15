@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1624,7 +1624,9 @@ static int sql_postgres_init(void) {
   /* If any of the OpenSSL-using modules are loaded, tell Postgres to NOT
    * initialize OpenSSL itself.
    */
-  if (pr_module_exists("mod_tls.c") == TRUE ||
+  if (pr_module_exists("mod_auth_otp.c") == TRUE ||
+      pr_module_exists("mod_digest.c") == TRUE ||
+      pr_module_exists("mod_tls.c") == TRUE ||
       pr_module_exists("mod_sftp.c") == TRUE ||
       pr_module_exists("mod_sql_passwd.c") == TRUE) {
     PQinitOpenSSL(0, 0);
