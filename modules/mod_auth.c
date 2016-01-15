@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2166,11 +2166,25 @@ MODRET auth_user(cmd_rec *cmd) {
   int failnopwprompt = 0, aclp, i;
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
-  if (logged_in)
-    return PR_ERROR_MSG(cmd, R_500, _("Bad sequence of commands"));
-
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
+  }
+
+  if (logged_in) {
+    /* If the client has already authenticated, BUT the given USER command
+     * here is for the exact same user name, then allow the command to
+     * succeed (Bug#4217).
+     */
+    origuser = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+    if (origuser != NULL &&
+        strcmp(origuser, cmd->arg) == 0) {
+      pr_response_add(R_230, _("User %s logged in"), origuser);
+      return PR_HANDLED(cmd);
+    }
+
+    pr_response_add_err(R_501, "%s", _("Reauthentication not supported"));
+    return PR_ERROR(cmd);
+  }
 
   user = cmd->arg;
 
@@ -2290,10 +2304,10 @@ MODRET auth_user(cmd_rec *cmd) {
     pr_response_add(R_331, _("Anonymous login ok, send your complete email "
       "address as your password"));
 
-  /* Check to see if a password from the client is required.  In the
-   * vast majority of cases, a password will be required.
-   */
   } else if (pr_auth_requires_pass(cmd->tmp_pool, user) == FALSE) {
+    /* Check to see if a password from the client is required.  In the
+     * vast majority of cases, a password will be required.
+     */
 
     /* Act as if we received a PASS command from the client. */
     cmd_rec *fakecmd = pr_cmd_alloc(cmd->pool, 2, NULL);
