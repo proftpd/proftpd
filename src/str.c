@@ -482,7 +482,8 @@ char *pr_str_strip_end(char *s, char *ch) {
   return s;
 }
 
-#ifdef HAVE_STRTOULL
+#if defined(HAVE_STRTOULL) && \
+  (SIZEOF_UID_T == SIZEOF_LONG_LONG && SIZEOF_GID_T == SIZEOF_LONG_LONG)
 static int parse_ull(const char *val, unsigned long long *num) {
   char *endp = NULL;
   unsigned long long res;
