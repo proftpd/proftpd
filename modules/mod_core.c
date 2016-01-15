@@ -1389,6 +1389,10 @@ MODRET set_fscachepolicy(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = TRUE;
+  c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[1]) = PR_TUNABLE_FS_STATCACHE_SIZE;
+  c->argv[2] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[2]) = PR_TUNABLE_FS_STATCACHE_MAX_AGE;
 
   for (i = 1; i < cmd->argc; i++) {
     if (strncasecmp(cmd->argv[i], "size", 5) == 0) {
@@ -1399,7 +1403,6 @@ MODRET set_fscachepolicy(cmd_rec *cmd) {
         CONF_ERROR(cmd, "size parameter must be greater than 1");
       }
 
-      c->argv[1] = palloc(c->pool, sizeof(unsigned int));
       *((unsigned int *) c->argv[1]) = size;
 
     } else if (strncasecmp(cmd->argv[i], "maxAge", 7) == 0) {
@@ -1410,7 +1413,6 @@ MODRET set_fscachepolicy(cmd_rec *cmd) {
         CONF_ERROR(cmd, "maxAge parameter must be greater than 1");
       }
 
-      c->argv[2] = palloc(c->pool, sizeof(unsigned int));
       *((unsigned int *) c->argv[2]) = max_age;
 
     } else {
