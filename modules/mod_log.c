@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,7 +57,8 @@ struct logfile_struc {
 
   logformat_t		*lf_format;
 
-  int			lf_classes;
+  int			lf_incl_classes;
+  int			lf_excl_classes;
 
   /* Pointer to the "owning" configuration */
   config_rec		*lf_conf;
@@ -474,8 +475,8 @@ MODRET set_logformat(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static int parse_classes(char *s, int *classes) {
-  int incl = CL_NONE;
+static int parse_classes(char *s, int *incl_classes, int *excl_classes) {
+  int incl = CL_NONE, excl = CL_NONE;
   char *nextp = NULL;
 
   do {
@@ -502,6 +503,7 @@ static int parse_classes(char *s, int *classes) {
     if (strcasecmp(s, "NONE") == 0) {
       if (exclude) {
         incl = CL_ALL;
+        excl = CL_NONE;
 
       } else {
         incl = CL_NONE;
@@ -510,6 +512,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "ALL") == 0) {
       if (exclude) {
         incl = CL_NONE;
+        excl = CL_ALL;
 
       } else {
         incl = CL_ALL;
@@ -518,6 +521,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "AUTH") == 0) {
       if (exclude) {
         incl &= ~CL_AUTH;
+        excl |= CL_AUTH;
 
       } else {
         incl |= CL_AUTH;
@@ -526,6 +530,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "INFO") == 0) {
       if (exclude) {
         incl &= ~CL_INFO;
+        excl |= CL_INFO;
 
       } else {
         incl |= CL_INFO;
@@ -534,6 +539,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "DIRS") == 0) {
       if (exclude) {
         incl &= ~CL_DIRS;
+        excl |= CL_DIRS;
 
       } else {
         incl |= CL_DIRS;
@@ -542,6 +548,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "READ") == 0) {
       if (exclude) {
         incl &= ~CL_READ;
+        excl |= CL_READ;
 
       } else { 
         incl |= CL_READ;
@@ -550,6 +557,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "WRITE") == 0) {
       if (exclude) {
         incl &= ~CL_WRITE;
+        excl |= CL_WRITE;
 
       } else {
         incl |= CL_WRITE;
@@ -558,6 +566,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "MISC") == 0) {
       if (exclude) {
         incl &= ~CL_MISC;
+        excl |= CL_MISC;
 
       } else {
         incl |= CL_MISC;
@@ -567,6 +576,7 @@ static int parse_classes(char *s, int *classes) {
                strcasecmp(s, "SECURE") == 0) {
       if (exclude) {
         incl &= ~CL_SEC;
+        excl |= CL_SEC;
 
       } else {
         incl |= CL_SEC;
@@ -575,6 +585,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "EXIT") == 0) {
       if (exclude) {
         incl &= ~CL_EXIT;
+        excl |= CL_EXIT;
 
       } else {
         incl |= CL_EXIT;
@@ -583,6 +594,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "SSH") == 0) {
       if (exclude) {
         incl &= ~CL_SSH;
+        excl |= CL_SSH;
 
       } else {
         incl |= CL_SSH;
@@ -591,6 +603,7 @@ static int parse_classes(char *s, int *classes) {
     } else if (strcasecmp(s, "SFTP") == 0) {
       if (exclude) {
         incl &= ~CL_SFTP;
+        excl |= CL_SFTP;
 
       } else {
         incl |= CL_SFTP;
@@ -607,7 +620,8 @@ static int parse_classes(char *s, int *classes) {
 
   } while (s);
 
-  *classes = incl;
+  *incl_classes = incl;
+  *excl_classes = excl;
   return 0;
 }
 
@@ -625,7 +639,7 @@ MODRET set_extendedlog(cmd_rec *cmd) {
     CONF_ERROR(cmd, "Syntax: ExtendedLog file [<cmd-classes> [<nickname>]]");
   }
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
   path = cmd->argv[1];
   if (strncasecmp(path, "syslog:", 7) == 0) {
@@ -649,10 +663,10 @@ MODRET set_extendedlog(cmd_rec *cmd) {
   }
 
   if (argc > 2) {
-    int incl_classes = 0, res;
+    int incl_classes = 0, excl_classes = 0, res;
 
     /* Parse the given class names, to make sure that they are all valid. */
-    res = parse_classes(cmd->argv[2], &incl_classes);
+    res = parse_classes(cmd->argv[2], &incl_classes, &excl_classes);
     if (res < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid log class in '",
         cmd->argv[2], "'", NULL));    
@@ -660,13 +674,14 @@ MODRET set_extendedlog(cmd_rec *cmd) {
 
     c->argv[1] = palloc(c->pool, sizeof(int));
     *((int *) c->argv[1]) = incl_classes;
+    c->argv[2] = palloc(c->pool, sizeof(int));
+    *((int *) c->argv[2]) = excl_classes;
   }
 
   if (argc > 3) {
-    c->argv[2] = pstrdup(log_pool, cmd->argv[3]);
+    c->argv[3] = pstrdup(log_pool, cmd->argv[3]);
   }
 
-  c->argc = argc-1;
   return PR_HANDLED(cmd);
 }
 
@@ -1910,15 +1925,19 @@ MODRET log_any(cmd_rec *cmd) {
       continue;
     }
 
-    if (cmd->cmd_class & lf->lf_classes) {
+    if (cmd->cmd_class & lf->lf_incl_classes) {
       log_cmd = TRUE;
+    }
+
+    if (cmd->cmd_class & lf->lf_excl_classes) {
+      log_cmd = FALSE;
     }
 
     /* If the logging class of this command is unknown (defaults to zero),
      * AND this ExtendedLog is configured to log ALL commands, log it.
      */
     if (cmd->cmd_class == 0 &&
-        lf->lf_classes == CL_ALL) {
+        lf->lf_incl_classes == CL_ALL) {
       log_cmd = TRUE;
     }
 
@@ -2069,13 +2088,13 @@ static int log_init(void) {
 static void find_extendedlogs(void) {
   config_rec *c;
   char *logfname, *logfmt_s = NULL;
-  int incl_classes = CL_ALL;
+  int incl_classes = CL_ALL, excl_classes = CL_NONE;
   logformat_t *logfmt;
   logfile_t *extlog = NULL;
   unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
 
-  /* We _do_ actually want the recursion here.  The reason is that we want
-   * to find _all_ ExtendedLog directives in the configuration, including
+  /* We DO actually want the recursion here.  The reason is that we want
+   * to find ALL_ ExtendedLog directives in the configuration, including
    * those in <Anonymous> sections.  We have the ability to use root privs
    * now, to make sure these files can be opened, but after the user has
    * authenticated (and we know for sure whether they're anonymous or not),
@@ -2097,9 +2116,10 @@ static void find_extendedlogs(void) {
 
     if (c->argc > 1) {
       incl_classes = *((int *) c->argv[1]);
+      excl_classes = *((int *) c->argv[2]);
 
-      if (c->argc > 2) {
-        logfmt_s = c->argv[2];
+      if (c->argc > 3) {
+        logfmt_s = c->argv[3];
       }
     }
 
@@ -2150,7 +2170,8 @@ static void find_extendedlogs(void) {
     extlog->lf_filename = pstrdup(session.pool, logfname);
     extlog->lf_fd = -1;
     extlog->lf_syslog_level = -1;
-    extlog->lf_classes = incl_classes;
+    extlog->lf_incl_classes = incl_classes;
+    extlog->lf_excl_classes = excl_classes;
     extlog->lf_format = logfmt;
     extlog->lf_conf = c->parent;
     if (log_set == NULL) {
@@ -2249,7 +2270,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
         /* Go ahead and close the log if it's CL_NONE */
         if (lf->lf_fd != -1 &&
             lf->lf_fd != EXTENDED_LOG_SYSLOG &&
-            lf->lf_classes == CL_NONE) {
+            lf->lf_incl_classes == CL_NONE) {
           pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s' (fd %d)",
             lf->lf_filename, lf->lf_fd);
           (void) close(lf->lf_fd);
