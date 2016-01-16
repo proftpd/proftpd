@@ -566,7 +566,7 @@ unencrypted.
 (FXP) transfers are supported via the <code>SSCN</code> FTP command.  The
 <a href="../contrib/mod_tls.html#TLSVerifyServer"><code>TLSVerifyServer</code></a> directive is also needed for secure FXP transfers.
 
-<p><a name="TLSv2">
+<p><a name="SSLv2">
 <font color=red>Question</font>: How come <code>mod_tls</code> does not support
 SSLv2?<br>
 <font color=blue>Answer</font>: Various defects have been found in the SSLv2
@@ -754,6 +754,32 @@ This way, as long as your client supports renegotiations and is updating the
 SSL session ID properly for data transfers, when a data transfer is requested,
 the SSL session ID presented by the client should always be fresh and in the
 session cache.
+
+<p><a name="TLSUnknownProtocol">
+<font color=red>Question</font>: My FTPS client is failing to connect to
+<code>proftpd</code> with <code>mod_tls</code>.  The <code>TLSLog</code> shows
+the following log messages, each time the FTPS client tries to connect:
+<pre>
+  2016-01-15 07:32:37,275 mod_tls/2.7[5072]: TLS/TLS-C requested, starting TLS handshake
+  2016-01-15 07:32:37,303 mod_tls/2.7[5072]: unable to accept TLS connection: protocol error:
+    <b>(1) error:140760FC:SSL routines:SSL23_GET_CLIENT_HELLO:unknown protocol</b>
+  2016-01-15 07:32:37,303 mod_tls/2.7[5072]: TLS/TLS-C negotiation failed on control channel
+</pre>
+Why does this happen?<br>
+<font color=blue>Answer</font>: This can happen when <code>mod_tls</code> is
+configured (<i>e.g.</i> using <code>TLSProtocol</code>) to support specific
+TLS versions, and the FTPS client is trying to use one of the unsupported
+protocol versions.  For example, if you use:
+<pre>
+  # Only support TLSv1.1 and TLSv1.2
+  TLSProtocol TLSv1.1 TLSv1.2
+</pre>
+And then connect with an FTPS client using TLSv1, like so:
+<pre>
+  $ openssl s_client -connect <i>address</i>:<i>port</i> -starttls ftp -tls1
+</pre>
+Then you would see the above error.  Note that this same protocol mismatch
+issue can also manifest as the error message "wrong version number".
 
 <p><a name="TLSBuildErrors">
 <font color=red>Question</font>: Why would I see the following errors while attempting to build <code>proftpd</code> with <code>mod_tls</code>?
