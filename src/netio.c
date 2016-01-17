@@ -608,15 +608,23 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
       nstrm->strm_mode = mode;
 
       if (ctrl_netio != NULL) {
-        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
-          ctrl_netio, sizeof(pr_netio_t *));
+        if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+            ctrl_netio, sizeof(pr_netio_t *)) < 0) {
+          pr_trace_msg(trace_channel, 9,
+            "error stashing 'core.netio' note for ctrl stream: %s",
+            strerror(errno));
+        }
         pr_trace_msg(trace_channel, 19, "using %s open() for control %s stream",
           ctrl_netio->owner_name, nstrm_mode);
         return (ctrl_netio->open)(nstrm, fd, mode);
 
       } else {
-        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
-          default_ctrl_netio, sizeof(pr_netio_t *));
+        if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+            default_ctrl_netio, sizeof(pr_netio_t *)) < 0) {
+          pr_trace_msg(trace_channel, 9,
+            "error stashing 'core.netio' note for ctrl stream: %s",
+            strerror(errno));
+        }
         pr_trace_msg(trace_channel, 19, "using %s open() for control %s stream",
           default_ctrl_netio->owner_name, nstrm_mode);
         return (default_ctrl_netio->open)(nstrm, fd, mode);
@@ -627,15 +635,23 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
       nstrm->strm_mode = mode;
 
       if (data_netio != NULL) {
-        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
-          data_netio, sizeof(pr_netio_t *));
+        if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+            data_netio, sizeof(pr_netio_t *)) < 0) {
+          pr_trace_msg(trace_channel, 9,
+            "error stashing 'core.netio' note for data stream: %s",
+            strerror(errno));
+        }
         pr_trace_msg(trace_channel, 19, "using %s open() for data %s stream",
           data_netio->owner_name, nstrm_mode);
         return (data_netio->open)(nstrm, fd, mode);
 
       } else {
-        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
-          default_data_netio, sizeof(pr_netio_t *));
+        if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+            default_data_netio, sizeof(pr_netio_t *)) < 0) {
+          pr_trace_msg(trace_channel, 9,
+            "error stashing 'core.netio' note for data stream: %s",
+            strerror(errno));
+        }
         pr_trace_msg(trace_channel, 19, "using %s open() for data %s stream",
           default_data_netio->owner_name, nstrm_mode);
         return (default_data_netio->open)(nstrm, fd, mode);
@@ -646,15 +662,23 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
       nstrm->strm_mode = mode;
 
       if (othr_netio != NULL) {
-        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
-          othr_netio, sizeof(pr_netio_t *));
+        if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+            othr_netio, sizeof(pr_netio_t *)) < 0) {
+          pr_trace_msg(trace_channel, 9,
+            "error stashing 'core.netio' note for othr stream: %s",
+            strerror(errno));
+        }
         pr_trace_msg(trace_channel, 19, "using %s open() for other %s stream",
           othr_netio->owner_name, nstrm_mode);
         return (othr_netio->open)(nstrm, fd, mode);
 
       } else {
-        pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
-          default_othr_netio, sizeof(pr_netio_t *));
+        if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
+            default_othr_netio, sizeof(pr_netio_t *)) < 0) {
+          pr_trace_msg(trace_channel, 9,
+            "error stashing 'core.netio' note for othr stream: %s",
+            strerror(errno));
+        }
         pr_trace_msg(trace_channel, 19, "using %s open() for other %s stream",
           default_othr_netio->owner_name, nstrm_mode);
         return (default_othr_netio->open)(nstrm, fd, mode);
