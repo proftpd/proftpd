@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004-2015 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2016 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -201,10 +201,9 @@ static int dso_load_module(char *name) {
 
     *ptr = '.';
     pr_log_debug(DEBUG1, MOD_DSO_VERSION
-      ": unable to find module symbol '%s' in '%s'", symbol_name,
-        mh ? name : "self");
-    pr_trace_msg(trace_channel, 1, "unable to find module symbol '%s' in '%s'",
-      symbol_name, mh ? name : "self");
+      ": unable to find module symbol '%s' in 'self'", symbol_name);
+    pr_trace_msg(trace_channel, 1,
+      "unable to find module symbol '%s' in 'self'", symbol_name);
 
     lt_dlclose(mh);
     mh = NULL;
