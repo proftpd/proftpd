@@ -3978,7 +3978,7 @@ static int tls_ticket_key_cmp(xasetmember_t *a, xasetmember_t *b) {
 
 static struct tls_ticket_key *create_ticket_key(void) {
   struct tls_ticket_key *k;
-  void *page_ptr;
+  void *page_ptr = NULL;
   size_t pagesz;
   char *ptr;
 # ifdef HAVE_MLOCK
@@ -3988,6 +3988,9 @@ static struct tls_ticket_key *create_ticket_key(void) {
   pagesz = sizeof(struct tls_ticket_key);
   ptr = tls_get_page(pagesz, &page_ptr);
   if (ptr == NULL) {
+    if (page_ptr != NULL) {
+      free(page_ptr);
+    }
     return NULL;
   }
 
