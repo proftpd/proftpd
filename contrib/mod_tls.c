@@ -700,20 +700,18 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path) {
 
 #if defined(PR_USE_OPENSSL_OCSP)
 static const char *ocsp_get_responder_url(pool *p, X509 *cert) {
-  register unsigned int i;
   STACK_OF(OPENSSL_STRING) *strs;
   char *ocsp_url = NULL;
 
   strs = X509_get1_ocsp(cert);
-  for (i = 0; i < sk_OPENSSL_STRING_num(strs); i++) {
-    if (ocsp_url == NULL) {
-      ocsp_url = pstrdup(p, sk_OPENSSL_STRING_value(strs, i));
-      break;
+  if (strs != NULL) {
+    if (sk_OPENSSL_STRING_num(strs) > 0) {
+      ocsp_url = pstrdup(p, sk_OPENSSL_STRING_value(strs, 0));
     }
-  }
 
-  /* Yes, this says "email", but it Does The Right Thing(tm) for our needs. */
-  X509_email_free(strs);
+    /* Yes, this says "email", but it Does The Right Thing(tm) for our needs. */
+    X509_email_free(strs);
+  }
 
   return ocsp_url;
 }
