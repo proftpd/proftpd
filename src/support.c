@@ -180,40 +180,66 @@ void run_schedule(void) {
  * Alas, current (Jul 2000) Linux systems define NAME_MAX anyway.
  * NB: NAME_MAX_GUESS is defined in support.h.
  */
-size_t get_name_max(char *dirname, int dir_fd) {
-  long res = 0;
-#if defined(HAVE_FPATHCONF) || defined(HAVE_PATHCONF)
-  char *msgfmt = "";
 
-# if defined(HAVE_FPATHCONF)
-  if (dir_fd > 0) {
-    res = fpathconf(dir_fd, _PC_NAME_MAX);
-    msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %ld, errno = %d (%s)";
-  } else
-# endif
-# if defined(HAVE_PATHCONF)
-  if (dirname != NULL) {
-    res = pathconf(dirname, _PC_NAME_MAX);
-    msgfmt = "pathconf(%s, _PC_NAME_MAX) = %ld, errno = %d (%s)";
-  } else
-# endif
-  /* No data provided to use either pathconf() or fpathconf() */
-  errno = EINVAL;
-  res = -1;
+static int get_fpathconf_name_max(int fd, long *name_max) {
+#if defined(HAVE_FPATHCONF)
+  *name_max = fpathconf(fd, _PC_NAME_MAX);
+  return 0;
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* HAVE_FPATHCONF */
+}
 
-  if (res < 0) {
-    /* NB: errno may not be set if the failure is due to a limit or option
-     * not being supported.
-     */
-    pr_log_debug(DEBUG5, msgfmt, dirname ? dirname : "(NULL)", res, errno,
-      strerror(errno));
+static int get_pathconf_name_max(char *dir, long *name_max) {
+#if defined(HAVE_PATHCONF)
+  *name_max = pathconf(dir, _PC_NAME_MAX);
+  return 0;
+#else
+  errno = ENOSYS;
+  return -1;
+#endif /* HAVE_PATHCONF */
+}
+
+size_t get_name_max(char *dir_name, int dir_fd) {
+  int res;
+  long name_max = 0;
+
+  if (dir_name == NULL &&
+      dir_fd < 0) {
+    /* No valid name or fd?  Then we guess. */
+    return NAME_MAX_GUESS;
   }
 
-#else
-  res = NAME_MAX_GUESS;
-#endif /* HAVE_FPATHCONF or HAVE_PATHCONF */
+  /* Try the fd first. */
+  if (dir_fd >= 0) {
+    res = get_fpathconf_name_max(dir_fd, &name_max);
+    if (res == 0) {
+      if (name_max < 0) {
+        pr_log_debug(DEBUG5, "fpathconf() error for fd %d: %s", dir_fd,
+          strerror(errno));
+        name_max = NAME_MAX_GUESS;
+      }
 
-  return (size_t) res;
+      return name_max;
+    }
+  }
+
+  /* Name, then. */
+  if (dir_name != NULL) {
+    res = get_pathconf_name_max(dir_name, &name_max);
+    if (res == 0) {
+      if (name_max < 0) {
+        pr_log_debug(DEBUG5, "pathconf() error for name '%s': %s", dir_name,
+          strerror(errno));
+        name_max = NAME_MAX_GUESS;
+      }
+
+      return name_max;
+    }
+  }
+
+  return NAME_MAX_GUESS;
 }
 
 /* Interpolates a pathname, expanding ~ notation if necessary
