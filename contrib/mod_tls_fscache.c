@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_fscache -- a module which provides a shared OCSP response
  *                              cache using the filesystem
  *
- * Copyright (c) 2015 TJ Saunders
+ * Copyright (c) 2015-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -498,10 +498,12 @@ static int ocsp_cache_clear(tls_ocsp_cache_t *cache) {
 static int ocsp_cache_remove(tls_ocsp_cache_t *cache) {
   int res;
 
-  if (cache != NULL) {
-    pr_trace_msg(trace_channel, 9, "removing fscache cache %p", cache); 
+  if (cache == NULL) {
+    errno = EINVAL;
+    return -1;
   }
 
+  pr_trace_msg(trace_channel, 9, "removing fscache cache %p", cache);
   res = ocsp_cache_clear(cache);
   return res;
 }
