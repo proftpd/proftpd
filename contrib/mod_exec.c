@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
  *
- * Copyright (c) 2002-2015 TJ Saunders
+ * Copyright (c) 2002-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -961,7 +961,8 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   }
 
   ptr = strstr(varstr, "%F");
-  if (ptr != NULL) {
+  if (ptr != NULL &&
+      cmd != NULL) {
     if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       char *path;
 
@@ -1002,7 +1003,8 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   }
 
   ptr = strstr(varstr, "%f");
-  if (ptr != NULL) {
+  if (ptr != NULL &&
+      cmd != NULL) {
 
     if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       char *path;
@@ -1070,29 +1072,28 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
     char *rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
       NULL);
 
-    if (rfc1413_ident == NULL)
+    if (rfc1413_ident == NULL) {
       rfc1413_ident = "UNKNOWN";
+    }
 
     varstr = sreplace(tmp_pool, varstr, "%l", rfc1413_ident, NULL);
   }
 
   ptr = strstr(varstr, "%m");
   if (ptr != NULL) {
-    varstr = sreplace(tmp_pool, varstr, "%m", cmd ? cmd->argv[0] : "",
-      NULL);
+    varstr = sreplace(tmp_pool, varstr, "%m", cmd ? cmd->argv[0] : "", NULL);
   }
 
   ptr = strstr(varstr, "%r");
-  if (ptr != NULL) {
-    if (cmd) {
-      if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
-          session.hide_password) {
-        varstr = sreplace(tmp_pool, varstr, "%r", "PASS (hidden)", NULL);
+  if (ptr != NULL &&
+      cmd != NULL) {
+    if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0 &&
+        session.hide_password) {
+      varstr = sreplace(tmp_pool, varstr, "%r", "PASS (hidden)", NULL);
 
-      } else {
-        varstr = sreplace(tmp_pool, varstr, "%r",
-          pr_cmd_get_displayable_str(cmd, NULL), NULL);
-      }
+    } else {
+      varstr = sreplace(tmp_pool, varstr, "%r",
+        pr_cmd_get_displayable_str(cmd, NULL), NULL);
     }
   }
 
@@ -1125,7 +1126,8 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   }
 
   ptr = strstr(varstr, "%w");
-  if (ptr != NULL) {
+  if (ptr != NULL &&
+      cmd != NULL) {
     char *rnfr_path = "-";
 
     if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
