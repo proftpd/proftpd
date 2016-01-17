@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2197,15 +2197,11 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
    * we allocate out of the pool for writing the data in the first place.
    * Hence the copy.
    */
-  if (p) {
-    buf = palloc(p, *datalen);
-    memcpy(buf, ptr, *datalen);
+  buf = palloc(p, *datalen);
+  memcpy(buf, ptr, *datalen);
 
-    pr_memscrub(ptr, *datalen);
-    return buf;
-  }
-
-  return ptr;
+  pr_memscrub(ptr, *datalen);
+  return buf;
 }
 
 int sftp_keys_clear_dsa_hostkey(void) {
