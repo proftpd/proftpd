@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,13 +25,32 @@
 /* Coverity modeling file. */
 
 typedef struct module_struct module;
+typedef struct {} pr_table_t;
+typedef struct {} *lt_dlhandle;
 
-/* ProFTPD functions */
+/* ProFTPD functions. */
 void pr_session_disconnect(module *m, int reason_code, const char *details) {
   __coverity_panic__();
 }
 
-/* libc functions */
+int pr_table_add(pr_table_t *tab, const char *key_data, void *value_data,
+    size_t value_datasz) {
+  /* ignore */
+}
+
+/* libltdl functions. */
+
+/* Resource leak false positive. */
+lt_dlhandle lt_dlopenext(const char *filename) {
+  /* ignore */
+}
+
+/* libc functions. */
+
+int mkstemp(char *template) {
+  /* ignore */
+}
+
 int rand(void) {
   /* ignore */
 }
