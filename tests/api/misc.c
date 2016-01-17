@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,26 +129,23 @@ START_TEST (get_name_max_test) {
   int fd;
 
   res = get_name_max(NULL, -1);
-  fail_unless(res == (size_t) -1, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
+  fail_unless(res == NAME_MAX_GUESS, "Expected %lu, got %lu",
+    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
 
   path = "/";
   res = get_name_max(path, -1);
-  fail_unless(res == (size_t) -1, "Couldn't get name max for '%s': %s", path,
-    strerror(errno));
+  fail_unless(res != NAME_MAX_GUESS, "Expected other than %lu, got %lu",
+    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
 
   fd = 1;
   res = get_name_max(NULL, fd);
-  fail_unless(res == (size_t) -1, "Couldn't get name max for fd %d: %s", fd,
-    strerror(errno));
   fail_unless(res != NAME_MAX_GUESS, "Expected other than %lu, got %lu",
     (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
 
   fd = 777;
   res = get_name_max(NULL, fd);
-  fail_unless(res == (size_t) -1, "Couldn't get name max for fd %d: %s", fd,
-    strerror(errno));
+  fail_unless(res == NAME_MAX_GUESS, "Expected %lu, got %lu",
+    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
 }
 END_TEST
 
