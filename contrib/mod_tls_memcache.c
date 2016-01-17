@@ -249,7 +249,6 @@ static const char *mcache_get_errors(void) {
 
 static int sess_cache_get_tpl_key(pool *p, unsigned char *sess_id,
     unsigned int sess_id_len, void **key, size_t *keysz) {
-  register unsigned int i;
   char *sess_id_hex;
   void *data = NULL;
   size_t datasz = 0;
@@ -272,7 +271,6 @@ static int sess_cache_get_tpl_key(pool *p, unsigned char *sess_id,
 
 static int sess_cache_get_json_key(pool *p, unsigned char *sess_id,
     unsigned int sess_id_len, void **key, size_t *keysz) {
-  register unsigned int i;
   char *sess_id_hex, *json_str;
   JsonNode *json;
 
