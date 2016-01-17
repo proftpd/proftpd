@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2011 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
- *
- * $Id: ftpcount.c,v 1.21 2011-05-23 20:46:20 castaglia Exp $
- */
+/* Shows a count of "who" is online via proftpd.  Uses the scoreboard file. */
 
 #include "utils.h"
 
@@ -78,10 +75,12 @@ static void show_usage(const char *progname, int exit_code) {
 #else /* HAVE_GETOPT_LONG */
     printf("  %s\n", h->short_opt);
 #endif
-    if (!h->desc)
+    if (h->desc == NULL) {
       printf("    display %s usage\n", progname);
-    else
+
+    } else {
       printf("    %s\n", h->desc);
+    }
   }
 
   exit(exit_code);
@@ -115,6 +114,7 @@ int main(int argc, char **argv) {
     switch (c) {
       case 'h':
         show_usage(progname, 0);
+        break;
 
       case 'f':
         util_set_scoreboard(optarg);
@@ -131,6 +131,7 @@ int main(int argc, char **argv) {
       case '?':
         fprintf(stderr, "unknown option: %c\n", (char) optopt);
         show_usage(progname, 1);
+        break;
     }
   }
 
