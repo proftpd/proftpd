@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -545,7 +545,10 @@ static void log_write(int priority, int f, char *s, int discard) {
     }
   }
 
-  ptr = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
+  if (main_server != NULL) {
+    ptr = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
+  }
+
   if (ptr != NULL) {
     max_priority = *ptr;
 
@@ -631,7 +634,7 @@ static void log_write(int priority, int f, char *s, int discard) {
         continue;
       }
 
-      return;
+      break;
     }
 
     return;
@@ -640,8 +643,9 @@ static void log_write(int priority, int f, char *s, int discard) {
   pr_log_event_generate(PR_LOG_TYPE_SYSLOG, syslog_sockfd, priority, s,
     strlen(s));
 
-  if (set_facility != -1)
+  if (set_facility != -1) {
     f = set_facility;
+  }
 
   if (!syslog_open) {
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, f);
