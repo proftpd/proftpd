@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -188,24 +188,25 @@ size_t get_name_max(char *dirname, int dir_fd) {
 # if defined(HAVE_FPATHCONF)
   if (dir_fd > 0) {
     res = fpathconf(dir_fd, _PC_NAME_MAX);
-    msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %ld, errno = %d";
+    msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %ld, errno = %d (%s)";
   } else
 # endif
 # if defined(HAVE_PATHCONF)
   if (dirname != NULL) {
     res = pathconf(dirname, _PC_NAME_MAX);
-    msgfmt = "pathconf(%s, _PC_NAME_MAX) = %ld, errno = %d";
+    msgfmt = "pathconf(%s, _PC_NAME_MAX) = %ld, errno = %d (%s)";
   } else
 # endif
   /* No data provided to use either pathconf() or fpathconf() */
   errno = EINVAL;
-  return -1;
+  res = -1;
 
   if (res < 0) {
     /* NB: errno may not be set if the failure is due to a limit or option
      * not being supported.
      */
-    pr_log_debug(DEBUG1, msgfmt, dirname ? dirname : "(NULL)", res, errno);
+    pr_log_debug(DEBUG5, msgfmt, dirname ? dirname : "(NULL)", res, errno,
+      strerror(errno));
   }
 
 #else
