@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4498,7 +4498,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
-  cmd_rec *cmd = NULL, *cmd2 = NULL;
+  cmd_rec *cmd = NULL;
   int res, xerrno = 0;
 
   args = pstrcat(fxp->pool, src, " ", dst, NULL);
@@ -4526,14 +4526,6 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, fxp_strerror(status_code));
-
-    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
-      fxp_strerror(status_code), NULL);
-
-    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
