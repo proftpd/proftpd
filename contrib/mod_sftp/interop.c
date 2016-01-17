@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -170,6 +170,14 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
 
   } else if (strncmp(client_version, "SSH-1.99-", 9) == 0) {
     version = pstrdup(p, client_version + 9);
+
+  } else {
+    /* An illegally formatted client version.  How did it get here? */
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client-sent version (%s) is illegally formmated, disconnecting client",
+      client_version);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_PROTOCOL_VERSION_NOT_SUPPORTED,
+      NULL);
   }
 
   /* Look for the optional comments field in the received client version; if
