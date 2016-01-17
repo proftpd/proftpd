@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project
+ * Copyright (c) 2001-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1405,6 +1405,15 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
           if (dest_workp) {
             destroy_pool(workp);
           }
+
+          /* Explicitly free the memory allocated for containing the list of
+           * filenames.
+           */
+          i = 0;
+          while (dir[i] != NULL) {
+            free(dir[i++]);
+          }
+          free(dir);
 
           return -1;
         }
