@@ -139,9 +139,14 @@ START_TEST (get_name_max_test) {
 
   fd = 1;
   res = get_name_max(NULL, fd);
-  fail_unless(res < 0, "Failed to handle fd %d");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
+
+  /* It seems that fpathconf(2) on some platforms will handle stdin as a
+   * valid file descriptor, and some will not.
+   */
+  if (res < 0) {
+    fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+      strerror(errno), errno);
+  }
 }
 END_TEST
 
