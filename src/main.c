@@ -570,6 +570,29 @@ int pr_cmd_read(cmd_rec **res) {
   return 0;
 }
 
+static int set_cmd_start_ms(cmd_rec *cmd) {
+  void *v;
+  uint64_t start_ms;
+
+  if (cmd->notes == NULL) {
+    return 0;
+  }
+
+  v = pr_table_get(cmd->notes, "start_ms", NULL);
+  if (v != NULL) {
+    return 0;
+  }
+
+  if (pr_gettimeofday_millis(&start_ms) < 0) {
+    return -1;
+  }
+
+  v = palloc(cmd->pool, sizeof(uint64_t));
+  memcpy(v, &start_ms, sizeof(uint64_t));
+
+  return pr_table_add(cmd->notes, "start_ms", v, sizeof(uint64_t));
+}
+
 int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   char *cp = NULL;
   int success = 0, xerrno = 0;
@@ -615,8 +638,9 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
     cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
   }
 
+  set_cmd_start_ms(cmd);
+
   if (phase == 0) {
-        
     /* First, dispatch to wildcard PRE_CMD handlers. */
     success = _dispatch(cmd, PRE_CMD, FALSE, C_ANY);
 
@@ -664,7 +688,6 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       errno = xerrno;
 
     } else if (success < 0) {
-
       /* Allow for non-logging command handlers to be run if CMD fails. */
 
       success = _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);

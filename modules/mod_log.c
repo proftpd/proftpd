@@ -99,12 +99,13 @@ static xaset_t *log_set = NULL;
    %l			- Remote logname (from identd)
    %m			- Request (command) method (RETR, etc)
    %O                   - Total number of "raw" bytes written out to network
-   %P			- Process ID of child serving request
+   %P                   - Process ID of child serving request
    %p			- Port of server serving request
+   %R                   - Response time for command/request, in milliseconds
    %r			- Full request (command)
    %s			- Response code (status)
    %S                   - Response string
-   %T			- Time taken to serve request, in seconds
+   %T			- Time taken to transfer file, in seconds
    %t			- Time
    %{format}t		- Formatted time (strftime(3) format)
    %U                   - Original username sent by client
@@ -124,6 +125,7 @@ static xaset_t *log_set = NULL;
    %{gid}               - Primary GID of logged-in user
    %{transfer-status}   - "success", "failed", "cancelled", "timeout", or "-"
    %{transfer-failure}  - reason, or "-"
+   %{transfer-millisecs}- Time taken to transfer file, in milliseconds
    %{version}           - ProFTPD version
 */
 
@@ -239,6 +241,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
         if (strncmp(tmp, "{uid}", 5) == 0) {
           add_meta(&outs, LOGFMT_META_UID, 0);
           tmp += 5;
+          continue;
+        }
+
+        if (strncmp(tmp, "{transfer-millisecs}", 20) == 0) {
+          add_meta(&outs, LOGFMT_META_XFER_MS, 0);
+          tmp += 20;
           continue;
         }
 
@@ -376,6 +384,10 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
 
           case 'r':
             add_meta(&outs, LOGFMT_META_COMMAND, 0);
+            break;
+
+          case 'R':
+            add_meta(&outs, LOGFMT_META_RESPONSE_MS, 0);
             break;
 
           case 's':
@@ -1439,22 +1451,42 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
          */
         if (session.xfer.start_time.tv_sec != 0 ||
             session.xfer.start_time.tv_usec != 0) {
-          struct timeval end_time;
+          uint64_t start_ms = 0, end_ms = 0;
+          float transfer_secs = 0.0;
 
-          gettimeofday(&end_time, NULL);
-          end_time.tv_sec -= session.xfer.start_time.tv_sec;
+          pr_timeval2millis(&(session.xfer.start_time), &start_ms);
+          pr_gettimeofday_millis(&end_ms);
 
-          if (end_time.tv_usec >= session.xfer.start_time.tv_usec) {
-            end_time.tv_usec -= session.xfer.start_time.tv_usec;
+          transfer_secs = (end_ms - start_ms) / 1000.0;
+          len = snprintf(argp, sizeof(arg), "%0.3f", transfer_secs);
 
-          } else {
-            end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
-              end_time.tv_usec);
-            end_time.tv_sec--;
-          }
+        } else {
+          len = sstrncpy(argp, "-", sizeof(arg));
+        }
 
-          len = snprintf(argp, sizeof(arg), "%ld.%03ld", (long) end_time.tv_sec,
-            (long) (end_time.tv_usec / 1000));
+      } else {
+        len = sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      m++;
+      break;
+
+    case LOGFMT_META_XFER_MS:
+      argp = arg;
+      if (session.xfer.p) {
+        /* Make sure that session.xfer.start_time actually has values (which
+         * is not always the case).
+         */
+        if (session.xfer.start_time.tv_sec != 0 ||
+            session.xfer.start_time.tv_usec != 0) {
+          uint64_t start_ms = 0, end_ms = 0;
+          off_t transfer_ms;
+
+          pr_timeval2millis(&(session.xfer.start_time), &start_ms);
+          pr_gettimeofday_millis(&end_ms);
+
+          transfer_ms = end_ms - start_ms;
+          len = snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) transfer_ms);
 
         } else {
           len = sstrncpy(argp, "-", sizeof(arg));
@@ -1558,6 +1590,29 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       /* Hack to add return code for proper logging of QUIT command. */
       } else if (pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) == 0) {
         len = sstrncpy(argp, R_221, sizeof(arg));
+
+      } else {
+        len = sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
+
+    case LOGFMT_META_RESPONSE_MS: {
+      uint64_t *start_ms = NULL;
+
+      argp = arg;
+
+      start_ms = pr_table_get(cmd->notes, "start_ms", NULL);
+      if (start_ms != NULL) {
+        uint64_t end_ms = 0;
+        off_t response_ms;
+
+        pr_gettimeofday_millis(&end_ms);
+
+        response_ms = end_ms - *start_ms;
+        len = snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) response_ms);
 
       } else {
         len = sstrncpy(argp, "-", sizeof(arg));
