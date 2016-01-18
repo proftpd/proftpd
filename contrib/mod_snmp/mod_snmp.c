@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -795,8 +795,7 @@ static int snmp_agent_handle_getnext(struct snmp_packet *pkt) {
           case SNMP_PROTOCOL_VERSION_2:
           case SNMP_PROTOCOL_VERSION_3:
             resp_var = snmp_smi_create_exception(pkt->pool, iter_var->name,
-              iter_var->namelen, lacks_instance_id ? SNMP_SMI_NO_SUCH_INSTANCE :
-                SNMP_SMI_NO_SUCH_OBJECT);
+              iter_var->namelen, SNMP_SMI_NO_SUCH_OBJECT);
             break;
         }
 
