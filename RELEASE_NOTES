@@ -59,6 +59,8 @@ ChangeLog files.
       set to "false", via the new EmptyPassword BanOnEvent rule.  See
       doc/contrib/mod_ban.html#BanOnEvent for more information.
 
+    LogFormat %R, %{transfer-millisecs} (Bug#4218)
+
     MasqueradeAddress
       Sometimes the DNS name configured for MasqueradeAddress directives
       cannot be resolved when ProFTPD starts up, such as when the network
