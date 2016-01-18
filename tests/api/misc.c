@@ -124,28 +124,24 @@ START_TEST (schedule_test) {
 END_TEST
 
 START_TEST (get_name_max_test) {
-  size_t res;
+  long res;
   char *path;
   int fd;
 
   res = get_name_max(NULL, -1);
-  fail_unless(res == NAME_MAX_GUESS, "Expected %lu, got %lu",
-    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
+  fail_unless(res < 0, "Failed to handle invalid arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   path = "/";
   res = get_name_max(path, -1);
-  fail_unless(res != NAME_MAX_GUESS, "Expected other than %lu, got %lu",
-    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
+  fail_if(res < 0, "Failed to handle path '%s': %s", path, strerror(errno));
 
   fd = 1;
   res = get_name_max(NULL, fd);
-  fail_unless(res != NAME_MAX_GUESS, "Expected other than %lu, got %lu",
-    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
-
-  fd = 777;
-  res = get_name_max(NULL, fd);
-  fail_unless(res == NAME_MAX_GUESS, "Expected %lu, got %lu",
-    (unsigned long) NAME_MAX_GUESS, (unsigned long) res);
+  fail_unless(res < 0, "Failed to handle fd %d");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 }
 END_TEST
 

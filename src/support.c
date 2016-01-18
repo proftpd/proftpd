@@ -201,14 +201,14 @@ static int get_pathconf_name_max(char *dir, long *name_max) {
 #endif /* HAVE_PATHCONF */
 }
 
-size_t get_name_max(char *dir_name, int dir_fd) {
+long get_name_max(char *dir_name, int dir_fd) {
   int res;
   long name_max = 0;
 
   if (dir_name == NULL &&
       dir_fd < 0) {
-    /* No valid name or fd?  Then we guess. */
-    return NAME_MAX_GUESS;
+    errno = EINVAL;
+    return -1;
   }
 
   /* Try the fd first. */
@@ -216,9 +216,13 @@ size_t get_name_max(char *dir_name, int dir_fd) {
     res = get_fpathconf_name_max(dir_fd, &name_max);
     if (res == 0) {
       if (name_max < 0) {
+        int xerrno = errno;
+
         pr_log_debug(DEBUG5, "fpathconf() error for fd %d: %s", dir_fd,
-          strerror(errno));
-        name_max = NAME_MAX_GUESS;
+          strerror(xerrno));
+
+        errno = xerrno;
+        return -1;
       }
 
       return name_max;
@@ -230,16 +234,21 @@ size_t get_name_max(char *dir_name, int dir_fd) {
     res = get_pathconf_name_max(dir_name, &name_max);
     if (res == 0) {
       if (name_max < 0) {
+        int xerrno = errno;
+
         pr_log_debug(DEBUG5, "pathconf() error for name '%s': %s", dir_name,
-          strerror(errno));
-        name_max = NAME_MAX_GUESS;
+          strerror(xerrno));
+
+        errno = xerrno;
+        return -1;
       }
 
       return name_max;
     }
   }
 
-  return NAME_MAX_GUESS;
+  errno = ENOSYS;
+  return -1;
 }
 
 /* Interpolates a pathname, expanding ~ notation if necessary

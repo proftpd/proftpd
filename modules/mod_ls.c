@@ -1119,7 +1119,8 @@ static char **sreaddir(const char *dirname, const int sort) {
   struct stat st;
   int i, dir_fd;
   char **p;
-  size_t ssize, dsize;
+  long ssize;
+  size_t dsize;
 
   pr_fs_clear_cache2(dirname);
   if (pr_fsio_stat(dirname, &st) < 0) {

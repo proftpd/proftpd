@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ void run_schedule(void);
 void restart_daemon(void *, void *, void *, void *);
 void shutdown_end_session(void *, void *, void *, void *);
 
-size_t get_name_max(char *, int);
+long get_name_max(char *path, int fd);
 
 mode_t file_mode(const char *);
 mode_t symlink_mode(const char *);
