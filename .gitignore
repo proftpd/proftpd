@@ -1,9 +1,10 @@
 .deps/
+autom4te.cache
 config.log
 config.h
 config.cache
 config.status
-autom4te.cache
+cov-int
 proftpd
 proftpd.pc
 module-libs.txt
