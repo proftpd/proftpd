@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_log
  *
- * Copyright (c) 2013-2014 TJ Saunders
+ * Copyright (c) 2013-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: mod_log.h,v 1.2 2013-11-11 01:34:04 castaglia Exp $
  */
 
 #ifndef MOD_LOG_H
@@ -76,5 +74,6 @@
 #define LOGFMT_META_GROUP		43
 #define LOGFMT_META_BASENAME		44
 #define LOGFMT_META_FILE_OFFSET		45
+#define LOGFMT_META_XFER_MILLISECS	46
 
 #endif /* MOD_LOG_H */

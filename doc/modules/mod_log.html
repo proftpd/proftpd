@@ -1,6 +1,3 @@
-<!-- $Id: mod_log.html,v 1.17 2014-01-02 16:43:54 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_log.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_log</title>
@@ -390,12 +387,17 @@ indicated when logging.
 
   <tr>
     <td>&nbsp;<code>%T</code>&nbsp;</td>
-    <td>Time taken to send/receive file, in seconds</td>
+    <td>Time taken to transfer file, in seconds</td>
   </tr>
 
   <tr>
     <td>&nbsp;<code>%{transfer-failure}</code>&nbsp;</td>
     <td>Reason for data transfer failure (if applicable), or "-"</td>
+  </tr>
+
+  <tr>
+    <td>&nbsp;<code>%{transfer-millisecs}</code>&nbsp;</td>
+    <td>Time taken to transfer file, in milliseconds</td>
   </tr>
 
   <tr>
@@ -531,13 +533,8 @@ your log would have a line like:
 <p>
 <hr><br>
 
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-01-02 16:43:54 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2002-2014<br>
+&copy; Copyright 2002-2016<br>
  All Rights Reserved<br>
 </i></b></font>
 
