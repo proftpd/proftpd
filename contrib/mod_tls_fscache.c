@@ -149,10 +149,19 @@ static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
     return -1;
   }
 
-/* XXX Perform perms check, make sure that the dir does not allow
- * world-writable access?  We don't want anyone futzing with these, if we
- * can.
- */
+  /* Make sure that the directory is not world-writable; we don't want
+   * any/all users on the system to be able to futz with these.
+   */
+  if (st.st_mode & S_IWOTH) {
+    xerrno = EPERM;
+
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_FSCACHE_VERSION
+      ": unable to use world-writable '%s' (perms %04o)", info,
+      st.st_mode & ~S_IFMT);
+
+    errno = xerrno;
+    return -1;
+  }
 
   if (cache->cache_pool != NULL) {
     char *prev_cache_dir;
