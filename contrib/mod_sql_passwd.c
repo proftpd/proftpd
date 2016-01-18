@@ -902,7 +902,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordUserSalt", FALSE);
-  if (c) {
+  if (c != NULL) {
     char *key;
     unsigned long salt_flags;
 
@@ -913,6 +913,12 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       char *user;
 
       user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+      if (user == NULL) {
+        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+          ": unable to determine original USER name");
+        return PR_DECLINED(cmd);
+      }
+
       sql_passwd_user_salt = (unsigned char *) user;
       sql_passwd_user_salt_len = strlen(user);
 
@@ -943,6 +949,11 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       }
 
       user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+      if (user == NULL) {
+        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+          ": unable to determine original USER name");
+        return PR_DECLINED(cmd);
+      }
 
       sql_cmd = sql_passwd_cmd_create(cmd->tmp_pool, 3, "sql_lookup", ptr,
         sql_passwd_get_str(cmd->tmp_pool, user));
