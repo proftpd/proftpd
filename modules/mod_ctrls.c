@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2015 TJ Saunders
+ * Copyright (c) 2000-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * This is mod_ctrls, contrib software for proftpd 1.2 and above.
+ * This is mod_ctrls, contrib software for proftpd 1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  */
 
@@ -377,51 +377,48 @@ static int ctrls_cls_write(void) {
 
     } else if (cl->cl_flags == PR_CTRLS_CL_HAVEREQ) {
 
-      if (cl->cl_ctrls->nelts > 0) {
+      if (cl->cl_ctrls != NULL &&
+          cl->cl_ctrls->nelts > 0) {
         register int i = 0;
         pr_ctrls_t **ctrlv = NULL;
 
         ctrlv = (pr_ctrls_t **) cl->cl_ctrls->elts;
 
-        if (cl->cl_ctrls) {
-          for (i = 0; i < cl->cl_ctrls->nelts; i++) {
-            if ((ctrlv[i])->ctrls_cb_retval < 1) {
+        for (i = 0; i < cl->cl_ctrls->nelts; i++) {
+          if ((ctrlv[i])->ctrls_cb_retval < 1) {
 
-              /* Make sure the callback(s) added responses */
-              if ((ctrlv[i])->ctrls_cb_resps) {
-                if (pr_ctrls_send_msg(cl->cl_fd, (ctrlv[i])->ctrls_cb_retval,
-                    (ctrlv[i])->ctrls_cb_resps->nelts,
-                    (char **) (ctrlv[i])->ctrls_cb_resps->elts) < 0) {
-                  pr_ctrls_log(MOD_CTRLS_VERSION,
-                    "error: unable to send response to %s/%s "
-                    "client: %s", cl->cl_user, cl->cl_group, strerror(errno));
-
-                } else {
-
-                  /* For logging/accounting purposes */
-                  register int j = 0;
-                  int respval = (ctrlv[i])->ctrls_cb_retval;
-                  int respargc = (ctrlv[i])->ctrls_cb_resps->nelts;
-                  char **respargv = (ctrlv[i])->ctrls_cb_resps->elts;
-
-                  pr_ctrls_log(MOD_CTRLS_VERSION,
-                    "sent to %s/%s client: return value: %d",
-                    cl->cl_user, cl->cl_group, respval);
-
-                  for (j = 0; j < respargc; j++) {
-                    pr_ctrls_log(MOD_CTRLS_VERSION,
-                      "sent to %s/%s client: '%s'", cl->cl_user, cl->cl_group,
-                      respargv[j]);
-                  }
-                }
+            /* Make sure the callback(s) added responses */
+            if ((ctrlv[i])->ctrls_cb_resps) {
+              if (pr_ctrls_send_msg(cl->cl_fd, (ctrlv[i])->ctrls_cb_retval,
+                  (ctrlv[i])->ctrls_cb_resps->nelts,
+                  (char **) (ctrlv[i])->ctrls_cb_resps->elts) < 0) {
+                pr_ctrls_log(MOD_CTRLS_VERSION,
+                  "error: unable to send response to %s/%s "
+                  "client: %s", cl->cl_user, cl->cl_group, strerror(errno));
 
               } else {
+                /* For logging/accounting purposes */
+                register int j = 0;
+                int respval = (ctrlv[i])->ctrls_cb_retval;
+                int respargc = (ctrlv[i])->ctrls_cb_resps->nelts;
+                char **respargv = (ctrlv[i])->ctrls_cb_resps->elts;
 
-                /* No responses added by callbacks */
                 pr_ctrls_log(MOD_CTRLS_VERSION,
-                  "notice: no responses given for %s/%s client: "
-                  "check controls handlers", cl->cl_user, cl->cl_group);
+                  "sent to %s/%s client: return value: %d",
+                  cl->cl_user, cl->cl_group, respval);
+
+                for (j = 0; j < respargc; j++) {
+                  pr_ctrls_log(MOD_CTRLS_VERSION,
+                    "sent to %s/%s client: '%s'", cl->cl_user, cl->cl_group,
+                    respargv[j]);
+                }
               }
+
+            } else {
+              /* No responses added by callbacks */
+              pr_ctrls_log(MOD_CTRLS_VERSION,
+                "notice: no responses given for %s/%s client: "
+                "check controls handlers", cl->cl_user, cl->cl_group);
             }
           }
         }
