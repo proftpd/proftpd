@@ -326,6 +326,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   BIO *bio = NULL;
   OCSP_RESPONSE *resp = NULL;
   struct stat st;
+  pr_fh_t *fh;
 
   pr_trace_msg(trace_channel, 9, "getting OCSP response from fscache cache %p",
     cache); 
@@ -337,13 +338,26 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   path = pstrcat(tmp_pool, cache_dir, "/", fingerprint, ".der", NULL);
   pr_trace_msg(trace_channel, 15, "getting OCSP response at path '%s'", path);
 
-  res = lstat(path, &st);
+  fh = pr_fsio_open(path, O_RDONLY);
+  if (fh == NULL) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "error opening '%s': %s", path,
+      strerror(xerrno));
+
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return NULL;
+  }
+
+  res = pr_fsio_fstat(fh, &st);
   if (res < 0) {
     xerrno = errno;
 
     pr_trace_msg(trace_channel, 3, "error checking '%s': %s", path,
       strerror(xerrno));
 
+    (void) pr_fsio_close(fh);
     destroy_pool(tmp_pool);
     errno = xerrno;
     return NULL;
@@ -360,6 +374,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
       (void) unlink(path);
     }
 
+    (void) pr_fsio_close(fh);
     destroy_pool(tmp_pool);
     errno = ENOENT;
     return NULL;
@@ -371,6 +386,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
 
     tls_log(MOD_TLS_FSCACHE_VERSION ": BIO_new_file('%s') failed: %s", path,
       fscache_get_errors());
+    (void) pr_fsio_close(fh);
     destroy_pool(tmp_pool);
 
     errno = xerrno;
@@ -386,6 +402,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
     /* If we can't read a valid OCSP response from this file, delete it. */
     (void) unlink(path);
 
+    (void) pr_fsio_close(fh);
     destroy_pool(tmp_pool);
     errno = ENOENT;
     return NULL;
@@ -396,6 +413,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   /* Use the mtime of the file to determine how old it is. */
   *resp_age = st.st_mtime;
 
+  (void) pr_fsio_close(fh);
   destroy_pool(tmp_pool);
   errno = xerrno;
   return resp;
@@ -458,31 +476,41 @@ static int ocsp_cache_clear(tls_ocsp_cache_t *cache) {
 
     /* Skip any path which does not end in ".der". */
     if (pr_strnrstr(dent->d_name, dent->d_namlen, ".der", 4, 0) == TRUE) {
+      pr_fh_t *fh;
       char *path;
 
       path = pstrcat(tmp_pool, cache_dir, "/", dent->d_name, ".der", NULL);
 
-      res = lstat(path, &st);
-      if (res < 0) {
-        pr_trace_msg(trace_channel, 3, "error checking path '%s': %s", path,
-          strerror(errno));
-
-      } else {
-        if (S_ISREG(st.st_mode) ||
-            S_ISLNK(st.st_mode)) {
-
-          pr_trace_msg(trace_channel, 15, "deleting OCSP response at path '%s'",
-            path);
-          res = unlink(path);
-          if (res < 0) {
-            pr_trace_msg(trace_channel, 3, "error deleting path '%s': %s", path,
-              strerror(errno));
-          }
+      fh = pr_fsio_open(path, O_RDONLY);
+      if (fh != NULL) {
+        res = pr_fsio_fstat(fh, &st);
+        if (res < 0) {
+          pr_trace_msg(trace_channel, 3, "error checking path '%s': %s", path,
+            strerror(errno));
 
         } else {
-          pr_trace_msg(trace_channel, 3, "ignoring non-file/symlink path '%s'",
-            path);
+          if (S_ISREG(st.st_mode) ||
+              S_ISLNK(st.st_mode)) {
+
+            pr_trace_msg(trace_channel, 15,
+              "deleting OCSP response at path '%s'", path);
+            res = unlink(path);
+            if (res < 0) {
+              pr_trace_msg(trace_channel, 3,
+                "error deleting path '%s': %s", path, strerror(errno));
+            }
+
+          } else {
+            pr_trace_msg(trace_channel, 3,
+              "ignoring non-file/symlink path '%s'", path);
+          }
         }
+
+        (void) pr_fsio_close(fh);
+
+      } else {
+        pr_trace_msg(trace_channel, 3, "error opening path '%s': %s", path,
+          strerror(errno));
       }
     }
 
@@ -548,24 +576,34 @@ static int ocsp_cache_status(tls_ocsp_cache_t *cache,
 
     /* Skip any path which does not end in ".der". */
     if (pr_strnrstr(dent->d_name, dent->d_namlen, ".der", 4, 0) == TRUE) {
+      pr_fh_t *fh;
       char *path;
 
       path = pstrcat(tmp_pool, cache_dir, "/", dent->d_name, ".der", NULL);
 
-      res = lstat(path, &st);
-      if (res < 0) {
-        pr_trace_msg(trace_channel, 3, "error checking path '%s': %s", path,
-          strerror(errno));
-
-      } else {
-        if (S_ISREG(st.st_mode) ||
-            S_ISLNK(st.st_mode)) {
-          resp_count++;
+      fh = pr_fsio_open(path, O_RDONLY);
+      if (fh != NULL) {
+        res = pr_fsio_fstat(fh, &st);
+        if (res < 0) {
+          pr_trace_msg(trace_channel, 3, "error checking path '%s': %s", path,
+            strerror(errno));
 
         } else {
-          pr_trace_msg(trace_channel, 3, "ignoring non-file/symlink path '%s'",
-            path);
+          if (S_ISREG(st.st_mode) ||
+              S_ISLNK(st.st_mode)) {
+            resp_count++;
+
+          } else {
+            pr_trace_msg(trace_channel, 3,
+              "ignoring non-file/symlink path '%s'", path);
+          }
         }
+
+        (void) pr_fsio_close(fh);
+
+      } else {
+        pr_trace_msg(trace_channel, 3, "error opening path '%s': %s", path,
+          strerror(errno));
       }
     }
 
