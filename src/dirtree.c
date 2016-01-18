@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2640,10 +2640,11 @@ int parse_config_path(pool *p, const char *path) {
     struct dirent *dent;
     array_header *file_list;
     char *dup_path = pstrdup(p, path);
-    char *tmp = strrchr(dup_path, '/');
+    char *ptr = strrchr(dup_path, '/');
 
-    if (have_glob && tmp) {
-      *tmp++ = '\0';
+    if (have_glob &&
+        ptr != NULL) {
+      *ptr++ = '\0';
 
       if (pr_str_is_fnmatch(dup_path)) {
         pr_log_pri(PR_LOG_WARNING, "error: wildcard patterns not allowed in "
@@ -2674,9 +2675,9 @@ int parse_config_path(pool *p, const char *path) {
         return -1;
       }
 
-      if (!pr_str_is_fnmatch(tmp)) {
+      if (!pr_str_is_fnmatch(ptr)) {
         pr_log_pri(PR_LOG_WARNING,
-          "error: wildcard pattern required for file '%s'", tmp);
+          "error: wildcard pattern required for file '%s'", ptr);
         errno = EINVAL;
         return -1;
       }
@@ -2701,8 +2702,9 @@ int parse_config_path(pool *p, const char *path) {
 
       if (strncmp(dent->d_name, ".", 2) != 0 &&
           strncmp(dent->d_name, "..", 3) != 0 &&
-          (!have_glob ||
-           pr_fnmatch(tmp, dent->d_name, PR_FNM_PERIOD) == 0)) {
+          (have_glob == FALSE ||
+           (ptr != NULL &&
+            pr_fnmatch(ptr, dent->d_name, PR_FNM_PERIOD) == 0))) {
         *((char **) push_array(file_list)) = pdircat(p, dup_path,
           dent->d_name, NULL);
       }
