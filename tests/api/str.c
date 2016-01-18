@@ -1241,7 +1241,8 @@ START_TEST (strnrstr_test) {
 END_TEST
 
 START_TEST (hex_test) {
-  char *expected, *res, *str;
+  char *expected, *res;
+  const unsigned char *str;
 
   res = pr_str_bin2hex(NULL, NULL, 0, 0);
   fail_unless(res == NULL, "Failed to handle null arguments");
