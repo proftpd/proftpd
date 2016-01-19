@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,9 +56,33 @@ static void tear_down(void) {
   }
 }
 
+START_TEST (privs_set_nonroot_daemon_test) {
+  int nonroot, res;
+
+  res = set_nonroot_daemon(-1);
+  fail_unless(res < 0, "Failed to handle non-Boolean parameter");
+  fail_unless(errno = EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  nonroot = set_nonroot_daemon(TRUE);
+  fail_if(nonroot != FALSE && nonroot != TRUE,  "Expected true/false, got %d",
+    nonroot);
+  set_nonroot_daemon(nonroot);
+}
+END_TEST
+
 START_TEST (privs_setup_test) {
+  int nonroot, res;
+
   if (privs_uid != 0) {
-    int res;
+    res = pr_privs_setup(privs_uid, privs_gid, __FILE__, __LINE__);
+    fail_unless(res == 0, "Failed to setup privs: %s", strerror(errno));
+    fail_unless(session.uid == privs_uid, "Expected %lu, got %lu",
+      (unsigned long) privs_uid, (unsigned long) session.uid);
+    fail_unless(session.gid == privs_gid, "Expected %lu, got %lu",
+      (unsigned long) privs_gid, (unsigned long) session.gid);
+
+    nonroot = set_nonroot_daemon(FALSE);
 
     res = pr_privs_setup(privs_uid, privs_gid, __FILE__, __LINE__);
     fail_unless(res == 0, "Failed to setup privs: %s", strerror(errno));
@@ -66,46 +90,76 @@ START_TEST (privs_setup_test) {
       (unsigned long) privs_uid, (unsigned long) session.uid);
     fail_unless(session.gid == privs_gid, "Expected %lu, got %lu",
       (unsigned long) privs_gid, (unsigned long) session.gid);
+
+    set_nonroot_daemon(nonroot);
   }
 }
 END_TEST
 
 START_TEST (privs_root_test) {
+  int nonroot, res;
+
   if (privs_uid != 0) {
-    int res;
+    res = pr_privs_root(__FILE__, __LINE__);
+    fail_unless(res == 0, "Failed to set root privs: %s", strerror(errno));
+
+    nonroot = set_nonroot_daemon(FALSE);
 
     res = pr_privs_root(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to set root privs: %s", strerror(errno));
+
+    set_nonroot_daemon(nonroot);
   }
 }
 END_TEST
 
 START_TEST (privs_user_test) {
+  int nonroot, res;
+
   if (privs_uid != 0) {
-    int res;
+    res = pr_privs_user(__FILE__, __LINE__);
+    fail_unless(res == 0, "Failed to set user privs: %s", strerror(errno));
+
+    nonroot = set_nonroot_daemon(FALSE);
 
     res = pr_privs_user(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to set user privs: %s", strerror(errno));
+
+    set_nonroot_daemon(nonroot);
   }
 }
 END_TEST
 
 START_TEST (privs_relinquish_test) {
+  int nonroot, res;
+
   if (privs_uid != 0) {
-    int res;
+    res = pr_privs_relinquish(__FILE__, __LINE__);
+    fail_unless(res == 0, "Failed to relinquish privs: %s", strerror(errno));
+
+    nonroot = set_nonroot_daemon(FALSE);
 
     res = pr_privs_relinquish(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to relinquish privs: %s", strerror(errno));
+
+    set_nonroot_daemon(nonroot);
   }
 }
 END_TEST
 
 START_TEST (privs_revoke_test) {
+  int nonroot, res;
+
   if (privs_uid != 0) {
-    int res;
+    res = pr_privs_revoke(__FILE__, __LINE__);
+    fail_unless(res == 0, "Failed to revoke privs: %s", strerror(errno));
+
+    nonroot = set_nonroot_daemon(FALSE);
 
     res = pr_privs_revoke(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to revoke privs: %s", strerror(errno));
+
+    set_nonroot_daemon(nonroot);
   }
 }
 END_TEST
@@ -119,6 +173,7 @@ Suite *tests_get_privs_suite(void) {
   testcase = tcase_create("base");
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
+  tcase_add_test(testcase, privs_set_nonroot_daemon_test);
   tcase_add_test(testcase, privs_setup_test);
   tcase_add_test(testcase, privs_root_test);
   tcase_add_test(testcase, privs_user_test);
