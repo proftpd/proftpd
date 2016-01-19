@@ -63,7 +63,8 @@ char *dir_interpolate(pool *, const char *);
 char *dir_abs_path(pool *, const char *, int);
 
 /* Performs chroot-aware handling of symlinks. */
-int dir_readlink(pool *, const char *, char *, size_t);
+int dir_readlink(pool *, const char *, char *, size_t, int);
+#define PR_DIR_READLINK_FL_HANDLE_REL_PATH		0x0001
 
 char *dir_realpath(pool *, const char *);
 char *dir_canonical_path(pool *, const char *);

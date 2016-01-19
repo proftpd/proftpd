@@ -417,8 +417,9 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 }
 
 /* Performs chroot-aware handling of symlinks. */
-int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
-  int is_abs_dst, flags, len, res;
+int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
+    int flags) {
+  int is_abs_dst, clean_flags, len, res;
   size_t chroot_pathlen, adj_pathlen;
   char *dst_path, *adj_path;
   pool *tmp_pool;
@@ -460,6 +461,12 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
   is_abs_dst = FALSE;
   if (*buf == '/') {
     is_abs_dst = TRUE;
+
+  } else {
+    /* If we are to ignore relative destination paths, return now. */
+    if (!(flags & PR_DIR_READLINK_FL_HANDLE_REL_PATH)) {
+      return len;
+    }
   }
 
   if (is_abs_dst == TRUE &&
@@ -477,20 +484,19 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
   dst_path = pstrdup(tmp_pool, buf);
   if (is_abs_dst == FALSE) {
     /* Since we have a relative destination path, we will concat it
-     * with the chroot, then clean up that path.
+     * with the source path, then clean up that path.
      */
-    dst_path = pdircat(tmp_pool, session.chroot_path, dst_path, NULL);
+    dst_path = pdircat(tmp_pool, path, dst_path, NULL);
   }
 
   adj_pathlen = bufsz + 1;
   adj_path = pcalloc(tmp_pool, adj_pathlen);
 
-  flags = PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH;
-  res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, flags);
+  clean_flags = PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH;
+  res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, clean_flags);
   if (res == 0) {
     pr_trace_msg("fsio", 19,
-      "adjusted symlink path '%s' for chroot '%s', yielding '%s'",
-      dst_path, session.chroot_path, adj_path);
+      "cleaned symlink path '%s', yielding '%s'", dst_path, adj_path);
     dst_path = adj_path;
   }
 
@@ -513,6 +519,10 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
      * (which was big enough for the original destination path) should
      * always be large enough for this adjusted, shorter version.  Right?
      */
+    pr_trace_msg("fsio", 19,
+      "adjusted symlink path '%s' for chroot '%s', yielding '%s'",
+      dst_path, session.chroot_path, ptr);
+
     memset(buf, '\0', bufsz);
     sstrncpy(buf, ptr, bufsz);
     len = strlen(buf);
