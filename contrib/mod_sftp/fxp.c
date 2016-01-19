@@ -9482,7 +9482,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
    * resolved by following any symlinks; readlink(2) would then return EINVAL
    * for reading a non-symlink path.
    */
-  res = pr_fsio_readlink(path, data, sizeof(data) - 1);
+  res = dir_readlink(fxp->pool, path, data, sizeof(data) - 1,
+    PR_DIR_READLINK_FL_HANDLE_REL_PATH);
   if (res < 0) {
     uint32_t status_code;
     const char *reason;
