@@ -61,6 +61,10 @@ int getopt_long(int, char * const [], const char *, const struct option *,
 
 char *dir_interpolate(pool *, const char *);
 char *dir_abs_path(pool *, const char *, int);
+
+/* Performs chroot-aware handling of symlinks. */
+int dir_readlink(pool *, const char *, char *, size_t);
+
 char *dir_realpath(pool *, const char *);
 char *dir_canonical_path(pool *, const char *);
 char *dir_canonical_vpath(pool *, const char *);

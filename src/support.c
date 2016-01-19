@@ -416,6 +416,95 @@ char *dir_canonical_vpath(pool *p, const char *path) {
   return pstrdup(p, buf);
 }
 
+/* Performs chroot-aware handling of symlinks. */
+int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
+  int flags, len, res;
+  size_t chroot_pathlen, adj_pathlen;
+  char *dst_path, *adj_path;
+  pool *tmp_pool;
+
+  if (p == NULL ||
+      path == NULL ||
+      buf == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (bufsz == 0) {
+    return 0;
+  }
+
+  len = pr_fsio_readlink(path, buf, bufsz);
+  if (len < 0) {
+    return -1;
+  }
+
+  if (len == 0 ||
+      len == bufsz) {
+    /* If we read nothing in, OR if the given buffer was completely
+     * filled WITHOUT terminating NUL, there's really nothing we can/should
+     * be doing.
+     */
+    return len;
+  }
+
+  if (session.chroot_path == NULL) {
+    return len;
+  }
+
+  chroot_pathlen = strlen(session.chroot_path);
+  if (chroot_pathlen == 1) {
+    return len;
+  }
+
+  if (*buf == '/' &&
+      len < chroot_pathlen) {
+    /* If the destination path length is shorter than the chroot path,
+     * AND the destination path is absolute, then by definition it CANNOT
+     * point within the chroot.
+     */
+    return len;
+  }
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "dir_readlink pool");
+
+  dst_path = pstrdup(tmp_pool, buf);
+  if (*dst_path != '/') {
+    /* Since we have a relative destination path, we will concat it
+     * with the chroot, then clean up that path.
+     */
+    dst_path = pdircat(tmp_pool, session.chroot_path, dst_path, NULL);
+  }
+
+  adj_pathlen = bufsz + 1;
+  adj_path = pcalloc(tmp_pool, adj_pathlen);
+
+  flags = PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH;
+  res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, flags);
+  if (res == 0) {
+    pr_trace_msg("fsio", 19,
+      "adjusted symlink path '%s' for chroot '%s', yielding '%s'",
+      dst_path, session.chroot_path, adj_path);
+    dst_path = adj_path;
+  }
+
+  if (strncmp(dst_path, session.chroot_path, chroot_pathlen) == 0 &&
+      *(dst_path + chroot_pathlen) == '/') {
+
+    /* Since we are making the destination path shorter, the given buffer
+     * (which was big enough for the original destination path) should
+     * always be large enough for this adjusted, shorter version.  Right?
+     */
+    memset(buf, '\0', bufsz);
+    memcpy(buf, dst_path + chroot_pathlen, bufsz);
+    len = strlen(buf);
+  }
+
+  destroy_pool(tmp_pool);
+  return len;
+}
+
 /* dir_realpath() is needed to properly dereference symlinks (getcwd() may
  * not work if permissions cause problems somewhere up the tree).
  */
