@@ -72,7 +72,7 @@ START_TEST (privs_set_nonroot_daemon_test) {
 END_TEST
 
 START_TEST (privs_setup_test) {
-  int res;
+  int nonroot, res;
 
   if (privs_uid != 0) {
     res = pr_privs_setup(privs_uid, privs_gid, __FILE__, __LINE__);
@@ -81,9 +81,6 @@ START_TEST (privs_setup_test) {
       (unsigned long) privs_uid, (unsigned long) session.uid);
     fail_unless(session.gid == privs_gid, "Expected %lu, got %lu",
       (unsigned long) privs_gid, (unsigned long) session.gid);
-
-  } else {
-    int nonroot;
 
     nonroot = set_nonroot_daemon(FALSE);
 
@@ -100,13 +97,11 @@ START_TEST (privs_setup_test) {
 END_TEST
 
 START_TEST (privs_root_test) {
-  int res;
+  int nonroot, res;
+
   if (privs_uid != 0) {
     res = pr_privs_root(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to set root privs: %s", strerror(errno));
-
-  } else {
-    int nonroot;
 
     nonroot = set_nonroot_daemon(FALSE);
 
@@ -115,19 +110,15 @@ START_TEST (privs_root_test) {
 
     set_nonroot_daemon(nonroot);
   }
-
 }
 END_TEST
 
 START_TEST (privs_user_test) {
-  int res;
+  int nonroot, res;
 
   if (privs_uid != 0) {
     res = pr_privs_user(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to set user privs: %s", strerror(errno));
-
-  } else {
-    int nonroot;
 
     nonroot = set_nonroot_daemon(FALSE);
 
@@ -140,14 +131,11 @@ START_TEST (privs_user_test) {
 END_TEST
 
 START_TEST (privs_relinquish_test) {
-  int res;
+  int nonroot, res;
 
   if (privs_uid != 0) {
     res = pr_privs_relinquish(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to relinquish privs: %s", strerror(errno));
-
-  } else {
-    int nonroot;
 
     nonroot = set_nonroot_daemon(FALSE);
 
@@ -160,14 +148,11 @@ START_TEST (privs_relinquish_test) {
 END_TEST
 
 START_TEST (privs_revoke_test) {
-  int res;
+  int nonroot, res;
 
   if (privs_uid != 0) {
     res = pr_privs_revoke(__FILE__, __LINE__);
     fail_unless(res == 0, "Failed to revoke privs: %s", strerror(errno));
-
-  } else {
-    int nonroot;
 
     nonroot = set_nonroot_daemon(FALSE);
 
