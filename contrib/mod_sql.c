@@ -2714,6 +2714,30 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 18 &&
+      strncmp(tag, "transfer-millisecs", 19) == 0) {
+
+    if (session.xfer.p != NULL &&
+        session.xfer.start_time.tv_sec > 0) {
+      uint64_t start_ms = 0, end_ms = 0;
+      off_t transfer_ms;
+      char transfer_str[256];
+
+      pr_timeval2millis(&(session.xfer.start_time), &start_ms);
+      pr_gettimeofday_millis(&end_ms);
+
+      transfer_ms = end_ms - start_ms;
+      memset(transfer_str, '\0', sizeof(transfer_str));
+      snprintf(transfer_str, sizeof(transfer_str)-1, "%" PR_LU,
+        (pr_off_t) transfer_ms);
+      long_tag = pstrdup(cmd->tmp_pool, transfer_str);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
+  }
+
+  if (long_tag == NULL &&
       tag_len == 15 &&
       strncmp(tag, "transfer-status", 16) == 0) {
 
@@ -3195,6 +3219,28 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       }
       break;
 
+    case 'R': {
+      uint64_t *start_ms = NULL;
+
+      argp = arg;
+
+      start_ms = pr_table_get(cmd->notes, "start_ms", NULL);
+      if (start_ms != NULL) {
+        uint64_t end_ms = 0;
+        off_t response_ms;
+
+        pr_gettimeofday_millis(&end_ms);
+
+        response_ms = end_ms - *start_ms;
+        len = snprintf(argp, sizeof(arg), "%" PR_LU, (pr_off_t) response_ms);
+
+      } else {
+        len = sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      break;
+    }
+
     case 's': {
       char *resp_code = NULL;
       int res;
@@ -3235,26 +3281,17 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       argp = arg;
       if (session.xfer.p &&
           session.xfer.start_time.tv_sec > 0) {
-        struct timeval end_time;
-      
-        gettimeofday(&end_time, NULL);
-        end_time.tv_sec -= session.xfer.start_time.tv_sec;
+        uint64_t start_ms = 0 , end_ms = 0;
+        float transfer_secs = 0.0;
 
-        if (end_time.tv_usec >= session.xfer.start_time.tv_usec) {
-          end_time.tv_usec -= session.xfer.start_time.tv_usec;
+        pr_timeval2millis(&(session.xfer.start_time), &start_ms);
+        pr_gettimeofday_millis(&end_ms);
 
-        } else {
-          end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
-            end_time.tv_usec);
-          end_time.tv_sec--;
-        }
-      
-        len = snprintf(argp, sizeof(arg), "%lu.%03lu",
-          (unsigned long) end_time.tv_sec,
-          (unsigned long) (end_time.tv_usec / 1000));
+        transfer_secs = (end_ms - start_ms) / 1000.0;
+        len = snprintf(argp, sizeof(arg), "%0.3f", transfer_secs);
 
       } else {
-        len = sstrncpy(argp, "0.0", sizeof(arg));
+        len = sstrncpy(argp, "-", sizeof(arg));
       }
       break;
 
