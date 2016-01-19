@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2015 The ProFTPD Project team
+ * Copyright (c) 2009-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -483,10 +483,26 @@ int pr_privs_revoke(const char *file, int lineno) {
   return 0;
 }
 
+/* Returns the previous value, or -1 on error. */
+int set_nonroot_daemon(int nonroot) {
+  int was_nonroot;
+
+  if (nonroot != TRUE &&
+      nonroot != FALSE) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  was_nonroot = nonroot_daemon;
+  nonroot_daemon = nonroot;
+
+  return was_nonroot;
+}
+
 int init_privs(void) {
   /* Check to see if we have real root privs. */
   if (getuid() != PR_ROOT_UID) {
-    nonroot_daemon = TRUE;
+    set_nonroot_daemon(TRUE);
   }
 
   return 0;
