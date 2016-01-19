@@ -418,7 +418,7 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 
 /* Performs chroot-aware handling of symlinks. */
 int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
-  int flags, len, res;
+  int is_abs_dst, flags, len, res;
   size_t chroot_pathlen, adj_pathlen;
   char *dst_path, *adj_path;
   pool *tmp_pool;
@@ -457,7 +457,12 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
     return len;
   }
 
-  if (*buf == '/' &&
+  is_abs_dst = FALSE;
+  if (*buf == '/') {
+    is_abs_dst = TRUE;
+  }
+
+  if (is_abs_dst == TRUE &&
       len < chroot_pathlen) {
     /* If the destination path length is shorter than the chroot path,
      * AND the destination path is absolute, then by definition it CANNOT
@@ -470,7 +475,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
   pr_pool_tag(tmp_pool, "dir_readlink pool");
 
   dst_path = pstrdup(tmp_pool, buf);
-  if (*dst_path != '/') {
+  if (is_abs_dst == FALSE) {
     /* Since we have a relative destination path, we will concat it
      * with the chroot, then clean up that path.
      */
@@ -491,13 +496,25 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz) {
 
   if (strncmp(dst_path, session.chroot_path, chroot_pathlen) == 0 &&
       *(dst_path + chroot_pathlen) == '/') {
+    char *ptr;
+
+    ptr = dst_path + chroot_pathlen;
+
+    if (is_abs_dst == FALSE &&
+        res == 0) {
+      /* If we originally had a relative destination path, AND we cleaned
+       * that adjusted path, then we should try to re-adjust the path
+       * back to being a relative path.  Within reason.
+       */
+      ptr = pstrcat(tmp_pool, ".", ptr, NULL);
+    }
 
     /* Since we are making the destination path shorter, the given buffer
      * (which was big enough for the original destination path) should
      * always be large enough for this adjusted, shorter version.  Right?
      */
     memset(buf, '\0', bufsz);
-    memcpy(buf, dst_path + chroot_pathlen, bufsz);
+    sstrncpy(buf, ptr, bufsz);
     len = strlen(buf);
   }
 

@@ -406,7 +406,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "./file.txt";
   dst_pathlen = strlen(dst_path);
-  expected_path = "/file.txt";
+  expected_path = "./file.txt";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
