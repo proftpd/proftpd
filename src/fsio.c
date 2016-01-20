@@ -826,6 +826,10 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   retval = mystat(fs, cleaned_path, st);
   xerrno = errno;
 
+  if (retval == 0) {
+    xerrno = 0;
+  }
+
   /* Update the cache */
   res = fs_statcache_add(cache_tab, cleaned_path, path_len, st, xerrno, retval,     now);
   if (res < 0) {
