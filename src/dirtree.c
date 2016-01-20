@@ -85,8 +85,9 @@ static int allow_dyn_config(const char *path) {
    */
   if (found_config &&
       *path) {
-    pr_log_debug(DEBUG8, "AllowOverride for path '%s' %s .ftpaccess files",
-      path, allow ? "allows" : "denies");
+    pr_trace_msg("config", 8,
+      "AllowOverride for path '%s' %s .ftpaccess files", path,
+      allow ? "allows" : "denies");
   }
 
   return allow;
