@@ -299,7 +299,7 @@ START_TEST (dir_readlink_test) {
     fail_unless(res == 0, "Failed to handle empty symlink");
   }
 
-  /* Not chrooted */
+  /* Not chrooted, absolute dst path */
   dst_path = "/home/user/file.dat";
   dst_pathlen = strlen(dst_path);
   res = symlink(dst_path, path);
@@ -313,7 +313,45 @@ START_TEST (dir_readlink_test) {
   fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
     dst_path, buf);
 
+  /* Not chrooted, relative dst path, flags to ignore rel path */
+  memset(buf, '\0', bufsz);
+  dst_path = "./file.dat";
+  dst_pathlen = strlen(dst_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+    (unsigned long) dst_pathlen, res);
+  fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
+    dst_path, buf);
+
+  /* Not chrooted, relative dst path, flags to HANDLE rel path */
+  memset(buf, '\0', bufsz);
+  dst_path = "./file.dat";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/tmp/./file.dat";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
   /* Not chrooted, dst path longer than given buffer */
+  flags = 0;
   memset(buf, '\0', bufsz);
   res = dir_readlink(p, path, buf, 2, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
@@ -470,7 +508,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "../file.txt";
   dst_pathlen = strlen(dst_path);
-  expected_path = "./file.txt";
+  expected_path = "../file.txt";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);

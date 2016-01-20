@@ -419,8 +419,8 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 /* Performs chroot-aware handling of symlinks. */
 int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
     int flags) {
-  int is_abs_dst, clean_flags, len, res;
-  size_t chroot_pathlen, adj_pathlen;
+  int is_abs_dst, clean_flags, len, res = -1;
+  size_t chroot_pathlen = 0, adj_pathlen = 0;
   char *dst_path, *adj_path;
   pool *tmp_pool;
 
@@ -449,20 +449,50 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
     return len;
   }
 
-  if (session.chroot_path == NULL) {
-    return len;
-  }
-
-  chroot_pathlen = strlen(session.chroot_path);
-  if (chroot_pathlen == 1) {
-    return len;
-  }
-
   is_abs_dst = FALSE;
   if (*buf == '/') {
     is_abs_dst = TRUE;
+  }
 
-  } else {
+  if (session.chroot_path != NULL) {
+    chroot_pathlen = strlen(session.chroot_path);
+  }
+
+  if (chroot_pathlen <= 1) {
+    char *ptr;
+
+    if (is_abs_dst == TRUE ||
+        !(flags & PR_DIR_READLINK_FL_HANDLE_REL_PATH)) {
+      return len;
+    }
+
+    /* Since we have a relative destination path, we will concat it
+     * with the source path's directory, then clean up that path.
+     */
+    ptr = strrchr(path, '/');
+    if (ptr != NULL &&
+        ptr != path) {
+      char *parent_dir;
+
+      tmp_pool = make_sub_pool(p);
+      pr_pool_tag(tmp_pool, "dir_readlink pool");
+
+      parent_dir = pstrndup(tmp_pool, path, (ptr - path));
+      dst_path = pdircat(tmp_pool, parent_dir, buf, NULL);
+
+      pr_trace_msg("fsio", 19,
+        "adjusted relative symlink path '%s', yielding '%s'", buf, dst_path);
+
+      memset(buf, '\0', bufsz);
+      sstrncpy(buf, dst_path, bufsz);
+      len = strlen(buf);
+      destroy_pool(tmp_pool);
+    }
+
+    return len;
+  }
+
+  if (is_abs_dst == FALSE) {
     /* If we are to ignore relative destination paths, return now. */
     if (!(flags & PR_DIR_READLINK_FL_HANDLE_REL_PATH)) {
       return len;
@@ -483,10 +513,23 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
 
   dst_path = pstrdup(tmp_pool, buf);
   if (is_abs_dst == FALSE) {
+    char *ptr;
+
     /* Since we have a relative destination path, we will concat it
-     * with the source path, then clean up that path.
+     * with the source path's directory, then clean up that path.
      */
-    dst_path = pdircat(tmp_pool, path, dst_path, NULL);
+
+    ptr = strrchr(path, '/');
+    if (ptr != NULL &&
+        ptr != path) {
+      char *parent_dir;
+
+      parent_dir = pstrndup(tmp_pool, path, (ptr - path));
+      dst_path = pdircat(tmp_pool, parent_dir, dst_path, NULL);
+
+    } else {
+      dst_path = pdircat(tmp_pool, path, dst_path, NULL);
+    }
   }
 
   adj_pathlen = bufsz + 1;
@@ -498,6 +541,10 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
     pr_trace_msg("fsio", 19,
       "cleaned symlink path '%s', yielding '%s'", dst_path, adj_path);
     dst_path = adj_path;
+
+    memset(buf, '\0', bufsz);
+    sstrncpy(buf, dst_path, bufsz);
+    len = strlen(dst_path);
   }
 
   if (strncmp(dst_path, session.chroot_path, chroot_pathlen) == 0 &&
