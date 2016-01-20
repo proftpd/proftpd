@@ -427,6 +427,8 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "/home/user/../file.txt";
   dst_pathlen = strlen(dst_path);
+  expected_path = "/home/file.txt";
+  expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
   res = symlink(dst_path, path);
@@ -435,10 +437,10 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
-    (unsigned long) dst_pathlen, res);
-  fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
-    dst_path, buf);
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
 
   /* Chrooted, relative destination within chroot */
   memset(buf, '\0', bufsz);
@@ -486,7 +488,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "../file.txt";
   dst_pathlen = strlen(dst_path);
-  expected_path = "../file.txt";
+  expected_path = "/file.txt";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
@@ -508,7 +510,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "../file.txt";
   dst_pathlen = strlen(dst_path);
-  expected_path = "../file.txt";
+  expected_path = "/file.txt";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
