@@ -480,6 +480,16 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
       parent_dir = pstrndup(tmp_pool, path, (ptr - path));
       dst_path = pdircat(tmp_pool, parent_dir, buf, NULL);
 
+      adj_pathlen = bufsz + 1;
+      adj_path = pcalloc(tmp_pool, adj_pathlen);
+
+      res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, 0);
+      if (res == 0) {
+        pr_trace_msg("fsio", 19,
+          "cleaned symlink path '%s', yielding '%s'", dst_path, adj_path);
+        dst_path = adj_path;
+      }
+
       pr_trace_msg("fsio", 19,
         "adjusted relative symlink path '%s', yielding '%s'", buf, dst_path);
 

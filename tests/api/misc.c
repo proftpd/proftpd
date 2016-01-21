@@ -334,7 +334,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "./file.dat";
   dst_pathlen = strlen(dst_path);
-  expected_path = "/tmp/./file.dat";
+  expected_path = "/tmp/file.dat";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
