@@ -123,9 +123,24 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  list_showsymlinks_off => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  list_showsymlinks_off_chrooted_bug4219 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
   list_showsymlinks_on => {
     order => ++$order,
     test_class => [qw(forking)],
+  },
+
+  list_showsymlinks_on_chrooted_bug4219 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
   },
 
   list_glob_bug2367 => {
@@ -212,45 +227,15 @@ sub list_tests {
 sub list_ok_raw_active {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -259,7 +244,8 @@ sub list_ok_raw_active {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -276,9 +262,8 @@ sub list_ok_raw_active {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw();
       unless ($conn) {
@@ -289,6 +274,12 @@ sub list_ok_raw_active {
       my $buf;
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -323,7 +314,6 @@ sub list_ok_raw_active {
         die("Unexpected name '$mismatch' appeared in LIST data")
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -332,7 +322,7 @@ sub list_ok_raw_active {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -342,62 +332,24 @@ sub list_ok_raw_active {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub list_ok_raw_passive {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -406,7 +358,8 @@ sub list_ok_raw_passive {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -423,9 +376,8 @@ sub list_ok_raw_passive {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw();
       unless ($conn) {
@@ -437,10 +389,16 @@ sub list_ok_raw_passive {
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
 
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/(\r)?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           $res->{$1} = 1;
@@ -470,7 +428,6 @@ sub list_ok_raw_passive {
         die("Unexpected name '$mismatch' appeared in LIST data")
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -479,7 +436,7 @@ sub list_ok_raw_passive {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -489,64 +446,26 @@ sub list_ok_raw_passive {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub list_ok_file {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $test_file = File::Spec->rel2abs($config_file);
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -555,7 +474,8 @@ sub list_ok_file {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -572,9 +492,8 @@ sub list_ok_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw($test_file);
       unless ($conn) {
@@ -585,6 +504,12 @@ sub list_ok_file {
       my $buf;
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
@@ -603,7 +528,6 @@ sub list_ok_file {
         die("LIST failed to return $test_file");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -612,7 +536,7 @@ sub list_ok_file {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -622,18 +546,10 @@ sub list_ok_file {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub list_file_after_upload {
@@ -3347,24 +3263,10 @@ sub list_symlink_rel_with_double_slash_bug3719 {
   unlink($log_file);
 }
 
-sub list_showsymlinks_on {
+sub list_showsymlinks_off {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $foo_dir = File::Spec->rel2abs("$tmpdir/foo");
   my $bar_dir = File::Spec->rel2abs("$tmpdir/bar");
@@ -3375,7 +3277,7 @@ sub list_showsymlinks_on {
   # symlink we need
 
   my $cwd = getcwd();
-  unless (chdir("$foo_dir")) {
+  unless (chdir($foo_dir)) {
     die("Can't chdir to $foo_dir: $!");
   }
 
@@ -3387,30 +3289,27 @@ sub list_showsymlinks_on {
     die("Can't chdir to $cwd: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the directories have
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $foo_dir, $bar_dir, $baz_dir)) {
+    unless (chmod(0755, $foo_dir, $bar_dir, $baz_dir)) {
       die("Can't set perms on dirs to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $foo_dir, $bar_dir, $baz_dir)) {
-      die("Can't set owner of dirs to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set owner of dirs to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
-    ShowSymlinks => 'on',
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    ShowSymlinks => 'off',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3419,7 +3318,8 @@ sub list_showsymlinks_on {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3436,9 +3336,8 @@ sub list_showsymlinks_on {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
 
       $client->cwd("foo");
       my $conn = $client->list_raw('-l');
@@ -3453,9 +3352,284 @@ sub list_showsymlinks_on {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
+      $client->quit();
+
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
       chomp($buf);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Response:\n$buf\n";
+      }
+
+      my $expected = '^d\S+\s+\d+\s+\S+\s+\S+\s+\d+\s+\S+\s+\d+\s+\S+\s+(.*?)$';
+      $self->assert(qr/$expected/, $buf,
+        test_msg("Expected '$expected', got '$buf'"));
+
+      $buf =~ /$expected/;
+      my $finfo = $1;
+
+      $expected = 'baz';
+      $self->assert($expected eq $finfo,
+        test_msg("Expected '$expected', got '$finfo'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub list_showsymlinks_off_chrooted_bug4219 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $foo_dir = File::Spec->rel2abs("$tmpdir/foo");
+  my $bar_dir = File::Spec->rel2abs("$tmpdir/bar");
+  my $baz_dir = File::Spec->rel2abs("$tmpdir/bar/baz");
+  mkpath([$foo_dir, $bar_dir, $baz_dir]);
+
+  # Change to the 'foo' directory in order to create a relative path in the
+  # symlink we need
+
+  my $cwd = getcwd();
+  unless (chdir($foo_dir)) {
+    die("Can't chdir to $foo_dir: $!");
+  }
+
+  unless (symlink('../bar/baz', 'baz')) {
+    die("Can't symlink '../bar/baz' to 'baz': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  # Make sure that, if we're running as root, that the directories have
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set perms on dirs to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set owner of dirs to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    DefaultRoot => '~',
+    ShowSymlinks => 'off',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $client->cwd("foo");
+      my $conn = $client->list_raw('-l');
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      chomp($buf);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Response:\n$buf\n";
+      }
+
+      my $expected = '^d\S+\s+\d+\s+\S+\s+\S+\s+\d+\s+\S+\s+\d+\s+\S+\s+(.*?)$';
+      $self->assert(qr/$expected/, $buf,
+        test_msg("Expected '$expected', got '$buf'"));
+
+      $buf =~ /$expected/;
+      my $finfo = $1;
+
+      $expected = 'baz';
+      $self->assert($expected eq $finfo,
+        test_msg("Expected '$expected', got '$finfo'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub list_showsymlinks_on {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $foo_dir = File::Spec->rel2abs("$tmpdir/foo");
+  my $bar_dir = File::Spec->rel2abs("$tmpdir/bar");
+  my $baz_dir = File::Spec->rel2abs("$tmpdir/bar/baz");
+  mkpath([$foo_dir, $bar_dir, $baz_dir]);
+
+  # Change to the 'foo' directory in order to create a relative path in the
+  # symlink we need
+
+  my $cwd = getcwd();
+  unless (chdir($foo_dir)) {
+    die("Can't chdir to $foo_dir: $!");
+  }
+
+  unless (symlink('../bar/baz', 'baz')) {
+    die("Can't symlink '../bar/baz' to 'baz': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  # Make sure that, if we're running as root, that the directories have
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set perms on dirs to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set owner of dirs to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    ShowSymlinks => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $client->cwd("foo");
+      my $conn = $client->list_raw('-l');
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      chomp($buf);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Response:\n$buf\n";
+      }
 
       my $expected = '^l\S+\s+\d+\s+\S+\s+\S+\s+\d+\s+\S+\s+\d+\s+\S+\s+(.*?)$';
       $self->assert(qr/$expected/, $buf,
@@ -3467,10 +3641,7 @@ sub list_showsymlinks_on {
       $expected = 'baz -> ../bar/baz';
       $self->assert($expected eq $finfo,
         test_msg("Expected '$expected', got '$finfo'"));
-
-      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -3479,7 +3650,7 @@ sub list_showsymlinks_on {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3489,18 +3660,145 @@ sub list_showsymlinks_on {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
+}
 
-    die($ex);
+sub list_showsymlinks_on_chrooted_bug4219 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $foo_dir = File::Spec->rel2abs("$tmpdir/foo");
+  my $bar_dir = File::Spec->rel2abs("$tmpdir/bar");
+  my $baz_dir = File::Spec->rel2abs("$tmpdir/bar/baz");
+  mkpath([$foo_dir, $bar_dir, $baz_dir]);
+
+  # Change to the 'foo' directory in order to create a relative path in the
+  # symlink we need
+
+  my $cwd = getcwd();
+  unless (chdir($foo_dir)) {
+    die("Can't chdir to $foo_dir: $!");
   }
 
-  unlink($log_file);
+  unless (symlink('../bar/baz', 'baz')) {
+    die("Can't symlink '../bar/baz' to 'baz': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  # Make sure that, if we're running as root, that the directories have
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set perms on dirs to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $foo_dir, $bar_dir, $baz_dir)) {
+      die("Can't set owner of dirs to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    DefaultRoot => '~',
+    ShowSymlinks => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $client->cwd("foo");
+      my $conn = $client->list_raw('-l');
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      chomp($buf);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Response:\n$buf\n";
+      }
+
+      my $expected = '^l\S+\s+\d+\s+\S+\s+\S+\s+\d+\s+\S+\s+\d+\s+\S+\s+(.*?)$';
+      $self->assert(qr/$expected/, $buf,
+        test_msg("Expected '$expected', got '$buf'"));
+
+      $buf =~ /$expected/;
+      my $finfo = $1;
+
+      $expected = 'baz -> /bar/baz';
+      $self->assert($expected eq $finfo,
+        test_msg("Expected '$expected', got '$finfo'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub list_glob_bug2367 {
