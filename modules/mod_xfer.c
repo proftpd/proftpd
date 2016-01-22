@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1628,7 +1628,7 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 MODRET xfer_stor(cmd_rec *cmd) {
   char *path;
   char *lbuf;
-  int bufsz, len, ferrno = 0, res;
+  int bufsz, len, xerrno = 0, res;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
@@ -1675,18 +1675,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     stor_fh = pr_fsio_open(session.xfer.path_hidden, oflags);
     if (stor_fh == NULL) {
-      ferrno = errno;
+      xerrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path_hidden,
-        strerror(ferrno));
+        strerror(xerrno));
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
     stor_fh = pr_fsio_open(session.xfer.path, O_CREAT|O_WRONLY);
-
     if (stor_fh) {
       if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
         pr_log_debug(DEBUG4, "unable to seek to end of '%s' for appending: %s",
@@ -1696,13 +1695,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
       }
 
     } else {
-      ferrno = errno;
+      xerrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path,
-        strerror(ferrno));
+        strerror(xerrno));
     }
 
   } else {
@@ -1710,12 +1709,12 @@ MODRET xfer_stor(cmd_rec *cmd) {
     stor_fh = pr_fsio_open(path,
         O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
     if (stor_fh == NULL) {
-      ferrno = errno;
+      xerrno = errno;
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
-        pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(ferrno));
+        pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
     }
   }
 
@@ -1761,11 +1760,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   if (stor_fh == NULL) {
     pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
-      strerror(ferrno));
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(ferrno));
+      strerror(xerrno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
-    pr_cmd_set_errno(cmd, ferrno);
-    errno = ferrno;
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
