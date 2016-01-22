@@ -1711,8 +1711,14 @@ sub appe_fails_abs_symlink_not_reg {
 
   my $test_symlink = File::Spec->rel2abs("$test_dir/test.lnk");
 
-  unless (symlink($test_dir, $test_symlink)) {
-    die("Can't symlink '$test_symlink' to '$test_dir': $!");
+  my $dst_path = $test_dir;
+  if ($^O eq 'darwin') {
+    # MacOSX-specific hack
+    $dst_path = '/private' . $dst_path;
+  }
+
+  unless (symlink($dst_path, $test_symlink)) {
+    die("Can't symlink '$test_symlink' to '$dst_path': $!");
   }
 
   if ($< == 0) {
