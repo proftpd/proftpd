@@ -10744,7 +10744,7 @@ MODRET set_tlscacertfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -10771,7 +10771,7 @@ MODRET set_tlscacertpath(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = dir_exists(path);
+  res = dir_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -10797,7 +10797,7 @@ MODRET set_tlscacrlfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -10824,7 +10824,7 @@ MODRET set_tlscacrlpath(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = dir_exists(path);
+  res = dir_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -10850,7 +10850,7 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -10947,7 +10947,7 @@ MODRET set_tlsdhparamfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -11000,7 +11000,7 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -11060,7 +11060,7 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -11332,7 +11332,7 @@ MODRET set_tlspkcs12file(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
@@ -11721,7 +11721,7 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists(path);
+  res = file_exists(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
   if (!res) {
