@@ -5806,7 +5806,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
-      !exists(path)) {
+      !exists(cmd->tmp_pool, path)) {
     int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));

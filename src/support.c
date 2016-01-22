@@ -670,7 +670,8 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
  * PATH, or 0 if it doesn't exist. Catch symlink loops using LAST_INODE and
  * RCOUNT.
  */
-static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
+static mode_t _symlink(pool *p, const char *path, ino_t last_inode,
+    int rcount) {
   char buf[PR_TUNABLE_PATH_MAX + 1];
   struct stat st;
   int i;
@@ -682,7 +683,8 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
 
   memset(buf, '\0', sizeof(buf));
 
-  i = pr_fsio_readlink(path, buf, sizeof(buf) - 1);
+  i = dir_readlink(p, path, buf, sizeof(buf)-1,
+    PR_DIR_READLINK_FL_HANDLE_REL_PATH);
   if (i < 0) {
     return (mode_t) 0;
   }
@@ -697,7 +699,7 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
     }
 
     if (S_ISLNK(st.st_mode)) {
-      return _symlink(buf, (ino_t) st.st_ino, rcount);
+      return _symlink(p, buf, (ino_t) st.st_ino, rcount);
     }
 
     return st.st_mode;
@@ -706,20 +708,22 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
   return 0;
 }
 
-mode_t symlink_mode(const char *path) {
-  if (path == NULL) {
+mode_t symlink_mode(pool *p, const char *path) {
+  if (p == NULL ||
+      path == NULL) {
     errno = EINVAL;
     return 0;
   }
 
-  return _symlink(path, (ino_t) 0, 0);
+  return _symlink(p, path, (ino_t) 0, 0);
 }
 
-mode_t file_mode(const char *path) {
+mode_t file_mode(pool *p, const char *path) {
   struct stat st;
   mode_t mode = 0;
 
-  if (path == NULL) {
+  if (p == NULL ||
+      path == NULL) {
     errno = EINVAL;
     return mode;
   }
@@ -727,7 +731,7 @@ mode_t file_mode(const char *path) {
   pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) >= 0) {
     if (S_ISLNK(st.st_mode)) {
-      mode = _symlink(path, (ino_t) 0, 0);
+      mode = _symlink(p, path, (ino_t) 0, 0);
       if (mode == 0) {
 	/* a dangling symlink, but it exists to rename or delete. */
 	mode = st.st_mode;
@@ -746,10 +750,10 @@ mode_t file_mode(const char *path) {
  * If flags == -1, fail unless PATH exists; the caller doesn't care whether
  * PATH is a file or a directory.
  */
-static int _exists(const char *path, int flags) {
+static int _exists(pool *p, const char *path, int flags) {
   mode_t mode;
 
-  mode = file_mode(path);
+  mode = file_mode(p, path);
   if (mode != 0) {
     switch (flags) {
       case 1:
@@ -774,16 +778,16 @@ static int _exists(const char *path, int flags) {
   return FALSE;
 }
 
-int file_exists(const char *path) {
-  return _exists(path, 0);
+int file_exists(pool *p, const char *path) {
+  return _exists(p, path, 0);
 }
 
-int dir_exists(const char *path) {
-  return _exists(path, 1);
+int dir_exists(pool *p, const char *path) {
+  return _exists(p, path, 1);
 }
 
-int exists(const char *path) {
-  return _exists(path, -1);
+int exists(pool *p, const char *path) {
+  return _exists(p, path, -1);
 }
 
 /* safe_token tokenizes a string, and increments the pointer to

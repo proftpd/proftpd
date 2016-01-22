@@ -1140,7 +1140,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
       hidden_path, path);
   }
 
-  if (file_mode(hidden_path)) {
+  if (file_mode(cmd->tmp_pool, hidden_path)) {
     session.xfer.xfer_type = STOR_DEFAULT;
 
     pr_log_debug(DEBUG3, "HiddenStore path '%s' already exists",
@@ -1291,7 +1291,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  fmode = file_mode(path);
+  fmode = file_mode(cmd->tmp_pool, path);
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
@@ -1541,7 +1541,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  mode = file_mode(filename);
+  mode = file_mode(cmd->tmp_pool, filename);
 
   /* Note: this case should never happen: how one can be appending to
    * a supposedly unique filename?  Should probably be removed...
@@ -1626,8 +1626,7 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 }
 
 MODRET xfer_stor(cmd_rec *cmd) {
-  char *path;
-  char *lbuf;
+  char *path, *lbuf;
   int bufsz, len, xerrno = 0, res;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
@@ -1685,8 +1684,28 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
-    stor_fh = pr_fsio_open(session.xfer.path, O_CREAT|O_WRONLY);
-    if (stor_fh) {
+    char *appe_path;
+
+    /* Need to handle the case where the path may be a symlink, and we are
+     * chrooted (Bug#4219).
+     */
+    appe_path = session.xfer.path;
+    if (pr_fsio_lstat(appe_path, &st) == 0) {
+      if (S_ISLNK(st.st_mode)) {
+        char buf[PR_TUNABLE_PATH_MAX];
+
+        memset(buf, '\0', sizeof(buf));
+        len = dir_readlink(cmd->tmp_pool, appe_path, buf, sizeof(buf)-1,
+          PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+        if (len > 0) {
+          buf[len] = '\0';
+          appe_path = pstrdup(cmd->pool, buf);
+        }
+      }
+    }
+
+    stor_fh = pr_fsio_open(appe_path, O_CREAT|O_WRONLY);
+    if (stor_fh != NULL) {
       if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
         pr_log_debug(DEBUG4, "unable to seek to end of '%s' for appending: %s",
           cmd->arg, strerror(errno));
@@ -1700,8 +1719,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
-        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path,
-        strerror(xerrno));
+        pr_gid2str(cmd->tmp_pool, session.gid), appe_path, strerror(xerrno));
     }
 
   } else {
@@ -1720,7 +1738,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   if (stor_fh != NULL &&
       session.restart_pos) {
-    int xerrno = 0;
+    xerrno = 0;
 
     pr_fs_clear_cache2(path);
     if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1) {
@@ -1809,7 +1827,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   stor_chown(cmd->tmp_pool);
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     stor_abort();
     pr_data_abort(0, TRUE);
@@ -1854,8 +1872,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
      */
     if (have_limit &&
         (nbytes_stored + st.st_size > nbytes_max_store)) {
-      int xerrno;
-
       pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
         "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, path);
 
@@ -1884,7 +1900,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
      */
     res = pr_fsio_write(stor_fh, lbuf, len);
     if (res != len) {
-      int xerrno = EIO;
+      xerrno = EIO;
 
       if (res < 0) {
         xerrno = errno;
@@ -1919,7 +1935,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   } else if (len < 0) {
 
     /* default abort errno, in case session.d et al has already gone away */
-    int xerrno = ECONNABORTED;
+    xerrno = ECONNABORTED;
 
     stor_abort();
 
@@ -1939,7 +1955,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     pr_throttle_pause(nbytes_stored, TRUE);
 
     if (stor_complete() < 0) {
-      int xerrno = errno;
+      xerrno = errno;
 
       _log_transfer('i', 'i');
 
@@ -1976,7 +1992,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (session.xfer.path &&
         session.xfer.path_hidden) {
       if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) < 0) {
-        int xerrno = errno;
+        xerrno = errno;
 
         /* This should only fail on a race condition with a chmod/chown
          * or if STOR_APPEND is on and the permissions are squirrely.
@@ -2156,7 +2172,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  fmode = file_mode(dir);
+  fmode = file_mode(cmd->tmp_pool, dir);
   if (fmode == 0) {
     int xerrno = errno;
 

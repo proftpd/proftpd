@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -916,7 +916,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
-  if (exists(sp->best_path)) {
+  if (exists(p, sp->best_path)) {
     if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
         pstrdup(cmd->pool, "true"), 0) < 0) {
       if (errno != EEXIST) {

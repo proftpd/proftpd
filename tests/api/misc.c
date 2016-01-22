@@ -747,11 +747,14 @@ START_TEST (exists_test) {
   int res;
   const char *path;
 
-  res = exists(NULL);
+  res = exists(NULL, NULL);
   fail_unless(res == FALSE, "Failed to handle null arguments");
 
+  res = exists(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
   path = "/";
-  res = exists(path);
+  res = exists(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 }
 END_TEST
@@ -760,15 +763,18 @@ START_TEST (dir_exists_test) {
   int res;
   const char *path;
 
-  res = dir_exists(NULL);
+  res = dir_exists(NULL, NULL);
   fail_unless(res == FALSE, "Failed to handle null arguments");
 
+  res = dir_exists(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
   path = "/";
-  res = dir_exists(path);
+  res = dir_exists(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 
   path = "./api-tests";
-  res = dir_exists(path);
+  res = dir_exists(p, path);
   fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
 }
 END_TEST
@@ -777,13 +783,18 @@ START_TEST (symlink_mode_test) {
   mode_t res;
   const char *path;
 
-  res = symlink_mode(NULL);
-  fail_unless(res == 0, "Failed to handle null argument");
+  res = symlink_mode(NULL, NULL);
+  fail_unless(res == 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = symlink_mode(p, NULL);
+  fail_unless(res == 0, "Failed to handle null path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   path = "/";
-  res = symlink_mode(path);
+  res = symlink_mode(p, path);
   fail_unless(res == 0, "Found mode for non-symlink '%s'", path);
 }
 END_TEST
@@ -792,13 +803,18 @@ START_TEST (file_mode_test) {
   mode_t res;
   const char *path;
 
-  res = file_mode(NULL);
-  fail_unless(res == 0, "Failed to handle null argument");
+  res = file_mode(NULL, NULL);
+  fail_unless(res == 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = file_mode(p, NULL);
+  fail_unless(res == 0, "Failed to handle null path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   path = "/";
-  res = file_mode(path);
+  res = file_mode(p, path);
   fail_unless(res != 0, "Failed to find mode for '%s': %s", path,
     strerror(errno));
 }
@@ -808,15 +824,18 @@ START_TEST (file_exists_test) {
   int res;
   const char *path;
 
-  res = file_exists(NULL);
+  res = file_exists(NULL, NULL);
   fail_unless(res == FALSE, "Failed to handle null arguments");
 
+  res = file_exists(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
   path = "/";
-  res = file_exists(path);
+  res = file_exists(p, path);
   fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
 
   path = "./api-tests";
-  res = file_exists(path);
+  res = file_exists(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 }
 END_TEST
