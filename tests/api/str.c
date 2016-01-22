@@ -1306,6 +1306,9 @@ START_TEST (uid2str_test) {
 
   res = pr_uid2str(NULL, (uid_t) 1);
   fail_unless(strcmp(res, "1") == 0);
+
+  res = pr_uid2str(NULL, (uid_t) -1);
+  fail_unless(strcmp(res, "-1") == 0);
 }
 END_TEST
 
@@ -1314,6 +1317,9 @@ START_TEST (gid2str_test) {
 
   res = pr_gid2str(NULL, (gid_t) 1);
   fail_unless(strcmp(res, "1") == 0);
+
+  res = pr_gid2str(NULL, (gid_t) -1);
+  fail_unless(strcmp(res, "-1") == 0);
 }
 END_TEST
 

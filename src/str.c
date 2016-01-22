@@ -625,11 +625,15 @@ const char *pr_uid2str(pool *p, uid_t uid) {
   static char buf[64];
 
   memset(&buf, 0, sizeof(buf));
+  if (uid != (uid_t) -1) {
 #if SIZEOF_UID_T == SIZEOF_LONG_LONG
-  snprintf(buf, sizeof(buf)-1, "%llu", (unsigned long long) uid);
+    snprintf(buf, sizeof(buf)-1, "%llu", (unsigned long long) uid);
 #else
-  snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) uid);
+    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) uid);
 #endif /* sizeof(uid_t) != sizeof(long long) */
+  } else {
+    snprintf(buf, sizeof(buf)-1, "%d", -1);
+  }
 
   if (p != NULL) {
     return pstrdup(p, buf);
@@ -642,11 +646,15 @@ const char *pr_gid2str(pool *p, gid_t gid) {
   static char buf[64];
 
   memset(&buf, 0, sizeof(buf));
+  if (gid != (gid_t) -1) {
 #if SIZEOF_GID_T == SIZEOF_LONG_LONG
-  snprintf(buf, sizeof(buf)-1, "%llu", (unsigned long long) gid);
+    snprintf(buf, sizeof(buf)-1, "%llu", (unsigned long long) gid);
 #else
-  snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) gid);
+    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) gid);
 #endif /* sizeof(gid_t) != sizeof(long long) */
+  } else {
+    snprintf(buf, sizeof(buf)-1, "%d", -1);
+  }
 
   if (p != NULL) {
     return pstrdup(p, buf);
