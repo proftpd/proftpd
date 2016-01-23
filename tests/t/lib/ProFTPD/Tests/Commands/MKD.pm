@@ -4,6 +4,7 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
+use Cwd;
 use Encode;
 use File::Path qw(mkpath);
 use File::Spec;
@@ -21,6 +22,26 @@ my $TESTS = {
   mkd_ok => {
     order => ++$order,
     test_class => [qw(forking)],
+  },
+
+  mkd_fails_abs_symlink_new => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  mkd_fails_abs_symlink_new_chrooted_bug4219 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
+  mkd_fails_rel_symlink_new => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  mkd_fails_rel_symlink_new_chrooted_bug4219 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
   },
 
   mkd_umask_one_param_ok => {
@@ -169,6 +190,426 @@ sub mkd_ok {
       $expected = 0755;
       $self->assert($expected == $perms,
         test_msg("Expected perms $expected, got $perms"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub mkd_fails_abs_symlink_new {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/foo.d");
+  my $test_symlink = File::Spec->rel2abs("$tmpdir/test.lnk");
+
+  my $dst_path = $test_dir;
+  if ($^O eq 'darwin') {
+    # MacOSX-related hack
+    $dst_path = '/private' . $dst_path;
+  }
+
+  unless (symlink($dst_path, $test_symlink)) {
+    die("Can't symlink '$test_symlink' to '$dst_path': $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->mkd('test.lnk') };
+      unless ($@) {
+        die("MKD succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack
+        $test_symlink = '/private' . $test_symlink;
+      }
+
+      $expected = "test.lnk: File exists";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(!-d $test_dir,
+        test_msg("$test_dir directory does not exist as expected"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub mkd_fails_abs_symlink_new_chrooted_bug4219 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/foo.d");
+  my $test_symlink = File::Spec->rel2abs("$tmpdir/test.lnk");
+
+  my $dst_path = $test_dir;
+  if ($^O eq 'darwin') {
+    # MacOSX-related hack
+    $dst_path = '/private' . $dst_path;
+  }
+
+  unless (symlink($dst_path, $test_symlink)) {
+    die("Can't symlink '$test_symlink' to '$dst_path': $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->mkd('test.lnk') };
+      unless ($@) {
+        die("MKD succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack
+        $test_symlink = '/private' . $test_symlink;
+      }
+
+      $expected = "test.lnk: File exists";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(!-d $test_dir,
+        test_msg("$test_dir directory does not exist as expected"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub mkd_fails_rel_symlink_new {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  # Change to the test directory in order to create a relative path in the
+  # symlink we need
+
+  my $cwd = getcwd();
+  unless (chdir($test_dir)) {
+    die("Can't chdir to $test_dir: $!");
+  }
+
+  unless (symlink('./test.d', './test.lnk')) {
+    die("Can't symlink 'test.lnk' to './test.d': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->mkd('test.d/test.lnk') };
+      unless ($@) {
+        die("MKD succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "test.d\/test.lnk: File exists";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub mkd_fails_rel_symlink_new_chrooted_bug4219 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  # Change to the test directory in order to create a relative path in the
+  # symlink we need
+
+  my $cwd = getcwd();
+  unless (chdir($test_dir)) {
+    die("Can't chdir to $test_dir: $!");
+  }
+
+  unless (symlink('./test.d', './test.lnk')) {
+    die("Can't symlink 'test.lnk' to './test.d': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->mkd('test.d/test.lnk') };
+      unless ($@) {
+        die("MKD succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "test.d\/test.lnk: File exists";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
     if ($@) {
       $ex = $@;
