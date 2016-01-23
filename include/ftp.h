@@ -93,7 +93,6 @@
 /* Proposed commands */
 #define C_MFF	"MFF"		/* Modify File Fact (RFC3659) */
 #define C_MFMT	"MFMT"		/* Modify File Modify-Type (RFC3659) */
-#define C_HOST	"HOST"		/* Virtual host requested */
 
 #define C_ANY	"*"		/* Special "wildcard" matching command */
 

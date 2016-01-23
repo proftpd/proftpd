@@ -2,7 +2,7 @@
  * ProFTPD: mod_sftp_pam -- a module which provides an SSH2
  *                          "keyboard-interactive" driver using PAM
  *
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -754,6 +754,22 @@ static int sftppam_sess_init(void) {
     if (engine == FALSE) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_PAM_VERSION,
         "disabled by SFTPPAMEngine setting, unregistered 'pam' driver");
+      sftp_kbdint_unregister_driver("pam");
+      return 0;
+    }
+  }
+
+  /* To preserve the principle of least surprise, also check for the AuthPAM
+   * directive.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "AuthPAM", FALSE);
+  if (c != NULL) {
+    unsigned char auth_pam;
+
+    auth_pam = *((unsigned char *) c->argv[0]);
+    if (auth_pam == FALSE) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_PAM_VERSION,
+        "disabled by AuthPAM setting, unregistered 'pam' driver");
       sftp_kbdint_unregister_driver("pam");
       return 0;
     }
