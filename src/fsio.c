@@ -3748,7 +3748,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
       xerrno = errno;
 
       pr_trace_msg(trace_channel, 1,
-        "mkdir(2) fail to create directory '%s' with perms %04o: %s", path,
+        "mkdir(2) failed to create directory '%s' with perms %04o: %s", path,
         mode, strerror(xerrno));
 
       errno = xerrno;
@@ -3764,7 +3764,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     xerrno = errno;
 
     pr_trace_msg(trace_channel, 1,
-      "mkdir(2) fail to create directory '%s' with perms %04o: %s", path,
+      "mkdir(2) failed to create directory '%s' with perms %04o: %s", path,
       mode, strerror(xerrno));
         
     errno = xerrno;
