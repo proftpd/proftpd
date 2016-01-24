@@ -2112,6 +2112,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   mode_t fmode;
   unsigned char *allow_restart = NULL;
   config_rec *c;
+  struct stat st;
 
   xfer_logged_sendfile_decline_msg = FALSE;
 
@@ -2139,9 +2140,23 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  dir = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (pr_fsio_lstat(decoded_path, &st) == 0) {
+    char buf[PR_TUNABLE_PATH_MAX];
+    int len;
 
-  if (!dir ||
+    memset(buf, '\0', sizeof(buf));
+    len = dir_readlink(cmd->tmp_pool, decoded_path, buf, sizeof(buf)-1,
+      PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+    if (len > 0) {
+      buf[len] = '\0';
+      dir = pstrdup(cmd->tmp_pool, buf);
+    }
+
+  } else {
+    dir = dir_realpath(cmd->tmp_pool, decoded_path);
+  }
+
+  if (dir == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
     int xerrno = errno;
 
