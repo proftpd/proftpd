@@ -4896,16 +4896,30 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   return pr_fsio_chmod(dir,mode);
 }
 
-MODRET _chdir(cmd_rec *cmd, char *ndir) {
-  char *dir, *odir, *cdir;
+MODRET core_chdir(cmd_rec *cmd, char *ndir) {
+  char *dir, *orig_dir, *cdir;
+  int xerrno = 0;
   config_rec *c = NULL, *cdpath;
-  unsigned char show_symlinks = TRUE, *tmp = NULL;
+  unsigned char show_symlinks = TRUE, *ptr = NULL;
+  struct stat st;
 
-  odir = ndir;
+  orig_dir = ndir;
 
-  tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL) {
-    show_symlinks = *tmp;
+  if (pr_fsio_lstat(ndir, &st) == 0) {
+    char buf[PR_TUNABLE_PATH_MAX];
+    int len;
+
+    len = dir_readlink(cmd->tmp_pool, ndir, buf, sizeof(buf)-1,
+      PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+    if (len > 0) {
+      buf[len] = '\0';
+      ndir = pstrdup(cmd->tmp_pool, buf);
+    }
+  }
+
+  ptr = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (ptr != NULL) {
+    show_symlinks = *ptr;
   }
 
   if (show_symlinks) {
@@ -4926,15 +4940,16 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       }
     }
 
-    if (!use_cdpath &&
+    if (use_cdpath == FALSE &&
         pr_fsio_chdir(dir, 0) < 0) {
+      xerrno = errno;
       use_cdpath = TRUE;
     }
 
     if (use_cdpath) {
       for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
-          cdpath != NULL; cdpath =
-            find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+          cdpath != NULL;
+          cdpath = find_config_next(cdpath, cdpath->next, CONF_PARAM, "CDPath", TRUE)) {
         cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
         snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
@@ -4949,10 +4964,12 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         }
       }
 
-      if (!cdpath) {
-        int xerrno = errno;
+      if (cdpath == FALSE) {
+        if (xerrno == 0) {
+          xerrno = errno;
+        }
 
-        pr_response_add_err(R_550, "%s: %s", odir, strerror(xerrno));
+        pr_response_add_err(R_550, "%s: %s", orig_dir, strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -4986,9 +5003,9 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     }            
 
     if (use_cdpath) {
-      for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
-          cdpath != NULL; cdpath =
-            find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+      for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
+          cdpath != NULL;
+          cdpath = find_config_next(cdpath, cdpath->next, CONF_PARAM, "CDPath", TRUE)) {
         cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
         snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
@@ -5004,10 +5021,12 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         }
       }
 
-      if (!cdpath) {
-        int xerrno = errno;
+      if (cdpath == NULL) {
+        if (xerrno == 0) {
+          xerrno = errno;
+        }
 
-        pr_response_add_err(R_550, "%s: %s", odir, strerror(xerrno));
+        pr_response_add_err(R_550, "%s: %s", orig_dir, strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -5028,18 +5047,17 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       FALSE);
   }
 
-  if (!c &&
-      session.anon_config) {
+  if (c == NULL &&
+      session.anon_config != NULL) {
     c = find_config(session.anon_config->subset, CONF_PARAM, "DisplayChdir",
       FALSE);
   }
 
-  if (!c) {
+  if (c == NULL) {
     c = find_config(cmd->server->conf, CONF_PARAM, "DisplayChdir", FALSE);
   }
 
-  if (c) {
-    struct stat st;
+  if (c != NULL) {
     time_t prev = 0;
 
     char *display = c->argv[0];
@@ -5296,12 +5314,12 @@ MODRET core_cwd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  return _chdir(cmd, decoded_path);
+  return core_chdir(cmd, decoded_path);
 }
 
 MODRET core_cdup(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
-  return _chdir(cmd, "..");
+  return core_chdir(cmd, "..");
 }
 
 /* Returns the modification time of a file, as per RFC3659. */
