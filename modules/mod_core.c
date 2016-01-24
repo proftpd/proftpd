@@ -4906,14 +4906,16 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
   orig_dir = ndir;
 
   if (pr_fsio_lstat(ndir, &st) == 0) {
-    char buf[PR_TUNABLE_PATH_MAX];
-    int len;
+    if (S_ISLNK(st.st_mode)) {
+      char buf[PR_TUNABLE_PATH_MAX];
+      int len;
 
-    len = dir_readlink(cmd->tmp_pool, ndir, buf, sizeof(buf)-1,
-      PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-    if (len > 0) {
-      buf[len] = '\0';
-      ndir = pstrdup(cmd->tmp_pool, buf);
+      len = dir_readlink(cmd->tmp_pool, ndir, buf, sizeof(buf)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        buf[len] = '\0';
+        ndir = pstrdup(cmd->tmp_pool, buf);
+      }
     }
   }
 
@@ -5105,6 +5107,7 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
 MODRET core_rmd(cmd_rec *cmd) {
   int res;
   char *decoded_path, *dir;
+  struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -5149,10 +5152,30 @@ MODRET core_rmd(cmd_rec *cmd) {
       return PR_ERROR(cmd);
   }
 
-  /* If told to rmdir a symlink to a directory, don't; you can't rmdir a
-   * symlink, you delete it.
-   */
-  dir = dir_canonical_path(cmd->tmp_pool, dir);
+  if (pr_fsio_lstat(dir, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char buf[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(buf, '\0', sizeof(buf));
+      len = dir_readlink(cmd->tmp_pool, dir, buf, sizeof(buf)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        buf[len] = '\0';
+        dir = pstrdup(cmd->tmp_pool, buf);
+
+      } else {
+        dir = dir_canonical_path(cmd->tmp_pool, dir);
+      }
+
+    } else {
+      dir = dir_canonical_path(cmd->tmp_pool, dir);
+    }
+
+  } else {
+    dir = dir_canonical_path(cmd->tmp_pool, dir);
+  }
+
   if (dir == NULL) {
     int xerrno = EINVAL;
 
@@ -5357,6 +5380,9 @@ MODRET core_mdtm(cmd_rec *cmd) {
       if (len > 0) {
         buf[len] = '\0';
         path = pstrdup(cmd->tmp_pool, buf);
+
+      } else {
+        path = dir_realpath(cmd->tmp_pool, decoded_path);
       }
 
     } else {
