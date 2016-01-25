@@ -5464,6 +5464,21 @@ MODRET core_size(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  if (pr_fsio_lstat(decoded_path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char buf[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(buf, '\0', sizeof(buf));
+      len = dir_readlink(cmd->tmp_pool, decoded_path, buf, sizeof(buf)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        buf[len] = '\0';
+        decoded_path = pstrdup(cmd->tmp_pool, buf);
+      }
+    }
+  }
+
   path = dir_realpath(cmd->tmp_pool, decoded_path);
   if (path != NULL) {
     pr_fs_clear_cache2(path);
