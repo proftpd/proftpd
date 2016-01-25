@@ -5881,7 +5881,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   /* Allow renaming a symlink, even a dangling one. */
   path = dir_canonical_path(cmd->tmp_pool, path);
 
-  if (!path ||
+  if (path == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       !exists(cmd->tmp_pool, path)) {
     int xerrno = errno;
@@ -5907,9 +5907,8 @@ MODRET core_rnfr(cmd_rec *cmd) {
   pr_table_add(session.notes, "mod_core.rnfr-path",
     pstrdup(session.xfer.p, session.xfer.path), 0);
 
-  pr_response_add(R_350, _("File or directory exists, ready for "
-    "destination name"));
-
+  pr_response_add(R_350,
+    _("File or directory exists, ready for destination name"));
   return PR_HANDLED(cmd);
 }
 
