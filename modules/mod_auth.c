@@ -899,8 +899,8 @@ static void ensure_open_passwd(pool *p) {
 static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   struct passwd *pw;
   config_rec *c, *tmpc;
-  char *origuser, *ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
-  char *defaulttransfermode, *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
+  char *origuser, *ourname, *anonname = NULL, *anongroup = NULL, *ugroup = NULL;
+  char *defroot = NULL, *defchdir = NULL, *xferlog = NULL;
   const char *sess_ttyname;
   int aclp, i, res = 0, allow_chroot_symlinks = TRUE, showsymlinks;
   unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
@@ -1766,18 +1766,6 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
    * among other things, would fail.
    */
   /* pr_auth_endpwent(p); */
-
-  /* Default transfer mode is ASCII */
-  defaulttransfermode = (char *) get_param_ptr(main_server->conf,
-    "DefaultTransferMode", FALSE);
-
-  if (defaulttransfermode &&
-      strcasecmp(defaulttransfermode, "binary") == 0) {
-    session.sf_flags &= (SF_ALL^SF_ASCII);
-
-  } else {
-    session.sf_flags |= SF_ASCII;
-  }
 
   /* Authentication complete, user logged in, now kill the login
    * timer.
