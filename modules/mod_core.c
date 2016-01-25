@@ -5951,6 +5951,18 @@ MODRET core_opts(cmd_rec *cmd) {
 MODRET core_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
+  /* Default transfer mode is ASCII */
+  session.sf_flags |= SF_ASCII;
+  c = find_config(main_server->conf, CONF_PARAM, "DefaultTransferMode", FALSE);
+  if (c != NULL) {
+    char *default_transfer_mode;
+
+    default_transfer_mode = c->argv[0];
+    if (strcasecmp(default_transfer_mode, "binary") == 0) {
+      session.sf_flags &= (SF_ALL^SF_ASCII);
+    }
+  }
+
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutIdle", FALSE);
   if (c != NULL) {
     int prev_timeout, timeout;
