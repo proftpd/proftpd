@@ -7972,7 +7972,28 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       }
 
     } else {
-      path = dir_best_path(fxp->pool, path);
+      if (pr_fsio_lstat(path, &st) == 0) {
+        if (S_ISLNK(st.st_mode)) {
+          char link_path[PR_TUNABLE_PATH_MAX];
+          int len;
+
+          memset(link_path, '\0', sizeof(link_path));
+          len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+            PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+          if (len > 0) {
+            link_path[len] = '\0';
+            path = pstrdup(fxp->pool, link_path);
+          } else {
+            path = dir_best_path(fxp->pool, path);
+          }
+
+        } else {
+          path = dir_best_path(fxp->pool, path);
+        }
+
+      } else {
+        path = dir_best_path(fxp->pool, path);
+      }
     }
 
     file_existed = exists(fxp->pool,
