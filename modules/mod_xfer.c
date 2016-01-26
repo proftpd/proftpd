@@ -1460,7 +1460,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 MODRET xfer_pre_stou(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *prefix = "ftp", *filename = NULL;
-  int tmpfd;
+  int stou_fd;
   mode_t mode;
   unsigned char *allow_overwrite = NULL;
 
@@ -1504,16 +1504,17 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
    * unique filename prefix.
    */
   c = find_config(CURRENT_CONF, CONF_PARAM, "StoreUniquePrefix", FALSE);
-  if (c != NULL)
+  if (c != NULL) {
     prefix = c->argv[0];
+  }
 
   /* Now, construct the unique filename using the cmd_rec's pool, the
    * prefix, and mkstemp().
    */
   filename = pstrcat(cmd->pool, prefix, "XXXXXX", NULL);
 
-  tmpfd = mkstemp(filename);
-  if (tmpfd < 0) {
+  stou_fd = mkstemp(filename);
+  if (stou_fd < 0) {
     int xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING, "error: unable to use mkstemp(): %s",
@@ -1535,13 +1536,13 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
      * opens the unique file, but this may have to do, as closing that
      * race would involve some major restructuring.
      */
-    (void) close(tmpfd);
+    (void) close(stou_fd);
   }
 
   /* It's OK to reuse the char * pointer for filename. */
   filename = dir_best_path(cmd->tmp_pool, cmd->arg);
 
-  if (!filename ||
+  if (filename == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, filename, NULL)) {
     int xerrno = errno;
 
@@ -1602,22 +1603,30 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 }
 
 /* xfer_post_stou() is a POST_CMD handler that changes the mode of the
- * STOU file from 0600, which is what mkstemp() makes it, to 0666,
- * the default for files uploaded via STOR.  This is to prevent users
+ * STOU file from 0600, which is what mkstemp() makes it, to 0666 (modulo
+ * Umask), the default for files uploaded via STOR.  This is to prevent users
  * from being surprised.
  */
 MODRET xfer_post_stou(cmd_rec *cmd) {
+  mode_t mask, perms, *umask;
 
-  /* This is the same mode as used in src/fs.c.  Should probably be
-   * available as a macro.
+  /* mkstemp(3) creates a file with 0600 perms; we need to adjust this
+   * for the Umask (Bug#4223).
    */
-  mode_t mode = 0666;
+  umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+  if (umask != NULL) {
+    mask = *umask;
 
-  if (pr_fsio_chmod(cmd->arg, mode) < 0) {
+  } else {
+    mask = (mode_t) 0022;
+  }
 
+  perms = (0666 & ~mask);
+
+  if (pr_fsio_chmod(cmd->arg, perms) < 0) {
     /* Not much to do but log the error. */
     pr_log_pri(PR_LOG_NOTICE, "error: unable to chmod '%s' to %04o: %s",
-      cmd->arg, mode, strerror(errno));
+      cmd->arg, perms, strerror(errno));
   }
 
   return PR_DECLINED(cmd);
