@@ -10743,6 +10743,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
   int have_error = FALSE, res = 0;
+  struct stat st;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -10797,7 +10798,24 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
+  path = cmd->arg;
+
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        path = pstrdup(fxp->pool, link_path);
+      }
+    }
+  }
+
+  path = dir_best_path(fxp->pool, path);
   if (path == NULL) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
