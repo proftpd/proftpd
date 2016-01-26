@@ -3778,6 +3778,21 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int link_len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      link_len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (link_len > 0) {
+        link_path[link_len] = '\0';
+        path = pstrdup(fxp->pool, link_path);
+      }
+    }
+  }
+
   pr_fs_clear_cache2(path);
   res = pr_fsio_lstat(path, &st);
   if (res < 0) {
