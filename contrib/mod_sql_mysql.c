@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -545,8 +545,17 @@ MODRET cmd_open(cmd_rec *cmd) {
      }
 
     if (mysql_set_character_set(conn->mysql, encoding) != 0) {
-      sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-      return _build_error(cmd, conn);
+      /* Failing to set the character set should NOT be a fatal error.
+       * There are situations where, due to client/server mismatch, the
+       * requested character set may not be available.  Thus for now,
+       * we simply log the failure.
+       *
+       * A future improvement might be to implement fallback behavior,
+       * trying to set "older" character sets as needed.
+       */
+      sql_log(DEBUG_FUNC, MOD_SQL_MYSQL_VERSION
+        ": failed to set character set '%s': %s (%u)", encoding,
+        mysql_error(conn->mysql), mysql_errno(conn->mysql));
     }
 
     sql_log(DEBUG_FUNC, "MySQL connection character set now '%s' (from '%s')",
