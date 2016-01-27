@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004-2015 The ProFTPD Project
+ * Copyright (c) 2004-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -261,7 +261,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         return -1;
       }
 
-      pr_response_add(R_250, "%s command successful", (char *) cmd->argv[0]);
+      pr_response_add(R_250, _("%s command successful"), (char *) cmd->argv[0]);
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
       pr_response_clear(&resp_list);
@@ -927,6 +927,7 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
   size_t timestamp_len;
   unsigned int year, month, day, hour, min, sec = 0;
   struct timeval tvs[2];
+  struct stat st;
 
   /* Accept both 'YYYYMMDDhhmm' and 'YYYYMMDDhhmmss' formats. */
   timestamp_len = strlen(cmd->argv[2]);
@@ -960,6 +961,21 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
+  }
+
+  if (pr_fsio_lstat(decoded_path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(cmd->tmp_pool, decoded_path, link_path,
+        sizeof(link_path)-1, PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        decoded_path = pstrdup(cmd->tmp_pool, link_path);
+      }
+    }
   }
 
   path = dir_canonical_path(cmd->tmp_pool, decoded_path);
