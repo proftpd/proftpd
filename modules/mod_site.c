@@ -103,21 +103,6 @@ MODRET site_chgrp(cmd_rec *cmd) {
     arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", decoded_path, NULL);
   }
 
-  if (pr_fsio_lstat(arg, &st) == 0) {
-    if (S_ISLNK(st.st_mode)) {
-      char link_path[PR_TUNABLE_PATH_MAX];
-      int len;
-
-      memset(link_path, '\0', sizeof(link_path));
-      len = dir_readlink(cmd->tmp_pool, arg, link_path, sizeof(link_path)-1,
-        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-      if (len > 0) {
-        link_path[len] = '\0';
-        arg = pstrdup(cmd->tmp_pool, link_path);
-      }
-    }
-  }
-
 #ifdef PR_USE_REGEX
   pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
   if (pre != NULL &&
@@ -143,6 +128,21 @@ MODRET site_chgrp(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 #endif
+
+  if (pr_fsio_lstat(arg, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(cmd->tmp_pool, arg, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        arg = pstrdup(cmd->tmp_pool, link_path);
+      }
+    }
+  }
 
   path = dir_realpath(cmd->tmp_pool, arg);
   if (path == NULL) {
@@ -204,6 +204,7 @@ MODRET site_chmod(cmd_rec *cmd) {
   int res;
   mode_t mode = 0;
   char *dir, *endp, *mode_str, *tmp, *arg = "";
+  struct stat st;
   register unsigned int i = 0;
 #ifdef PR_USE_REGEX
   pr_regex_t *pre;
@@ -266,6 +267,21 @@ MODRET site_chmod(cmd_rec *cmd) {
   }
 #endif
 
+  if (pr_fsio_lstat(arg, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(cmd->tmp_pool, arg, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        arg = pstrdup(cmd->tmp_pool, link_path);
+      }
+    }
+  }
+
   dir = dir_realpath(cmd->tmp_pool, arg);
   if (dir == NULL) {
     int xerrno = errno;
@@ -296,7 +312,6 @@ MODRET site_chmod(cmd_rec *cmd) {
     int mask = 0, mode_op = 0, curr_mode = 0, curr_umask = umask(0);
     int invalid = 0;
     char *who, *how, *what;
-    struct stat st;
 
     umask(curr_umask);
     mode = 0;
