@@ -2,7 +2,7 @@
  * ProFTPD: mod_copy -- a module supporting copying of files on the server
  *                      without transferring the data to the client and back
  *
- * Copyright (c) 2009-2015 TJ Saunders
+ * Copyright (c) 2009-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -685,7 +685,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
 
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
-      !exists(path)) {
+      !exists(cmd->tmp_pool, path)) {
     int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));

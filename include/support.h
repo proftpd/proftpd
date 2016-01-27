@@ -61,6 +61,11 @@ int getopt_long(int, char * const [], const char *, const struct option *,
 
 char *dir_interpolate(pool *, const char *);
 char *dir_abs_path(pool *, const char *, int);
+
+/* Performs chroot-aware handling of symlinks. */
+int dir_readlink(pool *, const char *, char *, size_t, int);
+#define PR_DIR_READLINK_FL_HANDLE_REL_PATH		0x0001
+
 char *dir_realpath(pool *, const char *);
 char *dir_canonical_path(pool *, const char *);
 char *dir_canonical_vpath(pool *, const char *);
@@ -75,11 +80,11 @@ void shutdown_end_session(void *, void *, void *, void *);
 
 long get_name_max(char *path, int fd);
 
-mode_t file_mode(const char *);
-mode_t symlink_mode(const char *);
-int file_exists(const char *);
-int dir_exists(const char *);
-int exists(const char *);
+mode_t file_mode(pool *, const char *);
+mode_t symlink_mode(pool *, const char *);
+int file_exists(pool *, const char *);
+int dir_exists(pool *, const char *);
+int exists(pool *, const char *);
 
 char *safe_token(char **);
 int check_shutmsg(const char *, time_t *, time_t *, time_t *, char *, size_t);

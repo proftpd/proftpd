@@ -31,10 +31,12 @@ static pool *p = NULL;
 
 static unsigned int schedule_called = 0;
 static const char *misc_test_shutmsg = "/tmp/prt-shutmsg.dat";
+static const char *misc_test_readlink = "/tmp/prt-readlink.lnk";
 
 /* Fixtures */
 
 static void set_up(void) {
+  (void) unlink(misc_test_readlink);
   (void) unlink(misc_test_shutmsg);
 
   if (p == NULL) {
@@ -54,6 +56,7 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  (void) unlink(misc_test_readlink);
   (void) unlink(misc_test_shutmsg);
 
   pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
@@ -248,6 +251,283 @@ START_TEST (dir_canonical_vpath_test) {
   fail_unless(path != NULL, "Failed to get canonical vpath for '%s': %s", path,
     strerror(errno));
   fail_unless(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
+}
+END_TEST
+
+START_TEST (dir_readlink_test) {
+  int res, flags = 0;
+  const char *path;
+  char *buf, *dst_path, *expected_path;
+  size_t bufsz, dst_pathlen, expected_pathlen;
+
+  (void) unlink(misc_test_readlink);
+
+  /* Parameter validation */
+  res = dir_readlink(NULL, NULL, NULL, 0, flags);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = dir_readlink(p, NULL, NULL, 0, flags);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = misc_test_readlink;
+  res = dir_readlink(p, path, NULL, 0, flags);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  bufsz = 1024;
+  buf = palloc(p, bufsz);
+  res = dir_readlink(p, path, buf, 0, flags);
+  fail_unless(res == 0, "Failed to handle zero buffer length");
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_unless(res < 0, "Failed to handle nonexistent file");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  dst_path = "";
+  res = symlink(dst_path, path);
+  if (res == 0) {
+    /* Some platforms will not allow creation of empty symlinks.  Nice of
+     * them.
+     */
+    res = dir_readlink(p, path, buf, bufsz, flags);
+    fail_unless(res == 0, "Failed to handle empty symlink");
+  }
+
+  /* Not chrooted, absolute dst path */
+  dst_path = "/home/user/file.dat";
+  dst_pathlen = strlen(dst_path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+    (unsigned long) dst_pathlen, res);
+  fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
+    dst_path, buf);
+
+  /* Not chrooted, relative dst path, flags to ignore rel path */
+  memset(buf, '\0', bufsz);
+  dst_path = "./file.dat";
+  dst_pathlen = strlen(dst_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+    (unsigned long) dst_pathlen, res);
+  fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
+    dst_path, buf);
+
+  /* Not chrooted, relative dst path, flags to HANDLE rel path */
+  memset(buf, '\0', bufsz);
+  dst_path = "./file.dat";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/tmp/file.dat";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* Not chrooted, dst path longer than given buffer */
+  flags = 0;
+  memset(buf, '\0', bufsz);
+  res = dir_readlink(p, path, buf, 2, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == 2, "Expected length 2, got %d", res);
+  fail_unless(strncmp(buf, dst_path, 2) == 0, "Expected '%*s', got '%*s'",
+    2, dst_path, 2, buf);
+
+  /* Chrooted to "/" */
+  session.chroot_path = "/";
+  memset(buf, '\0', bufsz);
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+    (unsigned long) dst_pathlen, res);
+  fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
+    dst_path, buf);
+
+  /* Chrooted, absolute destination path shorter than chroot path */
+  session.chroot_path = "/home/user";
+  memset(buf, '\0', bufsz);
+  dst_path = "/foo";
+  dst_pathlen = strlen(dst_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+    (unsigned long) dst_pathlen, res);
+  fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
+    dst_path, buf);
+
+  /* Chrooted, overlapping chroot to non-dir */
+  memset(buf, '\0', bufsz);
+  dst_path = "/home/user2";
+  dst_pathlen = strlen(dst_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+    (unsigned long) dst_pathlen, res);
+  fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
+    dst_path, buf);
+
+  /* Chrooted, absolute destination within chroot */
+  memset(buf, '\0', bufsz);
+  dst_path = "/home/user/file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* Chrooted, absolute destination outside of chroot */
+  memset(buf, '\0', bufsz);
+  dst_path = "/home/user/../file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/home/file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* Chrooted, relative destination within chroot */
+  memset(buf, '\0', bufsz);
+  dst_path = "./file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "./file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* Chrooted, relative destination outside of chroot */
+  memset(buf, '\0', bufsz);
+  dst_path = "../file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "../file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  /* First, tell dir_readlink() to ignore relative destination paths. */
+  flags = 0;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* Now do it again, telling dir_readlink() to handle relative destination
+   * paths.
+   */
+  memset(buf, '\0', bufsz);
+  dst_path = "../file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* One more time, this time changing the chroot path to align with the
+   * source path.
+   */
+  memset(buf, '\0', bufsz);
+  dst_path = "../file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  session.chroot_path = "/tmp";
+  flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+    (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  (void) unlink(misc_test_readlink);
 }
 END_TEST
 
@@ -467,11 +747,14 @@ START_TEST (exists_test) {
   int res;
   const char *path;
 
-  res = exists(NULL);
+  res = exists(NULL, NULL);
   fail_unless(res == FALSE, "Failed to handle null arguments");
 
+  res = exists(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
   path = "/";
-  res = exists(path);
+  res = exists(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 }
 END_TEST
@@ -480,15 +763,18 @@ START_TEST (dir_exists_test) {
   int res;
   const char *path;
 
-  res = dir_exists(NULL);
+  res = dir_exists(NULL, NULL);
   fail_unless(res == FALSE, "Failed to handle null arguments");
 
+  res = dir_exists(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
   path = "/";
-  res = dir_exists(path);
+  res = dir_exists(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 
   path = "./api-tests";
-  res = dir_exists(path);
+  res = dir_exists(p, path);
   fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
 }
 END_TEST
@@ -497,13 +783,18 @@ START_TEST (symlink_mode_test) {
   mode_t res;
   const char *path;
 
-  res = symlink_mode(NULL);
-  fail_unless(res == 0, "Failed to handle null argument");
+  res = symlink_mode(NULL, NULL);
+  fail_unless(res == 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = symlink_mode(p, NULL);
+  fail_unless(res == 0, "Failed to handle null path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   path = "/";
-  res = symlink_mode(path);
+  res = symlink_mode(p, path);
   fail_unless(res == 0, "Found mode for non-symlink '%s'", path);
 }
 END_TEST
@@ -512,13 +803,18 @@ START_TEST (file_mode_test) {
   mode_t res;
   const char *path;
 
-  res = file_mode(NULL);
-  fail_unless(res == 0, "Failed to handle null argument");
+  res = file_mode(NULL, NULL);
+  fail_unless(res == 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = file_mode(p, NULL);
+  fail_unless(res == 0, "Failed to handle null path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   path = "/";
-  res = file_mode(path);
+  res = file_mode(p, path);
   fail_unless(res != 0, "Failed to find mode for '%s': %s", path,
     strerror(errno));
 }
@@ -528,15 +824,18 @@ START_TEST (file_exists_test) {
   int res;
   const char *path;
 
-  res = file_exists(NULL);
+  res = file_exists(NULL, NULL);
   fail_unless(res == FALSE, "Failed to handle null arguments");
 
+  res = file_exists(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
   path = "/";
-  res = file_exists(path);
+  res = file_exists(p, path);
   fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
 
   path = "./api-tests";
-  res = file_exists(path);
+  res = file_exists(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 }
 END_TEST
@@ -671,6 +970,7 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, dir_best_path_test);
   tcase_add_test(testcase, dir_canonical_path_test);
   tcase_add_test(testcase, dir_canonical_vpath_test);
+  tcase_add_test(testcase, dir_readlink_test);
   tcase_add_test(testcase, dir_realpath_test);
   tcase_add_test(testcase, dir_abs_path_test);
   tcase_add_test(testcase, symlink_mode_test);

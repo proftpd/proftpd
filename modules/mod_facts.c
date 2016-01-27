@@ -26,7 +26,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_FACTS_VERSION		"mod_facts/0.5"
+#define MOD_FACTS_VERSION		"mod_facts/0.6"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
@@ -50,6 +50,7 @@ static unsigned long facts_mlinfo_opts = 0;
 #define FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK		0x00002
 #define FACTS_MLINFO_FL_NO_CDIR				0x00004
 #define FACTS_MLINFO_FL_APPEND_CRLF			0x00008
+#define FACTS_MLINFO_FL_NO_ADJUSTED_SYMLINKS		0x00010
 
 struct mlinfo {
   pool *pool;
@@ -423,18 +424,47 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
 #ifdef S_ISLNK
     if (S_ISLNK(info->st.st_mode)) {
       struct stat target_st;
+      const char *dst_path;
+      char *link_path;
+      size_t link_pathsz;
+      int len;
 
       /* Now we need to use stat(2) on the path (versus lstat(2)) to get the
        * info for the target, and copy its st_dev and st_ino values to our
        * stat in order to ensure that the unique fact values are the same.
+       *
+       * If we are chrooted, however, then the stat(2) on the symlink will
+       * almost certainly fail, especially if the destination path is an
+       * absolute path.
        */
 
-      res = pr_fsio_stat(path, &target_st);
+      link_pathsz = PR_TUNABLE_PATH_MAX;
+      link_path = pcalloc(info->pool, link_pathsz);
+      len = dir_readlink(info->pool, path, link_path, link_pathsz-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0 &&
+          len < link_pathsz) {
+        char *best_path;
+
+        best_path = dir_best_path(info->pool, link_path);
+        if (best_path != NULL) {
+          dst_path = best_path;
+
+        } else {
+          dst_path = link_path;
+        }
+
+      } else {
+        dst_path = path;
+      }
+
+      pr_fs_clear_cache2(dst_path);
+      res = pr_fsio_stat(dst_path, &target_st);
       if (res < 0) {
         int xerrno = errno;
 
         pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": error stat'ing '%s': %s",
-          path, strerror(xerrno));
+          dst_path, strerror(xerrno));
 
         errno = xerrno;
         return -1;
@@ -468,7 +498,14 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
           char target[PR_TUNABLE_PATH_MAX+1];
           int targetlen;
 
-          targetlen = pr_fsio_readlink(path, target, sizeof(target)-1);
+          if (flags & FACTS_MLINFO_FL_NO_ADJUSTED_SYMLINKS) {
+            targetlen = pr_fsio_readlink(path, target, sizeof(target)-1);
+
+          } else {
+            sstrncpy(target, dst_path, sizeof(target)-1);
+            targetlen = len;
+          }
+
           if (targetlen < 0) { 
             int xerrno = errno;
 
@@ -521,6 +558,9 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
        */
 
       perm = pstrcat(info->pool, perm, "adfr", NULL);
+
+    } else {
+      perm = pstrcat(info->pool, perm, "dfr", NULL);
     }
 
     if (pr_fsio_access(path, W_OK, session.uid, session.gid,
@@ -1821,8 +1861,11 @@ MODRET set_factsoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strncmp(cmd->argv[i], "UseSlink", 9) == 0) {
+    if (strcmp(cmd->argv[i], "UseSlink") == 0) {
       opts |= FACTS_MLINFO_FL_SHOW_SYMLINKS_USE_SLINK;
+
+    } else if (strcmp(cmd->argv[i], "NoAdjustedSymlinks") == 0) {
+      opts |= FACTS_MLINFO_FL_NO_ADJUSTED_SYMLINKS;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown FactsOption '",

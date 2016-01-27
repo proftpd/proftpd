@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1220,7 +1220,7 @@ MODRET set_sftpkeyblacklist(cmd_rec *cmd) {
         "' not an absolute path", NULL));
     }
 
-    if (!exists(cmd->argv[1])) {
+    if (!exists(cmd->tmp_pool, cmd->argv[1])) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "path '", cmd->argv[1],
         "' not found", NULL));
     }

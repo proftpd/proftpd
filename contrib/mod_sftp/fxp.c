@@ -3778,6 +3778,21 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int link_len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      link_len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (link_len > 0) {
+        link_path[link_len] = '\0';
+        path = pstrdup(fxp->pool, link_path);
+      }
+    }
+  }
+
   pr_fs_clear_cache2(path);
   res = pr_fsio_lstat(path, &st);
   if (res < 0) {
@@ -7787,7 +7802,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     /* Make sure the requested path exists. */
     if ((flags & SSH2_FXF_OPEN_EXISTING) &&
-        !exists(path)) {
+        !exists(fxp->pool, path)) {
       uint32_t status_code;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -7972,10 +7987,32 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       }
 
     } else {
-      path = dir_best_path(fxp->pool, path);
+      if (pr_fsio_lstat(path, &st) == 0) {
+        if (S_ISLNK(st.st_mode)) {
+          char link_path[PR_TUNABLE_PATH_MAX];
+          int len;
+
+          memset(link_path, '\0', sizeof(link_path));
+          len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+            PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+          if (len > 0) {
+            link_path[len] = '\0';
+            path = pstrdup(fxp->pool, link_path);
+          } else {
+            path = dir_best_path(fxp->pool, path);
+          }
+
+        } else {
+          path = dir_best_path(fxp->pool, path);
+        }
+
+      } else {
+        path = dir_best_path(fxp->pool, path);
+      }
     }
 
-    file_existed = exists(hiddenstore_path ? hiddenstore_path : path);
+    file_existed = exists(fxp->pool,
+      hiddenstore_path ? hiddenstore_path : path);
 
     if (file_existed &&
         (pr_cmd_cmp(cmd2, PR_CMD_STOR_ID) == 0 ||
@@ -8007,7 +8044,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
   }
 
-  if (exists(path)) {
+  if (exists(fxp->pool, path)) {
     /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
      * states that any attributes in a OPEN request are ignored if the
      * file already exists.
@@ -8296,6 +8333,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
+  struct stat st;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -8350,7 +8388,24 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
+  path = cmd->arg;
+
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        path = pstrdup(fxp->pool, link_path);
+      }
+    }
+  }
+
+  path = dir_best_path(fxp->pool, path);
   if (path == NULL) {
     int xerrno = EACCES;
     const char *reason;
@@ -9482,7 +9537,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
    * resolved by following any symlinks; readlink(2) would then return EINVAL
    * for reading a non-symlink path.
    */
-  res = pr_fsio_readlink(path, data, sizeof(data) - 1);
+  res = dir_readlink(fxp->pool, path, data, sizeof(data) - 1,
+    PR_DIR_READLINK_FL_HANDLE_REL_PATH);
   if (res < 0) {
     uint32_t status_code;
     const char *reason;
@@ -10525,7 +10581,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   }
 
   if (!(flags & SSH2_FXR_OVERWRITE) &&
-      exists(new_path)) {
+      exists(fxp->pool, new_path)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "denying RENAME of '%s' to '%s': '%s' already exists and client did not "
       "specify OVERWRITE flag", old_path, new_path, new_path);
@@ -10702,6 +10758,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
   int have_error = FALSE, res = 0;
+  struct stat st;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -10756,7 +10813,24 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
+  path = cmd->arg;
+
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        path = pstrdup(fxp->pool, link_path);
+      }
+    }
+  }
+
+  path = dir_best_path(fxp->pool, path);
   if (path == NULL) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -10982,6 +11056,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   struct stat *attrs;
   struct fxp_packet *resp;
   cmd_rec *cmd;
+  struct stat st;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -11044,7 +11119,24 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
+  path = cmd->arg;
+
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        path = pstrdup(fxp->pool, link_path);
+      }
+    }
+  }
+
+  path = dir_best_path(fxp->pool, path);
   if (path == NULL) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -11239,7 +11331,24 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
 
   /* The path may have been changed by any PRE_CMD handlers. */
-  path = dir_best_path(fxp->pool, cmd->arg);
+  path = cmd->arg;
+
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(fxp->pool, path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        path = pstrdup(fxp->pool, link_path);
+      }
+    }
+  }
+
+  path = dir_best_path(fxp->pool, path);
   if (path == NULL) {
     int xerrno = EACCES;
     const char *reason;

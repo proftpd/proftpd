@@ -4896,16 +4896,32 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   return pr_fsio_chmod(dir,mode);
 }
 
-MODRET _chdir(cmd_rec *cmd, char *ndir) {
-  char *dir, *odir, *cdir;
+MODRET core_chdir(cmd_rec *cmd, char *ndir) {
+  char *dir, *orig_dir, *cdir;
+  int xerrno = 0;
   config_rec *c = NULL, *cdpath;
-  unsigned char show_symlinks = TRUE, *tmp = NULL;
+  unsigned char show_symlinks = TRUE, *ptr = NULL;
+  struct stat st;
 
-  odir = ndir;
+  orig_dir = ndir;
 
-  tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
-  if (tmp != NULL) {
-    show_symlinks = *tmp;
+  if (pr_fsio_lstat(ndir, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char buf[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      len = dir_readlink(cmd->tmp_pool, ndir, buf, sizeof(buf)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        buf[len] = '\0';
+        ndir = pstrdup(cmd->tmp_pool, buf);
+      }
+    }
+  }
+
+  ptr = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (ptr != NULL) {
+    show_symlinks = *ptr;
   }
 
   if (show_symlinks) {
@@ -4926,15 +4942,16 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       }
     }
 
-    if (!use_cdpath &&
+    if (use_cdpath == FALSE &&
         pr_fsio_chdir(dir, 0) < 0) {
+      xerrno = errno;
       use_cdpath = TRUE;
     }
 
     if (use_cdpath) {
       for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
-          cdpath != NULL; cdpath =
-            find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+          cdpath != NULL;
+          cdpath = find_config_next(cdpath, cdpath->next, CONF_PARAM, "CDPath", TRUE)) {
         cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
         snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
@@ -4949,10 +4966,12 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         }
       }
 
-      if (!cdpath) {
-        int xerrno = errno;
+      if (cdpath == FALSE) {
+        if (xerrno == 0) {
+          xerrno = errno;
+        }
 
-        pr_response_add_err(R_550, "%s: %s", odir, strerror(xerrno));
+        pr_response_add_err(R_550, "%s: %s", orig_dir, strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -4986,9 +5005,9 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     }            
 
     if (use_cdpath) {
-      for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
-          cdpath != NULL; cdpath =
-            find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+      for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
+          cdpath != NULL;
+          cdpath = find_config_next(cdpath, cdpath->next, CONF_PARAM, "CDPath", TRUE)) {
         cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
         snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
@@ -5004,10 +5023,12 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         }
       }
 
-      if (!cdpath) {
-        int xerrno = errno;
+      if (cdpath == NULL) {
+        if (xerrno == 0) {
+          xerrno = errno;
+        }
 
-        pr_response_add_err(R_550, "%s: %s", odir, strerror(xerrno));
+        pr_response_add_err(R_550, "%s: %s", orig_dir, strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
@@ -5028,18 +5049,17 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       FALSE);
   }
 
-  if (!c &&
-      session.anon_config) {
+  if (c == NULL &&
+      session.anon_config != NULL) {
     c = find_config(session.anon_config->subset, CONF_PARAM, "DisplayChdir",
       FALSE);
   }
 
-  if (!c) {
+  if (c == NULL) {
     c = find_config(cmd->server->conf, CONF_PARAM, "DisplayChdir", FALSE);
   }
 
-  if (c) {
-    struct stat st;
+  if (c != NULL) {
     time_t prev = 0;
 
     char *display = c->argv[0];
@@ -5087,6 +5107,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
 MODRET core_rmd(cmd_rec *cmd) {
   int res;
   char *decoded_path, *dir;
+  struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -5131,10 +5152,30 @@ MODRET core_rmd(cmd_rec *cmd) {
       return PR_ERROR(cmd);
   }
 
-  /* If told to rmdir a symlink to a directory, don't; you can't rmdir a
-   * symlink, you delete it.
-   */
-  dir = dir_canonical_path(cmd->tmp_pool, dir);
+  if (pr_fsio_lstat(dir, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char buf[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(buf, '\0', sizeof(buf));
+      len = dir_readlink(cmd->tmp_pool, dir, buf, sizeof(buf)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        buf[len] = '\0';
+        dir = pstrdup(cmd->tmp_pool, buf);
+
+      } else {
+        dir = dir_canonical_path(cmd->tmp_pool, dir);
+      }
+
+    } else {
+      dir = dir_canonical_path(cmd->tmp_pool, dir);
+    }
+
+  } else {
+    dir = dir_canonical_path(cmd->tmp_pool, dir);
+  }
+
   if (dir == NULL) {
     int xerrno = EINVAL;
 
@@ -5296,12 +5337,12 @@ MODRET core_cwd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  return _chdir(cmd, decoded_path);
+  return core_chdir(cmd, decoded_path);
 }
 
 MODRET core_cdup(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
-  return _chdir(cmd, "..");
+  return core_chdir(cmd, "..");
 }
 
 /* Returns the modification time of a file, as per RFC3659. */
@@ -5326,7 +5367,28 @@ MODRET core_mdtm(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  path = dir_realpath(cmd->tmp_pool, decoded_path);
+  path = decoded_path;
+
+  if (pr_fsio_lstat(path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char buf[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(buf, '\0', sizeof(buf));
+      len = dir_readlink(cmd->tmp_pool, path, buf, sizeof(buf)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        buf[len] = '\0';
+        path = pstrdup(cmd->tmp_pool, buf);
+
+      } else {
+        path = dir_realpath(cmd->tmp_pool, decoded_path);
+      }
+
+    } else {
+      path = dir_realpath(cmd->tmp_pool, decoded_path);
+    }
+  }
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
@@ -5400,6 +5462,21 @@ MODRET core_size(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
+  }
+
+  if (pr_fsio_lstat(decoded_path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char buf[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(buf, '\0', sizeof(buf));
+      len = dir_readlink(cmd->tmp_pool, decoded_path, buf, sizeof(buf)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        buf[len] = '\0';
+        decoded_path = pstrdup(cmd->tmp_pool, buf);
+      }
+    }
   }
 
   path = dir_realpath(cmd->tmp_pool, decoded_path);
@@ -5804,9 +5881,9 @@ MODRET core_rnfr(cmd_rec *cmd) {
   /* Allow renaming a symlink, even a dangling one. */
   path = dir_canonical_path(cmd->tmp_pool, path);
 
-  if (!path ||
+  if (path == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
-      !exists(path)) {
+      !exists(cmd->tmp_pool, path)) {
     int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
@@ -5830,9 +5907,8 @@ MODRET core_rnfr(cmd_rec *cmd) {
   pr_table_add(session.notes, "mod_core.rnfr-path",
     pstrdup(session.xfer.p, session.xfer.path), 0);
 
-  pr_response_add(R_350, _("File or directory exists, ready for "
-    "destination name"));
-
+  pr_response_add(R_350,
+    _("File or directory exists, ready for destination name"));
   return PR_HANDLED(cmd);
 }
 

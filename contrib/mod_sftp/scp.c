@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -705,8 +705,25 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
     sp->filename = pdircat(scp_pool, sp->path, name_str, NULL);
   }
 
-  if (sp->filename) {
+  if (sp->filename != NULL) {
+    struct stat st;
+
     sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
+
+    if (pr_fsio_lstat(sp->best_path, &st) == 0) {
+      if (S_ISLNK(st.st_mode)) {
+        char link_path[PR_TUNABLE_PATH_MAX];
+        int len;
+
+        memset(link_path, '\0', sizeof(link_path));
+        len = dir_readlink(scp_pool, sp->best_path, link_path,
+          sizeof(link_path)-1, PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+        if (len > 0) {
+          link_path[len] = '\0';
+          sp->best_path = pstrdup(scp_pool, link_path);
+        }
+      }
+    }
 
     /* Update the session.xfer.path value with this better, fuller path. */
     session.xfer.path = pstrdup(session.xfer.p, sp->best_path);
@@ -916,7 +933,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
-  if (exists(sp->best_path)) {
+  if (exists(p, sp->best_path)) {
     if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
         pstrdup(cmd->pool, "true"), 0) < 0) {
       if (errno != EEXIST) {
@@ -1803,6 +1820,7 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     struct stat *st) {
   struct dirent *dent;
+  struct stat link_st;
   int res = 0;
 
   if (sp->dirh == NULL) {
@@ -1826,8 +1844,9 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   if (sp->dir_spi) { 
     res = send_path(p, channel_id, sp->dir_spi);
-    if (res <= 0)
+    if (res <= 0) {
       return res;
+    }
 
     /* Clear out any transfer-specific data. */
     if (session.xfer.p) {
@@ -1865,6 +1884,20 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
 
     spi->best_path = dir_canonical_vpath(scp_pool, spi->path);
+    if (pr_fsio_lstat(spi->best_path, &link_st) == 0) {
+      if (S_ISLNK(link_st.st_mode)) {
+        char link_path[PR_TUNABLE_PATH_MAX];
+        int len;
+
+        memset(link_path, '\0', sizeof(link_path));
+        len = dir_readlink(scp_pool, spi->best_path, link_path,
+          sizeof(link_path)-1, PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+        if (len > 0) {
+          link_path[len] = '\0';
+          spi->best_path = pstrdup(scp_pool, link_path);
+        }
+      }
+    }
 
     if (pathlen > 0) {
       sp->dir_spi = spi;
@@ -1891,8 +1924,9 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
 
     need_confirm = TRUE;
     res = sftp_channel_write_data(p, channel_id, (unsigned char *) "E\n", 2);
-    if (res < 0)
+    if (res < 0) {
       return res;
+    }
   }
 
   return 1;
@@ -1951,6 +1985,21 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
     if (strcmp(sp->path, cmd->arg) != 0) {
       sp->path = pstrdup(scp_session->pool, cmd->arg);
+    }
+  }
+
+  if (pr_fsio_lstat(sp->path, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      char link_path[PR_TUNABLE_PATH_MAX];
+      int len;
+
+      memset(link_path, '\0', sizeof(link_path));
+      len = dir_readlink(scp_pool, sp->path, link_path, sizeof(link_path)-1,
+        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+      if (len > 0) {
+        link_path[len] = '\0';
+        sp->path = pstrdup(scp_pool, link_path);
+      }
     }
   }
 
@@ -2508,6 +2557,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
       paths->paths->nelts != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "'scp' request provided more than one destination path, ignoring");
+    errno = EINVAL;
     return -1;
   }
 

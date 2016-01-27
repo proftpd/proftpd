@@ -416,6 +416,179 @@ char *dir_canonical_vpath(pool *p, const char *path) {
   return pstrdup(p, buf);
 }
 
+/* Performs chroot-aware handling of symlinks. */
+int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
+    int flags) {
+  int is_abs_dst, clean_flags, len, res = -1;
+  size_t chroot_pathlen = 0, adj_pathlen = 0;
+  char *dst_path, *adj_path;
+  pool *tmp_pool;
+
+  if (p == NULL ||
+      path == NULL ||
+      buf == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (bufsz == 0) {
+    return 0;
+  }
+
+  len = pr_fsio_readlink(path, buf, bufsz);
+  if (len < 0) {
+    return -1;
+  }
+
+  if (len == 0 ||
+      len == bufsz) {
+    /* If we read nothing in, OR if the given buffer was completely
+     * filled WITHOUT terminating NUL, there's really nothing we can/should
+     * be doing.
+     */
+    return len;
+  }
+
+  is_abs_dst = FALSE;
+  if (*buf == '/') {
+    is_abs_dst = TRUE;
+  }
+
+  if (session.chroot_path != NULL) {
+    chroot_pathlen = strlen(session.chroot_path);
+  }
+
+  if (chroot_pathlen <= 1) {
+    char *ptr;
+
+    if (is_abs_dst == TRUE ||
+        !(flags & PR_DIR_READLINK_FL_HANDLE_REL_PATH)) {
+      return len;
+    }
+
+    /* Since we have a relative destination path, we will concat it
+     * with the source path's directory, then clean up that path.
+     */
+    ptr = strrchr(path, '/');
+    if (ptr != NULL &&
+        ptr != path) {
+      char *parent_dir;
+
+      tmp_pool = make_sub_pool(p);
+      pr_pool_tag(tmp_pool, "dir_readlink pool");
+
+      parent_dir = pstrndup(tmp_pool, path, (ptr - path));
+      dst_path = pdircat(tmp_pool, parent_dir, buf, NULL);
+
+      adj_pathlen = bufsz + 1;
+      adj_path = pcalloc(tmp_pool, adj_pathlen);
+
+      res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, 0);
+      if (res == 0) {
+        pr_trace_msg("fsio", 19,
+          "cleaned symlink path '%s', yielding '%s'", dst_path, adj_path);
+        dst_path = adj_path;
+      }
+
+      pr_trace_msg("fsio", 19,
+        "adjusted relative symlink path '%s', yielding '%s'", buf, dst_path);
+
+      memset(buf, '\0', bufsz);
+      sstrncpy(buf, dst_path, bufsz);
+      len = strlen(buf);
+      destroy_pool(tmp_pool);
+    }
+
+    return len;
+  }
+
+  if (is_abs_dst == FALSE) {
+    /* If we are to ignore relative destination paths, return now. */
+    if (!(flags & PR_DIR_READLINK_FL_HANDLE_REL_PATH)) {
+      return len;
+    }
+  }
+
+  if (is_abs_dst == TRUE &&
+      len < chroot_pathlen) {
+    /* If the destination path length is shorter than the chroot path,
+     * AND the destination path is absolute, then by definition it CANNOT
+     * point within the chroot.
+     */
+    return len;
+  }
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "dir_readlink pool");
+
+  dst_path = pstrdup(tmp_pool, buf);
+  if (is_abs_dst == FALSE) {
+    char *ptr;
+
+    /* Since we have a relative destination path, we will concat it
+     * with the source path's directory, then clean up that path.
+     */
+
+    ptr = strrchr(path, '/');
+    if (ptr != NULL &&
+        ptr != path) {
+      char *parent_dir;
+
+      parent_dir = pstrndup(tmp_pool, path, (ptr - path));
+      dst_path = pdircat(tmp_pool, parent_dir, dst_path, NULL);
+
+    } else {
+      dst_path = pdircat(tmp_pool, path, dst_path, NULL);
+    }
+  }
+
+  adj_pathlen = bufsz + 1;
+  adj_path = pcalloc(tmp_pool, adj_pathlen);
+
+  clean_flags = PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH;
+  res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, clean_flags);
+  if (res == 0) {
+    pr_trace_msg("fsio", 19,
+      "cleaned symlink path '%s', yielding '%s'", dst_path, adj_path);
+    dst_path = adj_path;
+
+    memset(buf, '\0', bufsz);
+    sstrncpy(buf, dst_path, bufsz);
+    len = strlen(dst_path);
+  }
+
+  if (strncmp(dst_path, session.chroot_path, chroot_pathlen) == 0 &&
+      *(dst_path + chroot_pathlen) == '/') {
+    char *ptr;
+
+    ptr = dst_path + chroot_pathlen;
+
+    if (is_abs_dst == FALSE &&
+        res == 0) {
+      /* If we originally had a relative destination path, AND we cleaned
+       * that adjusted path, then we should try to re-adjust the path
+       * back to being a relative path.  Within reason.
+       */
+      ptr = pstrcat(tmp_pool, ".", ptr, NULL);
+    }
+
+    /* Since we are making the destination path shorter, the given buffer
+     * (which was big enough for the original destination path) should
+     * always be large enough for this adjusted, shorter version.  Right?
+     */
+    pr_trace_msg("fsio", 19,
+      "adjusted symlink path '%s' for chroot '%s', yielding '%s'",
+      dst_path, session.chroot_path, ptr);
+
+    memset(buf, '\0', bufsz);
+    sstrncpy(buf, ptr, bufsz);
+    len = strlen(buf);
+  }
+
+  destroy_pool(tmp_pool);
+  return len;
+}
+
 /* dir_realpath() is needed to properly dereference symlinks (getcwd() may
  * not work if permissions cause problems somewhere up the tree).
  */
@@ -497,7 +670,8 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
  * PATH, or 0 if it doesn't exist. Catch symlink loops using LAST_INODE and
  * RCOUNT.
  */
-static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
+static mode_t _symlink(pool *p, const char *path, ino_t last_inode,
+    int rcount) {
   char buf[PR_TUNABLE_PATH_MAX + 1];
   struct stat st;
   int i;
@@ -509,7 +683,8 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
 
   memset(buf, '\0', sizeof(buf));
 
-  i = pr_fsio_readlink(path, buf, sizeof(buf) - 1);
+  i = dir_readlink(p, path, buf, sizeof(buf)-1,
+    PR_DIR_READLINK_FL_HANDLE_REL_PATH);
   if (i < 0) {
     return (mode_t) 0;
   }
@@ -524,7 +699,7 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
     }
 
     if (S_ISLNK(st.st_mode)) {
-      return _symlink(buf, (ino_t) st.st_ino, rcount);
+      return _symlink(p, buf, (ino_t) st.st_ino, rcount);
     }
 
     return st.st_mode;
@@ -533,20 +708,22 @@ static mode_t _symlink(const char *path, ino_t last_inode, int rcount) {
   return 0;
 }
 
-mode_t symlink_mode(const char *path) {
-  if (path == NULL) {
+mode_t symlink_mode(pool *p, const char *path) {
+  if (p == NULL ||
+      path == NULL) {
     errno = EINVAL;
     return 0;
   }
 
-  return _symlink(path, (ino_t) 0, 0);
+  return _symlink(p, path, (ino_t) 0, 0);
 }
 
-mode_t file_mode(const char *path) {
+mode_t file_mode(pool *p, const char *path) {
   struct stat st;
   mode_t mode = 0;
 
-  if (path == NULL) {
+  if (p == NULL ||
+      path == NULL) {
     errno = EINVAL;
     return mode;
   }
@@ -554,7 +731,7 @@ mode_t file_mode(const char *path) {
   pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) >= 0) {
     if (S_ISLNK(st.st_mode)) {
-      mode = _symlink(path, (ino_t) 0, 0);
+      mode = _symlink(p, path, (ino_t) 0, 0);
       if (mode == 0) {
 	/* a dangling symlink, but it exists to rename or delete. */
 	mode = st.st_mode;
@@ -573,10 +750,10 @@ mode_t file_mode(const char *path) {
  * If flags == -1, fail unless PATH exists; the caller doesn't care whether
  * PATH is a file or a directory.
  */
-static int _exists(const char *path, int flags) {
+static int _exists(pool *p, const char *path, int flags) {
   mode_t mode;
 
-  mode = file_mode(path);
+  mode = file_mode(p, path);
   if (mode != 0) {
     switch (flags) {
       case 1:
@@ -601,16 +778,16 @@ static int _exists(const char *path, int flags) {
   return FALSE;
 }
 
-int file_exists(const char *path) {
-  return _exists(path, 0);
+int file_exists(pool *p, const char *path) {
+  return _exists(p, path, 0);
 }
 
-int dir_exists(const char *path) {
-  return _exists(path, 1);
+int dir_exists(pool *p, const char *path) {
+  return _exists(p, path, 1);
 }
 
-int exists(const char *path) {
-  return _exists(path, -1);
+int exists(pool *p, const char *path) {
+  return _exists(p, path, -1);
 }
 
 /* safe_token tokenizes a string, and increments the pointer to

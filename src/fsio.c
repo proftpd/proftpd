@@ -826,6 +826,10 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   retval = mystat(fs, cleaned_path, st);
   xerrno = errno;
 
+  if (retval == 0) {
+    xerrno = 0;
+  }
+
   /* Update the cache */
   res = fs_statcache_add(cache_tab, cleaned_path, path_len, st, xerrno, retval,     now);
   if (res < 0) {
@@ -990,7 +994,14 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
   /* Three characters are reserved at the end of linkbuf for some path
    * characters (and a trailing NUL).
    */
-  res = (fs->readlink)(fs, path, &linkbuf[2], sizeof(linkbuf)-3);
+  if (fs->readlink != NULL) {
+    res = (fs->readlink)(fs, path, &linkbuf[2], sizeof(linkbuf)-3);
+
+  } else {
+    errno = ENOSYS;
+    res = -1;
+  }
+
   if (res != -1) {
     linkbuf[res] = '\0';
 
@@ -3737,7 +3748,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
       xerrno = errno;
 
       pr_trace_msg(trace_channel, 1,
-        "mkdir(2) fail to create directory '%s' with perms %04o: %s", path,
+        "mkdir(2) failed to create directory '%s' with perms %04o: %s", path,
         mode, strerror(xerrno));
 
       errno = xerrno;
@@ -3753,7 +3764,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     xerrno = errno;
 
     pr_trace_msg(trace_channel, 1,
-      "mkdir(2) fail to create directory '%s' with perms %04o: %s", path,
+      "mkdir(2) failed to create directory '%s' with perms %04o: %s", path,
       mode, strerror(xerrno));
         
     errno = xerrno;
