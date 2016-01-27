@@ -705,8 +705,25 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
     sp->filename = pdircat(scp_pool, sp->path, name_str, NULL);
   }
 
-  if (sp->filename) {
+  if (sp->filename != NULL) {
+    struct stat st;
+
     sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
+
+    if (pr_fsio_lstat(sp->best_path, &st) == 0) {
+      if (S_ISLNK(st.st_mode)) {
+        char link_path[PR_TUNABLE_PATH_MAX];
+        int len;
+
+        memset(link_path, '\0', sizeof(link_path));
+        len = dir_readlink(scp_pool, sp->best_path, link_path,
+          sizeof(link_path)-1, PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+        if (len > 0) {
+          link_path[len] = '\0';
+          sp->best_path = pstrdup(scp_pool, link_path);
+        }
+      }
+    }
 
     /* Update the session.xfer.path value with this better, fuller path. */
     session.xfer.path = pstrdup(session.xfer.p, sp->best_path);
@@ -2508,6 +2525,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
       paths->paths->nelts != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "'scp' request provided more than one destination path, ignoring");
+    errno = EINVAL;
     return -1;
   }
 
