@@ -1527,19 +1527,17 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
-
-  } else {
-    cmd->arg = filename;
-
-    /* Close the unique file.  This introduces a small race condition
-     * between the time this function returns, and the STOU CMD handler
-     * opens the unique file, but this may have to do, as closing that
-     * race would involve some major restructuring.
-     */
-    (void) close(stou_fd);
   }
 
-  /* It's OK to reuse the char * pointer for filename. */
+  cmd->arg = filename;
+
+  /* Close the unique file.  This introduces a small race condition
+   * between the time this function returns, and the STOU CMD handler
+   * opens the unique file, but this may have to do, as closing that
+   * race would involve some major restructuring.
+   */
+  (void) close(stou_fd);
+
   filename = dir_best_path(cmd->tmp_pool, cmd->arg);
 
   if (filename == NULL ||
