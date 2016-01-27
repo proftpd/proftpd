@@ -180,9 +180,10 @@ to keep in mind the history of this format.  The xferlog(5) format
 was <em>the</em> popular FTP server at that time.  There were already existing
 tools/scripts which knew how to parse that format, so ProFTPD used it.  Since
 then, <code>wu-ftpd</code> has waned in maintenance and popularity; other
-FTP servers (<i>e.g.</i> <code>pure-ftpd</code>, <code>vsftpd</code>) have
-since then picked up the <code>xferlog(5)</code> format from ProFTPD.  Thus
-this log format has a 20+ year history, and keeps going.
+FTP servers (<i>e.g.</i> <code>pure-ftpd</code>, <code>vsftpd</code>, but
+<b>not</b> the built-in <code>ftpd</code> on FreeBSD) have since then picked
+up the <code>xferlog(5)</code> format from ProFTPD.  Thus this log format has
+a 20+ year history, and keeps going.
 
 <p>
 This history helps explain certain fields in the <code>xferlog(5)</code>
