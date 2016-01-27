@@ -2942,6 +2942,11 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
     unsigned char *tlsext_data, int tlsext_datalen, void *data) {
   char *extension_name = "(unknown)";
 
+  /* Note: OpenSSL does not implement all possible extensions.  For the
+   * "(unknown)" extensions, see:
+   *
+   *  http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#tls-extensiontype-values-1
+   */
   switch (type) {
     case TLSEXT_TYPE_server_name:
         extension_name = "server name";
