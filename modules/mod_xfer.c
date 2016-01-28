@@ -1977,6 +1977,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* If no throttling is configured, this does nothing. */
     pr_throttle_pause(nbytes_stored, TRUE);
 
+    path = pstrdup(cmd->pool, stor_fh->fh_path);
+
     if (stor_complete() < 0) {
       xerrno = errno;
 
@@ -2010,6 +2012,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
+    }
+
+    if (path != NULL) {
+      if (pr_fsio_stat(path, &st) == 0) {
+        off_t *file_size;
+
+        file_size = palloc(cmd->pool, sizeof(off_t));
+        *file_size = st.st_size;
+        (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
+          sizeof(off_t));
+      }
     }
 
     if (session.xfer.path &&
@@ -2495,6 +2508,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
 
   } else {
+    char *path;
+
     /* If no throttling is configured, this simply updates the scoreboard.
      * In this case, we want to use session.xfer.total_bytes, rather than
      * nbytes_sent, as the latter incorporates a REST position and the
@@ -2502,6 +2517,19 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * end-of-loop conditions).
      */
     pr_throttle_pause(session.xfer.total_bytes, TRUE);
+
+    path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
+    if (path != NULL) {
+      pr_fs_clear_cache2(path);
+      if (pr_fsio_stat(path, &st) == 0) {
+        off_t *file_size;
+
+        file_size = palloc(cmd->pool, sizeof(off_t));
+        *file_size = st.st_size;
+        (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
+          sizeof(off_t));
+      }
+    }
 
     retr_complete();
 

@@ -116,6 +116,7 @@ static xaset_t *log_set = NULL;
    %{file-modified}     - Indicates whether a file is being modified
                           (i.e. already exists) or not.
    %{file-offset}       - Contains the offset at which the file is read/written
+   %{file-size}         - Contains the file size at the end of the transfer
    %{iso8601}           - ISO-8601 timestamp: YYYY-MM-dd HH:mm:ss,SSS
                             for example: "1999-11-27 15:49:37,459"
    %{microsecs}         - 6 digits of microseconds of current time
@@ -205,6 +206,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
         if (strncmp(tmp, "{file-offset}", 13) == 0) {
           add_meta(&outs, LOGFMT_META_FILE_OFFSET, 0);
           tmp += 13;
+          continue;
+        }
+
+        if (strncmp(tmp, "{file-size}", 11) == 0) {
+          add_meta(&outs, LOGFMT_META_FILE_SIZE, 0);
+          tmp += 11;
           continue;
         }
 
@@ -1854,6 +1861,28 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
         snprintf(offset_str, sizeof(offset_str)-1, "%" PR_LU,
           (pr_off_t) *offset);
         len = sstrncpy(argp, offset_str, sizeof(arg));
+
+      } else {
+        len = sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
+
+    case LOGFMT_META_FILE_SIZE: {
+      off_t *file_size;
+
+      argp = arg;
+
+      file_size = pr_table_get(cmd->notes, "mod_xfer.file-size", NULL);
+      if (file_size != NULL) {
+        char size_str[1024];
+
+        memset(size_str, '\0', sizeof(size_str));
+        snprintf(size_str, sizeof(size_str)-1, "%" PR_LU,
+          (pr_off_t) *file_size);
+        len = sstrncpy(argp, size_str, sizeof(arg));
 
       } else {
         len = sstrncpy(argp, "-", sizeof(arg));
