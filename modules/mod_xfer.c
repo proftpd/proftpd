@@ -1600,6 +1600,26 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET xfer_post_stor(cmd_rec *cmd) {
+  char *path;
+
+  path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
+  if (path != NULL) {
+    struct stat st;
+
+    if (pr_fsio_stat(path, &st) == 0) {
+      off_t *file_size;
+
+      file_size = palloc(cmd->pool, sizeof(off_t));
+      *file_size = st.st_size;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
+        sizeof(off_t));
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* xfer_post_stou() is a POST_CMD handler that changes the mode of the
  * STOU file from 0600, which is what mkstemp() makes it, to 0666 (modulo
  * Umask), the default for files uploaded via STOR.  This is to prevent users
@@ -1607,6 +1627,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
  */
 MODRET xfer_post_stou(cmd_rec *cmd) {
   mode_t mask, perms, *umask;
+  struct stat st;
 
   /* mkstemp(3) creates a file with 0600 perms; we need to adjust this
    * for the Umask (Bug#4223).
@@ -1625,6 +1646,15 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
     /* Not much to do but log the error. */
     pr_log_pri(PR_LOG_NOTICE, "error: unable to chmod '%s' to %04o: %s",
       cmd->arg, perms, strerror(errno));
+  }
+
+  if (pr_fsio_stat(cmd->arg, &st) == 0) {
+    off_t *file_size;
+
+    file_size = palloc(cmd->pool, sizeof(off_t));
+    *file_size = st.st_size;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
+      sizeof(off_t));
   }
 
   return PR_DECLINED(cmd);
@@ -1977,8 +2007,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* If no throttling is configured, this does nothing. */
     pr_throttle_pause(nbytes_stored, TRUE);
 
-    path = pstrdup(cmd->pool, stor_fh->fh_path);
-
     if (stor_complete() < 0) {
       xerrno = errno;
 
@@ -2012,17 +2040,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
       return PR_ERROR(cmd);
-    }
-
-    if (path != NULL) {
-      if (pr_fsio_stat(path, &st) == 0) {
-        off_t *file_size;
-
-        file_size = palloc(cmd->pool, sizeof(off_t));
-        *file_size = st.st_size;
-        (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
-          sizeof(off_t));
-      }
     }
 
     if (session.xfer.path &&
@@ -2284,6 +2301,26 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET xfer_post_retr(cmd_rec *cmd) {
+  char *path;
+
+  path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
+  if (path != NULL) {
+    struct stat st;
+
+    if (pr_fsio_stat(path, &st) == 0) {
+      off_t *file_size;
+
+      file_size = palloc(cmd->pool, sizeof(off_t));
+      *file_size = st.st_size;
+      (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
+        sizeof(off_t));
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET xfer_retr(cmd_rec *cmd) {
   char *dir = NULL, *lbuf;
   struct stat st;
@@ -2508,7 +2545,6 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
 
   } else {
-    char *path;
 
     /* If no throttling is configured, this simply updates the scoreboard.
      * In this case, we want to use session.xfer.total_bytes, rather than
@@ -2517,19 +2553,6 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * end-of-loop conditions).
      */
     pr_throttle_pause(session.xfer.total_bytes, TRUE);
-
-    path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
-    if (path != NULL) {
-      pr_fs_clear_cache2(path);
-      if (pr_fsio_stat(path, &st) == 0) {
-        off_t *file_size;
-
-        file_size = palloc(cmd->pool, sizeof(off_t));
-        *file_size = st.st_size;
-        (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
-          sizeof(off_t));
-      }
-    }
 
     retr_complete();
 
@@ -3915,10 +3938,12 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_SMNT,	G_NONE,	 xfer_smnt,	TRUE,	FALSE, CL_MISC },
   { PRE_CMD, C_RETR,	G_READ,	 xfer_pre_retr,	TRUE,	FALSE },
   { CMD,     C_RETR,	G_READ,	 xfer_retr,	TRUE,	FALSE, CL_READ },
+  { POST_CMD,C_RETR,	G_NONE,  xfer_post_retr,FALSE,	FALSE },
   { LOG_CMD, C_RETR,	G_NONE,	 xfer_log_retr,	FALSE,  FALSE },
   { LOG_CMD_ERR, C_RETR,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { PRE_CMD, C_STOR,	G_WRITE, xfer_pre_stor,	TRUE,	FALSE },
   { CMD,     C_STOR,	G_WRITE, xfer_stor,	TRUE,	FALSE, CL_WRITE },
+  { POST_CMD,C_STOR,	G_NONE,  xfer_post_stor,FALSE,	FALSE },
   { LOG_CMD, C_STOR,    G_NONE,	 xfer_log_stor,	FALSE,  FALSE },
   { LOG_CMD_ERR, C_STOR,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { PRE_CMD, C_STOU,	G_WRITE, xfer_pre_stou,	TRUE,	FALSE },
@@ -3928,6 +3953,7 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD_ERR, C_STOU,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { PRE_CMD, C_APPE,	G_WRITE, xfer_pre_appe,	TRUE,	FALSE },
   { CMD,     C_APPE,	G_WRITE, xfer_stor,	TRUE,	FALSE, CL_WRITE },
+  { POST_CMD,C_APPE,	G_NONE,  xfer_post_stor,FALSE,	FALSE },
   { LOG_CMD, C_APPE,	G_NONE,  xfer_log_stor,	FALSE,  FALSE },
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
