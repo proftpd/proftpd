@@ -1220,7 +1220,7 @@ MODRET set_sftpkeyblacklist(cmd_rec *cmd) {
         "' not an absolute path", NULL));
     }
 
-    if (!exists(cmd->tmp_pool, cmd->argv[1])) {
+    if (!exists2(cmd->tmp_pool, cmd->argv[1])) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "path '", cmd->argv[1],
         "' not found", NULL));
     }

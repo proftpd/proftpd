@@ -7802,7 +7802,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     /* Make sure the requested path exists. */
     if ((flags & SSH2_FXF_OPEN_EXISTING) &&
-        !exists(fxp->pool, path)) {
+        !exists2(fxp->pool, path)) {
       uint32_t status_code;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -8011,7 +8011,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       }
     }
 
-    file_existed = exists(fxp->pool,
+    file_existed = exists2(fxp->pool,
       hiddenstore_path ? hiddenstore_path : path);
 
     if (file_existed &&
@@ -8044,7 +8044,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
   }
 
-  if (exists(fxp->pool, path)) {
+  if (exists2(fxp->pool, path)) {
     /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
      * states that any attributes in a OPEN request are ignored if the
      * file already exists.
@@ -10581,7 +10581,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   }
 
   if (!(flags & SSH2_FXR_OVERWRITE) &&
-      exists(fxp->pool, new_path)) {
+      exists2(fxp->pool, new_path)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "denying RENAME of '%s' to '%s': '%s' already exists and client did not "
       "specify OVERWRITE flag", old_path, new_path, new_path);

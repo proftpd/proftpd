@@ -2019,7 +2019,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           target_mode = st.st_mode;
 
           if (S_ISLNK(st.st_mode) &&
-              (lmode = symlink_mode(cmd->tmp_pool, (char *) *path)) != 0) {
+              (lmode = symlink_mode2(cmd->tmp_pool, (char *) *path)) != 0) {
             if (opt_L || !list_show_symlinks) {
               st.st_mode = lmode;
             }
@@ -2426,7 +2426,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         continue;
       }
 
-      mode = file_mode(cmd->tmp_pool, f);
+      mode = file_mode2(cmd->tmp_pool, f);
       if (mode == 0) {
         continue;
       }

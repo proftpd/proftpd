@@ -685,7 +685,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
 
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
-      !exists(cmd->tmp_pool, path)) {
+      !exists2(cmd->tmp_pool, path)) {
     int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
@@ -701,8 +701,8 @@ MODRET copy_cpfr(cmd_rec *cmd) {
       "error adding 'mod_copy.cpfr-path' note: %s", strerror(errno));
   }
 
-  pr_response_add(R_350, _("File or directory exists, ready for destination "
-    "name"));
+  pr_response_add(R_350,
+    _("File or directory exists, ready for destination name"));
   return PR_HANDLED(cmd);
 }
 

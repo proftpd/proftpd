@@ -683,8 +683,13 @@ static mode_t _symlink(pool *p, const char *path, ino_t last_inode,
 
   memset(buf, '\0', sizeof(buf));
 
-  i = dir_readlink(p, path, buf, sizeof(buf)-1,
-    PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+  if (p != NULL) {
+    i = dir_readlink(p, path, buf, sizeof(buf)-1,
+      PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+  } else {
+    i = pr_fsio_readlink(path, buf, sizeof(buf)-1);
+  }
+
   if (i < 0) {
     return (mode_t) 0;
   }
@@ -708,9 +713,8 @@ static mode_t _symlink(pool *p, const char *path, ino_t last_inode,
   return 0;
 }
 
-mode_t symlink_mode(pool *p, const char *path) {
-  if (p == NULL ||
-      path == NULL) {
+mode_t symlink_mode2(pool *p, const char *path) {
+  if (path == NULL) {
     errno = EINVAL;
     return 0;
   }
@@ -718,12 +722,15 @@ mode_t symlink_mode(pool *p, const char *path) {
   return _symlink(p, path, (ino_t) 0, 0);
 }
 
-mode_t file_mode(pool *p, const char *path) {
+mode_t symlink_mode(const char *path) {
+  return symlink_mode2(NULL, path);
+}
+
+mode_t file_mode2(pool *p, const char *path) {
   struct stat st;
   mode_t mode = 0;
 
-  if (p == NULL ||
-      path == NULL) {
+  if (path == NULL) {
     errno = EINVAL;
     return mode;
   }
@@ -745,6 +752,10 @@ mode_t file_mode(pool *p, const char *path) {
   return mode;
 }
 
+mode_t file_mode(const char *path) {
+  return file_mode2(NULL, path);
+}
+
 /* If flags == 1, fail unless PATH is an existing directory.
  * If flags == 0, fail unless PATH is an existing non-directory.
  * If flags == -1, fail unless PATH exists; the caller doesn't care whether
@@ -753,7 +764,7 @@ mode_t file_mode(pool *p, const char *path) {
 static int _exists(pool *p, const char *path, int flags) {
   mode_t mode;
 
-  mode = file_mode(p, path);
+  mode = file_mode2(p, path);
   if (mode != 0) {
     switch (flags) {
       case 1:
@@ -778,16 +789,28 @@ static int _exists(pool *p, const char *path, int flags) {
   return FALSE;
 }
 
-int file_exists(pool *p, const char *path) {
+int file_exists2(pool *p, const char *path) {
   return _exists(p, path, 0);
 }
 
-int dir_exists(pool *p, const char *path) {
+int file_exists(const char *path) {
+  return file_exists2(NULL, path);
+}
+
+int dir_exists2(pool *p, const char *path) {
   return _exists(p, path, 1);
 }
 
-int exists(pool *p, const char *path) {
+int dir_exists(const char *path) {
+  return dir_exists2(NULL, path);
+}
+
+int exists2(pool *p, const char *path) {
   return _exists(p, path, -1);
+}
+
+int exists(const char *path) {
+  return exists2(NULL, path);
 }
 
 /* safe_token tokenizes a string, and increments the pointer to

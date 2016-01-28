@@ -80,11 +80,20 @@ void shutdown_end_session(void *, void *, void *, void *);
 
 long get_name_max(char *path, int fd);
 
-mode_t file_mode(pool *, const char *);
-mode_t symlink_mode(pool *, const char *);
-int file_exists(pool *, const char *);
-int dir_exists(pool *, const char *);
-int exists(pool *, const char *);
+mode_t file_mode(const char *);
+mode_t file_mode2(pool *, const char *);
+
+mode_t symlink_mode(const char *);
+mode_t symlink_mode2(pool *, const char *);
+
+int file_exists(const char *);
+int file_exists2(pool *, const char *);
+
+int dir_exists(const char *);
+int dir_exists2(pool *, const char *);
+
+int exists(const char *);
+int exists2(pool *, const char *);
 
 char *safe_token(char **);
 int check_shutmsg(const char *, time_t *, time_t *, time_t *, char *, size_t);
