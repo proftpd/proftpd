@@ -2434,6 +2434,26 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 9 &&
+      strncasecmp(tag, "file-size", 10) == 0) {
+    off_t *file_size;
+
+    file_size = pr_table_get(cmd->notes, "mod_xfer.file-size", NULL);
+    if (file_size != NULL) {
+      char size_str[1024];
+      size_t len = 0;
+
+      memset(size_str, '\0', sizeof(size_str));
+      len = snprintf(size_str, sizeof(size_str)-1, "%" PR_LU,
+        (pr_off_t) *file_size);
+      long_tag = pstrndup(cmd->tmp_pool, size_str, len);
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
+  }
+
+  if (long_tag == NULL &&
       tag_len == 7 &&
       strncasecmp(tag, "iso8601", 8) == 0) {
     char buf[32];
