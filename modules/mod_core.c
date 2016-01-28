@@ -5883,7 +5883,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
 
   if (path == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
-      !exists(cmd->tmp_pool, path)) {
+      !exists2(cmd->tmp_pool, path)) {
     int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));

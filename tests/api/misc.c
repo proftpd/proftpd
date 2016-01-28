@@ -747,14 +747,27 @@ START_TEST (exists_test) {
   int res;
   const char *path;
 
-  res = exists(NULL, NULL);
-  fail_unless(res == FALSE, "Failed to handle null arguments");
-
-  res = exists(p, NULL);
+  res = exists(NULL);
   fail_unless(res == FALSE, "Failed to handle null path");
 
   path = "/";
-  res = exists(p, path);
+  res = exists(path);
+  fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
+}
+END_TEST
+
+START_TEST (exists2_test) {
+  int res;
+  const char *path;
+
+  res = exists2(NULL, NULL);
+  fail_unless(res == FALSE, "Failed to handle null arguments");
+
+  res = exists2(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
+  path = "/";
+  res = exists2(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 }
 END_TEST
@@ -763,18 +776,35 @@ START_TEST (dir_exists_test) {
   int res;
   const char *path;
 
-  res = dir_exists(NULL, NULL);
-  fail_unless(res == FALSE, "Failed to handle null arguments");
-
-  res = dir_exists(p, NULL);
+  res = dir_exists(NULL);
   fail_unless(res == FALSE, "Failed to handle null path");
 
   path = "/";
-  res = dir_exists(p, path);
+  res = dir_exists(path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 
   path = "./api-tests";
-  res = dir_exists(p, path);
+  res = dir_exists(path);
+  fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
+}
+END_TEST
+
+START_TEST (dir_exists2_test) {
+  int res;
+  const char *path;
+
+  res = dir_exists2(NULL, NULL);
+  fail_unless(res == FALSE, "Failed to handle null arguments");
+
+  res = dir_exists2(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
+  path = "/";
+  res = dir_exists2(p, path);
+  fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
+
+  path = "./api-tests";
+  res = dir_exists2(p, path);
   fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
 }
 END_TEST
@@ -783,18 +813,33 @@ START_TEST (symlink_mode_test) {
   mode_t res;
   const char *path;
 
-  res = symlink_mode(NULL, NULL);
+  res = symlink_mode(NULL);
   fail_unless(res == 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  res = symlink_mode(p, NULL);
+  path = "/";
+  res = symlink_mode(path);
+  fail_unless(res == 0, "Found mode for non-symlink '%s'", path);
+}
+END_TEST
+
+START_TEST (symlink_mode2_test) {
+  mode_t res;
+  const char *path;
+
+  res = symlink_mode2(NULL, NULL);
+  fail_unless(res == 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = symlink_mode2(p, NULL);
   fail_unless(res == 0, "Failed to handle null path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   path = "/";
-  res = symlink_mode(p, path);
+  res = symlink_mode2(p, path);
   fail_unless(res == 0, "Found mode for non-symlink '%s'", path);
 }
 END_TEST
@@ -803,18 +848,34 @@ START_TEST (file_mode_test) {
   mode_t res;
   const char *path;
 
-  res = file_mode(NULL, NULL);
-  fail_unless(res == 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  res = file_mode(p, NULL);
+  res = file_mode(NULL);
   fail_unless(res == 0, "Failed to handle null path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   path = "/";
-  res = file_mode(p, path);
+  res = file_mode(path);
+  fail_unless(res != 0, "Failed to find mode for '%s': %s", path,
+    strerror(errno));
+}
+END_TEST
+
+START_TEST (file_mode2_test) {
+  mode_t res;
+  const char *path;
+
+  res = file_mode2(NULL, NULL);
+  fail_unless(res == 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = file_mode2(p, NULL);
+  fail_unless(res == 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+  res = file_mode2(p, path);
   fail_unless(res != 0, "Failed to find mode for '%s': %s", path,
     strerror(errno));
 }
@@ -824,18 +885,35 @@ START_TEST (file_exists_test) {
   int res;
   const char *path;
 
-  res = file_exists(NULL, NULL);
-  fail_unless(res == FALSE, "Failed to handle null arguments");
-
-  res = file_exists(p, NULL);
+  res = file_exists(NULL);
   fail_unless(res == FALSE, "Failed to handle null path");
 
   path = "/";
-  res = file_exists(p, path);
+  res = file_exists(path);
   fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
 
   path = "./api-tests";
-  res = file_exists(p, path);
+  res = file_exists(path);
+  fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
+}
+END_TEST
+
+START_TEST (file_exists2_test) {
+  int res;
+  const char *path;
+
+  res = file_exists2(NULL, NULL);
+  fail_unless(res == FALSE, "Failed to handle null arguments");
+
+  res = file_exists2(p, NULL);
+  fail_unless(res == FALSE, "Failed to handle null path");
+
+  path = "/";
+  res = file_exists2(p, path);
+  fail_unless(res == FALSE, "Expected FALSE for path '%s', got TRUE", path);
+
+  path = "./api-tests";
+  res = file_exists2(p, path);
   fail_unless(res == TRUE, "Expected TRUE for path '%s', got FALSE", path);
 }
 END_TEST
@@ -974,10 +1052,15 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, dir_realpath_test);
   tcase_add_test(testcase, dir_abs_path_test);
   tcase_add_test(testcase, symlink_mode_test);
+  tcase_add_test(testcase, symlink_mode2_test);
   tcase_add_test(testcase, file_mode_test);
+  tcase_add_test(testcase, file_mode2_test);
   tcase_add_test(testcase, exists_test);
+  tcase_add_test(testcase, exists2_test);
   tcase_add_test(testcase, dir_exists_test);
+  tcase_add_test(testcase, dir_exists2_test);
   tcase_add_test(testcase, file_exists_test);
+  tcase_add_test(testcase, file_exists2_test);
   tcase_add_test(testcase, safe_token_test);
   tcase_add_test(testcase, check_shutmsg_test);
   tcase_add_test(testcase, memscrub_test);

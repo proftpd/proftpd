@@ -1140,7 +1140,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
       hidden_path, path);
   }
 
-  if (file_mode(cmd->tmp_pool, hidden_path)) {
+  if (file_mode2(cmd->tmp_pool, hidden_path)) {
     session.xfer.xfer_type = STOR_DEFAULT;
 
     pr_log_debug(DEBUG3, "HiddenStore path '%s' already exists",
@@ -1307,7 +1307,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  fmode = file_mode(cmd->tmp_pool, path);
+  fmode = file_mode2(cmd->tmp_pool, path);
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
@@ -1556,7 +1556,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  mode = file_mode(cmd->tmp_pool, filename);
+  mode = file_mode2(cmd->tmp_pool, filename);
 
   /* Note: this case should never happen: how one can be appending to
    * a supposedly unique filename?  Should probably be removed...
@@ -2231,7 +2231,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  fmode = file_mode(cmd->tmp_pool, dir);
+  fmode = file_mode2(cmd->tmp_pool, dir);
   if (fmode == 0) {
     int xerrno = errno;
 

@@ -6064,7 +6064,7 @@ MODRET set_sqlnamedconnectinfo(cmd_rec *cmd) {
       path += 9;
 
       /* Check the file exists! */
-      if (file_exists(cmd->tmp_pool, path) == TRUE) {
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_cert_file = path;
 
       } else {
@@ -6082,7 +6082,7 @@ MODRET set_sqlnamedconnectinfo(cmd_rec *cmd) {
       path += 8;
 
       /* Check the file exists! */
-      if (file_exists(cmd->tmp_pool, path) == TRUE) {
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_key_file = path;
 
       } else {
@@ -6100,10 +6100,10 @@ MODRET set_sqlnamedconnectinfo(cmd_rec *cmd) {
       path += 7;
 
       /* Check the file exists! */
-      if (file_exists(cmd->tmp_pool, path) == TRUE) {
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_ca_file = path;
 
-      } else if (dir_exists(cmd->tmp_pool, path) == TRUE) {
+      } else if (dir_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_ca_dir = path;
 
       } else {
@@ -6478,7 +6478,7 @@ MODRET set_sqlconnectinfo(cmd_rec *cmd) {
       path += 9;
 
       /* Check the file exists! */
-      if (file_exists(cmd->tmp_pool, path) == TRUE) {
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_cert_file = path;
 
       } else {
@@ -6496,7 +6496,7 @@ MODRET set_sqlconnectinfo(cmd_rec *cmd) {
       path += 8;
 
       /* Check the file exists! */
-      if (file_exists(cmd->tmp_pool, path) == TRUE) {
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_key_file = path;
 
       } else {
@@ -6514,10 +6514,10 @@ MODRET set_sqlconnectinfo(cmd_rec *cmd) {
       path += 7;
 
       /* Check the file exists! */
-      if (file_exists(cmd->tmp_pool, path) == TRUE) {
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_ca_file = path;
 
-      } else if (dir_exists(cmd->tmp_pool, path) == TRUE) {
+      } else if (dir_exists2(cmd->tmp_pool, path) == TRUE) {
         ssl_ca_dir = path;
 
       } else {
