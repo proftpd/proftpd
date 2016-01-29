@@ -9430,6 +9430,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
 
     if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
+      tls_end_sess(ssl, session.d, 0);
       pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
       pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
       tls_data_netio = NULL;
