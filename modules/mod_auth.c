@@ -2773,6 +2773,11 @@ MODRET auth_pre_retr(cmd_rec *cmd) {
   pr_fs_t *curr_fs = NULL;
   struct stat st;
 
+  /* Only apply this for <Anonymous> logins. */
+  if (session.anon_config == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
   if (auth_anon_allow_robots == TRUE) {
     return PR_DECLINED(cmd);
   }
