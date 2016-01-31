@@ -41,6 +41,8 @@ static unsigned char mkhome = FALSE;
 static unsigned char authenticated_without_pass = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = FALSE;
+static int auth_anon_allow_robots = FALSE;
+static int auth_anon_allow_robots_enabled = FALSE;
 static int auth_client_connected = FALSE;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
@@ -632,6 +634,11 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     }
 
     pr_log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
+  }
+
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AnonAllowRobots", FALSE);
+  if (c != NULL) {
+    auth_anon_allow_robots = *((int *) c->argv[0]);
   }
 
   return PR_DECLINED(cmd);
@@ -2647,6 +2654,226 @@ MODRET auth_rein(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* FSIO callbacks for providing a fake robots.txt file, for the AnonAllowRobots
+ * functionality.
+ */
+
+#define AUTH_ROBOTS_TXT			"User-agent: *\nDisallow: /\n"
+#define AUTH_ROBOTS_TXT_FD		6742
+
+static int robots_fsio_stat(pr_fs_t *fs, const char *path, struct stat *st) {
+  st->st_dev = (dev_t) 0;
+  st->st_ino = (ino_t) 0;
+  st->st_mode = (S_IFREG|S_IRUSR|S_IRGRP|S_IROTH);
+  st->st_nlink = 0;
+  st->st_uid = (uid_t) 0;
+  st->st_gid = (gid_t) 0;
+  st->st_atime = 0;
+  st->st_mtime = 0;
+  st->st_ctime = 0;
+  st->st_size = strlen(AUTH_ROBOTS_TXT);
+  st->st_blksize = 1024;
+  st->st_blocks = 1;
+
+  return 0;
+}
+
+static int robots_fsio_fstat(pr_fh_t *fh, int fd, struct stat *st) {
+  if (fd != AUTH_ROBOTS_TXT_FD) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  return robots_fsio_stat(NULL, NULL, st);
+}
+
+static int robots_fsio_lstat(pr_fs_t *fs, const char *path, struct stat *st) {
+  return robots_fsio_stat(fs, path, st);
+}
+
+static int robots_fsio_unlink(pr_fs_t *fs, const char *path) {
+  return 0;
+}
+
+static int robots_fsio_open(pr_fh_t *fh, const char *path, int flags) {
+  if (flags != O_RDONLY) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  return AUTH_ROBOTS_TXT_FD;
+}
+
+static int robots_fsio_close(pr_fh_t *fh, int fd) {
+  if (fd != AUTH_ROBOTS_TXT_FD) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int robots_fsio_read(pr_fh_t *fh, int fd, char *buf, size_t bufsz) {
+  size_t robots_len;
+
+  if (fd != AUTH_ROBOTS_TXT_FD) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  robots_len = strlen(AUTH_ROBOTS_TXT);
+
+  if (bufsz < robots_len) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memcpy(buf, AUTH_ROBOTS_TXT, robots_len);
+  return (int) robots_len;
+}
+
+static int robots_fsio_write(pr_fh_t *fh, int fd, const char *buf,
+    size_t bufsz) {
+  if (fd != AUTH_ROBOTS_TXT_FD) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  return (int) bufsz;
+}
+
+static int robots_fsio_access(pr_fs_t *fs, const char *path, int mode,
+    uid_t uid, gid_t gid, array_header *suppl_gids) {
+  if (mode != R_OK) {
+    errno = EACCES;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int robots_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
+
+  if (fh->fh_fd != AUTH_ROBOTS_TXT_FD) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (mode != R_OK) {
+    errno = EACCES;
+    return -1;
+  }
+
+  return 0;
+}
+
+MODRET auth_pre_retr(cmd_rec *cmd) {
+  const char *path;
+  pr_fs_t *curr_fs = NULL;
+  struct stat st;
+
+  if (auth_anon_allow_robots == TRUE) {
+    return PR_DECLINED(cmd);
+  }
+
+  auth_anon_allow_robots_enabled = FALSE;
+
+  path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+  if (strcasecmp(path, "/robots.txt") != 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* If a previous REST command, with a non-zero value, has been sent, then
+   * do nothing.  Ugh.
+   */
+  if (session.restart_pos > 0) {
+    pr_log_debug(DEBUG10, "'AnonAllowRobots off' in effect, but cannot "
+      "support resumed download (REST %" PR_LU " previously sent by client)",
+      (pr_off_t) session.restart_pos);
+    return PR_DECLINED(cmd);
+  }
+
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_lstat(path, &st) == 0) {
+    /* There's an existing REAL "robots.txt" file on disk; use that, and
+     * preserve the principle of least surprise.
+     */
+    pr_log_debug(DEBUG10, "'AnonAllowRobots off' in effect, but have "
+      "real 'robots.txt' file on disk; using that");
+    return PR_DECLINED(cmd);
+  }
+
+  curr_fs = pr_get_fs(path, NULL);
+  if (curr_fs != NULL) {
+    pr_fs_t *robots_fs;
+
+    robots_fs = pr_register_fs(cmd->pool, "robots", path);
+    if (robots_fs == NULL) {
+      pr_log_debug(DEBUG8, "'AnonAllowRobots off' in effect, but failed to "
+        "register FS: %s", strerror(errno));
+      return PR_DECLINED(cmd);
+    }
+
+    /* Use enough of our own custom FSIO callbacks to be able to provide
+     * a fake "robots.txt" file.
+     */
+    robots_fs->stat = robots_fsio_stat;
+    robots_fs->fstat = robots_fsio_fstat;
+    robots_fs->lstat = robots_fsio_lstat;
+    robots_fs->unlink = robots_fsio_unlink;
+    robots_fs->open = robots_fsio_open;
+    robots_fs->close = robots_fsio_close;
+    robots_fs->read = robots_fsio_read;
+    robots_fs->write = robots_fsio_write;
+    robots_fs->access = robots_fsio_access;
+    robots_fs->faccess = robots_fsio_faccess;
+
+    /* For all other FSIO callbacks, use the underlying FS. */
+    robots_fs->rename = curr_fs->rename;
+    robots_fs->creat = curr_fs->creat;
+    robots_fs->lseek = curr_fs->lseek;
+    robots_fs->link = curr_fs->link;
+    robots_fs->readlink = curr_fs->readlink;
+    robots_fs->symlink = curr_fs->symlink;
+    robots_fs->ftruncate = curr_fs->ftruncate;
+    robots_fs->truncate = curr_fs->truncate;
+    robots_fs->chmod = curr_fs->chmod;
+    robots_fs->fchmod = curr_fs->fchmod;
+    robots_fs->chown = curr_fs->chown;
+    robots_fs->fchown = curr_fs->fchown;
+    robots_fs->lchown = curr_fs->lchown;
+    robots_fs->utimes = curr_fs->utimes;
+    robots_fs->futimes = curr_fs->futimes;
+    robots_fs->fsync = curr_fs->fsync;
+
+    pr_fs_clear_cache2(path);
+    auth_anon_allow_robots_enabled = TRUE;
+  }
+
+  return PR_DECLINED(cmd);
+}
+
+MODRET auth_post_retr(cmd_rec *cmd) {
+  if (auth_anon_allow_robots == TRUE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (auth_anon_allow_robots_enabled == TRUE) {
+    int res;
+
+    res = pr_unregister_fs("/robots.txt");
+    if (res < 0) {
+      pr_log_debug(DEBUG9, "error removing 'robots' FS for '/robots.txt': %s",
+        strerror(errno));
+    }
+
+    auth_anon_allow_robots_enabled = FALSE;
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Configuration handlers
  */
 
@@ -2711,6 +2938,26 @@ MODRET set_allowemptypasswords(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = allow_empty_passwords;
   c->flags |= CF_MERGEDOWN;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: AnonAllowRobots on|off */
+MODRET set_anonallowrobots(cmd_rec *cmd) {
+  int allow_robots = -1;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON);
+
+  allow_robots = get_boolean(cmd, 1);
+  if (allow_robots == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = allow_robots;
 
   return PR_HANDLED(cmd);
 }
@@ -3744,6 +3991,7 @@ static conftable auth_conftab[] = {
   { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
   { "AllowChrootSymlinks",	set_allowchrootsymlinks,	NULL },
   { "AllowEmptyPasswords",	set_allowemptypasswords,	NULL },
+  { "AnonAllowRobots",		set_anonallowrobots,		NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
   { "AnonRejectPasswords",	set_anonrejectpasswords,	NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
@@ -3786,6 +4034,12 @@ static cmdtable auth_cmdtab[] = {
   { CMD,	C_ACCT,	G_NONE,	auth_acct,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_REIN,	G_NONE,	auth_rein,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD,	C_HOST,	G_NONE,	auth_post_host,	FALSE,	FALSE },
+
+  /* For the automatic robots.txt handling */
+  { PRE_CMD,	C_RETR,	G_NONE,	auth_pre_retr,	FALSE,	FALSE },
+  { POST_CMD,	C_RETR,	G_NONE,	auth_post_retr,	FALSE,	FALSE },
+  { POST_CMD_ERR,C_RETR,G_NONE,	auth_post_retr,	FALSE,	FALSE },
+
   { 0, NULL }
 };
 

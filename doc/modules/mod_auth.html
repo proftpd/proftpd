@@ -18,6 +18,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 <ul>
   <li><a href="#AllowChrootSymlinks">AllowChrootSymlinks</a>
   <li><a href="#AllowEmptyPasswords">AllowEmptyPasswords</a>
+  <li><a href="#AnonAllowRobots">AnonAllowRobots</a>
   <li><a href="#AnonRejectPasswords">AnonRejectPasswords</a>
   <li><a href="#CreateHome">CreateHome</a>
   <li><a href="#DefaultRoot">DefaultRoot</a>
@@ -81,6 +82,44 @@ compatibility, the default is <em>on</em>.
 <p>
 <b>Note</b> that this applies to <code>mod_sftp</code> password-based logins
 as well.
+
+<p>
+<hr>
+<h2><a name="AnonAllowRobots">AnonAllowRobots</a></h2>
+<strong>Syntax:</strong> AnonAllowRobots <em>on|off</em><br>
+<strong>Default:</strong> AnonAllowRobots off<br>
+<strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.3.6rc2 and later
+
+<p>
+The <code>AnonAllowRobots</code> directive configures whether the
+<code>mod_auth</code> should provide a fake
+<a href="http://www.robotstxt.org/">"robots.txt"</a> file to web
+crawlers/spiders.
+
+<p>
+Normally such web crawlers/spiders make HTTP requests only.  However,
+<a href="https://developers.google.com/webmasters/control-crawl-index/docs/robots_txt#file-location--range-of-validity">Google</a> <em>is</em> known to crawl
+FTP sites, using anonymous logins only.
+
+<p>
+To prevent such web crawlers from indexing your FTP site unexpectedly,
+the <code>mod_auth</code> module will automatically provide a fake "robots.txt"
+file for anonymous logins, containing:
+<pre>
+  User-agent: *
+  Disallow: /
+</pre>
+
+<p>
+If your FTP site <i>deliberately</i> provides its own separate "robots.txt"
+file already, then <code>mod_auth</code> will serve that existing file as
+expected.  Alternatively, you can disable this behavior using:
+<pre>
+  # Restore previous behavior
+  AnonAllowRobots on
+</pre>
 
 <p>
 <hr>
