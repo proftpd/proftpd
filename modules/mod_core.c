@@ -4736,7 +4736,7 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_qos
    *   mod_site_misc
    *   mod_sql
-   *   mod_sql_sqlite
+   *   mod_sql_passwd
    *   mod_tls
    *   mod_xfer
    *
@@ -4750,7 +4750,6 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_radius
    *   mod_rewrite
    *   mod_shaper
-   *   mod_sql_passwd
    *   mod_wrap
    *   mod_wrap2 et al
    *

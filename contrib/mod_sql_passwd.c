@@ -82,6 +82,9 @@ static int sql_passwd_pbkdf2_len = -1;
 
 static const char *trace_channel = "sql.passwd";
 
+/* Necessary prototypes */
+static int sql_passwd_sess_init(void);
+
 static cmd_rec *sql_passwd_cmd_create(pool *parent_pool, int argc, ...) {
   pool *cmd_pool = NULL;
   cmd_rec *cmd = NULL;
@@ -1262,6 +1265,36 @@ MODRET set_sqlpasswdusersalt(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void sql_passwd_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&sql_passwd_module, "core.session-reinit",
+    sql_passwd_sess_reinit_ev);
+
+  sql_passwd_engine = FALSE;
+  sql_passwd_encoding = SQL_PASSWD_ENC_USE_HEX_LC;
+  sql_passwd_salt_encoding = SQL_PASSWD_ENC_USE_NONE;
+  sql_passwd_file_salt = NULL;
+  sql_passwd_file_salt_len = 0;
+  sql_passwd_user_salt = NULL;
+  sql_passwd_user_salt_len = 0;
+  sql_passwd_file_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
+  sql_passwd_user_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
+  sql_passwd_opts = 0UL;
+  sql_passwd_nrounds = 1;
+
+  res = sql_passwd_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&sql_passwd_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -1323,6 +1356,9 @@ static int sql_passwd_init(void) {
 
 static int sql_passwd_sess_init(void) {
   config_rec *c;
+
+  pr_event_register(&sql_passwd_module, "core.session-reinit",
+    sql_passwd_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordEngine", FALSE);
   if (c != NULL) {
