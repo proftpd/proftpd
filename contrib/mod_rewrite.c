@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2015 TJ Saunders
+ * Copyright (c) 2001-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
  *
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_rewrite.c,v 1.75 2013-10-13 23:43:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -150,6 +148,7 @@ static int rewrite_read_fifo(int, char *, size_t);
 static unsigned char rewrite_regexec(const char *, pr_regex_t *, unsigned char,
     rewrite_match_t *);
 static void rewrite_replace_cmd_arg(cmd_rec *, char *);
+static int rewrite_sess_init(void);
 static char *rewrite_subst(cmd_rec *c, char *);
 static char *rewrite_subst_backrefs(cmd_rec *, char *, rewrite_match_t *);
 static char *rewrite_subst_env(cmd_rec *, char *);
@@ -2862,16 +2861,83 @@ static void rewrite_rewrite_home_ev(const void *event_data, void *user_data) {
   destroy_pool(tmp_pool);
 }
 
+static void rewrite_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+  config_rec *c;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&rewrite_module, "core.exit", rewrite_exit_ev);
+  pr_event_unregister(&rewrite_module, "core.session-reinit",
+    rewrite_sess_reinit_ev);
+  pr_event_unregister(&rewrite_module, "mod_auth.rewrite-home",
+    rewrite_rewrite_home_ev);
+
+  /* Reset defaults. */
+  rewrite_engine = FALSE;
+  (void) close(rewrite_logfd);
+  rewrite_logfd = -1;
+  rewrite_logfile = NULL;
+  rewrite_max_replace = PR_STR_MAX_REPLACEMENTS;
+
+  /* Close any opened FIFO RewriteMaps. */
+  c = find_config(session.prev_server->conf, CONF_PARAM, "RewriteMap", FALSE);
+  while (c != NULL) {
+    pr_signals_handle();
+
+    if (strcmp(c->argv[1], "fifo") == 0) {
+      int fd;
+
+      fd = *((int *) c->argv[3]);
+      (void) close(fd);
+      *((int *) c->argv[3]) = -1;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "RewriteMap", FALSE);
+  }
+
+  res = rewrite_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&rewrite_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
+
 /* Initialization functions
  */
 
+static int rewrite_init(void) {
+
+  /* Allocate a pool for this module's use. */
+  if (rewrite_pool == NULL) {
+    rewrite_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(rewrite_pool, MOD_REWRITE_VERSION);
+  }
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&rewrite_module, "core.module-unload",
+    rewrite_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
+
+  /* Add a restart handler. */
+  pr_event_register(&rewrite_module, "core.restart", rewrite_restart_ev,
+    NULL);
+
+  return 0;
+}
+
 static int rewrite_sess_init(void) {
   config_rec *c = NULL;
-  unsigned char *engine = get_param_ptr(main_server->conf, "RewriteEngine",
-    FALSE);
+  unsigned char *engine = NULL;
+
+  pr_event_register(&rewrite_module, "core.session-reinit",
+    rewrite_sess_reinit_ev, NULL);
 
   /* Is RewriteEngine on? */
-  if (!engine || *engine == FALSE) {
+  engine = get_param_ptr(main_server->conf, "RewriteEngine", FALSE);
+  if (engine == NULL ||
+      *engine == FALSE) {
     rewrite_engine = FALSE;
     return 0;
   }
@@ -2917,26 +2983,6 @@ static int rewrite_sess_init(void) {
   if (c) {
     rewrite_max_replace = *((unsigned int *) c->argv[0]);
   }
-
-  return 0;
-}
-
-static int rewrite_init(void) {
-
-  /* Allocate a pool for this module's use. */
-  if (!rewrite_pool) {
-    rewrite_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(rewrite_pool, MOD_REWRITE_VERSION);
-  }
-
-#if defined(PR_SHARED_MODULE)
-  pr_event_register(&rewrite_module, "core.module-unload",
-    rewrite_mod_unload_ev, NULL);
-#endif /* PR_SHARED_MODULE */
-
-  /* Add a restart handler. */
-  pr_event_register(&rewrite_module, "core.restart", rewrite_restart_ev,
-    NULL);
 
   return 0;
 }

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2015 TJ Saunders
+ * Copyright (c) 2001-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -309,6 +309,7 @@ static int radius_verify_auth_mac(radius_packet_t *, const char *,
   const unsigned char *, size_t);
 static int radius_verify_packet(radius_packet_t *, radius_packet_t *,
   const unsigned char *, size_t);
+static int radius_sess_init(void);
 
 /* Support functions
  */
@@ -4232,6 +4233,75 @@ static void radius_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void radius_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&radius_module, "core.exit", radius_exit_ev);
+  pr_event_unregister(&radius_module, "core.session-reinit",
+    radius_sess_reinit_ev);
+
+  /* Reset defaults. */
+  radius_engine = FALSE;
+  radius_acct_server = NULL;
+  radius_auth_server = NULL;
+  (void) close(radius_logfd);
+  radius_logfd = -1;
+  radius_opts = 0UL;
+  radius_nas_identifier_config = NULL;
+  radius_vendor_name = "Unix";
+  radius_vendor_id = 4;
+  radius_realm = NULL;
+
+  radius_have_user_info = FALSE;
+  radius_uid_attr_id = 0;
+  radius_gid_attr_id = 0;
+  radius_home_attr_id = 0;
+  radius_shell_attr_id = 0;
+
+  radius_have_group_info = FALSE;
+  radius_prime_group_name_attr_id = 0;
+  radius_addl_group_names_attr_id = 0;
+  radius_addl_group_ids_attr_id = 0;
+  radius_prime_group_name = NULL;
+  radius_addl_group_count = 0;
+  radius_addl_group_names = 0;
+  radius_addl_group_names_str = NULL;
+  radius_addl_group_ids = NULL;
+  radius_addl_group_ids_str = NULL;
+
+  radius_have_quota_info = FALSE;
+  radius_quota_per_sess_attr_id = 0;
+  radius_quota_limit_type_attr_id = 0;
+  radius_quota_bytes_in_attr_id = 0;
+  radius_quota_bytes_out_attr_id = 0;
+  radius_quota_bytes_xfer_attr_id = 0;
+  radius_quota_files_in_attr_id = 0;
+  radius_quota_files_out_attr_id = 0;
+  radius_quota_files_xfer_attr_id = 0;
+  radius_quota_per_sess = NULL;
+  radius_quota_limit_type = NULL;
+  radius_quota_bytes_in = NULL;
+  radius_quota_bytes_out = NULL;
+  radius_quota_bytes_xfer = NULL;
+  radius_quota_files_in = NULL;
+  radius_quota_files_out = NULL;
+  radius_quota_files_xfer = NULL;
+
+  radius_have_other_info = FALSE;
+
+  /* Note that we deliberately leave the radius_session_start time_t alone;
+   * it is initialized at the start of the session, regardless of vhost.
+   */
+
+  res = radius_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&radius_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -4239,6 +4309,9 @@ static int radius_sess_init(void) {
   int res = 0;
   config_rec *c = NULL;
   radius_server_t **current_server = NULL;
+
+  pr_event_register(&radius_module, "core.session-reinit",
+    radius_sess_reinit_ev, NULL);
 
   /* Is RadiusEngine on? */
   c = find_config(main_server->conf, CONF_PARAM, "RadiusEngine", FALSE);
