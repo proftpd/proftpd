@@ -4716,7 +4716,6 @@ MODRET core_host(cmd_rec *cmd) {
    *
    * Modules implementing post_host handlers:
    *   mod_core
-   *   mod_tls
    *
    * Modules implementing 'sess-reinit' event handlers:
    *   mod_auth
@@ -4736,24 +4735,27 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_memcache
    *   mod_qos
    *   mod_site_misc
+   *   mod_sql
+   *   mod_sql_sqlite
+   *   mod_tls
    *   mod_xfer
    *
-   * Modules that MIGHT need post_host handlers:
+   * Modules that MIGHT need a session-reinit listener:
    *   mod_ratio
    *   mod_snmp
    *
-   * Modules that NEED a post_host handler:
+   * Modules that NEED a session-reinit listener:
    *   mod_ldap
    *   mod_quotatab et al
    *   mod_radius
    *   mod_rewrite
    *   mod_shaper
-   *   mod_sql et al
    *   mod_sql_passwd
    *   mod_wrap
    *   mod_wrap2 et al
    *
-   * Modules that do NOT need a post_host handler:
+   * Modules that DO NOT NEED a session-reinit listener:
+   *   mod_auth_pam
    *   mod_ctrls_admin
    *   mod_dynmasq
    *   mod_ifversion
@@ -4763,6 +4765,11 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_sftp (HOST command is FTP only)
    *   mod_sftp_pam
    *   mod_sftp_sql
+   *   mod_sql_mysql
+   *   mod_sql_postgres
+   *   mod_sql_odbc
+   *   mod_sql_sqlite
+   *   mod_tls_fscache
    *   mod_tls_memcache
    *   mod_tls_shmcache
    *   mod_unique_id
