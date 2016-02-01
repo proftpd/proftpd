@@ -4742,15 +4742,13 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_sql
    *   mod_sql_passwd
    *   mod_tls
+   *   mod_wrap
    *   mod_wrap2
    *   mod_xfer
    *
    * Modules that MIGHT need a session-reinit listener:
    *   mod_ratio
    *   mod_snmp
-   *
-   * Modules that NEED a session-reinit listener:
-   *   mod_wrap
    *
    * Modules that DO NOT NEED a session-reinit listener:
    *   mod_auth_pam

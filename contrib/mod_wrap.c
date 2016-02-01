@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
  *
- * Copyright (c) 2000-2013 TJ Saunders
+ * Copyright (c) 2000-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.28 2013-10-13 22:51:36 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.4"
@@ -39,13 +38,16 @@
 int allow_severity = PR_LOG_INFO;
 int deny_severity = PR_LOG_WARNING;
 
-/* function prototypes */
+module wrap_module;
+
+/* Necessary prototypes */
 static int wrap_eval_expression(char **, array_header *);
 static char *wrap_get_user_table(cmd_rec *, char *, char *);
 static int wrap_is_usable_file(char *);
 static void wrap_log_request_allowed(int, struct request_info *);
 static void wrap_log_request_denied(int, struct request_info *);
 static config_rec *wrap_resolve_user(pool *, char **);
+static int wrap_sess_init(void);
 
 static char *wrap_service_name = "proftpd";
 
@@ -972,15 +974,38 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void wrap_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&wrap_module, "core.session-reinit", wrap_sess_reinit_ev);
+
+  /* Reset defaults */
+  wrap_service_name = "proftpd";
+
+  res = wrap_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&wrap_module, PR_SESS_DISCONNECT_SESSION_INIT_FAILED,
+      NULL);
+  }
+}
+
 /* Initialization routines
  */
 
 static int wrap_sess_init(void) {
+  pr_event_register(&wrap_module, "core.session-reinit", wrap_sess_reinit_ev,
+    NULL);
 
   /* look up any configured TCPServiceName */
-  if ((wrap_service_name = get_param_ptr(main_server->conf,
-      "TCPServiceName", FALSE)) == NULL)
+  wrap_service_name = get_param_ptr(main_server->conf, "TCPServiceName", FALSE);
+  if (wrap_service_name == NULL) {
     wrap_service_name = "proftpd";
+  }
 
   return 0;
 }
