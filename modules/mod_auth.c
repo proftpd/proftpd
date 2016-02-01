@@ -134,6 +134,11 @@ static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&auth_module, "core.exit", auth_exit_ev);
   pr_event_unregister(&auth_module, "core.session-reinit", auth_sess_reinit_ev);
 
+  pr_timer_remove(PR_TIMER_LOGIN, &auth_module);
+
+  /* Reset the CreateHome setting. */
+  mkhome = FALSE;
+
 #if defined(PR_USE_LASTLOG)
   lastlog = FALSE;
 #endif /* PR_USE_LASTLOG */
@@ -315,37 +320,6 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
 
 /* Command handlers
  */
-
-MODRET auth_post_host(cmd_rec *cmd) {
-
-  /* If the HOST command changed the main_server pointer, reinitialize
-   * ourselves.
-   */
-  if (session.prev_server != NULL) {
-    int res;
-
-    /* Remove the TimeoutLogin timer. */
-    pr_timer_remove(PR_TIMER_LOGIN, &auth_module);
-
-    pr_event_unregister(&auth_module, "core.exit", auth_exit_ev);
-
-    /* Reset the CreateHome setting. */
-    mkhome = FALSE;
-
-#ifdef PR_USE_LASTLOG
-    /* Reset the UseLastLog setting. */
-    lastlog = FALSE;
-#endif /* PR_USE_LASTLOG */
-
-    res = auth_sess_init();
-    if (res < 0) {
-      pr_session_disconnect(&auth_module,
-        PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
 
 MODRET auth_err_pass(cmd_rec *cmd) {
 
@@ -4038,7 +4012,6 @@ static cmdtable auth_cmdtab[] = {
   { LOG_CMD_ERR,C_PASS,	G_NONE,	auth_err_pass,  FALSE,  FALSE },
   { CMD,	C_ACCT,	G_NONE,	auth_acct,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_REIN,	G_NONE,	auth_rein,	FALSE,	FALSE,	CL_AUTH },
-  { POST_CMD,	C_HOST,	G_NONE,	auth_post_host,	FALSE,	FALSE },
 
   /* For the automatic robots.txt handling */
   { PRE_CMD,	C_RETR,	G_NONE,	auth_pre_retr,	FALSE,	FALSE },
