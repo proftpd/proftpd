@@ -113,6 +113,8 @@ static off_t sql_dele_filesz = 0;
  */
 #define SQL_MAX_STMT_LEN	4096
 
+static int sql_sess_init(void);
+
 static char *sql_prepare_where(int, cmd_rec *, int, ...);
 #define SQL_PREPARE_WHERE_FL_NO_TAGS	0x00001
 
@@ -6858,6 +6860,49 @@ static void sql_eventlog_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void sql_sess_reinit_ev(const void *event_data, void *user_data) {
+  config_rec *c;
+  int res;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&sql_module, "core.chroot", sql_chroot_ev);
+  pr_event_unregister(&sql_module, "core.exit", sql_exit_ev);
+  pr_event_unregister(&sql_module, "core.session-reinit", sql_sess_reinit_ev);
+
+  c = find_config(session.prev_server->conf, CONF_PARAM, "SQLLogOnEvent",
+    FALSE);
+  while (c != NULL) {
+    char *event_name;
+
+    pr_signals_handle();
+
+    event_name = c->argv[0];
+
+    pr_event_unregister(&sql_module, event_name, sql_eventlog_ev);
+    c = find_config_next(c, c->next, CONF_PARAM, "SQLLogOnEvent", FALSE);
+  }
+
+  pr_sql_opts = 0UL;
+  pr_sql_conn_policy = 0;
+
+  if (sql_logfd >= 0) {
+    (void) close(sql_logfd);
+    sql_logfd = -1;
+    sql_logfile = NULL;
+  }
+
+  memset(&cmap, 0, sizeof(cmap));
+  sql_cmdtable = NULL;
+  sql_default_cmdtable = NULL;
+
+  res = sql_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&sql_module, PR_SESS_DISCONNECT_SESSION_INIT_FAILED,
+      NULL);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -6892,6 +6937,9 @@ static int sql_sess_init(void) {
   int engine = 0, res = 0;
   char *fieldset = NULL;
   pool *tmp_pool = NULL;
+
+  pr_event_register(&sql_module, "core.session-reinit", sql_sess_reinit_ev,
+    NULL);
 
   /* Build a temporary pool */
   tmp_pool = make_sub_pool(session.pool);
@@ -6941,6 +6989,11 @@ static int sql_sess_init(void) {
 
   } else {
     cmap.engine = engine = (SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG);
+  }
+
+  if (cmap.engine == 0) {
+    destroy_pool(tmp_pool);
+    return 0;
   }
 
   /* Get our backend info and toss it up */
