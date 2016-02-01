@@ -4735,6 +4735,7 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_log_forensic
    *   mod_memcache
    *   mod_qos
+   *   mod_quotatab
    *   mod_radius
    *   mod_rewrite
    *   mod_site_misc
@@ -4749,7 +4750,6 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_snmp
    *
    * Modules that NEED a session-reinit listener:
-   *   mod_quotatab et al
    *   mod_wrap
    *
    * Modules that DO NOT NEED a session-reinit listener:

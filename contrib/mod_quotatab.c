@@ -169,6 +169,7 @@ static unsigned long quotatab_opts = 0UL;
 MODRET quotatab_pre_stor(cmd_rec *);
 MODRET quotatab_post_stor(cmd_rec *);
 MODRET quotatab_post_stor_err(cmd_rec *);
+static int quotatab_sess_init(void);
 
 static int quotatab_rlock(quota_table_t *);
 static int quotatab_runlock(quota_table_t *);
@@ -4289,13 +4290,49 @@ static void quotatab_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void quotatab_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&quotatab_module, "core.exit", quotatab_exit_ev);
+  pr_event_unregister(&quotatab_module, "core.session-reinit",
+    quotatab_sess_reinit_ev);
+
+  /* Reset defaults. */
+  use_quotas = FALSE;
+  (void) close(quota_logfd);
+  quota_logfd = -1;
+  quota_logname = NULL;
+  quotatab_opts = 0UL;
+  allow_site_quota = TRUE;
+  use_dirs = FALSE;
+  use_quotas = FALSE;
+  have_quota_entry = FALSE;
+  have_quota_limit_table = FALSE;
+  have_quota_tally_table = FALSE;
+  byte_units = BYTE;
+
+  (void) close(quota_lockfd);
+  quota_lockfd = -1;
+
+  (void) quotatab_close(TYPE_LIMIT);
+  (void) quotatab_close(TYPE_TALLY);
+
+  res = quotatab_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&quotatab_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization routines
  */
 
 static int quotatab_init(void) {
 
   /* Initialize the module's memory pool. */
-  if (!quotatab_pool) {
+  if (quotatab_pool == NULL) {
     quotatab_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(quotatab_pool, MOD_QUOTATAB_VERSION);
   }
@@ -4315,6 +4352,9 @@ static int quotatab_sess_init(void) {
   unsigned char *quotatab_engine = NULL, *quotatab_showquotas = NULL,
     *quotatab_usedirs = NULL;
   quota_units_t *units = NULL;
+
+  pr_event_register(&quotatab_module, "core.session-reinit",
+    quotatab_sess_reinit_ev, NULL);
 
   /* Check to see if quotas are enabled for this server. */
   quotatab_engine = get_param_ptr(main_server->conf, "QuotaEngine", FALSE);
