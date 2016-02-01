@@ -2115,7 +2115,7 @@ int pr_auth_remove_auth_only_module(const char *name) {
     /* We won't be using the auth-only module cache, so there's no need to
      * accept this.
      */
-    pr_trace_msg(trace_channel, 9, "not removing '%s' to the auth-only list: "
+    pr_trace_msg(trace_channel, 9, "not removing '%s' from the auth-only list: "
       "caching of auth-only modules disabled", name);
     return 0;
   }
