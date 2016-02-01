@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
  *
- * Copyright (c) 2000-2015 TJ Saunders
+ * Copyright (c) 2000-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -107,6 +107,9 @@ typedef struct conn_info {
 #ifndef INADDR_NONE
 #define INADDR_NONE 0xffffffff
 #endif
+
+/* Necessary prototypes. */
+static int wrap2_sess_init(void);
 
 /* Logging routines */
 
@@ -1928,6 +1931,33 @@ static void wrap2_restart_ev(const void *event_data, void *user_data) {
   pr_pool_tag(wrap2_pool, MOD_WRAP2_VERSION);
 }
 
+static void wrap2_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&wrap2_module, "core.exit", wrap2_exit_ev);
+  pr_event_unregister(&wrap2_module, "core.session-reinit",
+    wrap2_sess_reinit_ev);
+
+  /* Reset defaults. */
+  wrap2_engine = FALSE;
+  (void) close(wrap2_logfd);
+  wrap2_logfd = -1;
+  wrap2_logname = NULL;
+  wrap2_service_name = WRAP2_DEFAULT_SERVICE_NAME;
+  wrap2_opts = 0UL;
+  wrap2_allow_table = NULL;
+  wrap2_deny_table = NULL;
+  wrap2_client_name = NULL;
+
+  res = wrap2_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&wrap2_module,
+      PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -1954,12 +1984,15 @@ static int wrap2_init(void) {
 static int wrap2_sess_init(void) {
   config_rec *c;
 
+  pr_event_register(&wrap2_module, "core.session-reinit", wrap2_sess_reinit_ev,
+    NULL);
+
   c = find_config(main_server->conf, CONF_PARAM, "WrapEngine", FALSE);
-  if (c) {
+  if (c != NULL) {
     wrap2_engine = *((int *) c->argv[0]);
   }
 
-  if (!wrap2_engine) {
+  if (wrap2_engine == FALSE) {
     return 0;
   }
 
