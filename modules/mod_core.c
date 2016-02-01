@@ -4730,6 +4730,7 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_exec
    *   mod_facts
    *   mod_ident
+   *   mod_ldap
    *   mod_log
    *   mod_log_forensic
    *   mod_memcache
@@ -4745,7 +4746,6 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_snmp
    *
    * Modules that NEED a session-reinit listener:
-   *   mod_ldap
    *   mod_quotatab et al
    *   mod_radius
    *   mod_rewrite
@@ -4757,8 +4757,8 @@ MODRET core_host(cmd_rec *cmd) {
    *   mod_auth_pam
    *   mod_ctrls_admin
    *   mod_dynmasq
-   *   mod_ifversion
    *   mod_ifsession
+   *   mod_ifversion
    *   mod_load
    *   mod_readme
    *   mod_sftp (HOST command is FTP only)

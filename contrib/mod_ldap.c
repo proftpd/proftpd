@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013-2015 The ProFTPD Project
+ * Copyright (c) 2013-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,11 +41,18 @@
 #include <lber.h>
 #include <ldap.h>
 
+module ldap_module;
+
 static int ldap_logfd = -1;
+static pool *ldap_pool = NULL;
+
 static const char *trace_channel = "ldap";
 #if defined(LBER_OPT_LOG_PRINT_FN)
 static const char *libtrace_channel = "ldap.library";
 #endif
+
+/* Necessary prototypes */
+static int ldap_sess_init(void);
 
 #if LDAP_API_VERSION >= 2000
 # define HAS_LDAP_SASL_BIND_S
@@ -565,7 +572,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
     return NULL;
   }
 
-  pw = pcalloc(session.pool, sizeof(struct passwd));
+  pw = pcalloc(ldap_pool, sizeof(struct passwd));
   while (attrs[i] != NULL) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
       "fetching values for attribute %s", attrs[i]);
@@ -2086,6 +2093,69 @@ MODRET set_ldapdefaultquota(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* A HOST command changed the main_server pointer; reinitialize ourselves. */
+
+  pr_event_unregister(&ldap_module, "core.session-reinit", ldap_sess_reinit_ev);
+
+  /* Restore defaults. */
+  (void) close(ldap_logfd);
+  ldap_logfd = -1;
+  ldap_protocol_version = 3;
+  ldap_servers = NULL;
+#if defined(LDAP_OPT_X_TLS)
+  ldap_use_tls = FALSE;
+#endif /* LDAP_OPT_X_TLS */
+  ldap_dn = NULL;
+  ldap_dnpass = NULL;
+  ldap_search_scope = LDAP_SCOPE_SUBTREE;
+  ldap_querytimeout = 0;
+  ldap_dereference = LDAP_DEREF_NEVER;
+  ldap_authbinds = TRUE;
+  ldap_defaultauthscheme = "crypt";
+  ldap_attr_uid = "uid";
+  ldap_attr_uidnumber = "uidNumber";
+  ldap_attr_gidnumber = "gidNumber";
+  ldap_attr_homedirectory = "homeDirectory";
+  ldap_attr_userpassword = "userPassword";
+  ldap_attr_loginshell = "loginShell";
+  ldap_attr_cn = "cn";
+  ldap_attr_memberuid = "memberUid";
+  ldap_attr_ftpquota = "ftpQuota";
+  ldap_attr_ftpquota_profiledn = "ftpQuotaProfileDN";
+  ldap_do_users = FALSE;
+  ldap_user_basedn = NULL;
+  ldap_user_name_filter = NULL;
+  ldap_user_uid_filter = NULL;
+  ldap_do_groups = FALSE;
+  ldap_group_name_filter = NULL;
+  ldap_group_gid_filter = NULL;
+  ldap_group_member_filter = NULL;
+  ldap_default_quota = NULL;
+  ldap_defaultuid = (uid_t) -1;
+  ldap_defaultgid = (gid_t) -1;
+  ldap_forcedefaultuid = FALSE;
+  ldap_forcedefaultgid = FALSE;
+  ldap_forcegenhdir = FALSE;
+  ldap_genhdir = FALSE;
+  ldap_genhdir_prefix = NULL;
+  ldap_genhdir_prefix_nouname = FALSE;
+
+  destroy_pool(ldap_pool);
+  ldap_pool = NULL;
+
+  res = ldap_sess_init();
+  if (res < 0) {
+    pr_session_disconnect(&ldap_module, PR_SESS_DISCONNECT_SESSION_INIT_FAILED,
+      NULL);
+  }
+}
+
 /* Initialization routines
  */
 
@@ -2101,6 +2171,12 @@ static int ldap_sess_init(void) {
   char *scope;
   config_rec *c;
   void *ptr;
+
+  pr_event_register(&ldap_module, "core.session-reinit", ldap_sess_reinit_ev,
+    NULL);
+
+  ldap_pool = make_sub_pool(session.pool);
+  pr_pool_tag(ldap_pool, MOD_LDAP_VERSION);
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPLog", FALSE);
   if (c != NULL) {
@@ -2152,7 +2228,7 @@ static int ldap_sess_init(void) {
      * ldap_init()/ldap_initialize() will connect to the LDAP SDK's
      * default.
      */
-    ldap_servers = make_array(session.pool, 1, sizeof(char *));
+    ldap_servers = make_array(ldap_pool, 1, sizeof(char *));
     *((char **) push_array(ldap_servers)) = NULL;
   }
 
@@ -2165,8 +2241,8 @@ static int ldap_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPBindDN", FALSE);
   if (c != NULL) {
-    ldap_dn = pstrdup(session.pool, c->argv[0]);
-    ldap_dnpass = pstrdup(session.pool, c->argv[1]);
+    ldap_dn = pstrdup(ldap_pool, c->argv[0]);
+    ldap_dnpass = pstrdup(ldap_pool, c->argv[1]);
   }
 
   scope = get_param_ptr(main_server->conf, "LDAPSearchScope", FALSE);
@@ -2209,57 +2285,57 @@ static int ldap_sess_init(void) {
   if (c != NULL) {
     do {
       if (strcasecmp(c->argv[0], "uid") == 0) {
-        ldap_attr_uid = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_uid = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "uidNumber") == 0) {
-        ldap_attr_uidnumber = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_uidnumber = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "gidNumber") == 0) {
-        ldap_attr_gidnumber = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_gidnumber = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "homeDirectory") == 0) {
-        ldap_attr_homedirectory = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_homedirectory = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "userPassword") == 0) {
-        ldap_attr_userpassword = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_userpassword = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "loginShell") == 0) {
-        ldap_attr_loginshell = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_loginshell = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "cn") == 0) {
-        ldap_attr_cn = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_cn = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "memberUid") == 0) {
-        ldap_attr_memberuid = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_memberuid = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "ftpQuota") == 0) {
-        ldap_attr_ftpquota = pstrdup(session.pool, c->argv[1]);
+        ldap_attr_ftpquota = pstrdup(ldap_pool, c->argv[1]);
 
       } else if (strcasecmp(c->argv[0], "ftpQuotaProfileDN") == 0) {
-        ldap_attr_ftpquota_profiledn = pstrdup(session.pool, c->argv[1]);
-
+        ldap_attr_ftpquota_profiledn = pstrdup(ldap_pool, c->argv[1]);
       }
+
     } while ((c = find_config_next(c, c->next, CONF_PARAM, "LDAPAttr", FALSE)));
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPUsers", FALSE);
   if (c != NULL) {
     ldap_do_users = TRUE;
-    ldap_user_basedn = pstrdup(session.pool, c->argv[0]);
+    ldap_user_basedn = pstrdup(ldap_pool, c->argv[0]);
 
     if (c->argc > 1) {
-      ldap_user_name_filter = pstrdup(session.pool, c->argv[1]);
+      ldap_user_name_filter = pstrdup(ldap_pool, c->argv[1]);
 
     } else {
-      ldap_user_name_filter = pstrcat(session.pool,
+      ldap_user_name_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_uid, "=%v)(objectclass=posixAccount))", NULL);
     }
 
     if (c->argc > 2) {
-      ldap_user_uid_filter = pstrdup(session.pool, c->argv[2]);
+      ldap_user_uid_filter = pstrdup(ldap_pool, c->argv[2]);
 
     } else {
-      ldap_user_uid_filter = pstrcat(session.pool,
+      ldap_user_uid_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_uidnumber, "=%v)(objectclass=posixAccount))", NULL);
     }
   }
@@ -2273,6 +2349,9 @@ static int ldap_sess_init(void) {
   if (ptr != NULL) {
     ldap_defaultgid = *((gid_t *) ptr);
   }
+
+  ldap_default_quota = get_param_ptr(main_server->conf, "LDAPDefaultQuota",
+    FALSE);
 
   ptr = get_param_ptr(main_server->conf, "LDAPForceDefaultUID", FALSE);
   if (ptr != NULL) {
@@ -2297,9 +2376,6 @@ static int ldap_sess_init(void) {
   ldap_genhdir_prefix = get_param_ptr(main_server->conf,
     "LDAPGenerateHomedirPrefix", FALSE);
 
-  ldap_default_quota = get_param_ptr(main_server->conf, "LDAPDefaultQuota",
-    FALSE);
-
   ptr = get_param_ptr(main_server->conf, "LDAPGenerateHomedirPrefixNoUsername",
     FALSE);
   if (ptr != NULL) {
@@ -2309,29 +2385,29 @@ static int ldap_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "LDAPGroups", FALSE);
   if (c != NULL) {
     ldap_do_groups = TRUE;
-    ldap_gid_basedn = pstrdup(session.pool, c->argv[0]);
+    ldap_gid_basedn = pstrdup(ldap_pool, c->argv[0]);
 
     if (c->argc > 1) {
-      ldap_group_name_filter = pstrdup(session.pool, c->argv[1]);
+      ldap_group_name_filter = pstrdup(ldap_pool, c->argv[1]);
 
     } else {
-      ldap_group_name_filter = pstrcat(session.pool,
+      ldap_group_name_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_cn, "=%v)(objectclass=posixGroup))", NULL);
     }
 
     if (c->argc > 2) {
-      ldap_group_gid_filter = pstrdup(session.pool, c->argv[2]);
+      ldap_group_gid_filter = pstrdup(ldap_pool, c->argv[2]);
 
     } else {
-      ldap_group_gid_filter = pstrcat(session.pool,
+      ldap_group_gid_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_gidnumber, "=%v)(objectclass=posixGroup))", NULL);
     }
 
     if (c->argc > 3) {
-      ldap_group_member_filter = pstrdup(session.pool, c->argv[3]);
+      ldap_group_member_filter = pstrdup(ldap_pool, c->argv[3]);
 
     } else {
-      ldap_group_member_filter = pstrcat(session.pool,
+      ldap_group_member_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_memberuid, "=%v)(objectclass=posixGroup))", NULL);
     }
   }
