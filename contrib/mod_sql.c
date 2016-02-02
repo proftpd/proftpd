@@ -6668,7 +6668,13 @@ MODRET set_sqlauthtypes(cmd_rec *cmd) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLAuthType '",
         cmd->argv[i], "'", NULL));
     }
- 
+
+    if (strcasecmp(sah->name, "Plaintext") == 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_SQL_VERSION
+        ": WARNING: Use of Plaintext SQLAuthType is insecure, as it allows "
+        "storage of passwords *in the clear* in your database tables");
+    }
+
     *((struct sql_authtype_handler **) push_array(auth_list)) = sah;
   }
 
