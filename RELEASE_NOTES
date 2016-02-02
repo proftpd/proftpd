@@ -62,6 +62,7 @@ ChangeLog files.
       doc/contrib/mod_ban.html#BanOnEvent for more information.
 
     LogFormat %R, %{transfer-millisecs} (Bug#4218)
+      %{file-size}, %{transfer-type}
 
     MasqueradeAddress
       Sometimes the DNS name configured for MasqueradeAddress directives

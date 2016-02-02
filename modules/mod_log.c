@@ -124,9 +124,10 @@ static xaset_t *log_set = NULL;
    %{protocol}          - Current protocol (e.g. "ftp", "sftp", etc)
    %{uid}               - UID of logged-in user
    %{gid}               - Primary GID of logged-in user
-   %{transfer-status}   - "success", "failed", "cancelled", "timeout", or "-"
    %{transfer-failure}  - reason, or "-"
    %{transfer-millisecs}- Time taken to transfer file, in milliseconds
+   %{transfer-status}   - "success", "failed", "cancelled", "timeout", or "-"
+   %{transfer-type}     - "binary" or "ASCII"
    %{version}           - ProFTPD version
 */
 
@@ -266,6 +267,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
         if (strncmp(tmp, "{transfer-status}", 17) == 0) {
           add_meta(&outs, LOGFMT_META_XFER_STATUS, 0);
           tmp += 17;
+          continue;
+        }
+
+        if (strncmp(tmp, "{transfer-type}", 15) == 0) {
+          add_meta(&outs, LOGFMT_META_XFER_TYPE, 0);
+          tmp += 15;
           continue;
         }
 
@@ -1814,6 +1821,47 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
 
           } else {
             len = sstrncpy(argp, "failed", sizeof(arg));
+          }
+        }
+
+      } else {
+        len = sstrncpy(argp, "-", sizeof(arg));
+      }
+
+      m++;
+      break;
+    }
+
+    case LOGFMT_META_XFER_TYPE: {
+      argp = arg;
+
+      /* If the current command is one that incurs a data transfer, then we
+       * need to do more work.  If not, it's an easy substitution.
+       */
+      if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+          session.curr_cmd_id == PR_CMD_LIST_ID ||
+          session.curr_cmd_id == PR_CMD_MLSD_ID ||
+          session.curr_cmd_id == PR_CMD_NLST_ID ||
+          session.curr_cmd_id == PR_CMD_RETR_ID ||
+          session.curr_cmd_id == PR_CMD_STOR_ID ||
+          session.curr_cmd_id == PR_CMD_STOU_ID) {
+        const char *proto;
+
+        proto = pr_session_get_protocol(0);
+
+        if (strncmp(proto, "sftp", 5) == 0 ||
+            strncmp(proto, "scp", 4) == 0) {
+
+          /* Always binary. */
+          len = sstrncpy(argp, "binary", sizeof(arg));
+
+        } else {
+          if ((session.sf_flags & SF_ASCII) ||
+              (session.sf_flags & SF_ASCII_OVERRIDE)) {
+            len = sstrncpy(argp, "ASCII", sizeof(arg));
+
+          } else {
+            len = sstrncpy(argp, "binary", sizeof(arg));
           }
         }
 

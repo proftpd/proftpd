@@ -2843,6 +2843,45 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
     }
   }
 
+  if (long_tag == NULL &&
+      tag_len == 13 &&
+      strncmp(tag, "transfer-type", 14) == 0) {
+
+    /* If the current command is one that incurs a data transfer, then we
+     * need to do more work.  If not, it's an easy substitution.
+     */
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_LIST_ID ||
+        session.curr_cmd_id == PR_CMD_MLSD_ID ||
+        session.curr_cmd_id == PR_CMD_NLST_ID ||
+        session.curr_cmd_id == PR_CMD_RETR_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
+        session.curr_cmd_id == PR_CMD_STOU_ID) {
+      const char *proto;
+
+      proto = pr_session_get_protocol(0);
+
+      if (strncmp(proto, "sftp", 5) == 0 ||
+          strncmp(proto, "scp", 4) == 0) {
+
+          /* Always binary. */
+          long_tag = pstrdup(cmd->tmp_pool, "binary");
+
+      } else {
+        if ((session.sf_flags & SF_ASCII) ||
+            (session.sf_flags & SF_ASCII_OVERRIDE)) {
+          long_tag = pstrdup(cmd->tmp_pool, "ASCII");
+
+        } else {
+          long_tag = pstrdup(cmd->tmp_pool, "binary");
+        }
+      }
+
+    } else {
+      long_tag = pstrdup(cmd->tmp_pool, "-");
+    }
+  }
+
   pr_trace_msg(trace_channel, 15, "returning long tag '%s' for tag '%s'",
     long_tag ? long_tag : "<null>", tag);
   return long_tag;
