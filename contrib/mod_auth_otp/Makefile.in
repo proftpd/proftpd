@@ -1,5 +1,5 @@
 top_builddir=../../..
-top_srcdir=../../..
+top_srcdir=../..
 srcdir=@srcdir@
 
 include $(top_srcdir)/Make.rules
@@ -19,9 +19,9 @@ UTILS_API_OBJS=$(top_srcdir)/src/pool.o \
   $(top_srcdir)/src/str.o
 
 # Necessary redefinitions
-INCLUDES=-I. -I$(top_srcdir) -I$(top_srcdir)/include @INCLUDES@
+INCLUDES=-I. -I../.. -I../../include @INCLUDES@
 CPPFLAGS= $(ADDL_CPPFLAGS) -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
-LDFLAGS=-L$(top_srcdir)/lib @LIBDIRS@
+LDFLAGS=-L../../lib @LDFLAGS@
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
