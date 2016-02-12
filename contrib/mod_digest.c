@@ -2680,7 +2680,7 @@ static void digest_data_xfer_ev(const void *event_data, void *user_data) {
 #if defined(PR_SHARED_MODULE)
 static void digest_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp((char *) event_data, "mod_digest.c") == 0) {
-    pr_event_unregister(&digest_module, NULL);
+    pr_event_unregister(&digest_module, NULL, NULL);
   }
 }
 #endif /* PR_SHARED_MODULE */
