@@ -753,10 +753,9 @@ MODRET auth_otp_post_user(cmd_rec *cmd) {
      * used for localization is not resolvable by the linker, thus we
      * work around the problem.  For now.
      */
-    pr_response_add(R_331, "One-time password required for %s", cmd->argv[1]);
+    pr_response_add(R_331, "One-time password required for %s", user);
 #else
-    pr_response_add(R_331, _("One-time password required for %s"),
-      cmd->argv[1]);
+    pr_response_add(R_331, _("One-time password required for %s"), user);
 #endif /* HAVE_SFTP */
   }
 
