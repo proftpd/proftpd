@@ -1,0 +1,58 @@
+top_builddir=../..
+top_srcdir=../..
+srcdir=@srcdir@
+
+include $(top_srcdir)/Make.rules
+
+.SUFFIXES: .la .lo
+
+EXEEXT=@EXEEXT@
+SHARED_CFLAGS=-DPR_SHARED_MODULE
+SHARED_LDFLAGS=-avoid-version -export-dynamic -module
+VPATH=@srcdir@
+
+MODULE_NAME=mod_auth_otp
+MODULE_OBJS=mod_auth_otp.o base32.o otp.o crypto.o db.o
+SHARED_MODULE_OBJS=mod_auth_otp.lo base32.lo otp.lo crypto.lo db.lo
+UTILS_OBJS=base32.o otp.o crypto.o auth-otp.o
+UTILS_API_OBJS=$(top_srcdir)/src/pool.o \
+  $(top_srcdir)/src/str.o
+
+# Necessary redefinitions
+INCLUDES=-I. -I$(top_srcdir) -I$(top_srcdir)/include @INCLUDES@
+CPPFLAGS= $(ADDL_CPPFLAGS) -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
+LDFLAGS=-L$(top_srcdir)/lib @LIBDIRS@
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
+
+.c.lo:
+	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $<
+
+shared: $(SHARED_MODULE_OBJS) auth-otp$(EXEEXT)
+	$(LIBTOOL) --mode=link --tag=CC $(CC) -o $(MODULE_NAME).la $(SHARED_MODULE_OBJS) -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(SHARED_MODULE_LIBS) `cat $(MODULE_NAME).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
+
+static: $(MODULE_OBJS) auth-otp$(EXEEXT)
+	$(AR) rc $(MODULE_NAME).a $(MODULE_OBJS)
+	$(RANLIB) $(MODULE_NAME).a
+
+auth-otp$(EXEEXT): $(UTILS_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(UTILS_OBJS) $(UTILS_API_OBJS) $(LIBS)
+
+install: install-man install-utils
+	if [ -f $(MODULE_NAME).la ] ; then \
+		$(LIBTOOL) --mode=install --tag=CC $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXECDIR) ; \
+	fi
+
+install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man8
+	$(INSTALL_MAN) auth-otp.8 $(DESTDIR)$(mandir)/man8
+
+install-utils: $(DESTDIR)$(sbindir)
+	$(INSTALL_BIN) auth-otp$(EXEEXT) $(DESTDIR)$(sbindir)/auth-otp$(EXEEXT)
+
+clean:
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.lo .libs/*.o
+
+dist: clean
+	$(RM) Makefile $(MODULE_NAME).h config.status config.cache config.log
+	-$(RM) -r CVS/ RCS/

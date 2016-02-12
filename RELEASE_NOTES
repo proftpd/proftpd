@@ -17,6 +17,11 @@ ChangeLog files.
 
   + New Modules:
 
+    mod_auth_otp
+      One-time passwords (HOTP, TOTP) compatible with e.g. Google Authenticator,
+      for multi-factor authentication (FTP and SFTP)
+      doc/contrib/mod_auth_otp.html
+
     mod_digest
       HASH Draft
       doc/contrib/mod_digest.html
