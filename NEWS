@@ -49,7 +49,7 @@
 - Bug 4219 - Better handling of symlinks when chrooted.
 - Bug 4224 - Prohibit FTP indexing by web crawlers via auto-generated
   robots.txt.
-- Added mod_digest to the contrib/ modules directory.
+- Added mod_auth_otp, mod_digest to the contrib/ modules directory.
 
 1.3.6rc1 - Released 27-May-2015
 --------------------------------

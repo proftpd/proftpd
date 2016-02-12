@@ -224,6 +224,16 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_auth_file)],
     },
 
+    't/modules/mod_auth_otp.t' => {
+      order => ++$order,
+      test_class => [qw(mod_auth_otp mod_sql mod_sql_sqlite)],
+    },
+
+    't/modules/mod_auth_otp/sftp.t' => {
+      order => ++$order,
+      test_class => [qw(mod_auth_otp mod_sftp mod_sql mod_sql_sqlite)],
+    },
+
     't/modules/mod_ban.t' => {
       order => ++$order,
       test_class => [qw(mod_ban)],
