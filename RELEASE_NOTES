@@ -15,6 +15,13 @@ ChangeLog files.
   + Support for OCSP stapling.
   + Support for the common CLNT FTP command.
 
+  + New Modules:
+
+    mod_digest
+      HASH Draft
+      doc/contrib/mod_digest.html
+
+
   + New Configuration Directives:
 
     AllowEmptyPasswords
