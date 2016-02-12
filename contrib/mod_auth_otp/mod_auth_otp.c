@@ -179,6 +179,11 @@ static int check_otp_code(pool *p, const char *user, const char *user_otp,
           strerror(errno));
       }
       break;
+
+    default:
+      errno = EINVAL;
+      res = -1;
+      break;
   }
 
   if (res < 0) {

@@ -14,6 +14,7 @@ ftpcount
 ftptop
 ftpdctl
 ftpscrub
+contrib/mod_auth_otp/auth-otp
 contrib/mod_auth_otp/mod_auth_otp.h
 contrib/mod_dnsbl/mod_dnsbl.h
 contrib/mod_load/mod_load.h

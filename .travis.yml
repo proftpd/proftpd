@@ -11,6 +11,8 @@ install:
   - sudo apt-get install -y check
   # for mod_lang
   - sudo apt-get install -y gettext
+  # for mod_cap
+  - sudo apt-get install -y libcap-dev
   # for mod_geoip
   - sudo apt-get install -y libgeoip-dev
   # for mod_ldap
