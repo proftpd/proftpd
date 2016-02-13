@@ -54,7 +54,7 @@ int auth_otp_base32_encode(pool *p, const unsigned char *raw,
 
   if (raw_len > 0) {
     int d, i;
-    unsigned int bits_rem;
+    int bits_rem = 0;
 
     d = raw[0];
     i = 1;
@@ -102,7 +102,7 @@ int auth_otp_base32_decode(pool *p, const unsigned char *encoded,
   int d;
   unsigned char *buf;
   size_t buflen, bufsz;
-  unsigned int bits_rem;
+  int bits_rem;
 
   if (p == NULL ||
       encoded == NULL ||
