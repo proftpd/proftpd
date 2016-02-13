@@ -1362,7 +1362,7 @@ static int remove_cached_digest(pool *p, unsigned long algo, const char *path,
     return -1;
   }
 
-  if (pr_table_remove(cache, key, NULL) < 0) {
+  if (pr_table_remove(cache, key, NULL) == NULL) {
     return -1;
   }
 
