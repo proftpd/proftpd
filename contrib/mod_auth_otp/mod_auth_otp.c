@@ -479,10 +479,11 @@ MODRET auth_otp_auth(cmd_rec *cmd) {
         if (authoritative) {
           /* Indicate ERROR. */
           res = -1;
-        }
 
-        /* Indicate DECLINED. */
-        res = 0;
+        } else {
+          /* Indicate DECLINED. */
+          res = 0;
+        }
 
       } else {
         /* Indicate HANDLED. */
