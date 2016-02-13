@@ -564,7 +564,11 @@ static int get_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
         passphrase_provider, strerror(errno));
 
     } else {
-      size_t pwlen = strlen(buf);
+      size_t pwlen;
+      /* Ensure that the buffer is NUL-terminated. */
+      buf[buflen-1] = '\0';
+
+      pwlen = strlen(buf);
 
       sstrncpy(pdata->buf, buf, pdata->bufsz);
       pdata->buflen = pwlen;
@@ -592,9 +596,11 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
   register unsigned int attempt;
 
   memset(prompt, '\0', sizeof(prompt));
-  snprintf(prompt, sizeof(prompt)-1, "Host key for the %s#%d (%s) server: ",
+  res = snprintf(prompt, sizeof(prompt)-1,
+    "Host key for the %s#%d (%s) server: ",
     pr_netaddr_get_ipstr(k->server->addr), k->server->ServerPort,
     k->server->ServerName);
+  prompt[res] = '\0';
   prompt[sizeof(prompt)-1] = '\0';
 
   PRIVS_ROOT

@@ -2179,6 +2179,9 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
         tls_passphrase_provider, strerror(errno));
 
     } else {
+      /* Ensure that the buffer is NUL-terminated. */
+      buf[buflen-1] = '\0';
+
       sstrncpy(pdata->buf, buf, pdata->bufsz);
       pdata->buflen = strlen(buf);
 
@@ -12506,8 +12509,9 @@ static void tls_get_passphrases(void) {
     k->server = s;
 
     if (rsa) {
-      snprintf(buf, sizeof(buf)-1, "RSA key for the %s#%d (%s) server: ",
+      res = snprintf(buf, sizeof(buf)-1, "RSA key for the %s#%d (%s) server: ",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[res] = '\0';
       buf[sizeof(buf)-1] = '\0';
 
       k->rsa_pkey = tls_get_page(PEM_BUFSIZE, &k->rsa_pkey_ptr);
@@ -12532,8 +12536,9 @@ static void tls_get_passphrases(void) {
     }
 
     if (dsa) {
-      snprintf(buf, sizeof(buf)-1, "DSA key for the %s#%d (%s) server: ",
+      res = snprintf(buf, sizeof(buf)-1, "DSA key for the %s#%d (%s) server: ",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[res] = '\0';
       buf[sizeof(buf)-1] = '\0';
 
       k->dsa_pkey = tls_get_page(PEM_BUFSIZE, &k->dsa_pkey_ptr);
@@ -12559,8 +12564,9 @@ static void tls_get_passphrases(void) {
 
 #ifdef PR_USE_OPENSSL_ECC
     if (ec != NULL) {
-      snprintf(buf, sizeof(buf)-1, "EC key for the %s#%d (%s) server: ",
+      res = snprintf(buf, sizeof(buf)-1, "EC key for the %s#%d (%s) server: ",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[res] = '\0';
       buf[sizeof(buf)-1] = '\0';
 
       k->ec_pkey = tls_get_page(PEM_BUFSIZE, &k->ec_pkey_ptr);
@@ -12586,9 +12592,10 @@ static void tls_get_passphrases(void) {
 #endif /* PR_USE_OPENSSL_ECC */
 
     if (pkcs12) {
-      snprintf(buf, sizeof(buf)-1,
+      res = snprintf(buf, sizeof(buf)-1,
         "PKCS12 password for the %s#%d (%s) server: ",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[res] = '\0';
       buf[sizeof(buf)-1] = '\0';
 
       k->pkcs12_passwd = tls_get_page(PEM_BUFSIZE, &k->pkcs12_passwd_ptr);
