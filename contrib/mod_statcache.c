@@ -1868,7 +1868,10 @@ static int statcache_handle_statcache(pr_ctrls_t *ctrl, int reqargc,
     expires = statcache_stats_get_expires();
     rejects = statcache_stats_get_rejects();
 
-    statcache_unlock_stats(statcache_tabfh->fh_fd);
+    if (statcache_unlock_stats(statcache_tabfh->fh_fd) < 0) {
+      pr_trace_msg(trace_channel, 3,
+        "error un-locking shared memory: %s", strerror(errno));
+    }
 
     current_usage = (((float) count / (float) statcache_capacity) * 100.0);
     highest_usage = (((float) highest / (float) statcache_capacity) * 100.0);
