@@ -26,6 +26,10 @@ ChangeLog files.
       HASH Draft
       doc/contrib/mod_digest.html
 
+    mod_statcache
+      stat(2)/lstat(2) caching across sessions/processes
+      doc/contrib/mod_statcache.html
+
 
   + New Configuration Directives:
 
