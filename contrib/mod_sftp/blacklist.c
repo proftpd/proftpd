@@ -52,6 +52,11 @@ struct blacklist_header {
 
 };
 
+/* Set a maximum number of records we expect to find in the blacklist file.
+ * The blacklist.dat file shipped with mod_sftp contains 294903 records.
+ */
+#define SFTP_BLACKLIST_MAX_RECORDS	300000
+
 static const char *blacklist_path = PR_CONFIG_DIR "/blacklist.dat";
 
 static const char *trace_channel = "ssh2";
@@ -98,6 +103,13 @@ static int validate_blacklist(int fd, unsigned int *bytes,
   *bytes = (hdr.record_bits >> 3) - 2;
 
   *records = (((hdr.records[0] << 8) + hdr.records[1]) << 8) + hdr.records[2];
+  if (*records > SFTP_BLACKLIST_MAX_RECORDS) {
+    pr_trace_msg(trace_channel, 2,
+      "SFTPKeyBlacklist '%s' contains %u records > max %u records",
+      blacklist_path, *records, (unsigned int) SFTP_BLACKLIST_MAX_RECORDS);
+    *records = SFTP_BLACKLIST_MAX_RECORDS;
+  }
+
   *shift = (hdr.shift[0] << 8) + hdr.shift[1];
 
   expected = sizeof(hdr) + 0x20000 + (*records) * (*bytes);
