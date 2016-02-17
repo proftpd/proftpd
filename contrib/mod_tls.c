@@ -1788,7 +1788,11 @@ static void tls_prepare_provider_fds(int stdout_fd, int stderr_fd) {
 # elif defined(RLIMIT_OFILE)
   if (getrlimit(RLIMIT_OFILE, &rlim) < 0) {
 # endif
-    tls_log("getrlimit error: %s", strerror(errno));
+    /* Ignore ENOSYS (and EPERM, since some libc's use this as ENOSYS). */
+    if (errno != ENOSYS &&
+        errno != EPERM) {
+      tls_log("getrlimit error: %s", strerror(errno));
+    }
 
     /* Pick some arbitrary high number. */
     nfiles = 255;

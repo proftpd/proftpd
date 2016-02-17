@@ -129,8 +129,12 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
 # elif defined(RLIMIT_OFILE)
   if (getrlimit(RLIMIT_OFILE, &rlim) < 0) {
 # endif
-    pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": getrlimit error: %s",
-      strerror(errno));
+    /* Ignore ENOSYS (and EPERM, since some libc's use this as ENOSYS). */
+    if (errno != ENOSYS &&
+        errno != EPERM) {
+      pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": getrlimit error: %s",
+        strerror(errno));
+    }
 
     /* Pick some arbitrary high number. */
     nfiles = 255;

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2013-2014 The ProFTPD Project team
+ * Copyright (c) 2013-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Resource limit module
- * $Id: mod_rlimit.c,v 1.8 2014-01-31 17:29:27 castaglia Exp $
- */
+/* Resource limit module */
 
 #include "conf.h"
 #include "privs.h"
@@ -142,7 +140,8 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
     CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
   }
 
-  if (pr_rlimit_get_cpu(&current, &max) < 0) {
+  if (pr_rlimit_get_cpu(&current, &max) < 0 &&
+      errno != ENOSYS) {
     pr_log_pri(PR_LOG_NOTICE, "unable to retrieve CPU resource limits: %s",
       strerror(errno));
   }
@@ -281,7 +280,8 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
   }
 
   /* Retrieve the current values */
-  if (pr_rlimit_get_memory(&current, &max) < 0) {
+  if (pr_rlimit_get_memory(&current, &max) < 0 &&
+      errno != ENOSYS) {
     pr_log_pri(PR_LOG_NOTICE, "unable to get memory resource limits: %s",
       strerror(errno));
   }

@@ -325,7 +325,11 @@ static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
 # elif defined(RLIMIT_OFILE)
   if (getrlimit(RLIMIT_OFILE, &rlim) < 0) {
 # endif
-    exec_log("getrlimit() error: %s", strerror(errno));
+    /* Ignore ENOSYS (and EPERM, since some libc's use this as ENOSYS). */
+    if (errno != ENOSYS &&
+        errno != EPERM) {
+      exec_log("getrlimit() error: %s", strerror(errno));
+    }
 
     /* Pick some arbitrary high number. */
     nfiles = EXEC_MAX_FD_COUNT;
