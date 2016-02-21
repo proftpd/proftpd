@@ -11779,6 +11779,28 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSServerInfo path */
+MODRET set_tlsserverinfo(cmd_rec *cmd) {
+#if !defined(OPENSSL_NO_TLSEXT) && OPENSSL_VERSION_NUMBER >= 0x10002000L
+  char *path;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  path = cmd->argv[1];
+  if (*path != '/') {
+    CONF_ERROR(cmd, "parameter must be an absolute path");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, path);
+  return PR_HANDLED(cmd);
+#else
+  pr_log_debug(DEBUG0,
+    "%s is not supported by this version of OpenSSL, ignoring",
+    cmd->argv[0]);
+#endif /* OPENSSL_NO_TLSEXT */
+}
+
 /* usage: TLSSessionCache "off"|type:/info [timeout] */
 MODRET set_tlssessioncache(cmd_rec *cmd) {
   char *provider = NULL, *info = NULL;
@@ -13165,6 +13187,19 @@ static int tls_sess_init(void) {
   } else {
     set_next_protocol();
   }
+
+# if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  c = find_config(main_server->conf, CONF_PARAM, "TLSServerInfo", FALSE);
+  if (c != NULL) {
+    const char *path;
+
+    path = c->argv[0];
+    if (SSL_CTX_use_serverinfo_file(ssl_ctx, path) != 1) {
+      tls_log("error setting server info using '%s': %s", path,
+        tls_get_errors());
+    }
+  }
+# endif /* OpenSSL-1.0.2 and later */
 #endif /* !OPENSSL_NO_TLSEXT */
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
@@ -13649,6 +13684,7 @@ static conftable tls_conftab[] = {
   { "TLSRSACertificateFile",	set_tlsrsacertfile,	NULL },
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
   { "TLSServerCipherPreference",set_tlsservercipherpreference, NULL },
+  { "TLSServerInfo",		set_tlsserverinfo,	NULL },
   { "TLSSessionCache",		set_tlssessioncache,	NULL },
   { "TLSSessionTicketKeys",	set_tlssessionticketkeys, NULL },
   { "TLSSessionTickets",	set_tlssessiontickets,	NULL },
