@@ -11781,7 +11781,7 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
 
 /* usage: TLSServerInfo path */
 MODRET set_tlsserverinfo(cmd_rec *cmd) {
-#if !defined(OPENSSL_NO_TLSEXT)
+#if !defined(OPENSSL_NO_TLSEXT) && OPENSSL_VERSION_NUMBER >= 0x10002000L
   char *path;
 
   CHECK_ARGS(cmd, 1);
@@ -13188,6 +13188,7 @@ static int tls_sess_init(void) {
     set_next_protocol();
   }
 
+# if OPENSSL_VERSION_NUMBER >= 0x10002000L
   c = find_config(main_server->conf, CONF_PARAM, "TLSServerInfo", FALSE);
   if (c != NULL) {
     const char *path;
@@ -13198,6 +13199,7 @@ static int tls_sess_init(void) {
         tls_get_errors());
     }
   }
+# endif /* OpenSSL-1.0.2 and later */
 #endif /* !OPENSSL_NO_TLSEXT */
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
