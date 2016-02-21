@@ -11779,8 +11779,8 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TLSServerInfo path */
-MODRET set_tlsserverinfo(cmd_rec *cmd) {
+/* usage: TLSServerInfoFile path */
+MODRET set_tlsserverinfofile(cmd_rec *cmd) {
 #if !defined(OPENSSL_NO_TLSEXT) && OPENSSL_VERSION_NUMBER >= 0x10002000L
   char *path;
 
@@ -13189,7 +13189,7 @@ static int tls_sess_init(void) {
   }
 
 # if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  c = find_config(main_server->conf, CONF_PARAM, "TLSServerInfo", FALSE);
+  c = find_config(main_server->conf, CONF_PARAM, "TLSServerInfoFile", FALSE);
   if (c != NULL) {
     const char *path;
 
@@ -13684,7 +13684,7 @@ static conftable tls_conftab[] = {
   { "TLSRSACertificateFile",	set_tlsrsacertfile,	NULL },
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
   { "TLSServerCipherPreference",set_tlsservercipherpreference, NULL },
-  { "TLSServerInfo",		set_tlsserverinfo,	NULL },
+  { "TLSServerInfoFile",	set_tlsserverinfofile,	NULL },
   { "TLSSessionCache",		set_tlssessioncache,	NULL },
   { "TLSSessionTicketKeys",	set_tlssessionticketkeys, NULL },
   { "TLSSessionTickets",	set_tlssessiontickets,	NULL },

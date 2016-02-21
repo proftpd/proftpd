@@ -49,7 +49,7 @@ ChangeLog files.
 
     SQLODBCVersion (....)
 
-    TLSServerInfo
+    TLSServerInfoFile
       Custom TLS extension data (e.g. SCT, for certificate transparency).
 
     TLSSessionTickets (Bug#4176)
