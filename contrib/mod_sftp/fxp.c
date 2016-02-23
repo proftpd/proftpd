@@ -11710,9 +11710,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   data = sftp_msg_read_data(fxp->pool, &fxp->payload, &fxp->payload_sz,
     datalen);
 
-  session.xfer.total_bytes += datalen;
-  session.total_bytes += datalen;
- 
   memset(cmd_arg, '\0', sizeof(cmd_arg)); 
   snprintf(cmd_arg, sizeof(cmd_arg)-1, "%s %" PR_LU " %lu", name,
     (pr_off_t) offset, (unsigned long) datalen);
@@ -11947,6 +11944,9 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     if (new_size > fxh->fh_st->st_size) {
       fxh->fh_st->st_size = new_size;
     }
+
+    session.xfer.total_bytes += datalen;
+    session.total_bytes += datalen;
   }
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
