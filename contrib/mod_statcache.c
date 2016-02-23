@@ -576,8 +576,9 @@ static int lock_row(int fd, int lock_type, uint32_t hash) {
   get_row_range(hash, &lock.l_start, &lock.l_len);
 
   pr_trace_msg(trace_channel, 15,
-    "attempt #%u to acquire %s lock on StatCacheTable fd %d (off %lu, len %lu)",
-    nattempts, get_lock_type(&lock), fd, (unsigned long) lock.l_start,
+    "attempt #%u to acquire row %s lock on StatCacheTable fd %d "
+    "(off %lu, len %lu)", nattempts, get_lock_type(&lock), fd,
+    (unsigned long) lock.l_start,
     (unsigned long) lock.l_len);
 
   while (fcntl(fd, F_SETLK, &lock) < 0) {
