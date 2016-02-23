@@ -8710,7 +8710,6 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   int res;
   uint32_t buflen, bufsz, datalen;
   uint64_t offset;
-  struct stat st;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
@@ -8801,40 +8800,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
 
-  if (pr_fsio_fstat(fxh->fh, &st) < 0) {
-    uint32_t status_code;
-    const char *reason;
-    int xerrno = errno;
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error checking '%s' for READ: %s", fxh->fh->fh_path, strerror(xerrno));
-
-    status_code = fxp_errno2status(errno, &reason);
-
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason,
-      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
-
-    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
-      reason, NULL);
-
-    if (xerrno == EOF) {
-      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-      pr_response_clear(&resp_list);
-
-    } else {
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
-    }
-
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
-
-    return fxp_packet_write(resp);
-  }
-
-  if (offset > st.st_size) {
+  if (offset > fxh->fh_st->st_size) {
     uint32_t status_code;
     const char *reason;
     int xerrno = EOF;
@@ -8842,7 +8808,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "requested read offset (%" PR_LU " bytes) greater than size of "
       "'%s' (%" PR_LU " bytes)", (pr_off_t) offset, fxh->fh->fh_path,
-      (pr_off_t) st.st_size);
+      (pr_off_t) fxh->fh_st->st_size);
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -8865,7 +8831,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   }
 
   pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_XFER_SIZE, st.st_size,
+    PR_SCORE_XFER_SIZE, fxh->fh_st->st_size,
     PR_SCORE_XFER_DONE, (off_t) offset,
     NULL);
 
@@ -8930,7 +8896,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (S_ISREG(st.st_mode)) {
+  if (S_ISREG(fxh->fh_st->st_mode)) {
     if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
       uint32_t status_code;
       const char *reason;
