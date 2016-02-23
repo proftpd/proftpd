@@ -11605,18 +11605,20 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       case SFTP_SSH2_FXP_INIT:
         /* If we already know the version, then the client has sent
          * FXP_INIT before, and should NOT be sending it again.
+         *
+         * However, per Bug#4227, there ARE clients which do send INIT
+         * multiple times; I don't know why.  And since OpenSSH handles
+         * these repeated INITs without disconnecting clients, that is the
+         * de facto expected behavior.  We will do the same, but at least
+         * log about it.
          */
-        if (fxp_session->client_version == 0) {
-          res = fxp_handle_init(fxp);
-
-        } else {
+        if (fxp_session->client_version > 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "already received SFTP INIT request from client");
-          destroy_pool(fxp->pool);
-          fxp_session = NULL;
-          return -1;
+            "already received SFTP INIT %u request from client",
+            (unsigned int) fxp_session->client_version);
         }
 
+        res = fxp_handle_init(fxp);
         break;
 
       case SFTP_SSH2_FXP_CLOSE:
