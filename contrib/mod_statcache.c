@@ -618,12 +618,12 @@ static int lock_row(int fd, int lock_type, uint32_t hash) {
 
         errno = 0;
         pr_trace_msg(trace_channel, 15,
-          "attempt #%u to acquire %s lock on StatCacheTable fd %d", nattempts,
-          get_lock_type(&lock), fd);
+          "attempt #%u to acquire %s row lock on StatCacheTable fd %d",
+          nattempts, get_lock_type(&lock), fd);
         continue;
       }
 
-      pr_trace_msg(trace_channel, 15, "unable to acquire %s lock on "
+      pr_trace_msg(trace_channel, 15, "unable to acquire %s row lock on "
         "StatCacheTable fd %d after %u attempts: %s", get_lock_type(&lock),
         nattempts, fd, strerror(xerrno));
     }
@@ -633,7 +633,7 @@ static int lock_row(int fd, int lock_type, uint32_t hash) {
   }
 
   pr_trace_msg(trace_channel, 15,
-    "acquired %s lock of StatCacheTable fd %d successfully",
+    "acquired %s row lock of StatCacheTable fd %d successfully",
     get_lock_type(&lock), fd);
   return 0;
 }
@@ -1373,8 +1373,11 @@ static int statcache_fsio_open(pr_fh_t *fh, const char *path, int flags) {
   xerrno = errno;
 
   if (res == 0) {
-    /* Clear the cache for this patch, but only if O_CREAT is present. */
-    if (flags & O_CREAT) {
+    /* Clear the cache for this patch, but only if O_CREAT or O_TRUNC are
+     * present.
+     */
+    if ((flags & O_CREAT) ||
+        (flags & O_TRUNC)) {
       int tabfd;
       const char *canon_path = NULL;
       size_t canon_pathlen = 0;
@@ -1399,9 +1402,11 @@ static int statcache_fsio_open(pr_fh_t *fh, const char *path, int flags) {
         pr_trace_msg(trace_channel, 3,
           "error write-locking shared memory: %s", strerror(errno));
       } 
-    
+
+      pr_trace_msg(trace_channel, 14,
+        "removing entry for path '%s' due to open(2) flags", canon_path);
       (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
-    
+
       if (statcache_unlock_row(tabfd, hash) < 0) {
         pr_trace_msg(trace_channel, 3,
           "error unlocking shared memory: %s", strerror(errno));
@@ -2099,6 +2104,7 @@ MODRET set_statcachetable(cmd_rec *cmd) {
 
 MODRET statcache_post_pass(cmd_rec *cmd) {
   pr_fs_t *fs;
+  const char *proto;
 
   if (statcache_engine == FALSE) {
     return PR_DECLINED(cmd);
@@ -2139,6 +2145,21 @@ MODRET statcache_post_pass(cmd_rec *cmd) {
 
   pr_fs_setcwd(pr_fs_getvwd());
   pr_fs_clear_cache();
+
+  /* If we are handling an SSH2 session, then we need to disable all
+   * negative caching; something about ProFTPD's stat caching interacting
+   * with mod_statcache's caching, AND mod_sftp's dispatching through
+   * the main FTP handlers, causes unexpected behavior.
+   */
+
+  proto = pr_session_get_protocol(0);
+  if (strncmp(proto, "ssh2", 5) == 0 ||
+      strncmp(proto, "sftp", 5) == 0 ||
+      strncmp(proto, "scp", 4) == 0) {
+    pr_trace_msg(trace_channel, 9,
+      "disabling negative caching for %s protocol", proto);
+    statcache_max_negative_age = 0;
+  }
 
   return PR_DECLINED(cmd);
 }
