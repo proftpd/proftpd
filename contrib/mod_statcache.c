@@ -142,6 +142,8 @@ static int statcache_unlock_table(int fd);
 static int statcache_wlock_stats(int fd);
 static int statcache_unlock_stats(int fd);
 
+static void statcache_fs_statcache_clear_ev(const void *event_data,
+  void *user_data);
 static int statcache_sess_init(void);
 
 /* Functions for marshalling key/value data to/from local cache (SysV shm). */
@@ -1000,7 +1002,7 @@ static const char *statcache_get_canon_path(pool *p, const char *path,
 
 static int statcache_fsio_stat(pr_fs_t *fs, const char *path,
     struct stat *st) {
-  int res, tabfd, xerrno = 0;
+  int res, tab_fd, xerrno = 0;
   const char *canon_path = NULL;
   size_t canon_pathlen = 0;
   pool *p;
@@ -1018,17 +1020,17 @@ static int statcache_fsio_stat(pr_fs_t *fs, const char *path,
   }
 
   hash = statcache_hash(canon_path, canon_pathlen);
-  tabfd = statcache_tabfh->fh_fd;
+  tab_fd = statcache_tabfh->fh_fd;
 
-  if (statcache_wlock_row(tabfd, hash) < 0) {
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error write-locking shared memory: %s", strerror(errno));
   }
 
-  res = statcache_table_get(tabfd, canon_path, canon_pathlen, st, &xerrno, hash,
-    FSIO_FILE_STAT);
+  res = statcache_table_get(tab_fd, canon_path, canon_pathlen, st, &xerrno,
+    hash, FSIO_FILE_STAT);
 
-  if (statcache_unlock_row(tabfd, hash) < 0) {
+  if (statcache_unlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error unlocking shared memory: %s", strerror(errno));
   }
@@ -1050,12 +1052,12 @@ static int statcache_fsio_stat(pr_fs_t *fs, const char *path,
   res = stat(path, st);
   xerrno = errno;
 
-  if (statcache_wlock_row(tabfd, hash) < 0) {
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error write-locking shared memory: %s", strerror(errno));
   }
 
-  if (statcache_wlock_row(tabfd, hash) < 0) {
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error write-locking shared memory: %s", strerror(errno));
   }
@@ -1063,7 +1065,7 @@ static int statcache_fsio_stat(pr_fs_t *fs, const char *path,
   if (res < 0) {
     if (statcache_max_negative_age > 0) {
       /* Negatively cache the failed stat(2). */
-      if (statcache_table_add(tabfd, canon_path, canon_pathlen, NULL, xerrno,
+      if (statcache_table_add(tab_fd, canon_path, canon_pathlen, NULL, xerrno,
           hash, FSIO_FILE_STAT) < 0) {
         pr_trace_msg(trace_channel, 3, "error adding entry for path '%s': %s",
           canon_path, strerror(errno));
@@ -1071,14 +1073,14 @@ static int statcache_fsio_stat(pr_fs_t *fs, const char *path,
     }
 
   } else {
-    if (statcache_table_add(tabfd, canon_path, canon_pathlen, st, 0, hash,
+    if (statcache_table_add(tab_fd, canon_path, canon_pathlen, st, 0, hash,
         FSIO_FILE_STAT) < 0) {
       pr_trace_msg(trace_channel, 3, "error adding entry for path '%s': %s",
         canon_path, strerror(errno));
     }
   }
 
-  if (statcache_unlock_row(tabfd, hash) < 0) {
+  if (statcache_unlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error unlocking shared memory: %s", strerror(errno));
   }
@@ -1089,7 +1091,7 @@ static int statcache_fsio_stat(pr_fs_t *fs, const char *path,
 }
 
 static int statcache_fsio_fstat(pr_fh_t *fh, int fd, struct stat *st) {
-  int res, tabfd, xerrno = 0;
+  int res, tab_fd, xerrno = 0;
   size_t pathlen = 0;
   uint32_t hash;
 
@@ -1102,17 +1104,17 @@ static int statcache_fsio_fstat(pr_fh_t *fh, int fd, struct stat *st) {
 
   pathlen = strlen(fh->fh_path);
   hash = statcache_hash(fh->fh_path, pathlen);
-  tabfd = statcache_tabfh->fh_fd;
+  tab_fd = statcache_tabfh->fh_fd;
 
-  if (statcache_wlock_row(tabfd, hash) < 0) {
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error write-locking shared memory: %s", strerror(errno));
   }
 
-  res = statcache_table_get(tabfd, fh->fh_path, pathlen, st, &xerrno, hash,
+  res = statcache_table_get(tab_fd, fh->fh_path, pathlen, st, &xerrno, hash,
     FSIO_FILE_STAT);
 
-  if (statcache_unlock_row(tabfd, hash) < 0) {
+  if (statcache_unlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error unlocking shared memory: %s", strerror(errno));
   }
@@ -1133,7 +1135,7 @@ static int statcache_fsio_fstat(pr_fh_t *fh, int fd, struct stat *st) {
   res = fstat(fd, st);
   xerrno = errno;
 
-  if (statcache_wlock_row(tabfd, hash) < 0) {
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error write-locking shared memory: %s", strerror(errno));
   }
@@ -1141,7 +1143,7 @@ static int statcache_fsio_fstat(pr_fh_t *fh, int fd, struct stat *st) {
   if (res < 0) {
     if (statcache_max_negative_age > 0) {
       /* Negatively cache the failed fstat(2). */
-      if (statcache_table_add(tabfd, fh->fh_path, pathlen, NULL, xerrno,
+      if (statcache_table_add(tab_fd, fh->fh_path, pathlen, NULL, xerrno,
           hash, FSIO_FILE_STAT) < 0) {
         pr_trace_msg(trace_channel, 3, "error adding entry for path '%s': %s",
           fh->fh_path, strerror(errno));
@@ -1149,14 +1151,14 @@ static int statcache_fsio_fstat(pr_fh_t *fh, int fd, struct stat *st) {
     }
 
   } else {
-    if (statcache_table_add(tabfd, fh->fh_path, pathlen, st, 0, hash,
+    if (statcache_table_add(tab_fd, fh->fh_path, pathlen, st, 0, hash,
         FSIO_FILE_STAT) < 0) {
       pr_trace_msg(trace_channel, 3, "error adding entry for path '%s': %s",
         fh->fh_path, strerror(errno));
     }
   }
 
-  if (statcache_unlock_row(tabfd, hash) < 0) {
+  if (statcache_unlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error unlocking shared memory: %s", strerror(errno));
   }
@@ -1167,7 +1169,7 @@ static int statcache_fsio_fstat(pr_fh_t *fh, int fd, struct stat *st) {
 
 static int statcache_fsio_lstat(pr_fs_t *fs, const char *path,
     struct stat *st) {
-  int res, tabfd, xerrno = 0;
+  int res, tab_fd, xerrno = 0;
   const char *canon_path = NULL;
   size_t canon_pathlen = 0;
   pool *p;
@@ -1185,17 +1187,17 @@ static int statcache_fsio_lstat(pr_fs_t *fs, const char *path,
   }
 
   hash = statcache_hash(canon_path, canon_pathlen);
-  tabfd = statcache_tabfh->fh_fd;
+  tab_fd = statcache_tabfh->fh_fd;
 
-  if (statcache_wlock_row(tabfd, hash) < 0) {
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error write-locking shared memory: %s", strerror(errno));
   }
 
-  res = statcache_table_get(tabfd, canon_path, canon_pathlen, st, &xerrno,
+  res = statcache_table_get(tab_fd, canon_path, canon_pathlen, st, &xerrno,
     hash, FSIO_FILE_LSTAT);
 
-  if (statcache_unlock_row(tabfd, hash) < 0) {
+  if (statcache_unlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error unlocking shared memory: %s", strerror(errno));
   }
@@ -1217,7 +1219,7 @@ static int statcache_fsio_lstat(pr_fs_t *fs, const char *path,
   res = lstat(path, st);
   xerrno = errno;
 
-  if (statcache_wlock_row(tabfd, hash) < 0) {
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error write-locking shared memory: %s", strerror(errno));
   }
@@ -1225,7 +1227,7 @@ static int statcache_fsio_lstat(pr_fs_t *fs, const char *path,
   if (res < 0) {
     if (statcache_max_negative_age > 0) {
       /* Negatively cache the failed lstat(2). */
-      if (statcache_table_add(tabfd, canon_path, canon_pathlen, NULL, xerrno,
+      if (statcache_table_add(tab_fd, canon_path, canon_pathlen, NULL, xerrno,
           hash, FSIO_FILE_LSTAT) < 0) {
         pr_trace_msg(trace_channel, 3, "error adding entry for path '%s': %s",
           canon_path, strerror(errno));
@@ -1233,14 +1235,14 @@ static int statcache_fsio_lstat(pr_fs_t *fs, const char *path,
     }
 
   } else {
-    if (statcache_table_add(tabfd, canon_path, canon_pathlen, st, 0, hash,
+    if (statcache_table_add(tab_fd, canon_path, canon_pathlen, st, 0, hash,
         FSIO_FILE_LSTAT) < 0) {
       pr_trace_msg(trace_channel, 3, "error adding entry for path '%s': %s",
         canon_path, strerror(errno));
     }
   }
 
-  if (statcache_unlock_row(tabfd, hash) < 0) {
+  if (statcache_unlock_row(tab_fd, hash) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error unlocking shared memory: %s", strerror(errno));
   }
@@ -1258,7 +1260,7 @@ static int statcache_fsio_rename(pr_fs_t *fs, const char *rnfm,
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     const char *canon_rnfm = NULL, *canon_rnto = NULL;
     size_t canon_rnfmlen = 0, canon_rntolen = 0;
     pool *p;
@@ -1287,28 +1289,28 @@ static int statcache_fsio_rename(pr_fs_t *fs, const char *rnfm,
 
     hash_rnfm = statcache_hash(canon_rnfm, canon_rnfmlen);
     hash_rnto = statcache_hash(canon_rnto, canon_rntolen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash_rnfm) < 0) {
+    if (statcache_wlock_row(tab_fd, hash_rnfm) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }   
 
-    (void) statcache_table_remove(tabfd, canon_rnfm, canon_rnfmlen, hash_rnfm);
+    (void) statcache_table_remove(tab_fd, canon_rnfm, canon_rnfmlen, hash_rnfm);
 
-    if (statcache_unlock_row(tabfd, hash_rnfm) < 0) {
+    if (statcache_unlock_row(tab_fd, hash_rnfm) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
 
-    if (statcache_wlock_row(tabfd, hash_rnto) < 0) {
+    if (statcache_wlock_row(tab_fd, hash_rnto) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
 
-    (void) statcache_table_remove(tabfd, canon_rnto, canon_rntolen, hash_rnto);
+    (void) statcache_table_remove(tab_fd, canon_rnto, canon_rntolen, hash_rnto);
 
-    if (statcache_unlock_row(tabfd, hash_rnto) < 0) {
+    if (statcache_unlock_row(tab_fd, hash_rnto) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
@@ -1327,7 +1329,7 @@ static int statcache_fsio_unlink(pr_fs_t *fs, const char *path) {
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     const char *canon_path = NULL;
     size_t canon_pathlen = 0;
     pool *p;
@@ -1345,16 +1347,16 @@ static int statcache_fsio_unlink(pr_fs_t *fs, const char *path) {
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
 
-    (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
+    (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
@@ -1378,7 +1380,7 @@ static int statcache_fsio_open(pr_fh_t *fh, const char *path, int flags) {
      */
     if ((flags & O_CREAT) ||
         (flags & O_TRUNC)) {
-      int tabfd;
+      int tab_fd;
       const char *canon_path = NULL;
       size_t canon_pathlen = 0;
       pool *p;
@@ -1396,18 +1398,18 @@ static int statcache_fsio_open(pr_fh_t *fh, const char *path, int flags) {
       }
 
       hash = statcache_hash(canon_path, canon_pathlen);
-      tabfd = statcache_tabfh->fh_fd;
+      tab_fd = statcache_tabfh->fh_fd;
 
-      if (statcache_wlock_row(tabfd, hash) < 0) {
+      if (statcache_wlock_row(tab_fd, hash) < 0) {
         pr_trace_msg(trace_channel, 3,
           "error write-locking shared memory: %s", strerror(errno));
       } 
 
       pr_trace_msg(trace_channel, 14,
         "removing entry for path '%s' due to open(2) flags", canon_path);
-      (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
+      (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
 
-      if (statcache_unlock_row(tabfd, hash) < 0) {
+      if (statcache_unlock_row(tab_fd, hash) < 0) {
         pr_trace_msg(trace_channel, 3,
           "error unlocking shared memory: %s", strerror(errno));
       }
@@ -1428,22 +1430,22 @@ static int statcache_fsio_write(pr_fh_t *fh, int fd, const char *buf,
   xerrno = errno;
 
   if (res > 0) {
-    int tabfd;
+    int tab_fd;
     size_t pathlen = 0;
     uint32_t hash;
 
     pathlen = strlen(fh->fh_path);
     hash = statcache_hash(fh->fh_path, pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
  
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
   
-    (void) statcache_table_remove(tabfd, fh->fh_path, pathlen, hash);
+    (void) statcache_table_remove(tab_fd, fh->fh_path, pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     } 
@@ -1460,7 +1462,7 @@ static int statcache_fsio_truncate(pr_fs_t *fs, const char *path, off_t len) {
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     const char *canon_path = NULL;
     size_t canon_pathlen = 0;
     pool *p;
@@ -1478,16 +1480,16 @@ static int statcache_fsio_truncate(pr_fs_t *fs, const char *path, off_t len) {
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
+    (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
@@ -1506,22 +1508,22 @@ static int statcache_fsio_ftruncate(pr_fh_t *fh, int fd, off_t len) {
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     size_t pathlen = 0;
     uint32_t hash;
 
     pathlen = strlen(fh->fh_path);
     hash = statcache_hash(fh->fh_path, pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, fh->fh_path, pathlen, hash);
+    (void) statcache_table_remove(tab_fd, fh->fh_path, pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     } 
@@ -1538,7 +1540,7 @@ static int statcache_fsio_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     const char *canon_path = NULL;
     size_t canon_pathlen = 0;
     pool *p;
@@ -1556,16 +1558,16 @@ static int statcache_fsio_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
+    (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
@@ -1584,22 +1586,22 @@ static int statcache_fsio_fchmod(pr_fh_t *fh, int fd, mode_t mode) {
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     size_t pathlen = 0;
     uint32_t hash;
 
     pathlen = strlen(fh->fh_path);
     hash = statcache_hash(fh->fh_path, pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, fh->fh_path, pathlen, hash);
+    (void) statcache_table_remove(tab_fd, fh->fh_path, pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     } 
@@ -1617,7 +1619,7 @@ static int statcache_fsio_chown(pr_fs_t *fs, const char *path, uid_t uid,
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     const char *canon_path = NULL;
     size_t canon_pathlen = 0;
     pool *p;
@@ -1635,16 +1637,16 @@ static int statcache_fsio_chown(pr_fs_t *fs, const char *path, uid_t uid,
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
+    (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
@@ -1663,22 +1665,22 @@ static int statcache_fsio_fchown(pr_fh_t *fh, int fd, uid_t uid, gid_t gid) {
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     size_t pathlen = 0;
     uint32_t hash;
 
     pathlen = strlen(fh->fh_path);
     hash = statcache_hash(fh->fh_path, pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, fh->fh_path, pathlen, hash);
+    (void) statcache_table_remove(tab_fd, fh->fh_path, pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     } 
@@ -1697,7 +1699,7 @@ static int statcache_fsio_lchown(pr_fs_t *fs, const char *path, uid_t uid,
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     const char *canon_path = NULL;
     size_t canon_pathlen = 0;
     pool *p;
@@ -1715,16 +1717,16 @@ static int statcache_fsio_lchown(pr_fs_t *fs, const char *path, uid_t uid,
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
+    (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
@@ -1745,7 +1747,7 @@ static int statcache_fsio_utimes(pr_fs_t *fs, const char *path,
   xerrno = errno;
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     const char *canon_path = NULL;
     size_t canon_pathlen = 0;
     pool *p;
@@ -1763,16 +1765,16 @@ static int statcache_fsio_utimes(pr_fs_t *fs, const char *path,
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, canon_path, canon_pathlen, hash);
+    (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     }
@@ -1801,22 +1803,22 @@ static int statcache_fsio_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
   }
 
   if (res == 0) {
-    int tabfd;
+    int tab_fd;
     size_t pathlen = 0;
     uint32_t hash;
 
     pathlen = strlen(fh->fh_path);
     hash = statcache_hash(fh->fh_path, pathlen);
-    tabfd = statcache_tabfh->fh_fd;
+    tab_fd = statcache_tabfh->fh_fd;
 
-    if (statcache_wlock_row(tabfd, hash) < 0) {
+    if (statcache_wlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error write-locking shared memory: %s", strerror(errno));
     }
  
-    (void) statcache_table_remove(tabfd, fh->fh_path, pathlen, hash);
+    (void) statcache_table_remove(tab_fd, fh->fh_path, pathlen, hash);
 
-    if (statcache_unlock_row(tabfd, hash) < 0) {
+    if (statcache_unlock_row(tab_fd, hash) < 0) {
       pr_trace_msg(trace_channel, 3,
         "error unlocking shared memory: %s", strerror(errno));
     } 
@@ -2146,6 +2148,9 @@ MODRET statcache_post_pass(cmd_rec *cmd) {
   pr_fs_setcwd(pr_fs_getvwd());
   pr_fs_clear_cache();
 
+  pr_event_register(&statcache_module, "fs.statcache.clear",
+    statcache_fs_statcache_clear_ev, NULL);
+
   /* If we are handling an SSH2 session, then we need to disable all
    * negative caching; something about ProFTPD's stat caching interacting
    * with mod_statcache's caching, AND mod_sftp's dispatching through
@@ -2184,6 +2189,47 @@ MODRET statcache_pre_list(cmd_rec *cmd) {
 
 /* Event handlers
  */
+
+static void statcache_fs_statcache_clear_ev(const void *event_data,
+    void *user_data) {
+  int tab_fd;
+  const char *canon_path = NULL, *path;
+  size_t canon_pathlen = 0;
+  pool *p;
+  uint32_t hash;
+
+  path = event_data;
+  if (path == NULL) {
+    return;
+  }
+
+  p = make_sub_pool(statcache_pool);
+  pr_pool_tag(p, "statcache_clear_ev sub-pool");
+  canon_path = statcache_get_canon_path(p, path, &canon_pathlen);
+  if (canon_path == NULL) {
+    destroy_pool(p);
+    return;
+  }
+
+  hash = statcache_hash(canon_path, canon_pathlen);
+  tab_fd = statcache_tabfh->fh_fd;
+
+  if (statcache_wlock_row(tab_fd, hash) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error write-locking shared memory: %s", strerror(errno));
+  }
+
+  pr_trace_msg(trace_channel, 14,
+    "removing entry for path '%s' due to event", canon_path);
+  (void) statcache_table_remove(tab_fd, canon_path, canon_pathlen, hash);
+
+  if (statcache_unlock_row(tab_fd, hash) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error unlocking shared memory: %s", strerror(errno));
+  }
+
+  destroy_pool(p);
+}
 
 static void statcache_sess_reinit_ev(const void *event_data, void *user_data) {
   int res;

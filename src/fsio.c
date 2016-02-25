@@ -1120,6 +1120,8 @@ int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
 int pr_fs_clear_cache2(const char *path) {
   int res;
 
+  (void) pr_event_generate("fs.statcache.clear", path);
+
   if (pr_table_count(stat_statcache_tab) == 0 &&
       pr_table_count(lstat_statcache_tab) == 0) {
     return 0;
