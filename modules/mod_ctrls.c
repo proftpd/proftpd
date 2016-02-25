@@ -455,9 +455,10 @@ static int ctrls_listen(const char *sock_file, int flags) {
     int xerrno = errno;
 
     pr_signals_unblock();
+    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+      ": error: unable to create local socket: %s", strerror(xerrno));
+
     errno = xerrno;
-    pr_ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to create local socket: %s", strerror(errno));
     return -1;
   }
 
@@ -493,7 +494,6 @@ static int ctrls_listen(const char *sock_file, int flags) {
 
     (void) close(sockfd);
     errno = xerrno;
-
     return -1;
   }
 
@@ -522,8 +522,8 @@ static int ctrls_listen(const char *sock_file, int flags) {
     (void) close(sockfd);
 
     errno = xerrno;
-    pr_ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to bind to local socket: %s", strerror(xerrno));
+    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+      ": error: unable to bind to local socket: %s", strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to bind to local socket: %s",
       strerror(xerrno));
 
@@ -539,8 +539,8 @@ static int ctrls_listen(const char *sock_file, int flags) {
     (void) close(sockfd);
 
     errno = xerrno;
-    pr_ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to listen on local socket '%s': %s", sock.sun_path,
+    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+      ": error: unable to listen on local socket '%s': %s", sock.sun_path,
       strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to listen on local socket '%s': %s",
       sock.sun_path, strerror(xerrno));
@@ -552,9 +552,10 @@ static int ctrls_listen(const char *sock_file, int flags) {
 #if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
     !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
   /* Set the LOCAL_CREDS socket option. */
-  if (setsockopt(sockfd, 0, LOCAL_CREDS, &opt, optlen) < 0)
-    pr_ctrls_log(MOD_CTRLS_VERSION, "error enabling LOCAL_CREDS: %s",
+  if (setsockopt(sockfd, 0, LOCAL_CREDS, &opt, optlen) < 0) {
+    pr_log_debug(DEBUG0, MOD_CTRLS_VERSION ": error enabling LOCAL_CREDS: %s",
       strerror(errno));
+  }
 #endif /* !LOCAL_CREDS */
 
   /* Change the permissions on the socket, so that users can connect */
@@ -565,8 +566,8 @@ static int ctrls_listen(const char *sock_file, int flags) {
     (void) close(sockfd);
 
     errno = xerrno;
-    pr_ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to chmod local socket: %s", strerror(xerrno));
+    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+      ": error: unable to chmod local socket: %s", strerror(xerrno));
     pr_trace_msg(trace_channel, 1, "unable to chmod local socket: %s",
       strerror(xerrno));
 
