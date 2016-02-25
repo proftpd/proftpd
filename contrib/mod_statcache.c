@@ -1372,7 +1372,7 @@ static int statcache_fsio_open(pr_fh_t *fh, const char *path, int flags) {
   res = open(path, flags);
   xerrno = errno;
 
-  if (res == 0) {
+  if (res >= 0) {
     /* Clear the cache for this patch, but only if O_CREAT or O_TRUNC are
      * present.
      */
