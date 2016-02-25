@@ -1273,7 +1273,7 @@ static int statcache_fsio_rename(pr_fs_t *fs, const char *rnfm,
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     canon_rnto = statcache_get_canon_path(p, rnto, &canon_rntolen);
@@ -1282,7 +1282,7 @@ static int statcache_fsio_rename(pr_fs_t *fs, const char *rnfm,
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     hash_rnfm = statcache_hash(canon_rnfm, canon_rnfmlen);
@@ -1341,7 +1341,7 @@ static int statcache_fsio_unlink(pr_fs_t *fs, const char *path) {
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
@@ -1392,7 +1392,7 @@ static int statcache_fsio_open(pr_fh_t *fh, const char *path, int flags) {
 
         destroy_pool(p);
         errno = xerrno;
-        return -1;
+        return res;
       }
 
       hash = statcache_hash(canon_path, canon_pathlen);
@@ -1474,7 +1474,7 @@ static int statcache_fsio_truncate(pr_fs_t *fs, const char *path, off_t len) {
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
@@ -1552,7 +1552,7 @@ static int statcache_fsio_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
@@ -1631,7 +1631,7 @@ static int statcache_fsio_chown(pr_fs_t *fs, const char *path, uid_t uid,
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
@@ -1711,7 +1711,7 @@ static int statcache_fsio_lchown(pr_fs_t *fs, const char *path, uid_t uid,
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
@@ -1759,7 +1759,7 @@ static int statcache_fsio_utimes(pr_fs_t *fs, const char *path,
 
       destroy_pool(p);
       errno = xerrno;
-      return -1;
+      return res;
     }
 
     hash = statcache_hash(canon_path, canon_pathlen);
