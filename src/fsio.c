@@ -4558,7 +4558,7 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
 }
 
 int pr_fsio_close(pr_fh_t *fh) {
-  int res = 0;
+  int res = 0, xerrno = 0;
   pr_fs_t *fs;
 
   if (fh == NULL) {
@@ -4577,6 +4577,8 @@ int pr_fsio_close(pr_fh_t *fh) {
   pr_trace_msg(trace_channel, 8, "using %s close() for path '%s'", fs->fs_name,
     fh->fh_path);
   res = (fs->close)(fh, fh->fh_fd);
+  xerrno = errno;
+
   if (res == 0) {
     pr_fs_clear_cache2(fh->fh_path);
   }
@@ -4586,6 +4588,7 @@ int pr_fsio_close(pr_fh_t *fh) {
     fh->fh_pool = NULL;
   }
 
+  errno = xerrno;
   return res;
 }
 
