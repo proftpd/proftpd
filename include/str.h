@@ -83,6 +83,10 @@ char *pr_str_bin2hex(pool *p, const unsigned char *buf, size_t len, int flags);
 #define PR_STR_FL_HEX_USE_UC			0x0001
 #define PR_STR_FL_HEX_USE_LC			0x0002
 
+/* Decodes the given buffer of hex-encoded data into binary data. */
+unsigned char *pr_str_hex2bin(pool *p, const unsigned char *hex, size_t hex_len,
+  size_t *len);
+
 /* Converts a string to a uid_t/gid_t, respectively. */
 int pr_str2uid(const char *, uid_t *);
 int pr_str2gid(const char *, gid_t *);

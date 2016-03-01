@@ -549,6 +549,75 @@ char *pr_str_bin2hex(pool *p, const unsigned char *buf, size_t len, int flags) {
   return hex;
 }
 
+static int c2h(char c, unsigned char *h) {
+  if (c >= '0' &&
+      c <= '9') {
+    *h = c - '0';
+    return TRUE;
+  }
+
+  if (c >= 'a' &&
+      c <= 'f') {
+    *h = c - 'a' + 10;
+    return TRUE;
+  }
+
+  if (c >= 'A' &&
+      c <= 'F') {
+    *h = c - 'A' + 10;
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+unsigned char *pr_str_hex2bin(pool *p, const unsigned char *hex, size_t hex_len,
+    size_t *len) {
+  register unsigned int i, j;
+  unsigned char *data;
+  size_t data_len;
+
+  if (p == NULL ||
+      hex == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (hex_len == 0) {
+    hex_len = strlen((char *) hex);
+  }
+
+  if (hex_len == 0) {
+    data = (unsigned char *) pstrdup(p, "");
+    return data;
+  }
+
+  data_len = hex_len / 2;
+  data = palloc(p, data_len);
+
+  for (i = 0, j = 0; i < hex_len; i += 2) {
+    unsigned char v1, v2;
+
+    if (c2h(hex[i], &v1) == FALSE) {
+      errno = ERANGE;
+      return NULL;
+    }
+
+    if (c2h(hex[i+1], &v2) == FALSE) {
+      errno = ERANGE;
+      return NULL;
+    }
+
+    data[j++] = ((v1 << 4) | v2);
+  }
+
+  if (len != NULL) {
+    *len = data_len;
+  }
+
+  return data;
+}
+
 int pr_str2uid(const char *val, uid_t *uid) {
 #ifdef HAVE_STRTOULL
   unsigned long long ull = 0ULL;

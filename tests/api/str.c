@@ -1240,7 +1240,7 @@ START_TEST (strnrstr_test) {
 }
 END_TEST
 
-START_TEST (hex_test) {
+START_TEST (bin2hex_test) {
   char *expected, *res;
   const unsigned char *str;
 
@@ -1282,6 +1282,86 @@ START_TEST (hex_test) {
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
+}
+END_TEST
+
+START_TEST (hex2bin_test) {
+  unsigned char *expected, *res;
+  const char *hex;
+  size_t expected_len, hex_len, len;
+
+  res = pr_str_hex2bin(NULL, NULL, 0, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_str_hex2bin(p, NULL, 0, 0);
+  fail_unless(res == NULL, "Failed to handle null data argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* Empty string. */
+  hex = "";
+  hex_len = strlen(hex);
+  expected = "";
+  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
+    expected, res);
+
+  hex = "112233";
+  hex_len = strlen(hex);
+  expected_len = 3;
+  expected = palloc(p, expected_len);
+  expected[0] = 17;
+  expected[1] = 34;
+  expected[2] = 51;
+
+  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
+  fail_unless(len == expected_len, "Expected len %lu, got %lu",
+    (unsigned long) expected_len, len);
+  fail_unless(memcmp(res, expected, len) == 0,
+    "Did not receive expected unhexified data");
+
+  /* lowercase */
+  hex = "666f6f626172";
+  hex_len = strlen(hex);
+  expected_len = 6;
+  expected = palloc(p, expected_len);
+  expected[0] = 'f';
+  expected[1] = 'o';
+  expected[2] = 'o';
+  expected[3] = 'b';
+  expected[4] = 'a';
+  expected[5] = 'r';
+
+  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
+  fail_unless(len == expected_len, "Expected len %lu, got %lu",
+    (unsigned long) expected_len, len);
+  fail_unless(memcmp(res, expected, len) == 0,
+    "Did not receive expected unhexified data");
+
+  /* uppercase */
+  hex = "666F6F626172";
+  hex_len = strlen(hex);
+
+  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
+  fail_unless(len == expected_len, "Expected len %lu, got %lu",
+    (unsigned long) expected_len, len);
+  fail_unless(memcmp(res, expected, len) == 0,
+    "Did not receive expected unhexified data");
+
+  /* Handle known not-hex data properly. */
+  hex = "Hello, World!\n";
+  hex_len = strlen(hex);
+  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  fail_unless(res == NULL, "Successfully unhexified '%s' unexpectedly", hex);
+  fail_unless(errno == ERANGE, "Expected ERANGE (%d), got %s (%d)", ERANGE,
+    strerror(errno), errno);
+
 }
 END_TEST
 
@@ -1382,7 +1462,8 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, is_fnmatch_test);
   tcase_add_test(testcase, get_nbytes_test);
   tcase_add_test(testcase, get_duration_test);
-  tcase_add_test(testcase, hex_test);
+  tcase_add_test(testcase, bin2hex_test);
+  tcase_add_test(testcase, hex2bin_test);
   tcase_add_test(testcase, strnrstr_test);
   tcase_add_test(testcase, str2uid_test);
   tcase_add_test(testcase, str2gid_test);
