@@ -5157,6 +5157,7 @@ MODRET core_rmd(cmd_rec *cmd) {
       return PR_ERROR(cmd);
   }
 
+  pr_fs_clear_cache2(dir);
   if (pr_fsio_lstat(dir, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char buf[PR_TUNABLE_PATH_MAX];
@@ -5374,6 +5375,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
 
   path = decoded_path;
 
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char buf[PR_TUNABLE_PATH_MAX];
@@ -5469,6 +5471,7 @@ MODRET core_size(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  pr_fs_clear_cache2(decoded_path);
   if (pr_fsio_lstat(decoded_path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char buf[PR_TUNABLE_PATH_MAX];

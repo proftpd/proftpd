@@ -1245,6 +1245,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  pr_fs_clear_cache2(decoded_path);
   if (pr_fsio_lstat(decoded_path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char buf[PR_TUNABLE_PATH_MAX];
@@ -1743,6 +1744,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
      * chrooted (Bug#4219).
      */
     appe_path = session.xfer.path;
+
+    pr_fs_clear_cache2(appe_path);
     if (pr_fsio_lstat(appe_path, &st) == 0) {
       if (S_ISLNK(st.st_mode)) {
         char buf[PR_TUNABLE_PATH_MAX];
@@ -2193,6 +2196,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  pr_fs_clear_cache2(decoded_path);
   if (pr_fsio_lstat(decoded_path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char buf[PR_TUNABLE_PATH_MAX];

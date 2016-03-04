@@ -129,6 +129,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
   }
 #endif
 
+  pr_fs_clear_cache2(arg);
   if (pr_fsio_lstat(arg, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];
@@ -267,6 +268,7 @@ MODRET site_chmod(cmd_rec *cmd) {
   }
 #endif
 
+  pr_fs_clear_cache2(arg);
   if (pr_fsio_lstat(arg, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];
