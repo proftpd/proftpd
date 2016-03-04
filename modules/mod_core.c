@@ -4909,6 +4909,7 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
 
   orig_dir = ndir;
 
+  pr_fs_clear_cache2(ndir);
   if (pr_fsio_lstat(ndir, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char buf[PR_TUNABLE_PATH_MAX];
