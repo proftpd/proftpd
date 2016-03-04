@@ -36,13 +36,11 @@ typedef enum {
 	JSON_OBJECT,
 } JsonTag;
 
-typedef struct JsonNode JsonNode;
-
-struct JsonNode
+struct json_node_st
 {
 	/* only if parent is an object or array (NULL otherwise) */
-	JsonNode *parent;
-	JsonNode *prev, *next;
+	struct json_node_st *parent;
+	struct json_node_st *prev, *next;
 	
 	/* only if parent is an object (NULL otherwise) */
 	char *key; /* Must be valid UTF-8. */
@@ -61,10 +59,12 @@ struct JsonNode
 		/* JSON_ARRAY */
 		/* JSON_OBJECT */
 		struct {
-			JsonNode *head, *tail;
+			struct json_node_st *head, *tail;
 		} children;
 	};
 };
+
+typedef struct json_node_st JsonNode;
 
 /*** Encoding, decoding, and validation ***/
 
