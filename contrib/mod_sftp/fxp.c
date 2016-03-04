@@ -3775,6 +3775,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];
@@ -7984,6 +7985,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       }
 
     } else {
+      pr_fs_clear_cache2(path);
       if (pr_fsio_lstat(path, &st) == 0) {
         if (S_ISLNK(st.st_mode)) {
           char link_path[PR_TUNABLE_PATH_MAX];
@@ -8387,6 +8389,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
 
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];
@@ -10778,6 +10781,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
 
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];
@@ -11084,6 +11088,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
 
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];
@@ -11296,6 +11301,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
 
+  pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];

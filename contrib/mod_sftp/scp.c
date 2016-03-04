@@ -710,6 +710,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
 
     sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
 
+    pr_fs_clear_cache2(sp->best_path);
     if (pr_fsio_lstat(sp->best_path, &st) == 0) {
       if (S_ISLNK(st.st_mode)) {
         char link_path[PR_TUNABLE_PATH_MAX];
@@ -1884,6 +1885,8 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
 
     spi->best_path = dir_canonical_vpath(scp_pool, spi->path);
+
+    pr_fs_clear_cache2(spi->best_path);
     if (pr_fsio_lstat(spi->best_path, &link_st) == 0) {
       if (S_ISLNK(link_st.st_mode)) {
         char link_path[PR_TUNABLE_PATH_MAX];
@@ -1988,6 +1991,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     }
   }
 
+  pr_fs_clear_cache2(sp->path);
   if (pr_fsio_lstat(sp->path, &st) == 0) {
     if (S_ISLNK(st.st_mode)) {
       char link_path[PR_TUNABLE_PATH_MAX];
