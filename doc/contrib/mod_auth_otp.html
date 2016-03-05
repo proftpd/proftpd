@@ -70,12 +70,12 @@ questions, concerns, or suggestions regarding this module.
 <strong>Compatibility:</strong> 1.3.5rc4 and later
 
 <p>
-The <code>AuthOTPAlgorithm</code> directive configures with one-time password
+The <code>AuthOTPAlgorithm</code> directive configures which one-time password
 algorithm will be used when calculating codes for connections to the virtual
 host.
 
 <p>
-The list of supported algorithm names is:
+The supported algorithm names are:
 <ul>
   <li><code>hotp</code> (counter-based codes)
   <li><code>totp</code> (time-based codes, using HMAC-SHA1)
@@ -429,7 +429,6 @@ use only, and should be removed from any production configuration.
 The following lists the features I hope to add to <code>mod_auth_otp</code>,
 according to need, demand, inclination, and time:
 <ul>
-  <li>Provide own tool for generating base32-encoded shared keys
   <li>Configurable number of digits in the expected code (currently hardcoded as 6)
   <li>Support "emergency recovery" codes
   <li>Support resynchronization with clients
