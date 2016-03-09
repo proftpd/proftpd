@@ -38,12 +38,14 @@ static void set_up(void) {
   init_netaddr();
 
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("dns", 1, 20);
     pr_trace_set_levels("netacl", 1, 20);
   }
 }
 
 static void tear_down(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("dns", 0, 0);
     pr_trace_set_levels("netacl", 0, 0);
   }
 
@@ -110,6 +112,11 @@ START_TEST (netacl_create_test) {
   acl_str = pstrdup(p, "127.0.0.1/36");
   res = pr_netacl_create(p, acl_str);
   fail_unless(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  acl_str = pstrdup(p, "0.0.0.0/0");
+  res = pr_netacl_create(p, acl_str);
+  fail_unless(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
     strerror(errno));
 
 #ifdef PR_USE_IPV6
@@ -338,6 +345,15 @@ START_TEST (netacl_get_str_test) {
   fail_unless(res != NULL, "Failed to get ACL string: %s", strerror(errno));
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  acl_str = pstrdup(p, "0.0.0.0/0");
+  acl = pr_netacl_create(p, acl_str);
+  fail_unless(acl != NULL, "Failed to create ACL: %s", strerror(errno));
+
+  ok = "0.0.0.0/0 <IP address mask, 0-bit mask>";
+  res = pr_netacl_get_str(p, acl);
+  fail_unless(res != NULL, "Failed to get ACL string: %s", strerror(errno));
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
   acl_str = pstrdup(p, "!127.0.0.1/24");
   acl = pr_netacl_create(p, acl_str);
   fail_unless(acl != NULL, "Failed to create ACL: %s", strerror(errno));
@@ -481,6 +497,15 @@ START_TEST (netacl_get_str2_test) {
   fail_unless(acl != NULL, "Failed to create ACL: %s", strerror(errno));
 
   ok = "127.0.0.1/0";
+  res = pr_netacl_get_str2(p, acl, flags);
+  fail_unless(res != NULL, "Failed to get ACL string: %s", strerror(errno));
+  fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  acl_str = pstrdup(p, "0.0.0.0/0");
+  acl = pr_netacl_create(p, acl_str);
+  fail_unless(acl != NULL, "Failed to create ACL: %s", strerror(errno));
+
+  ok = "0.0.0.0/0";
   res = pr_netacl_get_str2(p, acl, flags);
   fail_unless(res != NULL, "Failed to get ACL string: %s", strerror(errno));
   fail_unless(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
