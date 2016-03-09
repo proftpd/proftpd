@@ -280,6 +280,11 @@ indicated when logging.
   </tr>
 
   <tr>
+    <td>&nbsp;<code>%{file-size}</code>&nbsp;</td>
+    <td>Indicates the file size <b>after</b> data transfer, or "-" if not applicable</td>
+  </tr>
+
+  <tr>
     <td>&nbsp;<code>%{gid}</code>&nbsp;</td>
     <td>GID of authenticated user</td>
   </tr>
@@ -408,6 +413,11 @@ indicated when logging.
   <tr>
     <td>&nbsp;<code>%{transfer-status}</code>&nbsp;</td>
     <td>Status of data transfer: "success", "failed", "cancelled", "timeout", or "-"</td>
+  </tr>
+
+  <tr>
+    <td>&nbsp;<code>%{transfer-type}</code>&nbsp;</td>
+    <td>Data transfer type: "binary" or "ASCII" (if applicable), or "-"</td>
   </tr>
 
   <tr>
