@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2013 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Network ACL routines
- * $Id: netacl.c,v 1.27 2013-02-15 22:39:00 castaglia Exp $
- */
+/* Network ACL routines */
 
 #include "conf.h"
 
@@ -529,10 +527,11 @@ int pr_netacl_get_negated(pr_netacl_t *acl) {
   return acl->negated;
 }
 
-const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl) {
+const char *pr_netacl_get_str2(pool *p, pr_netacl_t *acl, int flags) {
   char *res = "";
 
-  if (!p || !acl) {
+  if (p == NULL ||
+      acl == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -541,51 +540,73 @@ const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl) {
   switch (acl->type) {
     case PR_NETACL_TYPE_ALL:
       res = pstrcat(p, res, acl->aclstr, NULL);
-      res = pstrcat(p, res, " <all>", NULL);
+      if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+        res = pstrcat(p, res, " <all>", NULL);
+      }
       return res;
 
     case PR_NETACL_TYPE_NONE:
       res = pstrcat(p, res, acl->aclstr, NULL);
-      res = pstrcat(p, res, " <none>", NULL);
+      if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+        res = pstrcat(p, res, " <none>", NULL);
+      }
       return res;
 
     case PR_NETACL_TYPE_IPMASK: {
-      char masklenstr[64];
-
       res = pstrcat(p, res, acl->aclstr, NULL);
-      memset(masklenstr, '\0', sizeof(masklenstr));
-      snprintf(masklenstr, sizeof(masklenstr)-1, "%u", acl->masklen);
-      res = pstrcat(p, res, " <IP address mask, ", masklenstr, "-bit mask",
-        NULL);
+
+      if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+        char masklenstr[64];
+
+        memset(masklenstr, '\0', sizeof(masklenstr));
+        snprintf(masklenstr, sizeof(masklenstr)-1, "%u", acl->masklen);
+        res = pstrcat(p, res, " <IP address mask, ", masklenstr, "-bit mask",
+          NULL);
+      }
       break;
     }
 
     case PR_NETACL_TYPE_IPMATCH:
       res = pstrcat(p, res, acl->aclstr, NULL);
-      res = pstrcat(p, res, " <IP address match", NULL);
+      if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+        res = pstrcat(p, res, " <IP address match", NULL);
+      }
       break;
 
     case PR_NETACL_TYPE_DNSMATCH:
       res = pstrcat(p, res, acl->aclstr, NULL);
-      res = pstrcat(p, res, " <DNS hostname match", NULL);
+      if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+        res = pstrcat(p, res, " <DNS hostname match", NULL);
+      }
       break;
 
     case PR_NETACL_TYPE_IPGLOB:
       res = pstrcat(p, res, acl->pattern, NULL);
-      res = pstrcat(p, res, " <IP address glob", NULL);
+      if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+        res = pstrcat(p, res, " <IP address glob", NULL);
+      }
       break;
 
     case PR_NETACL_TYPE_DNSGLOB:
       res = pstrcat(p, res, acl->pattern, NULL);
-      res = pstrcat(p, res, " <DNS hostname glob", NULL);
+      if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+        res = pstrcat(p, res, " <DNS hostname glob", NULL);
+      }
       break;
   }
 
-  if (!acl->negated)
-    res = pstrcat(p, res, ">", NULL);
-  else
-    res = pstrcat(p, res, ", inverted>", NULL);
+  if (!(flags & PR_NETACL_FL_STR_NO_DESC)) {
+    if (!acl->negated) {
+      res = pstrcat(p, res, ">", NULL);
+
+    } else {
+      res = pstrcat(p, res, ", inverted>", NULL);
+    }
+  }
 
   return res;
 }
 
+const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl) {
+  return pr_netacl_get_str2(p, acl, 0);
+}
