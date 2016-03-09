@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2011 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,6 +67,8 @@ int pr_netacl_get_negated(pr_netacl_t *);
 pr_netacl_type_t pr_netacl_get_type(pr_netacl_t *);
 
 /* Returns a string describing the given NetACL. */
-const char *pr_netacl_get_str(pool *, pr_netacl_t *);
+const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl);
+const char *pr_netacl_get_str2(pool *p, pr_netacl_t *acl, int flags);
+#define PR_NETACL_FL_STR_NO_DESC	0x0001
 
 #endif /* PR_NETACL_H */
