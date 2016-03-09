@@ -18,17 +18,27 @@ ChangeLog files.
   + New Modules:
 
     mod_auth_otp
-      One-time passwords (HOTP, TOTP) compatible with e.g. Google Authenticator,
-      for multi-factor authentication (FTP and SFTP)
-      doc/contrib/mod_auth_otp.html
+      The mod_auth_otp module supports one-time passwords using the HOTP and
+      TOTP algorithms.  This OTP support is compatible with e.g. Google
+      Authenticator and other implementations.  The mod_auth_otp module can
+      thus be used to provide multi-factor authentication (MFA, 2FA) for
+      both FTP and SFTP logins.  For more information, see the module
+      documentation at doc/contrib/mod_auth_otp.html.
 
     mod_digest
-      HASH Draft
-      doc/contrib/mod_digest.html
+      The mod_digest module implements the HASH FTP command, per the IETF
+      Draft.  This module also implements previous FTP commands that achieve
+      similar functionality, e.g. XCRC, XMD5, XSHA1, and others.  See the
+      full module documentation at doc/contrib/mod_digest.html.
 
     mod_statcache
-      stat(2)/lstat(2) caching across sessions/processes
-      doc/contrib/mod_statcache.html
+      Some sites often act as "mirrors", and/or have clients which perform
+      numerous, repeated, and expensive directory listings.  These directory
+      listings cause repetitive (and often redundant) lookups of the per-file
+      details via the stat(2) and lstat(2) system calls.  The mod_statcache
+      module caches this "stat" information, such that the cached data can
+      be shared/reused across multiple FTP sessions.  See
+      doc/contrib/mod_statcache.html for details.
 
 
   + New Configuration Directives:
@@ -45,19 +55,35 @@ ChangeLog files.
       See doc/modules/mod_auth.html#AllowEmptyPasswords for details.
       Note that this applies to mod_sftp password-based logins as well.
 
-    AnonAllowRobots (Bug#4224)
+    AnonAllowRobots
+      Some web crawlers, notably Google, will automatically index any
+      FTP sites with anonymous logins.  This behavior is now automatically
+      prohibited, using auto-generated robots.txt files for <Anonymous>
+      logins.  Use the new AnonAllowRobots directive to allow indexing again;
+      see doc/modules/mod_auth.html#AnonAllowRobots for details.
 
-    SQLODBCVersion (....)
+    SQLODBCVersion
+      The mod_sql_odbc module defaults to using ODBC API version 3.  However,
+      some ODBC drivers may themselves expect older versions of the ODBC
+      API.  This can now be configured using e.g. "SQLODBCVersion ODBCv2";
+      see doc/contrib/mod_sql_odbc.html#SQLODBCVersion for more information.
 
-    TLSServerInfoFile
-      Custom TLS extension data (e.g. SCT, for certificate transparency).
+    TLSSessionTickets
+      The mod_tls module now supports TLS session tickets, per RFC 5077.
+      See doc/contrib/mod_tls.html#TLSSessionTicketKeys for more details.
 
-    TLSSessionTickets (Bug#4176)
-      TLSSessionTicketKeys
+    TLSStapling
+      The mod_tls module now supports OCSP stapling by caching OCSP responses
+      for server certificates, and stapling those OCSP responses in the
+      SSL/TLS handshake data.  This OCSP stapling functionality is configuring
+      using new directives:
 
-    TLSStapling (Bug#4175)
-      TLSStaplingCache, TLSStaplingOptions, TLSStaplingResponder,
-      TLSStaplingTimeout
+        TLSStaplingCache
+        TLSStaplingOptions
+        TLSStaplingResponder
+        TLSStaplingTimeout
+
+      See the doc/contrib/mod_tls.html documentation for more information.
 
 
   + Changed Modules
@@ -72,7 +98,12 @@ ChangeLog files.
 
   + Changed Configuration Directives:
 
-    BanCacheOptions UseJSON (Bug#4056)
+    BanCacheOptions
+      When storing ban rules in memcached, the mod_ban module can now
+      format the rules as JSON, allowing for better interoperability with
+      other applications interested in those ban rules.  To use JSON,
+      use "BanCacheOptions UseJSON"; see
+      doc/contrib/mod_ban.html#BanCacheOptions for more information.
 
     BanOnEvent
       The mod_ban module can now be configured to ban clients which attempt
@@ -80,8 +111,15 @@ ChangeLog files.
       set to "false", via the new EmptyPassword BanOnEvent rule.  See
       doc/contrib/mod_ban.html#BanOnEvent for more information.
 
-    LogFormat %R, %{transfer-millisecs} (Bug#4218)
-      %{file-size}, %{transfer-type}
+    LogFormat
+      The mod_log module supports several new LogFormat variables.  The
+      %R variable can be used for logging command response time, in
+      milliseconds, which is useful for measuring response time/latency.
+      Data transfer durations are separately tracked using the new
+      %{transfer-millisecs} variable.  For logging the size of the file
+      after data transfer (e.g. after upload), use the %{file-size} variable.
+      And for logging whether the file transfer used binary or ASCII mode,
+      use the %{transfer-type} variable.
 
     MasqueradeAddress
       Sometimes the DNS name configured for MasqueradeAddress directives
@@ -113,11 +151,20 @@ ChangeLog files.
 
       See doc/contrib/mod_sftp.html#SFTPExtensions for details.
 
-    SQLConnectInfo, SQLNamedConnectInfo (Bug#4200)
-      SSL connection parameters/configuration
+    SQLConnectInfo, SQLNamedConnectInfo
+      The mod_sql module can now support using SSL/TLS for connections to
+      backend databases, if supported by the database-specific module,
+      by configuring the necessary SSL/TLS details using the SQLConnectInfo
+      and SQLNamedConnectInfo directives.  See their respective documentation,
+      doc/contrib/mod_sql.html#SQLConnectInfo and
+      doc/contrib/mod_sql.html#SQLNamedConnectInfo for more information.
 
-    TLSOptions NoCertRequest (Bug#4213)
-      TLSVerifyClient optional
+    TLSOptions
+      The NoCertRequest TLSOption is now deprecated.  The mod_tls module,
+      rather than requesting client certificates every time, will only do
+      so if "TLSVerifyClient on" or "TLSVerifyClient optional" is configured.
+      This brings the mod_tls behavior more in line with Apache behavior,
+      and slightly reduces the SSL/TLS handshake latency.
 
     TLSProtocol
       The mod_tls module now supports excluding of particular SSL/TLS
@@ -129,9 +176,18 @@ ChangeLog files.
       The doc/contrib/mod_tls.html#TLSProtocol documentation has more
       details.
 
-    TLSSessionCache memcache:/json (Bug#4057)
+    TLSSessionCache
+      When storing SSL session data in memcached, the mod_tls module can now
+      format the session data using JSON, allowing for better interoperability
+      with other applications interested in that session data.  To use JSON,
+      use "TLSSessionCache memcache:/json".  See
+      doc/contrib/mod_tls_memcache.html for more information.
 
-    UseEncoding per-user/group/class (Bug#4214)
+    UseEncoding
+      Different users/clients may wish to use different filename encodings
+      for their files.  The UseEncoding directive can now be set
+      per-user/group/class, by now working with mod_ifsession sections as
+      expected.
 
 
 1.3.6rc1
