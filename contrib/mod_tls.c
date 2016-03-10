@@ -2755,7 +2755,7 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   DH *dh = NULL;
   EVP_PKEY *pkey;
-  int pkeylen = 0;
+  int pkeylen = 0, use_pkeylen = FALSE;
 
   /* OpenSSL will only ever call us (currently) with a keylen of 512 or 1024;
    * see the SSL_EXPORT_PKEYLENGTH macro in ssl_locl.h.  Sigh.
@@ -2787,6 +2787,7 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
       if (pkeylen != keylen) {
         pr_trace_msg(trace_channel, 13,
           "adjusted DH parameter length from %d to %d bits", keylen, pkeylen);
+        use_pkeylen = TRUE;
       }
     }
   }
@@ -2794,7 +2795,8 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   if (tls_tmp_dhs != NULL &&
       tls_tmp_dhs->nelts > 0) {
     register unsigned int i;
-    DH **dhs;
+    DH *best_dh = NULL, **dhs;
+    int best_dhlen = 0;
 
     dhs = tls_tmp_dhs->elts;
 
@@ -2818,6 +2820,22 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
           "found matching DH parameter for key length %d", keylen);
         return dhs[i];
       }
+
+      /* Try to find the next "best" DH to use, where "best" means
+       * the smallest DH that is larger than the necessary keylen.
+       */
+      if (dhlen > keylen) {
+        if (best_dh != NULL) {
+          if (dhlen < best_dhlen) {
+            best_dh = dhs[i];
+            best_dhlen = dhlen;
+          }
+
+        } else {
+          best_dh = dhs[i];
+          best_dhlen = dhlen;
+        }
+      }
     }
 
     for (i = 0; i < tls_tmp_dhs->nelts; i++) {
@@ -2830,6 +2848,26 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
           pkeylen);
         return dhs[i];
       }
+
+      if (dhlen > pkeylen) {
+        if (best_dh != NULL) {
+          if (dhlen < best_dhlen) {
+            best_dh = dhs[i];
+            best_dhlen = dhlen;
+          }
+
+        } else {
+          best_dh = dhs[i];
+          best_dhlen = dhlen;
+        }
+      }
+    }
+
+    if (best_dh != NULL) {
+      pr_trace_msg(trace_channel, 11,
+        "using best DH parameter for key length %d (length %d)", keylen,
+        best_dhlen);
+      return best_dh;
     }
   }
 
@@ -2842,6 +2880,10 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
         "(see AllowWeakDH TLSOption)", keylen, TLS_DH_MIN_LEN, TLS_DH_MIN_LEN);
       keylen = TLS_DH_MIN_LEN;
     }
+  }
+
+  if (use_pkeylen) {
+    keylen = pkeylen;
   }
 
   switch (keylen) {
@@ -2871,6 +2913,8 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
       dh = get_dh1024();
       break;
   }
+
+  pr_trace_msg(trace_channel, 11, "using builtin DH for %d bits", keylen);
 
   /* Add this DH to the list, so that it can be freed properly later. */
   if (tls_tmp_dhs == NULL) {
