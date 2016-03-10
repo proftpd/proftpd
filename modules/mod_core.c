@@ -3424,11 +3424,20 @@ MODRET core_quit(cmd_rec *cmd) {
     displayquit_fh = NULL;
 
   } else {
-    char *display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE); 
+    char *display;
+
+    display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE);
     if (display) {
       if (pr_display_file(display, NULL, R_221, flags) < 0) {
+        int xerrno = errno;
+
         pr_log_debug(DEBUG6, "unable to display DisplayQuit file '%s': %s",
-          display, strerror(errno));
+          display, strerror(xerrno));
+
+        if (xerrno == ENOENT) {
+          /* No file found?  Send our normal fairwell, then. */
+          pr_response_send(R_221, "%s", _("Goodbye."));
+        }
       }
 
     } else {
