@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2015 The ProFTPD Project team
+ * Copyright (c) 2004-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1252,7 +1252,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
 #endif /* HAVE_POSIX_ACL */
 
-#if defined(PR_SHARED_MODULE)
+#if defined(PR_SHARED_MODULE) && defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
 static void facl_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_facl.c", (const char *) event_data) == 0) {
     pr_event_unregister(&facl_module, NULL, NULL);

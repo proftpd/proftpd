@@ -29,6 +29,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* ProFTPD: stdbool.h equivalents */
+#ifndef TRUE
+# define TRUE	1
+#endif
+
+#ifndef FALSE
+# define FALSE	0
+#endif
+
 #define out_of_memory() do {                    \
 		fprintf(stderr, "Out of memory.\n");    \
 		exit(EXIT_FAILURE);                     \
@@ -211,17 +220,17 @@ static int utf8_validate_cz(const char *s)
 }
 
 /* Validate a null-terminated UTF-8 string. */
-static bool utf8_validate(const char *s)
+static int utf8_validate(const char *s)
 {
 	int len;
 	
 	for (; *s != 0; s += len) {
 		len = utf8_validate_cz(s);
 		if (len == 0)
-			return false;
+			return FALSE;
 	}
 	
-	return true;
+	return TRUE;
 }
 
 /*
@@ -307,13 +316,13 @@ static int utf8_write_char(uint32_t unicode, char *out)
  * @uc should be 0xD800..0xDBFF, and @lc should be 0xDC00..0xDFFF.
  * If they aren't, this function returns false.
  */
-static bool from_surrogate_pair(uint16_t uc, uint16_t lc, uint32_t *unicode)
+static int from_surrogate_pair(uint16_t uc, uint16_t lc, uint32_t *unicode)
 {
 	if (uc >= 0xD800 && uc <= 0xDBFF && lc >= 0xDC00 && lc <= 0xDFFF) {
 		*unicode = 0x10000 + ((((uint32_t)uc & 0x3FF) << 10) | (lc & 0x3FF));
-		return true;
+		return TRUE;
 	} else {
-		return false;
+		return FALSE;
 	}
 }
 
@@ -336,14 +345,14 @@ static void to_surrogate_pair(uint32_t unicode, uint16_t *uc, uint16_t *lc)
 #define is_space(c) ((c) == '\t' || (c) == '\n' || (c) == '\r' || (c) == ' ')
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-static bool parse_value     (const char **sp, JsonNode        **out);
-static bool parse_string    (const char **sp, char            **out);
-static bool parse_number    (const char **sp, double           *out);
-static bool parse_array     (const char **sp, JsonNode        **out);
-static bool parse_object    (const char **sp, JsonNode        **out);
-static bool parse_hex16     (const char **sp, uint16_t         *out);
+static int parse_value      (const char **sp, JsonNode        **out);
+static int parse_string     (const char **sp, char            **out);
+static int parse_number     (const char **sp, double           *out);
+static int parse_array      (const char **sp, JsonNode        **out);
+static int parse_object     (const char **sp, JsonNode        **out);
+static int parse_hex16      (const char **sp, uint16_t         *out);
 
-static bool expect_literal  (const char **sp, const char *str);
+static int expect_literal   (const char **sp, const char *str);
 static void skip_space      (const char **sp);
 
 static void emit_value              (SB *out, const JsonNode *node);
@@ -363,8 +372,8 @@ static void prepend_node(JsonNode *parent, JsonNode *child);
 static void append_member(JsonNode *object, char *key, JsonNode *value);
 
 /* Assertion-friendly validity checks */
-static bool tag_is_valid(unsigned int tag);
-static bool number_is_valid(const char *num);
+static int tag_is_valid(unsigned int tag);
+static int number_is_valid(const char *num);
 
 JsonNode *json_decode(const char *json)
 {
@@ -438,19 +447,19 @@ void json_delete(JsonNode *node)
 	}
 }
 
-bool json_validate(const char *json)
+int json_validate(const char *json)
 {
 	const char *s = json;
 	
 	skip_space(&s);
 	if (!parse_value(&s, NULL))
-		return false;
+		return FALSE;
 	
 	skip_space(&s);
 	if (*s != 0)
-		return false;
+		return FALSE;
 	
-	return true;
+	return TRUE;
 }
 
 JsonNode *json_find_element(JsonNode *array, int idx)
@@ -505,7 +514,7 @@ JsonNode *json_mknull(void)
 	return mknode(JSON_NULL);
 }
 
-JsonNode *json_mkbool(bool b)
+JsonNode *json_mkbool(int b)
 {
 	JsonNode *ret = mknode(JSON_BOOL);
 	ret->bool_ = b;
@@ -628,7 +637,7 @@ void json_remove_from_parent(JsonNode *node)
 	}
 }
 
-static bool parse_value(const char **sp, JsonNode **out)
+static int parse_value(const char **sp, JsonNode **out)
 {
 	const char *s = *sp;
 	
@@ -638,27 +647,27 @@ static bool parse_value(const char **sp, JsonNode **out)
 				if (out)
 					*out = json_mknull();
 				*sp = s;
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		
 		case 'f':
 			if (expect_literal(&s, "false")) {
 				if (out)
-					*out = json_mkbool(false);
+					*out = json_mkbool(FALSE);
 				*sp = s;
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		
 		case 't':
 			if (expect_literal(&s, "true")) {
 				if (out)
-					*out = json_mkbool(true);
+					*out = json_mkbool(TRUE);
 				*sp = s;
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		
 		case '"': {
 			char *str;
@@ -666,24 +675,24 @@ static bool parse_value(const char **sp, JsonNode **out)
 				if (out)
 					*out = mkstring(str);
 				*sp = s;
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		}
 		
 		case '[':
 			if (parse_array(&s, out)) {
 				*sp = s;
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		
 		case '{':
 			if (parse_object(&s, out)) {
 				*sp = s;
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		
 		default: {
 			double num;
@@ -691,14 +700,14 @@ static bool parse_value(const char **sp, JsonNode **out)
 				if (out)
 					*out = json_mknumber(num);
 				*sp = s;
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		}
 	}
 }
 
-static bool parse_array(const char **sp, JsonNode **out)
+static int parse_array(const char **sp, JsonNode **out)
 {
 	const char *s = *sp;
 	JsonNode *ret = out ? json_mkarray() : NULL;
@@ -735,14 +744,14 @@ success:
 	*sp = s;
 	if (out)
 		*out = ret;
-	return true;
+	return TRUE;
 
 failure:
 	json_delete(ret);
-	return false;
+	return FALSE;
 }
 
-static bool parse_object(const char **sp, JsonNode **out)
+static int parse_object(const char **sp, JsonNode **out)
 {
 	const char *s = *sp;
 	JsonNode *ret = out ? json_mkobject() : NULL;
@@ -788,17 +797,17 @@ success:
 	*sp = s;
 	if (out)
 		*out = ret;
-	return true;
+	return TRUE;
 
 failure_free_key:
 	if (out)
 		free(key);
 failure:
 	json_delete(ret);
-	return false;
+	return FALSE;
 }
 
-bool parse_string(const char **sp, char **out)
+int parse_string(const char **sp, char **out)
 {
 	const char *s = *sp;
 	SB sb;
@@ -807,7 +816,7 @@ bool parse_string(const char **sp, char **out)
 	char *b;
 	
 	if (*s++ != '"')
-		return false;
+		return FALSE;
 	
 	if (out) {
 		sb_init(&sb);
@@ -905,12 +914,12 @@ bool parse_string(const char **sp, char **out)
 	if (out)
 		*out = sb_finish(&sb);
 	*sp = s;
-	return true;
+	return TRUE;
 
 failed:
 	if (out)
 		sb_free(&sb);
-	return false;
+	return FALSE;
 }
 
 /*
@@ -923,7 +932,7 @@ failed:
  *
  * This function takes the strict approach.
  */
-bool parse_number(const char **sp, double *out)
+int parse_number(const char **sp, double *out)
 {
 	const char *s = *sp;
 
@@ -936,7 +945,7 @@ bool parse_number(const char **sp, double *out)
 		s++;
 	} else {
 		if (!is_digit(*s))
-			return false;
+			return FALSE;
 		do {
 			s++;
 		} while (is_digit(*s));
@@ -946,7 +955,7 @@ bool parse_number(const char **sp, double *out)
 	if (*s == '.') {
 		s++;
 		if (!is_digit(*s))
-			return false;
+			return FALSE;
 		do {
 			s++;
 		} while (is_digit(*s));
@@ -958,7 +967,7 @@ bool parse_number(const char **sp, double *out)
 		if (*s == '+' || *s == '-')
 			s++;
 		if (!is_digit(*s))
-			return false;
+			return FALSE;
 		do {
 			s++;
 		} while (is_digit(*s));
@@ -968,7 +977,7 @@ bool parse_number(const char **sp, double *out)
 		*out = strtod(*sp, NULL);
 
 	*sp = s;
-	return true;
+	return TRUE;
 }
 
 static void skip_space(const char **sp)
@@ -1002,7 +1011,7 @@ static void emit_value(SB *out, const JsonNode *node)
 			emit_object(out, node);
 			break;
 		default:
-			assert(false);
+			assert(FALSE);
 	}
 }
 
@@ -1029,7 +1038,7 @@ void emit_value_indented(SB *out, const JsonNode *node, const char *space, int i
 			emit_object_indented(out, node, space, indent_level);
 			break;
 		default:
-			assert(false);
+			assert(FALSE);
 	}
 }
 
@@ -1113,7 +1122,7 @@ static void emit_object_indented(SB *out, const JsonNode *object, const char *sp
 
 void emit_string(SB *out, const char *str)
 {
-	bool escape_unicode = false;
+	int escape_unicode = FALSE;
 	const char *s = str;
 	char *b;
 	
@@ -1175,7 +1184,7 @@ void emit_string(SB *out, const char *str)
 					 * This should never happen when assertions are enabled
 					 * due to the assertion at the beginning of this function.
 					 */
-					assert(false);
+					assert(FALSE);
 					if (escape_unicode) {
 						strcpy(b, "\\uFFFD");
 						b += 6;
@@ -1247,33 +1256,33 @@ static void emit_number(SB *out, double num)
 		sb_puts(out, "null");
 }
 
-static bool tag_is_valid(unsigned int tag)
+static int tag_is_valid(unsigned int tag)
 {
 	return (/* tag >= JSON_NULL && */ tag <= JSON_OBJECT);
 }
 
-static bool number_is_valid(const char *num)
+static int number_is_valid(const char *num)
 {
 	return (parse_number(&num, NULL) && *num == '\0');
 }
 
-static bool expect_literal(const char **sp, const char *str)
+static int expect_literal(const char **sp, const char *str)
 {
 	const char *s = *sp;
 	
 	while (*str != '\0')
 		if (*s++ != *str++)
-			return false;
+			return FALSE;
 	
 	*sp = s;
-	return true;
+	return TRUE;
 }
 
 /*
  * Parses exactly 4 hex characters (capital or lowercase).
  * Fails if any input chars are not [0-9A-Fa-f].
  */
-static bool parse_hex16(const char **sp, uint16_t *out)
+static int parse_hex16(const char **sp, uint16_t *out)
 {
 	const char *s = *sp;
 	uint16_t ret = 0;
@@ -1290,7 +1299,7 @@ static bool parse_hex16(const char **sp, uint16_t *out)
 		else if (c >= 'a' && c <= 'f')
 			tmp = c - 'a' + 10;
 		else
-			return false;
+			return FALSE;
 
 		ret <<= 4;
 		ret += tmp;
@@ -1299,7 +1308,7 @@ static bool parse_hex16(const char **sp, uint16_t *out)
 	if (out)
 		*out = ret;
 	*sp = s;
-	return true;
+	return TRUE;
 }
 
 /*
@@ -1318,12 +1327,12 @@ static int write_hex16(char *out, uint16_t val)
 	return 4;
 }
 
-bool json_check(const JsonNode *node, char errmsg[256])
+int json_check(const JsonNode *node, char errmsg[256])
 {
 	#define problem(...) do { \
 			if (errmsg != NULL) \
 				snprintf(errmsg, 256, __VA_ARGS__); \
-			return false; \
+			return FALSE; \
 		} while (0)
 	
 	if (node->key != NULL && !utf8_validate(node->key))
@@ -1333,8 +1342,8 @@ bool json_check(const JsonNode *node, char errmsg[256])
 		problem("tag is invalid (%u)", node->tag);
 	
 	if (node->tag == JSON_BOOL) {
-		if (node->bool_ != false && node->bool_ != true)
-			problem("bool_ is neither false (%d) nor true (%d)", (int)false, (int)true);
+		if (node->bool_ != FALSE && node->bool_ != TRUE)
+			problem("bool_ is neither false (%d) nor true (%d)", (int)FALSE, (int)TRUE);
 	} else if (node->tag == JSON_STRING) {
 		if (node->string_ == NULL)
 			problem("string_ is NULL");
@@ -1375,7 +1384,7 @@ bool json_check(const JsonNode *node, char errmsg[256])
 					problem("Object member's key is NULL");
 				
 				if (!json_check(child, errmsg))
-					return false;
+					return FALSE;
 			}
 			
 			if (last != tail)
@@ -1383,7 +1392,7 @@ bool json_check(const JsonNode *node, char errmsg[256])
 		}
 	}
 	
-	return true;
+	return TRUE;
 	
 	#undef problem
 }
