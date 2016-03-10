@@ -313,7 +313,6 @@ MODRET set_tcpaccessfiles(cmd_rec *cmd) {
   /* assume use of the standard TCP wrappers installation locations */
   char *allow_filename = "/etc/hosts.allow";
   char *deny_filename = "/etc/hosts.deny";
-  char *expr;
 
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL);
@@ -403,7 +402,7 @@ MODRET set_tcpaccessfiles(cmd_rec *cmd) {
 
 MODRET set_tcpgroupaccessfiles(cmd_rec *cmd) {
   int group_argc = 1;
-  char **group_argv = NULL;
+  char *expr, **group_argv = NULL;
   array_header *group_acl = NULL;
   config_rec *c = NULL;
 
