@@ -431,8 +431,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
   return 0;
 }
 
-static int xfer_displayfile(void) {
-  int res = -1;
+static void xfer_displayfile(void) {
 
   if (displayfilexfer_fh) {
     if (pr_display_fh(displayfilexfer_fh, session.vwd, R_226, 0) < 0) {
@@ -446,22 +445,18 @@ static int xfer_displayfile(void) {
         "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
     }
 
-    res = 0;
-
   } else {
-    char *displayfilexfer = get_param_ptr(main_server->conf,
-      "DisplayFileTransfer", FALSE);
+    char *displayfilexfer;
+
+    displayfilexfer = get_param_ptr(main_server->conf, "DisplayFileTransfer",
+      FALSE);
     if (displayfilexfer) {
       if (pr_display_file(displayfilexfer, session.vwd, R_226, 0) < 0) {
         pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
           "file '%s': %s", displayfilexfer, strerror(errno));
       }
-
-      res = 0;
     }
   }
-
-  return res;
 }
 
 static int xfer_prio_adjust(void) {
@@ -2077,12 +2072,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
       session.xfer.path_hidden = NULL;
     }
 
-    if (xfer_displayfile() < 0) {
-      pr_data_close(FALSE);
-
-    } else {
-      pr_data_close(TRUE);
-    } 
+    xfer_displayfile();
+    pr_data_close(FALSE);
   }
 
   return PR_HANDLED(cmd);
@@ -2559,13 +2550,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
     pr_throttle_pause(session.xfer.total_bytes, TRUE);
 
     retr_complete();
-
-    if (xfer_displayfile() < 0) {
-      pr_data_close(FALSE);
-
-    } else {
-      pr_data_close(TRUE);
-    }
+    xfer_displayfile();
+    pr_data_close(FALSE);
   }
 
   return PR_HANDLED(cmd);
