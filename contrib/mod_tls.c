@@ -2423,7 +2423,7 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 }
 #endif
 
-static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
+static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
   DH *dh = NULL;
   EVP_PKEY *pkey;
   int pkeylen = 0, use_pkeylen = FALSE;
@@ -2597,7 +2597,7 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
 }
 
 #ifdef PR_USE_OPENSSL_ECC
-static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylength) {
+static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
   static EC_KEY *ecdh = NULL;
   static int init = 0;
 
@@ -5064,7 +5064,7 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   return count;
 }
 
-static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylength) {
+static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylen) {
   BIGNUM *e = NULL;
 
   if (tls_tmp_rsa) {
@@ -5082,13 +5082,13 @@ static RSA *tls_rsa_cb(SSL *ssl, int is_export, int keylength) {
     return NULL;
   }
 
-  if (RSA_generate_key_ex(tls_tmp_rsa, keylength, e, NULL) != 1) {
+  if (RSA_generate_key_ex(tls_tmp_rsa, keylen, e, NULL) != 1) {
     BN_free(e);
     return NULL;
   }
 
 #else
-  tls_tmp_rsa = RSA_generate_key(keylength, RSA_F4, NULL, NULL);
+  tls_tmp_rsa = RSA_generate_key(keylen, RSA_F4, NULL, NULL);
 #endif /* OpenSSL version 0.9.8 and later */
 
   if (e != NULL) {
