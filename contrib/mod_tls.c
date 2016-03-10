@@ -11817,7 +11817,7 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
 #else
   pr_log_debug(DEBUG0,
     "%s is not supported by this version of OpenSSL, ignoring",
-    cmd->argv[0]);
+    (char *) cmd->argv[0]);
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
   return PR_HANDLED(cmd);
@@ -11837,12 +11837,13 @@ MODRET set_tlsserverinfofile(cmd_rec *cmd) {
   }
 
   add_config_param_str(cmd->argv[0], 1, path);
-  return PR_HANDLED(cmd);
 #else
   pr_log_debug(DEBUG0,
     "%s is not supported by this version of OpenSSL, ignoring",
-    cmd->argv[0]);
+    (char *) cmd->argv[0]);
 #endif /* OPENSSL_NO_TLSEXT */
+
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSSessionCache "off"|type:/info [timeout] */

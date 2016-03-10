@@ -257,8 +257,9 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
     }
 
     acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
-    if (!acl->addr)
+    if (acl->addr == NULL) {
       return NULL;
+    }
 
     /* Determine what the given bitmask is. */
     acl->masklen = strtol(cp + 1, &tmp, 10);
@@ -488,7 +489,8 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 pr_netacl_t *pr_netacl_dup(pool *p, pr_netacl_t *acl) {
   pr_netacl_t *acl2;
 
-  if (!p || !acl) {
+  if (p == NULL ||
+      acl == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -498,8 +500,9 @@ pr_netacl_t *pr_netacl_dup(pool *p, pr_netacl_t *acl) {
   /* A simple memcpy(3) won't suffice; we need a deep copy. */
   acl2->type = acl->type;
 
-  if (acl->pattern)
+  if (acl->pattern) {
     acl2->pattern = pstrdup(p, acl->pattern);
+  }
 
   acl2->negated = acl->negated;
 
