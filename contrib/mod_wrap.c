@@ -313,6 +313,7 @@ MODRET set_tcpaccessfiles(cmd_rec *cmd) {
   /* assume use of the standard TCP wrappers installation locations */
   char *allow_filename = "/etc/hosts.allow";
   char *deny_filename = "/etc/hosts.deny";
+  char *expr;
 
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL);
@@ -489,7 +490,8 @@ MODRET set_tcpgroupaccessfiles(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 0);
 
-  group_acl = pr_expr_create(cmd->tmp_pool, &group_argc, &cmd->argv[0]);
+  expr = (char *) cmd->argv[0];
+  group_acl = pr_expr_create(cmd->tmp_pool, &group_argc, &expr);
 
   /* build the desired config_rec manually */
   c->argc = group_argc + 2;
@@ -518,7 +520,7 @@ MODRET set_tcpgroupaccessfiles(cmd_rec *cmd) {
 
 MODRET set_tcpuseraccessfiles(cmd_rec *cmd) {
   int user_argc = 1;
-  char **user_argv = NULL;
+  char *expr, **user_argv = NULL;
   array_header *user_acl = NULL;
   config_rec *c = NULL;
 
@@ -605,7 +607,8 @@ MODRET set_tcpuseraccessfiles(cmd_rec *cmd) {
 
   c = add_config_param_str(cmd->argv[0], 0);
 
-  user_acl = pr_expr_create(cmd->tmp_pool, &user_argc, &cmd->argv[0]);
+  expr = (char *) cmd->argv[0];
+  user_acl = pr_expr_create(cmd->tmp_pool, &user_argc, &expr);
 
   /* build the desired config_rec manually */
   c->argc = user_argc + 2;
