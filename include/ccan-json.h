@@ -24,7 +24,6 @@
 #ifndef CCAN_JSON_H
 #define CCAN_JSON_H
 
-#include <stdbool.h>
 #include <stddef.h>
 
 typedef enum {
@@ -48,7 +47,7 @@ struct json_node_st
 	JsonTag tag;
 	union {
 		/* JSON_BOOL */
-		bool bool_;
+		int bool_;
 		
 		/* JSON_STRING */
 		char *string_; /* Must be valid UTF-8. */
@@ -74,7 +73,7 @@ char       *json_encode_string  (const char *str);
 char       *json_stringify      (const JsonNode *node, const char *space);
 void        json_delete         (JsonNode *node);
 
-bool        json_validate       (const char *json);
+int         json_validate       (const char *json);
 
 /*** Lookup and traversal ***/
 
@@ -91,7 +90,7 @@ JsonNode   *json_first_child    (const JsonNode *node);
 /*** Construction and manipulation ***/
 
 JsonNode *json_mknull(void);
-JsonNode *json_mkbool(bool b);
+JsonNode *json_mkbool(int b);
 JsonNode *json_mkstring(const char *s);
 JsonNode *json_mknumber(double n);
 JsonNode *json_mkarray(void);
@@ -112,6 +111,6 @@ void json_remove_from_parent(JsonNode *node);
  * If a problem is detected, return false, writing a description of the problem
  * to errmsg (unless errmsg is NULL).
  */
-bool json_check(const JsonNode *node, char errmsg[256]);
+int json_check(const JsonNode *node, char errmsg[256]);
 
 #endif

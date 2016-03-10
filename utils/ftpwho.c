@@ -134,7 +134,7 @@ static JsonNode *get_conns_json(void) {
     }
 
     if (authenticating) {
-      json_append_member(conn, "authenticating", json_mkbool(true));
+      json_append_member(conn, "authenticating", json_mkbool(TRUE));
 
     } else {
       json_append_member(conn, "user", json_mkstring(score->sce_user));
@@ -154,7 +154,7 @@ static JsonNode *get_conns_json(void) {
 
     if (score->sce_cmd[0]) {
       if (strcmp(score->sce_cmd, "idle") == 0) {
-        json_append_member(conn, "idling", json_mkbool(true));
+        json_append_member(conn, "idling", json_mkbool(TRUE));
 
         if (!authenticating) {
           json_append_member(conn, "idle_since_ms",
@@ -171,7 +171,7 @@ static JsonNode *get_conns_json(void) {
       }
 
     } else {
-      json_append_member(conn, "idling", json_mkbool(true));
+      json_append_member(conn, "idling", json_mkbool(TRUE));
 
       if (!authenticating) {
         json_append_member(conn, "idle_since_ms",
@@ -195,14 +195,14 @@ static JsonNode *get_conns_json(void) {
     }
 
     if (downloading) {
-      json_append_member(conn, "downloading", json_mkbool(true));
+      json_append_member(conn, "downloading", json_mkbool(TRUE));
       json_append_member(conn, "transfer_completed",
         json_mkstring(percent_complete(score->sce_xfer_size,
           score->sce_xfer_done)));
     }
 
     if (uploading) {
-      json_append_member(conn, "uploading", json_mkbool(true));
+      json_append_member(conn, "uploading", json_mkbool(TRUE));
     }
 
     if (score->sce_xfer_done > 0) {
