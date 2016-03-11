@@ -25,6 +25,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  masqaddr_empty_addr => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   # MasqueradeAddress not support for EPSV currently; see comments
   # in mod_core.c:core_epsv() on this topic.
 
@@ -294,6 +299,45 @@ sub masqaddr_pasv_delayed_resolving_bug4104 {
   }
 
   unlink($log_file);
+}
+
+sub masqaddr_empty_addr {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  # We can't configure an empty address directly, but we CAN configure
+  # an environment variable that doesn't exist, which will tickle this.
+  my $masq_addr = '%{env:TEST_NON_EXISTENT_ADDR}';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    MasqueradeAddress => $masq_addr,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
+  unless ($@) {
+    server_stop($setup->{pid_file});
+    $ex = "server started unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;
