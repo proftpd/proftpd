@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp RFC4716 keystore
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -187,6 +187,13 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
         }
 
         continue;
+
+      } else if (linelen < sizeof(linebuf)) {
+        /* No CR or LF terminator; maybe a badly formatted file?  Try to
+         * work with the data, if we can.
+         */
+        line = pstrcat(p, line, linebuf, NULL);
+        return line;
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
