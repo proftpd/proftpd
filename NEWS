@@ -8,7 +8,7 @@
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-1.3.5b
+1.3.5b - Released 10-Mar-2016
 --------------------------------
 - Bug 4187 - mod_geoip does not load all of the GeoIPTables properly.
 - Bug 4191 - "Incorrect string value" reported by mod_sql_mysql for some UTF8
