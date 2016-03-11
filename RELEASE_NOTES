@@ -14,6 +14,7 @@ ChangeLog files.
   + Faster/more efficient FTP ASCII mode conversion code.
   + Support for OCSP stapling.
   + Support for the common CLNT FTP command.
+  + Fixed selection of DH groups from TLSDHParamFile.
 
   + New Modules:
 
