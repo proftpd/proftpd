@@ -869,6 +869,7 @@ MODRET set_defaultserver(cmd_rec *cmd) {
 MODRET set_masqueradeaddress(cmd_rec *cmd) {
   config_rec *c = NULL;
   const char *name;
+  size_t namelen;
   pr_netaddr_t *masq_addr = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
@@ -879,6 +880,12 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
    * given name might map to multiple addresses.
    */
   name = cmd->argv[1];
+  namelen = strlen(name);
+  if (namelen == 0) {
+    /* Guard against empty names here. */
+    CONF_ERROR(cmd, "missing required name parameter");
+  }
+
   masq_addr = pr_netaddr_get_addr2(cmd->server->pool, name, NULL, addr_flags);
   if (masq_addr == NULL) {
 
