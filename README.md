@@ -23,7 +23,7 @@ BSD `ftpd` code base, but is a completely new design and implementation.
 
 ProFTPD's extensive configurability provides systems administrators great
 flexibility in user authentication and access controls, including virtual
-users and easy chroot() ftp sessions for individual users.
+users and easy `chroot()` FTP sessions for individual users.
 
 ProFTPD is popular with many service providers for delivering update
 access to user web pages, without resorting to Unix shell accounts.
@@ -31,10 +31,10 @@ access to user web pages, without resorting to Unix shell accounts.
 Latest Release
 --------------
 
-- ftp://ftp.proftpd.org/distrib/
+- ftp://ftp.proftpd.org/distrib/source/
 - http://www.proftpd.org/
 
->see _**RELEASE_NOTES**_ for an overview of the changes in this release
+>see _**RELEASE_NOTES**_ for an overview of the changes in this release.
 
 Major Features
 --------------
@@ -43,11 +43,11 @@ Major Features
 
 - Per directory ".ftpaccess" configuration similar to Apache's ".htaccess". 
 
-- Designed to run either as a stand-alone server or from inetd.
+- Designed to run either as a stand-alone server or from `inetd`/`xinetd`.
 
 - Multiple virtual FTP servers and anonymous FTP services. 
 
-- Multiple passwd files.
+- Multiple password files.
 
 - Shadow password support, including support for expired accounts.
 
@@ -63,7 +63,7 @@ Major Features
 
 - Visibility of directories or files controlled based on Unix style permissions or user/group ownership. 
 
-- Logging and utmp/wtmp support.  Logging is compatible with wu-ftpd, and extended, customizable logging is available.
+- Logging and utmp/wtmp support.  Logging is compatible with `wu-ftpd`, and extended, customizable logging is available.
 
 - If supported by the capabilities the host system, it can run as a non-privileged user in stand-alone mode, thwarting attacks aimed at exploiting "root" privileges.
 
@@ -82,9 +82,9 @@ For detailed installation instructions, see the _**INSTALL**_ file in the root d
 
 The ProFTPD source distribution is designed to be configured using the GNU autotools, so compiling and installing follows the familiar command sequence of
 
-    ./configure
-    make
-    make install
+    $ ./configure
+    $ make
+    $ make install
 
 However, a significant portion of ProFTPD's configurability is done at compile time, so it is highly recommended that you read _**INSTALL**_ and all of the _**README.***_ files that pertain to your platform and desired features before building the sources.
 
