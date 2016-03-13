@@ -1135,6 +1135,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
       hidden_path, path);
   }
 
+  pr_fs_clear_cache2(hidden_path);
   if (file_mode2(cmd->tmp_pool, hidden_path)) {
     session.xfer.xfer_type = STOR_DEFAULT;
 
@@ -1404,7 +1405,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     /* For Bug#3598, we rejected any APPE command when HiddenStores are in
      * effect (for good reasons).
      *
-     * However, for Bug#4144, we're relaxing that policy.  Instead of rejecing
+     * However, for Bug#4144, we're relaxing that policy.  Instead of rejecting
      * the APPE command, we accept that command, but we disable the HiddenStores
      * functionality.
      */
