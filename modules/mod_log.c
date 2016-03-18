@@ -1396,7 +1396,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
         char *time_fmt = "[%d/%b/%Y:%H:%M:%S ";
         struct tm t;
         int internal_fmt = 1;
-        int timz;
+        int timz = 0;
         char sign;
 
         argp = arg;
