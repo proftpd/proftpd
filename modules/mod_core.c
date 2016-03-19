@@ -874,7 +874,7 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   /* We can only masquerade as one address, so we don't need to know if the
    * given name might map to multiple addresses.
