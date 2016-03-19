@@ -182,13 +182,15 @@ int main(int argc, char **argv) {
   errno = 0;
   while ((score = util_scoreboard_entry_read()) != NULL) {
 
-    if (errno)
+    if (errno) {
       break;
+    }
 
     if (!count++ ||
         oldpid != mpid) {
-      if (total)
+      if (total) {
         printf("   -  %d user%s\n\n", total, total > 1 ? "s" : "");
+      }
 
       if (!mpid) {
         printf("inetd FTP connections:\n");
@@ -197,8 +199,9 @@ int main(int argc, char **argv) {
         printf("Master proftpd process %u:\n", (unsigned int) mpid);
       }
 
-      if (server_name)
+      if (server_name) {
         printf("ProFTPD Server '%s'\n", server_name);
+      }
 
       oldpid = mpid;
       total = 0;
@@ -230,11 +233,16 @@ int main(int argc, char **argv) {
   /* Print out the total. */
   if (total) {
     for (i = 0; i != MAX_CLASSES; i++) {
-      if (classes[i].score_class == 0)
-         break;
+      if (classes[i].score_class == NULL) {
+        break;
+      }
 
       printf("Service class %-20s - %3lu %s\n", classes[i].score_class,
-         classes[i].score_count, classes[i].score_count > 1 ? "users" : "user");
+        classes[i].score_count, classes[i].score_count > 1 ? "users" : "user");
+
+      /* Free up the memory, now that we're done with it. */
+      free(classes[i].score_class);
+      classes[i].score_class = NULL;
     }
 
   } else {
