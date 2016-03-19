@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3162,6 +3162,11 @@ START_TEST (fs_fgetsize_test) {
 }
 END_TEST
 
+START_TEST (fs_fadvise_test) {
+  /* XXX TODO */
+}
+END_TEST
+
 START_TEST (fs_is_nfs_test) {
   int res;
 
@@ -3565,6 +3570,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_getsize_test);
   tcase_add_test(testcase, fs_getsize2_test);
   tcase_add_test(testcase, fs_fgetsize_test);
+  tcase_add_test(testcase, fs_fadvise_test);
   tcase_add_test(testcase, fs_is_nfs_test);
   tcase_add_test(testcase, fs_valid_path_test);
   tcase_add_test(testcase, fsio_smkdir_test);
