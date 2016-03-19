@@ -404,7 +404,7 @@ int pr_fs_is_nfs(const char *path);
 /* Provide advice/hints to the OS about what we are going to do with the
  * given section of the opened file.
  */
-int pr_fs_fadvise(int fd, off_t offset, off_t len, int advice);
+void pr_fs_fadvise(int fd, off_t offset, off_t len, int advice);
 #define PR_FS_FADVISE_NORMAL		10
 #define PR_FS_FADVISE_RANDOM		11
 #define PR_FS_FADVISE_SEQUENTIAL	12

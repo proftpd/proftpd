@@ -5902,9 +5902,9 @@ int pr_fs_fgetsize(int fd, off_t *fs_size) {
   return fs_getsize(fd, NULL, fs_size);
 }
 
-int pr_fs_fadvise(int fd, off_t offset, off_t len, int advice) {
+void pr_fs_fadvise(int fd, off_t offset, off_t len, int advice) {
 #if defined(HAVE_POSIX_ADVISE)
-  int res, posix_advice, xerrno;
+  int res, posix_advice;
   const char *advice_str;
 
   /* Convert from our advice values to the ones from the header; the
@@ -5942,25 +5942,21 @@ int pr_fs_fadvise(int fd, off_t offset, off_t len, int advice) {
       break;
 
     default:
-      errno = EINVAL;
-      return -1;
+      pr_trace_msg(trace_channel, 9,
+        "unknown/unsupported advice: %d", advice);
+      return;
   }
 
   res = posix_fadvise(fd, offset, len, posix_advice);
-  xerrno = errno;
-
   if (res < 0) {
     pr_trace_msg(trace_channel, 9,
       "posix_fadvise() error on fd %d (off %" PR_LU ", len %" PR_LU ", "
       "advice %s): %s", fd, (pr_off_t) offset, (pr_off_t) len, advice_str,
-      strerror(xerrno));
+      strerror(errno));
   }
-
-  errno = xerrno;
-  return res;
-#else
-  return 0;
 #endif
+
+  return;
 }
 
 int pr_fs_is_nfs(const char *path) {
