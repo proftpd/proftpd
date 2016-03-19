@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2015 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1318,6 +1318,23 @@ static int addr_ncmp(const unsigned char *aptr, const unsigned char *bptr,
     unsigned int masklen) {
   unsigned char nbits, nbytes;
   int res;
+
+  /* These null checks are unlikely to happen.  But be prepared, eh? */
+
+  if (aptr != NULL &&
+      bptr == NULL) {
+    return 1;
+  }
+
+  if (aptr == NULL &&
+      bptr != NULL) {
+    return -1;
+  }
+
+  if (aptr == NULL &&
+      bptr == NULL) {
+    return 0;
+  }
 
   nbytes = masklen / 8;
   nbits = masklen % 8;

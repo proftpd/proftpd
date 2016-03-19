@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2037,7 +2037,7 @@ static int delay_init(void) {
 static int delay_sess_init(void) {
   pr_fh_t *fh;
   config_rec *c;
-  int xerrno = errno;
+  int xerrno;
 
   pr_event_register(&delay_module, "core.session-reinit", delay_sess_reinit_ev,
     NULL);
