@@ -47,7 +47,7 @@ int xferlog_open(const char *path) {
     return 0;
   }
 
-  if (xferlogfd == -1) {
+  if (xferlogfd < 0) {
     pr_log_debug(DEBUG6, "opening TransferLog '%s'", path);
     pr_log_openfile(path, &xferlogfd, PR_TUNABLE_XFER_LOG_MODE);
 

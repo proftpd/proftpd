@@ -303,6 +303,11 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       *log_fd, strerror(errno));
   }
 
+  /* Advise the platform that we will be treating this log file as
+   * write-only data.
+   */
+  pr_fs_fadvise(*log_fd, 0, 0, PR_FS_FADVISE_DONTNEED);
+
 #ifdef PR_USE_NONBLOCKING_LOG_OPEN
   /* Return the fd to blocking mode. */
   (void) fd_set_block(*log_fd);
