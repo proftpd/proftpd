@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -317,6 +317,17 @@ static conn_t *init_conn(pool *p, int fd, pr_netaddr_t *bind_addr,
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_KEEPALIVE: %s",
         strerror(errno));
     }
+
+#if defined(IP_FREEBIND)
+    /* Allow binding to an as-yet-nonexistent address. */
+    if (setsockopt(fd, SOL_IP, IP_FREEBIND, (void *) &one,
+        sizeof(one)) < 0) {
+      if (errno != ENOSYS) {
+        pr_log_pri(PR_LOG_INFO, "error setting IP_FREEBIND: %s",
+          strerror(errno));
+      }
+    }
+#endif /* IP_FREEBIND */
 
     memset(&na, 0, sizeof(na));
     if (pr_netaddr_set_family(&na, addr_family) < 0) {
