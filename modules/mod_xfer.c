@@ -1838,6 +1838,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* Advise the platform that we will be only writing this file.  Note that a
+   * preceding REST command does not mean we need to use a different offset
+   * value here; we can/should still tell the platform that the entire file
+   * should be treated this way.
+   */
+  pr_fs_fadvise(PR_FH_FD(stor_fh), 0, 0, PR_FS_FADVISE_DONTNEED);
+
   /* Stash the offset at which we're writing to this file. */
   curr_offset = pr_fsio_lseek(stor_fh, (off_t) 0, SEEK_CUR);
   if (curr_offset != (off_t) -1) {
@@ -2358,6 +2365,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
     errno = xerrno;
     return PR_ERROR(cmd);
   }
+
+  /* Advise the platform that we will be only reading this file
+   * sequentially.  Note that a preceding REST command does not mean we
+   * need to use a different offset value here; we can/should still
+   * tell the platform that the entire file should be treated this way.
+   */
+  pr_fs_fadvise(PR_FH_FD(retr_fh), 0, 0, PR_FS_FADVISE_SEQUENTIAL);
 
   if (session.restart_pos) {
     /* Make sure that the requested offset is valid (within the size of the

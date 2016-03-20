@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project
+ * Copyright (c) 2001-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -400,6 +400,17 @@ int pr_fs_fgetsize(int, off_t *);
  * determining which (with errno set appropriately).
  */
 int pr_fs_is_nfs(const char *path);
+
+/* Provide advice/hints to the OS about what we are going to do with the
+ * given section of the opened file.
+ */
+void pr_fs_fadvise(int fd, off_t offset, off_t len, int advice);
+#define PR_FS_FADVISE_NORMAL		10
+#define PR_FS_FADVISE_RANDOM		11
+#define PR_FS_FADVISE_SEQUENTIAL	12
+#define PR_FS_FADVISE_WILLNEED		13
+#define PR_FS_FADVISE_DONTNEED		14
+#define PR_FS_FADVISE_NOREUSE		15
 
 /* For internal use only. */
 int init_fs(void);

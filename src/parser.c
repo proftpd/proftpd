@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2015 The ProFTPD Project team
+ * Copyright (c) 2004-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -380,6 +380,11 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
     errno = EISDIR;
     return -1;
   }
+
+  /* Advise the platform that we will be only reading this file
+   * sequentially.
+   */
+  pr_fs_fadvise(PR_FH_FD(fh), 0, 0, PR_FS_FADVISE_SEQUENTIAL);
 
   /* Check for world-writable files (and later, files in world-writable
    * directories).

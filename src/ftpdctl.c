@@ -65,6 +65,9 @@ int pr_event_listening(const char *event) {
   return -1;
 }
 
+void pr_fs_fadvise(int fd, off_t off, off_t len, int advice) {
+}
+
 int pr_fs_get_usable_fd(int fd) {
   return -1;
 }

@@ -5902,6 +5902,63 @@ int pr_fs_fgetsize(int fd, off_t *fs_size) {
   return fs_getsize(fd, NULL, fs_size);
 }
 
+void pr_fs_fadvise(int fd, off_t offset, off_t len, int advice) {
+#if defined(HAVE_POSIX_ADVISE)
+  int res, posix_advice;
+  const char *advice_str;
+
+  /* Convert from our advice values to the ones from the header; the
+   * indirection is needed for platforms which do not provide posix_fadvise(3).
+   */
+  switch (advice) {
+    case PR_FS_FADVISE_NORMAL:
+      advice_str = "NORMAL";
+      posix_advice = POSIX_FADV_NORMAL;
+      break;
+
+    case PR_FS_FADVISE_RANDOM:
+      advice_str = "RANDOM";
+      posix_advice = POSIX_FADV_RANDOM;
+      break;
+
+    case PR_FS_FADVISE_SEQUENTIAL:
+      advice_str = "SEQUENTIAL";
+      posix_advice = POSIX_FADV_SEQUENTIAL;
+      break;
+
+    case PR_FS_FADVISE_WILLNEED:
+      advice_str = "WILLNEED";
+      posix_advice = POSIX_FADV_WILLNEED;
+      break;
+
+    case PR_FS_FADVISE_DONTNEED:
+      advice_str = "DONTNEED";
+      posix_advice = POSIX_FADV_DONTNEED;
+      break;
+
+    case PR_FS_FADVISE_NOREUSE:
+      advice_str = "NOREUSE";
+      posix_advice = POSIX_FADV_NOREUSE;
+      break;
+
+    default:
+      pr_trace_msg(trace_channel, 9,
+        "unknown/unsupported advice: %d", advice);
+      return;
+  }
+
+  res = posix_fadvise(fd, offset, len, posix_advice);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 9,
+      "posix_fadvise() error on fd %d (off %" PR_LU ", len %" PR_LU ", "
+      "advice %s): %s", fd, (pr_off_t) offset, (pr_off_t) len, advice_str,
+      strerror(errno));
+  }
+#endif
+
+  return;
+}
+
 int pr_fs_is_nfs(const char *path) {
 #if defined(HAVE_STATFS_F_TYPE) || defined(HAVE_STATFS_F_FSTYPENAME)
   struct statfs fs;

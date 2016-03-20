@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3162,6 +3162,34 @@ START_TEST (fs_fgetsize_test) {
 }
 END_TEST
 
+START_TEST (fs_fadvise_test) {
+  int advice, fd = -1;
+  off_t off = 0, len = 0;
+
+  /* We make these function calls to exercise the code paths, even
+   * though there's no good way to verify the behavior changed.
+   */
+
+  advice = PR_FS_FADVISE_NORMAL;
+  pr_fs_fadvise(fd, off, len, advice);
+
+  advice = PR_FS_FADVISE_RANDOM;
+  pr_fs_fadvise(fd, off, len, advice);
+
+  advice = PR_FS_FADVISE_SEQUENTIAL;
+  pr_fs_fadvise(fd, off, len, advice);
+
+  advice = PR_FS_FADVISE_WILLNEED;
+  pr_fs_fadvise(fd, off, len, advice);
+
+  advice = PR_FS_FADVISE_DONTNEED;
+  pr_fs_fadvise(fd, off, len, advice);
+
+  advice = PR_FS_FADVISE_NOREUSE;
+  pr_fs_fadvise(fd, off, len, advice);
+}
+END_TEST
+
 START_TEST (fs_is_nfs_test) {
   int res;
 
@@ -3565,6 +3593,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_getsize_test);
   tcase_add_test(testcase, fs_getsize2_test);
   tcase_add_test(testcase, fs_fgetsize_test);
+  tcase_add_test(testcase, fs_fadvise_test);
   tcase_add_test(testcase, fs_is_nfs_test);
   tcase_add_test(testcase, fs_valid_path_test);
   tcase_add_test(testcase, fsio_smkdir_test);
