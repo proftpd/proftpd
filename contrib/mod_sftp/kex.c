@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,11 @@
 #include "disconnect.h"
 #include "interop.h"
 #include "tap.h"
+
+#ifdef HAVE_SODIUM_H
+# include <sodium.h>
+# define CURVE25519_SIZE	32
+#endif /* HAVE_SODIUM_H */
 
 /* Define the minimum DH group length we allow (unless the AllowWeakDH
  * SFTPOption is used).
@@ -107,6 +112,9 @@ struct sftp_kex {
   /* Using ECDH? */
   int use_ecdh;
 
+  /* Using Curve25519? */
+  int use_curve25519;
+
   /* For generating the session ID */
   DH *dh;
   BIGNUM *e;
@@ -124,6 +132,9 @@ struct sftp_kex {
   EC_KEY *ec;
   EC_POINT *client_point;
 #endif /* PR_USE_OPENSSL_ECC */
+#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+  unsigned char *client_curve25519;
+#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
 };
 
 static struct sftp_kex *kex_first_kex = NULL;
@@ -1111,7 +1122,6 @@ static int finish_ecdh(struct sftp_kex *kex) {
 
   return 0;
 }
-
 #endif /* PR_USE_OPENSSL_ECC */
 
 static array_header *parse_namelist(pool *p, const char *names) {
@@ -1224,6 +1234,9 @@ static const char *get_shared_name(pool *p, const char *c2s_names,
  * SFTPOption is used.
  */
 static const char *kex_exchanges[] = {
+#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+  "curve25519-sha256@libssh.org",
+#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
 #ifdef PR_USE_OPENSSL_ECC
   "ecdh-sha2-nistp256",
   "ecdh-sha2-nistp384",
@@ -1258,7 +1271,7 @@ static const char *get_kexinit_exchange_list(pool *p) {
   config_rec *c;
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPKeyExchanges", FALSE);
-  if (c) {
+  if (c != NULL) {
     res = pstrdup(p, c->argv[0]);
 
   } else {
@@ -1591,8 +1604,15 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     kex->session_names->kex_algo = algo;
     kex->use_ecdh = TRUE;
     return 0;
-
 #endif /* PR_USE_OPENSSL_ECC */
+
+#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+  } else if (strncmp(algo, "curve25519-sha256@libssh.org", 22) == 0) {
+    kex->hash = EVP_sha256();
+    kex->session_names->kex_algo = algo;
+    kex->use_curve25519 = TRUE;
+    return 0;
+#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
   }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -3249,6 +3269,332 @@ static int handle_kex_rsa(struct sftp_kex *kex) {
   return 0;
 }
 
+#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+static int generate_curve25519_keys(unsigned char *priv_key,
+    unsigned char *pub_key) {
+  static const unsigned char basepoint[CURVE25519_SIZE] = {9};
+  unsigned char zero_curve25519[CURVE25519_SIZE];
+  int res;
+
+  randombytes_buf(priv_key, CURVE25519_SIZE);
+  res = crypto_scalarmult_curve25519(pub_key, priv_key, basepoint);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error performing Curve25519 scalar multiplication");
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Check for all-zero public keys. */
+  sodium_memzero(zero_curve25519, CURVE25519_SIZE);
+  if (sodium_memcmp(pub_key, zero_curve25519, CURVE25519_SIZE) == 0) {
+    pr_trace_msg(trace_channel, 12,
+      "generated all-zero Curve25519 public key, trying again");
+    return generate_curve25519_keys(priv_key, pub_key);
+  }
+
+  return 0;
+}
+
+static int read_curve25519_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
+  unsigned char zero_curve25519[CURVE25519_SIZE];
+  unsigned char *client_curve25519;
+  unsigned char *buf;
+  uint32_t buflen, data_len;
+  char *data;
+
+  buf = pkt->payload;
+  buflen = pkt->payload_len;
+
+  data = sftp_msg_read_string(pkt->pool, &buf, &buflen);
+  data_len = strlen(data);
+  if (data_len != CURVE25519_SIZE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "rejecting invalid length (%lu bytes) client Curve25519 key",
+      (unsigned long) data_len);
+    errno = EINVAL;
+    return -1;
+  }
+
+  client_curve25519 = (unsigned char *) data;
+
+  /* Watch for all-zero public keys, and reject them. */
+  sodium_memzero(zero_curve25519, CURVE25519_SIZE);
+  if (sodium_memcmp(client_curve25519, zero_curve25519, CURVE25519_SIZE) == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "rejecting invalid (all-zero) client Curve25519 key");
+    errno = EINVAL;
+    return -1;
+  }
+
+  kex->client_curve25519 = client_curve25519;
+  return 0;
+}
+
+static int get_curve25519_shared_key(unsigned char *shared_key,
+    unsigned char *client_curve25519, unsigned char *server_key) {
+  int res;
+
+  res = crypto_scalarmult_curve25519(shared_key, server_key, client_curve25519);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error performing Curve25519 scalar multiplication");
+    errno = EINVAL;
+    return -1;
+  }
+
+  return CURVE25519_SIZE;
+}
+
+static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen,
+    const BIGNUM *k, unsigned char *client_curve25519,
+    unsigned char *server_curve25519, uint32_t *hlen) {
+  EVP_MD_CTX ctx;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz;
+
+  bufsz = buflen = 4096;
+
+  /* XXX Is this buffer large enough? Too large? */
+  ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
+
+  /* Write all of the data into the buffer in the SSH2 format, and hash it.
+   * The ordering of these fields is described in RFC5656.
+   */
+
+  /* First, the version strings */
+  sftp_msg_write_string(&buf, &buflen, kex->client_version);
+  sftp_msg_write_string(&buf, &buflen, kex->server_version);
+
+  /* Client's KEXINIT */
+  sftp_msg_write_int(&buf, &buflen, kex->client_kexinit_payload_len + 1);
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEXINIT);
+  sftp_msg_write_data(&buf, &buflen, kex->client_kexinit_payload,
+    kex->client_kexinit_payload_len, FALSE);
+
+  /* Server's KEXINIT */
+  sftp_msg_write_int(&buf, &buflen, kex->server_kexinit_payload_len + 1);
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEXINIT);
+  sftp_msg_write_data(&buf, &buflen, kex->server_kexinit_payload,
+    kex->server_kexinit_payload_len, FALSE);
+
+  /* Hostkey data */
+  sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+
+  /* Client's key */
+  sftp_msg_write_data(&buf, &buflen, client_curve25519, CURVE25519_SIZE, TRUE);
+
+  /* Server's key */
+  sftp_msg_write_data(&buf, &buflen, server_curve25519, CURVE25519_SIZE, TRUE);
+
+  /* Shared secret */
+  sftp_msg_write_mpint(&buf, &buflen, k);
+
+  /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
+   * int.  Without these ugly OpenSSL version preprocessor checks, the
+   * compiler will error out with "void value not ignored as it ought to be".
+   */
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+  if (EVP_DigestInit(&ctx, kex->hash) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing message digest: %s", sftp_crypto_get_errors());
+    BN_clear_free(kex->e);
+    kex->e = NULL;
+    pr_memscrub(ptr, bufsz);
+    return NULL;
+  }
+#else
+  EVP_DigestInit(&ctx, kex->hash);
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+  if (EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen)) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error updating message digest: %s", sftp_crypto_get_errors());
+    BN_clear_free(kex->e);
+    kex->e = NULL;
+    pr_memscrub(ptr, bufsz);
+    return NULL;
+  }
+#else
+  EVP_DigestUpdate(&ctx, ptr, (bufsz - buflen));
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+  if (EVP_DigestFinal(&ctx, kex_digest_buf, hlen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error finalizing message digest: %s", sftp_crypto_get_errors());
+    BN_clear_free(kex->e);
+    kex->e = NULL;
+    pr_memscrub(ptr, bufsz);
+    return NULL;
+  }
+#else
+  EVP_DigestFinal(&ctx, kex_digest_buf, hlen);
+#endif
+
+  BN_clear_free(kex->e);
+  kex->e = NULL;
+  pr_memscrub(ptr, bufsz);
+
+  return kex_digest_buf;
+}
+
+static int write_curve25519_reply(struct ssh2_packet *pkt,
+    struct sftp_kex *kex) {
+  const unsigned char *h, *hostkey_data, *hsig;
+  unsigned char *buf, *ptr;
+  unsigned char server_curve25519[CURVE25519_SIZE];
+  unsigned char server_key[CURVE25519_SIZE];
+  uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
+  size_t hsiglen;
+  BIGNUM *k = NULL;
+  int res;
+
+  if (generate_curve25519_keys(server_key, server_curve25519) < 0) {
+    return -1;
+  }
+
+  /* Compute the shared secret. */
+  buf = palloc(kex_pool, CURVE25519_SIZE);
+
+  pr_trace_msg(trace_channel, 12, "computing Curve25519 key");
+  res = get_curve25519_shared_key((unsigned char *) buf, kex->client_curve25519,
+    server_key);
+  if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error computing Curve25519 shared secret: %s", strerror(errno));
+    return -1;
+  }
+
+  k = BN_new();
+  if (k == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error allocating new BIGNUM: %s", sftp_crypto_get_errors());
+    pr_memscrub(buf, res);
+    return -1;
+  }
+
+  if (BN_bin2bn((unsigned char *) buf, res, k) == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error converting Curve25519 shared secret to BN: %s",
+      sftp_crypto_get_errors());
+    pr_memscrub(buf, res);
+    return -1;
+  }
+
+  pr_memscrub(buf, res);
+  kex->k = k;
+
+  /* Get the hostkey data; it will be part of the data we hash in order
+   * to create the session key.
+   */
+  hostkey_data = sftp_keys_get_hostkey_data(pkt->pool, kex->use_hostkey_type,
+    &hostkey_datalen);
+  if (hostkey_data == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error converting hostkey for signing: %s", strerror(errno));
+
+    BN_clear_free(kex->k);
+    kex->k = NULL;
+    return -1;
+  }
+
+  /* Calculate H */
+  h = calculate_curve25519_h(kex, hostkey_data, hostkey_datalen, k,
+    kex->client_curve25519, server_curve25519, &hlen);
+  if (h == NULL) {
+    pr_memscrub((char *) hostkey_data, hostkey_datalen);
+    BN_clear_free(kex->k);
+    kex->k = NULL;
+    return -1;
+  }
+
+  kex->h = palloc(pkt->pool, hlen);
+  kex->hlen = hlen;
+  memcpy((char *) kex->h, h, kex->hlen);
+
+  /* Save H as the session ID */
+  sftp_session_set_id(h, hlen);
+
+  /* Sign H with our hostkey */
+  hsig = sftp_keys_sign_data(pkt->pool, kex->use_hostkey_type, h, hlen,
+    &hsiglen);
+  if (hsig == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "error signing H");
+    pr_memscrub((char *) hostkey_data, hostkey_datalen);
+    BN_clear_free(kex->k);
+    kex->k = NULL;
+    return -1;
+  }
+
+  /* XXX Is this large enough?  Too large? */
+  buflen = bufsz = 4096;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
+  sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+  sftp_msg_write_data(&buf, &buflen, server_curve25519, CURVE25519_SIZE, TRUE);
+  sftp_msg_write_data(&buf, &buflen, hsig, hsiglen, TRUE);
+
+  /* Scrub any sensitive data when done */
+  pr_memscrub((char *) server_key, CURVE25519_SIZE);
+  pr_memscrub((char *) hostkey_data, hostkey_datalen);
+  pr_memscrub((char *) hsig, hsiglen);
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  return 0;
+}
+
+static int handle_kex_curve25519(struct ssh2_packet *pkt,
+    struct sftp_kex *kex) {
+  int res;
+  cmd_rec *cmd;
+  const char *req;
+
+  req = "ECDH_INIT";
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, req));
+  cmd->arg = "(data)";
+  cmd->cmd_class = CL_AUTH|CL_SSH;
+
+  pr_trace_msg(trace_channel, 9, "reading %s message from client", req);
+
+  res = read_curve25519_init(pkt, kex);
+  if (res < 0) {
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    destroy_pool(pkt->pool);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+  destroy_pool(pkt->pool);
+
+  /* Send our key exchange reply. */
+  pkt = sftp_ssh2_packet_create(kex_pool);
+  res = write_curve25519_reply(pkt, kex);
+  if (res < 0) {
+    destroy_pool(pkt->pool);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
+
+  pr_trace_msg(trace_channel, 9, "writing %s message to client", req);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  if (res < 0) {
+    destroy_pool(pkt->pool);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
+
+  destroy_pool(pkt->pool);
+  return 0;
+}
+#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+
 #ifdef PR_USE_OPENSSL_ECC
 static int read_ecdh_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   unsigned char *buf;
@@ -3737,6 +4083,12 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
         /* This handles the case of SFTP_SSH2_MSG_KEX_DH_GEX_REQUEST_OLD as
          * well; that ID has the same value as the KEX_DH_INIT ID.
          */
+#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+        if (kex->use_curve25519) {
+          res = handle_kex_curve25519(pkt, kex);
+
+        } else
+#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
 #ifdef PR_USE_OPENSSL_ECC
         if (kex->use_ecdh) {
           res = handle_kex_ecdh(pkt, kex);

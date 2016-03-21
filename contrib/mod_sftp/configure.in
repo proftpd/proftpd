@@ -1,5 +1,5 @@
 dnl ProFTPD - mod_sftp
-dnl Copyright (c) 2012-2015 TJ Saunders <tj@castaglia.org>
+dnl Copyright (c) 2012-2016 TJ Saunders <tj@castaglia.org>
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -64,9 +64,13 @@ AC_ARG_WITH(libraries,
 
 AC_HEADER_STDC
 AC_CHECK_HEADERS(stdlib.h unistd.h limits.h fcntl.h)
+AC_CHECK_HEADER(sodium.h,
+  [AC_DEFINE(HAVE_SODIUM_H, 1, [Define if sodium.h is present.])
+   MODULE_LIBS="$MODULE_LIBS -lsodium"
+  ])
 AC_CHECK_HEADER(zlib.h,
   [AC_DEFINE(HAVE_ZLIB_H, 1, [Define if zlib.h is present.])
-   MODULE_LIBS=-lz
+   MODULE_LIBS="$MODULE_LIBS -lz"
   ])
 
 dnl Check for a crippled OpenSSL library (e.g. Solaris 10).  More details

@@ -387,6 +387,9 @@
 /* Define if you have the mempcpy function.  */
 #undef HAVE_MEMPCPY
 
+/* Define if you have the memset_s function.  */
+#undef HAVE_MEMSET_S
+
 /* Define if you have the mkdir function.  */
 #undef HAVE_MKDIR
 
