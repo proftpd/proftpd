@@ -4161,7 +4161,7 @@ cat >>confdefs.h <<\_ACEOF
 #define HAVE_SODIUM_H 1
 _ACEOF
 
-   MODULE_LIBS=-lsodium
+   MODULE_LIBS="$MODULE_LIBS -lsodium"
 
 fi
 
@@ -4297,7 +4297,7 @@ cat >>confdefs.h <<\_ACEOF
 #define HAVE_ZLIB_H 1
 _ACEOF
 
-   MODULE_LIBS=-lz
+   MODULE_LIBS="$MODULE_LIBS -lz"
 
 fi
 
