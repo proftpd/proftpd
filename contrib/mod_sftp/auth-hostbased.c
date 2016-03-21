@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'hostbased' user authentication
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -136,28 +136,52 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
 #ifdef OPENSSL_FIPS
   if (FIPS_mode()) {
+    int fp_algo_id;
+    const char *fp_algo;
+
+# if defined(HAVE_SHA256_OPENSSL)
+    fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+    fp_algo = "SHA256";
+# else
+    fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA1;
+    fp_algo = "SHA1";
+# endif /* HAVE_SHA256_OPENSSL */
+
     fp = sftp_keys_get_fingerprint(pkt->pool, hostkey_data, hostkey_datalen,
-      SFTP_KEYS_FP_DIGEST_SHA1);
+      fp_algo_id);
     if (fp != NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "public key SHA1 fingerprint: %s", fp);
+        "public key %s fingerprint: %s", fp_algo, fp);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error obtaining public key SHA1 fingerprint: %s", strerror(errno));
+        "error obtaining public key %s fingerprint: %s", fp_algo,
+        strerror(errno));
     }
 
   } else {
 #endif /* OPENSSL_FIPS */
+    int fp_algo_id;
+    const char *fp_algo;
+
+#if defined(HAVE_SHA256_OPENSSL)
+    fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+    fp_algo = "SHA256";
+#else
+    fp_algo_id = SFTP_KEYS_FP_DIGEST_MD5;
+    fp_algo = "MD5";
+#endif /* HAVE_SHA256_OPENSSL */
+
     fp = sftp_keys_get_fingerprint(pkt->pool, hostkey_data, hostkey_datalen,
-      SFTP_KEYS_FP_DIGEST_MD5);
+      fp_algo_id);
     if (fp != NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "public key MD5 fingerprint: %s", fp);
+        "public key %s fingerprint: %s", fp_algo, fp);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error obtaining public key MD5 fingerprint: %s", strerror(errno));
+        "error obtaining public key %s fingerprint: %s", fp_algo,
+        strerror(errno));
     }
 #ifdef OPENSSL_FIPS
   }
