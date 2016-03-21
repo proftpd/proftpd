@@ -1252,16 +1252,25 @@ the proftpd source code and unpack the <code>mod_sftp</code> source tarball:
 after unpacking the latest proftpd-1.3.2 source code.  For including
 <code>mod_sftp</code> as a staticly linked module:
 <pre>
-  ./configure --enable-openssl --with-modules=mod_sftp ...
+  $ ./configure --enable-openssl --with-modules=mod_sftp ...
 </pre>
 Alternatively, <code>mod_sftp</code> can be built as a DSO module:
 <pre>
-  ./configure --enable-dso --enable-openssl --with-shared=mod_sftp ...
+  $ ./configure --enable-dso --enable-openssl --with-shared=mod_sftp ...
 </pre>
 Then follow the usual steps:
 <pre>
-  make
-  make install
+  $ make
+  $ make install
+</pre>
+<b>Note</b> that if the <code>libsodium</code> library is available,
+<code>mod_sftp</code> will auto-detect this, which enables other supported
+algorithms.  You can ensure that <code>mod_sftp</code> compiles with the
+<code>libsodium</code> library like so:
+<pre>
+  $ ./configure --enable-openssl --with-modules=mod_sftp ... \
+    --with-includes=/path/to/libsodium/include \
+    --with-libraries=/path/to/libsodium/lib
 </pre>
 
 <p>
@@ -2230,7 +2239,7 @@ cannot read either the <code>SFTPDHParamFile</code> or the
 <hr><br>
 
 <font size=2><b><i>
-&copy; Copyright 2008-2015 TJ Saunders<br>
+&copy; Copyright 2008-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
