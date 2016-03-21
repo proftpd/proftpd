@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* ProFTPD bindings support routines.
- */
+/* ProFTPD bindings support routines. */
 
 #include "conf.h"
 #include "pool.h"
@@ -157,7 +156,7 @@ int pr_namebind_close(const char *name, pr_netaddr_t *addr);
  * resolve).
  */
 int pr_namebind_create(server_rec *server, const char *name,
-  pr_netaddr_t *addr);
+  pr_netaddr_t *addr, unsigned int port);
 
 /* Search the Bindings layer, and return the pr_namebind_t associated with
  * the given addr, port, and name.  If requested, skip over inactive

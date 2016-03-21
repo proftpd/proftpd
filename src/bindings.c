@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -779,7 +779,7 @@ int pr_namebind_close(const char *name, pr_netaddr_t *addr) {
 }
 
 int pr_namebind_create(server_rec *server, const char *name,
-    pr_netaddr_t *addr) {
+    pr_netaddr_t *addr, unsigned int server_port) {
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL, **namebinds = NULL;
   unsigned int port;
@@ -792,7 +792,13 @@ int pr_namebind_create(server_rec *server, const char *name,
 
   /* First, find the ipbind to hold this namebind. */
   port = ntohs(pr_netaddr_get_port(addr));
+  if (port == 0) {
+    port = server_port;
+  }
   ipbind = pr_ipbind_find(addr, port, FALSE);
+  pr_trace_msg(trace_channel, 19,
+    "found ipbind %p for namebind (name '%s', addr %s, port %u)", ipbind, name,
+    pr_netaddr_get_ipstr(addr), port);
 
   if (ipbind == NULL) {
     pr_netaddr_t wildcard_addr;
@@ -819,6 +825,10 @@ int pr_namebind_create(server_rec *server, const char *name,
       ipbind = pr_ipbind_find(&wildcard_addr, port, FALSE);
     }
 #endif /* PR_USE_IPV6 */
+
+    pr_trace_msg(trace_channel, 19,
+      "found wildcard ipbind %p for namebind (name '%s', addr %s, port %u)",
+      ipbind, name, pr_netaddr_get_ipstr(addr), port);
   }
 
   if (ipbind == NULL) {
@@ -1236,7 +1246,7 @@ static int init_standalone_bindings(void) {
     while (c != NULL) {
       pr_signals_handle();
 
-      res = pr_namebind_create(serv, c->argv[0], serv->addr);
+      res = pr_namebind_create(serv, c->argv[0], serv->addr, serv->ServerPort);
       if (res == 0) {
         is_namebind = TRUE;
 
@@ -1248,10 +1258,12 @@ static int init_standalone_bindings(void) {
         }
 
       } else {
-        pr_trace_msg(trace_channel, 3,
-          "unable to create namebind for '%s' to %s#%u: %s",
-          (char *) c->argv[0], pr_netaddr_get_ipstr(serv->addr),
-          serv->ServerPort, strerror(errno));
+        if (errno != ENOENT) {
+          pr_trace_msg(trace_channel, 3,
+            "unable to create namebind for '%s' to %s#%u: %s",
+            (char *) c->argv[0], pr_netaddr_get_ipstr(serv->addr),
+            serv->ServerPort, strerror(errno));
+        }
       }
 
       c = find_config_next(c, c->next, CONF_PARAM, "ServerAlias", FALSE);
