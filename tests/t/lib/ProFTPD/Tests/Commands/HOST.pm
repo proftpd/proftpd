@@ -138,6 +138,8 @@ sub host_login_succeeds {
     print $fh <<EOC;
 <VirtualHost 127.0.0.1>
   ServerAlias localhost
+  Port $port
+
   AuthUserFile $setup->{auth_user_file}
   AuthGroupFile $setup->{auth_group_file}
   AuthOrder mod_auth_file.c
