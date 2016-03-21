@@ -11,6 +11,7 @@
 1.3.6rc3
 --------------------------------
 - Bug 4222 - Add support for curve25519-sha256@libssh.org key exchange.
+- Bug 4186 - ProFTPD creates name-based vhost when it should not.
 
 1.3.6rc2 - Released 10-Mar-2016
 --------------------------------
