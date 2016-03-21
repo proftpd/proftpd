@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@ enum sftp_key_type_e {
 const char *sftp_keys_get_fingerprint(pool *, unsigned char *, uint32_t, int);
 #define SFTP_KEYS_FP_DIGEST_MD5		1
 #define SFTP_KEYS_FP_DIGEST_SHA1	2
+#define SFTP_KEYS_FP_DIGEST_SHA256	3
 
 void sftp_keys_free(void);
 int sftp_keys_get_hostkey(pool *p, const char *);

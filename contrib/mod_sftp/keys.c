@@ -1536,6 +1536,13 @@ const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
       digest_name = "sha1";
       break;
 
+#ifdef HAVE_SHA256_OPENSSL
+    case SFTP_KEYS_FP_DIGEST_SHA256:
+      digest = EVP_sha256();
+      digest_name = "sha256";
+      break;
+#endif /* HAVE_SHA256_OPENSSL */
+
     default:
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unsupported key fingerprint digest algorithm (%d)", digest_algo);
@@ -1595,7 +1602,7 @@ const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
     fp = pstrcat(p, fp, &c, NULL);
   }
   fp[strlen(fp)-1] = '\0';
-  
+
   return fp;
 }
 
