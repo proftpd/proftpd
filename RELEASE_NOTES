@@ -9,6 +9,10 @@ ChangeLog files.
 1.3.6rc3
 ---------
 
+  + mod_sftp uses SHA256 for publickey fingerprints by default, rather than
+    SHA1 or MD5.
+
+
   + Changed Configuration Directives:
 
     MasqueradeAddress
