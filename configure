@@ -18580,7 +18580,7 @@ if test "${enable_dso+set}" = set; then
       ac_build_core_modules="$ac_build_core_modules modules/mod_dso.o"
 
       MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic"
-      MAIN_LIBS="$(MAIN_LIBS) \$(LIBLTDL)"
+      MAIN_LIBS="$MAIN_LIBS \$(LIBLTDL)"
 
       MODULE_LDFLAGS="-avoid-version -export-dynamic -module"
 
@@ -33191,7 +33191,7 @@ cat >>confdefs.h <<\_ACEOF
 #define HAVE_IDNA_TO_ASCII_8Z 1
 _ACEOF
 
-    MAIN_LIBS="$(MAIN_LIBS) -lidn"
+    MAIN_LIBS="$MAIN_LIBS -lidn"
 
 else
   echo "$as_me: failed program was:" >&5
