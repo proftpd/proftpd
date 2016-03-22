@@ -369,6 +369,9 @@
 /* Define if you have the iconv function.  */
 #undef HAVE_ICONV
 
+/* Define if you have the idna_to_ascii_8z function.  */
+#undef HAVE_IDNA_TO_ASCII_8Z
+
 /* Define if you have the inet_aton function.  */
 #undef HAVE_INET_ATON
 
@@ -605,6 +608,9 @@
 
 /* Define if you have the <iconv.h> header file.  */
 #undef HAVE_ICONV_H
+
+/* Define if you have the <idna.h> header file.  */
+#undef HAVE_IDNA_H
 
 /* Define if you have the <ifaddrs.h> header file.  */
 #undef HAVE_IFADDRS_H
