@@ -259,7 +259,8 @@ char *pstrdup(pool *p, const char *str) {
   char *res;
   size_t len;
 
-  if (!p || !str) {
+  if (p == NULL ||
+      str == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -267,7 +268,10 @@ char *pstrdup(pool *p, const char *str) {
   len = strlen(str) + 1;
 
   res = palloc(p, len);
-  sstrncpy(res, str, len);
+  if (res != NULL) {
+    sstrncpy(res, str, len);
+  }
+
   return res;
 }
 
