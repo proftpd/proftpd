@@ -102,7 +102,7 @@ struct sftp_pkey_data {
  * order of the base point on the elliptic curve.
  */
 static unsigned int keys_rsa_min_nbits = 768;
-static unsigned int keys_dsa_min_nbits = 768;
+static unsigned int keys_dsa_min_nbits = 384;
 static unsigned int keys_ec_min_nbits = 160;
 
 static const char *trace_channel = "ssh2";
@@ -1357,53 +1357,77 @@ static void debug_rsa_key(pool *p, const char *label, RSA *rsa) {
 #endif
 
 /* Compare a "blob" of pubkey data sent by the client for authentication
- * with a file pubkey (from an RFC4716 formatted file).  Returns -1 if
+ * with a local file pubkey (from an RFC4716 formatted file).  Returns -1 if
  * there was an error, TRUE if the keys are equals, and FALSE if not.
  */
-int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
-    uint32_t client_pubkey_datalen, unsigned char *file_pubkey_data,
-    uint32_t file_pubkey_datalen) {
-  EVP_PKEY *client_pkey, *file_pkey;
+int sftp_keys_compare_keys(pool *p,
+    unsigned char *remote_pubkey_data, uint32_t remote_pubkey_datalen,
+    unsigned char *local_pubkey_data, uint32_t local_pubkey_datalen) {
+  EVP_PKEY *remote_pkey, *local_pkey;
   int res = -1;
 
-  if (client_pubkey_data == NULL ||
-      file_pubkey_data == NULL) {
+  if (remote_pubkey_data == NULL ||
+      local_pubkey_data == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  client_pkey = get_pkey_from_data(p, client_pubkey_data,
-    client_pubkey_datalen);
-  if (client_pkey == NULL) {
+  remote_pkey = get_pkey_from_data(p, remote_pubkey_data,
+    remote_pubkey_datalen);
+  if (remote_pkey == NULL) {
     return -1;
   }
 
-  file_pkey = get_pkey_from_data(p, file_pubkey_data, file_pubkey_datalen);
-  if (file_pkey == NULL) {
+  local_pkey = get_pkey_from_data(p, local_pubkey_data, local_pubkey_datalen);
+  if (local_pkey == NULL) {
+    int xerrno = errno;
+
+    EVP_PKEY_free(remote_pkey);
+
+    errno = xerrno;
     return -1;
   }
 
-  if (EVP_PKEY_type(client_pkey->type) == EVP_PKEY_type(file_pkey->type)) {
-    switch (EVP_PKEY_type(client_pkey->type)) {
+  if (EVP_PKEY_type(remote_pkey->type) == EVP_PKEY_type(local_pkey->type)) {
+    switch (EVP_PKEY_type(remote_pkey->type)) {
       case EVP_PKEY_RSA: {
-        RSA *client_rsa, *file_rsa;
+        RSA *remote_rsa, *local_rsa;
 
-        client_rsa = EVP_PKEY_get1_RSA(client_pkey);
-        file_rsa = EVP_PKEY_get1_RSA(file_pkey);
+        local_rsa = EVP_PKEY_get1_RSA(local_pkey);
+        if (keys_rsa_min_nbits > 0) {
+          int rsa_nbits;
+
+          rsa_nbits = RSA_size(local_rsa) * 8;
+          if (rsa_nbits < keys_rsa_min_nbits) {
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "local RSA key size (%d bits) less than required "
+              "minimum (%d bits)", rsa_nbits, keys_rsa_min_nbits);
+            RSA_free(local_rsa);
+            EVP_PKEY_free(local_pkey);
+            EVP_PKEY_free(remote_pkey);
+
+            return FALSE;
+          }
+
+          pr_trace_msg(trace_channel, 19,
+            "comparing RSA keys using local RSA key (%d bits, min %d)", rsa_nbits, keys_rsa_min_nbits);
+        }
+
+        remote_rsa = EVP_PKEY_get1_RSA(remote_pkey);
 
 #ifdef SFTP_DEBUG_KEYS
-        debug_rsa_key(p, "client-sent RSA key:", client_rsa);
-        debug_rsa_key(p, "file RSA key:", file_rsa);
+        debug_rsa_key(p, "client-sent RSA key:", remote_rsa);
+        debug_rsa_key(p, "local RSA key:", local_rsa);
 #endif
 
-        if (BN_cmp(client_rsa->e, file_rsa->e) != 0) {
+        if (BN_cmp(remote_rsa->e, local_rsa->e) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
             "RSA key mismatch: client-sent RSA key component 'e' does not "
             "match local RSA key component 'e'");
           res = FALSE;
 
         } else {
-          if (BN_cmp(client_rsa->n, file_rsa->n) != 0) {
+          if (BN_cmp(remote_rsa->n, local_rsa->n) != 0) {
             pr_trace_msg(trace_channel, 17, "%s",
               "RSA key mismatch: client-sent RSA key component 'n' does not "
               "match local RSA key component 'n'");
@@ -1414,40 +1438,59 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
           }
         } 
 
-        RSA_free(client_rsa);
-        RSA_free(file_rsa);
+        RSA_free(remote_rsa);
+        RSA_free(local_rsa);
         break;
       }
 
 #if !defined(OPENSSL_NO_DSA)
       case EVP_PKEY_DSA: {
-        DSA *client_dsa, *file_dsa;
+        DSA *remote_dsa, *local_dsa;
 
-        client_dsa = EVP_PKEY_get1_DSA(client_pkey);
-        file_dsa = EVP_PKEY_get1_DSA(file_pkey);
+        local_dsa = EVP_PKEY_get1_DSA(local_pkey);
+        if (keys_dsa_min_nbits > 0) {
+          int dsa_nbits;
 
-        if (BN_cmp(client_dsa->p, file_dsa->p) != 0) {
+          dsa_nbits = DSA_size(local_dsa) * 8;
+          if (dsa_nbits < keys_dsa_min_nbits) {
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "local DSA key size (%d bits) less than required "
+              "minimum (%d bits)", dsa_nbits, keys_dsa_min_nbits);
+            DSA_free(local_dsa);
+            EVP_PKEY_free(local_pkey);
+            EVP_PKEY_free(remote_pkey);
+
+            return FALSE;
+          }
+
+          pr_trace_msg(trace_channel, 19,
+            "comparing DSA keys using local DSA key (%d bits)", dsa_nbits);
+        }
+
+        remote_dsa = EVP_PKEY_get1_DSA(remote_pkey);
+
+        if (BN_cmp(remote_dsa->p, local_dsa->p) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
             "DSA key mismatch: client-sent DSA key parameter 'p' does not "
             "match local DSA key parameter 'p'");
           res = FALSE;
 
         } else {
-          if (BN_cmp(client_dsa->q, file_dsa->q) != 0) {
+          if (BN_cmp(remote_dsa->q, local_dsa->q) != 0) {
             pr_trace_msg(trace_channel, 17, "%s",
               "DSA key mismatch: client-sent DSA key parameter 'q' does not "
               "match local DSA key parameter 'q'");
             res = FALSE;
 
           } else {
-            if (BN_cmp(client_dsa->g, file_dsa->g) != 0) {
+            if (BN_cmp(remote_dsa->g, local_dsa->g) != 0) {
               pr_trace_msg(trace_channel, 17, "%s",
                 "DSA key mismatch: client-sent DSA key parameter 'g' does not "
                 "match local DSA key parameter 'g'");
               res = FALSE;
 
             } else {
-              if (BN_cmp(client_dsa->pub_key, file_dsa->pub_key) != 0) {
+              if (BN_cmp(remote_dsa->pub_key, local_dsa->pub_key) != 0) {
                 pr_trace_msg(trace_channel, 17, "%s",
                   "DSA key mismatch: client-sent DSA key parameter 'pub_key' "
                   "does not match local DSA key parameter 'pub_key'");
@@ -1460,8 +1503,8 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
           }
         }
 
-        DSA_free(client_dsa);
-        DSA_free(file_dsa);
+        DSA_free(remote_dsa);
+        DSA_free(local_dsa);
 
         break;
       }
@@ -1469,22 +1512,41 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
 
 #ifdef PR_USE_OPENSSL_ECC
       case EVP_PKEY_EC: {
-        EC_KEY *client_ec, *file_ec;
+        EC_KEY *remote_ec, *local_ec;
 
-        file_ec = EVP_PKEY_get1_EC_KEY(file_pkey);
-        client_ec = EVP_PKEY_get1_EC_KEY(client_pkey);
+        local_ec = EVP_PKEY_get1_EC_KEY(local_pkey);
+        if (keys_ec_min_nbits > 0) {
+          int ec_nbits;
 
-        if (EC_GROUP_cmp(EC_KEY_get0_group(file_ec),
-            EC_KEY_get0_group(client_ec), NULL) != 0) {
+          ec_nbits = EVP_PKEY_bits(local_pkey) * 8;
+          if (ec_nbits < keys_ec_min_nbits) {
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "local EC key size (%d bits) less than required "
+              "minimum (%d bits)", ec_nbits, keys_ec_min_nbits);
+            EC_KEY_free(local_ec);
+            EVP_PKEY_free(local_pkey);
+            EVP_PKEY_free(remote_pkey);
+
+            return FALSE;
+          }
+
+          pr_trace_msg(trace_channel, 19,
+            "comparing EC keys using local EC key (%d bits)", ec_nbits);
+        }
+
+        remote_ec = EVP_PKEY_get1_EC_KEY(remote_pkey);
+
+        if (EC_GROUP_cmp(EC_KEY_get0_group(local_ec),
+            EC_KEY_get0_group(remote_ec), NULL) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
             "ECC key mismatch: client-sent curve does not "
             "match local ECC curve");
           res = FALSE;
 
         } else {
-          if (EC_POINT_cmp(EC_KEY_get0_group(file_ec),
-              EC_KEY_get0_public_key(file_ec),
-              EC_KEY_get0_public_key(client_ec), NULL) != 0) {
+          if (EC_POINT_cmp(EC_KEY_get0_group(local_ec),
+              EC_KEY_get0_public_key(local_ec),
+              EC_KEY_get0_public_key(remote_ec), NULL) != 0) {
             pr_trace_msg(trace_channel, 17, "%s",
               "ECC key mismatch: client-sent public key 'Q' does not "
               "match local ECC public key 'Q'");
@@ -1495,8 +1557,8 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
           }
         }
 
-        EC_KEY_free(client_ec);
-        EC_KEY_free(file_ec);
+        EC_KEY_free(remote_ec);
+        EC_KEY_free(local_ec);
 
         break;
       }
@@ -1505,27 +1567,27 @@ int sftp_keys_compare_keys(pool *p, unsigned char *client_pubkey_data,
       default:
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to compare %s keys: unsupported key type",
-          get_key_type_desc(EVP_PKEY_type(client_pkey->type)));
+          get_key_type_desc(EVP_PKEY_type(remote_pkey->type)));
         errno = ENOSYS;
         break;
     }
 
   } else {
     if (pr_trace_get_level(trace_channel) >= 17) {
-      const char *client_key_desc, *file_key_desc;
+      const char *remote_key_desc, *local_key_desc;
 
-      client_key_desc = get_key_type_desc(EVP_PKEY_type(client_pkey->type));
-      file_key_desc = get_key_type_desc(EVP_PKEY_type(file_pkey->type));
+      remote_key_desc = get_key_type_desc(EVP_PKEY_type(remote_pkey->type));
+      local_key_desc = get_key_type_desc(EVP_PKEY_type(local_pkey->type));
 
       pr_trace_msg(trace_channel, 17, "key mismatch: cannot compare %s key "
-        "(client-sent) with %s key (local)", client_key_desc, file_key_desc);
+        "(client-sent) with %s key (local)", remote_key_desc, local_key_desc);
     }
 
     res = FALSE;
   }
 
-  EVP_PKEY_free(client_pkey);
-  EVP_PKEY_free(file_pkey);
+  EVP_PKEY_free(remote_pkey);
+  EVP_PKEY_free(local_pkey);
 
   return res;
 }
@@ -2781,8 +2843,11 @@ const unsigned char *sftp_keys_sign_data(pool *p,
       return NULL;
   }
 
-  if (p) {
-    unsigned char *buf = palloc(p, *siglen);
+  if (res != NULL &&
+      p != NULL) {
+    unsigned char *buf;
+
+    buf = palloc(p, *siglen);
     memcpy(buf, res, *siglen);
 
     pr_memscrub((char *) res, *siglen);
@@ -2913,6 +2978,22 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       int ok;
 
       rsa = EVP_PKEY_get1_RSA(pkey);
+
+      if (keys_rsa_min_nbits > 0) {
+        int rsa_nbits;
+
+        rsa_nbits = RSA_size(rsa) * 8;
+        if (rsa_nbits < keys_rsa_min_nbits) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "RSA key size (%d bits) less than required minimum (%d bits)",
+            rsa_nbits, keys_rsa_min_nbits);
+          RSA_free(rsa);
+
+          errno = EINVAL;
+          return -1;
+        }
+      }
+
       modulus_len = RSA_size(rsa);
 
       /* If the signature provided by the client is more than the expected
@@ -2927,12 +3008,13 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
           (unsigned long) sig_len, modulus_len);
         errno = EINVAL;
         return -1;
+      }
 
       /* If the signature provided by the client is less than the expected
        * key length, the verification will fail.  In such cases, we need to
        * pad the provided signature with leading zeros (Bug#3992).
        */
-      } else if (sig_len < modulus_len) {
+      if (sig_len < modulus_len) {
         unsigned int padding_len;
         unsigned char *padded_sig;
 
@@ -2988,6 +3070,21 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       int ok;
 
       dsa = EVP_PKEY_get1_DSA(pkey);
+
+      if (keys_dsa_min_nbits > 0) {
+        int dsa_nbits;
+
+        dsa_nbits = DSA_size(dsa) * 8;
+        if (dsa_nbits < keys_dsa_min_nbits) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "DSA key size (%d bits) less than required minimum (%d bits)",
+            dsa_nbits, keys_dsa_min_nbits);
+          DSA_free(dsa);
+
+          errno = EINVAL;
+          return -1;
+        }
+      }
 
       dsa_sig = DSA_SIG_new();
       dsa_sig->r = BN_new();
@@ -3045,6 +3142,19 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         "unable to verify signed data: public key algorithm '%s' does not "
         "match signature algorithm '%s'", pubkey_algo, sig_type);
       return -1;
+    }
+
+    if (keys_ec_min_nbits > 0) {
+      int ec_nbits;
+
+      ec_nbits = EVP_PKEY_bits(pkey) * 8;
+      if (ec_nbits < keys_ec_min_nbits) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "EC key size (%d bits) less than required minimum (%d bits)",
+          ec_nbits, keys_ec_min_nbits);
+        errno = EINVAL;
+        return -1;
+      }
     }
 
     sig_len = sftp_msg_read_int(p, &signature, &signaturelen);

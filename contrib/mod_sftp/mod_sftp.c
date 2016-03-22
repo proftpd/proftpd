@@ -1286,7 +1286,7 @@ MODRET set_sftpkeylimits(cmd_rec *cmd) {
   config_rec *c;
 
   if (cmd->argc < 3 ||
-      ((cmd->argc-1 % 2) != 0)) {
+      ((cmd->argc-1) % 2 != 0)) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1297,7 +1297,7 @@ MODRET set_sftpkeylimits(cmd_rec *cmd) {
     if (strcasecmp(cmd->argv[i], "MinimumRSASize") == 0) {
       int nbits;
 
-      nbits = atoi(cmd->argv[i+1]);
+      nbits = atoi(cmd->argv[++i]);
       if (nbits < 0) {
         CONF_ERROR(cmd, "minimum key size must be zero or greater");
       }
@@ -1310,7 +1310,7 @@ MODRET set_sftpkeylimits(cmd_rec *cmd) {
     } else if (strcasecmp(cmd->argv[i], "MinimumDSASize") == 0) {
       int nbits;
 
-      nbits = atoi(cmd->argv[i+1]);
+      nbits = atoi(cmd->argv[++i]);
       if (nbits < 0) {
         CONF_ERROR(cmd, "minimum key size must be zero or greater");
       }
@@ -1323,7 +1323,7 @@ MODRET set_sftpkeylimits(cmd_rec *cmd) {
     } else if (strcasecmp(cmd->argv[i], "MinimumECSize") == 0) {
       int nbits;
 
-      nbits = atoi(cmd->argv[i+1]);
+      nbits = atoi(cmd->argv[++i]);
       if (nbits < 0) {
         CONF_ERROR(cmd, "minimum key size must be zero or greater");
       }
