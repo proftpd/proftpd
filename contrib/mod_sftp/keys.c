@@ -91,6 +91,20 @@ struct sftp_pkey_data {
   const char *prompt;
 };
 
+/* Default minimum key sizes, in BITS.  The RSA minimum of 768 bits comes from
+ * the OpenSSH-7.2 implementation.  And the others follow from that, based on
+ * the assumptions described here:
+ *   https://en.wikipedia.org/wiki/Key_size#Asymmetric_algorithm_key_lengths
+ *   http://www.emc.com/emc-plus/rsa-labs/standards-initiatives/key-size.htm
+ *
+ * Note that the RSA size refers to the size of the modulus.  The DSA size
+ * refers to the size of the modulus.  The EC size refers to the minimum
+ * order of the base point on the elliptic curve.
+ */
+static unsigned int keys_rsa_min_nbits = 768;
+static unsigned int keys_dsa_min_nbits = 768;
+static unsigned int keys_ec_min_nbits = 160;
+
 static const char *trace_channel = "ssh2";
 
 static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
@@ -2415,6 +2429,21 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
     return NULL;
   }
 
+  if (keys_rsa_min_nbits > 0) {
+    int rsa_nbits;
+
+    rsa_nbits = RSA_size(rsa) * 8;
+    if (rsa_nbits < keys_rsa_min_nbits) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "RSA hostkey size (%d bits) less than required minimum (%d bits)",
+        rsa_nbits, keys_rsa_min_nbits);
+      RSA_free(rsa);
+
+      errno = EINVAL;
+      return NULL;
+    }
+  }
+
   EVP_DigestInit(&ctx, sha1);
   EVP_DigestUpdate(&ctx, data, datalen);
   EVP_DigestFinal(&ctx, dgst, &dgstlen);
@@ -2488,6 +2517,21 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
     return NULL;
   }
 
+  if (keys_dsa_min_nbits > 0) {
+    int dsa_nbits;
+
+    dsa_nbits = DSA_size(dsa) * 8;
+    if (dsa_nbits < keys_dsa_min_nbits) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "DSA hostkey size (%d bits) less than required minimum (%d bits)",
+        dsa_nbits, keys_dsa_min_nbits);
+      DSA_free(dsa);
+
+      errno = EINVAL;
+      return NULL;
+    }
+  }
+
   EVP_DigestInit(&ctx, sha1);
   EVP_DigestUpdate(&ctx, data, datalen);
   EVP_DigestFinal(&ctx, dgst, &dgstlen);
@@ -2551,6 +2595,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
 #ifdef PR_USE_OPENSSL_ECC
 static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen, int nid) {
+  EVP_PKEY *pkey = NULL;
   EC_KEY *ec = NULL;
   ECDSA_SIG *sig;
   EVP_MD_CTX ctx;
@@ -2574,6 +2619,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
         return NULL;
       }
 
+      pkey = sftp_ecdsa256_hostkey->pkey;
       md = EVP_sha256();
       break;
 
@@ -2591,6 +2637,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
         return NULL;
       }
 
+      pkey = sftp_ecdsa384_hostkey->pkey;
       md = EVP_sha384();
       break;
 
@@ -2608,6 +2655,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
         return NULL;
       }
 
+      pkey = sftp_ecdsa521_hostkey->pkey;
       md = EVP_sha512();
       break;
 
@@ -2615,6 +2663,21 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unknown/unsupported ECDSA NID (%d) requested", nid);
       return NULL;
+  }
+
+  if (keys_ec_min_nbits > 0) {
+    int ec_nbits;
+
+    ec_nbits = EVP_PKEY_bits(pkey) * 8;
+    if (ec_nbits < keys_ec_min_nbits) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "EC hostkey size (%d bits) less than required minimum (%d bits)",
+        ec_nbits, keys_ec_min_nbits);
+      EC_KEY_free(ec);
+
+      errno = EINVAL;
+      return NULL;
+    }
   }
 
   buflen = bufsz = SFTP_MAX_SIG_SZ;
@@ -3069,6 +3132,24 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   pr_memscrub(digest, digestlen);
   EVP_PKEY_free(pkey);
   return res;
+}
+
+int sftp_keys_set_key_limits(int rsa_min, int dsa_min, int ec_min) {
+  /* Ignore any negative values. */
+
+  if (rsa_min >= 0) {
+    keys_rsa_min_nbits = (unsigned int) rsa_min;
+  }
+
+  if (dsa_min >= 0) {
+    keys_dsa_min_nbits = (unsigned int) dsa_min;
+  }
+
+  if (ec_min >= 0) {
+    keys_ec_min_nbits = (unsigned int) ec_min;
+  }
+
+  return 0;
 }
 
 int sftp_keys_set_passphrase_provider(const char *provider) {

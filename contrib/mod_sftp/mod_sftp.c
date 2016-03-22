@@ -1280,6 +1280,68 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPKeyLimits limit1 ... limitN */
+MODRET set_sftpkeylimits(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc < 3 ||
+      ((cmd->argc-1 % 2) != 0)) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcasecmp(cmd->argv[i], "MinimumRSASize") == 0) {
+      int nbits;
+
+      nbits = atoi(cmd->argv[i+1]);
+      if (nbits < 0) {
+        CONF_ERROR(cmd, "minimum key size must be zero or greater");
+      }
+
+      if (nbits > 0) {
+        c->argv[0] = palloc(c->pool, sizeof(int));
+        *((int *) c->argv[0]) = nbits;
+      }
+
+    } else if (strcasecmp(cmd->argv[i], "MinimumDSASize") == 0) {
+      int nbits;
+
+      nbits = atoi(cmd->argv[i+1]);
+      if (nbits < 0) {
+        CONF_ERROR(cmd, "minimum key size must be zero or greater");
+      }
+
+      if (nbits > 0) {
+        c->argv[1] = palloc(c->pool, sizeof(int));
+        *((int *) c->argv[1]) = nbits;
+      }
+
+    } else if (strcasecmp(cmd->argv[i], "MinimumECSize") == 0) {
+      int nbits;
+
+      nbits = atoi(cmd->argv[i+1]);
+      if (nbits < 0) {
+        CONF_ERROR(cmd, "minimum key size must be zero or greater");
+      }
+
+      if (nbits > 0) {
+        c->argv[2] = palloc(c->pool, sizeof(int));
+        *((int *) c->argv[2]) = nbits;
+      }
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPKeyLimit '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPLog path|"none" */
 MODRET set_sftplog(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -2090,8 +2152,34 @@ static int sftp_sess_init(void) {
     return -1;
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPKeyLimits", FALSE);
+  if (c != NULL) {
+    int rsa_min = -1, dsa_min = -1, ec_min = -1;
+
+    if (c->argv[0] != NULL) {
+      rsa_min = *((int *) c->argv[0]);
+    }
+
+    if (c->argv[1] != NULL) {
+      dsa_min = *((int *) c->argv[1]);
+    }
+
+    if (c->argv[2] != NULL) {
+      ec_min = *((int *) c->argv[2]);
+    }
+
+    if (rsa_min > -1 ||
+        dsa_min > -1 ||
+        ec_min > -1) {
+      if (sftp_keys_set_key_limits(rsa_min, dsa_min, ec_min) < 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error setting SFTPKeyLimits: %s", strerror(errno));
+      }
+    }
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "SFTPKeyBlacklist", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (strncasecmp((char *) c->argv[0], "none", 5) != 0) {
       sftp_blacklist_set_file(c->argv[0]);
 
@@ -2309,6 +2397,7 @@ static conftable sftp_conftab[] = {
   { "SFTPHostKey",		set_sftphostkey,		NULL },
   { "SFTPKeyBlacklist",		set_sftpkeyblacklist,		NULL },
   { "SFTPKeyExchanges",		set_sftpkeyexchanges,		NULL },
+  { "SFTPKeyLimits",		set_sftpkeylimits,		NULL },
   { "SFTPLog",			set_sftplog,			NULL },
   { "SFTPMaxChannels",		set_sftpmaxchannels,		NULL },
   { "SFTPOptions",		set_sftpoptions,		NULL },
