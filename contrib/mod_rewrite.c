@@ -28,11 +28,15 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.9"
+#ifdef HAVE_IDNA_H
+# include <idna.h>
+#endif /* HAVE_IDNA_H */
+
+#define MOD_REWRITE_VERSION		"mod_rewrite/1.0"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030501
-# error "ProFTPD 1.3.5rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030603
+# error "ProFTPD 1.3.6rc3 or later required"
 #endif
 
 #ifdef PR_USE_REGEX
@@ -1957,8 +1961,10 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
   static unsigned long ucs4_longs[PR_TUNABLE_BUFFER_SIZE] = {0L};
 
   /* If the key is NULL or empty, do nothing. */
-  if (!key || !strlen(key))
+  if (key == NULL ||
+      strlen(key) == 0) {
     return NULL;
+  }
 
   /* Always make sure the buffers are clear for this run. */
   memset(utf8_val, '\0', PR_TUNABLE_BUFFER_SIZE);
@@ -1980,14 +1986,43 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
      * about casts; it just so happens, quite nicely, that UCS4 maps one-to-one
      * to ISO-8859-1 (Latin-1).
      */
-    for (i = 0; i < ucs4strlen; i++)
+    for (i = 0; i < ucs4strlen; i++) {
       utf8_val[i] = (unsigned char) ucs4_longs[i];
+    }
 
     return pstrdup(map_pool, (const char *) utf8_val);
   }
 
   return NULL;
 }
+
+#if defined(HAVE_IDNA_H) && defined(HAVE_IDNA_TO_ASCII_8Z)
+static char *rewrite_map_int_idnatrans(pool *map_pool, char *key) {
+  int flags = 0, res;
+  char *ascii_val = NULL, *map_val = NULL;
+
+  /* If the key is NULL or empty, do nothing. */
+  if (key == NULL ||
+      strlen(key) == 0) {
+    return NULL;
+  }
+
+  /* TODO: Should we enforce the use of e.g. the IDNA_USE_STD3_ASCII_RULES
+   * flag?
+   */
+  res = idna_to_ascii_8z(key, &ascii_val, flags);
+  if (res != IDNA_SUCCESS) {
+    rewrite_log("rewrite_map_int_idnatrans(): failed transforming IDNA "
+      "'%s' to ASCII: %s", key, idna_strerror(res));
+    return NULL;
+  }
+
+  map_val = pstrdup(map_pool, ascii_val);
+  free(ascii_vall);
+
+  return map_val;
+}
+#endif /* IDNA support */
 
 /* Rewrite logging functions */
 
@@ -2339,9 +2374,10 @@ MODRET set_rewritemap(cmd_rec *cmd) {
 
   /* Check the configured map types */
   mapsrc = strchr(cmd->argv[2], ':');
-  if (mapsrc == NULL)
+  if (mapsrc == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid RewriteMap parameter: '",
       cmd->argv[2], "'", NULL));
+  }
 
   *mapsrc = '\0';
   mapsrc++;
@@ -2365,9 +2401,17 @@ MODRET set_rewritemap(cmd_rec *cmd) {
     } else if (strcmp(mapsrc, "utf8trans") == 0) {
       map = (void *) rewrite_map_int_utf8trans;
 
-    } else
+    } else if (strcmp(mapsrc, "idnatrans") == 0) {
+#if defined(HAVE_IDNA_H) && defined(HAVE_IDNA_TO_ASCII_8Z)
+      map = (void *) rewrite_map_int_idnatrans;
+#else
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupported internal map function requested: '", mapsrc, "'", NULL));
+#endif /* IDNA support */
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unknown internal map function requested: '", mapsrc, "'", NULL));
+    }
 
   } else if (strcmp(cmd->argv[2], "fifo") == 0) {
     struct stat st;
@@ -3035,5 +3079,4 @@ module rewrite_module = {
   /* Module version */
   MOD_REWRITE_VERSION
 };
-
 #endif /* regex support */
