@@ -2054,7 +2054,7 @@ static char *rewrite_map_int_idnatrans(pool *map_pool, char *key) {
   }
 
   map_val = pstrdup(map_pool, ascii_val);
-  free(ascii_vall);
+  free(ascii_val);
 
   return map_val;
 }
