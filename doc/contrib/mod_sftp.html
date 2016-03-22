@@ -2027,6 +2027,16 @@ This explicitly tells the <code>mod_sftp</code> to <b>not</b> drop root
 privileges after authentication, and instead to keep them for the duration
 of the session.
 
+<p>
+In addition, <b>if</b> you are on a Linux machine, you may <em>also</em>
+need to disable the <a href="../modules/mod_cap.html"><code>mod_cap</code></a>
+module, as that can also restrict what can be done with root privileges:
+<pre>
+  &lt;IfModule mod_cap.c&gt;
+    CapabilitiesEngine off
+  &lt;/IfModule&gt;
+</pre>
+
 <p><a name="SFTPShell">
 <font color=red>Question</font>: Why can't I use <code>ssh</code> to connect
 to my proftpd+mod_sftp server?  When I try, I see:
