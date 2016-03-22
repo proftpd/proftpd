@@ -1302,10 +1302,8 @@ MODRET set_sftpkeylimits(cmd_rec *cmd) {
         CONF_ERROR(cmd, "minimum key size must be zero or greater");
       }
 
-      if (nbits > 0) {
-        c->argv[0] = palloc(c->pool, sizeof(int));
-        *((int *) c->argv[0]) = nbits;
-      }
+      c->argv[0] = palloc(c->pool, sizeof(int));
+      *((int *) c->argv[0]) = nbits;
 
     } else if (strcasecmp(cmd->argv[i], "MinimumDSASize") == 0) {
       int nbits;
@@ -1315,10 +1313,8 @@ MODRET set_sftpkeylimits(cmd_rec *cmd) {
         CONF_ERROR(cmd, "minimum key size must be zero or greater");
       }
 
-      if (nbits > 0) {
-        c->argv[1] = palloc(c->pool, sizeof(int));
-        *((int *) c->argv[1]) = nbits;
-      }
+      c->argv[1] = palloc(c->pool, sizeof(int));
+      *((int *) c->argv[1]) = nbits;
 
     } else if (strcasecmp(cmd->argv[i], "MinimumECSize") == 0) {
       int nbits;
@@ -1328,10 +1324,8 @@ MODRET set_sftpkeylimits(cmd_rec *cmd) {
         CONF_ERROR(cmd, "minimum key size must be zero or greater");
       }
 
-      if (nbits > 0) {
-        c->argv[2] = palloc(c->pool, sizeof(int));
-        *((int *) c->argv[2]) = nbits;
-      }
+      c->argv[2] = palloc(c->pool, sizeof(int));
+      *((int *) c->argv[2]) = nbits;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPKeyLimit '",

@@ -135,6 +135,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SFTPHostKey">SFTPHostKey</a>
   <li><a href="#SFTPKeyBlacklist">SFTPKeyBlacklist</a>
   <li><a href="#SFTPKeyExchanges">SFTPKeyExchanges</a>
+  <li><a href="#SFTPKeyLimits">SFTPKeyLimits</a>
   <li><a href="#SFTPLog">SFTPLog</a>
   <li><a href="#SFTPMaxChannels">SFTPMaxChannels</a>
   <li><a href="#SFTPOptions">SFTPOptions</a>
@@ -837,6 +838,35 @@ client, in the above order, during the key exchange.
 <p>
 In general, there is no need to use this directive unless only one specific
 key exchange algorithm must be used.
+
+<p>
+<hr>
+<h2><a name="SFTPKeyLimits">SFTPKeyLimits</a></h2>
+<strong>Syntax:</strong> SFTPKeyLimits <em>limit1 ...</em><br>
+<strong>Default:</strong> MinimumRSASize 768 MiniumumDSASize 384 MinimumECSize 160<em>None</em><br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>SFTPKeyLimits</code> directive is used to configure limits on the
+sizes of keys, both host keys <b>and</b> user keys.  The currently supported
+limits are:
+<ul>
+  <li><code>MinimumDSASize</code>
+  <li><code>MinimumECSize</code>
+  <li><code>MinimumRSASize</code>
+</ul>
+
+<p>
+Examples:
+<pre>
+  # Require at least 1024-bit RSA keys; leave other default limits alone
+  SFTPKeyLimits MinimumRSASize 1024
+
+  # Require at least 256-bit EC keys, and remove other default limits
+  SFTPKeyLimits MinimumECSize 256 MinimumDSASize 0 MinimumRSASize 0
+</pre>
 
 <p>
 <hr>

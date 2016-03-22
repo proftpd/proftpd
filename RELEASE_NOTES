@@ -13,6 +13,11 @@ ChangeLog files.
     SHA1 or MD5.
 
 
+  + New Configuration Directives:
+
+    SFTPKeyLimits (Bug#4233)
+
+
   + Changed Configuration Directives:
 
     MasqueradeAddress
