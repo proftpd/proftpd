@@ -1821,7 +1821,7 @@ AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 
-AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp idna_to_ascii_8z mkdtemp nl_langinfo)
+AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp mkdtemp nl_langinfo)
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR, 1,
     [Define if you have the gai_strerror() function]),
@@ -1852,6 +1852,29 @@ AC_TRY_LINK(
   [
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_ICONV, 1, [Define if you have iconv])
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ]
+)
+
+AC_MSG_CHECKING([for idna_to_ascii_8z])
+AC_TRY_COMPILE(
+  [
+    #include <sys/types.h>
+    #ifdef HAVE_IDNA_H
+    #  include <idna.h>
+    #endif
+  ],
+  [
+    int flags = 0, res = 0;
+    const char *input = NULL;
+    char *output = NULL;
+    res = idna_to_ascii_8z(input, &output, flags);
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_IDNA_TO_ASCII_8Z, 1, [Define if you have idna_to_ascii_8z])
   ],
   [
     AC_MSG_RESULT(no)
