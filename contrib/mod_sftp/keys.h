@@ -65,6 +65,9 @@ int sftp_keys_verify_signed_data(pool *, const char *,
   unsigned char *, uint32_t, unsigned char *, uint32_t,
   unsigned char *, size_t);
 
+/* Sets minimum key sizes. */
+int sftp_keys_set_key_limits(int rsa_min, int dsa_min, int ec_min);
+
 int sftp_keys_clear_dsa_hostkey(void);
 int sftp_keys_clear_ecdsa_hostkey(void);
 int sftp_keys_clear_rsa_hostkey(void);
