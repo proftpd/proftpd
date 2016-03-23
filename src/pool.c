@@ -62,7 +62,9 @@ static union block_hdr *block_freelist = NULL;
 static unsigned int stat_malloc = 0;	/* incr when malloc required */
 static unsigned int stat_freehit = 0;	/* incr when freelist used */
 
+#ifdef PR_USE_DEVEL
 static const char *trace_channel = "pool";
+#endif /* PR_USE_DEVEL */
 
 #ifdef PR_USE_DEVEL
 /* Debug flags */
@@ -384,7 +386,6 @@ int pr_pool_debug_set_flags(int flags) {
   debug_flags = flags;
   return 0;
 }
-
 #endif /* PR_USE_DEVEL */
 
 void pr_pool_tag(pool *p, const char *tag) {
