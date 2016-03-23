@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,14 +36,21 @@ static void set_up(void) {
   }
 
   init_netaddr();
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("dns", 1, 20);
+  }
 }
 
 static void tear_down(void) {
   if (p) {
     destroy_pool(p);
-    p = NULL;
-    permanent_pool = NULL;
-  } 
+    p = permanent_pool = NULL;
+  }
+
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("dns", 0, 0);
+  }
 }
 
 /* Tests */
@@ -148,6 +155,12 @@ START_TEST (netaddr_get_addr_test) {
   fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
     AF_INET, res->na_family);
   fail_unless(addrs != NULL, "Expected additional addresses for '%s'", name);
+
+  res = pr_netaddr_get_addr(p, name, NULL);
+  fail_unless(res != NULL, "Failed to get addr for '%s': %s", name,
+    strerror(errno));
+  fail_unless(res->na_family == AF_INET, "Expected family %d, got %d",
+    AF_INET, res->na_family);
 
   name = "127.0.0.1";
 
@@ -841,6 +854,29 @@ START_TEST (netaddr_get_dnsstr_test) {
 }
 END_TEST
 
+START_TEST (netaddr_get_dnsstr_list_test) {
+  array_header *res;
+  pr_netaddr_t *addr;
+
+  res = pr_netaddr_get_dnsstr_list(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_netaddr_get_dnsstr_list(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null address");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  addr = pr_netaddr_get_addr(p, "localhost", NULL);
+  fail_unless(addr != NULL, "Failed to resolve 'localhost': %s",
+    strerror(errno));
+
+  res = pr_netaddr_get_dnsstr_list(p, addr);
+  fail_unless(res != NULL, "Failed to get DNS list: %s", strerror(errno));
+}
+END_TEST
+
 #ifdef PR_USE_IPV6
 START_TEST (netaddr_get_dnsstr_ipv6_test) {
   pr_netaddr_t *addr;
@@ -1294,6 +1330,7 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_set_port_test);
   tcase_add_test(testcase, netaddr_set_reverse_dns_test);
   tcase_add_test(testcase, netaddr_get_dnsstr_test);
+  tcase_add_test(testcase, netaddr_get_dnsstr_list_test);
 #ifdef PR_USE_IPV6
   tcase_add_test(testcase, netaddr_get_dnsstr_ipv6_test);
 #endif /* PR_USE_IPV6 */
