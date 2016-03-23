@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,9 +40,12 @@ static void set_up(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("inet", 1, 20);
   }
+
+  pr_inet_set_default_family(p, AF_INET);
 }
 
 static void tear_down(void) {
+  pr_inet_set_default_family(p, 0);
   pr_inet_clear();
 
   if (p) {
@@ -58,18 +61,23 @@ static void tear_down(void) {
 START_TEST (inet_family_test) {
   int res;
 
+  pr_inet_set_default_family(p, 0);
+
   res = pr_inet_set_default_family(p, AF_INET);
   fail_unless(res == 0, "Expected previous family 0, got %d", res);
 
   res = pr_inet_set_default_family(p, 0);
   fail_unless(res == AF_INET, "Expected previous family %d, got %d", AF_INET,
     res);
+
+  /* Restore the default family to AF_INET, for other tests. */
+  pr_inet_set_default_family(p, AF_INET);
 }
 END_TEST
 
 START_TEST (inet_create_conn_test) {
   int sockfd = -2, port = INPORT_ANY;
-  conn_t *conn;
+  conn_t *conn, *conn2;
 
   conn = pr_inet_create_conn(NULL, sockfd, NULL, port, FALSE);
   fail_unless(conn == NULL, "Failed to handle null arguments");
@@ -89,6 +97,12 @@ START_TEST (inet_create_conn_test) {
   fail_unless(conn->listen_fd != sockfd,
     "Expected listen_fd other than %d, got %d",
     sockfd, conn->listen_fd);
+
+  /* Create another conn, with the same port, make sure it fails. */
+  conn2 = pr_inet_create_conn(p, sockfd, NULL, conn->local_port, FALSE);
+  fail_unless(conn2 == NULL, "Create second conn on port %d unexpectedly",
+    conn->local_port);
+
   pr_inet_close(p, conn);
 }
 END_TEST
@@ -352,6 +366,7 @@ END_TEST
 START_TEST (inet_set_socket_opts_test) {
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
+  struct tcp_keepalive keepalive;
 
   res = pr_inet_set_socket_opts(NULL, NULL, 1, 2, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -364,12 +379,22 @@ START_TEST (inet_set_socket_opts_test) {
   res = pr_inet_set_socket_opts(p, conn, 1, 2, NULL);
   fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
 
+  res = pr_inet_set_socket_opts(p, conn, INT_MAX, INT_MAX, NULL);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+
+  keepalive.keepalive_enabled = 1;
+  keepalive.keepalive_idle = 1;
+  keepalive.keepalive_count = 2;
+  keepalive.keepalive_intvl = 3;
+  res = pr_inet_set_socket_opts(p, conn, 1, 2, &keepalive);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+
   pr_inet_close(p, conn);
 }
 END_TEST
 
 START_TEST (inet_listen_test) {
-  int fd, sockfd = -1, port = INPORT_ANY, res;
+  int fd, mode, sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
 
   res = pr_inet_listen(NULL, NULL, 5, 0);
@@ -391,7 +416,15 @@ START_TEST (inet_listen_test) {
   fail_unless(res < 0, "Succeeded in listening on conn unexpectedly");
   fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
+
+  mode = conn->mode;
+  res = pr_inet_resetlisten(p, conn);
+  fail_unless(res < 0, "Succeeded in resetting listening on conn unexpectedly");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
   conn->listen_fd = fd;
+  conn->mode = mode;
 
   res = pr_inet_listen(p, conn, 5, 0);
   fail_unless(res == 0, "Failed to listen on conn: %s", strerror(errno));
@@ -422,7 +455,7 @@ START_TEST (inet_connect_test) {
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
   res = pr_inet_connect(p, conn, NULL, 80);
-  fail_unless(res < 0, "Failed to handle null connection");
+  fail_unless(res < 0, "Failed to handle null address");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -432,7 +465,37 @@ START_TEST (inet_connect_test) {
 
   res = pr_inet_connect(p, conn, addr, 80);
   fail_unless(res < 0, "Connected to 127.0.0.1#80 unexpectedly");
+  fail_unless(errno == ECONNREFUSED, "Expected ECONNREFUSED (%d), got %s (%d)",
+    ECONNREFUSED, strerror(errno), errno);
 
+  /* Try connecting to Google's DNS server. */
+
+  addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
+  fail_unless(addr != NULL, "Failed to resolve '8.8.8.8': %s",
+    strerror(errno));
+
+  res = pr_inet_connect(p, conn, addr, 53);
+  fail_unless(res < 0, "Failed to connect to 8.8.8.8#53: %s", strerror(errno));
+
+  /* Note: We get EINVAL here because the socket already tried (and failed)
+   * to connect to a different address.  Interestingly, trying to connect(2)
+   * using that same fd to a different address yields EINVAL.
+   */
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  pr_inet_close(p, conn);
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = pr_inet_connect(p, conn, addr, 53);
+  fail_if(res < 0, "Failed to connect to 8.8.8.8#53: %s", strerror(errno));
+
+  res = pr_inet_connect(p, conn, addr, 53);
+  fail_unless(res < 0, "Failed to connect to 8.8.8.8#53: %s",
+    strerror(errno));
+  fail_unless(errno == EISCONN, "Expected EISCONN (%d), got %s (%d)",
+    EISCONN, strerror(errno), errno);
   pr_inet_close(p, conn);
 }
 END_TEST
@@ -451,7 +514,7 @@ START_TEST (inet_connect_nowait_test) {
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
   res = pr_inet_connect_nowait(p, conn, NULL, 80);
-  fail_unless(res < 0, "Failed to handle null connection");
+  fail_unless(res < 0, "Failed to handle null address");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -460,9 +523,25 @@ START_TEST (inet_connect_nowait_test) {
     strerror(errno));
 
   res = pr_inet_connect_nowait(p, conn, addr, 80);
-  fail_unless(res < 0, "Connected to 127.0.0.1#80 unexpectedly");
+  fail_unless(res != -1, "Connected to 127.0.0.1#80 unexpectedly");
+
+  /* Try connecting to Google's DNS server. */
+
+  addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
+  fail_unless(addr != NULL, "Failed to resolve '8.8.8.8': %s",
+    strerror(errno));
+
+  res = pr_inet_connect_nowait(p, conn, addr, 53);
+  if (res < 0 &&
+      errno != ECONNREFUSED) {
+    fail_unless(res != -1, "Failed to connect to 8.8.8.8#53: %s",
+      strerror(errno));
+  }
 
   pr_inet_close(p, conn);
+
+  /* Restore the default family to AF_INET, for other tests. */
+  pr_inet_set_default_family(p, AF_INET);
 }
 END_TEST
 
