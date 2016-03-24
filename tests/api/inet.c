@@ -524,8 +524,9 @@ START_TEST (inet_connect_ipv6_test) {
 
   res = pr_inet_connect(p, conn, addr, 80);
   fail_unless(res < 0, "Connected to ::1#80 unexpectedly");
-  fail_unless(errno == ECONNREFUSED, "Expected ECONNREFUSED (%d), got %s (%d)",
-    ECONNREFUSED, strerror(errno), errno);
+  fail_unless(errno == ECONNREFUSED || errno == ENETUNREACH,
+    "Expected ECONNREFUSED (%d) or ENETUNREACH (%d), got %s (%d)",
+    ECONNREFUSED, ENETUNREACH, strerror(errno), errno);
 
   /* Try connecting to Google's DNS server. */
 
