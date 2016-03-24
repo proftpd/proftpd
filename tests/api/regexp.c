@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -182,9 +182,28 @@ END_TEST
 
 START_TEST (regexp_set_limits_test) {
   int res;
+  pr_regex_t *pre = NULL;
+  const char *pattern, *str;
 
   res = pr_regexp_set_limits(0, 0);
   fail_unless(res == 0, "Failed to set limits: %s", strerror(errno));
+
+  /* Set the limits, and compile/execute a regex. */
+  res = pr_regexp_set_limits(1, 1);
+  fail_unless(res == 0, "Failed to set limits: %s", strerror(errno));
+
+  pre = pr_regexp_alloc(NULL);
+
+  pattern = "^foo";
+  res = pr_regexp_compile(pre, pattern, REG_ICASE);
+  fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
+
+  str = "FOOBAR";
+  res = pr_regexp_exec(pre, str, 0, NULL, 0, 0, 0);
+  fail_unless(res == 0, "Failed to match string '%s' with pattern '%s'", str,
+    pattern);
+
+  pr_regexp_free(NULL, pre);
 }
 END_TEST
 
