@@ -855,8 +855,10 @@ START_TEST (netaddr_get_dnsstr_test) {
 END_TEST
 
 START_TEST (netaddr_get_dnsstr_list_test) {
-  array_header *res;
+  array_header *res, *addrs = NULL;
   pr_netaddr_t *addr;
+  int reverse_dns;
+  const char *dnsstr;
 
   res = pr_netaddr_get_dnsstr_list(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null pool");
@@ -874,6 +876,28 @@ START_TEST (netaddr_get_dnsstr_list_test) {
 
   res = pr_netaddr_get_dnsstr_list(p, addr);
   fail_unless(res != NULL, "Failed to get DNS list: %s", strerror(errno));
+
+  reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
+
+  pr_netaddr_clear_cache();
+
+  addr = pr_netaddr_get_addr(p, "www.google.com", &addrs);
+  fail_unless(addr != NULL, "Failed to resolve 'www.google.com': %s",
+    strerror(errno));
+
+  dnsstr = pr_netaddr_get_dnsstr(addr);
+  fail_unless(dnsstr != NULL, "Failed to get DNS string for '%s': %s",
+    pr_netaddr_get_ipstr(addr), strerror(errno));
+
+  /* We may get a DNS name, but there is no guarantee that the reverse
+   * DNS lookup will return the original "www.google.com" we requested.
+   */
+
+  res = pr_netaddr_get_dnsstr_list(p, addr);
+  fail_unless(res != NULL, "Failed to get DNS list: %s", strerror(errno));
+  fail_unless(res->nelts > 0, "Expected >0 elements, got %d", res->nelts);
+
+  pr_netaddr_set_reverse_dns(reverse_dns);
 }
 END_TEST
 
