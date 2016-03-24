@@ -236,6 +236,33 @@ START_TEST (netacl_create_test) {
   acl_type = pr_netacl_get_type(res);
   fail_unless(acl_type == PR_NETACL_TYPE_DNSMATCH,
     "Failed to have DNSMATCH type for ACL string '%s'", acl_str);
+
+  acl_str = pstrdup(p, "foobar");
+  res = pr_netacl_create(p, acl_str);
+  fail_unless(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  acl_type = pr_netacl_get_type(res);
+  fail_unless(acl_type == PR_NETACL_TYPE_DNSMATCH,
+    "Failed to have DNSMATCH type for ACL string '%s'", acl_str);
+
+  acl_str = pstrdup(p, "!foobar");
+  res = pr_netacl_create(p, acl_str);
+  fail_unless(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  acl_type = pr_netacl_get_type(res);
+  fail_unless(acl_type == PR_NETACL_TYPE_DNSMATCH,
+    "Failed to have DNSMATCH type for ACL string '%s'", acl_str);
+
+  acl_str = pstrdup(p, "!fo?bar");
+  res = pr_netacl_create(p, acl_str);
+  fail_unless(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  acl_type = pr_netacl_get_type(res);
+  fail_unless(acl_type == PR_NETACL_TYPE_DNSGLOB,
+    "Failed to have DNSGLOB type for ACL string '%s'", acl_str);
 }
 END_TEST
 
@@ -580,7 +607,7 @@ START_TEST (netacl_match_test) {
   pr_netacl_t *acl;
   pr_netaddr_t *addr;
   char *acl_str;
-  int have_localdomain = FALSE, res;
+  int have_localdomain = FALSE, res, reverse_dns;
 
   res = pr_netacl_match(NULL, NULL);
   fail_unless(res == -2, "Failed to handle NULL arguments");
@@ -790,6 +817,14 @@ START_TEST (netacl_match_test) {
   res = pr_netacl_match(acl, addr);
   fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
     strerror(errno));
+
+  reverse_dns = ServerUseReverseDNS;
+  ServerUseReverseDNS = FALSE;
+
+  res = pr_netacl_match(acl, addr);
+  fail_unless(res == 0, "Matched DNS glob ACL to addr unexpectedly");
+
+  ServerUseReverseDNS = reverse_dns;
 }
 END_TEST
 

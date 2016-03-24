@@ -391,10 +391,6 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       acl->type = PR_NETACL_TYPE_DNSGLOB;
       acl->pattern = pstrdup(p, aclstr);
 
-    } else if (*aclstr == '.') {
-      acl->type = PR_NETACL_TYPE_DNSGLOB;
-      acl->pattern = pstrcat(p, "*", aclstr, NULL);
-
     } else {
       acl->type = PR_NETACL_TYPE_DNSMATCH;
       acl->pattern = pstrdup(p, aclstr);
