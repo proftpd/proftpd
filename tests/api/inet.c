@@ -540,8 +540,9 @@ START_TEST (inet_connect_ipv6_test) {
      * to connect to a different address.  Interestingly, trying to connect(2)
      * using that same fd to a different address yields EINVAL.
      */
-    fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-      strerror(errno), errno);
+    fail_unless(errno == EINVAL || errno == ENETUNREACH,
+      "Expected EINVAL (%d) or ENETUNREACH (%d), got %s (%d)",
+      EINVAL, ENETUNREACH, strerror(errno), errno);
   }
   pr_inet_close(p, conn);
 
