@@ -677,6 +677,15 @@ START_TEST (netacl_match_test) {
   fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
     strerror(errno));
 
+  acl_str = pstrdup(p, "!1.2.3.4/24");
+  acl = pr_netacl_create(p, acl_str);
+  fail_unless(acl != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  res = pr_netacl_match(acl, addr);
+  fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
+    strerror(errno));
+
   acl_str = pstrdup(p, "127.0.0.");
   acl = pr_netacl_create(p, acl_str);
   fail_unless(acl != NULL, "Failed to handle ACL string '%s': %s", acl_str,
@@ -693,6 +702,15 @@ START_TEST (netacl_match_test) {
 
   res = pr_netacl_match(acl, addr);
   fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
+    strerror(errno));
+
+  acl_str = pstrdup(p, "!1.2.3.");
+  acl = pr_netacl_create(p, acl_str);
+  fail_unless(acl != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  res = pr_netacl_match(acl, addr);
+  fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
     strerror(errno));
 
   if (!have_localdomain) {
@@ -725,6 +743,15 @@ START_TEST (netacl_match_test) {
   fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
     strerror(errno));
 
+  acl_str = "!www.google.com";
+  acl = pr_netacl_create(p, acl_str);
+  fail_unless(acl != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  res = pr_netacl_match(acl, addr);
+  fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
+    strerror(errno));
+
   if (!have_localdomain) {
     acl_str = pstrdup(p, "loc*st");
 
@@ -753,6 +780,15 @@ START_TEST (netacl_match_test) {
 
   res = pr_netacl_match(acl, addr);
   fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
+    strerror(errno));
+
+  acl_str = "!www.g*g.com";
+  acl = pr_netacl_create(p, acl_str);
+  fail_unless(acl != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  res = pr_netacl_match(acl, addr);
+  fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
     strerror(errno));
 }
 END_TEST
