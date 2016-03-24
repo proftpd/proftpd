@@ -444,7 +444,7 @@ START_TEST (inet_listen_test) {
 }
 END_TEST
 
-START_TEST (inet_connect_test) {
+START_TEST (inet_connect_ipv4_test) {
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
   pr_netaddr_t *addr;
@@ -500,6 +500,75 @@ START_TEST (inet_connect_test) {
   fail_unless(errno == EISCONN, "Expected EISCONN (%d), got %s (%d)",
     EISCONN, strerror(errno), errno);
   pr_inet_close(p, conn);
+}
+END_TEST
+
+START_TEST (inet_connect_ipv6_test) {
+#ifdef PR_USE_IPV6
+  int sockfd = -1, port = INPORT_ANY, res;
+  conn_t *conn;
+  pr_netaddr_t *addr;
+  unsigned char use_ipv6;
+
+  use_ipv6 = pr_netaddr_use_ipv6();
+
+  pr_netaddr_enable_ipv6();
+  pr_inet_set_default_family(p, AF_INET6);
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  addr = pr_netaddr_get_addr(p, "::1", NULL);
+  fail_unless(addr != NULL, "Failed to resolve '::1': %s",
+    strerror(errno));
+
+  res = pr_inet_connect(p, conn, addr, 80);
+  fail_unless(res < 0, "Connected to ::1#80 unexpectedly");
+  fail_unless(errno == ECONNREFUSED, "Expected ECONNREFUSED (%d), got %s (%d)",
+    ECONNREFUSED, strerror(errno), errno);
+
+  /* Try connecting to Google's DNS server. */
+
+  addr = pr_netaddr_get_addr(p, "2001:4860:4860::8888", NULL);
+  fail_unless(addr != NULL, "Failed to resolve '2001:4860:4860::8888': %s",
+    strerror(errno));
+
+  res = pr_inet_connect(p, conn, addr, 53);
+  if (res < 0) {
+    /* Note: We get EINVAL here because the socket already tried (and failed)
+     * to connect to a different address.  Interestingly, trying to connect(2)
+     * using that same fd to a different address yields EINVAL.
+     */
+    fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+      strerror(errno), errno);
+  }
+  pr_inet_close(p, conn);
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = pr_inet_connect(p, conn, addr, 53);
+  if (res < 0) {
+    /* This could be expected, e.g. if there's no route. */
+    fail_unless(errno == EHOSTUNREACH,
+      "Expected EHOSTUNREACH (%d), got %s (%d)", EHOSTUNREACH,
+      strerror(errno), errno);
+  }
+
+  res = pr_inet_connect(p, conn, addr, 53);
+  fail_unless(res < 0, "Failed to connect to 2001:4860:4860::8888#53: %s",
+    strerror(errno));
+  fail_unless(errno == EISCONN || errno == EHOSTUNREACH,
+    "Expected EISCONN (%d) or EHOSTUNREACH (%d), got %s (%d)",
+    EISCONN, EHOSTUNREACH, strerror(errno), errno);
+  pr_inet_close(p, conn);
+
+  pr_inet_set_default_family(p, AF_INET);
+
+  if (use_ipv6 == FALSE) {
+    pr_netaddr_disable_ipv6();
+  }
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
@@ -679,7 +748,8 @@ Suite *tests_get_inet_suite(void) {
   tcase_add_test(testcase, inet_set_proto_opts_test);
   tcase_add_test(testcase, inet_set_socket_opts_test);
   tcase_add_test(testcase, inet_listen_test);
-  tcase_add_test(testcase, inet_connect_test);
+  tcase_add_test(testcase, inet_connect_ipv4_test);
+  tcase_add_test(testcase, inet_connect_ipv6_test);
   tcase_add_test(testcase, inet_connect_nowait_test);
   tcase_add_test(testcase, inet_accept_test);
   tcase_add_test(testcase, inet_accept_nowait_test);
