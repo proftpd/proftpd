@@ -560,9 +560,9 @@ START_TEST (inet_connect_ipv6_test) {
   res = pr_inet_connect(p, conn, addr, 53);
   fail_unless(res < 0, "Failed to connect to 2001:4860:4860::8888#53: %s",
     strerror(errno));
-  fail_unless(errno == EISCONN || errno == EHOSTUNREACH,
-    "Expected EISCONN (%d) or EHOSTUNREACH (%d), got %s (%d)",
-    EISCONN, EHOSTUNREACH, strerror(errno), errno);
+  fail_unless(errno == EISCONN || errno == EHOSTUNREACH || errno == ENETUNREACH,
+    "Expected EISCONN (%d) or EHOSTUNREACH (%d) or ENETUNREACH (%d), "
+    "got %s (%d)", EISCONN, EHOSTUNREACH, ENETUNREACH, strerror(errno), errno);
   pr_inet_close(p, conn);
 
   pr_inet_set_default_family(p, AF_INET);
