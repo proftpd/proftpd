@@ -198,7 +198,7 @@ START_TEST (regexp_set_limits_test) {
   res = pr_regexp_compile(pre, pattern, REG_ICASE);
   fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
 
-  str = "FOOBAR";
+  str = "fooBAR";
   res = pr_regexp_exec(pre, str, 0, NULL, 0, 0, 0);
   fail_unless(res == 0, "Failed to match string '%s' with pattern '%s'", str,
     pattern);
