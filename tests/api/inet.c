@@ -366,6 +366,55 @@ START_TEST (inet_set_proto_opts_test) {
 }
 END_TEST
 
+START_TEST (inet_set_proto_opts_ipv6_test) {
+#ifdef PR_USE_IPV6
+  int fd, sockfd = -1, port = INPORT_ANY, res;
+  conn_t *conn;
+  unsigned char use_ipv6;
+
+  use_ipv6 = pr_netaddr_use_ipv6();
+
+  pr_netaddr_enable_ipv6();
+  pr_inet_set_default_family(p, AF_INET6);
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  mark_point();
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+
+  mark_point();
+  fd = conn->rfd;
+  conn->rfd = 8;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->rfd = fd;
+
+  mark_point();
+  fd = conn->wfd;
+  conn->wfd = 9;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->wfd = fd;
+
+  mark_point();
+  fd = conn->listen_fd;
+  conn->listen_fd = 10;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->listen_fd = fd;
+
+  pr_inet_close(p, conn);
+
+  pr_inet_set_default_family(p, AF_INET);
+  if (use_ipv6 == FALSE) {
+    pr_netaddr_disable_ipv6();
+  }
+#endif /* PR_USE_IPV6 */
+}
+END_TEST
+
 START_TEST (inet_set_socket_opts_test) {
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
@@ -748,6 +797,7 @@ Suite *tests_get_inet_suite(void) {
   tcase_add_test(testcase, inet_set_proto_cork_test);
   tcase_add_test(testcase, inet_set_proto_nodelay_test);
   tcase_add_test(testcase, inet_set_proto_opts_test);
+  tcase_add_test(testcase, inet_set_proto_opts_ipv6_test);
   tcase_add_test(testcase, inet_set_socket_opts_test);
   tcase_add_test(testcase, inet_listen_test);
   tcase_add_test(testcase, inet_connect_ipv4_test);
