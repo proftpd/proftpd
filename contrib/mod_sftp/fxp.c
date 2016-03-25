@@ -5397,9 +5397,12 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
 # if defined(HAVE_LGETXATTR)
   (void) flags;
   res = lgetxattr(path, name, val, (size_t) valsz);
-# else
+# elif defined(XATTR_NOFOLLOW)
   flags |= XATTR_NOFOLLOW;
   res = getxattr(path, name, val, (size_t) valsz, 0, flags);
+# else
+  (void) flags;
+  res = getxattr(path, name, val, (size_t) valsz);
 # endif /* HAVE_LGETXATTR */
 
   if (res < 0) {
@@ -5490,9 +5493,12 @@ static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
 # if defined(HAVE_LLISTXATTR)
   (void) flags;
   res = llistxattr(path, names, (size_t) valsz);
-# else
+# elif defined(XATTR_NOFOLLOW)
   flags |= XATTR_NOFOLLOW;
   res = listxattr(path, names, (size_t) valsz, flags);
+# else
+  (void) flags;
+  res = listxattr(path, names, (size_t) valsz);
 # endif /* HAVE_LLISTXATTR */
 
   if (res < 0) {
@@ -5545,9 +5551,12 @@ static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, const char *path,
 # if defined(HAVE_LREMOVEXATTR)
   (void) flags;
   res = lremovexattr(path, name);
-# else
+# elif defined(XATTR_NOFOLLOW)
   flags |= XATTR_NOFOLLOW;
   res = removexattr(path, name, flags);
+# else
+  (void) flags;
+  res = removexattr(path, name);
 # endif /* HAVE_LREMOVEXATTR */
 
   if (res < 0) {
@@ -5610,9 +5619,11 @@ static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
 
 # if defined(HAVE_LSETXATTR)
   res = lsetxattr(path, name, val, (size_t) valsz, flags);
-# else
+# elif defined(XATTR_NOFOLLOW)
   flags |= XATTR_NOFOLLOW;
   res = setxattr(path, name, val, (size_t) valsz, 0, flags);
+# else
+  res = setxattr(path, name, val, (size_t) valsz, flags);
 # endif /* HAVE_LSETXATTR */
 
   if (res < 0) {
