@@ -1552,8 +1552,14 @@ MODRET set_tracelog(cmd_rec *cmd) {
 
   trace_log = pstrdup(cmd->server->pool, cmd->argv[1]);
   if (pr_trace_set_file(trace_log) < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
-      trace_log, "': ", strerror(errno), NULL));
+    if (errno == EPERM) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
+        trace_log, "': directory is symlink or is world-writable", NULL));
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
+        trace_log, "': ", strerror(errno), NULL));
+    }
   }
 
   return PR_HANDLED(cmd);
