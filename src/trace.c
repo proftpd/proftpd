@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2015 The ProFTPD Project team
+ * Copyright (c) 2006-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -365,11 +365,13 @@ int pr_trace_set_file(const char *path) {
       pr_log_debug(DEBUG1,
         "unable to open TraceLog '%s': parent directory is world-writable",
         path);
+      errno = EPERM;
 
     } else if (res == PR_LOG_SYMLINK) {
       pr_log_debug(DEBUG1,
         "unable to open TraceLog '%s': cannot log to a symbolic link",
         path);
+      errno = EPERM;
     }
 
     return res;
