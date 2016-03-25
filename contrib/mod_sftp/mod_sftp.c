@@ -1124,6 +1124,22 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
+    } else if (strncasecmp(ext, "xattr", 8) == 0) {
+#ifdef HAVE_SYS_XATTR_H
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_XATTR;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_XATTR;
+          break;
+      }
+#else
+      pr_log_debug(DEBUG0, "%s: xattr@proftpd.org extension not supported "
+        "on this system; requires extended attribute support", cmd->argv[0]);
+#endif /* HAVE_SYS_XATTR_H */
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown extension: '",
         ext, "'", NULL)); 

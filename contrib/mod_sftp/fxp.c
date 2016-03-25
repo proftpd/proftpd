@@ -35,6 +35,10 @@
 #include "utf8.h"
 #include "misc.h"
 
+#ifdef HAVE_SYS_XATTR_H
+# include <sys/xattr.h>
+#endif /* HAVE_SYS_XATTR_H */
+
 /* FXP_NAME file attribute flags */
 #define SSH2_FX_ATTR_SIZE		0x00000001
 #define SSH2_FX_ATTR_UIDGID		0x00000002
@@ -180,6 +184,10 @@
 /* statvfs@openssh.com extension flags */
 #define SSH2_FXE_STATVFS_ST_RDONLY		0x1
 #define SSH2_FXE_STATVFS_ST_NOSUID		0x2
+
+/* xattr@proftpd.org extension flags */
+#define SSH2_FXE_XATTR_CREATE			0x1
+#define SSH2_FXE_XATTR_REPLACE			0x2
 
 extern pr_response_t *resp_list, *resp_err_list;
 
@@ -502,6 +510,12 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
     case ENOENT:
 #ifdef ENXIO
     case ENXIO:
+#endif
+#ifdef ENOATTR
+    case ENOATTR:
+#endif
+#ifdef ENODATA
+    case ENODATA:
 #endif
       status_code = SSH2_FX_NO_SUCH_FILE;
       if (reason) {
@@ -3483,6 +3497,18 @@ static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
       ext.ext_data);
     fxp_msg_write_extpair(buf, buflen, &ext);
   }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_XATTR) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "xattr@proftpd.org";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
 }
 
 static void fxp_version_add_newline_ext(pool *p, unsigned char **buf,
@@ -5352,6 +5378,283 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
 }
 #endif /* !HAVE_SYS_STATVFS_H */
 
+#ifdef HAVE_SYS_XATTR_H
+static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
+    const char *name, uint32_t valsz) {
+  ssize_t res;
+  int flags = 0;
+  void *val;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *reason;
+  struct fxp_packet *resp;
+
+  val = pcalloc(fxp->pool, (size_t) valsz+1);
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+# if defined(HAVE_LGETXATTR)
+  (void) flags;
+  res = lgetxattr(path, name, val, (size_t) valsz);
+# else
+  flags |= XATTR_NOFOLLOW;
+  res = getxattr(path, name, val, (size_t) valsz, 0, flags);
+# endif /* HAVE_LGETXATTR */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "getxattr(2) error on '%s' for attribute '%s': %s", path, name,
+      strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY (%lu bytes)", (unsigned long) res);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_data(&buf, &buflen, val, res, TRUE);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_getxattrs(struct fxp_packet *fxp, const char *path) {
+  int xerrno;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *reason;
+  struct fxp_packet *resp;
+
+  /* TODO: The goal here is to return ALL of the extended attributes for
+   * the given path, AND their values.
+   *
+   * This may require a larger-than-expected response buffer.
+   */
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  xerrno = ENOSYS;
+  status_code = fxp_errno2status(xerrno, &reason);
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+    "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+    xerrno);
+
+  fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+    reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
+    uint32_t valsz) {
+  ssize_t res;
+  int flags = 0;
+  char *names;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *reason;
+  struct fxp_packet *resp;
+
+  names = pcalloc(fxp->pool, (size_t) valsz+1);
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+# if defined(HAVE_LLISTXATTR)
+  (void) flags;
+  res = llistxattr(path, names, (size_t) valsz);
+# else
+  flags |= XATTR_NOFOLLOW;
+  res = listxattr(path, names, (size_t) valsz, flags);
+# endif /* HAVE_LLISTXATTR */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "listxattr(2) error on '%s': %s", path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY (%lu bytes)", (unsigned long) res);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_data(&buf, &buflen, (const unsigned char *) names, res, TRUE);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, const char *path,
+    const char *name) {
+  int res, flags = 0;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *reason;
+  struct fxp_packet *resp;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+# if defined(HAVE_LREMOVEXATTR)
+  (void) flags;
+  res = lremovexattr(path, name);
+# else
+  flags |= XATTR_NOFOLLOW;
+  res = removexattr(path, name, flags);
+# endif /* HAVE_LREMOVEXATTR */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "removexattr(2) error on '%s' for attribute '%s': %s", path, name,
+      strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  status_code = SSH2_FX_OK;
+  reason = "OK";
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+    reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
+    const char *name, const void *val, uint32_t valsz, uint32_t pflags) {
+  int res, flags = 0;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *reason;
+  struct fxp_packet *resp;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (pflags & SSH2_FXE_XATTR_CREATE) {
+    flags = XATTR_CREATE;
+  }
+
+  if (pflags & SSH2_FXE_XATTR_REPLACE) {
+    flags |= XATTR_REPLACE;
+  }
+
+# if defined(HAVE_LSETXATTR)
+  res = lsetxattr(path, name, val, (size_t) valsz, flags);
+# else
+  flags |= XATTR_NOFOLLOW;
+  res = setxattr(path, name, val, (size_t) valsz, 0, flags);
+# endif /* HAVE_LSETXATTR */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "setxattr(2) error on '%s' for attribute '%s': %s", path, name,
+      strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  status_code = SSH2_FX_OK;
+  reason = "OK";
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+    reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+#endif /* HAVE_SYS_XATTR_H */
+
 static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
   char *vendor_name, *product_name, *product_version;
@@ -6168,6 +6471,81 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 #endif
+
+#ifdef HAVE_SYS_XATTR_H
+  if (fxp_ext_flags & SFTP_FXP_EXT_XATTR) {
+    if (strcmp(ext_request_name, "getxattr@proftpd.org") == 0) {
+      const char *path, *name;
+      uint32_t valsz;
+
+      path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_getxattr(fxp, path, name, valsz);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
+    /* Note the trailing "s" in "getxattrs".  This implies getting ALL of
+     * the extended attributes for the given path.
+     */
+    if (strcmp(ext_request_name, "getxattrs@proftpd.org") == 0) {
+      const char *path;
+
+      path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_getxattrs(fxp, path);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
+    if (strcmp(ext_request_name, "listxattr@proftpd.org") == 0) {
+      const char *path;
+      uint32_t valsz;
+
+      path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_listxattr(fxp, path, valsz);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
+    if (strcmp(ext_request_name, "removexattr@proftpd.org") == 0) {
+      const char *path, *name;
+
+      path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_removexattr(fxp, path, name);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
+    if (strcmp(ext_request_name, "setxattr@proftpd.org") == 0) {
+      const char *path, *name;
+      const void *val;
+      uint32_t pflags, valsz;
+
+      path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      val = (const void *) sftp_msg_read_data(fxp->pool, &fxp->payload,
+        &fxp->payload_sz, valsz);
+      pflags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_setxattr(fxp, path, name, val, valsz, pflags);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+  }
+#endif /* HAVE_SYS_XATTR_H */
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client requested '%s' extension, rejecting", ext_request_name);
