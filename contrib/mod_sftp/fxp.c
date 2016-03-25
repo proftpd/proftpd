@@ -5448,31 +5448,104 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
   return fxp_packet_write(resp);
 }
 
-static int fxp_handle_ext_getxattrs(struct fxp_packet *fxp, const char *path) {
-  int xerrno;
+static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
+    const char *name, uint32_t valsz) {
+  ssize_t res;
+  int fd;
+  void *val;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
-  const char *reason;
+  const char *path, *reason;
+  struct fxp_handle *fxh;
   struct fxp_packet *resp;
 
-  /* TODO: The goal here is to return ALL of the extended attributes for
-   * the given path, AND their values.
-   *
-   * This may require a larger-than-expected response buffer.
-   */
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  xerrno = ENOSYS;
-  status_code = fxp_errno2status(xerrno, &reason);
+  fxh = fxp_handle_get(handle);
+  if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "fgetxattr@proftpd.org: unable to find handle for name '%s': %s", handle,
+      strerror(errno));
 
-  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-    "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
-    xerrno);
+    status_code = SSH2_FX_INVALID_HANDLE;
 
-  fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
-    reason, NULL);
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (fxh->dirh != NULL) {
+    /* Request for extended attributes on a directory handle.  It's not
+     * easy to get the file descriptor on a directory, so we'll just do
+     * by path instead.
+     */
+    return fxp_handle_ext_getxattr(fxp, fxh->fh->fh_path, name, valsz);
+  }
+
+  if (fxh->fh == NULL) {
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  fd = fxh->fh->fh_fd;
+  path = fxh->fh->fh_path;
+  val = pcalloc(fxp->pool, (size_t) valsz+1);
+
+# if defined(XATTR_NOFOLLOW)
+  res = fgetxattr(fd, name, val, (size_t) valsz, 0, 0);
+# else
+  res = fgetxattr(fd, name, val, (size_t) valsz);
+# endif /* XATTR_NOFOLLOW */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "fgetxattr(2) error on '%s' for attribute '%s': %s", path, name,
+      strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY (%lu bytes)", (unsigned long) res);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_data(&buf, &buflen, val, res, TRUE);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -5512,6 +5585,111 @@ static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "listxattr(2) error on '%s': %s", path, strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY (%lu bytes)", (unsigned long) res);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_data(&buf, &buflen, (const unsigned char *) names, res, TRUE);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
+    uint32_t valsz) {
+  ssize_t res;
+  int fd;
+  char *names;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *path, *reason;
+  struct fxp_handle *fxh;
+  struct fxp_packet *resp;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  fxh = fxp_handle_get(handle);
+  if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "flistxattr@proftpd.org: unable to find handle for name '%s': %s", handle,
+      strerror(errno));
+
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (fxh->dirh != NULL) {
+    /* Request for extended attributes on a directory handle.  It's not
+     * easy to get the file descriptor on a directory, so we'll just do
+     * by path instead.
+     */
+    return fxp_handle_ext_listxattr(fxp, fxh->fh->fh_path, valsz);
+  }
+
+  if (fxh->fh == NULL) {
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  fd = fxh->fh->fh_fd;
+  path = fxh->fh->fh_path;
+  names = pcalloc(fxp->pool, (size_t) valsz+1);
+
+# if defined(XATTR_NOFOLLOW)
+  res = flistxattr(fd, names, (size_t) valsz, 0);
+# else
+  res = flistxattr(fd, names, (size_t) valsz);
+# endif /* XATTR_NOFOLLOW */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "flistxattr(2) error on '%s': %s", path, strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -5604,6 +5782,111 @@ static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, const char *path,
   return fxp_packet_write(resp);
 }
 
+static int fxp_handle_ext_fremovexattr(struct fxp_packet *fxp,
+    const char *handle, const char *name) {
+  int res, fd;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *path, *reason;
+  struct fxp_handle *fxh;
+  struct fxp_packet *resp;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  fxh = fxp_handle_get(handle);
+  if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "fremovexattr@proftpd.org: unable to find handle for name '%s': %s",
+      handle, strerror(errno));
+
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (fxh->dirh != NULL) {
+    /* Request for extended attributes on a directory handle.  It's not
+     * easy to get the file descriptor on a directory, so we'll just do
+     * by path instead.
+     */
+    return fxp_handle_ext_removexattr(fxp, fxh->fh->fh_path, name);
+  }
+
+  if (fxh->fh == NULL) {
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  fd = fxh->fh->fh_fd;
+  path = fxh->fh->fh_path;
+
+# if defined(XATTR_NOFOLLOW)
+  res = fremovexattr(fd, name, 0);
+# else
+  res = fremovexattr(fd, name);
+# endif /* XATTR_NOFOLLOW */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "fremovexattr(2) error on '%s' for attribute '%s': %s", path, name,
+      strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  status_code = SSH2_FX_OK;
+  reason = "OK";
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+    reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
 static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
     const char *name, const void *val, uint32_t valsz, uint32_t pflags) {
   int res, flags = 0;
@@ -5637,6 +5920,120 @@ static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "setxattr(2) error on '%s' for attribute '%s': %s", path, name,
+      strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  status_code = SSH2_FX_OK;
+  reason = "OK";
+
+  pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+    reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, const char *handle,
+    const char *name, const void *val, uint32_t valsz, uint32_t pflags) {
+  int res, fd, flags = 0;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  const char *path, *reason;
+  struct fxp_handle *fxh;
+  struct fxp_packet *resp;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  fxh = fxp_handle_get(handle);
+  if (fxh == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "fsetxattr@proftpd.org: unable to find handle for name '%s': %s", handle,
+      strerror(errno));
+
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (fxh->dirh != NULL) {
+    /* Request for extended attributes on a directory handle.  It's not
+     * easy to get the file descriptor on a directory, so we'll just do
+     * by path instead.
+     */
+    return fxp_handle_ext_setxattr(fxp, fxh->fh->fh_path, name, val, valsz,
+      pflags);
+  }
+
+  if (fxh->fh == NULL) {
+    status_code = SSH2_FX_INVALID_HANDLE;
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (pflags & SSH2_FXE_XATTR_CREATE) {
+    flags = XATTR_CREATE;
+  }
+
+  if (pflags & SSH2_FXE_XATTR_REPLACE) {
+    flags |= XATTR_REPLACE;
+  }
+
+  fd = fxh->fh->fh_fd;
+  path = fxh->fh->fh_path;
+
+# if defined(XATTR_NOFOLLOW)
+  res = fsetxattr(fd, name, val, (size_t) valsz, 0, flags);
+# else
+  res = fsetxattr(fd, name, val, (size_t) valsz, flags);
+# endif /* XATTR_NOFOLLOW */
+
+  if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "fsetxattr(2) error on '%s' for attribute '%s': %s", path, name,
       strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
@@ -6491,6 +6888,63 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
 #ifdef HAVE_SYS_XATTR_H
   if (fxp_ext_flags & SFTP_FXP_EXT_XATTR) {
+    if (strcmp(ext_request_name, "fgetxattr@proftpd.org") == 0) {
+      const char *handle, *name;
+      uint32_t valsz;
+
+      handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_fgetxattr(fxp, handle, name, valsz);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
+    if (strcmp(ext_request_name, "flistxattr@proftpd.org") == 0) {
+      const char *handle;
+      uint32_t valsz;
+
+      handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_flistxattr(fxp, handle, valsz);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
+    if (strcmp(ext_request_name, "fremovexattr@proftpd.org") == 0) {
+      const char *handle, *name;
+
+      handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_fremovexattr(fxp, handle, name);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
+    if (strcmp(ext_request_name, "fsetxattr@proftpd.org") == 0) {
+      const char *handle, *name;
+      const void *val;
+      uint32_t pflags, valsz;
+
+      handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+      val = (const void *) sftp_msg_read_data(fxp->pool, &fxp->payload,
+        &fxp->payload_sz, valsz);
+      pflags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+
+      res = fxp_handle_ext_fsetxattr(fxp, handle, name, val, valsz, pflags);
+      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+
+      return res;
+    }
+
     if (strcmp(ext_request_name, "getxattr@proftpd.org") == 0) {
       const char *path, *name;
       uint32_t valsz;
@@ -6500,20 +6954,6 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_getxattr(fxp, path, name, valsz);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
-
-      return res;
-    }
-
-    /* Note the trailing "s" in "getxattrs".  This implies getting ALL of
-     * the extended attributes for the given path.
-     */
-    if (strcmp(ext_request_name, "getxattrs@proftpd.org") == 0) {
-      const char *path;
-
-      path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-
-      res = fxp_handle_ext_getxattrs(fxp, path);
       pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
       return res;
