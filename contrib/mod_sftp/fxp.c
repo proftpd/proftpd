@@ -539,6 +539,9 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
       break;
 
     case ENOSYS:
+#ifdef ENOTSUP
+    case ENOTSUP:
+#endif
       status_code = SSH2_FX_OP_UNSUPPORTED;
       if (reason) {
         *reason = fxp_strerror(status_code);
@@ -547,6 +550,9 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
 
     case EFAULT:
     case EINVAL:
+#ifdef ERANGE
+    case ERANGE:
+#endif
       if (reason) {
         *reason = fxp_strerror(SSH2_FX_INVALID_PARAMETER);
       }
