@@ -2456,8 +2456,8 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
 #ifdef HAVE_SYS_XATTR_H
 /* XXX TODO */
 /* Call listxattr() with NULL to get full size of attrs, write them out */
-/* len += fxp_xattrs_write(...);
-#endif /* HAVE_SYS_XATTR_H
+/* len += fxp_xattrs_write(...); */
+#endif /* HAVE_SYS_XATTR_H */
   }
 
   return len;
@@ -3669,6 +3669,9 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
 
   file_mask = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
     SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
+#ifdef HAVE_SYS_XATTR_H
+  file_mask |= SSH2_FX_ATTR_EXTENDED;
+#endif /* HAVE_SYS_XATTR_H */
 
   bits_mask = 0;
 
@@ -10105,8 +10108,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   while ((dent = pr_fsio_readdir(fxh->dirh)) != NULL) {
     char *real_path;
     struct fxp_dirent *fxd;
-    uint32_t curr_packetsz, max_entry_metadata;
-    uint32_t max_entrysz = (PR_TUNABLE_PATH_MAX + 1 + max_entry_metadata);
+    uint32_t curr_packetsz, max_entry_metadata, max_entrysz;
     size_t dent_len;
 
     pr_signals_handle();
@@ -10117,6 +10119,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 #else
     max_entry_metadata = 256;
 #endif /* HAVE_SYS_XATTR_H */
+
+    max_entrysz = (PR_TUNABLE_PATH_MAX + 1 + max_entry_metadata);
 
     /* Do not expand/resolve dot directories; it will be handled automatically
      * lower down in the ACL-checking code.  Plus, this allows regex filters
