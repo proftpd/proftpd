@@ -1768,7 +1768,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
   }
 
   if (flags & SSH2_FX_ATTR_PERMISSIONS) {
-    snprintf(ptr, bufsz - buflen, "UNIX.mode=0%o;",
+    snprintf(ptr, bufsz - buflen, "UNIX.mode=%04o;",
       (unsigned int) st->st_mode & 07777);
     buflen = strlen(buf);
     ptr = buf + buflen;
@@ -9848,8 +9848,6 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
   } else {
-    pr_fs_clear_cache2(path);
-
    /* draft-ietf-secsh-filexfer-13 says:
     *
     *  SSH_FXP_REALPATH_NO_CHECK:
@@ -9863,6 +9861,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     *   stat(2) the file, and return any error.
     */
 
+    pr_fs_clear_cache2(path);
     switch (realpath_flags) {
       case SSH2_FXRP_NO_CHECK:
         res = pr_fsio_lstat(path, &st);
