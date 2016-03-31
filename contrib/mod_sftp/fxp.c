@@ -2283,9 +2283,14 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
 
     /* Vendor-specific extensions */
     if (*flags & SSH2_FX_ATTR_EXTENDED) {
-      /* Read (and ignore) the EXTENDED attribute. */
+/* XXX TODO */
+/* Refactor this to a fxp_xattrs_read() function; we can then decide what
+ * to do with the read-in extpairs, based on <sys/xattr.h> presence.
+ */
       register unsigned int i;
       uint32_t extpair_count;
+
+      /* Read the EXTENDED attribute. */
 
       extpair_count = sftp_msg_read_int(fxp->pool, buf, buflen);
       pr_trace_msg(trace_channel, 15,
@@ -2314,7 +2319,10 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
         }
       }
     }
-
+/* XXX TODO */
+#if defined(HAVE_SYS_XATTR_H)
+#else
+#endif /* HAVE_SYS_XATTR_H */
   }
 
   return st;
@@ -2438,6 +2446,12 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
     if (flags & SSH2_FX_ATTR_LINK_COUNT) {
       len += sftp_msg_write_int(buf, buflen, st->st_nlink);
     }
+
+#ifdef HAVE_SYS_XATTR_H
+/* XXX TODO */
+/* Call listxattr() with NULL to get full size of attrs, write them out */
+/* len += fxp_xattrs_write(...);
+#endif /* HAVE_SYS_XATTR_H
   }
 
   return len;
@@ -10085,11 +10099,18 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   while ((dent = pr_fsio_readdir(fxh->dirh)) != NULL) {
     char *real_path;
     struct fxp_dirent *fxd;
-    uint32_t curr_packetsz, max_entry_metadata = 256;
+    uint32_t curr_packetsz, max_entry_metadata;
     uint32_t max_entrysz = (PR_TUNABLE_PATH_MAX + 1 + max_entry_metadata);
     size_t dent_len;
 
     pr_signals_handle();
+
+    /* How much non-path data do we expect to be associated with this entry? */
+#ifdef HAVE_SYS_XATTR_H
+    max_entry_metadata = 1024;
+#else
+    max_entry_metadata = 256;
+#endif /* HAVE_SYS_XATTR_H */
 
     /* Do not expand/resolve dot directories; it will be handled automatically
      * lower down in the ACL-checking code.  Plus, this allows regex filters
@@ -10123,7 +10144,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
      * the maximum packet size and the max entry size.
      *
      * We assume that each entry will need up to PR_TUNABLE_PATH_MAX+1 bytes for
-     * the filename, and 256 bytes of associated data.
+     * the filename, and max_entry_metadata bytes of associated data.
      *
      * We have the total number of entries for this message when there is less
      * than enough space for one more maximum-sized entry.
