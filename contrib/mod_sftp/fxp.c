@@ -254,10 +254,16 @@ static size_t fxp_packet_data_allocsz = 0;
 #define FXP_RESPONSE_DATA_DEFAULT_SZ		512
 
 #define FXP_MAX_PACKET_LEN			(1024 * 512)
-#define FXP_MAX_EXTENDED_ATTRIBUTES		100
+
+/* Maximum number of SFTP extended attributes we accept at one time. */
+#ifndef FXP_MAX_EXTENDED_ATTRIBUTES
+# define FXP_MAX_EXTENDED_ATTRIBUTES		100
+#endif
 
 /* Maximum length of SFTP extended attribute name OR value. */
-#define FXP_MAX_EXTENDED_ATTR_LEN		1024
+#ifndef FXP_MAX_EXTENDED_ATTR_LEN
+# define FXP_MAX_EXTENDED_ATTR_LEN		1024
+#endif
 
 struct fxp_extpair {
   char *ext_name;
