@@ -1128,21 +1128,46 @@ int pr_fs_clear_cache2(const char *path) {
   }
 
   if (path != NULL) {
+    char cleaned_path[PR_TUNABLE_PATH_MAX+1], pathbuf[PR_TUNABLE_PATH_MAX+1];
     int lstat_count, stat_count;
+
+    if (*path != '/') {
+      size_t pathbuf_len;
+
+      memset(cleaned_path, '\0', sizeof(cleaned_path));
+      memset(pathbuf, '\0', sizeof(pathbuf));
+
+      sstrcat(pathbuf, cwd, sizeof(pathbuf)-1);
+      pathbuf_len = cwd_len;
+
+      if (strncmp(cwd, "/", 2) != 0) {
+        sstrcat(pathbuf + pathbuf_len, "/", sizeof(pathbuf) - pathbuf_len - 1);
+        pathbuf_len++;
+      }
+
+      if (strncmp(path, ".", 2) != 0) {
+        sstrcat(pathbuf + pathbuf_len, path, sizeof(pathbuf)- pathbuf_len - 1);
+      }
+
+    } else {
+      sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
+    }
+
+    pr_fs_clean_path2(pathbuf, cleaned_path, sizeof(cleaned_path)-1, 0);
 
     res = 0;
 
-    stat_count = pr_table_exists(stat_statcache_tab, path);
+    stat_count = pr_table_exists(stat_statcache_tab, cleaned_path);
     if (stat_count > 0) {
-      pr_table_remove(stat_statcache_tab, path, NULL);
+      pr_table_remove(stat_statcache_tab, cleaned_path, NULL);
       pr_trace_msg(statcache_channel, 17, "cleared stat(2) entry for '%s'",
         path);
       res += stat_count;
     }
 
-    lstat_count = pr_table_exists(lstat_statcache_tab, path);
+    lstat_count = pr_table_exists(lstat_statcache_tab, cleaned_path);
     if (lstat_count > 0) {
-      pr_table_remove(lstat_statcache_tab, path, NULL);
+      pr_table_remove(lstat_statcache_tab, cleaned_path, NULL);
       pr_trace_msg(statcache_channel, 17, "cleared lstat(2) entry for '%s'",
         path);
       res += lstat_count;
@@ -3910,6 +3935,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     }
   }
 
+  pr_fs_clear_cache2(path);
   return 0;
 }
 
