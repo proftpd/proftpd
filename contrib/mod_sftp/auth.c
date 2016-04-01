@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -302,7 +302,7 @@ static void set_userauth_methods(void) {
 static int setup_env(pool *p, char *user) {
   struct passwd *pw;
   config_rec *c;
-  int login_acl, i, res, show_symlinks = FALSE, xerrno;
+  int login_acl, i, res, root_revoke = TRUE, show_symlinks = FALSE, xerrno;
   struct stat st;
   char *default_chdir, *default_root, *home_dir;
   const char *sess_ttyname = NULL, *xferlog = NULL;
@@ -540,12 +540,27 @@ static int setup_env(pool *p, char *user) {
 
   /* Should we give up root privs completely here? */
   c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
-  if (c != NULL &&
-      *((int *) c->argv[0]) == FALSE) {
-    pr_log_debug(DEBUG8, MOD_SFTP_VERSION
-      ": retaining root privileges per RootRevoke setting");
+  if (c != NULL) {
+    root_revoke = *((int *) c->argv[0]);
+
+    if (root_revoke == FALSE) {
+      pr_log_debug(DEBUG8, MOD_SFTP_VERSION
+        ": retaining root privileges per RootRevoke setting");
+    }
 
   } else {
+    /* Do a recursive look for any UserOwner directives; honoring that
+     * configuration also requires root privs.
+     */
+    c = find_config(main_server->conf, CONF_PARAM, "UserOwner", TRUE);
+    if (c != NULL) {
+      pr_log_debug(DEBUG9, MOD_SFTP_VERSION
+        ": retaining root privileges per UserOwner setting");
+      root_revoke = FALSE;
+    }
+  }
+
+  if (root_revoke) {
     PRIVS_ROOT
     PRIVS_REVOKE
     session.disable_id_switching = TRUE;
