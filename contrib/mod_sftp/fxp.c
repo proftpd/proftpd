@@ -8028,6 +8028,10 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       }
     }
 
+    if (hiddenstore_path != NULL) {
+      pr_fs_clear_cache2(hiddenstore_path);
+    }
+
     file_existed = exists2(fxp->pool,
       hiddenstore_path ? hiddenstore_path : path);
 
@@ -8061,6 +8065,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
   }
 
+  pr_fs_clear_cache2(path);
   if (exists2(fxp->pool, path)) {
     /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
      * states that any attributes in a OPEN request are ignored if the
