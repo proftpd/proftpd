@@ -2169,8 +2169,9 @@ MODRET add_directory(cmd_rec *cmd) {
   if (*dir != '/' &&
       *dir != '~' &&
       (!cmd->config ||
-       cmd->config->config_type != CONF_ANON))
+       cmd->config->config_type != CONF_ANON)) {
     CONF_ERROR(cmd, "relative path not allowed in non-<Anonymous> sections");
+  }
 
   /* If in anonymous mode, and path is relative, just cat anon root
    * and relative path.
@@ -2182,8 +2183,9 @@ MODRET add_directory(cmd_rec *cmd) {
       cmd->config->config_type == CONF_ANON &&
       *dir != '/' &&
       *dir != '~') {
-    if (strncmp(dir, "*", 2) != 0)
+    if (strncmp(dir, "*", 2) != 0) {
       dir = pdircat(cmd->tmp_pool, "/", dir, NULL);
+    }
     rootdir = cmd->config->name;
 
   } else {
