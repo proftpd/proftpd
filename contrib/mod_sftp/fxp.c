@@ -7816,6 +7816,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
 
     /* Make sure the requested path exists. */
+    pr_fs_clear_cache2(path);
     if ((flags & SSH2_FXF_OPEN_EXISTING) &&
         !exists2(fxp->pool, path)) {
       uint32_t status_code;
