@@ -675,6 +675,7 @@ EGREP
 SET_MAKE
 INCLUDES
 LIBDIRS
+UTILS_LIBS
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -3209,7 +3210,7 @@ else
   { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 
 { echo "$as_me:$LINENO: checking for library containing strerror" >&5
@@ -3363,7 +3364,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -3384,7 +3385,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -3787,7 +3788,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -3808,7 +3809,7 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 else
   ac_cv_header_stdc=no
 fi
-rm -f -r conftest*
+rm -f conftest*
 
 fi
 
@@ -4130,6 +4131,7 @@ fi
 
 saved_libs="$LIBS"
 LIBS="$LIBS -lcrypto"
+UTILS_LIBS="-lsupp $LIBS"
 
 { echo "$as_me:$LINENO: checking whether linking with OpenSSL functions requires -ldl" >&5
 echo $ECHO_N "checking whether linking with OpenSSL functions requires -ldl... $ECHO_C" >&6; }
@@ -4179,6 +4181,7 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
     { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
     LIBS="$saved_libs -ldl"
+    UTILS_LIBS="$UTILS_LIBS -ldl"
 
 else
   echo "$as_me: failed program was:" >&5
@@ -4247,6 +4250,7 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
     { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
     LIBS="$saved_libs -lz"
+    UTILS_LIBS="$UTILS_LIBS -lz"
 
 else
   echo "$as_me: failed program was:" >&5
@@ -4403,6 +4407,7 @@ LIBS="$saved_libs"
 
 INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"
+
 
 
 
@@ -5090,11 +5095,12 @@ EGREP!$EGREP$ac_delim
 SET_MAKE!$SET_MAKE$ac_delim
 INCLUDES!$INCLUDES$ac_delim
 LIBDIRS!$LIBDIRS$ac_delim
+UTILS_LIBS!$UTILS_LIBS$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 64; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 65; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
@@ -5450,7 +5456,7 @@ do
     cat >>$CONFIG_STATUS <<_ACEOF
     # First, check the format of the line:
     cat >"\$tmp/defines.sed" <<\\CEOF
-/^[	 ]*#[	 ]*undef[	 ][	 ]*$ac_word_re[	 ]*/b def
+/^[	 ]*#[	 ]*undef[	 ][	 ]*$ac_word_re[	 ]*\$/b def
 /^[	 ]*#[	 ]*define[	 ][	 ]*$ac_word_re[(	 ]/b def
 b
 :def
