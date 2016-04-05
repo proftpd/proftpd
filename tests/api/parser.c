@@ -30,8 +30,13 @@ static pool *p = NULL;
 
 static const char *config_path = "/tmp/prt-parser.conf";
 static const char *config_path2 = "/tmp/prt-parser2.conf";
+static const char *config_tmp_path = "/tmp/prt-parser.conf~";
 
 static void set_up(void) {
+  (void) unlink(config_path);
+  (void) unlink(config_path2);
+  (void) unlink(config_tmp_path);
+
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
@@ -51,6 +56,7 @@ static void tear_down(void) {
 
   (void) unlink(config_path);
   (void) unlink(config_path2);
+  (void) unlink(config_tmp_path);
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("config", 0, 0);
@@ -262,16 +268,177 @@ MODRET parser_set_testsuite_engine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+static module parser_module;
+
+static conftable parser_conftab[] = {
+  { "TestSuiteEnabled",	parser_set_testsuite_enabled, NULL },
+  { "TestSuiteEngine",	parser_set_testsuite_engine, NULL },
+  { NULL },
+};
+
+static int load_parser_module(void) {
+  int res;
+
+  /* Load the module's config handlers. */
+  memset(&parser_module, 0, sizeof(parser_module));
+  parser_module.name = "parser";
+  parser_module.conftable = parser_conftab;
+
+  return pr_module_load_conftab(&parser_module);
+}
+
+START_TEST (parse_config_path_test) {
+  int res;
+  char *text;
+  const char *path;
+  struct stat st;
+  unsigned long include_opts;
+  pr_fh_t *fh;
+
+  res = parse_config_path(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = parse_config_path2(p, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "foo";
+  fail_unless(res < 0, "Failed to handle relative path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = parse_config_path2(p, path, 1024);
+  fail_unless(res < 0, "Failed to handle excessive depth");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = parse_config_path2(p, path, 0);
+  fail_unless(res < 0, "Failed to handle invalid path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp";
+  res = parse_config_path2(p, path, 0);
+  fail_unless(res < 0, "Failed to handle uninitialized parser");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_parser_prepare(p, NULL);
+  pr_parser_server_ctxt_open("127.0.0.1");
+
+  res = parse_config_path2(p, path, 0);
+  fail_unless(res < 0, "Failed to handle directory-only path");
+  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+    strerror(errno), errno);
+
+  mark_point();
+  path = config_path;
+  res = parse_config_path2(p, path, 0);
+  fail_unless(res < 0, "Failed to handle nonexistent file");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  /* XXX See Bug#3849 */
+  mark_point();
+  path = "/tmp*/foo.conf";
+  res = parse_config_path2(p, path, 0);
+  fail_unless(res < 0, "Failed to handle directory-only path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* On Mac, `/tmp` is a symlink.  And currently, parse_config_path() does
+   * not allow following of symlinked directories.  So this MIGHT fail, if
+   * we're on a Mac.
+   */
+  res = lstat("/tmp", &st);
+  fail_unless(res == 0, "Failed lstat(2) on '/tmp': %s", strerror(errno));
+
+  mark_point();
+  path = "/tmp/prt*foo*bar*.conf";
+  res = parse_config_path2(p, path, 0);
+
+  if (S_ISLNK(st.st_mode)) {
+    fail_unless(res < 0, "Failed to handle nonexistent file");
+    fail_unless(errno == ENOTDIR, "Expected ENOTDIR (%d), got %s (%d)", ENOTDIR,
+      strerror(errno), errno);
+
+    include_opts = pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS);
+
+    /* By default, we ignore the case where there are no matching files. */
+    res = parse_config_path2(p, path, 0);
+    fail_unless(res == 0, "Failed to handle nonexistent file: %s",
+      strerror(errno));
+
+    (void) pr_parser_set_include_opts(include_opts);
+
+  } else {
+    /* By default, we ignore the case where there are no matching files. */
+    fail_unless(res == 0, "Failed to handle nonexistent file: %s",
+      strerror(errno));
+  }
+
+  /* Load the module's config handlers. */
+  res = load_parser_module();
+  fail_unless(res == 0, "Failed to load module conftab: %s", strerror(errno));
+
+  include_opts = pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS);
+
+  /* Parse single file. */
+  path = config_path;
+  fh = pr_fsio_open(path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", path, strerror(errno));
+
+  text = "TestSuiteEngine on\r\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
+
+  mark_point();
+  res = parse_config_path2(p, path, 0);
+  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+
+  path = "/tmp/prt*.conf";
+  res = parse_config_path2(p, path, 0);
+  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+
+  (void) pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS|PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES);
+
+  path = config_tmp_path;
+  fh = pr_fsio_open(path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", path, strerror(errno));
+
+  text = "TestSuiteEnabled off\r\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
+
+  mark_point();
+  path = "/tmp/prt*.conf*";
+  res = parse_config_path2(p, path, 0);
+  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+
+  mark_point();
+  path = "/t*p/prt*.conf*";
+  res = parse_config_path2(p, path, 0);
+  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+
+  (void) pr_parser_server_ctxt_close();
+  (void) pr_module_unload(&parser_module);
+  (void) pr_parser_set_include_opts(include_opts);
+}
+END_TEST
+
 START_TEST (parser_parse_file_test) {
   int res;
   pr_fh_t *fh;
   char *text;
-  module m;
-  conftable conftab[] = {
-    { "TestSuiteEnabled",	parser_set_testsuite_enabled, NULL },
-    { "TestSuiteEngine",	parser_set_testsuite_engine, NULL },
-    { NULL },
-  };
 
   mark_point();
   res = pr_parser_parse_file(NULL, NULL, NULL, 0);
@@ -337,11 +504,7 @@ START_TEST (parser_parse_file_test) {
   mark_point();
 
   /* Load the module's config handlers. */
-  memset(&m, 0, sizeof(m));
-  m.name = "testsuite";
-  m.conftable = conftab;
-
-  res = pr_module_load_conftab(&m);
+  res = load_parser_module();
   fail_unless(res == 0, "Failed to load module conftab: %s", strerror(errno));
 
   res = pr_parser_parse_file(p, config_path, NULL, PR_PARSER_FL_DYNAMIC_CONFIG);
@@ -354,7 +517,7 @@ START_TEST (parser_parse_file_test) {
     strerror(errno), errno);
 
   (void) pr_parser_server_ctxt_close();
-  (void) pr_module_unload(&m);
+  (void) pr_module_unload(&parser_module);
   (void) pr_fsio_unlink(config_path);
   (void) pr_fsio_unlink(config_path2);
 }
@@ -369,13 +532,18 @@ Suite *tests_get_parser_suite(void) {
   testcase = tcase_create("base");
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
+#if 0
   tcase_add_test(testcase, parser_prepare_test);
   tcase_add_test(testcase, parser_server_ctxt_test);
   tcase_add_test(testcase, parser_config_ctxt_test);
   tcase_add_test(testcase, parser_get_lineno_test);
   tcase_add_test(testcase, parser_read_line_test);
   tcase_add_test(testcase, parser_parse_line_test);
+#endif
+  tcase_add_test(testcase, parse_config_path_test);
+#if 0
   tcase_add_test(testcase, parser_parse_file_test);
+#endif
 
   suite_add_tcase(suite, testcase);
 

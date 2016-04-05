@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -197,7 +197,6 @@ unsigned char pr_define_exists(const char *);
 
 int fixup_servers(xaset_t *list);
 xaset_t *get_dir_ctxt(pool *, char *);
-int parse_config_path(pool *, const char *);
 
 /* Returns the buffer size to use for data transfers, regardless of IO
  * direction.

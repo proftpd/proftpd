@@ -25,11 +25,16 @@
 /* Configuration parser */
 
 #include "conf.h"
+#include "privs.h"
+
+/* Maximum depth of Include patterns/files. */
+#define PR_PARSER_INCLUDE_MAX_DEPTH	64
 
 extern xaset_t *server_list;
 extern pool *global_config_pool;
 
 static pool *parser_pool = NULL;
+static unsigned long parser_include_opts = 0UL;
 
 static array_header *parser_confstack = NULL;
 static config_rec **parser_curr_config = NULL;
@@ -336,6 +341,11 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
   if (path == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  if (parser_servstack == NULL) {
+    errno = EPERM;
     return -1;
   }
 
@@ -802,4 +812,223 @@ server_rec *pr_parser_server_ctxt_open(const char *addrstr) {
   *parser_curr_server = s;
 
   return s;
+}
+
+unsigned long pr_parser_set_include_opts(unsigned long opts) {
+  unsigned long prev_opts;
+
+  prev_opts = parser_include_opts;
+  parser_include_opts = opts;
+
+  return prev_opts;
+}
+
+static const char *tmpfile_patterns[] = {
+  "*~",
+  "*.sw?",
+  NULL
+};
+
+static int is_tmp_file(const char *file) {
+  register unsigned int i;
+
+  for (i = 0; tmpfile_patterns[i]; i++) {
+    if (pr_fnmatch(tmpfile_patterns[i], file, PR_FNM_PERIOD) == 0) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+static int config_filename_cmp(const void *a, const void *b) {
+  return strcmp(*((char **) a), *((char **) b));
+}
+
+int parse_config_path2(pool *p, const char *path, unsigned int depth) {
+  struct stat st;
+  int have_glob;
+  void *dirh;
+  struct dirent *dent;
+  array_header *file_list;
+  char *dup_path, *ptr, *ptr2;
+  pool *sub_pool;
+
+  if (p == NULL ||
+      path == NULL ||
+      (depth > PR_PARSER_INCLUDE_MAX_DEPTH)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (*path != '/') {
+    errno = EINVAL;
+    return -1;
+  }
+
+  have_glob = pr_str_is_fnmatch(path);
+  pr_fs_clear_cache2(path);
+
+  if (have_glob) {
+    pr_trace_msg(trace_channel, 19, "parsing '%s' as a globbed path", path);
+  }
+
+  if (!have_glob &&
+      pr_fsio_lstat(path, &st) < 0) {
+    return -1;
+  }
+
+  /* If path is not a glob pattern, and is a symlink OR is not a directory,
+   * then use the normal parsing function for the file.
+   */
+  if (have_glob == FALSE &&
+      (S_ISLNK(st.st_mode) ||
+       !S_ISDIR(st.st_mode))) {
+    return pr_parser_parse_file(p, path, NULL, 0);
+  }
+
+  sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "Include sub-pool");
+
+  /* Handle the glob/directory. */
+  dup_path = pstrdup(sub_pool, path);
+
+/* XXX Bug#3849 -- this should process FROM THE START of the path, NOT the
+ * end of the path.  Right?  Yes, because we need to resolve the earlier
+ * path components in order to resolve the later components.
+ *
+ * For each component, ask "Is this the last component in the path?" (i.e. is
+ *   there NOT a slash after the start of this component?)
+ * If yes, proceed to rest of function.
+ * If no, then ask "Is this component a glob?"
+ * If no, continue to next component.
+ * If yes, opendir/readdir/closedir, sort entries (appending "suffix"), and
+ *   recurse
+ *  DONT forget to increment DEPTH!
+ */
+
+  ptr = strrchr(dup_path, '/');
+
+  if (have_glob &&
+      ptr != NULL) {
+    *ptr++ = '\0';
+
+    if (pr_str_is_fnmatch(dup_path)) {
+/* XXX TODOD: This is where implementing Bug#3849 comes into play! */
+      pr_log_pri(PR_LOG_WARNING, "error: wildcard patterns not allowed in "
+        "configuration directory name '%s'", dup_path);
+      destroy_pool(sub_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
+    /* Check the directory component. */
+    pr_fs_clear_cache2(dup_path);
+    if (pr_fsio_lstat(dup_path, &st) < 0) {
+      int xerrno = errno;
+
+      pr_log_pri(PR_LOG_WARNING,
+        "error: failed to check configuration path '%s': %s", dup_path,
+        strerror(xerrno));
+
+      destroy_pool(sub_pool);
+      errno = xerrno;
+      return -1;
+    }
+
+    if (S_ISLNK(st.st_mode) &&
+        !(parser_include_opts & PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS)) {
+      pr_log_pri(PR_LOG_WARNING,
+        "error: cannot read configuration path '%s': Symbolic link", path);
+      destroy_pool(sub_pool);
+      errno = ENOTDIR;
+      return -1;
+    }
+
+    if (pr_str_is_fnmatch(ptr) == FALSE) {
+      pr_log_pri(PR_LOG_WARNING,
+        "error: wildcard pattern required for file '%s'", ptr);
+      destroy_pool(sub_pool);
+      errno = EINVAL;
+      return -1;
+    }
+  }
+
+  pr_log_pri(PR_LOG_DEBUG, "processing configuration directory '%s'", dup_path);
+
+  dirh = pr_fsio_opendir(dup_path);
+  if (dirh == NULL) {
+    pr_log_pri(PR_LOG_WARNING,
+      "error: unable to open configuration directory '%s': %s", dup_path,
+      strerror(errno));
+    destroy_pool(sub_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  file_list = make_array(sub_pool, 0, sizeof(char *));
+
+  while ((dent = pr_fsio_readdir(dirh)) != NULL) {
+    pr_signals_handle();
+
+    if (strncmp(dent->d_name, ".", 2) == 0 ||
+        strncmp(dent->d_name, "..", 3) == 0) {
+      continue;
+    }
+
+    if (parser_include_opts & PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES) {
+      if (is_tmp_file(dent->d_name) == TRUE) {
+        pr_trace_msg(trace_channel, 19,
+          "ignoring temporary file '%s' found in directory '%s'", dent->d_name,
+          dup_path);
+        continue;
+      }
+    }
+
+    if (have_glob == FALSE ||
+        (ptr != NULL &&
+         pr_fnmatch(ptr, dent->d_name, PR_FNM_PERIOD) == 0)) {
+      *((char **) push_array(file_list)) = pdircat(sub_pool, dup_path,
+        dent->d_name, NULL);
+    }
+  }
+
+  pr_fsio_closedir(dirh);
+
+  if (file_list->nelts) {
+    register unsigned int i;
+
+    qsort((void *) file_list->elts, file_list->nelts, sizeof(char *),
+      config_filename_cmp);
+
+    for (i = 0; i < file_list->nelts; i++) {
+      int res, xerrno;
+      char *file;
+
+      file = ((char **) file_list->elts)[i];
+
+      /* Make sure we always parse the files with root privs.  The
+       * previously parsed file might have had root privs relinquished
+       * (e.g. by its directive handlers), but when we first start up,
+       * we have root privs.  See Bug#3855.
+       */
+      PRIVS_ROOT
+      res = pr_parser_parse_file(sub_pool, file, NULL, 0);
+      xerrno = errno;
+      PRIVS_RELINQUISH
+
+      if (res < 0) {
+        pr_log_pri(PR_LOG_WARNING,
+          "error: unable to open parse file '%s': %s", file,
+          strerror(xerrno));
+      }
+    }
+  }
+
+  destroy_pool(sub_pool);
+  return 0;
+}
+
+int parse_config_path(pool *p, const char *path) {
+  return parse_config_path2(p, path, 0);
 }

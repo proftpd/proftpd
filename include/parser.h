@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2015 The ProFTPD Project team
+ * Copyright (c) 2004-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,5 +118,14 @@ server_rec *pr_parser_server_ctxt_get(void);
  * parameter.
  */
 server_rec *pr_parser_server_ctxt_open(const char *addrstr);
+
+/* Configure optional Include behavior. Returns the previously set options. */
+unsigned long pr_parser_set_include_opts(unsigned long opts);
+#define PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS		0x0001
+#define PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES		0x0002
+
+/* Internal use only */
+int parse_config_path(pool *p, const char *path);
+int parse_config_path2(pool *p, const char *path, unsigned int depth);
 
 #endif /* PR_PARSER_H */

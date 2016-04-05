@@ -345,8 +345,9 @@ MODRET set_define(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET add_include(cmd_rec *cmd) {
-  int res;
+/* usage: Include path|pattern */
+MODRET set_include(cmd_rec *cmd) {
+  int res, xerrno;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
@@ -355,30 +356,57 @@ MODRET add_include(cmd_rec *cmd) {
 
   PRIVS_ROOT
   res = pr_fs_valid_path(cmd->argv[1]);
+  PRIVS_RELINQUISH
 
   if (res < 0) {
-    PRIVS_RELINQUISH
-
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "unable to use path for configuration file '", cmd->argv[1], "'", NULL));
   }
 
-  if (parse_config_path(cmd->tmp_pool, cmd->argv[1]) < 0) {
-    int xerrno = errno;
+  PRIVS_ROOT
+  res = parse_config_path(cmd->tmp_pool, cmd->argv[1]);
+  xerrno = errno;
+  PRIVS_RELINQUISH
 
+  if (res < 0) {
     if (xerrno != EINVAL) {
       pr_log_pri(PR_LOG_WARNING, "warning: unable to include '%s': %s",
         (char *) cmd->argv[1], strerror(xerrno));
 
     } else {
-      PRIVS_RELINQUISH
-
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '",
         (char *) cmd->argv[1], "': ", strerror(xerrno), NULL));
     }
   }
-  PRIVS_RELINQUISH
 
+  return PR_HANDLED(cmd);
+}
+
+/* usage: IncludeOptions opt1 ... */
+MODRET set_includeoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "AllowSylinks") == 0) {
+      opts |= PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreTempFiles") == 0) {
+      opts |= PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown IncludeOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  (void) pr_parser_set_include_opts(opts);
   return PR_HANDLED(cmd);
 }
 
@@ -2182,8 +2210,9 @@ MODRET add_directory(cmd_rec *cmd) {
       cmd->config->config_type == CONF_ANON &&
       *dir != '/' &&
       *dir != '~') {
-    if (strncmp(dir, "*", 2) != 0)
+    if (strncmp(dir, "*", 2) != 0) {
       dir = pdircat(cmd->tmp_pool, "/", dir, NULL);
+    }
     rootdir = cmd->config->name;
 
   } else {
@@ -6804,7 +6833,8 @@ static conftable core_conftab[] = {
   { "HideNoAccess",		set_hidenoaccess,		NULL },
   { "HideUser",			set_hideuser,			NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
-  { "Include",			add_include,	 		NULL },
+  { "Include",			set_include,	 		NULL },
+  { "IncludeOptions",		set_includeoptions, 		NULL },
   { "MasqueradeAddress",	set_masqueradeaddress,		NULL },
   { "MaxCommandRate",		set_maxcommandrate,		NULL },
   { "MaxConnectionRate",	set_maxconnrate,		NULL },
