@@ -1258,6 +1258,12 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Features:
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-devel          enable developer-only code (default=no)
+
+
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
@@ -4039,6 +4045,20 @@ fi
 done
 
 
+UTILS_LIBS="-lsupp -lcrypto"
+
+# Check whether --enable-devel was given.
+if test "${enable_devel+set}" = set; then
+  enableval=$enable_devel;
+    if test x"$enableval" != xno ; then
+      if test `echo $enableval | grep -c coverage` = "1" ; then
+        UTILS_LIBS="--coverage $UTILS_LIBS"
+      fi
+    fi
+
+fi
+
+
 
 # Check whether --with-includes was given.
 if test "${with_includes+set}" = set; then
@@ -4131,7 +4151,6 @@ fi
 
 saved_libs="$LIBS"
 LIBS="$LIBS -lcrypto"
-UTILS_LIBS="-lsupp $LIBS"
 
 { echo "$as_me:$LINENO: checking whether linking with OpenSSL functions requires -ldl" >&5
 echo $ECHO_N "checking whether linking with OpenSSL functions requires -ldl... $ECHO_C" >&6; }

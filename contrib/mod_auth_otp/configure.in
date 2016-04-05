@@ -34,6 +34,23 @@ AC_HEADER_STDC
 
 AC_CHECK_HEADERS(stdlib.h unistd.h limits.h fcntl.h)
 
+UTILS_LIBS="-lsupp -lcrypto"
+
+dnl Need to support/handle the --enable-devel option, to see if coverage
+dnl is being used
+AC_ARG_ENABLE(devel,
+  [AC_HELP_STRING(
+    [--enable-devel],
+    [enable developer-only code (default=no)])
+  ],
+  [
+    if test x"$enableval" != xno ; then
+      if test `echo $enableval | grep -c coverage` = "1" ; then
+        UTILS_LIBS="--coverage $UTILS_LIBS"
+      fi
+    fi
+  ])
+
 dnl Need to support/handle the --with-includes and --with-libraries options
 AC_ARG_WITH(includes,
   [AC_HELP_STRING(
@@ -117,7 +134,6 @@ AC_ARG_WITH(shared,
 
 saved_libs="$LIBS"
 LIBS="$LIBS -lcrypto"
-UTILS_LIBS="-lsupp $LIBS"
 
 AC_MSG_CHECKING([whether linking with OpenSSL functions requires -ldl])
 saved_libs="$LIBS"
