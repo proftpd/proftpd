@@ -1242,6 +1242,22 @@ AC_ARG_ENABLE(timeout-stalled,
     fi
   ])
 
+AC_ARG_ENABLE(parser-buffer-size,
+  [AC_HELP_STRING(
+    [--enable-parser-buffer-size],
+    [tune the the size (in bytes) of parser buffers (default=2048 bytes)])
+  ],
+  [
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(parser buffer size defaulting to regular buffer size)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_PARSER_BUFFER_SIZE, 2048,
+      [Default buffer size])
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_PARSER_BUFFER_SIZE, $enableval,
+      [Specified parser buffer size])
+    fi
+  ])
+
 AC_ARG_ENABLE(transfer-buffer-size,
   [AC_HELP_STRING(
     [--enable-transfer-buffer-size],

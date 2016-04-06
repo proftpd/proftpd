@@ -332,7 +332,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   cmd_rec *cmd;
   pool *tmp_pool;
   char *report_path;
-  char buf[PR_TUNABLE_BUFFER_SIZE+1];
+  char buf[PR_TUNABLE_PARSER_BUFFER_SIZE+1];
 
   if (path == NULL) {
     errno = EINVAL;
