@@ -22,7 +22,7 @@ Makefile: Makefile.in ../config.status
 src: $(OBJS) $(FTPDCTL_OBJS)
 
 clean:
-	rm -f *.o
+	rm -f *.o *.gcno
 
 depend:
 	$(MAKEDEPEND) $(CPPFLAGS) *.c 2>/dev/null
