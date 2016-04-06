@@ -1,6 +1,3 @@
-<!-- $Id: mod_sql_passwd.html,v 1.14 2014-05-04 23:15:00 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql_passwd.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_sql_passwd</title>
@@ -26,8 +23,17 @@ or hex-encoded, <i>without</i> the prefix which is required by
 <p>
 The <code>mod_sql_passwd</code> module provides support for some of these
 other formats.  When the <code>mod_sql_passwd</code> module is enabled,
-you can configure <code>SQLAuthTypes</code> of "MD5", "SHA1", "SHA256", or
-"SHA512", as well as the existing types supported by <code>mod_sql</code>.
+you can configure <code>SQLAuthTypes</code> of:
+<ul>
+  <li>ARGON2
+  <li>MD5
+  <li>PBKDF2
+  <li>SCRYPT
+  <li>SHA1
+  <li>SHA256
+  <li>SHA512
+</ul>
+as well as the existing types supported by <code>mod_sql</code>.
 
 <p>
 This module is contained in the <code>mod_sql_passwd.c</code> file for
@@ -170,9 +176,9 @@ Example:
   SQLAuthTypes pbkdf2
   ...
 
-  # Use the SHA1 digest algorithm, 1000 iterations, and expect an output
+  # Use the SHA1 digest algorithm, 200K iterations, and expect an output
   # length of 20 bytes.
-  SQLPasswordPBKDF2 sha1 1000 20
+  SQLPasswordPBKDF2 sha1 200000 20
 
   SQLPasswordSaltFile /path/to/salt/file
 </pre>
@@ -317,21 +323,26 @@ behavior is to <i>append</i> the salt as a suffix.
 The <code>mod_sql_passwd</code> module is distributed with ProFTPD.  Simply
 follow the normal steps for using third-party modules in proftpd.  The
 <code>mod_sql_passwd</code> module requires OpenSSL support, so you <b>must</b>
-use the <code>--enable-openssl</code> configuration option.
+use the <code>--enable-openssl</code> configuration option.  In addition,
+if you have the <code>libsodium</code> library installed, simply include the
+<code>libsodium</code> headers/libraries in the build command to enable
+additional algorithms.
+
+<p>
 <b>NOTE</b>: it is <b>important</b> that <code>mod_sql_passwd</code> appear
 <i>after</i> <code>mod_sql</code> in your <code>--with-modules</code> configure
 option:
 <pre>
-  ./configure --enable-openssl --with-modules=mod_sql:mod_sql_passwd ...
+  $ ./configure --enable-openssl --with-modules=mod_sql:mod_sql_passwd ...
 </pre>
 To build <code>mod_sql_passwd</code> as a DSO module:
 <pre>
-  ./configure --enable-dso --enable-openssl --with-shared=mod_sql_passwd
+  $ ./configure --enable-dso --enable-openssl --with-shared=mod_sql_passwd
 </pre>
 Then follow the usual steps:
 <pre>
-  make
-  make install
+  $ make
+  $ make install
 </pre>
 
 <p>
@@ -339,7 +350,7 @@ For those with an existing ProFTPD installation, you can use the
 <code>prxs</code> tool to add <code>mod_sql_passwd</code>, as a DSO module, to
 your existing server:
 <pre>
-  # prxs -c -i -d mod_sql_passwd.c
+  $ prxs -c -i -d mod_sql_passwd.c
 </pre>
 
 <hr>
@@ -397,6 +408,36 @@ the <code>mod_sql_passwd</code> module to use it:
     SQLPasswordSaltFile /path/to/salt
   &lt;/IfModule&gt;
 </pre>
+
+<p><a name="SQLPasswordSodium">
+<b>Argon2, Scrypt</b><br>
+When <code>mod_sql_passwd</code> is compiled/linked with the <a href="https://github.com/jedisct1/libsodium"><code>libsodium</code></a> library, then the
+Argon2 and Scrypt algorithms become available for use:
+<pre>
+  &lt;IfModule mod_sql_passwd.c&gt;
+    SQLPasswordEngine on
+    SQLPasswordEncoding hex
+    SQLPasswordSaltFile /path/to/salt
+  &lt;/IfModule&gt;
+
+  &lt;IfModule mod_sql.c&gt;
+    ...
+
+    # Now that mod_sql_passwd is used, we can configure "SCRYPT" as an
+    # SQLAuthType that mod_sql will handle.
+    SQLAuthTypes SCRYPT
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+The <code>scrypt</code> algorithm <b>requires</b> 32 bytes of salt data;
+lack of salt, or salt of the wrong amount, will result in authentication
+failure.  The <code>argon2</code> algorithm <b>requires</b> 16 bytes of salt
+data; lack of salt or the wrong amount will result in failure.
+
+<p>
+The <code>argon2</code> algorithm requires <code>libsodium-1.0.9</code> or
+later.
 
 <p>
 <b>Logging</b><br>
@@ -584,8 +625,9 @@ of the <code>TRANSFORM</code> function, <i>e.g.</i>:
 </pre>
 In this case, there are 3 rounds of transformation:
 <pre>
-  for (<i>i</i> = 0; <i>i</i> &lt; <i>nrounds</i>; <i>i</i>++)
+  for (<i>i</i> = 0; <i>i</i> &lt; <i>nrounds</i>; <i>i</i>++) {
     <i>data</i> = TRANSFORM(<i>data</i>)
+  }
 </pre>
 
 <p>
@@ -604,14 +646,8 @@ values can be supported by the <code>mod_sql_passwd</code> module.
 
 <p>
 <hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2014-05-04 23:15:00 $</i><br>
-
-<br><hr>
-
 <font size=2><b><i>
-&copy; Copyright 2009-2014 TJ Saunders<br>
+&copy; Copyright 2009-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
