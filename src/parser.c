@@ -331,8 +331,8 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   struct config_src *cs;
   cmd_rec *cmd;
   pool *tmp_pool;
-  char *report_path;
-  char buf[PR_TUNABLE_PARSER_BUFFER_SIZE+1];
+  char *buf, *report_path;
+  size_t bufsz;
 
   if (path == NULL) {
     errno = EINVAL;
@@ -407,8 +407,10 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
     add_config_ctxt(start);
   }
 
-  memset(buf, '\0', sizeof(buf));
-  while (pr_parser_read_line(buf, sizeof(buf)-1) != NULL) {
+  bufsz = PR_TUNABLE_PARSER_BUFFER_SIZE;
+  buf = pcalloc(tmp_pool, bufsz + 1);
+
+  while (pr_parser_read_line(buf, bufsz) != NULL) {
     pr_signals_handle();
 
     cmd = pr_parser_parse_line(tmp_pool, buf, 0);
@@ -425,8 +427,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
       conftab = pr_stash_get_symbol2(PR_SYM_CONF, cmd->argv[0], NULL,
         &cmd->stash_index, &cmd->stash_hash);
-
-      while (conftab) {
+      while (conftab != NULL) {
         modret_t *mr;
 
         pr_signals_handle();
@@ -443,13 +444,13 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
             if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
               pr_log_pri(PR_LOG_WARNING, "fatal: %s on line %u of '%s'",
                 MODRET_ERRMSG(mr), cs->cs_lineno, report_path);
+              destroy_pool(tmp_pool);
               errno = EPERM;
               return -1;
-
-            } else {
-              pr_log_pri(PR_LOG_WARNING, "warning: %s on line %u of '%s'",
-                MODRET_ERRMSG(mr), cs->cs_lineno, report_path);
             }
+
+            pr_log_pri(PR_LOG_WARNING, "warning: %s on line %u of '%s'",
+              MODRET_ERRMSG(mr), cs->cs_lineno, report_path);
           }
         }
 
@@ -501,6 +502,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
               "'%s' (contains non-ASCII characters)", name);
           }
 
+          destroy_pool(tmp_pool);
           errno = EPERM;
           return -1;
         }
@@ -515,7 +517,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
     }
 
     destroy_pool(cmd->pool);
-    memset(buf, '\0', sizeof(buf));
+    memset(buf, '\0', bufsz);
   }
 
   /* Pop this configuration stream from the stack. */
@@ -690,8 +692,11 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
   while ((pr_fsio_getline(buf, bufsz, cs->cs_fh, &(cs->cs_lineno))) != NULL) {
     int have_eol = FALSE;
     char *bufp = NULL;
-    size_t buflen = strlen(buf);
+    size_t buflen;
 
+    pr_signals_handle();
+
+    buflen = strlen(buf);
     parser_curr_lineno = cs->cs_lineno;
 
     /* Trim off the trailing newline, if present. */
@@ -702,14 +707,13 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
       buflen--;
     }
 
-    while (buflen &&
-           buf[buflen - 1] == '\r') {
-      pr_signals_handle();
+    if (buflen &&
+        buf[buflen - 1] == '\r') {
       buf[buflen-1] = '\0';
       buflen--;
     }
 
-    if (!have_eol) {
+    if (have_eol == FALSE) {
       pr_log_pri(PR_LOG_WARNING,
         "warning: handling possibly truncated configuration data at "
         "line %u of '%s'", cs->cs_lineno, cs->cs_fh->fh_path);

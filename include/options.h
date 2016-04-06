@@ -85,7 +85,7 @@
  * have exceptionally long configuration lines.
  */
 #ifndef PR_TUNABLE_PARSER_BUFFER_SIZE
-# define PR_TUNABLE_PARSER_BUFFER_SIZE	2048
+# define PR_TUNABLE_PARSER_BUFFER_SIZE	4096
 #endif
 
 /* There is also a definable buffer size used specifically for data

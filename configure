@@ -1606,7 +1606,7 @@ Optional Features:
 
   --enable-parser-buffer-size
                           tune the the size (in bytes) of parser buffers
-                          (default=2048 bytes)
+                          (default=4096 bytes)
 
   --enable-transfer-buffer-size
                           tune the the size (in bytes) of data transfer
@@ -21200,7 +21200,7 @@ if test "${enable_parser_buffer_size+set}" = set; then
 echo "$as_me: WARNING: parser buffer size defaulting to regular buffer size" >&2;}
 
 cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_PARSER_BUFFER_SIZE 2048
+#define PR_TUNABLE_PARSER_BUFFER_SIZE 4096
 _ACEOF
 
     else

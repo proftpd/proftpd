@@ -5556,7 +5556,7 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
           for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++);
 
           if (*bufp == '#') {
-             continue;
+            continue;
           }
  
         } else {
