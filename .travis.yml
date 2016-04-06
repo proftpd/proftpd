@@ -27,6 +27,8 @@ install:
   - sudo apt-get install -y libpq-dev
   # for OpenSSL support
   - sudo apt-get install -y libssl-dev
+  # for Sodium support
+  - sudo apt-get install -y libsodium-dev
   # for mod_sql_sqlite
   - sudo apt-get install -y libsqlite3-dev sqlite3
   # for PCRE support
