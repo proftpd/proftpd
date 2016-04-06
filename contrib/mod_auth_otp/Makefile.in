@@ -52,7 +52,7 @@ install-utils: $(DESTDIR)$(sbindir) auth-otp$(EXEEXT)
 	$(INSTALL_BIN) auth-otp$(EXEEXT) $(DESTDIR)$(sbindir)/auth-otp$(EXEEXT)
 
 clean:
-	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.lo .libs/*.o
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.gcno *.lo .libs/*.o
 
 dist: clean
 	$(RM) Makefile $(MODULE_NAME).h config.status config.cache config.log
