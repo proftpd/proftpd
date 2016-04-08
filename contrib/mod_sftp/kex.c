@@ -37,10 +37,10 @@
 #include "interop.h"
 #include "tap.h"
 
-#ifdef HAVE_SODIUM_H
+#ifdef PR_USE_SODIUM
 # include <sodium.h>
 # define CURVE25519_SIZE	32
-#endif /* HAVE_SODIUM_H */
+#endif /* PR_USE_SODIUM */
 
 /* Define the minimum DH group length we allow (unless the AllowWeakDH
  * SFTPOption is used).
@@ -132,9 +132,9 @@ struct sftp_kex {
   EC_KEY *ec;
   EC_POINT *client_point;
 #endif /* PR_USE_OPENSSL_ECC */
-#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+#if defined(PR_USE_SODIUM) && defined(HAVE_SHA256_OPENSSL)
   unsigned char *client_curve25519;
-#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+#endif /* PR_USE_SODIUM and HAVE_SHA256_OPENSSL */
 };
 
 static struct sftp_kex *kex_first_kex = NULL;
@@ -1234,9 +1234,9 @@ static const char *get_shared_name(pool *p, const char *c2s_names,
  * SFTPOption is used.
  */
 static const char *kex_exchanges[] = {
-#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+#if defined(PR_USE_SODIUM) && defined(HAVE_SHA256_OPENSSL)
   "curve25519-sha256@libssh.org",
-#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+#endif /* PR_USE_SODIUM and HAVE_SHA256_OPENSSL */
 #ifdef PR_USE_OPENSSL_ECC
   "ecdh-sha2-nistp256",
   "ecdh-sha2-nistp384",
@@ -1606,13 +1606,13 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     return 0;
 #endif /* PR_USE_OPENSSL_ECC */
 
-#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+#if defined(PR_USE_SODIUM) && defined(HAVE_SHA256_OPENSSL)
   } else if (strncmp(algo, "curve25519-sha256@libssh.org", 22) == 0) {
     kex->hash = EVP_sha256();
     kex->session_names->kex_algo = algo;
     kex->use_curve25519 = TRUE;
     return 0;
-#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+#endif /* PR_USE_SODIUM and HAVE_SHA256_OPENSSL */
   }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -3269,7 +3269,7 @@ static int handle_kex_rsa(struct sftp_kex *kex) {
   return 0;
 }
 
-#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+#if defined(PR_USE_SODIUM) && defined(HAVE_SHA256_OPENSSL)
 static int generate_curve25519_keys(unsigned char *priv_key,
     unsigned char *pub_key) {
   static const unsigned char basepoint[CURVE25519_SIZE] = {9};
@@ -3593,7 +3593,7 @@ static int handle_kex_curve25519(struct ssh2_packet *pkt,
   destroy_pool(pkt->pool);
   return 0;
 }
-#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+#endif /* PR_USE_SODIUM and HAVE_SHA256_OPENSSL */
 
 #ifdef PR_USE_OPENSSL_ECC
 static int read_ecdh_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
@@ -4083,12 +4083,12 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
         /* This handles the case of SFTP_SSH2_MSG_KEX_DH_GEX_REQUEST_OLD as
          * well; that ID has the same value as the KEX_DH_INIT ID.
          */
-#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+#if defined(PR_USE_SODIUM) && defined(HAVE_SHA256_OPENSSL)
         if (kex->use_curve25519) {
           res = handle_kex_curve25519(pkt, kex);
 
         } else
-#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+#endif /* PR_USE_SODIUM and HAVE_SHA256_OPENSSL */
 #ifdef PR_USE_OPENSSL_ECC
         if (kex->use_ecdh) {
           res = handle_kex_ecdh(pkt, kex);

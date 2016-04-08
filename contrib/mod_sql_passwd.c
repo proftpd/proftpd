@@ -26,7 +26,7 @@
 #include "privs.h"
 #include "mod_sql.h"
 
-#if defined(HAVE_SODIUM_H)
+#ifdef PR_USE_SODIUM
 # include <sodium.h>
 # define SCRYPT_HASH_SIZE	32
 # define SCRYPT_SALT_SIZE	32
@@ -58,6 +58,10 @@
 module sql_passwd_module;
 
 static int sql_passwd_engine = FALSE;
+
+#define SQL_PASSWD_COST_INTERACTIVE		1
+#define SQL_PASSWD_COST_SENSITIVE		2
+static unsigned int sql_passwd_cost = SQL_PASSWD_COST_INTERACTIVE;
 
 #define SQL_PASSWD_ENC_USE_BASE64		1
 #define SQL_PASSWD_ENC_USE_HEX_LC		2
@@ -786,7 +790,7 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
-#if defined(HAVE_SODIUM_H)
+#ifdef PR_USE_SODIUM
 static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
   int res;
@@ -826,8 +830,22 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  ops_limit = crypto_pwhash_scryptsalsa208sha256_opslimit_sensitive();
-  mem_limit = crypto_pwhash_scryptsalsa208sha256_memlimit_sensitive();
+  switch (sql_passwd_cost) {
+    case SQL_PASSWD_COST_INTERACTIVE:
+      ops_limit = crypto_pwhash_scryptsalsa208sha256_opslimit_interactive();
+      mem_limit = crypto_pwhash_scryptsalsa208sha256_memlimit_interactive();
+      break;
+
+    case SQL_PASSWD_COST_SENSITIVE:
+      ops_limit = crypto_pwhash_scryptsalsa208sha256_opslimit_sensitive();
+      mem_limit = crypto_pwhash_scryptsalsa208sha256_memlimit_sensitive();
+      break;
+
+    default:
+      sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+        ": unknown SQLPasswordCost value");
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
 
   hash_len = SCRYPT_HASH_SIZE;
   hash = palloc(cmd->tmp_pool, hash_len);
@@ -904,8 +922,23 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
   }
 
   argon2_algo = crypto_pwhash_argon2i_alg_argon2i13();
-  ops_limit = crypto_pwhash_argon2i_opslimit_sensitive();
-  mem_limit = crypto_pwhash_argon2i_memlimit_sensitive();
+
+  switch (sql_passwd_cost) {
+    case SQL_PASSWD_COST_INTERACTIVE:
+      ops_limit = crypto_pwhash_argon2i_opslimit_interactive();
+      mem_limit = crypto_pwhash_argon2i_memlimit_interactive();
+      break;
+
+    case SQL_PASSWD_COST_SENSITIVE:
+      ops_limit = crypto_pwhash_argon2i_opslimit_sensitive();
+      mem_limit = crypto_pwhash_argon2i_memlimit_sensitive();
+      break;
+
+    default:
+      sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+        ": unknown SQLPasswordCost value");
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
 
   hash_len = ARGON2_HASH_SIZE;
   hash = palloc(cmd->tmp_pool, hash_len);
@@ -946,7 +979,7 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
 # endif /* USE_SODIUM_ARGON2 */
 }
-#endif /* HAVE_SODIUM_H */
+#endif /* PR_USE_SODIUM */
 
 /* Event handlers
  */
@@ -959,10 +992,10 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
     sql_unregister_authtype("sha256");
     sql_unregister_authtype("sha512");
     sql_unregister_authtype("pbkdf2");
-# if defined(HAVE_SODIUM_H)
+# ifdef PR_USE_SODIUM
     sql_unregister_authtype("argon2");
     sql_unregister_authtype("scrypt");
-# endif /* HAVE_SODIUM_H */
+# endif /* PR_USE_SODIUM */
 
     pr_event_unregister(&sql_passwd_module, NULL, NULL);
   }
@@ -1188,6 +1221,32 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
 
 /* Configuration handlers
  */
+
+/* usage: SQLPasswordCost "interactive"|"sensitive" */
+MODRET set_sqlpasswdcost(cmd_rec *cmd) {
+  unsigned int cost;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "interactive") == 0) {
+    cost = SQL_PASSWD_COST_INTERACTIVE;
+
+  } else if (strcasecmp(cmd->argv[1], "sensitive") == 0) {
+    cost = SQL_PASSWD_COST_SENSITIVE;
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown/unsupported cost: '",
+      cmd->argv[1], "'", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = cost;
+
+  return PR_HANDLED(cmd);
+}
 
 /* usage: SQLPasswordEncoding "base64"|"hex"|"HEX" */
 MODRET set_sqlpasswdencoding(cmd_rec *cmd) {
@@ -1486,7 +1545,7 @@ static int sql_passwd_init(void) {
     sql_passwd_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
 
-#if defined(HAVE_SODIUM_H)
+#ifdef PR_USE_SODIUM
   if (sodium_init() < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_SQL_PASSWD_VERSION
       ": error initializing libsodium");
@@ -1498,7 +1557,7 @@ static int sql_passwd_init(void) {
     pr_log_debug(DEBUG2, MOD_SQL_PASSWD_VERSION ": using libsodium-%s",
       sodium_version);
   }
-#endif /* HAVE_SODIUM_H */
+#endif /* PR_USE_SODIUM */
 
   if (sql_register_authtype("md5", sql_passwd_md5) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
@@ -1545,7 +1604,7 @@ static int sql_passwd_init(void) {
       ": registered 'pbkdf2' SQLAuthType handler");
   }
 
-#if defined(HAVE_SODIUM_H)
+#ifdef PR_USE_SODIUM
   if (sql_register_authtype("scrypt", sql_passwd_scrypt) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
       ": unable to register 'scrypt' SQLAuthType handler: %s", strerror(errno));
@@ -1563,7 +1622,7 @@ static int sql_passwd_init(void) {
     pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
       ": registered 'argon2' SQLAuthType handler");
   }
-#endif /* HAVE_SODIUM_H */
+#endif /* PR_USE_SODIUM */
 
   return 0;
 }
@@ -1581,6 +1640,11 @@ static int sql_passwd_sess_init(void) {
 
   if (sql_passwd_engine == FALSE) {
     return 0;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordCost", FALSE);
+  if (c != NULL) {
+    sql_passwd_cost = *((unsigned int *) c->argv[0]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordEncoding", FALSE);
@@ -1722,6 +1786,7 @@ static int sql_passwd_sess_init(void) {
  */
 
 static conftable sql_passwd_conftab[] = {
+  { "SQLPasswordCost",		set_sqlpasswdcost,		NULL },
   { "SQLPasswordEncoding",	set_sqlpasswdencoding,		NULL },
   { "SQLPasswordEngine",	set_sqlpasswdengine,		NULL },
   { "SQLPasswordOptions",	set_sqlpasswdoptions,		NULL },
