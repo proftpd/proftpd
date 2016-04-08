@@ -19,6 +19,8 @@ ChangeLog files.
 
     SFTPKeyLimits (Bug#4233)
 
+    SQLPasswordCost (Bug#4154)
+
 
   + Changed Configuration Directives:
 
