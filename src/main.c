@@ -2051,6 +2051,12 @@ static void show_settings(void) {
   printf("%s", "    - NLS support\n");
 #endif /* PR_USE_NLS */
 
+#ifdef PR_USE_SODIUM
+  printf("%s", "    + Sodium support\n");
+#else
+  printf("%s", "    - Sodium support\n");
+#endif /* PR_USE_SODIUM */
+
 #ifdef PR_USE_OPENSSL
 # ifdef PR_USE_OPENSSL_FIPS
     printf("%s", "    + OpenSSL support (FIPS enabled)\n");

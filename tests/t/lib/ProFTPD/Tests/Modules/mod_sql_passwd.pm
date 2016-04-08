@@ -205,32 +205,62 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  sql_passwd_scrypt_base64 => {
+  sql_passwd_scrypt_base64_interactive_cost => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  sql_passwd_scrypt_hex_lc => {
+  sql_passwd_scrypt_hex_lc_interactive_cost => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  sql_passwd_scrypt_hex_uc => {
+  sql_passwd_scrypt_hex_uc_interactive_cost => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  sql_passwd_argon2_base64 => {
+  sql_passwd_scrypt_base64_sensitive_cost => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  sql_passwd_argon2_hex_lc => {
+  sql_passwd_scrypt_hex_lc_sensitive_cost => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  sql_passwd_argon2_hex_uc => {
+  sql_passwd_scrypt_hex_uc_sensitive_cost => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  sql_passwd_argon2_base64_interactive_cost => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  sql_passwd_argon2_hex_lc_interactive_cost => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  sql_passwd_argon2_hex_uc_interactive_cost => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  sql_passwd_argon2_base64_interactive_cost => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  sql_passwd_argon2_hex_lc_sensitive_cost => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  sql_passwd_argon2_hex_uc_sensitive_cost => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -6914,7 +6944,535 @@ EOS
   unlink($log_file);
 }
 
-sub sql_passwd_scrypt_base64 {
+sub sql_passwd_scrypt_base64_interactive_cost {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlpasswd.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+
+  # I had to look at the mod_sql_passwd-generated logs to get this password;
+  # this means it's a bit incestuous and thus suspect.
+  my $passwd = 'ZI+02v+UMvtIvFBALSHyBiNu9At1h+HgN6xzI7nhAtM=';
+
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # This hex-encoded salt data has embedded NULs
+  my $salt = lc('A7C082B325B2C835FF8A77D805006894AA1B0EC42559C6BD2CB82D7AA0FEAD2A');
+  my $salt_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.salt");
+  if (open(my $fh, "> $salt_file")) {
+    binmode($fh);
+    print $fh $salt;
+
+    unless (close($fh)) {
+      die("Can't write $salt_file: $!");
+    }
+
+  } else {
+    die("Can't open $salt_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql.passwd:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'scrypt',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+      },
+
+      'mod_sql_passwd.c' => {
+        SQLPasswordEngine => 'on',
+        SQLPasswordEncoding => 'base64',
+        SQLPasswordSaltEncoding => 'hex',
+        SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Interactive',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, "test");
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected response message count $expected, got $nmsgs"));
+
+      $expected = "User $user logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_passwd_scrypt_hex_lc_interactive_cost {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlpasswd.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+
+  # I had to look at the mod_sql_passwd-generated logs to get this password;
+  # this means it's a bit incestuous and thus suspect.
+  my $passwd = '648fb4daff9432fb48bc50402d21f206236ef40b7587e1e037ac7323b9e102d3';
+
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # This hex-encoded salt data has embedded NULs
+  my $salt = lc('A7C082B325B2C835FF8A77D805006894AA1B0EC42559C6BD2CB82D7AA0FEAD2A');
+  my $salt_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.salt");
+  if (open(my $fh, "> $salt_file")) {
+    binmode($fh);
+    print $fh $salt;
+
+    unless (close($fh)) {
+      die("Can't write $salt_file: $!");
+    }
+
+  } else {
+    die("Can't open $salt_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql.passwd:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'scrypt',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+      },
+
+      'mod_sql_passwd.c' => {
+        SQLPasswordEngine => 'on',
+        SQLPasswordEncoding => 'hex',
+        SQLPasswordSaltEncoding => 'hex',
+        SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Interactive',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, "test");
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected response message count $expected, got $nmsgs"));
+
+      $expected = "User $user logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_passwd_scrypt_hex_uc_interactive_cost {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlpasswd.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+
+  # I had to look at the mod_sql_passwd-generated logs to get this password;
+  # this means it's a bit incestuous and thus suspect.
+  my $passwd = uc('648fb4daff9432fb48bc50402d21f206236ef40b7587e1e037ac7323b9e102d3');
+
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # This hex-encoded salt data has embedded NULs
+  my $salt = lc('A7C082B325B2C835FF8A77D805006894AA1B0EC42559C6BD2CB82D7AA0FEAD2A');
+  my $salt_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.salt");
+  if (open(my $fh, "> $salt_file")) {
+    binmode($fh);
+    print $fh $salt;
+
+    unless (close($fh)) {
+      die("Can't write $salt_file: $!");
+    }
+
+  } else {
+    die("Can't open $salt_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql.passwd:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'scrypt',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+      },
+
+      'mod_sql_passwd.c' => {
+        SQLPasswordEngine => 'on',
+        SQLPasswordEncoding => 'HEX',
+        SQLPasswordSaltEncoding => 'hex',
+        SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Interactive',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, "test");
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected response message count $expected, got $nmsgs"));
+
+      $expected = "User $user logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_passwd_scrypt_base64_sensitive_cost {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -7019,6 +7577,7 @@ EOS
         SQLPasswordEncoding => 'base64',
         SQLPasswordSaltEncoding => 'hex',
         SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Sensitive',
       },
     },
   };
@@ -7089,7 +7648,7 @@ EOS
   unlink($log_file);
 }
 
-sub sql_passwd_scrypt_hex_lc {
+sub sql_passwd_scrypt_hex_lc_sensitive_cost {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -7194,6 +7753,7 @@ EOS
         SQLPasswordEncoding => 'hex',
         SQLPasswordSaltEncoding => 'hex',
         SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Sensitive',
       },
     },
   };
@@ -7264,7 +7824,7 @@ EOS
   unlink($log_file);
 }
 
-sub sql_passwd_scrypt_hex_uc {
+sub sql_passwd_scrypt_hex_uc_sensitive_cost {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -7369,6 +7929,7 @@ EOS
         SQLPasswordEncoding => 'HEX',
         SQLPasswordSaltEncoding => 'hex',
         SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Sensitive',
       },
     },
   };
@@ -7439,7 +8000,535 @@ EOS
   unlink($log_file);
 }
 
-sub sql_passwd_argon2_base64 {
+sub sql_passwd_argon2_base64_interactive_cost {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlpasswd.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+
+  # I had to look at the mod_sql_passwd-generated logs to get this password;
+  # this means it's a bit incestuous and thus suspect.
+  my $passwd = 'CMEEQfxzMwu2y7YuG3R1r5n/qC0g24DXPRLb3ZpI6ZU=';
+
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # This hex-encoded salt data has embedded NULs
+  my $salt = 'A7C082B325B2C835FF8A77D805006894';
+  my $salt_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.salt");
+  if (open(my $fh, "> $salt_file")) {
+    binmode($fh);
+    print $fh $salt;
+
+    unless (close($fh)) {
+      die("Can't write $salt_file: $!");
+    }
+
+  } else {
+    die("Can't open $salt_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql.passwd:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'argon2',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+      },
+
+      'mod_sql_passwd.c' => {
+        SQLPasswordEngine => 'on',
+        SQLPasswordEncoding => 'base64',
+        SQLPasswordSaltEncoding => 'HEX',
+        SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Interactive',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, "test");
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected response message count $expected, got $nmsgs"));
+
+      $expected = "User $user logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_passwd_argon2_hex_lc_interactive_cost {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlpasswd.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+
+  # I had to look at the mod_sql_passwd-generated logs to get this password;
+  # this means it's a bit incestuous and thus suspect.
+  my $passwd = '08c10441fc73330bb6cbb62e1b7475af99ffa82d20db80d73d12dbdd9a48e995';
+
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # This hex-encoded salt data has embedded NULs
+  my $salt = lc('A7C082B325B2C835FF8A77D805006894');
+  my $salt_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.salt");
+  if (open(my $fh, "> $salt_file")) {
+    binmode($fh);
+    print $fh $salt;
+
+    unless (close($fh)) {
+      die("Can't write $salt_file: $!");
+    }
+
+  } else {
+    die("Can't open $salt_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql.passwd:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'argon2',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+      },
+
+      'mod_sql_passwd.c' => {
+        SQLPasswordEngine => 'on',
+        SQLPasswordEncoding => 'hex',
+        SQLPasswordSaltEncoding => 'hex',
+        SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Interactive',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, "test");
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected response message count $expected, got $nmsgs"));
+
+      $expected = "User $user logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_passwd_argon2_hex_uc_interactive_cost {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $config_file = "$tmpdir/sqlpasswd.conf";
+  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.pid");
+  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.scoreboard");
+
+  my $log_file = test_get_logfile();
+
+  my $user = 'proftpd';
+  my $group = 'ftpd';
+
+  # I had to look at the mod_sql_passwd-generated logs to get this password;
+  # this means it's a bit incestuous and thus suspect.
+  my $passwd = uc('08c10441fc73330bb6cbb62e1b7475af99ffa82d20db80d73d12dbdd9a48e995');
+
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  if (scalar(@output) &&
+      $ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # This hex-encoded salt data has embedded NULs
+  my $salt = lc('A7C082B325B2C835FF8A77D805006894');
+  my $salt_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.salt");
+  if (open(my $fh, "> $salt_file")) {
+    binmode($fh);
+    print $fh $salt;
+
+    unless (close($fh)) {
+      die("Can't write $salt_file: $!");
+    }
+
+  } else {
+    die("Can't open $salt_file: $!");
+  }
+
+  my $config = {
+    PidFile => $pid_file,
+    ScoreboardFile => $scoreboard_file,
+    SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'sql.passwd:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'argon2',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $log_file,
+      },
+
+      'mod_sql_passwd.c' => {
+        SQLPasswordEngine => 'on',
+        SQLPasswordEncoding => 'HEX',
+        SQLPasswordSaltEncoding => 'hex',
+        SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Interactive',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, "test");
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected;
+
+      $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected response message count $expected, got $nmsgs"));
+
+      $expected = "User $user logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($config_file, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($pid_file);
+
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
+}
+
+sub sql_passwd_argon2_base64_sensitive_cost {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -7544,6 +8633,7 @@ EOS
         SQLPasswordEncoding => 'base64',
         SQLPasswordSaltEncoding => 'HEX',
         SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Sensitive',
       },
     },
   };
@@ -7614,7 +8704,7 @@ EOS
   unlink($log_file);
 }
 
-sub sql_passwd_argon2_hex_lc {
+sub sql_passwd_argon2_hex_lc_sensitive_cost {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -7719,6 +8809,7 @@ EOS
         SQLPasswordEncoding => 'hex',
         SQLPasswordSaltEncoding => 'hex',
         SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Sensitive',
       },
     },
   };
@@ -7789,7 +8880,7 @@ EOS
   unlink($log_file);
 }
 
-sub sql_passwd_argon2_hex_uc {
+sub sql_passwd_argon2_hex_uc_sensitive_cost {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -7894,6 +8985,7 @@ EOS
         SQLPasswordEncoding => 'HEX',
         SQLPasswordSaltEncoding => 'HEX',
         SQLPasswordSaltFile => $salt_file,
+        SQLPasswordCost => 'Sensitive',
       },
     },
   };

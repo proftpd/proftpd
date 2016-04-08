@@ -25,10 +25,10 @@ The <code>mod_sql_passwd</code> module provides support for some of these
 other formats.  When the <code>mod_sql_passwd</code> module is enabled,
 you can configure <code>SQLAuthTypes</code> of:
 <ul>
-  <li>ARGON2
+  <li>Argon2
   <li>MD5
   <li>PBKDF2
-  <li>SCRYPT
+  <li>Scrypt
   <li>SHA1
   <li>SHA256
   <li>SHA512
@@ -60,6 +60,7 @@ questions, concerns, or suggestions regarding this module.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#SQLPasswordCost">SQLPasswordCost</a>
   <li><a href="#SQLPasswordEncoding">SQLPasswordEncoding</a>
   <li><a href="#SQLPasswordEngine">SQLPasswordEngine</a>
   <li><a href="#SQLPasswordOptions">SQLPasswordOptions</a>
@@ -68,6 +69,48 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SQLPasswordSaltEncoding">SQLPasswordSaltEncoding</a>
   <li><a href="#SQLPasswordSaltFile">SQLPasswordSaltFile</a>
   <li><a href="#SQLPasswordUserSalt">SQLPasswordUserSalt</a>
+</ul>
+
+<hr>
+<h2><a name="SQLPasswordCost">SQLPasswordCost</a></h2>
+<strong>Syntax:</strong> SQLPasswordCost <em>interactive|sensitive</em><br>
+<strong>Default:</strong> <em>interactive</em><br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><em></em><br>
+<strong>Module:</strong> mod_sql_passwd<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>SQLPasswordCost</code> directive configures the high-level
+<em>cost</em> settings to use for memory-hard algorithms like
+<code>scrypt</code> and <code>argon2</code>.  The supported <em>cost</em>
+cost values are:
+<ul>
+  <li>interactive
+    <p>
+    This <em>cost</em> uses parameters where generating the value is part of
+    an "interactive" session.
+
+    <p>
+    For <code>scrypt</code>, depending on the version of <code>libsodium</code>
+    used, this <em>cost</em> uses:
+<pre>
+    N=16384, r=8, p=1
+</pre>
+  </li>
+
+  <p>
+  <li>sensitive
+    <p>
+    This <em>cost</em> uses parameters where the value generated is considered
+    very "sensitive".
+
+    <p>
+    For <code>scrypt</code>, depending on the version of <code>libsodium</code>
+    used, this <em>cost</em> uses:
+</pre>
+    N=1048576, r=8, p=1
+</pre>
+  </li>
 </ul>
 
 <hr>
