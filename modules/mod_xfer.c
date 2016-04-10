@@ -2939,6 +2939,18 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
 MODRET xfer_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
+  /* Default transfer mode is ASCII, per RFC 959, Section 3.1.1.1. */
+  session.sf_flags |= SF_ASCII;
+  c = find_config(main_server->conf, CONF_PARAM, "DefaultTransferMode", FALSE);
+  if (c != NULL) {
+    char *default_transfer_mode;
+
+    default_transfer_mode = c->argv[0];
+    if (strcasecmp(default_transfer_mode, "binary") == 0) {
+      session.sf_flags &= (SF_ALL^SF_ASCII);
+    }
+  }
+
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutNoTransfer", FALSE);
   if (c != NULL) {
     int timeout = *((int *) c->argv[0]);
@@ -3035,6 +3047,23 @@ MODRET set_allowrestart(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
+  return PR_HANDLED(cmd);
+}
+
+/* usage: DefaultTransferMode ascii|binary */
+MODRET set_defaulttransfermode(cmd_rec *cmd) {
+  char *xfer_mode;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  xfer_mode = cmd->argv[1];
+  if (strcasecmp(xfer_mode, "ascii") != 0 &&
+      strcasecmp(xfer_mode, "binary") != 0) {
+    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, xfer_mode);
   return PR_HANDLED(cmd);
 }
 
@@ -3916,6 +3945,7 @@ static conftable xfer_conftab[] = {
   { "AllowOverwrite",		set_allowoverwrite,		NULL },
   { "AllowRetrieveRestart",	set_allowrestart,		NULL },
   { "AllowStoreRestart",	set_allowrestart,		NULL },
+  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
   { "DisplayFileTransfer",	set_displayfiletransfer,	NULL },
   { "HiddenStores",		set_hiddenstores,		NULL },

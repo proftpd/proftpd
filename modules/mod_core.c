@@ -6059,18 +6059,6 @@ MODRET core_opts(cmd_rec *cmd) {
 MODRET core_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
-  /* Default transfer mode is ASCII */
-  session.sf_flags |= SF_ASCII;
-  c = find_config(main_server->conf, CONF_PARAM, "DefaultTransferMode", FALSE);
-  if (c != NULL) {
-    char *default_transfer_mode;
-
-    default_transfer_mode = c->argv[0];
-    if (strcasecmp(default_transfer_mode, "binary") == 0) {
-      session.sf_flags &= (SF_ALL^SF_ASCII);
-    }
-  }
-
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutIdle", FALSE);
   if (c != NULL) {
     int prev_timeout, timeout;
@@ -6190,22 +6178,6 @@ MODRET core_post_pass(cmd_rec *cmd) {
 
 /* Configuration directive handlers
  */
-
-MODRET set_defaulttransfermode(cmd_rec *cmd) {
-  char *mode;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  mode = cmd->argv[1];
-  if (strcasecmp(mode, "ascii") != 0 &&
-      strcasecmp(mode, "binary") != 0) {
-    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
-  }
-
-  add_config_param_str(cmd->argv[0], 1, mode);
-  return PR_HANDLED(cmd);
-}
 
 MODRET set_deferwelcome(cmd_rec *cmd) {
   int bool = -1;
@@ -6785,7 +6757,6 @@ static conftable core_conftab[] = {
   { "DebugLevel",		set_debuglevel,			NULL },
   { "DefaultAddress",		set_defaultaddress,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
-  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "DeferWelcome",		set_deferwelcome,		NULL },
   { "Define",			set_define,			NULL },
   { "Deny",			set_allowdeny,			NULL },
