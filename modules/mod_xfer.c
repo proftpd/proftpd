@@ -2618,18 +2618,6 @@ MODRET xfer_type(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* Note that the client may NOT be authenticated at this point in time.
-   * If that is the case, set a flag so that the POST_CMD PASS handler does
-   * not overwrite the TYPE command's setting.
-   *
-   * Alternatively, we COULD bar/reject any TYPE commands before authentication.
-   * However, I think that doing so would interfere with many existing clients
-   * which assume that they can send TYPE before authenticating.
-   */
-  if (session.auth_mech == NULL) {
-    have_type = TRUE;
-  }
-
   type = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   type[0] = toupper(type[0]);
 
@@ -2656,6 +2644,18 @@ MODRET xfer_type(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, ENOSYS);
     errno = ENOSYS;
     return PR_ERROR(cmd);
+  }
+
+  /* Note that the client may NOT be authenticated at this point in time.
+   * If that is the case, set a flag so that the POST_CMD PASS handler does
+   * not overwrite the TYPE command's setting.
+   *
+   * Alternatively, we COULD bar/reject any TYPE commands before authentication.
+   * However, I think that doing so would interfere with many existing clients
+   * which assume that they can send TYPE before authenticating.
+   */
+  if (session.auth_mech == NULL) {
+    have_type = TRUE;
   }
 
   pr_response_add(R_200, _("Type set to %s"), (char *) cmd->argv[1]);
