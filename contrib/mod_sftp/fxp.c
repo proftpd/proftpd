@@ -1886,6 +1886,46 @@ static char *fxp_stroflags(pool *p, int flags) {
   return str;
 }
 
+static array_header *fxp_xattrs_read(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
+  register unsigned int i;
+  uint32_t extpair_count;
+  array_header *xattrs = NULL;
+
+  extpair_count = sftp_msg_read_int(p, buf, buflen);
+  pr_trace_msg(trace_channel, 15,
+    "protocol version %lu: read EXTENDED attribute: %lu extensions",
+    (unsigned long) fxp_session->client_version,
+    (unsigned long) extpair_count);
+
+  if (extpair_count > FXP_MAX_EXTENDED_ATTRIBUTES) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "received too many EXTENDED attributes (%lu > max %lu), "
+      "truncating to max", (unsigned long) extpair_count,
+      (unsigned long) FXP_MAX_EXTENDED_ATTRIBUTES);
+    extpair_count = FXP_MAX_EXTENDED_ATTRIBUTES;
+  }
+
+  xattrs = make_array(p, 1, sizeof(struct fxp_extpair *));
+
+  for (i = 0; i < extpair_count; i++) {
+    struct fxp_extpair *ext;
+
+    ext = fxp_msg_read_extpair(p, buf, buflen);
+    if (ext != NULL) {
+      pr_trace_msg(trace_channel, 15,
+        "protocol version %lu: read EXTENDED attribute: "
+        "extension '%s' (%lu bytes of data)",
+        (unsigned long) fxp_session->client_version, ext->ext_name,
+        (unsigned long) ext->ext_datalen);
+
+      *((struct fxp_extpair **) push_array(xattrs)) = ext;
+    }
+  }
+
+  return xattrs;
+}
+
 static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
     uint32_t *buflen, uint32_t *flags) {
   struct stat *st;
@@ -2223,48 +2263,17 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
         untranslated ? untranslated : "(nil)");
     }
 
-    /* Vendor-specific extensions */
     if (*flags & SSH2_FX_ATTR_EXTENDED) {
-/* XXX TODO XATTRS */
-/* Refactor this to a fxp_xattrs_read() function; we can then decide what
- * to do with the read-in extpairs, based on <sys/xattr.h> presence.
- */
-      register unsigned int i;
-      uint32_t extpair_count;
+      array_header *xattrs;
 
       /* Read the EXTENDED attribute. */
+      xattrs = fxp_xattrs_read(fxp->pool, buf, buflen);
 
-      extpair_count = sftp_msg_read_int(fxp->pool, buf, buflen);
-      pr_trace_msg(trace_channel, 15,
-        "protocol version %lu: read EXTENDED attribute: %lu extensions",
-        (unsigned long) fxp_session->client_version,
-        (unsigned long) extpair_count);
-
-      if (extpair_count > FXP_MAX_EXTENDED_ATTRIBUTES) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "received too many EXTENDED attributes (%lu > max %lu), "
-          "truncating to max", (unsigned long) extpair_count,
-          (unsigned long) FXP_MAX_EXTENDED_ATTRIBUTES);
-        extpair_count = FXP_MAX_EXTENDED_ATTRIBUTES;
-      }
-
-      for (i = 0; i < extpair_count; i++) {
-        struct fxp_extpair *ext;
-
-        ext = fxp_msg_read_extpair(fxp->pool, buf, buflen);
-        if (ext != NULL) {
-          pr_trace_msg(trace_channel, 15,
-            "protocol version %lu: read EXTENDED attribute: "
-            "extension '%s' (%lu bytes of data)",
-            (unsigned long) fxp_session->client_version, ext->ext_name,
-            (unsigned long) ext->ext_datalen);
-        }
-      }
-    }
 /* XXX TODO XATTRS */
 #if defined(HAVE_SYS_XATTR_H)
 #else
 #endif /* HAVE_SYS_XATTR_H */
+    }
   }
 
   return st;
@@ -2324,8 +2333,23 @@ static char fxp_get_file_type(mode_t mode) {
   return SSH2_FX_ATTR_FTYPE_UNKNOWN;
 }
 
+static uint32_t fxp_xattrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
+    const char *path) {
+  uint32_t len = 0;
+
+#ifdef HAVE_SYS_XATTR_H
+  /* XXX Use listxattr() to get attrs, write them to buf */
+  /* XXX TODO XATTRS */
+  /* Call listxattr() with NULL to get full size of attrs, write them out */
+  /* NOTE that the given buffer MAY NEED TO MUCH LARGER! */
+#endif /* HAVE_SYS_XATTR_H */
+
+  return len;
+}
+
 static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
-    struct stat *st, const char *user_owner, const char *group_owner) {
+    const char *path, struct stat *st, const char *user_owner,
+    const char *group_owner) {
   uint32_t flags, len = 0;
   mode_t perms;
 
@@ -2357,6 +2381,9 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
 
     if (fxp_session->client_version >= 6) {
       flags |= SSH2_FX_ATTR_LINK_COUNT;
+#ifdef HAVE_SYS_XATTR_H
+      flags |= SSH2_FX_ATTR_EXTENDED;
+#endif /* HAVE_SYS_XATTR_H */
     }
 
     file_type = fxp_get_file_type(st->st_mode);
@@ -2389,12 +2416,9 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
       len += sftp_msg_write_int(buf, buflen, st->st_nlink);
     }
 
-#ifdef HAVE_SYS_XATTR_H
-/* XXX TODO XATTRS */
-/* Call listxattr() with NULL to get full size of attrs, write them out */
-/* NOTE that the given buffer MAY NEED TO MUCH LARGER! */
-/* len += fxp_xattrs_write(...); */
-#endif /* HAVE_SYS_XATTR_H */
+    if (flags & SSH2_FX_ATTR_EXTENDED) {
+      len += fxp_xattrs_write(p, buf, buflen, path);
+    }
   }
 
   return len;
@@ -2601,7 +2625,7 @@ static uint32_t fxp_name_write(pool *p, unsigned char **buf, uint32_t *buflen,
     }
   }
 
-  len += fxp_attrs_write(p, buf, buflen, st, user_owner, group_owner);
+  len += fxp_attrs_write(p, buf, buflen, path, st, user_owner, group_owner);
   return len;
 }
 
@@ -7397,7 +7421,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     fake_group = session.group;
   }
 
-  fxp_attrs_write(fxp->pool, &buf, &buflen, &st, fake_user, fake_group);
+  fxp_attrs_write(fxp->pool, &buf, &buflen, fxh->fh->fh_path, &st, fake_user,
+    fake_group);
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
@@ -8123,7 +8148,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     fake_group = session.group;
   }
 
-  fxp_attrs_write(fxp->pool, &buf, &buflen, &st, fake_user, fake_group);
+  fxp_attrs_write(fxp->pool, &buf, &buflen, path, &st, fake_user, fake_group);
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
@@ -12269,7 +12294,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     fake_group = session.group;
   }
 
-  fxp_attrs_write(fxp->pool, &buf, &buflen, &st, fake_user, fake_group);
+  fxp_attrs_write(fxp->pool, &buf, &buflen, path, &st, fake_user, fake_group);
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
