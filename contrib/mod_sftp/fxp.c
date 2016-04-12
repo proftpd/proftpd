@@ -253,6 +253,15 @@ static size_t fxp_packet_data_allocsz = 0;
 #define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 16)
 #define FXP_RESPONSE_DATA_DEFAULT_SZ		512
 
+#ifdef HAVE_SYS_XATTR_H
+/* Allocate larger buffers for extended attributes */
+# define FXP_RESPONSE_NAME_DEFAULT_SZ		(1024 * 4)
+#endif /* HAVE_SYS_XATTR_H */
+
+#ifndef FXP_RESPONSE_NAME_DEFAULT_SZ
+# define FXP_RESPONSE_NAME_DEFAULT_SZ		FXP_RESPONSE_DATA_DEFAULT_SZ
+#endif
+
 #define FXP_MAX_PACKET_LEN			(1024 * 512)
 
 /* Maximum number of SFTP extended attributes we accept at one time. */
@@ -2216,7 +2225,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
 
     /* Vendor-specific extensions */
     if (*flags & SSH2_FX_ATTR_EXTENDED) {
-/* XXX TODO */
+/* XXX TODO XATTRS */
 /* Refactor this to a fxp_xattrs_read() function; we can then decide what
  * to do with the read-in extpairs, based on <sys/xattr.h> presence.
  */
@@ -2252,7 +2261,7 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
         }
       }
     }
-/* XXX TODO */
+/* XXX TODO XATTRS */
 #if defined(HAVE_SYS_XATTR_H)
 #else
 #endif /* HAVE_SYS_XATTR_H */
@@ -2381,8 +2390,9 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
     }
 
 #ifdef HAVE_SYS_XATTR_H
-/* XXX TODO */
+/* XXX TODO XATTRS */
 /* Call listxattr() with NULL to get full size of attrs, write them out */
+/* NOTE that the given buffer MAY NEED TO MUCH LARGER! */
 /* len += fxp_xattrs_write(...); */
 #endif /* HAVE_SYS_XATTR_H */
   }
@@ -7257,7 +7267,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: FSTAT %s", name);
   }
 
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
@@ -7979,7 +7989,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "LSTAT", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
 
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
@@ -10049,7 +10059,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
     /* How much non-path data do we expect to be associated with this entry? */
 #ifdef HAVE_SYS_XATTR_H
-    max_entry_metadata = 1024;
+    max_entry_metadata = (1024 * 4);
 #else
     max_entry_metadata = 256;
 #endif /* HAVE_SYS_XATTR_H */
@@ -10231,7 +10241,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "READLINK", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
 
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
@@ -10485,7 +10495,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     }
   }
 
-  buflen = bufsz = PR_TUNABLE_PATH_MAX + 32;
+  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
@@ -12105,7 +12115,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "STAT", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
 
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
