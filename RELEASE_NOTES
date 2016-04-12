@@ -11,11 +11,15 @@ ChangeLog files.
 
   + mod_sftp uses SHA256 for publickey fingerprints by default, rather than
     SHA1 or MD5.
+  + mod_sql_passwd supports Scrypt and Argon2 password hashing algorithms
+    when built using libsodium.
 
-
+  
   + New Configuration Directives:
 
     SFTPKeyLimits (Bug#4233)
+
+    SQLPasswordCost (Bug#4154)
 
 
   + Changed Configuration Directives:

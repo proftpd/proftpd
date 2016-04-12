@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +76,16 @@
  */
 #ifndef PR_TUNABLE_BUFFER_SIZE
 # define PR_TUNABLE_BUFFER_SIZE		1024
+#endif
+
+/* There is also a definable buffer size used specifically for parsing
+ * lines of text from the config file: PR_TUNABLE_PARSER_BUFFER_SIZE.
+ *
+ * You should manually set the PR_TUNABLE_PARSER_BUFFER_SIZE only if you
+ * have exceptionally long configuration lines.
+ */
+#ifndef PR_TUNABLE_PARSER_BUFFER_SIZE
+# define PR_TUNABLE_PARSER_BUFFER_SIZE	4096
 #endif
 
 /* There is also a definable buffer size used specifically for data

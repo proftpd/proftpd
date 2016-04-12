@@ -26,7 +26,21 @@
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/0.9"
+#ifdef PR_USE_SODIUM
+# include <sodium.h>
+# define SCRYPT_HASH_SIZE	32
+# define SCRYPT_SALT_SIZE	32
+/* Use/support Argon2, if libsodium is new enough. */
+# if SODIUM_LIBRARY_VERSION_MAJOR > 9 || \
+     (SODIUM_LIBRARY_VERSION_MAJOR == 9 && \
+      SODIUM_LIBRARY_VERSION_MINOR >= 2)
+#  define USE_SODIUM_ARGON2
+#  define ARGON2_HASH_SIZE	32
+#  define ARGON2_SALT_SIZE	16
+# endif
+#endif
+
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/1.0"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -44,6 +58,10 @@
 module sql_passwd_module;
 
 static int sql_passwd_engine = FALSE;
+
+#define SQL_PASSWD_COST_INTERACTIVE		1
+#define SQL_PASSWD_COST_SENSITIVE		2
+static unsigned int sql_passwd_cost = SQL_PASSWD_COST_INTERACTIVE;
 
 #define SQL_PASSWD_ENC_USE_BASE64		1
 #define SQL_PASSWD_ENC_USE_HEX_LC		2
@@ -69,7 +87,7 @@ static unsigned long sql_passwd_user_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
 
 static unsigned long sql_passwd_opts = 0UL;
 
-static unsigned int sql_passwd_nrounds = 1;
+static unsigned long sql_passwd_nrounds = 1;
 
 /* For PBKDF2 */
 static const EVP_MD *sql_passwd_pbkdf2_digest = NULL;
@@ -638,10 +656,10 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
    */
   if (sql_passwd_nrounds > 1) {
     register unsigned int i;
-    unsigned int nrounds = sql_passwd_nrounds - 1;
+    unsigned long nrounds = sql_passwd_nrounds - 1;
 
     pr_trace_msg(trace_channel, 9, 
-      "transforming the data for another %u %s", nrounds,
+      "transforming the data for another %lu %s", nrounds,
       nrounds != 1 ? "rounds" : "round");
 
     for (i = 0; i < nrounds; i++) {
@@ -699,7 +717,7 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   size_t pbkdf2_salt_len = 0;
   int res;
 
-  if (!sql_passwd_engine) {
+  if (sql_passwd_engine == FALSE) {
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -730,7 +748,7 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000003f
-  /* For digests other than SHA1, the necesary OpenSSL support
+  /* For digests other than SHA1, the necessary OpenSSL support
    * (via PKCS5_PBKDF2_HMAC) appeared in 1.0.0c.
    */
   res = PKCS5_PBKDF2_HMAC(plaintext, -1,
@@ -772,6 +790,197 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
+#ifdef PR_USE_SODIUM
+static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
+  int res;
+  unsigned char *hash = NULL;
+  unsigned int hash_len = 0;
+  const char *encodedtext;
+  const unsigned char *scrypt_salt;
+  size_t ops_limit, mem_limit, plaintext_len, scrypt_salt_len;
+
+  if (sql_passwd_engine == FALSE) {
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* scrypt requires a salt; if no salt is configured, it is an error. */
+  if (sql_passwd_file_salt == NULL &&
+      sql_passwd_user_salt == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": no salt configured (scrypt requires salt)");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Prefer user salts over global salts. */
+  if (sql_passwd_user_salt_len > 0) {
+    scrypt_salt = sql_passwd_user_salt;
+    scrypt_salt_len = sql_passwd_user_salt_len;
+
+  } else {
+    scrypt_salt = sql_passwd_file_salt;
+    scrypt_salt_len = sql_passwd_file_salt_len;
+  }
+
+  /* scrypt requires 32 bytes of salt */
+  if (scrypt_salt_len != SCRYPT_SALT_SIZE) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": scrypt requires %u bytes of salt (%lu bytes of salt configured)",
+      SCRYPT_SALT_SIZE, (unsigned long) scrypt_salt_len);
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  switch (sql_passwd_cost) {
+    case SQL_PASSWD_COST_INTERACTIVE:
+      ops_limit = crypto_pwhash_scryptsalsa208sha256_opslimit_interactive();
+      mem_limit = crypto_pwhash_scryptsalsa208sha256_memlimit_interactive();
+      break;
+
+    case SQL_PASSWD_COST_SENSITIVE:
+      ops_limit = crypto_pwhash_scryptsalsa208sha256_opslimit_sensitive();
+      mem_limit = crypto_pwhash_scryptsalsa208sha256_memlimit_sensitive();
+      break;
+
+    default:
+      sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+        ": unknown SQLPasswordCost value");
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  hash_len = SCRYPT_HASH_SIZE;
+  hash = palloc(cmd->tmp_pool, hash_len);
+
+  plaintext_len = strlen(plaintext);
+  res = crypto_pwhash_scryptsalsa208sha256(hash, hash_len, plaintext,
+    plaintext_len, scrypt_salt, ops_limit, mem_limit);
+  if (res < 0) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION ": scrypt error: %s",
+      strerror(errno));
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  encodedtext = sql_passwd_encode(cmd->tmp_pool, sql_passwd_encoding, hash,
+    hash_len);
+  if (encodedtext == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": unsupported SQLPasswordEncoding configured");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  if (strcmp((char *) encodedtext, ciphertext) == 0) {
+    return PR_HANDLED(cmd);
+
+  } else {
+    pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
+      encodedtext);
+
+    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
+      ciphertext, encodedtext);
+  }
+
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+}
+
+static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
+# if defined(USE_SODIUM_ARGON2)
+  int argon2_algo, res;
+  unsigned char *hash = NULL;
+  unsigned int hash_len = 0;
+  const char *encodedtext;
+  const unsigned char *argon2_salt;
+  size_t ops_limit, mem_limit, plaintext_len, argon2_salt_len;
+
+  if (sql_passwd_engine == FALSE) {
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* argon2 requires a salt; if no salt is configured, it is an error. */
+  if (sql_passwd_file_salt == NULL &&
+      sql_passwd_user_salt == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": no salt configured (argon2 requires salt)");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Prefer user salts over global salts. */
+  if (sql_passwd_user_salt_len > 0) {
+    argon2_salt = sql_passwd_user_salt;
+    argon2_salt_len = sql_passwd_user_salt_len;
+
+  } else {
+    argon2_salt = sql_passwd_file_salt;
+    argon2_salt_len = sql_passwd_file_salt_len;
+  }
+
+  /* argon2 requires 16 bytes of salt */
+  if (argon2_salt_len != ARGON2_SALT_SIZE) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": argon2 requires %u bytes of salt (%lu bytes of salt configured)",
+      ARGON2_SALT_SIZE, (unsigned long) argon2_salt_len);
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  argon2_algo = crypto_pwhash_argon2i_alg_argon2i13();
+
+  switch (sql_passwd_cost) {
+    case SQL_PASSWD_COST_INTERACTIVE:
+      ops_limit = crypto_pwhash_argon2i_opslimit_interactive();
+      mem_limit = crypto_pwhash_argon2i_memlimit_interactive();
+      break;
+
+    case SQL_PASSWD_COST_SENSITIVE:
+      ops_limit = crypto_pwhash_argon2i_opslimit_sensitive();
+      mem_limit = crypto_pwhash_argon2i_memlimit_sensitive();
+      break;
+
+    default:
+      sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+        ": unknown SQLPasswordCost value");
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  hash_len = ARGON2_HASH_SIZE;
+  hash = palloc(cmd->tmp_pool, hash_len);
+
+  plaintext_len = strlen(plaintext);
+  res = crypto_pwhash_argon2i(hash, hash_len, plaintext, plaintext_len,
+    argon2_salt, ops_limit, mem_limit, argon2_algo);
+  if (res < 0) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION ": argon2 error: %s",
+      strerror(errno));
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  encodedtext = sql_passwd_encode(cmd->tmp_pool, sql_passwd_encoding, hash,
+    hash_len);
+  if (encodedtext == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": unsupported SQLPasswordEncoding configured");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  if (strcmp((char *) encodedtext, ciphertext) == 0) {
+    return PR_HANDLED(cmd);
+
+  } else {
+    pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
+      encodedtext);
+
+    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
+      ciphertext, encodedtext);
+  }
+
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+# else
+  sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+    ": argon2 not supported on this system (requires libsodium-1.0.9 or "
+    "later)");
+  return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+# endif /* USE_SODIUM_ARGON2 */
+}
+#endif /* PR_USE_SODIUM */
+
 /* Event handlers
  */
 
@@ -783,6 +992,10 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
     sql_unregister_authtype("sha256");
     sql_unregister_authtype("sha512");
     sql_unregister_authtype("pbkdf2");
+# ifdef PR_USE_SODIUM
+    sql_unregister_authtype("argon2");
+    sql_unregister_authtype("scrypt");
+# endif /* PR_USE_SODIUM */
 
     pr_event_unregister(&sql_passwd_module, NULL, NULL);
   }
@@ -795,13 +1008,13 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
 MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
   config_rec *c;
 
-  if (!sql_passwd_engine) {
+  if (sql_passwd_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordRounds", FALSE);
   if (c != NULL) {
-    sql_passwd_nrounds = *((unsigned int *) c->argv[0]);
+    sql_passwd_nrounds = *((unsigned long *) c->argv[0]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordPBKDF2", FALSE);
@@ -1009,6 +1222,32 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
 /* Configuration handlers
  */
 
+/* usage: SQLPasswordCost "interactive"|"sensitive" */
+MODRET set_sqlpasswdcost(cmd_rec *cmd) {
+  unsigned int cost;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "interactive") == 0) {
+    cost = SQL_PASSWD_COST_INTERACTIVE;
+
+  } else if (strcasecmp(cmd->argv[1], "sensitive") == 0) {
+    cost = SQL_PASSWD_COST_SENSITIVE;
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown/unsupported cost: '",
+      cmd->argv[1], "'", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = cost;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SQLPasswordEncoding "base64"|"hex"|"HEX" */
 MODRET set_sqlpasswdencoding(cmd_rec *cmd) {
   unsigned int encoding;
@@ -1164,12 +1403,12 @@ MODRET set_sqlpasswdpbkdf2(cmd_rec *cmd) {
 /* usage: SQLPasswordRounds count */
 MODRET set_sqlpasswdrounds(cmd_rec *cmd) {
   config_rec *c;
-  int nrounds;
+  long nrounds;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  nrounds = atoi(cmd->argv[1]);
+  nrounds = atol(cmd->argv[1]);
   if (nrounds < 1) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "insufficient number of rounds (",
       cmd->argv[1], ")", NULL));
@@ -1177,7 +1416,7 @@ MODRET set_sqlpasswdrounds(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = nrounds;
+  *((unsigned long *) c->argv[0]) = nrounds;
 
   return PR_HANDLED(cmd);
 }
@@ -1306,6 +1545,20 @@ static int sql_passwd_init(void) {
     sql_passwd_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
 
+#ifdef PR_USE_SODIUM
+  if (sodium_init() < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_SQL_PASSWD_VERSION
+      ": error initializing libsodium");
+
+  } else {
+    const char *sodium_version;
+
+    sodium_version = sodium_version_string();
+    pr_log_debug(DEBUG2, MOD_SQL_PASSWD_VERSION ": using libsodium-%s",
+      sodium_version);
+  }
+#endif /* PR_USE_SODIUM */
+
   if (sql_register_authtype("md5", sql_passwd_md5) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
       ": unable to register 'md5' SQLAuthType handler: %s", strerror(errno));
@@ -1351,6 +1604,26 @@ static int sql_passwd_init(void) {
       ": registered 'pbkdf2' SQLAuthType handler");
   }
 
+#ifdef PR_USE_SODIUM
+  if (sql_register_authtype("scrypt", sql_passwd_scrypt) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
+      ": unable to register 'scrypt' SQLAuthType handler: %s", strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'scrypt' SQLAuthType handler");
+  }
+
+  if (sql_register_authtype("argon2", sql_passwd_argon2) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
+      ": unable to register 'argon2' SQLAuthType handler: %s", strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'argon2' SQLAuthType handler");
+  }
+#endif /* PR_USE_SODIUM */
+
   return 0;
 }
 
@@ -1367,6 +1640,11 @@ static int sql_passwd_sess_init(void) {
 
   if (sql_passwd_engine == FALSE) {
     return 0;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordCost", FALSE);
+  if (c != NULL) {
+    sql_passwd_cost = *((unsigned int *) c->argv[0]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordEncoding", FALSE);
@@ -1508,6 +1786,7 @@ static int sql_passwd_sess_init(void) {
  */
 
 static conftable sql_passwd_conftab[] = {
+  { "SQLPasswordCost",		set_sqlpasswdcost,		NULL },
   { "SQLPasswordEncoding",	set_sqlpasswdencoding,		NULL },
   { "SQLPasswordEngine",	set_sqlpasswdengine,		NULL },
   { "SQLPasswordOptions",	set_sqlpasswdoptions,		NULL },
@@ -1555,4 +1834,3 @@ module sql_passwd_module = {
   /* Module version */
   MOD_SQL_PASSWD_VERSION
 };
-

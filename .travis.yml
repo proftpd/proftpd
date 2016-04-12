@@ -6,6 +6,10 @@ compiler:
   - clang
 
 install:
+  # Need to add other repos for e.g. libsodium
+  - sudo add-apt-repository -y ppa:chris-lea/libsodium
+  - echo "deb http://ppa.launchpad.net/chris-lea/libsodium/ubuntu trusty main" | sudo tee -a /etc/apt/sources.list > /dev/null
+  - echo "deb-src http://ppa.launchpad.net/chris-lea/libsodium/ubuntu trusty main" | sudo tee -a /etc/apt/sources.list > /dev/null
   - sudo apt-get update -qq
   # for unit tests
   - sudo apt-get install -y check
@@ -27,6 +31,8 @@ install:
   - sudo apt-get install -y libpq-dev
   # for OpenSSL support
   - sudo apt-get install -y libssl-dev
+  # for Sodium support
+  - sudo apt-get install -y libsodium-dev
   # for mod_sql_sqlite
   - sudo apt-get install -y libsqlite3-dev sqlite3
   # for PCRE support

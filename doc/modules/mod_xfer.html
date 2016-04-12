@@ -20,6 +20,7 @@ file transfers.
   <li><a href="#AllowOverwrite">AllowOverwrite</a>
   <li><a href="#AllowRetrieveRestart">AllowRetrieveRestart</a>
   <li><a href="#AllowStoreRestart">AllowStoreRestart</a>
+  <li><a href="#DefaultTransferMode">DefaultTransferMode</a>
   <li><a href="#DeleteAbortedStores">DeleteAbortedStores</a>
   <li><a href="#DisplayFileTransfer">DisplayFileTransfer</a>
   <li><a href="#HiddenStores">HiddenStores</a>
@@ -95,6 +96,23 @@ code to the client.
 See also: <a href="#AllowRetrieveRestart"><code>AllowRetrieveRestart</code></a>,
 <a href="#DeleteAbortedStores"><code>DeleteAbortedStore</code></a>,
 <a href="#HiddenStores"><code>HiddenStores</code></a>
+
+<p>
+<hr>
+<h2><a name="DefaultTransferMode">DefaultTransferMode</a></h2>
+<strong>Syntax:</strong> DefaultTransferMode <em>ascii|binary</em><br>
+<strong>Default:</strong> <code>DefaultTransferMode ascii</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_xfer<br>
+<strong>Compatibility:</strong> 1.2.0pre9 and later
+
+<p>
+The <code>DefaultTransferMode</code> directive sets the <em>default</em>
+transfer mode used for data transfers.  Per RFC 959 requirements, the default
+transfer mode is "ascii", which means that carriage return (<code>CR</code>)
+and line feed (<code>LF</code) translation will be performed: <code>CRLF</code>
+sequences in <em>uploaded</em> data will be translated to <code>LF</code>,
+and <code>LF</code> translated to <code>CRLF</code> in <em>downloaded</em> data.
 
 <p>
 <hr>
@@ -585,7 +603,7 @@ only, and should be removed from any production configuration.
 <hr><br>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2015 The ProFTPD Project<br>
+&copy; Copyright 2000-2016 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 

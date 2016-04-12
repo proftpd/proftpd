@@ -895,7 +895,10 @@ START_TEST (netaddr_get_dnsstr_list_test) {
 
   res = pr_netaddr_get_dnsstr_list(p, addr);
   fail_unless(res != NULL, "Failed to get DNS list: %s", strerror(errno));
-  fail_unless(res->nelts > 0, "Expected >0 elements, got %d", res->nelts);
+
+  /* Ideally we would check that res->nelts > 0, BUT this turns out to
+   * a fragile test condition, dependent on DNS vagaries.
+   */
 
   pr_netaddr_set_reverse_dns(reverse_dns);
 }

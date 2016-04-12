@@ -2022,6 +2022,7 @@ END_TEST
 START_TEST (fsio_statcache_clear_cache_test) {
   int expected, res;
   struct stat st;
+  char *cwd;
 
   mark_point();
   pr_fs_clear_cache();
@@ -2049,6 +2050,27 @@ START_TEST (fsio_statcache_clear_cache_test) {
   res = pr_fs_clear_cache2("/tmp");
   expected = 2;
   fail_unless(res == expected, "Expected %d, got %d", expected, res);
+
+  res = pr_fsio_stat("/tmp", &st);
+  fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
+
+  res = pr_fsio_lstat("/tmp", &st);
+  fail_unless(res == 0, "Failed to lstat '/tmp': %s", strerror(errno));
+
+  cwd = getcwd(NULL, 0);
+  fail_unless(cwd != NULL, "Failed to get cwd: %s", strerror(errno));
+
+  res = pr_fs_setcwd("/");
+  fail_unless(res == 0, "Failed to set cwd to '/': %s", strerror(errno));
+
+  res = pr_fs_clear_cache2("tmp");
+  expected = 2;
+  fail_unless(res == expected, "Expected %d, got %d", expected, res);
+
+  res = pr_fs_setcwd(cwd);
+  fail_unless(res == 0, "Failed to set cwd to '%s': %s", cwd, strerror(errno)); 
+
+  free(cwd);
 }
 END_TEST
 

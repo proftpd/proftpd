@@ -838,6 +838,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     struct stat st;
     struct scp_path *parent_sp;
 
+    pr_fs_clear_cache2(sp->filename);
     if (pr_fsio_stat(sp->filename, &st) < 0) {
       int xerrno = errno;
 
@@ -849,6 +850,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
          * recursive directory uploads via SCP?
          */
 
+        pr_fs_clear_cache2(sp->filename);
         if (pr_fsio_smkdir(p, sp->filename, 0777, (uid_t) -1, (gid_t) -1) < 0) {
           xerrno = errno;
 
@@ -934,6 +936,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
+  pr_fs_clear_cache2(sp->best_path);
   if (exists2(p, sp->best_path)) {
     if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
         pstrdup(cmd->pool, "true"), 0) < 0) {
@@ -1265,6 +1268,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
   if (!sp->have_mode) {
     struct stat st;
 
+    pr_fs_clear_cache2(sp->path);
     res = pr_fsio_stat(sp->path, &st);
     if (res == 0) {
       sp->st_mode = st.st_mode;
@@ -1298,6 +1302,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
       if (ptr != NULL) {
         *ptr = '\0';
 
+        pr_fs_clear_cache2(sp->path);
         res = pr_fsio_stat(sp->path, &st);
         *ptr = '/';
 

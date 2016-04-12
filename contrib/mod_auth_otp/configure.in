@@ -1,5 +1,5 @@
 dnl ProFTPD - mod_auth_otp
-dnl Copyright (c) 2015 TJ Saunders <tj@castaglia.org>
+dnl Copyright (c) 2015-2016 TJ Saunders <tj@castaglia.org>
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -33,6 +33,23 @@ AC_PROG_MAKE_SET
 AC_HEADER_STDC
 
 AC_CHECK_HEADERS(stdlib.h unistd.h limits.h fcntl.h)
+
+UTILS_LIBS="-lsupp -lcrypto"
+
+dnl Need to support/handle the --enable-devel option, to see if coverage
+dnl is being used
+AC_ARG_ENABLE(devel,
+  [AC_HELP_STRING(
+    [--enable-devel],
+    [enable developer-only code (default=no)])
+  ],
+  [
+    if test x"$enableval" != xno ; then
+      if test `echo $enableval | grep -c coverage` = "1" ; then
+        UTILS_LIBS="--coverage $UTILS_LIBS"
+      fi
+    fi
+  ])
 
 dnl Need to support/handle the --with-includes and --with-libraries options
 AC_ARG_WITH(includes,
@@ -133,6 +150,7 @@ AC_TRY_LINK(
   ], [
     AC_MSG_RESULT(yes)
     LIBS="$saved_libs -ldl"
+    UTILS_LIBS="$UTILS_LIBS -ldl"
   ], [
     AC_MSG_RESULT(no)
     LIBS="$saved_libs"
@@ -158,6 +176,7 @@ AC_TRY_LINK(
   ], [
     AC_MSG_RESULT(yes)
     LIBS="$saved_libs -lz"
+    UTILS_LIBS="$UTILS_LIBS -lz"
   ], [
     AC_MSG_RESULT(no)
     LIBS="$saved_libs"
@@ -220,6 +239,7 @@ LIBDIRS="$ac_build_addl_libdirs"
 AC_SUBST(INCLUDES)
 AC_SUBST(LDFLAGS)
 AC_SUBST(LIBDIRS)
+AC_SUBST(UTILS_LIBS)
 
 AC_CONFIG_HEADER(mod_auth_otp.h)
 AC_OUTPUT(

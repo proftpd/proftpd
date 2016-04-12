@@ -264,7 +264,7 @@ hostbased authentication properly.
 RFC4716 format (see the <a href="#UsageRFC4716Format">Usage</a> section).
 This is done using OpenSSH's <code>ssh-keygen</code> tool:
 <pre>
-  # ssh-keygen -e -f /path/to/file
+  $ ssh-keygen -e -f /path/to/file
 </pre>
 The output from this command can then be added to the
 <code>SFTPAuthorizedHostKeys</code> file.
@@ -296,7 +296,7 @@ Example:
 RFC4716 format (see the <a href="#UsageRFC4716Format">Usage</a> section).
 This is done using OpenSSH's <code>ssh-keygen</code> tool:
 <pre>
-  # ssh-keygen -e -f ~/.ssh/id_rsa.pub
+  $ ssh-keygen -e -f ~/.ssh/id_rsa.pub
 </pre>
 The output from this command can then be added to the
 <code>SFTPAuthorizedUserKeys</code> file.
@@ -1488,7 +1488,7 @@ This means that if you wish to use your OpenSSH public keys with the
 format to the RFC4716 format.  Fortunately, this is supported by
 OpenSSH's <code>ssh-keygen</code> utility, <i>e.g.</i>:
 <pre>
-  # ssh-keygen -e -f ~/.ssh/id_rsa.pub
+  $ ssh-keygen -e -f ~/.ssh/id_rsa.pub
 </pre>
 The output from this command can be added to the
 <code>SFTPAuthorizedUserKeys</code> used by <code>mod_sftp</code>.
@@ -1948,6 +1948,43 @@ filed for this issue.
 Chances are that the offending line in the RFC4716 key is a "Comment: " header
 that is too long.  Simply delete that "Comment: " line; the
 <code>mod_sftp</code> ignores this header.
+
+<p><a name="SFTPAuthorizedKeyFormat">
+<font color=red>Question</font>: I generated an SSH key using
+<code>ssh-keygen</code>, then added it to my <code>authorized_keys</code> file
+using:
+<pre>
+  $ cat id_rsa.pub >> authorized_keys
+</pre>
+But logging into <code>mod_sftp</code> still prompts me for my password.
+Why?<br>
+<font color=blue>Answer</font>:  The most likely culprit is that the format
+of your <code>authorized_keys</code> file is not what <code>mod_sftp</code>
+expects.
+
+Per the <a href="#SFTPAuthorizedUserKeys"><code>SFTPAuthorizedUserKeys</code></a> documentation, <code>mod_sftp</code> expects that the keys be in RFC 4716
+format.  If your <code>authorized_keys</code> file contains data that looks
+like this:
+<pre>
+  ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDN1tCK5uHUGl....
+</pre>
+rather than looking like this:
+<pre>
+  ---- BEGIN SSH2 PUBLIC KEY ----
+  AAAAB3NzaC1yc2EAAAADAQABAAABAQDN1tCK5uHUGlpxye+KEmB0EIr9zqvMmgyNdWvJBW
+  ...
+  PZ1+hOi5QECWQYD0BpiWvj
+  ---- END SSH2 PUBLIC KEY ----
+</pre>
+Then the format of some of the keys in your <code>authorized_keys</code> file
+is wrong.  Make sure that you convert your OpenSSH-generated keys to RFC 4716
+format using <code>ssh-keygen</code>, <em>before</em> adding it to your
+<code>authorized_keys</code> file, using something like this:
+<pre>
+  $ ssh-keygen -e -f ~/.ssh/id_rsa.pub >> authorized_keys
+</pre>
+See the <a href="#UsageRFC4716Format">Usage</a> documentation for more
+information.
 
 <p><a name="SFTPPCBCModeAttacks">
 <font color=red>Question</font>: Is it true that using CBC mode ciphers in

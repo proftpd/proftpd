@@ -1788,7 +1788,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
   }
 
   if (flags & SSH2_FX_ATTR_PERMISSIONS) {
-    snprintf(ptr, bufsz - buflen, "UNIX.mode=0%o;",
+    snprintf(ptr, bufsz - buflen, "UNIX.mode=%04o;",
       (unsigned int) st->st_mode & 07777);
     buflen = strlen(buf);
     ptr = buf + buflen;
@@ -8651,6 +8651,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
 
     /* Make sure the requested path exists. */
+    pr_fs_clear_cache2(path);
     if ((flags & SSH2_FXF_OPEN_EXISTING) &&
         !exists2(fxp->pool, path)) {
       uint32_t status_code;
@@ -8862,6 +8863,10 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       }
     }
 
+    if (hiddenstore_path != NULL) {
+      pr_fs_clear_cache2(hiddenstore_path);
+    }
+
     file_existed = exists2(fxp->pool,
       hiddenstore_path ? hiddenstore_path : path);
 
@@ -8895,6 +8900,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
   }
 
+  pr_fs_clear_cache2(path);
   if (exists2(fxp->pool, path)) {
     /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
      * states that any attributes in a OPEN request are ignored if the
@@ -10683,8 +10689,6 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
   } else {
-    pr_fs_clear_cache2(path);
-
    /* draft-ietf-secsh-filexfer-13 says:
     *
     *  SSH_FXP_REALPATH_NO_CHECK:
@@ -10698,6 +10702,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     *   stat(2) the file, and return any error.
     */
 
+    pr_fs_clear_cache2(path);
     switch (realpath_flags) {
       case SSH2_FXRP_NO_CHECK:
         res = pr_fsio_lstat(path, &st);

@@ -52,6 +52,7 @@ static pr_fh_t *stor_fh = NULL;
 static pr_fh_t *displayfilexfer_fh = NULL;
 
 static unsigned char have_rfc2228_data = FALSE;
+static unsigned char have_type = FALSE;
 static unsigned char have_zmode = FALSE;
 static unsigned char use_sendfile = TRUE;
 static off_t use_sendfile_len = 0;
@@ -2645,6 +2646,18 @@ MODRET xfer_type(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* Note that the client may NOT be authenticated at this point in time.
+   * If that is the case, set a flag so that the POST_CMD PASS handler does
+   * not overwrite the TYPE command's setting.
+   *
+   * Alternatively, we COULD bar/reject any TYPE commands before authentication.
+   * However, I think that doing so would interfere with many existing clients
+   * which assume that they can send TYPE before authenticating.
+   */
+  if (session.auth_mech == NULL) {
+    have_type = TRUE;
+  }
+
   pr_response_add(R_200, _("Type set to %s"), (char *) cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
@@ -2939,6 +2952,23 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
 MODRET xfer_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
+  /* Default transfer mode is ASCII, per RFC 959, Section 3.1.1.1.  Unless
+   * the client has already sent a TYPE command.
+   */
+  if (have_type == FALSE) {
+    session.sf_flags |= SF_ASCII;
+    c = find_config(main_server->conf, CONF_PARAM, "DefaultTransferMode",
+      FALSE);
+    if (c != NULL) {
+      char *default_transfer_mode;
+
+      default_transfer_mode = c->argv[0];
+      if (strcasecmp(default_transfer_mode, "binary") == 0) {
+        session.sf_flags &= (SF_ALL^SF_ASCII);
+      }
+    }
+  }
+
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutNoTransfer", FALSE);
   if (c != NULL) {
     int timeout = *((int *) c->argv[0]);
@@ -3035,6 +3065,23 @@ MODRET set_allowrestart(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
+  return PR_HANDLED(cmd);
+}
+
+/* usage: DefaultTransferMode ascii|binary */
+MODRET set_defaulttransfermode(cmd_rec *cmd) {
+  char *xfer_mode;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  xfer_mode = cmd->argv[1];
+  if (strcasecmp(xfer_mode, "ascii") != 0 &&
+      strcasecmp(xfer_mode, "binary") != 0) {
+    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, xfer_mode);
   return PR_HANDLED(cmd);
 }
 
@@ -3859,6 +3906,8 @@ static int xfer_sess_init(void) {
   pr_event_register(&xfer_module, "core.timeout-stalled",
     xfer_timeout_stalled_ev, NULL);
 
+  have_type = FALSE;
+
   /* Look for a DisplayFileTransfer file which has an absolute path.  If we
    * find one, open a filehandle, such that that file can be displayed
    * even if the session is chrooted.  DisplayFileTransfer files with
@@ -3916,6 +3965,7 @@ static conftable xfer_conftab[] = {
   { "AllowOverwrite",		set_allowoverwrite,		NULL },
   { "AllowRetrieveRestart",	set_allowrestart,		NULL },
   { "AllowStoreRestart",	set_allowrestart,		NULL },
+  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
   { "DisplayFileTransfer",	set_displayfiletransfer,	NULL },
   { "HiddenStores",		set_hiddenstores,		NULL },
