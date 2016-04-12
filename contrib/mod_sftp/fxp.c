@@ -306,79 +306,6 @@ static struct fxp_handle *fxp_handle_get(const char *);
 static struct fxp_packet *fxp_packet_create(pool *, uint32_t);
 static int fxp_packet_write(struct fxp_packet *);
 
-/* XXX These two namelist-related functions are the same as the ones
- * in kex.c; the code should be refactored out into a misc.c or utils.c
- * or somesuch.
- */
-
-static array_header *fxp_parse_namelist(pool *p, const char *names) {
-  char *ptr;
-  array_header *list;
-  size_t names_len;
-
-  list = make_array(p, 0, sizeof(const char *));
-  names_len = strlen(names);
-
-  ptr = memchr(names, ',', names_len);
-  while (ptr) {
-    char *elt;
-    size_t elt_len;
-
-    pr_signals_handle();
-
-    elt_len = ptr - names;
-
-    elt = palloc(p, elt_len + 1);
-    memcpy(elt, names, elt_len);
-    elt[elt_len] = '\0';
-
-    *((const char **) push_array(list)) = elt;
-    names = ++ptr;
-    names_len -= elt_len;
-
-    ptr = memchr(names, ',', names_len);
-  }
-  *((const char **) push_array(list)) = pstrdup(p, names);
-
-  return list;
-}
-
-static const char *fxp_get_shared_name(pool *p, const char *c2s_names,
-    const char *s2c_names) {
-  register unsigned int i;
-  const char *name = NULL, **client_names, **server_names;
-  pool *tmp_pool;
-  array_header *client_list, *server_list;
-
-  tmp_pool = make_sub_pool(p);
-  pr_pool_tag(tmp_pool, "SFTP shared name pool");
-
-  client_list = fxp_parse_namelist(tmp_pool, c2s_names);
-  client_names = (const char **) client_list->elts;
-
-  server_list = fxp_parse_namelist(tmp_pool, s2c_names);
-  server_names = (const char **) server_list->elts;
-
-  for (i = 0; i < client_list->nelts; i++) {
-    register unsigned int j;
-
-    if (name)
-      break;
-
-    for (j = 0; j < server_list->nelts; j++) {
-      if (strcmp(client_names[i], server_names[j]) == 0) {
-        name = client_names[i];
-        break;
-      }
-    }
-  }
-
-  name = pstrdup(p, name);
-  destroy_pool(tmp_pool);
-
-  return name;
-}
-
 static struct fxp_session *fxp_get_session(uint32_t channel_id) {
   struct fxp_session *sess;
 
@@ -3970,7 +3897,8 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     NULL);
 #endif
 
-  digest_name = fxp_get_shared_name(fxp->pool, digest_list, supported_digests);
+  digest_name = sftp_misc_namelist_shared(fxp->pool, digest_list,
+    supported_digests);
   if (digest_name == NULL) {
     xerrno = EINVAL;
 
