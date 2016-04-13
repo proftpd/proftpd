@@ -56,6 +56,14 @@
 #define FSIO_FILE_CHOWN		(1 << 14)
 #define FSIO_FILE_ACCESS	(1 << 15)
 #define FSIO_FILE_UTIMES	(1 << 23)
+#define FSIO_FILE_GETXATTR	(1 << 24)
+#define FSIO_FILE_LGETXATTR	(1 << 25)
+#define FSIO_FILE_LISTXATTR	(1 << 26)
+#define FSIO_FILE_LLISTXATTR	(1 << 27)
+#define FSIO_FILE_REMOVEXATTR	(1 << 28)
+#define FSIO_FILE_LREMOVEXATTR	(1 << 29)
+#define FSIO_FILE_SETXATTR	(1 << 30)
+#define FSIO_FILE_LSETXATTR	(1 << 31)
 
 /* Macro that defines the most common file ops */
 #define FSIO_FILE_COMMON	(FSIO_FILE_OPEN|FSIO_FILE_READ|FSIO_FILE_WRITE|\
@@ -128,6 +136,20 @@ struct fs_rec {
   int (*utimes)(pr_fs_t *, const char *, struct timeval *);
   int (*futimes)(pr_fh_t *, int, struct timeval *);
   int (*fsync)(pr_fh_t *, int);
+
+  /* Extended attribute support */
+  ssize_t (*getxattr)(pr_fs_t *, const char *, const char *, void *, size_t);
+  ssize_t (*lgetxattr)(pr_fs_t *, const char *, const char *, void *, size_t);
+  ssize_t (*fgetxattr)(pr_fh_t *, int, const char *, void *, size_t);
+  ssize_t (*listxattr)(pr_fs_t *, const char *, char *, size_t);
+  ssize_t (*llistxattr)(pr_fs_t *, const char *, char *, size_t);
+  ssize_t (*flistxattr)(pr_fh_t *, int, char *, size_t);
+  int (*removexattr)(pr_fs_t *, const char *, const char *);
+  int (*lremovexattr)(pr_fs_t *, const char *, const char *);
+  int (*fremovexattr)(pr_fh_t *, int, const char *);
+  int (*setxattr)(pr_fs_t *, const char *, const char *, void *, size_t, int);
+  int (*lsetxattr)(pr_fs_t *, const char *, const char *, void *, size_t, int);
+  int (*fsetxattr)(pr_fh_t *, int, const char *, void *, size_t, int);
 
   /* For actual operations on the directory (or subdirs)
    * we cast the return from opendir to DIR* in src/fs.c, so
@@ -276,6 +298,24 @@ int pr_fsio_utimes(const char *, struct timeval *);
 int pr_fsio_futimes(pr_fh_t *, struct timeval *);
 int pr_fsio_fsync(pr_fh_t *fh);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
+
+/* Extended attribute support */
+ssize_t pr_fsio_getxattr(const char *, const char *, void *, size_t);
+ssize_t pr_fsio_lgetxattr(const char *, const char *, void *, size_t);
+ssize_t pr_fsio_fgetxattr(pr_fh_t *, const char *, void *, size_t);
+ssize_t pr_fsio_listxattr(const char *, char *, size_t);
+ssize_t pr_fsio_llistxattr(const char *, char *, size_t);
+ssize_t pr_fsio_flistxattr(pr_fh_t *, char *, size_t);
+int pr_fsio_removexattr(const char *, const char *);
+int pr_fsio_lremovexattr(const char *, const char *);
+int pr_fsio_fremovexattr(pr_fh_t *, const char *);
+int pr_fsio_setxattr(const char *, const char *, void *, size_t, int);
+int pr_fsio_lsetxattr(const char *, const char *, void *, size_t, int);
+int pr_fsio_fsetxattr(pr_fh_t *, const char *, void *, size_t, int);
+
+/* setxattr flags */
+#define PR_FSIO_XATTR_FL_CREATE		0x001
+#define PR_FSIO_XATTR_FL_REPLACE	0x002
 
 /* Set a flag determining whether we guard against write operations in
  * certain sensitive directories while we are chrooted, e.g. "Roaring Beast"

@@ -1797,6 +1797,436 @@ START_TEST (fsio_sys_fsync_test) {
 }
 END_TEST
 
+START_TEST (fsio_sys_getxattr_test) {
+  ssize_t res;
+  const char *path, *name;
+
+  res = pr_fsio_getxattr(NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_getxattr(path, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  res = pr_fsio_getxattr(path, name, NULL, 0);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
+  fail_unless(errno == ENOENT || errno == ENOATTR,
+    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", ENOENT, ENOATTR,
+    strerror(errno), errno);
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_lgetxattr_test) {
+  ssize_t res;
+  const char *path, *name;
+
+  res = pr_fsio_lgetxattr(NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_lgetxattr(path, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null xattr name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  res = pr_fsio_lgetxattr(path, name, NULL, 0);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
+  fail_unless(errno == ENOENT || errno == ENOATTR,
+    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", ENOENT, ENOATTR,
+    strerror(errno), errno);
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_fgetxattr_test) {
+  ssize_t res;
+  pr_fh_t *fh;
+  const char *name;
+
+  res = pr_fsio_fgetxattr(NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_fgetxattr(fh, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null xattr name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  res = pr_fsio_fgetxattr(fh, name, NULL, 0);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
+  fail_unless(errno == ENOENT || errno == ENOATTR,
+    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", ENOENT, ENOATTR,
+    strerror(errno), errno);
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+
+  pr_fsio_close(fh);
+  (void) unlink(fsio_test_path);
+}
+END_TEST
+
+START_TEST (fsio_sys_listxattr_test) {
+  ssize_t res;
+  const char *path;
+  pr_fh_t *fh = NULL;
+
+  res = pr_fsio_listxattr(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_listxattr(path, NULL, 0);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexistent path '%s'", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+  pr_fsio_close(fh);
+
+  res = pr_fsio_listxattr(path, NULL, 0);
+  fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
+
+  pr_fsio_close(fh);
+  (void) unlink(fsio_test_path);
+#else
+  (void) fh;
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_llistxattr_test) {
+  ssize_t res;
+  const char *path;
+  pr_fh_t *fh = NULL;
+
+  res = pr_fsio_llistxattr(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_llistxattr(path, NULL, 0);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexistent path '%s'", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+  pr_fsio_close(fh);
+
+  res = pr_fsio_listxattr(path, NULL, 0);
+  fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
+
+  pr_fsio_close(fh);
+  (void) unlink(fsio_test_path);
+#else
+  (void) fh;
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_flistxattr_test) {
+  ssize_t res;
+  pr_fh_t *fh;
+
+  res = pr_fsio_flistxattr(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_flistxattr(fh, NULL, 0);
+#ifdef PR_USE_XATTR
+  fail_if(res < 0, "Failed to list xattrs for '%s': %s", fsio_test_path,
+    strerror(errno));
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+
+  pr_fsio_close(fh);
+  (void) unlink(fsio_test_path);
+}
+END_TEST
+
+START_TEST (fsio_sys_removexattr_test) {
+  int res;
+  const char *path, *name;
+
+  res = pr_fsio_removexattr(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_removexattr(path, NULL);
+  fail_unless(res < 0, "Failed to handle null attribute name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  res = pr_fsio_removexattr(path, name);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
+  fail_unless(errno == ENOENT || errno == ENOATTR,
+    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", EINVAL, ENOATTR,
+    strerror(errno), errno);
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_lremovexattr_test) {
+  int res;
+  const char *path, *name;
+
+  res = pr_fsio_lremovexattr(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_lremovexattr(path, NULL);
+  fail_unless(res < 0, "Failed to handle null attribute name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  res = pr_fsio_lremovexattr(path, name);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
+  fail_unless(errno == ENOENT || errno == ENOATTR,
+    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", EINVAL, ENOATTR,
+    strerror(errno), errno);
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_fremovexattr_test) {
+  int res;
+  pr_fh_t *fh;
+  const char *name;
+
+  res = pr_fsio_fremovexattr(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_fremovexattr(fh, NULL);
+  fail_unless(res < 0, "Failed to handle null attribute name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  res = pr_fsio_fremovexattr(fh, name);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
+  fail_unless(errno == ENOENT || errno == ENOATTR,
+    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", EINVAL, ENOATTR,
+    strerror(errno), errno);
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+
+  pr_fsio_close(fh);
+  (void) unlink(fsio_test_path);
+}
+END_TEST
+
+START_TEST (fsio_sys_setxattr_test) {
+  int res, flags;
+  const char *path, *name;
+  pr_fh_t *fh;
+
+  res = pr_fsio_setxattr(NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_setxattr(path, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null attribute name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  flags = PR_FSIO_XATTR_FL_CREATE;
+  res = pr_fsio_setxattr(path, name, NULL, 0, flags);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexistent file '%s'", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+  pr_fsio_close(fh);
+
+  res = pr_fsio_setxattr(path, name, NULL, 0, flags);
+  fail_unless(res == 0, "Failed to set xattr '%s' on '%s': %s", name, path,
+    strerror(errno));
+  (void) unlink(fsio_test_path);
+#else
+  (void) fh;
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_lsetxattr_test) {
+  int res, flags;
+  const char *path, *name;
+  pr_fh_t *fh;
+
+  res = pr_fsio_lsetxattr(NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = fsio_test_path;
+  res = pr_fsio_lsetxattr(path, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null attribute name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  flags = PR_FSIO_XATTR_FL_CREATE;
+  res = pr_fsio_lsetxattr(path, name, NULL, 0, flags);
+#ifdef PR_USE_XATTR
+  fail_unless(res < 0, "Failed to handle nonexistent file '%s'", path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+  pr_fsio_close(fh);
+
+  res = pr_fsio_lsetxattr(path, name, NULL, 0, flags);
+  fail_unless(res == 0, "Failed to set xattr '%s' on '%s': %s", name, path,
+    strerror(errno));
+  (void) unlink(fsio_test_path);
+#else
+  (void) fh;
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+}
+END_TEST
+
+START_TEST (fsio_sys_fsetxattr_test) {
+  int res, flags;
+  pr_fh_t *fh;
+  const char *name;
+
+  res = pr_fsio_fsetxattr(NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) unlink(fsio_test_path);
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_RDWR);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
+
+  res = pr_fsio_fsetxattr(fh, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null attribute name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  name = "foo.bar";
+  flags = PR_FSIO_XATTR_FL_CREATE;
+  res = pr_fsio_fsetxattr(fh, name, NULL, 0, flags);
+#ifdef PR_USE_XATTR
+  fail_unless(res == 0, "Failed to set xattr '%s' on '%s': %s", fsio_test_path,
+    strerror(errno));
+
+#else
+  fail_unless(res < 0, "Failed to handle --disable-xattr");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_XATTR */
+
+  pr_fsio_close(fh);
+  (void) unlink(fsio_test_path);
+}
+END_TEST
+
 START_TEST (fsio_sys_mkdir_test) {
   int res;
   mode_t mode = 0755;
@@ -3562,6 +3992,21 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_utimes_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_futimes_test);
   tcase_add_test(testcase, fsio_sys_fsync_test);
+
+  /* Extended attribute tests */
+  tcase_add_test(testcase, fsio_sys_getxattr_test);
+  tcase_add_test(testcase, fsio_sys_lgetxattr_test);
+  tcase_add_test(testcase, fsio_sys_fgetxattr_test);
+  tcase_add_test(testcase, fsio_sys_listxattr_test);
+  tcase_add_test(testcase, fsio_sys_llistxattr_test);
+  tcase_add_test(testcase, fsio_sys_flistxattr_test);
+  tcase_add_test(testcase, fsio_sys_removexattr_test);
+  tcase_add_test(testcase, fsio_sys_lremovexattr_test);
+  tcase_add_test(testcase, fsio_sys_fremovexattr_test);
+  tcase_add_test(testcase, fsio_sys_setxattr_test);
+  tcase_add_test(testcase, fsio_sys_lsetxattr_test);
+  tcase_add_test(testcase, fsio_sys_fsetxattr_test);
+
   tcase_add_test(testcase, fsio_sys_mkdir_test);
   tcase_add_test(testcase, fsio_sys_mkdir_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_rmdir_test);

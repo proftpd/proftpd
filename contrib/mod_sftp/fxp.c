@@ -35,10 +35,6 @@
 #include "utf8.h"
 #include "misc.h"
 
-#ifdef HAVE_SYS_XATTR_H
-# include <sys/xattr.h>
-#endif /* HAVE_SYS_XATTR_H */
-
 /* FXP_NAME file attribute flags */
 #define SSH2_FX_ATTR_SIZE		0x00000001
 #define SSH2_FX_ATTR_UIDGID		0x00000002
@@ -253,10 +249,10 @@ static size_t fxp_packet_data_allocsz = 0;
 #define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 16)
 #define FXP_RESPONSE_DATA_DEFAULT_SZ		512
 
-#ifdef HAVE_SYS_XATTR_H
+#ifdef PR_USE_XATTR
 /* Allocate larger buffers for extended attributes */
 # define FXP_RESPONSE_NAME_DEFAULT_SZ		(1024 * 4)
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
 
 #ifndef FXP_RESPONSE_NAME_DEFAULT_SZ
 # define FXP_RESPONSE_NAME_DEFAULT_SZ		FXP_RESPONSE_DATA_DEFAULT_SZ
@@ -492,6 +488,9 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
 
     case EFAULT:
     case EINVAL:
+#ifdef E2BIG
+    case E2BIG:
+#endif
 #ifdef ERANGE
     case ERANGE:
 #endif
@@ -1633,11 +1632,11 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     }
 
     if (attr_flags & SSH2_FX_ATTR_EXTENDED) {
-#if defined(HAVE_SYS_XATTR_H)
+#ifdef PR_USE_XATTR
 /* XXX TODO XATTRS */
 #else
       (void) xattrs;
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
     }
   }
 
@@ -2343,12 +2342,12 @@ static uint32_t fxp_xattrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
     const char *path) {
   uint32_t len = 0;
 
-#ifdef HAVE_SYS_XATTR_H
+#ifdef PR_USE_XATTR
   /* XXX Use listxattr() to get attrs, write them to buf */
   /* XXX TODO XATTRS */
   /* Call listxattr() with NULL to get full size of attrs, write them out */
   /* NOTE that the given buffer MAY NEED TO MUCH LARGER! */
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
 
   return len;
 }
@@ -2387,9 +2386,9 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
 
     if (fxp_session->client_version >= 6) {
       flags |= SSH2_FX_ATTR_LINK_COUNT;
-#ifdef HAVE_SYS_XATTR_H
+#ifdef PR_USE_XATTR
       flags |= SSH2_FX_ATTR_EXTENDED;
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
     }
 
     file_type = fxp_get_file_type(st->st_mode);
@@ -3636,9 +3635,9 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
 
   file_mask = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
     SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
-#ifdef HAVE_SYS_XATTR_H
+#ifdef PR_USE_XATTR
   file_mask |= SSH2_FX_ATTR_EXTENDED;
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
 
   bits_mask = 0;
 
@@ -5375,11 +5374,10 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
 }
 #endif /* !HAVE_SYS_STATVFS_H */
 
-#ifdef HAVE_SYS_XATTR_H
+#ifdef PR_USE_XATTR
 static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
     const char *name, uint32_t valsz) {
   ssize_t res;
-  int flags = 0;
   void *val;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
@@ -5391,17 +5389,7 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-# if defined(HAVE_LGETXATTR)
-  (void) flags;
-  res = lgetxattr(path, name, val, (size_t) valsz);
-# elif defined(XATTR_NOFOLLOW)
-  flags |= XATTR_NOFOLLOW;
-  res = getxattr(path, name, val, (size_t) valsz, 0, flags);
-# else
-  (void) flags;
-  res = getxattr(path, name, val, (size_t) valsz);
-# endif /* HAVE_LGETXATTR */
-
+  res = pr_fsio_lgetxattr(path, name, val, (size_t) valsz);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5442,7 +5430,6 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
 static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
     const char *name, uint32_t valsz) {
   ssize_t res;
-  int fd;
   void *val;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
@@ -5498,16 +5485,10 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
     return fxp_packet_write(resp);
   }
 
-  fd = fxh->fh->fh_fd;
   path = fxh->fh->fh_path;
   val = pcalloc(fxp->pool, (size_t) valsz+1);
 
-# if defined(XATTR_NOFOLLOW)
-  res = fgetxattr(fd, name, val, (size_t) valsz, 0, 0);
-# else
-  res = fgetxattr(fd, name, val, (size_t) valsz);
-# endif /* XATTR_NOFOLLOW */
-
+  res = pr_fsio_fgetxattr(fxh->fh, name, val, (size_t) valsz);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5548,7 +5529,6 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
 static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
     uint32_t valsz) {
   ssize_t res;
-  int flags = 0;
   char *names;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
@@ -5560,17 +5540,7 @@ static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-# if defined(HAVE_LLISTXATTR)
-  (void) flags;
-  res = llistxattr(path, names, (size_t) valsz);
-# elif defined(XATTR_NOFOLLOW)
-  flags |= XATTR_NOFOLLOW;
-  res = listxattr(path, names, (size_t) valsz, flags);
-# else
-  (void) flags;
-  res = listxattr(path, names, (size_t) valsz);
-# endif /* HAVE_LLISTXATTR */
-
+  res = pr_fsio_llistxattr(path, names, (size_t) valsz);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5610,7 +5580,6 @@ static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
 static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
     uint32_t valsz) {
   ssize_t res;
-  int fd;
   char *names;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
@@ -5666,16 +5635,10 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
     return fxp_packet_write(resp);
   }
 
-  fd = fxh->fh->fh_fd;
   path = fxh->fh->fh_path;
   names = pcalloc(fxp->pool, (size_t) valsz+1);
 
-# if defined(XATTR_NOFOLLOW)
-  res = flistxattr(fd, names, (size_t) valsz, 0);
-# else
-  res = flistxattr(fd, names, (size_t) valsz);
-# endif /* XATTR_NOFOLLOW */
-
+  res = pr_fsio_flistxattr(fxh->fh, names, (size_t) valsz);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5714,7 +5677,7 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
 
 static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, const char *path,
     const char *name) {
-  int res, flags = 0;
+  int res;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
   const char *reason;
@@ -5723,17 +5686,7 @@ static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, const char *path,
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-# if defined(HAVE_LREMOVEXATTR)
-  (void) flags;
-  res = lremovexattr(path, name);
-# elif defined(XATTR_NOFOLLOW)
-  flags |= XATTR_NOFOLLOW;
-  res = removexattr(path, name, flags);
-# else
-  (void) flags;
-  res = removexattr(path, name);
-# endif /* HAVE_LREMOVEXATTR */
-
+  res = pr_fsio_lremovexattr(path, name);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5775,7 +5728,7 @@ static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, const char *path,
 
 static int fxp_handle_ext_fremovexattr(struct fxp_packet *fxp,
     const char *handle, const char *name) {
-  int res, fd;
+  int res;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
   const char *path, *reason;
@@ -5830,15 +5783,9 @@ static int fxp_handle_ext_fremovexattr(struct fxp_packet *fxp,
     return fxp_packet_write(resp);
   }
 
-  fd = fxh->fh->fh_fd;
   path = fxh->fh->fh_path;
 
-# if defined(XATTR_NOFOLLOW)
-  res = fremovexattr(fd, name, 0);
-# else
-  res = fremovexattr(fd, name);
-# endif /* XATTR_NOFOLLOW */
-
+  res = pr_fsio_fremovexattr(fxh->fh, name);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5879,7 +5826,7 @@ static int fxp_handle_ext_fremovexattr(struct fxp_packet *fxp,
 }
 
 static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
-    const char *name, const void *val, uint32_t valsz, uint32_t pflags) {
+    const char *name, void *val, uint32_t valsz, uint32_t pflags) {
   int res, flags = 0;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
@@ -5890,22 +5837,14 @@ static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
   buf = ptr = palloc(fxp->pool, bufsz);
 
   if (pflags & SSH2_FXE_XATTR_CREATE) {
-    flags = XATTR_CREATE;
+    flags |= PR_FSIO_XATTR_FL_CREATE;
   }
 
   if (pflags & SSH2_FXE_XATTR_REPLACE) {
-    flags |= XATTR_REPLACE;
+    flags |= PR_FSIO_XATTR_FL_REPLACE;
   }
 
-# if defined(HAVE_LSETXATTR)
-  res = lsetxattr(path, name, val, (size_t) valsz, flags);
-# elif defined(XATTR_NOFOLLOW)
-  flags |= XATTR_NOFOLLOW;
-  res = setxattr(path, name, val, (size_t) valsz, 0, flags);
-# else
-  res = setxattr(path, name, val, (size_t) valsz, flags);
-# endif /* HAVE_LSETXATTR */
-
+  res = pr_fsio_lsetxattr(path, name, val, (size_t) valsz, flags);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5946,8 +5885,8 @@ static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
 }
 
 static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, const char *handle,
-    const char *name, const void *val, uint32_t valsz, uint32_t pflags) {
-  int res, fd, flags = 0;
+    const char *name, void *val, uint32_t valsz, uint32_t pflags) {
+  int res, flags = 0;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
   const char *path, *reason;
@@ -6004,22 +5943,16 @@ static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, const char *handle,
   }
 
   if (pflags & SSH2_FXE_XATTR_CREATE) {
-    flags = XATTR_CREATE;
+    flags |= PR_FSIO_XATTR_FL_CREATE;
   }
 
   if (pflags & SSH2_FXE_XATTR_REPLACE) {
-    flags |= XATTR_REPLACE;
+    flags |= PR_FSIO_XATTR_FL_REPLACE;
   }
 
-  fd = fxh->fh->fh_fd;
   path = fxh->fh->fh_path;
 
-# if defined(XATTR_NOFOLLOW)
-  res = fsetxattr(fd, name, val, (size_t) valsz, 0, flags);
-# else
-  res = fsetxattr(fd, name, val, (size_t) valsz, flags);
-# endif /* XATTR_NOFOLLOW */
-
+  res = pr_fsio_fsetxattr(fxh->fh, name, val, (size_t) valsz, flags);
   if (res < 0) {
     int xerrno = errno;
 
@@ -6058,7 +5991,7 @@ static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, const char *handle,
 
   return fxp_packet_write(resp);
 }
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
 
 static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
@@ -6877,7 +6810,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   }
 #endif
 
-#ifdef HAVE_SYS_XATTR_H
+#ifdef PR_USE_XATTR
   if (fxp_ext_flags & SFTP_FXP_EXT_XATTR) {
     if (strcmp(ext_request_name, "fgetxattr@proftpd.org") == 0) {
       const char *handle, *name;
@@ -6920,13 +6853,13 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     if (strcmp(ext_request_name, "fsetxattr@proftpd.org") == 0) {
       const char *handle, *name;
-      const void *val;
+      void *val;
       uint32_t pflags, valsz;
 
       handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
       name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
       valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
-      val = (const void *) sftp_msg_read_data(fxp->pool, &fxp->payload,
+      val = (void *) sftp_msg_read_data(fxp->pool, &fxp->payload,
         &fxp->payload_sz, valsz);
       pflags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -6977,13 +6910,13 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     if (strcmp(ext_request_name, "setxattr@proftpd.org") == 0) {
       const char *path, *name;
-      const void *val;
+      void *val;
       uint32_t pflags, valsz;
 
       path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
       name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
       valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
-      val = (const void *) sftp_msg_read_data(fxp->pool, &fxp->payload,
+      val = (void *) sftp_msg_read_data(fxp->pool, &fxp->payload,
         &fxp->payload_sz, valsz);
       pflags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -6993,7 +6926,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       return res;
     }
   }
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client requested '%s' extension, rejecting", ext_request_name);
@@ -10117,11 +10050,11 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_signals_handle();
 
     /* How much non-path data do we expect to be associated with this entry? */
-#ifdef HAVE_SYS_XATTR_H
+#ifdef PR_USE_XATTR
     max_entry_metadata = (1024 * 4);
 #else
     max_entry_metadata = 256;
-#endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
 
     max_entrysz = (PR_TUNABLE_PATH_MAX + 1 + max_entry_metadata);
 

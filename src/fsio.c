@@ -49,6 +49,10 @@
 # include <sys/statfs.h>
 #endif
 
+#if defined(HAVE_SYS_XATTR_H) && defined(PR_USE_XATTR)
+# include <sys/xattr.h>
+#endif
+
 #ifdef HAVE_ACL_LIBACL_H
 # include <acl/libacl.h>
 #endif
@@ -488,6 +492,307 @@ static int sys_fsync(pr_fh_t *fh, int fd) {
   errno = ENOSYS;
   res = -1;
 #endif /* HAVE_FSYNC */
+
+  return res;
+}
+
+static ssize_t sys_getxattr(pr_fs_t *fs, const char *path, const char *name,
+    void *val, size_t valsz) {
+  ssize_t res;
+
+#ifdef PR_USE_XATTR
+# if defined(XATTR_NOFOLLOW)
+  res = getxattr(path, name, val, valsz, 0, 0);
+# else
+  res = getxattr(path, name, val, valsz);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static ssize_t sys_lgetxattr(pr_fs_t *fs, const char *path, const char *name,
+    void *val, size_t valsz) {
+  ssize_t res;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_LGETXATTR)
+  res = lgetxattr(path, name, val, valsz);
+# elif defined(XATTR_NOFOLLOW)
+  res = getxattr(path, name, val, valsz, 0, XATTR_NOFOLLOW);
+# else
+  res = getxattr(path, name, val, valsz);
+# endif /* HAVE_LGETXATTR */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static ssize_t sys_fgetxattr(pr_fh_t *fh, int fd, const char *name, void *val,
+    size_t valsz) {
+  ssize_t res;
+
+#ifdef PR_USE_XATTR
+# if defined(XATTR_NOFOLLOW)
+  res = fgetxattr(fd, name, val, valsz, 0, 0);
+# else
+  res = fgetxattr(fd, name, val, valsz);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fh;
+  (void) fd;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static ssize_t sys_listxattr(pr_fs_t *fs, const char *path, char *names,
+    size_t len) {
+  ssize_t res;
+
+#ifdef PR_USE_XATTR
+# if defined(XATTR_NOFOLLOW)
+  res = listxattr(path, names, len, 0);
+# else
+  res = listxattr(path, names, len);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fs;
+  (void) path;
+  (void) names;
+  (void) len;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static ssize_t sys_llistxattr(pr_fs_t *fs, const char *path, char *names,
+    size_t len) {
+  ssize_t res;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_LLISTXATTR)
+  res = llistxattr(path, names, len);
+# elif defined(XATTR_NOFOLLOW)
+  res = listxattr(path, names, len, XATTR_NOFOLLOW);
+# else
+  res = listxattr(path, names, len);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fs;
+  (void) path;
+  (void) names;
+  (void) len;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static ssize_t sys_flistxattr(pr_fh_t *fh, int fd, char *names, size_t len) {
+  ssize_t res;
+
+#ifdef PR_USE_XATTR
+# if defined(XATTR_NOFOLLOW)
+  res = flistxattr(fd, names, len, 0);
+# else
+  res = flistxattr(fd, names, len);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fh;
+  (void) fd;
+  (void) names;
+  (void) len;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_removexattr(pr_fs_t *fs, const char *path, const char *name) {
+  int res;
+
+#ifdef PR_USE_XATTR
+# if defined(XATTR_NOFOLLOW)
+  res = removexattr(path, name, 0);
+# else
+  res = removexattr(path, name);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_lremovexattr(pr_fs_t *fs, const char *path, const char *name) {
+  int res;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_LREMOVEXATTR)
+  res = lremovexattr(path, name);
+# elif defined(XATTR_NOFOLLOW)
+  res = removexattr(path, name, XATTR_NOFOLLOW);
+# else
+  res = removexattr(path, name);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_fremovexattr(pr_fh_t *fh, int fd, const char *name) {
+  int res;
+
+#ifdef PR_USE_XATTR
+# if defined(XATTR_NOFOLLOW)
+  res = fremovexattr(fd, name, 0);
+# else
+  res = fremovexattr(fd, name);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fh;
+  (void) fd;
+  (void) name;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+#ifdef PR_USE_XATTR
+/* Map the given flags onto the sys/xattr.h flags */
+static int get_xattr_flags(int fsio_flags) {
+  int xattr_flags = 0;
+
+  if (fsio_flags & PR_FSIO_XATTR_FL_CREATE) {
+    xattr_flags |= XATTR_CREATE;
+  }
+
+  if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
+    xattr_flags |= XATTR_REPLACE;
+  }
+
+  return xattr_flags;
+}
+#endif /* PR_USE_XATTR */
+
+static int sys_setxattr(pr_fs_t *fs, const char *path, const char *name,
+    void *val, size_t valsz, int flags) {
+  int res, xattr_flags = 0;
+
+#ifdef PR_USE_XATTR
+  xattr_flags = get_xattr_flags(flags);
+
+# if defined(XATTR_NOFOLLOW)
+  res = setxattr(path, name, val, valsz, 0, flags);
+# else
+  res = setxattr(path, name, val, valsz, flags);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  (void) flags;
+  (void) xattr_flags;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_lsetxattr(pr_fs_t *fs, const char *path, const char *name,
+    void *val, size_t valsz, int flags) {
+  int res, xattr_flags = 0;
+
+#ifdef PR_USE_XATTR
+  xattr_flags = get_xattr_flags(flags);
+
+# if defined(HAVE_LSETXATTR)
+  res = lsetxattr(path, name, val, valsz, flags);
+# elif defined(XATTR_NOFOLLOW)
+  xattr_flags |= XATTR_NOFOLLOW;
+  res = setxattr(path, name, val, valsz, 0, flags);
+# else
+  res = setxattr(path, name, val, valsz, flags);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  (void) flags;
+  (void) xattr_flags;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_fsetxattr(pr_fh_t *fh, int fd, const char *name, void *val,
+    size_t valsz, int flags) {
+  int res, xattr_flags = 0;
+
+#ifdef PR_USE_XATTR
+  xattr_flags = get_xattr_flags(flags);
+
+# if defined(XATTR_NOFOLLOW)
+  res = fsetxattr(fd, name, val, valsz, 0, xattr_flags);
+# else
+  res = fgetxattr(fd, name, val, valsz);
+# endif /* XATTR_NOFOLLOW */
+#else
+  (void) fh;
+  (void) fd;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  (void) flags;
+  (void) xattr_flags;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
 
   return res;
 }
@@ -5287,6 +5592,329 @@ int pr_fsio_fsync(pr_fh_t *fh) {
   return res;
 }
 
+ssize_t pr_fsio_getxattr(const char *path, const char *name, void *val,
+    size_t valsz) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_GETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom getxattr handler.  If there are none,
+   * use the system getxattr.
+   */
+  while (fs && fs->fs_next && !fs->getxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s getxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->getxattr)(fs, path, name, val, valsz);
+  return res;
+}
+
+ssize_t pr_fsio_lgetxattr(const char *path, const char *name, void *val,
+    size_t valsz) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LGETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom lgetxattr handler.  If there are none,
+   * use the system lgetxattr.
+   */
+  while (fs && fs->fs_next && !fs->lgetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s lgetxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->lgetxattr)(fs, path, name, val, valsz);
+  return res;
+}
+
+ssize_t pr_fsio_fgetxattr(pr_fh_t *fh, const char *name, void *val,
+    size_t valsz) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (fh == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fgetxattr handler.  If there are none,
+   * use the system fgetxattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fgetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s fgetxattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fgetxattr)(fh, fh->fh_fd, name, val, valsz);
+  return res;
+}
+
+ssize_t pr_fsio_listxattr(const char *path, char *names, size_t len) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LISTXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom listxattr handler.  If there are none,
+   * use the system listxattr.
+   */
+  while (fs && fs->fs_next && !fs->listxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s listxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->listxattr)(fs, path, names, len);
+  return res;
+}
+
+ssize_t pr_fsio_llistxattr(const char *path, char *names, size_t len) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (path == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LLISTXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom llistxattr handler.  If there are none,
+   * use the system llistxattr.
+   */
+  while (fs && fs->fs_next && !fs->llistxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s llistxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->llistxattr)(fs, path, names, len);
+  return res;
+}
+
+ssize_t pr_fsio_flistxattr(pr_fh_t *fh, char *names, size_t len) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (fh == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom flistxattr handler.  If there are none,
+   * use the system flistxattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->flistxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s flistxattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->flistxattr)(fh, fh->fh_fd, names, len);
+  return res;
+}
+
+int pr_fsio_removexattr(const char *path, const char *name) {
+  int res;
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_REMOVEXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom removexattr handler.  If there are none,
+   * use the system removexattr.
+   */
+  while (fs && fs->fs_next && !fs->removexattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s removexattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->removexattr)(fs, path, name);
+  return res;
+}
+
+int pr_fsio_lremovexattr(const char *path, const char *name) {
+  int res;
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LREMOVEXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom lremovexattr handler.  If there are none,
+   * use the system lremovexattr.
+   */
+  while (fs && fs->fs_next && !fs->lremovexattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s lremovexattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->lremovexattr)(fs, path, name);
+  return res;
+}
+
+int pr_fsio_fremovexattr(pr_fh_t *fh, const char *name) {
+  int res;
+  pr_fs_t *fs;
+
+  if (fh == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fremovexattr handler.  If there are none,
+   * use the system fremovexattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fremovexattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s fremovexattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fremovexattr)(fh, fh->fh_fd, name);
+  return res;
+}
+
+int pr_fsio_setxattr(const char *path, const char *name, void *val,
+    size_t valsz, int flags) {
+  int res;
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_SETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom setxattr handler.  If there are none,
+   * use the system setxattr.
+   */
+  while (fs && fs->fs_next && !fs->setxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s setxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->setxattr)(fs, path, name, val, valsz, flags);
+  return res;
+}
+
+int pr_fsio_lsetxattr(const char *path, const char *name, void *val,
+    size_t valsz, int flags) {
+  int res;
+  pr_fs_t *fs;
+
+  if (path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LSETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom lsetxattr handler.  If there are none,
+   * use the system lsetxattr.
+   */
+  while (fs && fs->fs_next && !fs->lsetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s lsetxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->lsetxattr)(fs, path, name, val, valsz, flags);
+  return res;
+}
+
+int pr_fsio_fsetxattr(pr_fh_t *fh, const char *name, void *val, size_t valsz,
+    int flags) {
+  int res;
+  pr_fs_t *fs;
+
+  if (fh == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fsetxattr handler.  If there are none,
+   * use the system fsetxattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fsetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s fsetxattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fsetxattr)(fh, fh->fh_fd, name, val, valsz, flags);
+  return res;
+}
+
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
  * pr_fs_ts currently registered in the fs_map will have their paths
  * rewritten to reflect the new root.
@@ -6160,6 +6788,19 @@ int init_fs(void) {
   root_fs->utimes = sys_utimes;
   root_fs->futimes = sys_futimes;
   root_fs->fsync = sys_fsync;
+
+  root_fs->getxattr = sys_getxattr;
+  root_fs->lgetxattr = sys_lgetxattr;
+  root_fs->fgetxattr = sys_fgetxattr;
+  root_fs->listxattr = sys_listxattr;
+  root_fs->llistxattr = sys_llistxattr;
+  root_fs->flistxattr = sys_flistxattr;
+  root_fs->removexattr = sys_removexattr;
+  root_fs->lremovexattr = sys_lremovexattr;
+  root_fs->fremovexattr = sys_fremovexattr;
+  root_fs->setxattr = sys_setxattr;
+  root_fs->lsetxattr = sys_lsetxattr;
+  root_fs->fsetxattr = sys_fsetxattr;
 
   root_fs->chdir = sys_chdir;
   root_fs->chroot = sys_chroot;

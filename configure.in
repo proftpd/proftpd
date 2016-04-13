@@ -967,6 +967,13 @@ AC_ARG_ENABLE(trace,
     [disable trace support (default=no)])
   ])
 
+dnl Extended attribute (xattr) support
+AC_ARG_ENABLE(xattr,
+  [AC_HELP_STRING(
+    [--disable-xattr],
+    [disable extended attribute support (default=no)])
+  ])
+
 dnl Enable developer code
 pr_devel_cflags="-g -O0 -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
 pr_devel_libs=""
@@ -2231,6 +2238,107 @@ if test x"$enable_trace" != xno ; then
   AC_DEFINE(PR_USE_TRACE, 1, [Define for trace support])
 fi
 
+dnl Extended attribute checks
+if test x"$enable_xattr" != xno ; then
+  AC_CHECK_HEADER(sys/xattr.h,
+    [AC_DEFINE(HAVE_SYS_XATTR_H, 1, [Define if sys/xattr.h is present.])
+     AC_DEFINE(PR_USE_XATTR, 1, [Define if using xattr support.])
+    ])
+
+  AC_MSG_CHECKING([for lgetxattr])
+  AC_TRY_COMPILE(
+    [
+      #include <sys/types.h>
+      #ifdef HAVE_SYS_XATTR_H
+      # include <sys/xattr.h>
+      #endif
+    ],
+    [
+      ssize_t res;
+      const char *path = NULL, name = NULL;
+      void *val = NULL;
+      size_t sz;
+      res = lgetxattr(path, name, val, sz);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_LGETXATTR, 1, [Define if you have lgetxattr])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  AC_MSG_CHECKING([for llistxattr])
+  AC_TRY_COMPILE(
+    [
+      #include <sys/types.h>
+      #ifdef HAVE_SYS_XATTR_H
+      # include <sys/xattr.h>
+      #endif
+    ],
+    [
+      ssize_t res;
+      const char *path = NULL;
+      char *names = NUL;
+      size_t namessz = 0;
+      res = llistxattr(path, names, namessz);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_LLISTXATTR, 1, [Define if you have llistxattr])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  AC_MSG_CHECKING([for lremovexattr])
+  AC_TRY_COMPILE(
+    [
+      #include <sys/types.h>
+      #ifdef HAVE_SYS_XATTR_H
+      # include <sys/xattr.h>
+      #endif
+    ],
+    [
+      ssize_t res;
+      const char *path = NULL, name = NULL;
+      res = lremovexattr(path, name);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_LREMOVEXATTR, 1, [Define if you have lremovexattr])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
+  AC_MSG_CHECKING([for lsetxattr])
+  AC_TRY_COMPILE(
+    [
+      #include <sys/types.h>
+      #ifdef HAVE_SYS_XATTR_H
+      # include <sys/xattr.h>
+      #endif
+    ],
+    [
+      int res, flags = 0;
+      const char *path = NULL, name = NULL;
+      const void *val = NULL;
+      res = lsetxattr(path, name, val, flags);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_LSETXATTR, 1, [Define if you have lsetxattr])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+fi
+
 dnl Custom-rolled macro for checking return type of setgrent(3)
 PR_FUNC_SETGRENT_VOID
 
@@ -3050,8 +3158,8 @@ fi
 if test x"$pr_use_sodium" = xyes; then
   AC_CHECK_HEADER(sodium.h,
     [AC_DEFINE(HAVE_SODIUM_H, 1, [Define if sodium.h is present.])
-      AC_DEFINE(PR_USE_SODIUM, 1, [Define if using Sodium support.])
-      ac_build_addl_libs="$ac_build_addl_libs -lsodium"
+     AC_DEFINE(PR_USE_SODIUM, 1, [Define if using Sodium support.])
+     ac_build_addl_libs="$ac_build_addl_libs -lsodium"
     ])
 fi
 
