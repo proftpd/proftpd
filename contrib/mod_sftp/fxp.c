@@ -1289,8 +1289,8 @@ static void fxp_msg_write_extpair(unsigned char **buf, uint32_t *buflen,
 }
 
 static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
-    uint32_t attr_flags, unsigned char **buf, uint32_t *buflen,
-    struct fxp_packet *fxp) {
+    array_header *xattrs, uint32_t attr_flags, unsigned char **buf,
+    uint32_t *buflen, struct fxp_packet *fxp) {
   struct stat st;
   int res;
 
@@ -1631,6 +1631,14 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
           fxp_strtime(fxp->pool, attrs->st_mtime));
       }
     }
+
+    if (attr_flags & SSH2_FX_ATTR_EXTENDED) {
+#if defined(HAVE_SYS_XATTR_H)
+/* XXX TODO XATTRS */
+#else
+      (void) xattrs;
+#endif /* HAVE_SYS_XATTR_H */
+    }
   }
 
   return 0;
@@ -1927,7 +1935,7 @@ static array_header *fxp_xattrs_read(pool *p, unsigned char **buf,
 }
 
 static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
-    uint32_t *buflen, uint32_t *flags) {
+    uint32_t *buflen, uint32_t *flags, array_header **xattrs) {
   struct stat *st;
 
   st = pcalloc(fxp->pool, sizeof(struct stat));
@@ -2264,15 +2272,13 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
     }
 
     if (*flags & SSH2_FX_ATTR_EXTENDED) {
-      array_header *xattrs;
+      array_header *ext_attrs;
 
       /* Read the EXTENDED attribute. */
-      xattrs = fxp_xattrs_read(fxp->pool, buf, buflen);
-
-/* XXX TODO XATTRS */
-#if defined(HAVE_SYS_XATTR_H)
-#else
-#endif /* HAVE_SYS_XATTR_H */
+      ext_attrs = fxp_xattrs_read(fxp->pool, buf, buflen);
+      if (xattrs != NULL) {
+        *xattrs = ext_attrs;
+      }
     }
   }
 
@@ -7018,6 +7024,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd;
+  array_header *xattrs = NULL;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
@@ -7029,7 +7036,8 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
 
-  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags);
+  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
+    &xattrs);
   if (attrs == NULL) {
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     return 0;
@@ -7180,6 +7188,16 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     attr_flags &= ~SSH2_FX_ATTR_OWNERGROUP;
   }
 
+  /* If the SFTPOption for ignoring the xattrs for SFTP setstat requests is set,
+   * handle it by clearing the SSH2_FX_ATTR_EXTENDED flag.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_XATTRS) &&
+      (attr_flags & SSH2_FX_ATTR_EXTENDED)) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetAttributes' "
+      "configured, ignoring perms sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_EXTENDED;
+  }
+
   /* If the SFTPOption for ignoring the perms for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
    */
@@ -7204,11 +7222,12 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
 
   if (fxh->fh != NULL) {
-    res = fxp_attrs_set(fxh->fh, fxh->fh->fh_path, attrs, attr_flags, &buf,
-      &buflen, fxp);
+    res = fxp_attrs_set(fxh->fh, fxh->fh->fh_path, attrs, xattrs, attr_flags,
+      &buf, &buflen, fxp);
 
   } else {
-    res = fxp_attrs_set(NULL, fxh->dir, attrs, attr_flags, &buf, &buflen, fxp);
+    res = fxp_attrs_set(NULL, fxh->dir, attrs, xattrs, attr_flags, &buf,
+      &buflen, fxp);
   }
 
   if (res < 0) {
@@ -8170,6 +8189,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   uint32_t attr_flags, buflen, bufsz, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
+  array_header *xattrs = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -8181,7 +8201,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
 
-  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags);
+  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
+    &xattrs);
   if (attrs == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "MKDIR request missing required attributes, ignoring");
@@ -8196,6 +8217,16 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPUploadPerms' "
       "configured, ignoring perms sent by client");
     attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+  }
+
+  /* If the SFTPOption for ignoring xattrs for SFTP uploads is set, handle it
+   * by clearing the SSH2_FX_ATTR_EXTENDED flag.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS) &&
+      (attr_flags & SSH2_FX_ATTR_EXTENDED)) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPUploadAttributes' "
+      "configured, ignoring perms sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_EXTENDED;
   }
 
   attrs_str = fxp_strattrs(fxp->pool, attrs, &attr_flags);
@@ -8495,6 +8526,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2 = NULL;
+  array_header *xattrs = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -8675,7 +8707,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     open_flags = fxp_get_v5_open_flags(desired_access, flags);
   }
 
-  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags);
+  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
+    &xattrs);
   if (attrs == NULL) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -8999,7 +9032,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
   attr_flags &= ~SSH2_FX_ATTR_SIZE;
 
-  res = fxp_attrs_set(fh, fh->fh_path, attrs, attr_flags, &buf, &buflen, fxp);
+  res = fxp_attrs_set(fh, fh->fh_path, attrs, xattrs, attr_flags, &buf,
+    &buflen, fxp);
   if (res < 0) {
     int xerrno = errno;
 
@@ -11892,6 +11926,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   struct fxp_packet *resp;
   cmd_rec *cmd;
   struct stat st;
+  array_header *xattrs = NULL;
 
   path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -11903,7 +11938,8 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", path, NULL, NULL);
 
-  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags);
+  attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
+    &xattrs);
   if (attrs == NULL) {
     return 0;
   }
@@ -12038,6 +12074,16 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     attr_flags &= ~SSH2_FX_ATTR_OWNERGROUP;
   }
 
+  /* If the SFTPOption for ignoring the xattrs for SFTP setstat requests is set,
+   * handle it by clearing the SSH2_FX_ATTR_EXTENDED flag.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_XATTRS) &&
+      (attr_flags & SSH2_FX_ATTR_EXTENDED)) {
+    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetAttributes' "
+      "configured, ignoring perms sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_EXTENDED;
+  }
+
   /* If the SFTPOption for ignoring the perms for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
    */
@@ -12061,7 +12107,8 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     }
   }
 
-  res = fxp_attrs_set(NULL, path, attrs, attr_flags, &buf, &buflen, fxp);
+  res = fxp_attrs_set(NULL, path, attrs, xattrs, attr_flags, &buf, &buflen,
+    fxp);
   if (res < 0) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);

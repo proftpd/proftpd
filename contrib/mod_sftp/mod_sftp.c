@@ -1435,14 +1435,20 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strncmp(cmd->argv[i], "MatchKeySubject", 16) == 0) {
       opts |= SFTP_OPT_MATCH_KEY_SUBJECT;
 
-    } else if (strcmp(cmd->argv[1], "AllowInsecureLogin") == 0) {
+    } else if (strcmp(cmd->argv[i], "AllowInsecureLogin") == 0) {
       opts |= SFTP_OPT_ALLOW_INSECURE_LOGIN;
 
-    } else if (strcmp(cmd->argv[1], "InsecureHostKeyPerms") == 0) {
+    } else if (strcmp(cmd->argv[i], "InsecureHostKeyPerms") == 0) {
       opts |= SFTP_OPT_INSECURE_HOSTKEY_PERMS;
 
-    } else if (strcmp(cmd->argv[1], "AllowWeakDH") == 0) {
+    } else if (strcmp(cmd->argv[i], "AllowWeakDH") == 0) {
       opts |= SFTP_OPT_ALLOW_WEAK_DH;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreSFTPUploadAttributes") == 0) {
+      opts |= SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreSFTPSetAttributes") == 0) {
+      opts |= SFTP_OPT_IGNORE_SFTP_SET_XATTRS;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
