@@ -49,10 +49,6 @@
 # include <sys/statfs.h>
 #endif
 
-#if defined(HAVE_SYS_XATTR_H) && defined(PR_USE_XATTR)
-# include <sys/xattr.h>
-#endif
-
 #ifdef HAVE_ACL_LIBACL_H
 # include <acl/libacl.h>
 #endif

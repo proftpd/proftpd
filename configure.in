@@ -2244,6 +2244,7 @@ if test x"$enable_xattr" != xno ; then
     [AC_DEFINE(HAVE_SYS_XATTR_H, 1, [Define if sys/xattr.h is present.])
      AC_DEFINE(PR_USE_XATTR, 1, [Define if using xattr support.])
     ])
+  AC_CHECK_HEADERS(attr/xattr.h)
 
   AC_MSG_CHECKING([for lgetxattr])
   AC_TRY_COMPILE(
