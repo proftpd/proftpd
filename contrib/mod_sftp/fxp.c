@@ -1288,7 +1288,7 @@ static void fxp_msg_write_extpair(unsigned char **buf, uint32_t *buflen,
 }
 
 static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
-    array_header *xattrs, uint32_t attr_flags, unsigned char **buf,
+    uint32_t attr_flags, array_header *xattrs, unsigned char **buf,
     uint32_t *buflen, struct fxp_packet *fxp) {
   struct stat st;
   int res;
@@ -1542,6 +1542,66 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
   }
 
   if (fxp_session->client_version > 3) {
+    /* Note: we handle the xattrs FIRST, before the timestamps, so that
+     * setting the xattrs does not change the expected timestamps, thus
+     * preserving the principle of least surprise.
+     */
+    if (attr_flags & SSH2_FX_ATTR_EXTENDED) {
+#ifdef PR_USE_XATTR
+      if (xattrs != NULL &&
+          xattrs->nelts > 0) {
+        register unsigned int i;
+        struct fxp_extpair **ext_pairs;
+
+        ext_pairs = xattrs->elts;
+        for (i = 0; i < xattrs->nelts; i++) {
+          struct fxp_extpair *xattr;
+          const char *xattr_name;
+          void *xattr_val;
+          size_t xattr_valsz;
+
+          xattr = ext_pairs[i];
+          xattr_name = xattr->ext_name;
+          xattr_val = xattr->ext_data;
+          xattr_valsz = (size_t) xattr->ext_datalen;
+
+          if (fh != NULL) {
+            res = pr_fsio_fsetxattr(fh, xattr_name, xattr_val,
+              xattr_valsz, 0);
+
+          } else {
+            res = pr_fsio_lsetxattr(path, xattr_name, xattr_val,
+              xattr_valsz, 0);
+          }
+
+          if (res < 0) {
+            uint32_t status_code;
+            const char *reason;
+            int xerrno = errno;
+
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "error setting xattr '%s' (%lu bytes) on '%s': %s", xattr_name,
+              (unsigned long) xattr_valsz, path, strerror(xerrno));
+
+            status_code = fxp_errno2status(xerrno, &reason);
+
+            pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+              "('%s' [%d])", (unsigned long) status_code, reason,
+              strerror(xerrno), xerrno);
+
+            fxp_status_write(fxp->pool, buf, buflen, fxp->request_id,
+              status_code, reason, NULL);
+
+            errno = xerrno;
+            return -1;
+          }
+        }
+      }
+#else
+      (void) xattrs;
+#endif /* PR_USE_XATTR */
+    }
+
     if (attr_flags & SSH2_FX_ATTR_ACCESSTIME) {
       if (st.st_atime != attrs->st_atime) {
         struct timeval tvs[2];
@@ -1629,14 +1689,6 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
           "client set modification time of '%s' to %s", path,
           fxp_strtime(fxp->pool, attrs->st_mtime));
       }
-    }
-
-    if (attr_flags & SSH2_FX_ATTR_EXTENDED) {
-#ifdef PR_USE_XATTR
-/* XXX TODO XATTRS */
-#else
-      (void) xattrs;
-#endif /* PR_USE_XATTR */
     }
   }
 
@@ -2343,10 +2395,41 @@ static uint32_t fxp_xattrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
   uint32_t len = 0;
 
 #ifdef PR_USE_XATTR
-  /* XXX Use listxattr() to get attrs, write them to buf */
+  ssize_t res;
+
   /* XXX TODO XATTRS */
-  /* Call listxattr() with NULL to get full size of attrs, write them out */
-  /* NOTE that the given buffer MAY NEED TO MUCH LARGER! */
+
+  res = pr_fsio_llistxattr(path, NULL, 0);
+  if (res > 0) {
+    pool *sub_pool;
+
+    sub_pool = make_sub_pool(p);
+    pr_pool_tag(sub_pool, "listxattr pool");
+
+    /* Allocate a buffer large enough for the names */
+
+    /* Scan the obtained buffer for the number of NUL-terminated strings.
+     * Parse it into an array_header!
+     */
+
+    /* For each attribute name, get the length of the attribute value. */
+
+    /* Determine the total buffer size needed for the ENCODED attributes (names
+     * AND values).
+     *
+     * Need 4 bytes for the xattr count, then
+     * 4 bytes per xattr name (for name len) plus name AND
+     * 4 bytes per xattr val (for val len) plus val
+     */
+
+  /* NOTE that the given buffer MAY NEED TO BE MUCH LARGER! If that happens,
+   * we COULD allocate a new buffer out of the given pool (which is always,
+   * ultimately, the fxp->pool) of the necessary size, memcpy over the existing
+   * data, then write in the new data.
+   */
+
+    destroy_pool(sub_pool);
+  }
 #endif /* PR_USE_XATTR */
 
   return len;
@@ -7155,11 +7238,11 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
 
   if (fxh->fh != NULL) {
-    res = fxp_attrs_set(fxh->fh, fxh->fh->fh_path, attrs, xattrs, attr_flags,
+    res = fxp_attrs_set(fxh->fh, fxh->fh->fh_path, attrs, attr_flags, xattrs,
       &buf, &buflen, fxp);
 
   } else {
-    res = fxp_attrs_set(NULL, fxh->dir, attrs, xattrs, attr_flags, &buf,
+    res = fxp_attrs_set(NULL, fxh->dir, attrs, attr_flags, xattrs, &buf,
       &buflen, fxp);
   }
 
@@ -8965,7 +9048,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
   attr_flags &= ~SSH2_FX_ATTR_SIZE;
 
-  res = fxp_attrs_set(fh, fh->fh_path, attrs, xattrs, attr_flags, &buf,
+  res = fxp_attrs_set(fh, fh->fh_path, attrs, attr_flags, xattrs, &buf,
     &buflen, fxp);
   if (res < 0) {
     int xerrno = errno;
@@ -12040,7 +12123,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     }
   }
 
-  res = fxp_attrs_set(NULL, path, attrs, xattrs, attr_flags, &buf, &buflen,
+  res = fxp_attrs_set(NULL, path, attrs, attr_flags, xattrs, &buf, &buflen,
     fxp);
   if (res < 0) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
