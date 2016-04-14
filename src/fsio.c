@@ -894,7 +894,7 @@ static int sys_fremovexattr(pool *p, pr_fh_t *fh, int fd, const char *name) {
   return res;
 }
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR) && defined(HAVE_SYS_XATTR_H)
 /* Map the given flags onto the sys/xattr.h flags */
 static int get_setxattr_flags(int fsio_flags) {
   int xattr_flags = 0;
@@ -921,7 +921,7 @@ static int get_setxattr_flags(int fsio_flags) {
 
   return xattr_flags;
 }
-#endif /* PR_USE_XATTR */
+#endif /* PR_USE_XATTR and <sys/xattr.h> */
 
 static int sys_setxattr(pool *p, pr_fs_t *fs, const char *path,
     const char *name, void *val, size_t valsz, int flags) {
