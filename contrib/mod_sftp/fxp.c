@@ -233,6 +233,20 @@ struct fxp_packet {
   unsigned int state;
 };
 
+struct fxp_buffer {
+  /* Pointer to the start of the buffer */
+  unsigned char *ptr;
+
+  /* Total size of the buffer */
+  uint32_t bufsz;
+
+  /* Current pointer */
+  unsigned char *buf;
+
+  /* Length of buffer remaining */
+  uint32_t buflen;
+};
+
 #define	FXP_PACKET_HAVE_PACKET_LEN	0x0001
 #define	FXP_PACKET_HAVE_REQUEST_TYPE	0x0002
 #define	FXP_PACKET_HAVE_REQUEST_ID	0x0004
@@ -2390,7 +2404,7 @@ static char fxp_get_file_type(mode_t mode) {
   return SSH2_FX_ATTR_FTYPE_UNKNOWN;
 }
 
-static uint32_t fxp_xattrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
+static uint32_t fxp_xattrs_write(pool *p, struct fxp_buffer *fxb,
     const char *path) {
   uint32_t len = 0;
 
@@ -2398,36 +2412,82 @@ static uint32_t fxp_xattrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
   int res;
   array_header *names = NULL;
 
-  /* XXX TODO XATTRS */
-
   res = pr_fsio_llistxattr(p, path, &names);
   if (res > 0) {
+    register unsigned int i;
     pool *sub_pool;
+    uint32_t xattrsz = 0;
+    array_header *vals;
 
     sub_pool = make_sub_pool(p);
     pr_pool_tag(sub_pool, "listxattr pool");
 
-    /* Allocate a buffer large enough for the names */
+    vals = make_array(sub_pool, names->nelts, sizeof(pr_buffer_t *));
+    xattrsz = sizeof(uint32_t);
 
-    /* Scan the obtained buffer for the number of NUL-terminated strings.
-     * Parse it into an array_header!
-     */
+    for (i = 0; i < names->nelts; i++) {
+      const char *name;
+      pr_buffer_t *val;
+      ssize_t valsz;
 
-    /* For each attribute name, get the length of the attribute value. */
+      name = ((const char **) names->elts)[i];
+      xattrsz += (sizeof(uint32_t) + strlen(name));
 
-    /* Determine the total buffer size needed for the ENCODED attributes (names
-     * AND values).
-     *
-     * Need 4 bytes for the xattr count, then
-     * 4 bytes per xattr name (for name len) plus name AND
-     * 4 bytes per xattr val (for val len) plus val
-     */
+      val = pcalloc(sub_pool, sizeof(pr_buffer_t));
 
-  /* NOTE that the given buffer MAY NEED TO BE MUCH LARGER! If that happens,
-   * we COULD allocate a new buffer out of the given pool (which is always,
-   * ultimately, the fxp->pool) of the necessary size, memcpy over the existing
-   * data, then write in the new data.
-   */
+      valsz = pr_fsio_lgetxattr(p, path, name, NULL, 0);
+      if (valsz > 0) {
+        xattrsz += (sizeof(uint32_t) + valsz);
+
+        val->buflen = valsz;
+        val->buf = palloc(sub_pool, valsz);
+
+        valsz = pr_fsio_lgetxattr(p, path, name, val->buf, valsz);
+        if (valsz > 0) {
+          *((pr_buffer_t **) push_array(vals)) = val;
+        }
+      } else {
+        /* Push the empty buffer into the list, so that the vals list
+         * lines up with the names list.
+         */
+        *((pr_buffer_t **) push_array(vals)) = val;
+      }
+    }
+
+    if (fxb->buflen < xattrsz) {
+      unsigned char *ptr;
+      uint32_t bufsz, resp_len;
+
+      resp_len = fxb->bufsz - fxb->buflen;
+
+      /* Allocate a buffer large enough for the xattrs */
+      pr_trace_msg(trace_channel, 3,
+        "allocating larger response buffer (have %lu bytes, need %lu bytes)",
+        (unsigned long) fxb->bufsz, (unsigned long) fxb->bufsz + xattrsz);
+
+      bufsz = fxb->bufsz + xattrsz;
+      ptr = palloc(p, bufsz);
+
+      /* Copy over our existing response data into the new buffer. */
+      memcpy(ptr, fxb->ptr, resp_len);
+      fxb->ptr = ptr;
+      fxb->bufsz = bufsz;
+      fxb->buf = ptr + resp_len;
+      fxb->buflen = bufsz - resp_len;
+    }
+
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), names->nelts);
+    for (i = 0; i < names->nelts; i++) {
+      const char *name;
+      pr_buffer_t *val;
+
+      name = ((const char **) names->elts)[i];
+      val = ((pr_buffer_t **) vals->elts)[i];
+
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), name);
+      len += sftp_msg_write_data(&(fxb->buf), &(fxb->buflen),
+        (const unsigned char *) val->buf, (size_t) val->buflen, TRUE);
+    }
 
     destroy_pool(sub_pool);
   }
@@ -2436,7 +2496,7 @@ static uint32_t fxp_xattrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
   return len;
 }
 
-static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
+static uint32_t fxp_attrs_write(pool *p, struct fxp_buffer *fxb,
     const char *path, struct stat *st, const char *user_owner,
     const char *group_owner) {
   uint32_t flags, len = 0;
@@ -2447,13 +2507,13 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
       SSH2_FX_ATTR_ACMODTIME;
     perms = st->st_mode;
 
-    len += sftp_msg_write_int(buf, buflen, flags);
-    len += sftp_msg_write_long(buf, buflen, st->st_size);
-    len += sftp_msg_write_int(buf, buflen, st->st_uid);
-    len += sftp_msg_write_int(buf, buflen, st->st_gid);
-    len += sftp_msg_write_int(buf, buflen, perms);
-    len += sftp_msg_write_int(buf, buflen, st->st_atime);
-    len += sftp_msg_write_int(buf, buflen, st->st_mtime);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags);
+    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_size);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_uid);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_gid);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), perms);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_atime);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_mtime);
 
   } else {
     char file_type;
@@ -2477,36 +2537,36 @@ static uint32_t fxp_attrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
 
     file_type = fxp_get_file_type(st->st_mode);
 
-    len += sftp_msg_write_int(buf, buflen, flags);
-    len += sftp_msg_write_byte(buf, buflen, file_type);
-    len += sftp_msg_write_long(buf, buflen, st->st_size);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags);
+    len += sftp_msg_write_byte(&(fxb->buf), &(fxb->buflen), file_type);
+    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_size);
 
     if (user_owner == NULL) {
-      len += sftp_msg_write_string(buf, buflen,
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
         pr_auth_uid2name(p, st->st_uid));
 
     } else {
-      len += sftp_msg_write_string(buf, buflen, user_owner);
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), user_owner);
     }
 
     if (group_owner == NULL) {
-      len += sftp_msg_write_string(buf, buflen,
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
         pr_auth_gid2name(p, st->st_gid));
 
     } else {
-      len += sftp_msg_write_string(buf, buflen, group_owner);
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), group_owner);
     }
 
-    len += sftp_msg_write_int(buf, buflen, perms);
-    len += sftp_msg_write_long(buf, buflen, st->st_atime);
-    len += sftp_msg_write_long(buf, buflen, st->st_mtime);
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), perms);
+    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_atime);
+    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_mtime);
 
     if (flags & SSH2_FX_ATTR_LINK_COUNT) {
-      len += sftp_msg_write_int(buf, buflen, st->st_nlink);
+      len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_nlink);
     }
 
     if (flags & SSH2_FX_ATTR_EXTENDED) {
-      len += fxp_xattrs_write(p, buf, buflen, path);
+      len += fxp_xattrs_write(p, fxb, path);
     }
   }
 
@@ -2688,16 +2748,17 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
   return fxd;
 }
 
-static uint32_t fxp_name_write(pool *p, unsigned char **buf, uint32_t *buflen,
+static uint32_t fxp_name_write(pool *p, struct fxp_buffer *fxb,
     const char *path, struct stat *st, const char *user_owner,
     const char *group_owner) {
   uint32_t len = 0;
 
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-    len += sftp_msg_write_string(buf, buflen, sftp_utf8_encode_str(p, path));
+    len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
+      sftp_utf8_encode_str(p, path));
 
   } else {
-    len += sftp_msg_write_string(buf, buflen, path);
+    len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), path);
   }
 
   if (fxp_session->client_version <= 3) {
@@ -2706,15 +2767,15 @@ static uint32_t fxp_name_write(pool *p, unsigned char **buf, uint32_t *buflen,
     path_desc = fxp_get_path_listing(p, path, st, user_owner, group_owner);
 
     if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-      len += sftp_msg_write_string(buf, buflen,
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
         sftp_utf8_encode_str(p, path_desc));
 
     } else {
-      len += sftp_msg_write_string(buf, buflen, path_desc);
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), path_desc);
     }
   }
 
-  len += fxp_attrs_write(p, buf, buflen, path, st, user_owner, group_owner);
+  len += fxp_attrs_write(p, fxb, path, st, user_owner, group_owner);
   return len;
 }
 
@@ -7297,10 +7358,11 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_fstat(struct fxp_packet *fxp) {
-  unsigned char *buf, *ptr;
+  unsigned char *buf;
   char *cmd_name, *name;
-  uint32_t buflen, bufsz;
+  uint32_t buflen;
   struct stat st;
+  struct fxp_buffer *fxb;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd;
@@ -7334,8 +7396,9 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: FSTAT %s", name);
   }
 
-  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
+  fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
+  fxb->ptr = buf = palloc(fxp->pool, fxb->bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
@@ -7358,8 +7421,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -7378,8 +7441,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
   
     return fxp_packet_write(resp);
   }
@@ -7409,8 +7472,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -7438,8 +7501,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
   
     return fxp_packet_write(resp);
   }
@@ -7464,16 +7527,22 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     fake_group = session.group;
   }
 
-  fxp_attrs_write(fxp->pool, &buf, &buflen, fxh->fh->fh_path, &st, fake_user,
-    fake_group);
+  fxb->buf = buf;
+  fxb->buflen = buflen;
+
+  fxp_attrs_write(fxp->pool, fxb, fxh->fh->fh_path, &st, fake_user, fake_group);
+
+  /* fxp_attrs_write will have changed the buf/buflen values in the buffer. */
+  buf = fxb->buf;
+  buflen = fxb->buflen;
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
+  resp->payload = fxb->ptr;
+  resp->payload_sz = (fxb->bufsz - buflen);
   
   return fxp_packet_write(resp);
 }
@@ -8010,10 +8079,11 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_lstat(struct fxp_packet *fxp) {
-  unsigned char *buf, *ptr;
+  unsigned char *buf;
   char *cmd_name, *path;
-  uint32_t buflen, bufsz;
+  uint32_t buflen;
   struct stat st;
+  struct fxp_buffer *fxb;
   struct fxp_packet *resp;
   cmd_rec *cmd;
   const char *fake_user = NULL, *fake_group = NULL;
@@ -8057,8 +8127,9 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "LSTAT", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
 
-  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
+  fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
+  fxb->ptr = buf = palloc(fxp->pool, fxb->bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
@@ -8077,8 +8148,8 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -8107,8 +8178,8 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -8135,8 +8206,8 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -8165,8 +8236,8 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -8191,15 +8262,22 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     fake_group = session.group;
   }
 
-  fxp_attrs_write(fxp->pool, &buf, &buflen, path, &st, fake_user, fake_group);
+  fxb->buf = buf;
+  fxb->buflen = buflen;
+
+  fxp_attrs_write(fxp->pool, fxb, path, &st, fake_user, fake_group);
+
+  /* fxp_attrs_write will have changed the buf/buflen fields in the buffer. */
+  buf = fxb->buf;
+  buflen = fxb->buflen;
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
+  resp->payload = fxb->ptr;
+  resp->payload_sz = (fxb->bufsz - buflen);
 
   return fxp_packet_write(resp);
 }
@@ -9936,10 +10014,11 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
 static int fxp_handle_readdir(struct fxp_packet *fxp) {
   register unsigned int i;
-  unsigned char *buf, *ptr;
+  unsigned char *buf;
   char *cmd_name, *name;
-  uint32_t buflen, bufsz, curr_packet_pathsz = 0, max_packetsz;
+  uint32_t buflen, curr_packet_pathsz = 0, max_packetsz;
   struct dirent *dent;
+  struct fxp_buffer *fxb;
   struct fxp_dirent **paths;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
@@ -9967,9 +10046,11 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   /* XXX What's a good size here? */
 
+  fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
+
   max_packetsz = sftp_channel_get_max_packetsz();
-  buflen = bufsz = max_packetsz;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  fxb->bufsz = buflen = max_packetsz;
+  fxb->ptr = buf = palloc(fxp->pool, fxb->bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
@@ -9992,8 +10073,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10012,8 +10093,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
   
     return fxp_packet_write(resp);
   }
@@ -10070,8 +10151,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_response_clear(&resp_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10109,8 +10190,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10226,8 +10307,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10247,8 +10328,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_response_clear(&resp_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
   
     return fxp_packet_write(resp);
   }
@@ -10260,24 +10341,31 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
   sftp_msg_write_int(&buf, &buflen, path_list->nelts);
 
+  fxb->buf = buf;
+  fxb->buflen = buflen;
   paths = path_list->elts;
+
   for (i = 0; i < path_list->nelts; i++) {
     uint32_t name_len = 0;
 
-    name_len = fxp_name_write(fxp->pool, &buf, &buflen, paths[i]->client_path,
+    name_len = fxp_name_write(fxp->pool, fxb, paths[i]->client_path,
       paths[i]->st, fake_user, fake_group);
 
     pr_trace_msg(trace_channel, 19, "READDIR: FXP_NAME entry size: %lu bytes",
       (unsigned long) name_len);
   }
 
+  /* fxp_name_write will have changed the values stashed in the buffer. */
+  buf = fxb->buf;
+  buflen = fxb->buflen;
+
   if (fxp_session->client_version > 5) {
     sftp_msg_write_bool(&buf, &buflen, have_eod ? TRUE : FALSE);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
+  resp->payload = fxb->ptr;
+  resp->payload_sz = (fxb->bufsz - buflen);
 
   session.xfer.total_bytes += resp->payload_sz;
   session.total_bytes += resp->payload_sz;
@@ -10291,10 +10379,11 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
 static int fxp_handle_readlink(struct fxp_packet *fxp) {
   char data[PR_TUNABLE_PATH_MAX + 1];
-  unsigned char *buf, *ptr;
+  unsigned char *buf;
   char *path, *resolved_path;
   int res;
-  uint32_t buflen, bufsz;
+  uint32_t buflen;
+  struct fxp_buffer *fxb;
   struct fxp_packet *resp;
   cmd_rec *cmd;
 
@@ -10324,8 +10413,9 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "READLINK", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
 
-  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
+  fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
+  fxb->ptr = buf = palloc(fxp->pool, fxb->bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
@@ -10344,8 +10434,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10377,8 +10467,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10401,8 +10491,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10420,8 +10510,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     const char *reason;
     int xerrno = errno;
 
-    buf = ptr;
-    buflen = bufsz;
+    buf = fxb->ptr;
+    buflen = fxb->bufsz;
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -10470,7 +10560,13 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
       fake_group = session.group;
     }
 
-    fxp_name_write(fxp->pool, &buf, &buflen, data, &st, fake_user, fake_group);
+    fxb->buf = buf;
+    fxb->buflen = buflen;
+
+    fxp_name_write(fxp->pool, fxb, data, &st, fake_user, fake_group);
+
+    buf = fxb->buf;
+    buflen = fxb->buflen;
 
     pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
@@ -10478,8 +10574,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
+  resp->payload = fxb->ptr;
+  resp->payload_sz = (fxb->bufsz - buflen);
 
   return fxp_packet_write(resp);
 }
@@ -10511,10 +10607,11 @@ static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags) {
 
 static int fxp_handle_realpath(struct fxp_packet *fxp) {
   int res, xerrno;
-  unsigned char *buf, *ptr, realpath_flags = 0;
+  unsigned char *buf, realpath_flags = 0;
   char *path;
-  uint32_t buflen, bufsz;
+  uint32_t buflen;
   struct stat st;
+  struct fxp_buffer *fxb;
   struct fxp_packet *resp;
   cmd_rec *cmd;
 
@@ -10578,8 +10675,9 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     }
   }
 
-  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
+  fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
+  fxb->ptr = buf = palloc(fxp->pool, fxb->bufsz);
 
   res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
   if (res < 0) {
@@ -10610,8 +10708,14 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
       sftp_msg_write_int(&buf, &buflen, fxp->request_id);
       sftp_msg_write_int(&buf, &buflen, 1);
-      fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
-        "nobody");
+
+      fxb->buf = buf;
+      fxb->buflen = buflen;
+
+      fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+
+      buf = fxb->buf;
+      buflen = fxb->buflen;
     }
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -10619,8 +10723,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -10670,8 +10774,14 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
         sftp_msg_write_int(&buf, &buflen, fxp->request_id);
         sftp_msg_write_int(&buf, &buflen, 1);
-        fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
-          "nobody");
+
+        fxb->buf = buf;
+        fxb->buflen = buflen;
+
+        fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+
+        buf = fxb->buf;
+        buflen = fxb->buflen;
       }
 
       pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -10679,8 +10789,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       pr_response_clear(&resp_err_list);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-      resp->payload = ptr;
-      resp->payload_sz = (bufsz - buflen);
+      resp->payload = fxb->ptr;
+      resp->payload_sz = (fxb->bufsz - buflen);
 
       return fxp_packet_write(resp);
     }
@@ -10703,8 +10813,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "REALPATH of '%s' blocked by <Limit> configuration", path);
 
-    buf = ptr;
-    buflen = bufsz;
+    buf = fxb->ptr;
+    buflen = fxb->bufsz;
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -10732,8 +10842,14 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
       sftp_msg_write_int(&buf, &buflen, fxp->request_id);
       sftp_msg_write_int(&buf, &buflen, 1);
-      fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
-        "nobody");
+
+      fxb->buf = buf;
+      fxb->buflen = buflen;
+
+      fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+
+      buf = fxb->buf;
+      buflen = fxb->buflen;
     }
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -10777,8 +10893,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error checking '%s' for REALPATH: %s", path, strerror(xerrno));
 
-      buf = ptr;
-      buflen = bufsz;
+      buf = fxb->ptr;
+      buflen = fxb->bufsz;
 
       status_code = fxp_errno2status(xerrno, &reason);
 
@@ -10806,8 +10922,14 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_NAME);
         sftp_msg_write_int(&buf, &buflen, fxp->request_id);
         sftp_msg_write_int(&buf, &buflen, 1);
-        fxp_name_write(fxp->pool, &buf, &buflen, path, &st, "nobody",
-          "nobody");
+
+        fxb->buf = buf;
+        fxb->buflen = buflen;
+
+        fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+
+        buf = fxb->buf;
+        buflen = fxb->buflen;
       }
 
       pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -10838,8 +10960,13 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         fake_group = session.group;
       }
 
-      fxp_name_write(fxp->pool, &buf, &buflen, path, &st, fake_user,
-        fake_group);
+      fxb->buf = buf;
+      fxb->buflen = buflen;
+
+      fxp_name_write(fxp->pool, fxb, path, &st, fake_user, fake_group);
+
+      buf = fxb->buf;
+      buflen = fxb->buflen;
 
       pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
@@ -10848,8 +10975,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
+  resp->payload = fxb->ptr;
+  resp->payload_sz = (fxb->bufsz - buflen);
 
   return fxp_packet_write(resp);
 }
@@ -12165,10 +12292,11 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
 }
 
 static int fxp_handle_stat(struct fxp_packet *fxp) {
-  unsigned char *buf, *ptr;
+  unsigned char *buf;
   char *cmd_name, *path;
-  uint32_t buflen, bufsz;
+  uint32_t buflen;
   struct stat st;
+  struct fxp_buffer *fxb;
   struct fxp_packet *resp;
   cmd_rec *cmd;
   const char *fake_user = NULL, *fake_group = NULL;
@@ -12211,8 +12339,9 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   cmd = fxp_cmd_alloc(fxp->pool, "STAT", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
 
-  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
+  fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
+  fxb->ptr = buf = palloc(fxp->pool, fxb->bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
@@ -12231,8 +12360,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -12279,8 +12408,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -12307,8 +12436,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -12339,8 +12468,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
 
     return fxp_packet_write(resp);
   }
@@ -12365,15 +12494,21 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     fake_group = session.group;
   }
 
-  fxp_attrs_write(fxp->pool, &buf, &buflen, path, &st, fake_user, fake_group);
+  fxb->buf = buf;
+  fxb->buflen = buflen;
+
+  fxp_attrs_write(fxp->pool, fxb, path, &st, fake_user, fake_group);
+
+  buf = fxb->buf;
+  buflen = fxb->buflen;
 
   pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
+  resp->payload = fxb->ptr;
+  resp->payload_sz = (fxb->bufsz - buflen);
 
   return fxp_packet_write(resp);
 }
