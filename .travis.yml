@@ -15,6 +15,8 @@ install:
   - sudo apt-get install -y check
   # for mod_lang
   - sudo apt-get install -y gettext
+  # for xattr support
+  - sudo apt-get install -y libattr1-dev
   # for mod_cap
   - sudo apt-get install -y libcap-dev
   # for mod_geoip
