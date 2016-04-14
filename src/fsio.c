@@ -905,14 +905,18 @@ static int get_setxattr_flags(int fsio_flags) {
    */
 
   if (fsio_flags & PR_FSIO_XATTR_FL_CREATE) {
+#if defined(XATTR_CREATE)
     xattr_flags = XATTR_CREATE;
+#endif /* XATTR_CREATE */
 
     if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
       xattr_flags = 0;
     }
 
   } else if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
+#if defined(XATTR_REPLACE)
     xattr_flags = XATTR_REPLACE;
+#endif /* XATTR_REPLACE */
   }
 
   return xattr_flags;
