@@ -37318,10 +37318,10 @@ main ()
 
          ssize_t res;
          int namespace = 0;
-         const char *path = NULL, name = NULL;
+         const char *path = NULL;
          void *val = NULL;
          size_t sz;
-         res = extattr_list_link(path, namespace, name, val, sz);
+         res = extattr_list_link(path, namespace, val, sz);
 
   ;
   return 0;
