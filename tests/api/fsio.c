@@ -2135,7 +2135,7 @@ START_TEST (fsio_sys_setxattr_test) {
 
   res = pr_fsio_setxattr(path, name, NULL, 0, flags);
   if (res < 0) {
-    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d), ENOTSUP,
+    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d)", ENOTSUP,
       strerror(errno), errno);
   }
 
@@ -2181,7 +2181,7 @@ START_TEST (fsio_sys_lsetxattr_test) {
 
   res = pr_fsio_lsetxattr(path, name, NULL, 0, flags);
   if (res < 0) {
-    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d), ENOTSUP,
+    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d)", ENOTSUP,
       strerror(errno), errno);
   }
 
@@ -2220,7 +2220,7 @@ START_TEST (fsio_sys_fsetxattr_test) {
   res = pr_fsio_fsetxattr(fh, name, NULL, 0, flags);
 #ifdef PR_USE_XATTR
   if (res < 0) {
-    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d), ENOTSUP,
+    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d)", ENOTSUP,
       strerror(errno), errno);
   }
 
