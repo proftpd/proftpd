@@ -1816,9 +1816,9 @@ START_TEST (fsio_sys_getxattr_test) {
   res = pr_fsio_getxattr(path, name, NULL, 0);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
-  fail_unless(errno == ENOENT || errno == ENOATTR,
-    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", ENOENT, ENOATTR,
-    strerror(errno), errno);
+  fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
+    "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
+    ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
 
 #else
   fail_unless(res < 0, "Failed to handle --disable-xattr");
@@ -1847,9 +1847,9 @@ START_TEST (fsio_sys_lgetxattr_test) {
   res = pr_fsio_lgetxattr(path, name, NULL, 0);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
-  fail_unless(errno == ENOENT || errno == ENOATTR,
-    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", ENOENT, ENOATTR,
-    strerror(errno), errno);
+  fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
+    "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
+    ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
 
 #else
   fail_unless(res < 0, "Failed to handle --disable-xattr");
@@ -1883,9 +1883,9 @@ START_TEST (fsio_sys_fgetxattr_test) {
   res = pr_fsio_fgetxattr(fh, name, NULL, 0);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
-  fail_unless(errno == ENOENT || errno == ENOATTR,
-    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", ENOENT, ENOATTR,
-    strerror(errno), errno);
+  fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
+    "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
+    ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
 
 #else
   fail_unless(res < 0, "Failed to handle --disable-xattr");
@@ -2021,9 +2021,9 @@ START_TEST (fsio_sys_removexattr_test) {
   res = pr_fsio_removexattr(path, name);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
-  fail_unless(errno == ENOENT || errno == ENOATTR,
-    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", EINVAL, ENOATTR,
-    strerror(errno), errno);
+  fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
+    "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
+    ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
 
 #else
   fail_unless(res < 0, "Failed to handle --disable-xattr");
@@ -2052,9 +2052,9 @@ START_TEST (fsio_sys_lremovexattr_test) {
   res = pr_fsio_lremovexattr(path, name);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
-  fail_unless(errno == ENOENT || errno == ENOATTR,
-    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", EINVAL, ENOATTR,
-    strerror(errno), errno);
+  fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
+    "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
+    ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
 
 #else
   fail_unless(res < 0, "Failed to handle --disable-xattr");
@@ -2088,9 +2088,9 @@ START_TEST (fsio_sys_fremovexattr_test) {
   res = pr_fsio_fremovexattr(fh, name);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
-  fail_unless(errno == ENOENT || errno == ENOATTR,
-    "Expected ENOENT (%d) or ENOATTR (%d), got %s (%d)", EINVAL, ENOATTR,
-    strerror(errno), errno);
+  fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
+    "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
+    ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
 
 #else
   fail_unless(res < 0, "Failed to handle --disable-xattr");
@@ -2134,8 +2134,11 @@ START_TEST (fsio_sys_setxattr_test) {
   pr_fsio_close(fh);
 
   res = pr_fsio_setxattr(path, name, NULL, 0, flags);
-  fail_unless(res == 0, "Failed to set xattr '%s' on '%s': %s", name, path,
-    strerror(errno));
+  if (res < 0) {
+    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d), ENOTSUP,
+      strerror(errno), errno);
+  }
+
   (void) unlink(fsio_test_path);
 #else
   (void) fh;
@@ -2177,8 +2180,11 @@ START_TEST (fsio_sys_lsetxattr_test) {
   pr_fsio_close(fh);
 
   res = pr_fsio_lsetxattr(path, name, NULL, 0, flags);
-  fail_unless(res == 0, "Failed to set xattr '%s' on '%s': %s", name, path,
-    strerror(errno));
+  if (res < 0) {
+    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d), ENOTSUP,
+      strerror(errno), errno);
+  }
+
   (void) unlink(fsio_test_path);
 #else
   (void) fh;
@@ -2213,8 +2219,10 @@ START_TEST (fsio_sys_fsetxattr_test) {
   flags = PR_FSIO_XATTR_FL_CREATE;
   res = pr_fsio_fsetxattr(fh, name, NULL, 0, flags);
 #ifdef PR_USE_XATTR
-  fail_unless(res == 0, "Failed to set xattr '%s' on '%s': %s", fsio_test_path,
-    strerror(errno));
+  if (res < 0) {
+    fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d), ENOTSUP,
+      strerror(errno), errno);
+  }
 
 #else
   fail_unless(res < 0, "Failed to handle --disable-xattr");
