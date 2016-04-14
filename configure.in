@@ -2240,104 +2240,214 @@ fi
 
 dnl Extended attribute checks
 if test x"$enable_xattr" != xno ; then
+  # On Free/Net/OpenBSD, it's sys/extattr.h
+  AC_CHECK_HEADER(sys/extattr.h,
+    [AC_DEFINE(HAVE_SYS_EXTXATTR_H, 1, [Define if sys/extattr.h is present.])
+     AC_DEFINE(PR_USE_XATTR, 1, [Define if using xattr support.])
+
+     AC_MSG_CHECKING([for extattr_delete_link])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_EXTATTR_H
+         # include <sys/extattr.h>
+         #endif
+       ],
+       [
+         int res;
+         int namespace = 0;
+         const char *path = NULL, name = NULL;
+         void *val = NULL;
+         size_t sz;
+         res = extattr_delete_link(path, namespace, name, val, sz);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_EXTATTR_DELETE_LINK, 1, [Define if you have extattr_delete_link])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
+
+     AC_MSG_CHECKING([for extattr_get_link])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_EXTATTR_H
+         # include <sys/extattr.h>
+         #endif
+       ],
+       [
+         ssize_t res;
+         int namespace = 0;
+         const char *path = NULL, name = NULL;
+         void *val = NULL;
+         size_t sz;
+         res = extattr_get_link(path, namespace, name, val, sz);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_EXTATTR_GET_LINK, 1, [Define if you have extattr_get_link])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
+
+     AC_MSG_CHECKING([for extattr_list_link])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_EXTATTR_H
+         # include <sys/extattr.h>
+         #endif
+       ],
+       [
+         ssize_t res;
+         int namespace = 0;
+         const char *path = NULL, name = NULL;
+         void *val = NULL;
+         size_t sz;
+         res = extattr_list_link(path, namespace, name, val, sz);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_EXTATTR_LIST_LINK, 1, [Define if you have extattr_list_link])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
+
+     AC_MSG_CHECKING([for extattr_set_link])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_EXTATTR_H
+         # include <sys/extattr.h>
+         #endif
+       ],
+       [
+         int res;
+         int namespace = 0;
+         const char *path = NULL, name = NULL;
+         void *val = NULL;
+         size_t sz;
+         res = extattr_set_link(path, namespace, name, val, sz);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_EXTATTR_SET_LINK, 1, [Define if you have extattr_set_link])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
+   ])
+
+  # On Linux/MacOSX, it's sys/xattr.h
   AC_CHECK_HEADER(sys/xattr.h,
     [AC_DEFINE(HAVE_SYS_XATTR_H, 1, [Define if sys/xattr.h is present.])
      AC_DEFINE(PR_USE_XATTR, 1, [Define if using xattr support.])
-    ])
-  AC_CHECK_HEADERS(attr/xattr.h)
+     AC_CHECK_HEADERS(attr/xattr.h)
 
-  AC_MSG_CHECKING([for lgetxattr])
-  AC_TRY_COMPILE(
-    [
-      #include <sys/types.h>
-      #ifdef HAVE_SYS_XATTR_H
-      # include <sys/xattr.h>
-      #endif
-    ],
-    [
-      ssize_t res;
-      const char *path = NULL, name = NULL;
-      void *val = NULL;
-      size_t sz;
-      res = lgetxattr(path, name, val, sz);
-    ],
-    [
-      AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE_LGETXATTR, 1, [Define if you have lgetxattr])
-    ],
-    [
-      AC_MSG_RESULT(no)
-    ]
-  )
+     AC_MSG_CHECKING([for lgetxattr])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_XATTR_H
+         # include <sys/xattr.h>
+         #endif
+       ],
+       [
+         ssize_t res;
+         const char *path = NULL, name = NULL;
+         void *val = NULL;
+         size_t sz;
+         res = lgetxattr(path, name, val, sz);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_LGETXATTR, 1, [Define if you have lgetxattr])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
 
-  AC_MSG_CHECKING([for llistxattr])
-  AC_TRY_COMPILE(
-    [
-      #include <sys/types.h>
-      #ifdef HAVE_SYS_XATTR_H
-      # include <sys/xattr.h>
-      #endif
-    ],
-    [
-      ssize_t res;
-      const char *path = NULL;
-      char *names = NUL;
-      size_t namessz = 0;
-      res = llistxattr(path, names, namessz);
-    ],
-    [
-      AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE_LLISTXATTR, 1, [Define if you have llistxattr])
-    ],
-    [
-      AC_MSG_RESULT(no)
-    ]
-  )
+     AC_MSG_CHECKING([for llistxattr])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_XATTR_H
+         # include <sys/xattr.h>
+         #endif
+       ],
+       [
+         ssize_t res;
+         const char *path = NULL;
+         char *names = NUL;
+         size_t namessz = 0;
+         res = llistxattr(path, names, namessz);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_LLISTXATTR, 1, [Define if you have llistxattr])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
 
-  AC_MSG_CHECKING([for lremovexattr])
-  AC_TRY_COMPILE(
-    [
-      #include <sys/types.h>
-      #ifdef HAVE_SYS_XATTR_H
-      # include <sys/xattr.h>
-      #endif
-    ],
-    [
-      ssize_t res;
-      const char *path = NULL, name = NULL;
-      res = lremovexattr(path, name);
-    ],
-    [
-      AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE_LREMOVEXATTR, 1, [Define if you have lremovexattr])
-    ],
-    [
-      AC_MSG_RESULT(no)
-    ]
-  )
+     AC_MSG_CHECKING([for lremovexattr])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_XATTR_H
+         # include <sys/xattr.h>
+         #endif
+       ],
+       [
+         ssize_t res;
+         const char *path = NULL, name = NULL;
+         res = lremovexattr(path, name);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_LREMOVEXATTR, 1, [Define if you have lremovexattr])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
 
-  AC_MSG_CHECKING([for lsetxattr])
-  AC_TRY_COMPILE(
-    [
-      #include <sys/types.h>
-      #ifdef HAVE_SYS_XATTR_H
-      # include <sys/xattr.h>
-      #endif
-    ],
-    [
-      int res, flags = 0;
-      const char *path = NULL, name = NULL;
-      const void *val = NULL;
-      res = lsetxattr(path, name, val, flags);
-    ],
-    [
-      AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE_LSETXATTR, 1, [Define if you have lsetxattr])
-    ],
-    [
-      AC_MSG_RESULT(no)
-    ]
-  )
+     AC_MSG_CHECKING([for lsetxattr])
+     AC_TRY_COMPILE(
+       [
+         #include <sys/types.h>
+         #ifdef HAVE_SYS_XATTR_H
+         # include <sys/xattr.h>
+         #endif
+       ],
+       [
+         int res, flags = 0;
+         const char *path = NULL, name = NULL;
+         const void *val = NULL;
+         res = lsetxattr(path, name, val, flags);
+       ],
+       [
+         AC_MSG_RESULT(yes)
+         AC_DEFINE(HAVE_LSETXATTR, 1, [Define if you have lsetxattr])
+       ],
+       [
+         AC_MSG_RESULT(no)
+       ]
+     )
+   ])
+
+  # Some platforms need libattr for extended attributes
+  AC_CHECK_LIB(attr, setxattr)
 fi
 
 dnl Custom-rolled macro for checking return type of setgrent(3)

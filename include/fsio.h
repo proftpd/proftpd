@@ -32,12 +32,14 @@
 #include "conf.h"
 
 #ifdef PR_USE_XATTR
-# if defined(HAVE_SYS_XATTR_H)
+# if defined(HAVE_SYS_EXTATTR_H)
+#  include <sys/extattr.h>
+# elif defined(HAVE_SYS_XATTR_H)
 #  include <sys/xattr.h>
+#  if defined(HAVE_ATTR_XATTR_H)
+#   include <attr/xattr.h>
+#  endif /* HAVE_ATTR_XATTR_H */
 # endif /* HAVE_SYS_XATTR_H */
-# if defined(HAVE_ATTR_XATTR_H)
-#  include <attr/xattr.h>
-# endif /* HAVE_ATTR_XATTR_H */
 #endif /* PR_USE_XATTR */
 
 /* This is a Tru64-specific hack, to work around some macro funkiness
@@ -147,18 +149,22 @@ struct fs_rec {
   int (*fsync)(pr_fh_t *, int);
 
   /* Extended attribute support */
-  ssize_t (*getxattr)(pr_fs_t *, const char *, const char *, void *, size_t);
-  ssize_t (*lgetxattr)(pr_fs_t *, const char *, const char *, void *, size_t);
-  ssize_t (*fgetxattr)(pr_fh_t *, int, const char *, void *, size_t);
-  ssize_t (*listxattr)(pr_fs_t *, const char *, char *, size_t);
-  ssize_t (*llistxattr)(pr_fs_t *, const char *, char *, size_t);
-  ssize_t (*flistxattr)(pr_fh_t *, int, char *, size_t);
-  int (*removexattr)(pr_fs_t *, const char *, const char *);
-  int (*lremovexattr)(pr_fs_t *, const char *, const char *);
-  int (*fremovexattr)(pr_fh_t *, int, const char *);
-  int (*setxattr)(pr_fs_t *, const char *, const char *, void *, size_t, int);
-  int (*lsetxattr)(pr_fs_t *, const char *, const char *, void *, size_t, int);
-  int (*fsetxattr)(pr_fh_t *, int, const char *, void *, size_t, int);
+  ssize_t (*getxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t);
+  ssize_t (*lgetxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t);
+  ssize_t (*fgetxattr)(pool *, pr_fh_t *, int, const char *, void *, size_t);
+  int (*listxattr)(pool *, pr_fs_t *, const char *, array_header **);
+  int (*llistxattr)(pool *, pr_fs_t *, const char *, array_header **);
+  int (*flistxattr)(pool *, pr_fh_t *, int, array_header **);
+  int (*removexattr)(pool *, pr_fs_t *, const char *, const char *);
+  int (*lremovexattr)(pool *, pr_fs_t *, const char *, const char *);
+  int (*fremovexattr)(pool *, pr_fh_t *, int, const char *);
+  int (*setxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t, int);
+  int (*lsetxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t, int);
+  int (*fsetxattr)(pool *, pr_fh_t *, int, const char *, void *, size_t, int);
 
   /* For actual operations on the directory (or subdirs)
    * we cast the return from opendir to DIR* in src/fs.c, so
@@ -309,18 +315,18 @@ int pr_fsio_fsync(pr_fh_t *fh);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
 
 /* Extended attribute support */
-ssize_t pr_fsio_getxattr(const char *, const char *, void *, size_t);
-ssize_t pr_fsio_lgetxattr(const char *, const char *, void *, size_t);
-ssize_t pr_fsio_fgetxattr(pr_fh_t *, const char *, void *, size_t);
-ssize_t pr_fsio_listxattr(const char *, char *, size_t);
-ssize_t pr_fsio_llistxattr(const char *, char *, size_t);
-ssize_t pr_fsio_flistxattr(pr_fh_t *, char *, size_t);
-int pr_fsio_removexattr(const char *, const char *);
-int pr_fsio_lremovexattr(const char *, const char *);
-int pr_fsio_fremovexattr(pr_fh_t *, const char *);
-int pr_fsio_setxattr(const char *, const char *, void *, size_t, int);
-int pr_fsio_lsetxattr(const char *, const char *, void *, size_t, int);
-int pr_fsio_fsetxattr(pr_fh_t *, const char *, void *, size_t, int);
+ssize_t pr_fsio_getxattr(pool *p, const char *, const char *, void *, size_t);
+ssize_t pr_fsio_lgetxattr(pool *, const char *, const char *, void *, size_t);
+ssize_t pr_fsio_fgetxattr(pool *, pr_fh_t *, const char *, void *, size_t);
+int pr_fsio_listxattr(pool *, const char *, array_header **);
+int pr_fsio_llistxattr(pool *, const char *, array_header **);
+int pr_fsio_flistxattr(pool *, pr_fh_t *, array_header **);
+int pr_fsio_removexattr(pool *, const char *, const char *);
+int pr_fsio_lremovexattr(pool *, const char *, const char *);
+int pr_fsio_fremovexattr(pool *, pr_fh_t *, const char *);
+int pr_fsio_setxattr(pool *, const char *, const char *, void *, size_t, int);
+int pr_fsio_lsetxattr(pool *, const char *, const char *, void *, size_t, int);
+int pr_fsio_fsetxattr(pool *, pr_fh_t *, const char *, void *, size_t, int);
 
 /* setxattr flags */
 #define PR_FSIO_XATTR_FL_CREATE		0x001

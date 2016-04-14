@@ -1566,11 +1566,11 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
           xattr_valsz = (size_t) xattr->ext_datalen;
 
           if (fh != NULL) {
-            res = pr_fsio_fsetxattr(fh, xattr_name, xattr_val,
+            res = pr_fsio_fsetxattr(fxp->pool, fh, xattr_name, xattr_val,
               xattr_valsz, 0);
 
           } else {
-            res = pr_fsio_lsetxattr(path, xattr_name, xattr_val,
+            res = pr_fsio_lsetxattr(fxp->pool, path, xattr_name, xattr_val,
               xattr_valsz, 0);
           }
 
@@ -2395,11 +2395,12 @@ static uint32_t fxp_xattrs_write(pool *p, unsigned char **buf, uint32_t *buflen,
   uint32_t len = 0;
 
 #ifdef PR_USE_XATTR
-  ssize_t res;
+  int res;
+  array_header *names = NULL;
 
   /* XXX TODO XATTRS */
 
-  res = pr_fsio_llistxattr(path, NULL, 0);
+  res = pr_fsio_llistxattr(p, path, &names);
   if (res > 0) {
     pool *sub_pool;
 
@@ -5472,7 +5473,7 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  res = pr_fsio_lgetxattr(path, name, val, (size_t) valsz);
+  res = pr_fsio_lgetxattr(fxp->pool, path, name, val, (size_t) valsz);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5571,7 +5572,7 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
   path = fxh->fh->fh_path;
   val = pcalloc(fxp->pool, (size_t) valsz+1);
 
-  res = pr_fsio_fgetxattr(fxh->fh, name, val, (size_t) valsz);
+  res = pr_fsio_fgetxattr(fxp->pool, fxh->fh, name, val, (size_t) valsz);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5609,21 +5610,19 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
   return fxp_packet_write(resp);
 }
 
-static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
-    uint32_t valsz) {
-  ssize_t res;
-  char *names;
+static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path) {
+  register unsigned int i;
+  int res;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
   const char *reason;
   struct fxp_packet *resp;
+  array_header *names = NULL;
 
-  names = pcalloc(fxp->pool, (size_t) valsz+1);
-
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
+  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  res = pr_fsio_llistxattr(path, names, (size_t) valsz);
+  res = pr_fsio_llistxattr(fxp->pool, path, &names);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5647,11 +5646,17 @@ static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
   }
 
   pr_trace_msg(trace_channel, 8,
-    "sending response: EXTENDED_REPLY (%lu bytes)", (unsigned long) res);
+    "sending response: EXTENDED_REPLY (%d attribute names)", names->nelts);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
-  sftp_msg_write_data(&buf, &buflen, (const unsigned char *) names, res, TRUE);
+  sftp_msg_write_int(&buf, &buflen, names->nelts);
+  for (i = 0; i < names->nelts; i++) {
+    const char *name;
+
+    name = ((const char **) names->elts)[i];
+    sftp_msg_write_string(&buf, &buflen, name);
+  }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -5660,17 +5665,18 @@ static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, const char *path,
   return fxp_packet_write(resp);
 }
 
-static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
-    uint32_t valsz) {
-  ssize_t res;
-  char *names;
+static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp,
+    const char *handle) {
+  register unsigned int i;
+  int res;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, status_code;
   const char *path, *reason;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
+  array_header *names = NULL;
 
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
+  buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(handle);
@@ -5699,7 +5705,7 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
      * easy to get the file descriptor on a directory, so we'll just do
      * by path instead.
      */
-    return fxp_handle_ext_listxattr(fxp, fxh->fh->fh_path, valsz);
+    return fxp_handle_ext_listxattr(fxp, fxh->fh->fh_path);
   }
 
   if (fxh->fh == NULL) {
@@ -5719,9 +5725,7 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
   }
 
   path = fxh->fh->fh_path;
-  names = pcalloc(fxp->pool, (size_t) valsz+1);
-
-  res = pr_fsio_flistxattr(fxh->fh, names, (size_t) valsz);
+  res = pr_fsio_flistxattr(fxp->pool, fxh->fh, &names);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5745,10 +5749,18 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, const char *handle,
   }
 
   pr_trace_msg(trace_channel, 8,
-    "sending response: EXTENDED_REPLY (%lu bytes)", (unsigned long) res);
+    "sending response: EXTENDED_REPLY (%d attributes)", names->nelts);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_int(&buf, &buflen, names->nelts);
+  for (i = 0; i < names->nelts; i++) {
+    const char *name;
+
+    name = ((const char **) names->elts)[i];
+    sftp_msg_write_string(&buf, &buflen, name);
+  }
+
   sftp_msg_write_data(&buf, &buflen, (const unsigned char *) names, res, TRUE);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -5769,7 +5781,7 @@ static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, const char *path,
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
-  res = pr_fsio_lremovexattr(path, name);
+  res = pr_fsio_lremovexattr(fxp->pool, path, name);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5868,7 +5880,7 @@ static int fxp_handle_ext_fremovexattr(struct fxp_packet *fxp,
 
   path = fxh->fh->fh_path;
 
-  res = pr_fsio_fremovexattr(fxh->fh, name);
+  res = pr_fsio_fremovexattr(fxp->pool, fxh->fh, name);
   if (res < 0) {
     int xerrno = errno;
 
@@ -5927,7 +5939,7 @@ static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, const char *path,
     flags |= PR_FSIO_XATTR_FL_REPLACE;
   }
 
-  res = pr_fsio_lsetxattr(path, name, val, (size_t) valsz, flags);
+  res = pr_fsio_lsetxattr(fxp->pool, path, name, val, (size_t) valsz, flags);
   if (res < 0) {
     int xerrno = errno;
 
@@ -6035,7 +6047,7 @@ static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, const char *handle,
 
   path = fxh->fh->fh_path;
 
-  res = pr_fsio_fsetxattr(fxh->fh, name, val, (size_t) valsz, flags);
+  res = pr_fsio_fsetxattr(fxp->pool, fxh->fh, name, val, (size_t) valsz, flags);
   if (res < 0) {
     int xerrno = errno;
 
@@ -6911,12 +6923,10 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     if (strcmp(ext_request_name, "flistxattr@proftpd.org") == 0) {
       const char *handle;
-      uint32_t valsz;
 
       handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-      res = fxp_handle_ext_flistxattr(fxp, handle, valsz);
+      res = fxp_handle_ext_flistxattr(fxp, handle);
       pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
       return res;
@@ -6968,12 +6978,10 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     if (strcmp(ext_request_name, "listxattr@proftpd.org") == 0) {
       const char *path;
-      uint32_t valsz;
 
       path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-      valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-      res = fxp_handle_ext_listxattr(fxp, path, valsz);
+      res = fxp_handle_ext_listxattr(fxp, path);
       pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
 
       return res;

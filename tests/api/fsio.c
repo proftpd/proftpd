@@ -1801,19 +1801,24 @@ START_TEST (fsio_sys_getxattr_test) {
   ssize_t res;
   const char *path, *name;
 
-  res = pr_fsio_getxattr(NULL, NULL, NULL, 0);
+  res = pr_fsio_getxattr(NULL, NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_getxattr(p, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_getxattr(path, NULL, NULL, 0);
+  res = pr_fsio_getxattr(p, path, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
-  res = pr_fsio_getxattr(path, name, NULL, 0);
+  res = pr_fsio_getxattr(p, path, name, NULL, 0);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
   fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
@@ -1832,19 +1837,24 @@ START_TEST (fsio_sys_lgetxattr_test) {
   ssize_t res;
   const char *path, *name;
 
-  res = pr_fsio_lgetxattr(NULL, NULL, NULL, 0);
+  res = pr_fsio_lgetxattr(NULL, NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_lgetxattr(p, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_lgetxattr(path, NULL, NULL, 0);
+  res = pr_fsio_lgetxattr(p, path, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null xattr name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
-  res = pr_fsio_lgetxattr(path, name, NULL, 0);
+  res = pr_fsio_lgetxattr(p, path, name, NULL, 0);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
   fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
@@ -1864,8 +1874,13 @@ START_TEST (fsio_sys_fgetxattr_test) {
   pr_fh_t *fh;
   const char *name;
 
-  res = pr_fsio_fgetxattr(NULL, NULL, NULL, 0);
+  res = pr_fsio_fgetxattr(NULL, NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_fgetxattr(p, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null file handle");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -1874,13 +1889,13 @@ START_TEST (fsio_sys_fgetxattr_test) {
   fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
     strerror(errno));
 
-  res = pr_fsio_fgetxattr(fh, NULL, NULL, 0);
+  res = pr_fsio_fgetxattr(p, fh, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null xattr name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
-  res = pr_fsio_fgetxattr(fh, name, NULL, 0);
+  res = pr_fsio_fgetxattr(p, fh, name, NULL, 0);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexist attribute '%s'", name);
   fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
@@ -1899,17 +1914,28 @@ START_TEST (fsio_sys_fgetxattr_test) {
 END_TEST
 
 START_TEST (fsio_sys_listxattr_test) {
-  ssize_t res;
+  int res;
   const char *path;
   pr_fh_t *fh = NULL;
+  array_header *names = NULL;
 
-  res = pr_fsio_listxattr(NULL, NULL, 0);
+  res = pr_fsio_listxattr(NULL, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_listxattr(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_listxattr(path, NULL, 0);
+  res = pr_fsio_listxattr(p, path, NULL);
+  fail_unless(res < 0, "Failed to handle null array");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_listxattr(p, path, &names);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent path '%s'", path);
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
@@ -1921,7 +1947,7 @@ START_TEST (fsio_sys_listxattr_test) {
     strerror(errno));
   pr_fsio_close(fh);
 
-  res = pr_fsio_listxattr(path, NULL, 0);
+  res = pr_fsio_listxattr(p, path, &names);
   fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
 
   pr_fsio_close(fh);
@@ -1936,17 +1962,28 @@ START_TEST (fsio_sys_listxattr_test) {
 END_TEST
 
 START_TEST (fsio_sys_llistxattr_test) {
-  ssize_t res;
+  int res;
   const char *path;
   pr_fh_t *fh = NULL;
+  array_header *names = NULL;
 
-  res = pr_fsio_llistxattr(NULL, NULL, 0);
+  res = pr_fsio_llistxattr(NULL, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_llistxattr(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_llistxattr(path, NULL, 0);
+  res = pr_fsio_llistxattr(p, path, NULL);
+  fail_unless(res < 0, "Failed to handle null array");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_llistxattr(p, path, &names);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent path '%s'", path);
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
@@ -1958,7 +1995,7 @@ START_TEST (fsio_sys_llistxattr_test) {
     strerror(errno));
   pr_fsio_close(fh);
 
-  res = pr_fsio_listxattr(path, NULL, 0);
+  res = pr_fsio_listxattr(p, path, &names);
   fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
 
   pr_fsio_close(fh);
@@ -1973,11 +2010,17 @@ START_TEST (fsio_sys_llistxattr_test) {
 END_TEST
 
 START_TEST (fsio_sys_flistxattr_test) {
-  ssize_t res;
+  int res;
   pr_fh_t *fh;
+  array_header *names = NULL;
 
-  res = pr_fsio_flistxattr(NULL, NULL, 0);
+  res = pr_fsio_flistxattr(NULL, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_flistxattr(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null file handle");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -1986,7 +2029,12 @@ START_TEST (fsio_sys_flistxattr_test) {
   fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
     strerror(errno));
 
-  res = pr_fsio_flistxattr(fh, NULL, 0);
+  res = pr_fsio_flistxattr(p, fh, NULL);
+  fail_unless(res < 0, "Failed to handle null array");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_flistxattr(p, fh, &names);
 #ifdef PR_USE_XATTR
   fail_if(res < 0, "Failed to list xattrs for '%s': %s", fsio_test_path,
     strerror(errno));
@@ -2006,19 +2054,24 @@ START_TEST (fsio_sys_removexattr_test) {
   int res;
   const char *path, *name;
 
-  res = pr_fsio_removexattr(NULL, NULL);
+  res = pr_fsio_removexattr(NULL, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_removexattr(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_removexattr(path, NULL);
+  res = pr_fsio_removexattr(p, path, NULL);
   fail_unless(res < 0, "Failed to handle null attribute name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
-  res = pr_fsio_removexattr(path, name);
+  res = pr_fsio_removexattr(p, path, name);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
   fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
@@ -2037,19 +2090,24 @@ START_TEST (fsio_sys_lremovexattr_test) {
   int res;
   const char *path, *name;
 
-  res = pr_fsio_lremovexattr(NULL, NULL);
+  res = pr_fsio_lremovexattr(NULL, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_lremovexattr(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_lremovexattr(path, NULL);
+  res = pr_fsio_lremovexattr(p, path, NULL);
   fail_unless(res < 0, "Failed to handle null attribute name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
-  res = pr_fsio_lremovexattr(path, name);
+  res = pr_fsio_lremovexattr(p, path, name);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
   fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
@@ -2069,7 +2127,12 @@ START_TEST (fsio_sys_fremovexattr_test) {
   pr_fh_t *fh;
   const char *name;
 
-  res = pr_fsio_fremovexattr(NULL, NULL);
+  res = pr_fsio_fremovexattr(NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_fremovexattr(p, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -2079,13 +2142,13 @@ START_TEST (fsio_sys_fremovexattr_test) {
   fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
     strerror(errno));
 
-  res = pr_fsio_fremovexattr(fh, NULL);
+  res = pr_fsio_fremovexattr(p, fh, NULL);
   fail_unless(res < 0, "Failed to handle null attribute name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
-  res = pr_fsio_fremovexattr(fh, name);
+  res = pr_fsio_fremovexattr(p, fh, name);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent attribute '%s'", name);
   fail_unless(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
@@ -2108,20 +2171,25 @@ START_TEST (fsio_sys_setxattr_test) {
   const char *path, *name;
   pr_fh_t *fh;
 
-  res = pr_fsio_setxattr(NULL, NULL, NULL, 0, 0);
+  res = pr_fsio_setxattr(NULL, NULL, NULL, NULL, 0, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_setxattr(p, NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_setxattr(path, NULL, NULL, 0, 0);
+  res = pr_fsio_setxattr(p, path, NULL, NULL, 0, 0);
   fail_unless(res < 0, "Failed to handle null attribute name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
   flags = PR_FSIO_XATTR_FL_CREATE;
-  res = pr_fsio_setxattr(path, name, NULL, 0, flags);
+  res = pr_fsio_setxattr(p, path, name, NULL, 0, flags);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent file '%s'", path);
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
@@ -2133,7 +2201,7 @@ START_TEST (fsio_sys_setxattr_test) {
     strerror(errno));
   pr_fsio_close(fh);
 
-  res = pr_fsio_setxattr(path, name, NULL, 0, flags);
+  res = pr_fsio_setxattr(p, path, name, NULL, 0, flags);
   if (res < 0) {
     fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d)", ENOTSUP,
       strerror(errno), errno);
@@ -2154,20 +2222,25 @@ START_TEST (fsio_sys_lsetxattr_test) {
   const char *path, *name;
   pr_fh_t *fh;
 
-  res = pr_fsio_lsetxattr(NULL, NULL, NULL, 0, 0);
+  res = pr_fsio_lsetxattr(NULL, NULL, NULL, NULL, 0, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  res = pr_fsio_lsetxattr(p, NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   path = fsio_test_path;
-  res = pr_fsio_lsetxattr(path, NULL, NULL, 0, 0);
+  res = pr_fsio_lsetxattr(p, path, NULL, NULL, 0, 0);
   fail_unless(res < 0, "Failed to handle null attribute name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
   flags = PR_FSIO_XATTR_FL_CREATE;
-  res = pr_fsio_lsetxattr(path, name, NULL, 0, flags);
+  res = pr_fsio_lsetxattr(p, path, name, NULL, 0, flags);
 #ifdef PR_USE_XATTR
   fail_unless(res < 0, "Failed to handle nonexistent file '%s'", path);
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
@@ -2179,7 +2252,7 @@ START_TEST (fsio_sys_lsetxattr_test) {
     strerror(errno));
   pr_fsio_close(fh);
 
-  res = pr_fsio_lsetxattr(path, name, NULL, 0, flags);
+  res = pr_fsio_lsetxattr(p, path, name, NULL, 0, flags);
   if (res < 0) {
     fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d)", ENOTSUP,
       strerror(errno), errno);
@@ -2200,8 +2273,13 @@ START_TEST (fsio_sys_fsetxattr_test) {
   pr_fh_t *fh;
   const char *name;
 
-  res = pr_fsio_fsetxattr(NULL, NULL, NULL, 0, 0);
+  res = pr_fsio_fsetxattr(NULL, NULL, NULL, NULL, 0, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_fsetxattr(p, NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null file handle");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -2210,14 +2288,14 @@ START_TEST (fsio_sys_fsetxattr_test) {
   fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
     strerror(errno));
 
-  res = pr_fsio_fsetxattr(fh, NULL, NULL, 0, 0);
+  res = pr_fsio_fsetxattr(p, fh, NULL, NULL, 0, 0);
   fail_unless(res < 0, "Failed to handle null attribute name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "foo.bar";
   flags = PR_FSIO_XATTR_FL_CREATE;
-  res = pr_fsio_fsetxattr(fh, name, NULL, 0, flags);
+  res = pr_fsio_fsetxattr(p, fh, name, NULL, 0, flags);
 #ifdef PR_USE_XATTR
   if (res < 0) {
     fail_unless(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d)", ENOTSUP,
