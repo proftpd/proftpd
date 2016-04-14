@@ -19700,7 +19700,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+          # include <stddef.h>
+          #endif
           #ifdef HAVE_STDLIB_H
           # include <stdlib.h>
           #endif
@@ -20831,8 +20833,12 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-            #include <stddef.h>
-            #include <stdlib.h>
+            #ifdef HAVE_STDDEF_H
+            # include <stddef.h>
+            #endif
+            #ifdef HAVE_STDLIB_H
+            # include <stdlib.h>
+            #endif
             #ifdef HAVE_EXECINFO_H
             # include <execinfo.h>
             #endif
@@ -20902,8 +20908,12 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-            #include <stddef.h>
-            #include <stdlib.h>
+            #ifdef HAVE_STDDEF_H
+            # include <stddef.h>
+            #endif
+            #ifdef HAVE_STDLIB_H
+            # include <stdlib.h>
+            #endif
             #ifdef HAVE_EXECINFO_H
             # include <execinfo.h>
             #endif
@@ -33120,8 +33130,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
- #include <stdlib.h>
-    #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
     #ifdef HAVE_ICONV_H
     # include <iconv.h>
     #endif
@@ -33188,9 +33205,18 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-    #include <stdio.h>
-    #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_STDIO_H
+    # include <stdio.h>
+    #endif
+    #ifdef HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
     #if HAVE_DIRENT_H
     # include <dirent.h>
     #endif
@@ -33257,8 +33283,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-    #include <stdio.h>
+ #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_STDIO_H
+    # include <stdio.h>
+    #endif
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>
     #endif
@@ -36141,7 +36174,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
- #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+        # include <stddef.h>
+        #endif
+        #ifdef HAVE_STDLIB_H
+        # include <stdlib.h>
+        #endif
+        #ifdef HAVE_SYS_TYPES_H
+        # include <sys/types.h>
+        #endif
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
         #endif
@@ -37110,8 +37151,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -37178,8 +37226,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -37246,8 +37301,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -37314,8 +37376,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -37664,8 +37733,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -37731,8 +37807,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -37798,8 +37881,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -37863,8 +37953,15 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
-         #include <sys/types.h>
+ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -39410,7 +39507,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -39480,7 +39579,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -39552,7 +39653,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -39623,7 +39726,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -39694,7 +39799,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -39763,7 +39870,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -40189,6 +40298,12 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
+      #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
       #include <openssl/ssl.h>
 
 int
@@ -40258,6 +40373,12 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
+      #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
       #include <openssl/ssl.h>
 
 int
@@ -40327,6 +40448,12 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
+      #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
       #include <openssl/ssl.h>
       #include <openssl/ocsp.h>
 
@@ -40441,7 +40568,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -40513,7 +40642,9 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-
+ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif

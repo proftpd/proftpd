@@ -820,7 +820,9 @@ AC_ARG_ENABLE(pcre,
 
       AC_MSG_CHECKING([for PCRE's pcre_free_study])
       AC_TRY_LINK(
-        [
+        [ #ifdef HAVE_STDDEF_H
+          # include <stddef.h>
+          #endif
           #ifdef HAVE_STDLIB_H
           # include <stdlib.h>
           #endif
@@ -1028,8 +1030,12 @@ AC_ARG_ENABLE(devel,
         AC_MSG_CHECKING([for backtrace])
         AC_TRY_LINK(
           [
-            #include <stddef.h>
-            #include <stdlib.h>
+            #ifdef HAVE_STDDEF_H
+            # include <stddef.h>
+            #endif
+            #ifdef HAVE_STDLIB_H
+            # include <stdlib.h>
+            #endif
             #ifdef HAVE_EXECINFO_H
             # include <execinfo.h>
             #endif
@@ -1054,8 +1060,12 @@ AC_ARG_ENABLE(devel,
         AC_MSG_CHECKING([for backtrace_symbols])
         AC_TRY_LINK(
           [
-            #include <stddef.h>
-            #include <stdlib.h>
+            #ifdef HAVE_STDDEF_H
+            # include <stddef.h>
+            #endif
+            #ifdef HAVE_STDLIB_H
+            # include <stdlib.h>
+            #endif
             #ifdef HAVE_EXECINFO_H
             # include <execinfo.h>
             #endif
@@ -1763,8 +1773,15 @@ AC_CHECK_FUNC(gai_strerror,
 
 AC_MSG_CHECKING([for iconv])
 AC_TRY_LINK(
-  [ #include <stdlib.h>
-    #include <sys/types.h>
+  [ #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
     #ifdef HAVE_ICONV_H
     # include <iconv.h>
     #endif
@@ -1786,9 +1803,18 @@ AC_TRY_LINK(
 
 AC_MSG_CHECKING([for dirfd])
 AC_TRY_LINK(
-  [
-    #include <stdio.h>
-    #include <sys/types.h>
+  [ #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_STDIO_H
+    # include <stdio.h>
+    #endif
+    #ifdef HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
     #if HAVE_DIRENT_H
     # include <dirent.h>
     #endif
@@ -1811,8 +1837,15 @@ AC_TRY_LINK(
 dnl getaddrinfo is a #define on Tru64 Unix.  How annoying.
 AC_MSG_CHECKING([for getaddrinfo])
 AC_TRY_LINK(
-  [
-    #include <stdio.h>
+  [ #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_STDIO_H
+    # include <stdio.h>
+    #endif
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>
     #endif
@@ -2047,7 +2080,15 @@ AC_CACHE_CHECK(
     old_ldflags=$LDFLAGS
     LDFLAGS="-lsec $LDFLAGS"
     AC_TRY_LINK(
-      [ #include <sys/types.h>
+      [ #ifdef HAVE_STDDEF_H
+        # include <stddef.h>
+        #endif
+        #ifdef HAVE_STDLIB_H
+        # include <stdlib.h>
+        #endif
+        #ifdef HAVE_SYS_TYPES_H
+        # include <sys/types.h>
+        #endif
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
         #endif
@@ -2247,8 +2288,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for extattr_delete_link])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -2272,8 +2320,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for extattr_get_link])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -2297,8 +2352,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for extattr_list_link])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -2322,8 +2384,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for extattr_set_link])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_EXTATTR_H
          # include <sys/extattr.h>
          #endif
@@ -2354,8 +2423,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for lgetxattr])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -2378,8 +2454,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for llistxattr])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -2402,8 +2485,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for lremovexattr])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -2424,8 +2514,15 @@ if test x"$enable_xattr" != xno ; then
 
      AC_MSG_CHECKING([for lsetxattr])
      AC_TRY_COMPILE(
-       [
-         #include <sys/types.h>
+       [ #ifdef HAVE_STDDEF_H
+         # include <stddef.h>
+         #endif
+         #ifdef HAVE_STDLIB_H
+         # include <stdlib.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         # include <sys/types.h>
+         #endif
          #ifdef HAVE_SYS_XATTR_H
          # include <sys/xattr.h>
          #endif
@@ -2767,7 +2864,9 @@ if test x"$pr_use_mysql" = xyes; then
 
   AC_MSG_CHECKING([for MySQL's make_scrambled_password])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -2792,7 +2891,9 @@ if test x"$pr_use_mysql" = xyes; then
 
   AC_MSG_CHECKING([for MySQL's make_scrambled_password_323])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -2819,7 +2920,9 @@ if test x"$pr_use_mysql" = xyes; then
   # my_make_scrambled_password.
   AC_MSG_CHECKING([for MySQL's my_make_scrambled_password])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -2845,7 +2948,9 @@ if test x"$pr_use_mysql" = xyes; then
 
   AC_MSG_CHECKING([for MySQL's my_make_scrambled_password_323])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -2871,7 +2976,9 @@ if test x"$pr_use_mysql" = xyes; then
 
   AC_MSG_CHECKING([for MySQL's mysql_ssl_set])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -2895,7 +3002,9 @@ if test x"$pr_use_mysql" = xyes; then
 
   AC_MSG_CHECKING([for MySQL's mysql_get_ssl_cipher])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -3063,6 +3172,12 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_TRY_LINK(
     [
+      #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
       #include <openssl/ssl.h>
     ],
     [
@@ -3088,6 +3203,12 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_TRY_LINK(
     [
+      #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
       #include <openssl/ssl.h>
     ],
     [
@@ -3113,6 +3234,12 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_TRY_LINK(
     [
+      #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
       #include <openssl/ssl.h>
       #include <openssl/ocsp.h>
     ],
@@ -3183,7 +3310,9 @@ if test x"$pr_use_postgres" = xyes; then
 
   AC_MSG_CHECKING([for Postgres's PQescapeStringConn])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
@@ -3210,7 +3339,9 @@ if test x"$pr_use_postgres" = xyes; then
 
   AC_MSG_CHECKING([for Postgres's PQgetssl])
   AC_TRY_LINK(
-    [
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
       #ifdef HAVE_STDLIB_H
       # include <stdlib.h>
       #endif
