@@ -1242,7 +1242,7 @@ END_TEST
 
 START_TEST (bin2hex_test) {
   char *expected, *res;
-  const unsigned char *str;
+  char *str;
 
   res = pr_str_bin2hex(NULL, NULL, 0, 0);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -1257,28 +1257,29 @@ START_TEST (bin2hex_test) {
   /* Empty string. */
   str = "foobar";
   expected = "";
-  res = pr_str_bin2hex(p, str, 0, 0);
+  res = pr_str_bin2hex(p, (const unsigned char *) str, 0, 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* default (lowercase) */
   expected = "666f6f626172";
-  res = pr_str_bin2hex(p, str, strlen(str), 0);
+  res = pr_str_bin2hex(p, (const unsigned char *) str, strlen(str), 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* lowercase */
   expected = "666f6f626172";
-  res = pr_str_bin2hex(p, str, strlen(str), 0);
+  res = pr_str_bin2hex(p, (const unsigned char *) str, strlen(str), 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* uppercase */
   expected = "666F6F626172";
-  res = pr_str_bin2hex(p, str, strlen(str), PR_STR_FL_HEX_USE_UC);
+  res = pr_str_bin2hex(p, (const unsigned char *) str, strlen(str),
+    PR_STR_FL_HEX_USE_UC);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
@@ -1286,7 +1287,8 @@ START_TEST (bin2hex_test) {
 END_TEST
 
 START_TEST (hex2bin_test) {
-  unsigned char *expected, *res;
+  unsigned char *res;
+  char *expected;
   const char *hex;
   size_t expected_len, hex_len, len;
 
@@ -1304,9 +1306,9 @@ START_TEST (hex2bin_test) {
   hex = "";
   hex_len = strlen(hex);
   expected = "";
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
-  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
+  fail_unless(strcmp((char *) res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   hex = "112233";
@@ -1317,7 +1319,7 @@ START_TEST (hex2bin_test) {
   expected[1] = 34;
   expected[2] = 51;
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1336,7 +1338,7 @@ START_TEST (hex2bin_test) {
   expected[4] = 'a';
   expected[5] = 'r';
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1347,7 +1349,7 @@ START_TEST (hex2bin_test) {
   hex = "666F6F626172";
   hex_len = strlen(hex);
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1357,11 +1359,10 @@ START_TEST (hex2bin_test) {
   /* Handle known not-hex data properly. */
   hex = "Hello, World!\n";
   hex_len = strlen(hex);
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res == NULL, "Successfully unhexified '%s' unexpectedly", hex);
   fail_unless(errno == ERANGE, "Expected ERANGE (%d), got %s (%d)", ERANGE,
     strerror(errno), errno);
-
 }
 END_TEST
 
