@@ -449,10 +449,10 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
 #ifdef ENXIO
     case ENXIO:
 #endif
-#ifdef ENOATTR
+#if defined(ENOATTR) && defined(ENODATA) && ENOATTR != ENODATA
     case ENOATTR:
 #endif
-#ifdef ENODATA
+#if defined(ENODATA) && defined(ENOATTR) && ENODATA != ENOATTR
     case ENODATA:
 #endif
       status_code = SSH2_FX_NO_SUCH_FILE;
