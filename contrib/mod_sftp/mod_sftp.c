@@ -1137,7 +1137,8 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
       }
 #else
       pr_log_debug(DEBUG0, "%s: xattr@proftpd.org extension not supported "
-        "on this system; requires extended attribute support", cmd->argv[0]);
+        "on this system; requires extended attribute support",
+        (char *) cmd->argv[0]);
 #endif /* HAVE_SYS_XATTR_H */
 
     } else {
