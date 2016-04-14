@@ -694,15 +694,23 @@ static int sys_fremovexattr(pr_fh_t *fh, int fd, const char *name) {
 
 #ifdef PR_USE_XATTR
 /* Map the given flags onto the sys/xattr.h flags */
-static int get_xattr_flags(int fsio_flags) {
+static int get_setxattr_flags(int fsio_flags) {
   int xattr_flags = 0;
 
-  if (fsio_flags & PR_FSIO_XATTR_FL_CREATE) {
-    xattr_flags |= XATTR_CREATE;
-  }
+  /* If both CREATE and REPLACE are set, use a value of zero; per the
+   * man pages, this value gives the desired "create or replace" semantics.
+   * Right?
+   */
 
-  if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
-    xattr_flags |= XATTR_REPLACE;
+  if (fsio_flags & PR_FSIO_XATTR_FL_CREATE) {
+    xattr_flags = XATTR_CREATE;
+
+    if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
+      xattr_flags = 0;
+    }
+
+  } else if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
+    xattr_flags = XATTR_REPLACE;
   }
 
   return xattr_flags;
@@ -714,7 +722,7 @@ static int sys_setxattr(pr_fs_t *fs, const char *path, const char *name,
   int res, xattr_flags = 0;
 
 #ifdef PR_USE_XATTR
-  xattr_flags = get_xattr_flags(flags);
+  xattr_flags = get_setxattr_flags(flags);
 
 # if defined(XATTR_NOFOLLOW)
   res = setxattr(path, name, val, valsz, 0, flags);
@@ -741,7 +749,7 @@ static int sys_lsetxattr(pr_fs_t *fs, const char *path, const char *name,
   int res, xattr_flags = 0;
 
 #ifdef PR_USE_XATTR
-  xattr_flags = get_xattr_flags(flags);
+  xattr_flags = get_setxattr_flags(flags);
 
 # if defined(HAVE_LSETXATTR)
   res = lsetxattr(path, name, val, valsz, flags);
@@ -771,7 +779,7 @@ static int sys_fsetxattr(pr_fh_t *fh, int fd, const char *name, void *val,
   int res, xattr_flags = 0;
 
 #ifdef PR_USE_XATTR
-  xattr_flags = get_xattr_flags(flags);
+  xattr_flags = get_setxattr_flags(flags);
 
 # if defined(XATTR_NOFOLLOW)
   res = fsetxattr(fd, name, val, valsz, 0, xattr_flags);
