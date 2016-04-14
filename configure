@@ -37171,9 +37171,7 @@ main ()
          int res;
          int namespace = 0;
          const char *path = NULL, name = NULL;
-         void *val = NULL;
-         size_t sz;
-         res = extattr_delete_link(path, namespace, name, val, sz);
+         res = extattr_delete_link(path, namespace, name);
 
   ;
   return 0;
