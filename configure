@@ -37093,7 +37093,7 @@ fi
 if test $ac_cv_header_sys_extattr_h = yes; then
 
 cat >>confdefs.h <<\_ACEOF
-#define HAVE_SYS_EXTXATTR_H 1
+#define HAVE_SYS_EXTATTR_H 1
 _ACEOF
 
 

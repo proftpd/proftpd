@@ -2242,7 +2242,7 @@ dnl Extended attribute checks
 if test x"$enable_xattr" != xno ; then
   # On Free/Net/OpenBSD, it's sys/extattr.h
   AC_CHECK_HEADER(sys/extattr.h,
-    [AC_DEFINE(HAVE_SYS_EXTXATTR_H, 1, [Define if sys/extattr.h is present.])
+    [AC_DEFINE(HAVE_SYS_EXTATTR_H, 1, [Define if sys/extattr.h is present.])
      AC_DEFINE(PR_USE_XATTR, 1, [Define if using xattr support.])
 
      AC_MSG_CHECKING([for extattr_delete_link])
