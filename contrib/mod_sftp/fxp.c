@@ -2497,14 +2497,12 @@ static uint32_t fxp_xattrs_write(pool *p, struct fxp_buffer *fxb,
 }
 
 static uint32_t fxp_attrs_write(pool *p, struct fxp_buffer *fxb,
-    const char *path, struct stat *st, const char *user_owner,
-    const char *group_owner) {
-  uint32_t flags, len = 0;
+    const char *path, struct stat *st, uint32_t flags,
+    const char *user_owner, const char *group_owner) {
+  uint32_t len = 0;
   mode_t perms;
 
   if (fxp_session->client_version <= 3) {
-    flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
-      SSH2_FX_ATTR_ACMODTIME;
     perms = st->st_mode;
 
     len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags);
@@ -2524,16 +2522,6 @@ static uint32_t fxp_attrs_write(pool *p, struct fxp_buffer *fxb,
      * permission bits of the st_mode field.
      */
     perms &= ~S_IFMT;
-
-    flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|SSH2_FX_ATTR_ACCESSTIME|
-      SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
-
-    if (fxp_session->client_version >= 6) {
-      flags |= SSH2_FX_ATTR_LINK_COUNT;
-#ifdef PR_USE_XATTR
-      flags |= SSH2_FX_ATTR_EXTENDED;
-#endif /* PR_USE_XATTR */
-    }
 
     file_type = fxp_get_file_type(st->st_mode);
 
@@ -2749,8 +2737,8 @@ static struct fxp_dirent *fxp_get_dirent(pool *p, cmd_rec *cmd,
 }
 
 static uint32_t fxp_name_write(pool *p, struct fxp_buffer *fxb,
-    const char *path, struct stat *st, const char *user_owner,
-    const char *group_owner) {
+    const char *path, struct stat *st, uint32_t attr_flags,
+    const char *user_owner, const char *group_owner) {
   uint32_t len = 0;
 
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
@@ -2775,7 +2763,7 @@ static uint32_t fxp_name_write(pool *p, struct fxp_buffer *fxb,
     }
   }
 
-  len += fxp_attrs_write(p, fxb, path, st, user_owner, group_owner);
+  len += fxp_attrs_write(p, fxb, path, st, attr_flags, user_owner, group_owner);
   return len;
 }
 
@@ -7360,7 +7348,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
 static int fxp_handle_fstat(struct fxp_packet *fxp) {
   unsigned char *buf;
   char *cmd_name, *name;
-  uint32_t buflen;
+  uint32_t attr_flags, buflen;
   struct stat st;
   struct fxp_buffer *fxb;
   struct fxp_handle *fxh;
@@ -7382,11 +7370,6 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     name);
 
   if (fxp_session->client_version > 3) {
-    uint32_t attr_flags;
-
-    /* These are hints from the client about what file attributes are
-     * of particular interest.  We do not currently honor them.
-     */
     attr_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
     pr_trace_msg(trace_channel, 7, "received request: FSTAT %s %s", name,
@@ -7394,6 +7377,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
   } else {
     pr_trace_msg(trace_channel, 7, "received request: FSTAT %s", name);
+    attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
+      SSH2_FX_ATTR_ACMODTIME;
   }
 
   fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
@@ -7530,7 +7515,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
-  fxp_attrs_write(fxp->pool, fxb, fxh->fh->fh_path, &st, fake_user, fake_group);
+  fxp_attrs_write(fxp->pool, fxb, fxh->fh->fh_path, &st, attr_flags, fake_user,
+    fake_group);
 
   /* fxp_attrs_write will have changed the buf/buflen values in the buffer. */
   buf = fxb->buf;
@@ -8081,7 +8067,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 static int fxp_handle_lstat(struct fxp_packet *fxp) {
   unsigned char *buf;
   char *cmd_name, *path;
-  uint32_t buflen;
+  uint32_t attr_flags, buflen;
   struct stat st;
   struct fxp_buffer *fxb;
   struct fxp_packet *resp;
@@ -8102,11 +8088,6 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     path);
 
   if (fxp_session->client_version > 3) {
-    uint32_t attr_flags;
-
-    /* These are hints from the client about what file attributes are
-     * of particular interest.  We do not currently honor them.
-     */
     attr_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
     pr_trace_msg(trace_channel, 7, "received request: LSTAT %s %s", path,
@@ -8114,6 +8095,8 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 
   } else {
     pr_trace_msg(trace_channel, 7, "received request: LSTAT %s", path);
+    attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
+      SSH2_FX_ATTR_ACMODTIME;
   }
 
   if (strlen(path) == 0) {
@@ -8265,7 +8248,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
-  fxp_attrs_write(fxp->pool, fxb, path, &st, fake_user, fake_group);
+  fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   /* fxp_attrs_write will have changed the buf/buflen fields in the buffer. */
   buf = fxb->buf;
@@ -10016,7 +9999,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   register unsigned int i;
   unsigned char *buf;
   char *cmd_name, *name;
-  uint32_t buflen, curr_packet_pathsz = 0, max_packetsz;
+  uint32_t attr_flags, buflen, curr_packet_pathsz = 0, max_packetsz;
   struct dirent *dent;
   struct fxp_buffer *fxb;
   struct fxp_dirent **paths;
@@ -10345,11 +10328,19 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   fxb->buflen = buflen;
   paths = path_list->elts;
 
+  /* For READDIR requests, since they do NOT contain a flags field for clients
+   * to express which attributes they want, we ASSUME some standard fields.
+   * Anything else (e.g. LINK_COUNT, ATTR_EXTENDED) will need to be explicitly
+   * requested by clients via STAT/LSTAT requests.
+   */
+  attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
+    SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
+
   for (i = 0; i < path_list->nelts; i++) {
     uint32_t name_len = 0;
 
     name_len = fxp_name_write(fxp->pool, fxb, paths[i]->client_path,
-      paths[i]->st, fake_user, fake_group);
+      paths[i]->st, attr_flags, fake_user, fake_group);
 
     pr_trace_msg(trace_channel, 19, "READDIR: FXP_NAME entry size: %lu bytes",
       (unsigned long) name_len);
@@ -10563,7 +10554,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     fxb->buf = buf;
     fxb->buflen = buflen;
 
-    fxp_name_write(fxp->pool, fxb, data, &st, fake_user, fake_group);
+    fxp_name_write(fxp->pool, fxb, data, &st, 0, fake_user, fake_group);
 
     buf = fxb->buf;
     buflen = fxb->buflen;
@@ -10580,7 +10571,8 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
-static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags) {
+static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags,
+    int client_sent) {
   char *flags_str = "";
   int trace_level = 15;
 
@@ -10602,7 +10594,8 @@ static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags) {
       break;
   }
 
-  pr_trace_msg(trace_channel, trace_level, "REALPATH flags = %s", flags_str);
+  pr_trace_msg(trace_channel, trace_level, "REALPATH flags = %s (%s)",
+    flags_str, client_sent == TRUE ? "explicit" : "default");
 }
 
 static int fxp_handle_realpath(struct fxp_packet *fxp) {
@@ -10655,7 +10648,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
 
       realpath_flags = sftp_msg_read_byte(fxp->pool, &fxp->payload,
         &fxp->payload_sz);
-      fxp_trace_v6_realpath_flags(fxp->pool, realpath_flags);
+      fxp_trace_v6_realpath_flags(fxp->pool, realpath_flags, TRUE);
 
       if (fxp->payload_sz > 0) {
         composite_path = sftp_msg_read_string(fxp->pool, &fxp->payload,
@@ -10672,6 +10665,9 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         pr_trace_msg(trace_channel, 13,
           "REALPATH request set composite-path: '%s'", composite_path);
       }
+
+    } else {
+      fxp_trace_v6_realpath_flags(fxp->pool, realpath_flags, FALSE);
     }
   }
 
@@ -10712,7 +10708,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       fxb->buf = buf;
       fxb->buflen = buflen;
 
-      fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+      fxp_name_write(fxp->pool, fxb, path, &st, 0, "nobody", "nobody");
 
       buf = fxb->buf;
       buflen = fxb->buflen;
@@ -10778,7 +10774,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         fxb->buf = buf;
         fxb->buflen = buflen;
 
-        fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+        fxp_name_write(fxp->pool, fxb, path, &st, 0, "nobody", "nobody");
 
         buf = fxb->buf;
         buflen = fxb->buflen;
@@ -10846,7 +10842,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       fxb->buf = buf;
       fxb->buflen = buflen;
 
-      fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+      fxp_name_write(fxp->pool, fxb, path, &st, 0, "nobody", "nobody");
 
       buf = fxb->buf;
       buflen = fxb->buflen;
@@ -10926,7 +10922,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         fxb->buf = buf;
         fxb->buflen = buflen;
 
-        fxp_name_write(fxp->pool, fxb, path, &st, "nobody", "nobody");
+        fxp_name_write(fxp->pool, fxb, path, &st, 0, "nobody", "nobody");
 
         buf = fxb->buf;
         buflen = fxb->buflen;
@@ -10963,7 +10959,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       fxb->buf = buf;
       fxb->buflen = buflen;
 
-      fxp_name_write(fxp->pool, fxb, path, &st, fake_user, fake_group);
+      fxp_name_write(fxp->pool, fxb, path, &st, 0, fake_user, fake_group);
 
       buf = fxb->buf;
       buflen = fxb->buflen;
@@ -12294,7 +12290,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
 static int fxp_handle_stat(struct fxp_packet *fxp) {
   unsigned char *buf;
   char *cmd_name, *path;
-  uint32_t buflen;
+  uint32_t attr_flags, buflen;
   struct stat st;
   struct fxp_buffer *fxb;
   struct fxp_packet *resp;
@@ -12314,11 +12310,6 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   pr_proctitle_set("%s - %s: STAT %s", session.user, session.proc_prefix, path);
 
   if (fxp_session->client_version > 3) {
-    uint32_t attr_flags;
-
-    /* These are hints from the client about what file attributes are
-     * of particular interest.  We do not currently honor them.
-     */
     attr_flags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
     pr_trace_msg(trace_channel, 7, "received request: STAT %s %s", path,
@@ -12326,6 +12317,8 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
   } else {
     pr_trace_msg(trace_channel, 7, "received request: STAT %s", path);
+    attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
+      SSH2_FX_ATTR_ACMODTIME;
   }
 
   if (strlen(path) == 0) {
@@ -12497,7 +12490,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
-  fxp_attrs_write(fxp->pool, fxb, path, &st, fake_user, fake_group);
+  fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   buf = fxb->buf;
   buflen = fxb->buflen;
