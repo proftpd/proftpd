@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2015 The ProFTPD Project team
+ * Copyright (c) 2010-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -906,16 +906,15 @@ static void mcache_set_module_namespace(pr_memcache_t *mcache, module *m) {
 
   } else {
     if (mcache->namespace_tab != NULL) {
-      void *v;
+      const char *v;
 
       v = pr_table_kget(mcache->namespace_tab, m, sizeof(module *), NULL);
-      if (v) {
+      if (v != NULL) {
         pr_trace_msg(trace_channel, 25,
-          "using namespace prefix '%s' for module 'mod_%s.c'", (const char *) v,
-          m->name);
+          "using namespace prefix '%s' for module 'mod_%s.c'", v, m->name);
 
         res = memcached_callback_set(mcache->mc, MEMCACHED_CALLBACK_PREFIX_KEY,
-          v);
+          (void *) v);
       }
 
     } else {

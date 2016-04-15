@@ -68,10 +68,12 @@ static const char *trace_channel = "dns";
 static array_header *netaddr_dnscache_get(pool *p, const char *ip_str) {
   array_header *res = NULL;
 
-  if (netaddr_dnstab) {
-    void *v = pr_table_get(netaddr_dnstab, ip_str, NULL);
-    if (v) {
-      res = v;
+  if (netaddr_dnstab != NULL) {
+    const void *v;
+
+    v = pr_table_get(netaddr_dnstab, ip_str, NULL);
+    if (v != NULL) {
+      res = (array_header *) v;
 
       pr_trace_msg(trace_channel, 4,
         "using %d DNS %s from netaddr DNS cache for IP address '%s'",
@@ -151,10 +153,12 @@ static void netaddr_dnscache_set(const char *ip_str, const char *dns_name) {
 static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
   pr_netaddr_t *res = NULL;
 
-  if (netaddr_iptab) {
-    void *v = pr_table_get(netaddr_iptab, name, NULL);
-    if (v) {
-      res = v;
+  if (netaddr_iptab != NULL) {
+    const void *v;
+
+    v = pr_table_get(netaddr_iptab, name, NULL);
+    if (v != NULL) {
+      res = (pr_netaddr_t *) v;
       pr_trace_msg(trace_channel, 4,
         "using IP address '%s' from netaddr IP cache for name '%s'",
         pr_netaddr_get_ipstr(res), name);
@@ -162,7 +166,7 @@ static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
       /* We return a copy of the cache's netaddr_t, if the caller provided
        * a pool for duplication.
        */
-      if (p) {
+      if (p != NULL) {
         pr_netaddr_t *dup_res = NULL;
 
         dup_res = pr_netaddr_dup(p, res);

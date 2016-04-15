@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2014 The ProFTPD Project team
+ * Copyright (c) 2009-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,7 @@
 #ifndef PR_SESSION_H
 #define PR_SESSION_H
 
-/* List of disconnect/end-of-session reason codes.
- */
+/* List of disconnect/end-of-session reason codes. */
 
 /* Unknown/unspecified reason for disconnection */
 #define PR_SESS_DISCONNECT_UNSPECIFIED		0
@@ -77,7 +76,7 @@
  * the session ended.  If a pointer to a char * was provided, any extra
  * disconnect details will be provided.
  */
-const char *pr_session_get_disconnect_reason(char **details);
+const char *pr_session_get_disconnect_reason(const char **details);
 
 /* Returns the current protocol name in use.
  *

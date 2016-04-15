@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -94,7 +94,7 @@ pr_table_t *pr_table_alloc(pool *p, int flags) {
   return NULL;
 }
 
-int pr_table_add(pr_table_t *tab, const char *k, void *v, size_t sz) {
+int pr_table_add(pr_table_t *tab, const char *k, const void *v, size_t sz) {
   errno = EPERM;
   return -1;
 }
@@ -119,17 +119,17 @@ int pr_table_free(pr_table_t *tab) {
   return -1;
 }
 
-void *pr_table_get(pr_table_t *tab, const char *k, size_t *sz) {
+const void *pr_table_get(pr_table_t *tab, const char *k, size_t *sz) {
   errno = EPERM;
   return NULL;
 }
 
-void *pr_table_remove(pr_table_t *tab, const char *k, size_t *sz) {
+const void *pr_table_remove(pr_table_t *tab, const char *k, size_t *sz) {
   errno = EPERM;
   return NULL;
 }
 
-int pr_table_set(pr_table_t *tab, const char *k, void *v, size_t sz) {
+int pr_table_set(pr_table_t *tab, const char *k, const void *v, size_t sz) {
   errno = EPERM;
   return -1;
 }

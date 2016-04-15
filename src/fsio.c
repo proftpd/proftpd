@@ -1145,9 +1145,9 @@ static pr_table_t *lstat_statcache_tab = NULL;
 #define fs_cache_lstat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_LSTAT)
 #define fs_cache_stat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_STAT)
 
-static struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
+static const struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
     const char *path, size_t path_len, time_t now) {
-  struct fs_statcache *sc = NULL;
+  const struct fs_statcache *sc = NULL;
 
   if (pr_table_count(cache_tab) == 0) {
     errno = EPERM;
@@ -1179,8 +1179,8 @@ static struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
 }
 
 static int fs_statcache_evict_expired(const void *key_data, size_t key_datasz,
-    void *value_data, size_t value_datasz, void *user_data) {
-  struct fs_statcache *sc;
+    const void *value_data, size_t value_datasz, void *user_data) {
+  const struct fs_statcache *sc;
   struct fs_statcache_evict_data *evict_data;
   time_t age;
   pr_table_t *cache_tab = NULL;
@@ -1297,7 +1297,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
   size_t path_len;
   pr_table_t *cache_tab = NULL; 
-  struct fs_statcache *sc = NULL;
+  const struct fs_statcache *sc = NULL;
   time_t now;
 
   now = time(NULL);

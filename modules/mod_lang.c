@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_lang -- a module for handling the LANG command [RFC2640]
- *
  * Copyright (c) 2006-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
@@ -161,14 +160,14 @@ static int lang_set_lang(pool *p, const char *lang) {
   char *curr_lang;
 
   if (lang_aliases != NULL) {
-    void *v;
+    const void *v;
 
     /* Check to see if the given lang has an alias that has been determined
      * to be acceptable.
      */
 
     v = pr_table_get(lang_aliases, lang, NULL);
-    if (v) {
+    if (v != NULL) {
       pr_log_debug(DEBUG9, MOD_LANG_VERSION ": '%s' is an alias for '%s'",
         lang, (const char *) v);
       lang = v;
@@ -242,20 +241,20 @@ static int lang_supported(pool *p, const char *lang) {
   char *lang_dup, **langs;
   int ok = FALSE;
 
-  if (!lang_list) {
+  if (lang_list == NULL) {
     errno = EPERM;
     return -1;
   }
 
   if (lang_aliases != NULL) {
-    void *v;
+    const void *v;
     
     /* Check to see if the given lang has an alias that has been determined
      * to be acceptable.
      */
 
     v = pr_table_get(lang_aliases, lang, NULL);
-    if (v) {
+    if (v != NULL) {
       pr_log_debug(DEBUG9, MOD_LANG_VERSION ": using '%s' as alias for '%s'",
         (const char *) v, lang);
       lang = v;

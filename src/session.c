@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2015 The ProFTPD Project team
+ * Copyright (c) 2009-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -144,7 +144,7 @@ void pr_session_end(int flags) {
 #endif /* PR_DEVEL_PROFILE */
 }
 
-const char *pr_session_get_disconnect_reason(char **details) {
+const char *pr_session_get_disconnect_reason(const char **details) {
   const char *reason_str = NULL;
 
   switch (session.disconnect_reason) {
@@ -297,7 +297,9 @@ void pr_session_send_banner(server_rec *s, int flags) {
 
     if (c &&
         c->argc > 1) {
-      char *server_ident = c->argv[1];
+      const char *server_ident;
+
+      server_ident = c->argv[1];
 
       if (strstr(server_ident, "%L") != NULL) {
         server_ident = sreplace(session.pool, server_ident, "%L",
@@ -360,7 +362,7 @@ void pr_session_send_banner(server_rec *s, int flags) {
 }
 
 int pr_session_set_idle(void) {
-  char *user = NULL;
+  const char *user = NULL;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_BEGIN_IDLE, time(NULL),

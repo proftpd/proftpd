@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_wrap2_sql -- a mod_wrap2 sub-module for supplying IP-based
  *                           access control data via SQL tables
- *
- * Copyright (c) 2002-2015 TJ Saunders
+ * Copyright (c) 2002-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -271,13 +270,13 @@ static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
   return options_list;
 }
 
-static wrap2_table_t *sqltab_open_cb(pool *parent_pool, char *srcinfo) {
+static wrap2_table_t *sqltab_open_cb(pool *parent_pool, const char *srcinfo) {
   wrap2_table_t *tab = NULL;
   pool *tab_pool = make_sub_pool(parent_pool),
     *tmp_pool = make_sub_pool(parent_pool);
   config_rec *c = NULL;
   char *start = NULL, *finish = NULL, *query = NULL, *clients_query = NULL,
-    *options_query = NULL;
+    *options_query = NULL, *info;
 
   tab = (wrap2_table_t *) pcalloc(tab_pool, sizeof(wrap2_table_t));
   tab->tab_pool = tab_pool;
@@ -290,7 +289,8 @@ static wrap2_table_t *sqltab_open_cb(pool *parent_pool, char *srcinfo) {
    *  "/<clients-named-query>[/<options-named-query>]"
    */
 
-  start = strchr(srcinfo, '/');
+  info = pstrdup(tmp_pool, srcinfo);
+  start = strchr(info, '/');
   if (start == NULL) {
     wrap2_log("error: badly formatted source info '%s'", srcinfo);
     destroy_pool(tab_pool);
@@ -301,9 +301,9 @@ static wrap2_table_t *sqltab_open_cb(pool *parent_pool, char *srcinfo) {
 
   /* Find the next slash. */
   finish = strchr(++start, '/');
-
-  if (finish)
+  if (finish != NULL) {
     *finish = '\0';
+  }
 
   clients_query = pstrdup(tab->tab_pool, start);
 
@@ -326,7 +326,7 @@ static wrap2_table_t *sqltab_open_cb(pool *parent_pool, char *srcinfo) {
   }
 
   /* Handle the options-query, if present. */
-  if (finish) {
+  if (finish != NULL) {
     options_query = pstrdup(tab->tab_pool, ++finish);
 
     query = pstrcat(tmp_pool, "SQLNamedQuery_", options_query, NULL);
@@ -342,7 +342,7 @@ static wrap2_table_t *sqltab_open_cb(pool *parent_pool, char *srcinfo) {
     }
   }
 
-  tab->tab_name = pstrcat(tab->tab_pool, "SQL(", srcinfo, ")", NULL);
+  tab->tab_name = pstrcat(tab->tab_pool, "SQL(", info, ")", NULL);
 
   tab->tab_data = pcalloc(tab->tab_pool, WRAP2_SQL_NSLOTS * sizeof(char *));
   ((char **) tab->tab_data)[WRAP2_SQL_CLIENT_QUERY_IDX] =

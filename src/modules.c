@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ modret_t *pr_module_call(module *m, modret_t *(*func)(cmd_rec *),
     return NULL;
   }
 
-  if (!cmd->tmp_pool) {
+  if (cmd->tmp_pool == NULL) {
     cmd->tmp_pool = make_sub_pool(cmd->pool);
     pr_pool_tag(cmd->tmp_pool, "Module call tmp_pool");
   }
@@ -79,7 +79,8 @@ modret_t *mod_create_data(cmd_rec *cmd, void *d) {
   return res;
 }
 
-modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, char *n, char *m) {
+modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, const char *n,
+    const char *m) {
   modret_t *res;
 
   if (cmd == NULL) {
@@ -145,7 +146,7 @@ int modules_session_init(void) {
   return 0;
 }
 
-unsigned char command_exists(char *name) {
+unsigned char command_exists(const char *name) {
   int idx = -1;
   unsigned int hash = 0;
   cmdtable *cmdtab;
@@ -167,7 +168,7 @@ module *pr_module_get(const char *name) {
   char buf[80] = {'\0'};
   module *m;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -178,8 +179,9 @@ module *pr_module_get(const char *name) {
     snprintf(buf, sizeof(buf), "mod_%s.c", m->name);
     buf[sizeof(buf)-1] = '\0';
 
-    if (strcmp(buf, name) == 0)
+    if (strcmp(buf, name) == 0) {
       return m;
+    }
   }
 
   errno = ENOENT;
@@ -199,8 +201,10 @@ void modules_list2(int (*listf)(const char *, ...), int flags) {
       module *m = static_modules[i];
 
       if (flags & PR_MODULES_LIST_FL_SHOW_VERSION) {
-        char *version = m->module_version;
-        if (version) {
+        const char *version;
+
+        version = m->module_version;
+        if (version != NULL) {
           listf("  %s\n", version);
 
         } else {
@@ -219,8 +223,10 @@ void modules_list2(int (*listf)(const char *, ...), int flags) {
     for (m = loaded_modules; m; m = m->next) {
 
       if (flags & PR_MODULES_LIST_FL_SHOW_VERSION) {
-        char *version = m->module_version;
-        if (version) {
+        const char *version;
+
+        version = m->module_version;
+        if (version != NULL) {
           listf("  %s\n", version);
 
         } else {  

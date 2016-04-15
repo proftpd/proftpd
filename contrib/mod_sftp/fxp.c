@@ -2848,14 +2848,14 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
  * "aborting" any file handles still left open by the client.
  */
 static int fxp_handle_abort(const void *key_data, size_t key_datasz,
-    void *value_data, size_t value_datasz, void *user_data) {
+    const void *value_data, size_t value_datasz, void *user_data) {
   struct fxp_handle *fxh;
   char *abs_path, *curr_path = NULL, *real_path = NULL;
   char direction;
   unsigned char *delete_aborted_stores = NULL;
   cmd_rec *cmd = NULL;
 
-  fxh = value_data;
+  fxh = (struct fxp_handle *) value_data;
   delete_aborted_stores = user_data;
 
   /* Is this a file or a directory handle? */
@@ -3015,8 +3015,8 @@ static struct fxp_handle *fxp_handle_get(const char *handle) {
     return NULL;
   }
 
-  fxh = pr_table_get(fxp_session->handle_tab, handle, NULL);
-
+  fxh = (struct fxp_handle *) pr_table_get(fxp_session->handle_tab, handle,
+    NULL);
   return fxh;
 }
 
@@ -8610,7 +8610,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
 
 static int fxp_handle_open(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
-  char *path, *orig_path, *hiddenstore_path = NULL;
+  const char *hiddenstore_path = NULL;
+  char *path, *orig_path;
   uint32_t attr_flags, buflen, bufsz, desired_access = 0, flags;
   int file_existed = FALSE, open_flags, res, timeout_stalled;
   pr_fh_t *fh;
@@ -8938,7 +8939,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     path = cmd2->arg;
 
     if (session.xfer.xfer_type == STOR_HIDDEN) {
-      void *nfs;
+      const void *nfs;
 
       hiddenstore_path = pr_table_get(cmd2->notes,
         "mod_xfer.store-hidden-path", NULL);

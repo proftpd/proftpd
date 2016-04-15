@@ -148,8 +148,9 @@ xaset_t *get_dir_ctxt(pool *p, char *dir_path) {
 /* Substitute any appearance of the %u variable in the given string with
  * the value.
  */
-char *path_subst_uservar(pool *path_pool, char **path) {
-  char *new_path = NULL, *substr = NULL, *substr_path = NULL;
+const char *path_subst_uservar(pool *path_pool, const char **path) {
+  const char *new_path = NULL, *substr_path = NULL;
+  char *substr = NULL;
 
   /* Sanity check. */
   if (path_pool == NULL ||
@@ -160,8 +161,9 @@ char *path_subst_uservar(pool *path_pool, char **path) {
   }
 
   /* If no %u string present, do nothing. */
-  if (strstr(*path, "%u") == NULL)
+  if (strstr(*path, "%u") == NULL) {
     return *path;
+  }
 
   /* First, deal with occurrences of "%u[index]" strings.  Note that
    * with this syntax, the '[' and ']' characters become invalid in paths,
@@ -2462,7 +2464,7 @@ void resolve_deferred_dirs(server_rec *s) {
       }
 
       /* Check for any expandable variables. */
-      c->name = path_subst_uservar(c->pool, &c->name);
+      c->name = (char *) path_subst_uservar(c->pool, (const char **) &c->name);
 
       /* Handle any '~' interpolation. */
       interp_dir = dir_interpolate(c->pool, c->name);
@@ -3114,7 +3116,7 @@ int get_boolean(cmd_rec *cmd, int av) {
   return pr_str_is_boolean(cp);
 }
 
-char *get_full_cmd(cmd_rec *cmd) {
+const char *get_full_cmd(cmd_rec *cmd) {
   return pr_cmd_get_displayable_str(cmd, NULL);
 }
 

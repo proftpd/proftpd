@@ -160,7 +160,7 @@ static char *get_config_word(pool *p, char *word) {
         continue;
       }
 
-      word = sreplace(p, word, var, env, NULL);
+      word = (char *) sreplace(p, word, var, env, NULL);
       ptr = strstr(word, "%{env:");
     }
   }

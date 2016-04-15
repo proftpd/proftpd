@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
- *
- * Copyright (c) 2000-2015 TJ Saunders
+ * Copyright (c) 2000-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1073,17 +1072,18 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
     }
  
   } else {
-    pr_table_t *trace_tab = pr_trace_get_table();
+    pr_table_t *trace_tab;
 
-    if (trace_tab) {
-      void *key = NULL, *value = NULL;
+    trace_tab = pr_trace_get_table();
+    if (trace_tab != NULL) {
+      const void *key = NULL, *value = NULL;
 
       pr_ctrls_add_response(ctrl, "%-10s %-6s", "Channel", "Level");
       pr_ctrls_add_response(ctrl, "---------- ------");
 
       pr_table_rewind(trace_tab);
       key = pr_table_next(trace_tab);
-      while (key) {
+      while (key != NULL) {
         pr_signals_handle();
 
         value = pr_table_get(trace_tab, (const char *) key, NULL);

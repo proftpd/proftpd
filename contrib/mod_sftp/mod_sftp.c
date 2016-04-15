@@ -1854,11 +1854,11 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
   if (strncmp(proto, "SSH2", 5) == 0) {
-    char *msg;
+    const char *msg;
 
     msg = get_param_ptr(main_server->conf, "WrapDenyMsg", FALSE);
     if (msg != NULL) {
-      char *user;
+      const char *user;
 
       user = session.user;
       if (user == NULL) {

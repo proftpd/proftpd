@@ -274,7 +274,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
     res = pr_regexp_exec(pre, version, 0, NULL, 0, 0, 0);
     if (res == 0) {
       pr_table_t *tab;
-      void *v, *v2;
+      const void *v, *v2;
 
       /* We have a match. */
 
@@ -291,7 +291,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
        */
 
       v = pr_table_get(tab, "channelWindowSize", NULL);
-      if (v) {
+      if (v != NULL) {
         uint32_t window_size;
 
         window_size = *((uint32_t *) v);
@@ -304,7 +304,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
       }
       
       v = pr_table_get(tab, "channelPacketSize", NULL);
-      if (v) {
+      if (v != NULL) {
         uint32_t packet_size;
 
         packet_size = *((uint32_t *) v);
@@ -317,7 +317,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
       }
 
       v = pr_table_get(tab, "pessimisticNewkeys", NULL);
-      if (v) {
+      if (v != NULL) {
         int pessimistic_newkeys;
 
         pessimistic_newkeys = *((int *) v);
@@ -333,7 +333,8 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
 
       v = pr_table_get(tab, "sftpMinProtocolVersion", NULL);
       v2 = pr_table_get(tab, "sftpMaxProtocolVersion", NULL);
-      if (v && v2) {
+      if (v != NULL &&
+          v2 != NULL) {
         unsigned int min_version, max_version;
 
         min_version = *((unsigned int *) v);
@@ -354,7 +355,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
 
 #ifdef PR_USE_NLS
       v = pr_table_get(tab, "sftpUTF8ProtocolVersion", NULL);
-      if (v) {
+      if (v != NULL) {
         unsigned int protocol_version;
 
         protocol_version = *((unsigned int *) v);

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp Display files
- * Copyright (c) 2010-2015 TJ Saunders
+ * Copyright (c) 2010-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,17 +64,17 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE], *msg = "";
   int len, res;
-  unsigned int *current_clients = NULL;
-  unsigned int *max_clients = NULL;
+  const unsigned int *current_clients = NULL;
+  const unsigned int *max_clients = NULL;
   off_t fs_size = 0;
-  void *v;
+  const void *v;
+  const char *outs, *rfc1413_ident, *user;
   const char *serverfqdn = main_server->ServerFQDN;
-  char *outs, mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
+  char mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
     mg_max[12] = "unlimited";
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
     mg_cur_class[12] = {'\0'};
   const char *mg_time;
-  char *rfc1413_ident = NULL, *user = NULL;
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
@@ -99,7 +99,7 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   max_clients = get_param_ptr(main_server->conf, "MaxClients", FALSE);
 
   v = pr_table_get(session.notes, "client-count", NULL);
-  if (v) {
+  if (v != NULL) {
     current_clients = v;
   }
 
@@ -107,12 +107,12 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
 
   if (session.conn_class != NULL &&
       session.conn_class->cls_name) {
-    unsigned int *class_clients = NULL;
+    const unsigned int *class_clients = NULL;
     config_rec *maxc = NULL;
     unsigned int maxclients = 0;
 
     v = pr_table_get(session.notes, "class-client-count", NULL);
-    if (v) {
+    if (v != NULL) {
       class_clients = v;
     }
 
@@ -126,8 +126,7 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
 
     maxc = find_config(main_server->conf, CONF_PARAM, "MaxClientsPerClass",
       FALSE);
-
-    while (maxc) {
+    while (maxc != NULL) {
       pr_signals_handle();
 
       if (strcmp(maxc->argv[0], session.conn_class->cls_name) != 0) {
@@ -142,9 +141,9 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
 
     if (maxclients == 0) {
       maxc = find_config(main_server->conf, CONF_PARAM, "MaxClients", FALSE);
-
-      if (maxc)
+      if (maxc) {
         maxclients = *((unsigned int *) maxc->argv[0]);
+      }
     }
 
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", maxclients);
@@ -158,8 +157,9 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-  if (user == NULL)
+  if (user == NULL) {
     user = "";
+  }
 
   rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident", NULL);
   if (rfc1413_ident == NULL) {

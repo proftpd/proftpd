@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
- *
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1246,7 +1245,7 @@ static time_t ban_parse_timestr(const char *str) {
  * or, if there isn't a rule-specific message, the BanMessage to the client.
  */
 static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
-  char *mesg = NULL;
+  const char *mesg = NULL;
 
   if (rule_mesg) {
     mesg = pstrdup(p, rule_mesg);
@@ -1255,7 +1254,7 @@ static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
     mesg = pstrdup(p, ban_mesg);
   }
 
-  if (mesg) {
+  if (mesg != NULL) {
     mesg = pstrdup(p, mesg);
 
     if (strstr(mesg, "%c")) {
@@ -1272,8 +1271,9 @@ static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
       mesg = sreplace(p, mesg, "%a", remote_ip, NULL);
     }
 
-    if (strstr(mesg, "%u"))
+    if (strstr(mesg, "%u")) {
       mesg = sreplace(p, mesg, "%u", user, NULL);
+    }
 
     pr_response_send_async(R_530, "%s", mesg);
   }
@@ -2590,15 +2590,17 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
  */
 
 MODRET ban_pre_pass(cmd_rec *cmd) {
-  char *user, *rule_mesg = NULL;
+  const char *user;
+  char *rule_mesg = NULL;
 
-  if (ban_engine != TRUE)
+  if (ban_engine != TRUE) {
     return PR_DECLINED(cmd);
+  }
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-
-  if (!user)
+  if (user == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   /* Make sure the list is up-to-date. */
   ban_list_expire();

@@ -808,7 +808,7 @@ static long transmit_data(pool *p, off_t data_len, off_t *data_offset,
 
 static void stor_chown(pool *p) {
   struct stat st;
-  char *xfer_path = NULL;
+  const char *xfer_path = NULL;
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
     xfer_path = session.xfer.path_hidden;
@@ -1038,9 +1038,10 @@ static int stor_complete(void) {
   return res;
 }
 
-static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
-    char *suffix) {
-  char *c = NULL, *hidden_path, *parent_dir = NULL;
+static int get_hidden_store_path(cmd_rec *cmd, const char *path,
+    const char *prefix, const char *suffix) {
+  const char *c = NULL;
+  char *hidden_path, *parent_dir = NULL;
   int dotcount = 0, found_slash = FALSE, basenamestart = 0, maxlen;
 
   /* We have to also figure out the temporary hidden file name for receiving
@@ -1390,7 +1391,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   c = find_config(CURRENT_CONF, CONF_PARAM, "HiddenStores", FALSE);
   if (c &&
       *((int *) c->argv[0]) == TRUE) {
-    char *prefix, *suffix;
+    const char *prefix, *suffix;
 
     /* If we're using HiddenStores, then REST won't work. */
     if (session.restart_pos) {
@@ -1599,7 +1600,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 }
 
 MODRET xfer_post_stor(cmd_rec *cmd) {
-  char *path;
+  const char *path;
 
   path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
   if (path != NULL) {
@@ -1624,15 +1625,15 @@ MODRET xfer_post_stor(cmd_rec *cmd) {
  * from being surprised.
  */
 MODRET xfer_post_stou(cmd_rec *cmd) {
-  mode_t mask, perms, *umask;
+  mode_t mask, perms, *umask_setting;
   struct stat st;
 
   /* mkstemp(3) creates a file with 0600 perms; we need to adjust this
    * for the Umask (Bug#4223).
    */
-  umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
-  if (umask != NULL) {
-    mask = *umask;
+  umask_setting = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+  if (umask_setting != NULL) {
+    mask = *umask_setting;
 
   } else {
     mask = (mode_t) 0022;
@@ -1677,7 +1678,8 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 }
 
 MODRET xfer_stor(cmd_rec *cmd) {
-  char *path, *lbuf;
+  const char *path;
+  char *lbuf;
   int bufsz, len, xerrno = 0, res;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
@@ -1701,7 +1703,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   pr_fs_setcwd(pr_fs_getcwd());
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
-    void *nfs;
+    const void *nfs;
     int oflags;
 
     oflags = O_WRONLY;
@@ -1735,7 +1737,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
-    char *appe_path;
+    const char *appe_path;
 
     /* Need to handle the case where the path may be a symlink, and we are
      * chrooted (Bug#4219).
@@ -2306,7 +2308,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 }
 
 MODRET xfer_post_retr(cmd_rec *cmd) {
-  char *path;
+  const char *path;
 
   path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
   if (path != NULL) {
@@ -2326,7 +2328,8 @@ MODRET xfer_post_retr(cmd_rec *cmd) {
 }
 
 MODRET xfer_retr(cmd_rec *cmd) {
-  char *dir = NULL, *lbuf;
+  const char *dir = NULL;
+  char *lbuf;
   struct stat st;
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
@@ -3070,18 +3073,18 @@ MODRET set_allowrestart(cmd_rec *cmd) {
 
 /* usage: DefaultTransferMode ascii|binary */
 MODRET set_defaulttransfermode(cmd_rec *cmd) {
-  char *xfer_mode;
+  char *default_mode;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  xfer_mode = cmd->argv[1];
-  if (strcasecmp(xfer_mode, "ascii") != 0 &&
-      strcasecmp(xfer_mode, "binary") != 0) {
+  default_mode = cmd->argv[1];
+  if (strcasecmp(default_mode, "ascii") != 0 &&
+      strcasecmp(default_mode, "binary") != 0) {
     CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
   }
 
-  add_config_param_str(cmd->argv[0], 1, xfer_mode);
+  add_config_param_str(cmd->argv[0], 1, default_mode);
   return PR_HANDLED(cmd);
 }
 
