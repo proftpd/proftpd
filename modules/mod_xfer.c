@@ -1625,15 +1625,15 @@ MODRET xfer_post_stor(cmd_rec *cmd) {
  * from being surprised.
  */
 MODRET xfer_post_stou(cmd_rec *cmd) {
-  mode_t mask, perms, *umask;
+  mode_t mask, perms, *umask_setting;
   struct stat st;
 
   /* mkstemp(3) creates a file with 0600 perms; we need to adjust this
    * for the Umask (Bug#4223).
    */
-  umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
-  if (umask != NULL) {
-    mask = *umask;
+  umask_setting = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+  if (umask_setting != NULL) {
+    mask = *umask_setting;
 
   } else {
     mask = (mode_t) 0022;
@@ -3073,18 +3073,18 @@ MODRET set_allowrestart(cmd_rec *cmd) {
 
 /* usage: DefaultTransferMode ascii|binary */
 MODRET set_defaulttransfermode(cmd_rec *cmd) {
-  char *xfer_mode;
+  char *default_mode;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  xfer_mode = cmd->argv[1];
-  if (strcasecmp(xfer_mode, "ascii") != 0 &&
-      strcasecmp(xfer_mode, "binary") != 0) {
+  default_mode = cmd->argv[1];
+  if (strcasecmp(default_mode, "ascii") != 0 &&
+      strcasecmp(default_mode, "binary") != 0) {
     CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
   }
 
-  add_config_param_str(cmd->argv[0], 1, xfer_mode);
+  add_config_param_str(cmd->argv[0], 1, default_mode);
   return PR_HANDLED(cmd);
 }
 
