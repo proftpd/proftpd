@@ -2493,6 +2493,10 @@ static uint32_t fxp_xattrs_write(pool *p, struct fxp_buffer *fxb,
     }
 
     destroy_pool(sub_pool);
+
+  } else {
+    /* Have to write an extended count of zero. */
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), 0);
   }
 #endif /* PR_USE_XATTR */
 
@@ -10341,6 +10345,9 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   if (fxp_session->client_version >= 6) {
     attr_flags |= SSH2_FX_ATTR_LINK_COUNT;
+#ifdef PR_USE_XATTR
+    attr_flags |= SSH2_FX_ATTR_EXTENDED;
+#endif /* PR_USE_XATTR */
   }
 
   for (i = 0; i < path_list->nelts; i++) {
