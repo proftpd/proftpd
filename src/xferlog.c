@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2015 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,13 +64,12 @@ int xferlog_open(const char *path) {
   return xferlogfd;
 }
 
-int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
-    char xfertype, char direction, char access_mode, char *user,
-    char abort_flag, const char *action_flags) {
-  const char *xfer_proto;
+int xferlog_write(long xfertime, const char *remhost, off_t fsize,
+    const char *fname, char xfertype, char direction, char access_mode,
+    const char *user, char abort_flag, const char *action_flags) {
+  const char *rfc1413_ident = NULL, *xfer_proto;
   char buf[LOGBUFFER_SIZE] = {'\0'}, fbuf[LOGBUFFER_SIZE] = {'\0'};
   int have_ident = FALSE, len;
-  char *rfc1413_ident = NULL;
   register unsigned int i = 0;
 
   if (xferlogfd == -1 ||
@@ -87,15 +86,16 @@ int xferlog_write(long xfertime, const char *remhost, off_t fsize, char *fname,
   fbuf[i] = '\0';
 
   rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident", NULL);
-  if (rfc1413_ident) {
+  if (rfc1413_ident != NULL) {
     have_ident = TRUE;
 
     /* If the retrieved identity is "UNKNOWN", then change the string to be
      * "*", since "*" is to be logged in the xferlog, as per the doc, when
      * the authenticated user ID is not available.
      */
-    if (strncmp(rfc1413_ident, "UNKNOWN", 8) == 0)
+    if (strncmp(rfc1413_ident, "UNKNOWN", 8) == 0) {
       rfc1413_ident = "*";
+    }
 
   } else {
     /* If an authenticated user ID is not available, log "*", as per the

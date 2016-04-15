@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_tls_fscache -- a module which provides a shared OCSP response
  *                              cache using the filesystem
- *
  * Copyright (c) 2015-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
@@ -480,11 +479,13 @@ static int ocsp_cache_clear(tls_ocsp_cache_t *cache) {
   dent = readdir(dirh);
   while (dent != NULL) {
     struct stat st;
+    size_t namelen;
 
     pr_signals_handle();
 
+    namelen = strlen(dent->d_name);
     /* Skip any path which does not end in ".der". */
-    if (pr_strnrstr(dent->d_name, dent->d_namlen, ".der", 4, 0) == TRUE) {
+    if (pr_strnrstr(dent->d_name, namelen, ".der", 4, 0) == TRUE) {
       pr_fh_t *fh;
       char *path;
 
@@ -580,11 +581,13 @@ static int ocsp_cache_status(tls_ocsp_cache_t *cache,
   dent = readdir(dirh);
   while (dent != NULL) {
     struct stat st;
+    size_t namelen;
 
     pr_signals_handle();
 
     /* Skip any path which does not end in ".der". */
-    if (pr_strnrstr(dent->d_name, dent->d_namlen, ".der", 4, 0) == TRUE) {
+    namelen = strlen(dent->d_name);
+    if (pr_strnrstr(dent->d_name, namelen, ".der", 4, 0) == TRUE) {
       pr_fh_t *fh;
       char *path;
 

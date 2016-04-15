@@ -364,7 +364,7 @@ START_TEST (cmd_strcmp_test) {
 END_TEST
 
 START_TEST (cmd_get_displayable_str_test) {
-  char *ok, *res = NULL;
+  const char *ok, *res = NULL;
   cmd_rec *cmd = NULL;
   size_t len = 0;
 

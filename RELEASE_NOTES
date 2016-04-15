@@ -33,6 +33,12 @@ ChangeLog files.
       SSH key exchange algorithm, when compiled with the libsodium library.
 
 
+  + API Changes
+
+    Many of the core API have been const-ified.  This will cause build
+    warnings in many existing third-party modules.
+
+
 1.3.6rc2
 ---------
 

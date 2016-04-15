@@ -1,8 +1,7 @@
 /*
  * mod_log_forensic - a buffering log module for aiding in server behavior
  *                    forensic analysis
- *
- * Copyright (c) 2011-2015 TJ Saunders
+ * Copyright (c) 2011-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -334,7 +333,7 @@ static void forensic_write_metadata(void) {
     iov[niov].iov_len = 6;
     niov++;
 
-    iov[niov].iov_base = session.user;
+    iov[niov].iov_base = (void *) session.user;
     iov[niov].iov_len = strlen(session.user);
     niov++;
 

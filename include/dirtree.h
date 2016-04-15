@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -226,14 +226,14 @@ int dir_check(pool *, cmd_rec *, const char *, const char *, int *);
 int dir_check_canon(pool *, cmd_rec *, const char *, const char *, int *);
 int is_dotdir(const char *);
 int login_check_limits(xaset_t *, int, int, int *);
-char *path_subst_uservar(pool *, char **);
+const char *path_subst_uservar(pool *, const char **);
 void resolve_anonymous_dirs(xaset_t *);
 void resolve_deferred_dirs(server_rec *);
 void fixup_dirs(server_rec *, int);
 unsigned char check_context(cmd_rec *, int);
 char *get_context_name(cmd_rec *);
 int get_boolean(cmd_rec *, int);
-char *get_full_cmd(cmd_rec *);
+const char *get_full_cmd(cmd_rec *);
 
 /* Internal use only. */
 void init_dirtree(void);

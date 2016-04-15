@@ -268,12 +268,12 @@ char *dir_interpolate(pool *p, const char *path) {
 
     user = pstrdup(p, path + 1);
     ptr = strchr(user, '/');
-    if (ptr) {
+    if (ptr != NULL) {
       *ptr++ = '\0';
     }
 
     if (!*user) {
-      user = session.user;
+      user = (char *) session.user;
     }
 
     pw = pr_auth_getpwnam(p, user);

@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
- *
  * Copyright (c) 2001-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
@@ -2733,7 +2732,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
   /* Check for a limit and a tally entry for these groups. */
   if (!have_limit_entry) {
-    char *group_name = session.group;
+    const char *group_name = session.group;
     gid_t group_id = session.gid;
 
     if (quotatab_lookup(TYPE_LIMIT, &sess_limit, group_name, GROUP_QUOTA)) {
@@ -2871,7 +2870,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
   }
 
   if (!have_limit_entry) {
-    char *group_name = session.group;
+    const char *group_name = session.group;
     gid_t group_id = session.gid;
 
     if (quotatab_lookup_default(TYPE_LIMIT, &sess_limit, group_name,
@@ -4006,7 +4005,7 @@ MODRET quotatab_pre_site(cmd_rec *cmd) {
   } else if (strncasecmp(cmd->argv[1], "CPTO", 5) == 0) {
     register unsigned int i;
     cmd_rec *copy_cmd;
-    char *from, *to = "";
+    const char *from, *to = "";
 
     if (cmd->argc < 3) {
       return PR_DECLINED(cmd);
@@ -4154,10 +4153,11 @@ MODRET quotatab_post_site(cmd_rec *cmd) {
   } else if (strncasecmp(cmd->argv[1], "CPTO", 5) == 0) {
     register unsigned int i;
     cmd_rec *copy_cmd;
-    char *from, *to = "";
+    const char *from, *to = "";
 
-    if (cmd->argc < 3)
+    if (cmd->argc < 3) {
       return PR_DECLINED(cmd);
+    }
 
     from = pr_table_get(session.notes, "mod_copy.cpfr-path", NULL);
     if (from == NULL) {
@@ -4196,7 +4196,7 @@ MODRET quotatab_post_site_err(cmd_rec *cmd) {
   } else if (strncasecmp(cmd->argv[1], "CPTO", 5) == 0) {
     register unsigned int i;
     cmd_rec *copy_cmd;
-    char *from, *to = "";
+    const char *from, *to = "";
 
     from = pr_table_get(session.notes, "mod_copy.cpfr-path", NULL);
     if (from == NULL) {

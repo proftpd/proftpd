@@ -28,10 +28,10 @@
 #include "conf.h"
 
 /* From mod_core.c */
-extern int core_chmod(cmd_rec *cmd, char *dir, mode_t mode);
-extern int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid);
+extern int core_chmod(cmd_rec *cmd, const char *path, mode_t mode);
+extern int core_chgrp(cmd_rec *cmd, const char *path, uid_t uid, gid_t gid);
 
-modret_t *site_dispatch(cmd_rec *);
+modret_t *site_dispatch(cmd_rec *cmd);
 
 static struct {
   char *cmd;

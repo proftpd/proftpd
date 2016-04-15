@@ -89,12 +89,12 @@ static void ensure_open_passwd(pool *p) {
   pr_auth_getgrent(p);
 }
 
-static char *get_default_chdir(pool *p) {
+static const char *get_default_chdir(pool *p) {
   config_rec *c;
-  char *path = NULL;
+  const char *path = NULL;
 
   c = find_config(main_server->conf, CONF_PARAM, "DefaultChdir", FALSE);
-  while (c) {
+  while (c != NULL) {
     int res;
 
     pr_signals_handle();
@@ -119,16 +119,16 @@ static char *get_default_chdir(pool *p) {
     path = pdircat(p, session.cwd, path, NULL);
   }
 
-  if (path) {
+  if (path != NULL) {
     path = path_subst_uservar(p, &path);
   }
 
   return path;
 }
 
-static char *get_default_root(pool *p) {
+static const char *get_default_root(pool *p) {
   config_rec *c;
-  char *path = NULL;
+  const char *path = NULL;
 
   c = find_config(main_server->conf, CONF_PARAM, "DefaultRoot", FALSE);
   while (c) {
@@ -304,7 +304,7 @@ static int setup_env(pool *p, char *user) {
   config_rec *c;
   int login_acl, i, res, root_revoke = TRUE, show_symlinks = FALSE, xerrno;
   struct stat st;
-  char *default_chdir, *default_root, *home_dir;
+  const char *default_chdir, *default_root, *home_dir;
   const char *sess_ttyname = NULL, *xferlog = NULL;
   cmd_rec *cmd;
 
@@ -376,7 +376,7 @@ static int setup_env(pool *p, char *user) {
    * incorrect value (Bug#3421).
    */
 
-  pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
+  pw->pw_dir = (char *) path_subst_uservar(p, (const char **) &pw->pw_dir);
 
   if (session.gids == NULL &&
       session.groups == NULL) {
@@ -398,7 +398,7 @@ static int setup_env(pool *p, char *user) {
   home_dir = dir_realpath(p, pw->pw_dir);
   PRIVS_RELINQUISH
 
-  if (home_dir) {
+  if (home_dir != NULL) {
     sstrncpy(session.cwd, home_dir, sizeof(session.cwd));
 
   } else {
@@ -406,7 +406,7 @@ static int setup_env(pool *p, char *user) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "CreateHome", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (*((unsigned char *) c->argv[0]) == TRUE) {
       if (create_home(p, session.cwd, user, pw->pw_uid, pw->pw_gid) < 0) {
         return -1;
@@ -415,7 +415,7 @@ static int setup_env(pool *p, char *user) {
   }
 
   default_chdir = get_default_chdir(p);
-  if (default_chdir) {
+  if (default_chdir != NULL) {
     default_chdir = dir_abs_path(p, default_chdir, TRUE);
     sstrncpy(session.cwd, default_chdir, sizeof(session.cwd));
   }

@@ -146,10 +146,9 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
 void shutdown_end_session(void *d1, void *d2, void *d3, void *d4) {
   if (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
       sizeof(shutmsg)) == 1) {
-    char *user;
+    const char *user;
     time_t now;
-    char *msg;
-    const char *serveraddress;
+    const char *msg, *serveraddress;
     config_rec *c = NULL;
     unsigned char *authenticated = get_param_ptr(main_server->conf,
       "authenticated", FALSE);
@@ -223,7 +222,7 @@ static int get_command_class(const char *name) {
 }
 
 static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
-  char *cmdargstr = NULL;
+  const char *cmdargstr = NULL;
   cmdtable *c;
   modret_t *mr;
   int success = 0, xerrno = 0;
@@ -265,8 +264,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     session.curr_phase = cmd_type;
 
     if (c->cmd_type == cmd_type) {
-      if (c->group)
+      if (c->group) {
         cmd->group = pstrdup(cmd->pool, c->group);
+      }
 
       if (c->requires_auth &&
           cmd_auth_chk &&
@@ -578,7 +578,7 @@ static int set_cmd_start_ms(cmd_rec *cmd) {
     return 0;
   }
 
-  v = pr_table_get(cmd->notes, "start_ms", NULL);
+  v = (void *) pr_table_get(cmd->notes, "start_ms", NULL);
   if (v != NULL) {
     return 0;
   }
@@ -1350,8 +1350,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     time(&now);
     if (!deny || deny <= now) {
       config_rec *c = NULL;
-      char *reason = NULL;
-      const char *serveraddress;
+      const char *reason = NULL, *serveraddress;
 
       serveraddress = (session.c && session.c->local_addr) ?
         pr_netaddr_get_ipstr(session.c->local_addr) :
