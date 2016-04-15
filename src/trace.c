@@ -198,8 +198,8 @@ pr_table_t *pr_trace_get_table(void) {
   return trace_tab;
 }
 
-static struct trace_levels *trace_get_levels(const char *channel) {
-  void *value;
+static const struct trace_levels *trace_get_levels(const char *channel) {
+  const void *value;
 
   if (channel == NULL) {
     errno = EINVAL;
@@ -226,21 +226,23 @@ int pr_trace_get_level(const char *channel) {
 }
 
 int pr_trace_get_max_level(const char *channel) {
-  struct trace_levels *levels;
+  const struct trace_levels *levels;
 
   levels = trace_get_levels(channel);
-  if (levels == NULL)
+  if (levels == NULL) {
     return -1;
+  }
 
   return levels->max_level;
 }
 
 int pr_trace_get_min_level(const char *channel) {
-  struct trace_levels *levels;
+  const struct trace_levels *levels;
 
   levels = trace_get_levels(channel);
-  if (levels == NULL)
+  if (levels == NULL) {
     return -1;
+  }
 
   return levels->min_level;
 }
@@ -511,7 +513,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     va_list msg) {
   char buf[PR_TUNABLE_BUFFER_SIZE * 2];
   size_t buflen;
-  struct trace_levels *levels;
+  const struct trace_levels *levels;
   int discard = FALSE, listening;
 
   /* Writing a trace message at level zero is NOT helpful; this makes it

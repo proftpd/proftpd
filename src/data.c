@@ -107,7 +107,7 @@ static void data_new_xfer(char *filename, int direction) {
   session.xfer.buflen = 0;
 }
 
-static int data_passive_open(char *reason, off_t size) {
+static int data_passive_open(const char *reason, off_t size) {
   conn_t *c;
   int rev, xerrno = 0;
 
@@ -210,7 +210,7 @@ static int data_passive_open(char *reason, off_t size) {
   return -1;
 }
 
-static int data_active_open(char *reason, off_t size) {
+static int data_active_open(const char *reason, off_t size) {
   conn_t *c;
   int bind_port, rev;
   pr_netaddr_t *bind_addr = NULL;

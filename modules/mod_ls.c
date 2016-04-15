@@ -62,7 +62,7 @@ static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
 static unsigned char show_symlinks_hold;
-static char *fakeuser = NULL, *fakegroup = NULL;
+static const char *fakeuser = NULL, *fakegroup = NULL;
 static mode_t fakemode;
 static unsigned char have_fake_mode = FALSE;
 static int ls_errno = 0;

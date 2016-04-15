@@ -29,9 +29,10 @@
 /* Maximum number of matches that we will do in a given string. */
 #define PR_STR_MAX_MATCHES			128
 
-static char *str_vreplace(pool *p, unsigned int max_replaces, char *s,
-    va_list args) {
-  char *m, *r, *src, *cp;
+static const char *str_vreplace(pool *p, unsigned int max_replaces,
+    const char *s, va_list args) {
+  const char *src;
+  char *m, *r, *cp;
   char *matches[PR_STR_MAX_MATCHES+1], *replaces[PR_STR_MAX_MATCHES+1];
   char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
   size_t nmatches = 0, rlen = 0;
@@ -167,19 +168,24 @@ static char *str_vreplace(pool *p, unsigned int max_replaces, char *s,
   return pbuf;
 }
 
-const char *quote_dir(pool *p, char *path) {
+const char *pr_str_quote(pool *p, const char *str) {
   if (p == NULL ||
-      path == NULL) {
+      str == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
-  return sreplace(p, path, "\"", "\"\"", NULL);
+  return sreplace(p, str, "\"", "\"\"", NULL);
 }
 
-char *pr_str_replace(pool *p, unsigned int max_replaces, char *s, ...) {
+const char *quote_dir(pool *p, char *path) {
+  return pr_str_quote(p, path);
+}
+
+const char *pr_str_replace(pool *p, unsigned int max_replaces,
+    const char *s, ...) {
   va_list args;
-  char *res = NULL;
+  const char *res = NULL;
 
   if (p == NULL ||
       s == NULL ||
@@ -195,9 +201,9 @@ char *pr_str_replace(pool *p, unsigned int max_replaces, char *s, ...) {
   return res;
 }
 
-char *sreplace(pool *p, char *s, ...) {
+const char *sreplace(pool *p, const char *s, ...) {
   va_list args;
-  char *res = NULL;
+  const char *res = NULL;
 
   if (p == NULL ||
       s == NULL) {

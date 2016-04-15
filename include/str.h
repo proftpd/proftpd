@@ -38,7 +38,7 @@
 const char *quote_dir(pool *p, char *dir);
 
 char *sstrcat(char *, const char *, size_t);
-char *sreplace(pool *, char *, ...);
+const char *sreplace(pool *, const char *, ...);
 
 char *pdircat(pool *, ...);
 char *pstrcat(pool *, ...);
@@ -57,8 +57,11 @@ char *pstrndup(pool *, const char *, size_t);
 int pr_strnrstr(const char *s, size_t slen, const char *suffix,
   size_t suffixlen, int flags);
 
+/* Returns a quoted version of the given string. */
+const char *pr_str_quote(pool *p, const char *str);
+
 /* Newer version of sreplace(), with more control and better error reporting. */
-char *pr_str_replace(pool *, unsigned int, char *, ...);
+const char *pr_str_replace(pool *, unsigned int, const char *, ...);
 char *pr_str_strip(pool *, char *);
 char *pr_str_strip_end(char *, char *);
 int pr_str_get_nbytes(const char *, const char *, off_t *);

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1810,7 +1810,7 @@ START_TEST (auth_is_valid_shell_test) {
 END_TEST
 
 START_TEST (auth_get_home_test) {
-  char *home, *res;
+  const char *home, *res;
 
   res = pr_auth_get_home(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");

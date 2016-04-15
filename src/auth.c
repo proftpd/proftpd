@@ -152,15 +152,16 @@ static void uidcache_add(uid_t uid, const char *name) {
 
 static int uidcache_get(uid_t uid, char *name, size_t namesz) {
   if (uid_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_kget(uid_tab, (const void *) &uid, sizeof(uid_t), NULL);
-    if (v) {
+    if (v != NULL) {
       memset(name, '\0', namesz);
       sstrncpy(name, v, namesz);
 
       pr_trace_msg(trace_channel, 8,
-       "using name '%s' from uidcache for UID %s", name, pr_uid2str(NULL, uid));
+        "using name '%s' from uidcache for UID %s", name,
+        pr_uid2str(NULL, uid));
       return 0;
     }
 
@@ -243,15 +244,16 @@ static void gidcache_add(gid_t gid, const char *name) {
 
 static int gidcache_get(gid_t gid, char *name, size_t namesz) {
   if (gid_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_kget(gid_tab, (const void *) &gid, sizeof(gid_t), NULL);
-    if (v) {
+    if (v != NULL) {
       memset(name, '\0', namesz);
       sstrncpy(name, v, namesz);
 
       pr_trace_msg(trace_channel, 8,
-       "using name '%s' from gidcache for GID %s", name, pr_gid2str(NULL, gid));
+        "using name '%s' from gidcache for GID %s", name,
+        pr_gid2str(NULL, gid));
       return 0;
     }
 
@@ -307,15 +309,15 @@ static void usercache_add(const char *name, uid_t uid) {
 
 static int usercache_get(const char *name, uid_t *uid) {
   if (user_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_get(user_tab, name, NULL);
     if (v != NULL) {
       *uid = *((uid_t *) v);
 
       pr_trace_msg(trace_channel, 8,
-       "using UID %s for user '%s' from usercache", pr_uid2str(NULL, *uid),
-       name);
+        "using UID %s for user '%s' from usercache", pr_uid2str(NULL, *uid),
+        name);
       return 0;
     }
 
@@ -370,15 +372,15 @@ static void groupcache_add(const char *name, gid_t gid) {
 
 static int groupcache_get(const char *name, gid_t *gid) {
   if (group_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_get(group_tab, name, NULL);
-    if (v) {
+    if (v != NULL) {
       *gid = *((gid_t *) v);
 
       pr_trace_msg(trace_channel, 8,
-       "using GID %s for group '%s' from groupcache", pr_gid2str(NULL, *gid),
-       name);
+        "using GID %s for group '%s' from groupcache", pr_gid2str(NULL, *gid),
+        name);
       return 0;
     }
 
@@ -750,7 +752,7 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   }
 
   /* Get the (possibly rewritten) home directory. */
-  res->pw_dir = pr_auth_get_home(p, res->pw_dir);
+  res->pw_dir = (char *) pr_auth_get_home(p, res->pw_dir);
 
   pr_log_debug(DEBUG10, "retrieved UID %s for user '%s'",
     pr_uid2str(NULL, res->pw_uid), name);
@@ -958,11 +960,12 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
     }
   }
 
-  if (auth_tab) {
+  if (auth_tab != NULL) {
+    const void *v;
 
     /* Fetch the specific module to be used for authenticating this user. */
-    void *v = pr_table_get(auth_tab, name, NULL);
-    if (v) {
+    v = pr_table_get(auth_tab, name, NULL);
+    if (v != NULL) {
       m = *((module **) v);
 
       pr_trace_msg(trace_channel, 4,
@@ -1002,11 +1005,12 @@ int pr_auth_authorize(pool *p, const char *name) {
 
   cmd = make_cmd(p, 1, name);
 
-  if (auth_tab) {
+  if (auth_tab != NULL) {
+    const void *v;
 
     /* Fetch the specific module to be used for authenticating this user. */
-    void *v = pr_table_get(auth_tab, name, NULL);
-    if (v) {
+    v = pr_table_get(auth_tab, name, NULL);
+    if (v != NULL) {
       m = *((module **) v);
 
       pr_trace_msg(trace_channel, 4,
@@ -1101,11 +1105,12 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
     }
   }
 
-  if (auth_tab) {
+  if (auth_tab != NULL) {
+    const void *v;
 
     /* Fetch the specific module to be used for authenticating this user. */
-    void *v = pr_table_get(auth_tab, name, NULL);
-    if (v) {
+    v = pr_table_get(auth_tab, name, NULL);
+    if (v != NULL) {
       m = *((module **) v);
 
       pr_trace_msg(trace_channel, 4,
@@ -1465,7 +1470,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 }
 
 /* This is one messy function.  Yuck.  Yay legacy code. */
-config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
+config_rec *pr_auth_get_anon_config(pool *p, const char **login_name,
     char **user_name, char **anon_name) {
   config_rec *c = NULL, *topc = NULL;
   char *config_user_name, *config_anon_name = NULL;
@@ -2146,9 +2151,9 @@ int pr_auth_remove_auth_only_module(const char *name) {
   return -1;
 }
 
-char *pr_auth_get_home(pool *p, char *pw_dir) {
+const char *pr_auth_get_home(pool *p, const char *pw_dir) {
   config_rec *c;
-  char *home_dir;
+  const char *home_dir;
 
   if (p == NULL ||
       pw_dir == NULL) {

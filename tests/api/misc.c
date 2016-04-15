@@ -300,6 +300,7 @@ START_TEST (dir_readlink_test) {
   }
 
   /* Not chrooted, absolute dst path */
+  memset(buf, '\0', bufsz);
   dst_path = "/home/user/file.dat";
   dst_pathlen = strlen(dst_path);
   res = symlink(dst_path, path);

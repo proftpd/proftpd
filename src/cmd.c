@@ -246,7 +246,7 @@ int pr_cmd_get_errno(cmd_rec *cmd) {
     return -1;
   }
 
-  v = pr_table_get(cmd->notes, "errno", NULL);
+  v = (void *) pr_table_get(cmd->notes, "errno", NULL);
   if (v == NULL) {
     errno = ENOENT;
     return -1;
@@ -265,7 +265,7 @@ int pr_cmd_set_errno(cmd_rec *cmd, int xerrno) {
     return -1;
   }
 
-  v = pr_table_get(cmd->notes, "errno", NULL);
+  v = (void *) pr_table_get(cmd->notes, "errno", NULL);
   if (v == NULL) {
     errno = ENOENT;
     return -1;
@@ -324,8 +324,8 @@ int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
   return strncmp(cmd->argv[0], cmd_name, cmd_namelen + 1);
 }
 
-char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
-  char *res;
+const char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
+  const char *res;
   int argc;
   void **argv;
   pool *p;
@@ -336,7 +336,7 @@ char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
   }
 
   res = pr_table_get(cmd->notes, "displayable-str", NULL);
-  if (res) {
+  if (res != NULL) {
     if (str_len != NULL) {
       *str_len = strlen(res);
     }

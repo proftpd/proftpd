@@ -392,7 +392,7 @@ static unsigned int tab_get_seed(void) {
  */
 
 int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
-    void *value_data, size_t value_datasz) {
+    const void *value_data, size_t value_datasz) {
   unsigned int h, idx;
   pr_table_entry_t *e, *n;
 
@@ -425,8 +425,7 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
 
   /* Find the current chain entry at this index. */
   e = tab->chains[idx];
-
-  if (e) {
+  if (e != NULL) {
     pr_table_entry_t *ei;
 
     /* There is a chain at this index.  Next step is to see if any entry
@@ -539,8 +538,8 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
   return 0;
 }
 
-void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
-    size_t *value_datasz) {
+const void *pr_table_kget(pr_table_t *tab, const void *key_data,
+    size_t key_datasz, size_t *value_datasz) {
   unsigned int h;
   pr_table_entry_t *head, *ent;
 
@@ -630,7 +629,7 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
   return NULL;
 }
 
-void *pr_table_kremove(pr_table_t *tab, const void *key_data,
+const void *pr_table_kremove(pr_table_t *tab, const void *key_data,
     size_t key_datasz, size_t *value_datasz) {
   unsigned int h, idx;
   pr_table_entry_t *head, *ent;
@@ -653,8 +652,9 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
   if ((tab->flags & PR_TABLE_FL_USE_CACHE) &&
       tab->cache_ent &&
       tab->cache_ent->key->key_data == key_data) {
-    void *value_data = tab->cache_ent->value_data;
+    const void *value_data;
 
+    value_data = tab->cache_ent->value_data;
     if (value_datasz) {
       *value_datasz = tab->cache_ent->value_datasz;
     }
@@ -687,8 +687,9 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
     /* Matching hashes.  Now to see if the keys themselves match. */
     if (tab->keycmp(ent->key->key_data, ent->key->key_datasz,
         key_data, key_datasz) == 0) {
-      void *value_data = ent->value_data;
+      const void *value_data;
 
+      value_data = ent->value_data;
       if (value_datasz) {
         *value_datasz = ent->value_datasz;
       }
@@ -708,7 +709,7 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
 }
 
 int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
-    void *value_data, size_t value_datasz) {
+    const void *value_data, size_t value_datasz) {
   unsigned int h;
   pr_table_entry_t *head, *ent;
 
@@ -794,7 +795,7 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
   return -1;
 }
 
-int pr_table_add(pr_table_t *tab, const char *key_data, void *value_data,
+int pr_table_add(pr_table_t *tab, const char *key_data, const void *value_data,
     size_t value_datasz) {
 
   if (tab == NULL ||
@@ -812,22 +813,25 @@ int pr_table_add(pr_table_t *tab, const char *key_data, void *value_data,
     value_datasz);
 }
 
-int pr_table_add_dup(pr_table_t *tab, const char *key_data, void *value_data,
-    size_t value_datasz) {
+int pr_table_add_dup(pr_table_t *tab, const char *key_data,
+    const void *value_data, size_t value_datasz) {
   void *dup_data;
 
-  if (!tab || !key_data) {
+  if (tab == NULL ||
+      key_data == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!value_data && value_datasz != 0) {
+  if (value_data == NULL &&
+      value_datasz != 0) {
     errno = EINVAL;
     return -1;
   }
 
-  if (value_data && value_datasz == 0) {
-    value_datasz = strlen((char *) value_data) + 1;
+  if (value_data != NULL &&
+      value_datasz == 0) {
+    value_datasz = strlen((const char *) value_data) + 1;
   }
 
   dup_data = pcalloc(tab->pool, value_datasz);
@@ -880,8 +884,8 @@ int pr_table_count(pr_table_t *tab) {
 }
 
 int pr_table_do(pr_table_t *tab, int (*cb)(const void *key_data,
-    size_t key_datasz, void *value_data, size_t value_datasz, void *user_data),
-    void *user_data, int flags) {
+    size_t key_datasz, const void *value_data, size_t value_datasz,
+    void *user_data), void *user_data, int flags) {
   register unsigned int i;
 
   if (tab == NULL ||
@@ -898,7 +902,7 @@ int pr_table_do(pr_table_t *tab, int (*cb)(const void *key_data,
     pr_table_entry_t *ent;
 
     ent = tab->chains[i];
-    while (ent) {
+    while (ent != NULL) {
       pr_table_entry_t *next_ent;
       int res;
 
@@ -982,7 +986,7 @@ int pr_table_free(pr_table_t *tab) {
   return 0;
 }
 
-void *pr_table_get(pr_table_t *tab, const char *key_data,
+const void *pr_table_get(pr_table_t *tab, const char *key_data,
     size_t *value_datasz) {
   size_t key_datasz = 0;
 
@@ -998,7 +1002,7 @@ void *pr_table_get(pr_table_t *tab, const char *key_data,
   return pr_table_kget(tab, key_data, key_datasz, value_datasz);
 }
 
-void *pr_table_next(pr_table_t *tab) {
+const void *pr_table_next(pr_table_t *tab) {
   pr_table_entry_t *ent, *prev;
 
   if (tab == NULL) {
@@ -1009,7 +1013,7 @@ void *pr_table_next(pr_table_t *tab) {
   prev = tab->tab_iter_ent;
 
   ent = tab_entry_next(tab);
-  while (ent) {
+  while (ent != NULL) {
     if (!handling_signal) {
       pr_signals_handle();
     }
@@ -1031,7 +1035,7 @@ void *pr_table_next(pr_table_t *tab) {
   return ent->key->key_data;
 }
 
-void *pr_table_remove(pr_table_t *tab, const char *key_data,
+const void *pr_table_remove(pr_table_t *tab, const char *key_data,
     size_t *value_datasz) {
 
   if (tab == NULL ||
@@ -1053,7 +1057,7 @@ int pr_table_rewind(pr_table_t *tab) {
   return 0;
 }
 
-int pr_table_set(pr_table_t *tab, const char *key_data, void *value_data,
+int pr_table_set(pr_table_t *tab, const char *key_data, const void *value_data,
     size_t value_datasz) {
 
   if (tab == NULL ||
@@ -1064,7 +1068,7 @@ int pr_table_set(pr_table_t *tab, const char *key_data, void *value_data,
 
   if (value_data &&
       value_datasz == 0) {
-    value_datasz = strlen((char *) value_data) + 1;
+    value_datasz = strlen((const char *) value_data) + 1;
   }
 
   return pr_table_kset(tab, key_data, strlen(key_data) + 1, value_data,
