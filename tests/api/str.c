@@ -504,7 +504,8 @@ START_TEST (pstrndup_test) {
 END_TEST
 
 START_TEST (strip_test) {
-  char *ok, *res, *str;
+  const char *str;
+  char *ok, *res;
 
   res = pr_str_strip(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");

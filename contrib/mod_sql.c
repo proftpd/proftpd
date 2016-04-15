@@ -918,7 +918,7 @@ int sql_unregister_authtype(const char *name) {
  * version of that name */
 static char *_sql_realuser(cmd_rec *cmd) {
   modret_t *mr = NULL;
-  char *user = NULL;
+  const char *user = NULL;
 
   /* this is the userid given by the user */
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
@@ -1345,9 +1345,9 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
 static int sql_getuserprimarykey(cmd_rec *cmd, const char *username) {
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
-  char *key_field = NULL, *key_value = NULL;
+  char *key_field = NULL, *key_value = NULL, *ptr = NULL;
   config_rec *c;
-  void *ptr = NULL, *v = NULL;
+  const void *v = NULL;
  
   v = pr_table_get(session.notes, "sql.user-primary-key", NULL); 
   if (v != NULL) {
@@ -1440,9 +1440,9 @@ static int sql_getuserprimarykey(cmd_rec *cmd, const char *username) {
 static int sql_getgroupprimarykey(cmd_rec *cmd, const char *groupname) {
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
-  char *key_field = NULL, *key_value = NULL;
+  char *key_field = NULL, *key_value = NULL, *ptr = NULL;
   config_rec *c;
-  void *ptr = NULL, *v = NULL;
+  const void *v = NULL;
  
   v = pr_table_get(session.notes, "sql.group-primary-key", NULL); 
   if (v != NULL) {
@@ -2297,7 +2297,7 @@ MODRET sql_pre_dele(cmd_rec *cmd) {
 
 MODRET sql_pre_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
-  char *user = NULL;
+  const char *user = NULL;
 
   if (cmap.engine == 0) {
     return PR_DECLINED(cmd);
@@ -2306,7 +2306,7 @@ MODRET sql_pre_pass(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> sql_pre_pass");
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-  if (user) {
+  if (user != NULL) {
     config_rec *anon_config;
 
     /* Use the looked-up user name to determine whether this is to be
@@ -2404,10 +2404,10 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   if (long_tag == NULL &&
       tag_len == 13 &&
       strncasecmp(tag, "file-modified", 14) == 0) {
-    char *modified;
+    const char *modified;
 
     modified = pr_table_get(cmd->notes, "mod_xfer.file-modified", NULL);
-    if (modified) {
+    if (modified != NULL) {
       long_tag = pstrdup(cmd->tmp_pool, modified);
 
     } else {
@@ -2418,10 +2418,10 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   if (long_tag == NULL &&
       tag_len == 11 &&
       strncasecmp(tag, "file-offset", 12) == 0) {
-    off_t *offset;
+    const off_t *offset;
 
     offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
-    if (offset) {
+    if (offset != NULL) {
       char offset_str[1024];
       size_t len = 0;
 
@@ -2438,7 +2438,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   if (long_tag == NULL &&
       tag_len == 9 &&
       strncasecmp(tag, "file-size", 10) == 0) {
-    off_t *file_size;
+    const off_t *file_size;
 
     file_size = pr_table_get(cmd->notes, "mod_xfer.file-size", NULL);
     if (file_size != NULL) {
@@ -2535,7 +2535,8 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   if (long_tag == NULL &&
       tag_len > 5 &&
       strncmp(tag, "note:", 5) == 0) {
-    char *key = NULL, *note = NULL;
+    const char *note = NULL;
+    char *key = NULL;
 
     key = tag + 5;
 
@@ -2827,7 +2828,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
         /* mod_sftp stashes a note for us in the command notes if the
          * transfer failed.
          */
-        char *status;
+        const char *status;
 
         status = pr_table_get(cmd->notes, "mod_sftp.file-status", NULL);
         if (status == NULL) {
@@ -2909,7 +2910,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
   switch (tag) {
     case 'A': {
-      char *pass;
+      const char *pass;
 
       argp = arg;
       pass = pr_table_get(session.notes, "mod_auth.anon-passwd", NULL);
@@ -3028,8 +3029,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       break;
 
     case 'E': {
-      const char *reason_str;
-      char *details = NULL;
+      const char *details = NULL, *reason_str;
 
       argp = arg;
 
@@ -3057,7 +3057,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
           sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
-        char *path;
+        const char *path;
 
         path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
         len = sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE),
@@ -3065,7 +3065,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
-        char *path;
+        const char *path;
 
         path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
         len = sstrncpy(arg, dir_abs_path(cmd->tmp_pool, path, TRUE),
@@ -3234,7 +3234,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       break;
 
     case 'l': {
-      char *rfc1413_ident;
+      const char *rfc1413_ident;
 
       argp = arg;
       rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
@@ -3281,7 +3281,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       break;
 
     case 'R': {
-      uint64_t *start_ms = NULL;
+      const uint64_t *start_ms = NULL;
 
       argp = arg;
 
@@ -3357,7 +3357,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       break;
 
     case 'U': {
-      char *login_user;
+      const char *login_user;
 
       argp = arg;
 
@@ -3395,7 +3395,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
       break;
 
     case 'w': {
-      char *rnfr_path = "-";
+      const char *rnfr_path = "-";
 
       if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
         rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
@@ -5325,7 +5325,7 @@ MODRET cmd_check(cmd_rec *cmd) {
 
       } else {
         if (MODRET_HASMSG(mr)) {
-          char *err_msg;
+          const char *err_msg;
 
           err_msg = MODRET_ERRMSG(mr);
           sql_log(DEBUG_AUTH, "'%s' SQLAuthType handler reports failure: %s",

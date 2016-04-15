@@ -453,9 +453,9 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
   return -1;
 }
 
-static char *pr_ldap_interpolate_filter(pool *p, char *template,
+static const char *pr_ldap_interpolate_filter(pool *p, char *template,
     const char *value) {
-  char *escaped_value, *filter;
+  const char *escaped_value, *filter;
 
   escaped_value = sreplace(p, (char *) value,
     "\\", "\\\\",
@@ -485,8 +485,8 @@ static char *pr_ldap_interpolate_filter(pool *p, char *template,
   return filter;
 }
 
-static LDAPMessage *pr_ldap_search(char *basedn, char *filter, char *attrs[],
-    int sizelimit, int retry) {
+static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
+    char *attrs[], int sizelimit, int retry) {
   int res;
   LDAPMessage *result;
 
@@ -537,8 +537,9 @@ static LDAPMessage *pr_ldap_search(char *basedn, char *filter, char *attrs[],
 }
 
 static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
-    const char *replace, char *basedn, char *attrs[], char **user_dn) {
-  char *filter, *dn;
+    const char *replace, const char *basedn, char *attrs[], char **user_dn) {
+  const char *filter;
+  char *dn;
   int i = 0;
   struct passwd *pw;
   LDAPMessage *result, *e;
@@ -787,7 +788,8 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
 
 static struct group *pr_ldap_group_lookup(pool *p, char *filter_template,
     const char *replace, char *attrs[]) {
-  char *filter, *dn;
+  const char *filter;
+  char *dn;
   int i = 0, value_count = 0, value_offset;
   struct group *gr;
   LDAPMessage *result, *e;
@@ -905,9 +907,9 @@ static void parse_quota(pool *p, const char *replace, char *str) {
 }
 
 static unsigned char pr_ldap_quota_lookup(pool *p, char *filter_template,
-    const char *replace, char *basedn) {
-  char *filter = NULL,
-       *attrs[] = {
+    const char *replace, const char *basedn) {
+  const char *filter = NULL;
+  char *attrs[] = {
          ldap_attr_ftpquota, ldap_attr_ftpquota_profiledn, NULL,
        };
   int orig_scope, res;
@@ -920,7 +922,7 @@ static unsigned char pr_ldap_quota_lookup(pool *p, char *filter_template,
     return FALSE;
   }
 
-  if (filter_template) {
+  if (filter_template != NULL) {
     filter = pr_ldap_interpolate_filter(p, filter_template, replace);
     if (filter == NULL) {
       return FALSE;
@@ -1032,7 +1034,8 @@ static unsigned char pr_ldap_quota_lookup(pool *p, char *filter_template,
 
 static unsigned char pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template,
     const char *replace, char *basedn) {
-  char *filter, *attrs[] = {
+  const char *filter;
+  char *attrs[] = {
     ldap_attr_ssh_pubkey, NULL,
   };
   int num_keys, i;
@@ -1110,8 +1113,8 @@ static struct group *pr_ldap_getgrgid(pool *p, gid_t gid) {
 }
 
 static struct passwd *pr_ldap_getpwnam(pool *p, const char *username) {
-  char *filter,
-       *name_attrs[] = {
+  const char *filter;
+  char *name_attrs[] = {
          ldap_attr_userpassword, ldap_attr_uid, ldap_attr_uidnumber,
          ldap_attr_gidnumber, ldap_attr_homedirectory,
          ldap_attr_loginshell, NULL,
@@ -1160,7 +1163,7 @@ static struct passwd *pr_ldap_getpwuid(pool *p, uid_t uid) {
 }
 
 MODRET handle_ldap_quota_lookup(cmd_rec *cmd) {
-  char *basedn;
+  const char *basedn;
 
   basedn = pr_ldap_interpolate_filter(cmd->tmp_pool,
     ldap_user_basedn, cmd->argv[0]);
@@ -1289,7 +1292,8 @@ MODRET ldap_auth_getgrgid(cmd_rec *cmd) {
 }
 
 MODRET ldap_auth_getgroups(cmd_rec *cmd) {
-  char *filter, *w[] = {
+  const char *filter;
+  char *w[] = {
     ldap_attr_gidnumber, ldap_attr_cn, NULL,
   };
   struct passwd *pw;
@@ -1399,9 +1403,8 @@ return_groups:
  * cmd->argv[1] : cleartext password
  */
 MODRET ldap_auth_auth(cmd_rec *cmd) {
-  const char *username = cmd->argv[0];
-  char *filter = NULL,
-       *pass_attrs[] = {
+  const char *filter = NULL, *username;
+  char *pass_attrs[] = {
          ldap_attr_userpassword, ldap_attr_uid, ldap_attr_uidnumber,
          ldap_attr_gidnumber, ldap_attr_homedirectory,
          ldap_attr_loginshell, NULL,
@@ -1412,6 +1415,8 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
   if (ldap_do_users == FALSE) {
     return PR_DECLINED(cmd);
   }
+
+  username = cmd->argv[0];
 
   filter = pr_ldap_interpolate_filter(cmd->tmp_pool, ldap_user_basedn,
     username);

@@ -738,7 +738,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
 static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     unsigned char *buf, uint32_t buflen) {
   register unsigned int i;
-  char *hiddenstore_path = NULL;
+  const char *hiddenstore_path = NULL;
   unsigned char *data = NULL, *msg;
   uint32_t datalen = 0;
   char *ptr = NULL;

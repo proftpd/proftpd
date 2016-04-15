@@ -442,10 +442,12 @@ int pr_strnrstr(const char *s, size_t slen, const char *suffix,
   return res;
 }
 
-char *pr_str_strip(pool *p, char *str) {
-  char c, *dupstr, *start, *finish;
+const char *pr_str_strip(pool *p, const char *str) {
+  const char *dup_str, *start, *finish;
+  size_t len = 0;
  
-  if (!p || !str) {
+  if (p == NULL ||
+      str == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -456,22 +458,15 @@ char *pr_str_strip(pool *p, char *str) {
   /* Now, find the non-whitespace end of the given string */
   for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--);
 
-  /* finish is now pointing to a non-whitespace character.  So advance one
-   * character forward, and set that to NUL.
-   */
-  c = *++finish;
-  *finish = '\0';
+  len = finish - start;
 
   /* The space-stripped string is, then, everything from start to finish. */
-  dupstr = pstrdup(p, start);
+  dup_str = pstrndup(p, start, len);
 
-  /* Restore the given string buffer contents. */
-  *finish = c;
-
-  return dupstr;
+  return dup_str;
 }
 
-char *pr_str_strip_end(char *s, char *ch) {
+char *pr_str_strip_end(char *s, const char *ch) {
   size_t len;
 
   if (s == NULL ||

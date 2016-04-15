@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_wrap2_file -- a mod_wrap2 sub-module for supplying IP-based
  *                            access control data via file-based tables
- *
- * Copyright (c) 2002-2015 TJ Saunders
+ * Copyright (c) 2002-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -241,7 +240,7 @@ static array_header *filetab_fetch_options_cb(wrap2_table_t *filetab,
   return filetab_options_list;
 }
 
-static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
+static wrap2_table_t *filetab_open_cb(pool *parent_pool, const char *srcinfo) {
   struct stat st;
   wrap2_table_t *tab = NULL;
   pool *tab_pool = make_sub_pool(parent_pool);
@@ -272,11 +271,11 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, char *srcinfo) {
 
   /* If the path contains a %U variable, interpolate it. */
   if (strstr(srcinfo, "%U") != NULL) {
-    char *orig_user;
+    const char *orig_user;
 
     orig_user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
     if (orig_user != NULL) {
-      char *interp_path;
+      const char *interp_path;
 
       interp_path = sreplace(tab_pool, srcinfo, "%U", orig_user, NULL);
       if (interp_path != NULL) {

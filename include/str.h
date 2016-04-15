@@ -62,8 +62,8 @@ const char *pr_str_quote(pool *p, const char *str);
 
 /* Newer version of sreplace(), with more control and better error reporting. */
 const char *pr_str_replace(pool *, unsigned int, const char *, ...);
-char *pr_str_strip(pool *, char *);
-char *pr_str_strip_end(char *, char *);
+const char *pr_str_strip(pool *, const char *);
+char *pr_str_strip_end(char *, const char *);
 int pr_str_get_nbytes(const char *, const char *, off_t *);
 char *pr_str_get_word(char **, int);
 

@@ -2696,7 +2696,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
       (tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
     SSL *ssl;
 
-    ssl = pr_table_get(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+    ssl = (SSL *) pr_table_get(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
     if (!SSL_renegotiate_pending(ssl)) {
       tls_log("%s", "data channel TLS session renegotiated");
       tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
@@ -7576,7 +7576,7 @@ static void tls_setup_environ(SSL *ssl) {
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
     SSL_CIPHER *cipher = NULL;
     SSL_SESSION *ssl_session = NULL;
-    char *sni = NULL;
+    const char *sni = NULL;
 
     k = pstrdup(main_server->pool, "FTPS");
     v = pstrdup(main_server->pool, "1");
@@ -9399,7 +9399,7 @@ static int set_random_bn(unsigned char *psk, unsigned int max_psklen) {
 
 static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
     unsigned char *psk, unsigned int max_psklen) {
-  void *v = NULL;
+  const void *v = NULL;
   BIGNUM *bn = NULL;
   int bn_len = -1, res;
 
@@ -9431,7 +9431,7 @@ static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
     return res;
   }
 
-  bn = v;
+  bn = (BIGNUM *) v;
   bn_len = BN_num_bytes(bn);
 
   if (bn_len > (int) max_psklen) {
@@ -9468,7 +9468,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
   int res = 0;
   SSL *ssl = NULL;
 
-  ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+  ssl = (SSL *) pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
   if (ssl != NULL) {
     if (nstrm->strm_type == PR_NETIO_STRM_CTRL &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
@@ -9624,7 +9624,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
             "TLS data handshake duration: %lu ms", elapsed_ms);
         } 
 
-        ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+        ssl = (SSL *) pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
 
         /* Make sure that the certificate used, if any, for this data channel
          * handshake is the same as that used for the control channel handshake.
@@ -9688,7 +9688,7 @@ static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
   SSL *ssl;
 
-  ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+  ssl = (SSL *) pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
   if (ssl != NULL) {
     BIO *rbio, *wbio;
     int bread = 0, bwritten = 0;
@@ -9759,7 +9759,7 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
          nstrm->strm_type == PR_NETIO_STRM_DATA)) {
       SSL *ssl;
 
-      ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+      ssl = (SSL *) pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
       if (ssl != NULL) {
         BIO *rbio, *wbio;
         int bread = 0, bwritten = 0;
@@ -9828,7 +9828,7 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
   SSL *ssl;
 
-  ssl = pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
+  ssl = (SSL *) pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
   if (ssl != NULL) {
     BIO *rbio, *wbio;
     int bread = 0, bwritten = 0;

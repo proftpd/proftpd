@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp keystores
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -293,7 +293,8 @@ int sftp_keystore_verify_user_key(pool *p, const char *user,
 
   for (i = 0; i < c->argc; i++) {
     struct sftp_keystore_store *sks;
-    char *store_type, *path, *ptr, *session_user;
+    const char *path, *sess_user;
+    char *store_type, *ptr;
 
     pr_signals_handle();
 
@@ -315,10 +316,10 @@ int sftp_keystore_verify_user_key(pool *p, const char *user,
      * Note that path_subst_uservar() relies on the session.user variable
      * being set, hence why we cache/restore its value.
      */
-    session_user = session.user;
-    session.user = (char *) user;
+    sess_user = session.user;
+    session.user = user;
     path = path_subst_uservar(p, &path);
-    session.user = session_user;
+    session.user = sess_user;
 
     pr_trace_msg(trace_channel, 2,
       "using SFTPAuthorizedUserKeys '%s:%s' for public key authentication for "

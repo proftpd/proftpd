@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
- *
- * Copyright (c) 2002-2015 TJ Saunders
+ * Copyright (c) 2002-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -214,7 +213,8 @@ static char *ifsess_dir_interpolate(pool *p, const char *path) {
   }
 
   if (*ret == '~') {
-    char *interp_dir = NULL, *user, *ptr;
+    const char *user;
+    char *interp_dir = NULL, *ptr;
 
     user = pstrdup(p, ret+1);
     ptr = strchr(user, '/');
@@ -291,7 +291,7 @@ static void ifsess_resolve_dir(config_rec *c) {
   }
 
   /* Check for any expandable variables. */
-  c->name = path_subst_uservar(c->pool, &c->name);
+  c->name = (char *) path_subst_uservar(c->pool, (const char **) &c->name);
 
   /* Handle any '~' interpolation. */
   interp_dir = ifsess_dir_interpolate(c->pool, c->name);
@@ -610,7 +610,8 @@ MODRET end_ifctxt(cmd_rec *cmd) {
 
 MODRET ifsess_pre_pass(cmd_rec *cmd) {
   config_rec *c;
-  char *displaylogin = NULL, *sess_user, *sess_group, *user, *group = NULL;
+  const char *user = NULL, *group = NULL, *sess_user, *sess_group;
+  char *displaylogin = NULL;
   array_header *gids = NULL, *groups = NULL, *sess_groups = NULL;
   struct passwd *pw = NULL;
   struct group *gr = NULL;

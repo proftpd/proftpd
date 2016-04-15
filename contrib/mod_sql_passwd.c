@@ -128,13 +128,14 @@ static cmd_rec *sql_passwd_cmd_create(pool *parent_pool, int argc, ...) {
   return cmd;
 }
 
-static char *sql_passwd_get_str(pool *p, char *str) {
+static const char *sql_passwd_get_str(pool *p, const char *str) {
   cmdtable *cmdtab;
   cmd_rec *cmd;
   modret_t *res;
 
-  if (strlen(str) == 0)
+  if (strlen(str) == 0) {
     return str;
+  }
 
   /* Find the cmdtable for the sql_escapestr command. */
   cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_escapestr", NULL, NULL, NULL);
@@ -162,23 +163,37 @@ static char *sql_passwd_get_str(pool *p, char *str) {
 
 static const char *get_crypto_errors(void) {
   unsigned int count = 0;
-  unsigned long e = ERR_get_error();
+  unsigned long error_code;
   BIO *bio = NULL;
   char *data = NULL;
   long datalen;
-  const char *str = "(unknown)";
+  const char *error_data = NULL, *str = "(unknown)";
+  int error_flags = 0;
 
   /* Use ERR_print_errors() and a memory BIO to build up a string with
    * all of the error messages from the error queue.
    */
 
-  if (e)
+  error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
+  if (error_code) {
     bio = BIO_new(BIO_s_mem());
+  }
 
-  while (e) {
+  while (error_code) {
     pr_signals_handle();
-    BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
-    e = ERR_get_error();
+
+    if (error_flags & ERR_TXT_STRING) {
+      BIO_printf(bio, "\n  (%u) %s [%s]", ++count,
+        ERR_error_string(error_code, NULL), error_data);
+
+    } else {
+      BIO_printf(bio, "\n  (%u) %s", ++count,
+        ERR_error_string(error_code, NULL));
+    }
+
+    error_data = NULL;
+    error_flags = 0;
+    error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
   }
 
   datalen = BIO_get_mem_data(bio, &data);
@@ -187,8 +202,9 @@ static const char *get_crypto_errors(void) {
     str = pstrdup(session.pool, data);
   }
 
-  if (bio)
+  if (bio) {
     BIO_free(bio);
+  }
 
   return str;
 }
@@ -1025,8 +1041,8 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       sql_passwd_pbkdf2_len = *((int *) c->argv[2]);
 
     } else {
-      char *key;
-      char *named_query, *ptr, *user;
+      const char *user;
+      char *key, *named_query, *ptr;
       cmdtable *sql_cmdtab;
       cmd_rec *sql_cmd;
       modret_t *sql_res;
@@ -1126,7 +1142,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
     salt_flags = *((unsigned long *) c->argv[1]);
 
     if (strcasecmp(key, "name") == 0) {
-      char *user;
+      const char *user;
 
       user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
       if (user == NULL) {
@@ -1139,7 +1155,8 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       sql_passwd_user_salt_len = strlen(user);
 
     } else if (strncasecmp(key, "sql:/", 5) == 0) {
-      char *named_query, *ptr, *user, **values;
+      const char *user;
+      char *named_query, *ptr, **values;
       cmdtable *sql_cmdtab;
       cmd_rec *sql_cmd;
       modret_t *sql_res;
