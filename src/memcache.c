@@ -914,7 +914,7 @@ static void mcache_set_module_namespace(pr_memcache_t *mcache, module *m) {
           "using namespace prefix '%s' for module 'mod_%s.c'", v, m->name);
 
         res = memcached_callback_set(mcache->mc, MEMCACHED_CALLBACK_PREFIX_KEY,
-          v);
+          (void *) v);
       }
 
     } else {
