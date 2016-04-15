@@ -1775,6 +1775,9 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
       if (fxp_session->client_version >= 6) {
         flags |= SSH2_FX_ATTR_LINK_COUNT;
+#ifdef PR_USE_XATTR
+        flags |= SSH2_FX_ATTR_EXTENDED;
+#endif /* PR_USE_XATTR */
       } 
     }
   }
@@ -10335,6 +10338,10 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
    */
   attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
     SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
+
+  if (fxp_session->client_version >= 6) {
+    attr_flags |= SSH2_FX_ATTR_LINK_COUNT;
+  }
 
   for (i = 0; i < path_list->nelts; i++) {
     uint32_t name_len = 0;
