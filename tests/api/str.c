@@ -504,8 +504,7 @@ START_TEST (pstrndup_test) {
 END_TEST
 
 START_TEST (strip_test) {
-  const char *str;
-  char *ok, *res;
+  const char *ok, *res, *str;
 
   res = pr_str_strip(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -797,6 +796,7 @@ START_TEST (get_word_utf8_test) {
 
     nread = fread(str, sizeof(char), sz-1, fh);
     fail_if(ferror(fh), "Error reading '%s': %s", path, strerror(errno));
+    fail_unless(nread > 0, "Expected >0 bytes read, got 0");
 
     res = pr_str_get_word(&str, 0);
       fail_unless(res != NULL, "Failed to handle UTF8 argument: %s",

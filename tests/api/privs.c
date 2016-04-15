@@ -61,7 +61,7 @@ START_TEST (privs_set_nonroot_daemon_test) {
 
   res = set_nonroot_daemon(-1);
   fail_unless(res < 0, "Failed to handle non-Boolean parameter");
-  fail_unless(errno = EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   nonroot = set_nonroot_daemon(TRUE);

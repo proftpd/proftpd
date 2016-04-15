@@ -458,7 +458,8 @@ const char *pr_str_strip(pool *p, const char *str) {
   /* Now, find the non-whitespace end of the given string */
   for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--);
 
-  len = finish - start;
+  /* Include for the last byte, of course. */
+  len = finish - start + 1;
 
   /* The space-stripped string is, then, everything from start to finish. */
   dup_str = pstrndup(p, start, len);
