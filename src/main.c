@@ -2096,6 +2096,12 @@ static void show_settings(void) {
   printf("%s", "    - Trace support\n");
 #endif /* PR_USE_TRACE */
 
+#ifdef PR_USE_XATTR
+  printf("%s", "    + xattr support\n");
+#else
+  printf("%s", "    - xattr support\n");
+#endif /* PR_USE_XATTR */
+
   /* Tunable settings */
   printf("%s", "\n  Tunable Options:\n");
   printf("    PR_TUNABLE_BUFFER_SIZE = %u\n", PR_TUNABLE_BUFFER_SIZE);

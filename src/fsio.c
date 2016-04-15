@@ -720,6 +720,21 @@ static int sys_listxattr(pool *p, pr_fs_t *fs, const char *path,
   }
 
   *names = parse_xattr_namelist(p, namelist, len);
+  if (pr_trace_get_level(trace_channel) >= 15) {
+    register unsigned int i;
+    int count;
+    const char **attr_names;
+
+    count = (*names)->nelts;
+    attr_names = (*names)->elts;
+
+    pr_trace_msg(trace_channel, 15, "listxattr: found %d xattr names for '%s'",
+      count, path);
+    for (i = 0; i < count; i++) {
+      pr_trace_msg(trace_channel, 15, " [%u]: '%s'", i, attr_names[i]);
+    }
+  }
+
   res = (*names)->nelts;
 
 #else
@@ -757,6 +772,21 @@ static int sys_llistxattr(pool *p, pr_fs_t *fs, const char *path,
   }
 
   *names = parse_xattr_namelist(p, namelist, len);
+  if (pr_trace_get_level(trace_channel) >= 15) {
+    register unsigned int i;
+    int count;
+    const char **attr_names;
+
+    count = (*names)->nelts;
+    attr_names = (*names)->elts;
+
+    pr_trace_msg(trace_channel, 15, "llistxattr: found %d xattr names for '%s'",
+      count, path);
+    for (i = 0; i < count; i++) {
+      pr_trace_msg(trace_channel, 15, " [%u]: '%s'", i, attr_names[i]);
+    }
+  }
+
   res = (*names)->nelts;
 
 #else
@@ -793,6 +823,21 @@ static int sys_flistxattr(pool *p, pr_fh_t *fh, int fd, array_header **names) {
   }
 
   *names = parse_xattr_namelist(p, namelist, len);
+  if (pr_trace_get_level(trace_channel) >= 15) {
+    register unsigned int i;
+    int count;
+    const char **attr_names;
+
+    count = (*names)->nelts;
+    attr_names = (*names)->elts;
+
+    pr_trace_msg(trace_channel, 15, "flistxattr: found %d xattr names for '%s'",
+      count, fh->fh_path);
+    for (i = 0; i < count; i++) {
+      pr_trace_msg(trace_channel, 15, " [%u]: '%s'", i, attr_names[i]);
+    }
+  }
+
   res = (*names)->nelts;
 
 #else

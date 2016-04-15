@@ -2513,12 +2513,28 @@ static uint32_t fxp_attrs_write(pool *p, struct fxp_buffer *fxb,
     perms = st->st_mode;
 
     len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags);
-    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_size);
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_uid);
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_gid);
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), perms);
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_atime);
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_mtime);
+
+    if (flags & SSH2_FX_ATTR_SIZE) {
+      len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_size);
+    }
+
+    if (flags & SSH2_FX_ATTR_UIDGID) {
+      len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_uid);
+      len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_gid);
+    }
+
+    if (flags & SSH2_FX_ATTR_PERMISSIONS) {
+      len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), perms);
+    }
+
+    if (flags & SSH2_FX_ATTR_ACMODTIME) {
+      len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_atime);
+      len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_mtime);
+    }
+
+    if (flags & SSH2_FX_ATTR_EXTENDED) {
+      len += fxp_xattrs_write(p, fxb, path);
+    }
 
   } else {
     char file_type;
@@ -2534,27 +2550,43 @@ static uint32_t fxp_attrs_write(pool *p, struct fxp_buffer *fxb,
 
     len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags);
     len += sftp_msg_write_byte(&(fxb->buf), &(fxb->buflen), file_type);
-    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_size);
 
-    if (user_owner == NULL) {
-      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
-        pr_auth_uid2name(p, st->st_uid));
-
-    } else {
-      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), user_owner);
+    if (flags & SSH2_FX_ATTR_SIZE) {
+      len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_size);
     }
 
-    if (group_owner == NULL) {
-      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
-        pr_auth_gid2name(p, st->st_gid));
+    if (flags & SSH2_FX_ATTR_OWNERGROUP) {
+      const char *user_name, *group_name;
 
-    } else {
-      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), group_owner);
+      if (user_owner == NULL) {
+        user_name = pr_auth_uid2name(p, st->st_uid);
+
+      } else {
+        user_name = user_owner;
+      }
+
+      if (group_owner == NULL) {
+        group_name = pr_auth_gid2name(p, st->st_gid);
+
+      } else {
+        group_name = group_owner;
+      }
+
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), user_name);
+      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), group_name);
     }
 
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), perms);
-    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_atime);
-    len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_mtime);
+    if (flags & SSH2_FX_ATTR_PERMISSIONS) {
+      len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), perms);
+    }
+
+    if (flags & SSH2_FX_ATTR_ACCESSTIME) {
+      len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_atime);
+    }
+
+    if (flags & SSH2_FX_ATTR_MODIFYTIME) {
+      len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_mtime);
+    }
 
     if (flags & SSH2_FX_ATTR_LINK_COUNT) {
       len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), st->st_nlink);
@@ -2633,7 +2665,7 @@ static char *fxp_strmode(pool *p, mode_t mode) {
 static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st,
     const char *user_owner, const char *group_owner) {
   const char *user, *group;
-  char listing[256], *mode_str, time_str[64];
+  char listing[1024], *mode_str, time_str[64];
   struct tm *t;
   int user_len, group_len;
   size_t time_strlen;
@@ -2747,27 +2779,24 @@ static uint32_t fxp_name_write(pool *p, struct fxp_buffer *fxb,
     const char *path, struct stat *st, uint32_t attr_flags,
     const char *user_owner, const char *group_owner) {
   uint32_t len = 0;
+  const char *encoded_path;
 
+  encoded_path = path;
   if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-    len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
-      sftp_utf8_encode_str(p, path));
-
-  } else {
-    len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), path);
+    encoded_path = sftp_utf8_encode_str(p, encoded_path);
   }
+
+  len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), encoded_path);
 
   if (fxp_session->client_version <= 3) {
     char *path_desc;
 
     path_desc = fxp_get_path_listing(p, path, st, user_owner, group_owner);
-
     if (fxp_session->client_version >= fxp_utf8_protocol_version) {
-      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen),
-        sftp_utf8_encode_str(p, path_desc));
-
-    } else {
-      len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), path_desc);
+      path_desc = sftp_utf8_encode_str(p, path_desc);
     }
+
+    len += sftp_msg_write_string(&(fxb->buf), &(fxb->buflen), path_desc);
   }
 
   len += fxp_attrs_write(p, fxb, path, st, attr_flags, user_owner, group_owner);
@@ -7620,7 +7649,6 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
   }
 
   fxp_version_add_version_ext(fxp->pool, &buf, &buflen);
-  fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 
   if (fxp_session->client_version >= 4) {
     fxp_version_add_newline_ext(fxp->pool, &buf, &buflen);
@@ -7633,6 +7661,8 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
   if (fxp_session->client_version >= 6) {
     fxp_version_add_supported2_ext(fxp->pool, &buf, &buflen);
   }
+
+  fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 
   pr_event_generate("mod_sftp.sftp.protocol-version",
     &(fxp_session->client_version));
@@ -8104,6 +8134,9 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: LSTAT %s", path);
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
+#ifdef PR_USE_XATTR
+    attr_flags |= SSH2_FX_ATTR_EXTENDED;
+#endif /* PR_USE_XATTR */
   }
 
   if (strlen(path) == 0) {
@@ -10338,17 +10371,18 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   /* For READDIR requests, since they do NOT contain a flags field for clients
    * to express which attributes they want, we ASSUME some standard fields.
-   * Anything else (e.g. LINK_COUNT, ATTR_EXTENDED) will need to be explicitly
-   * requested by clients via STAT/LSTAT requests.
    */
   attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
     SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
 
-  if (fxp_session->client_version >= 6) {
-    attr_flags |= SSH2_FX_ATTR_LINK_COUNT;
+  if (fxp_session->client_version >= 3) {
 #ifdef PR_USE_XATTR
     attr_flags |= SSH2_FX_ATTR_EXTENDED;
 #endif /* PR_USE_XATTR */
+  }
+
+  if (fxp_session->client_version >= 6) {
+    attr_flags |= SSH2_FX_ATTR_LINK_COUNT;
   }
 
   for (i = 0; i < path_list->nelts; i++) {
@@ -12334,6 +12368,9 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: STAT %s", path);
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
+#ifdef PR_USE_XATTR
+    attr_flags |= SSH2_FX_ATTR_EXTENDED;
+#endif /* PR_USE_XATTR */
   }
 
   if (strlen(path) == 0) {
