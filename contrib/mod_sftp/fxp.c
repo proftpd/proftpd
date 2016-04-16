@@ -2029,8 +2029,6 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
       st->st_mtime = sftp_msg_read_int(fxp->pool, buf, buflen);
     }
 
-    /* XXX Vendor-specific extensions */
-
   } else {
     char file_type;
 
@@ -2338,15 +2336,15 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
         (unsigned long) fxp_session->client_version,
         untranslated ? untranslated : "(nil)");
     }
+  }
 
-    if (*flags & SSH2_FX_ATTR_EXTENDED) {
-      array_header *ext_attrs;
+  if (*flags & SSH2_FX_ATTR_EXTENDED) {
+    array_header *ext_attrs;
 
-      /* Read the EXTENDED attribute. */
-      ext_attrs = fxp_xattrs_read(fxp->pool, buf, buflen);
-      if (xattrs != NULL) {
-        *xattrs = ext_attrs;
-      }
+    /* Read the EXTENDED attribute. */
+    ext_attrs = fxp_xattrs_read(fxp->pool, buf, buflen);
+    if (xattrs != NULL) {
+      *xattrs = ext_attrs;
     }
   }
 
