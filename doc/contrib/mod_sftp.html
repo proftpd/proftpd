@@ -981,6 +981,18 @@ The currently implemented options are:
   </li>
 
   <p>
+  <li><code>IgnoreSFTPSetExtendedAttributes</code><br>
+    <p>
+    Use this option to have <code>mod_sftp</code> silently ignore any
+    extended attributes sent by SFTP clients via the <code>SETSTAT</code> or
+    <code>FSETSTAT</code> SFTP requests.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc3</code>.
+  </li>
+
+  <p>
   <li><code>IgnoreSFTPSetOwners</code><br>
     <p>
     Use this option to have <code>mod_sftp</code> silently ignore any
@@ -1017,6 +1029,21 @@ The currently implemented options are:
     <p>
     <b>Note</b> that this option first appeared in
     <code>proftpd-1.3.4rc4</code>.
+  </li>
+
+  <p>
+  <li><code>IgnoreSFTPUploadExtendedAttributes</code><br>
+    <p>
+    When an SFTP client uploads a file or creates a directory, the desired
+    extended attributes ("xattrs") on the path are sent to the server as part
+    of the upload.  (This is different from FTP, which does <b>not</b> include
+    the file attributes in an upload.) If you need more FTP-like functionality
+    for any reason and wish to have <code>mod_sftp</code> silently ignore any
+    extended attributes sent by the SFTP client, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc3</code>.
   </li>
 
   <p>

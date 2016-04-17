@@ -7300,8 +7300,9 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
    */
   if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_XATTRS) &&
       (attr_flags & SSH2_FX_ATTR_EXTENDED)) {
-    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetAttributes' "
-      "configured, ignoring perms sent by client");
+    pr_trace_msg(trace_channel, 7,
+      "SFTPOption 'IgnoreSFTPSetExtendedAttributes' configured, ignoring "
+      "xattrs sent by client");
     attr_flags &= ~SSH2_FX_ATTR_EXTENDED;
   }
 
@@ -8347,8 +8348,9 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
    */
   if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS) &&
       (attr_flags & SSH2_FX_ATTR_EXTENDED)) {
-    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPUploadAttributes' "
-      "configured, ignoring perms sent by client");
+    pr_trace_msg(trace_channel, 7,
+      "SFTPOption 'IgnoreSFTPUploadExtendedAttributes' configured, "
+      "ignoring xattrs sent by client");
     attr_flags &= ~SSH2_FX_ATTR_EXTENDED;
   }
 
@@ -9132,6 +9134,17 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPUploadPerms' "
       "configured, ignoring perms sent by client");
     attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
+  }
+
+  /* If the SFTPOption for ignoring xattrs for SFTP uploads is set, handle it
+   * by clearing the SSH2_FX_ATTR_EXTENDED flag.
+   */
+  if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS) &&
+      (attr_flags & SSH2_FX_ATTR_EXTENDED)) {
+    pr_trace_msg(trace_channel, 7,
+      "SFTPOption 'IgnoreSFTPUploadExtendedAttributes' configured, "
+      "ignoring xattrs sent by client");
+    attr_flags &= ~SSH2_FX_ATTR_EXTENDED;
   }
 
   /* If the client provided a suggested size in the OPEN, ignore it.
@@ -12273,8 +12286,9 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
    */
   if ((sftp_opts & SFTP_OPT_IGNORE_SFTP_SET_XATTRS) &&
       (attr_flags & SSH2_FX_ATTR_EXTENDED)) {
-    pr_trace_msg(trace_channel, 7, "SFTPOption 'IgnoreSFTPSetAttributes' "
-      "configured, ignoring perms sent by client");
+    pr_trace_msg(trace_channel, 7,
+      "SFTPOption 'IgnoreSFTPSetExtendedAttributes' configured, ignoring "
+      "xattrs sent by client");
     attr_flags &= ~SSH2_FX_ATTR_EXTENDED;
   }
 

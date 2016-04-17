@@ -1445,10 +1445,11 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "AllowWeakDH") == 0) {
       opts |= SFTP_OPT_ALLOW_WEAK_DH;
 
-    } else if (strcmp(cmd->argv[i], "IgnoreSFTPUploadAttributes") == 0) {
+    } else if (strcmp(cmd->argv[i],
+               "IgnoreSFTPUploadExtendedAttributes") == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS;
 
-    } else if (strcmp(cmd->argv[i], "IgnoreSFTPSetAttributes") == 0) {
+    } else if (strcmp(cmd->argv[i], "IgnoreSFTPSetExtendedAttributes") == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_SET_XATTRS;
 
     } else {
