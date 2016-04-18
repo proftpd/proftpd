@@ -1131,7 +1131,7 @@ int snmp_db_get_value(pool *p, unsigned int field, int32_t *int_value,
       return 0;
 
     case SNMP_DB_DAEMON_F_ADMIN:
-      *str_value = main_server->ServerAdmin; 
+      *str_value = (char *) main_server->ServerAdmin;
       *str_valuelen = strlen(*str_value);
 
       pr_trace_msg(trace_channel, 19,

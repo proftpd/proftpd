@@ -1373,7 +1373,7 @@ static int ban_list_add(pool *p, unsigned int type, unsigned int sid,
   if (mcache != NULL &&
       p != NULL) {
     struct ban_mcache_entry bme;
-    pr_netaddr_t *na;
+    const pr_netaddr_t *na;
 
     memset(&bme, 0, sizeof(bme));
 
@@ -1481,7 +1481,7 @@ static int ban_list_exists(pool *p, unsigned int type, unsigned int sid,
        */
 
       if (ban_cache_opts & BAN_CACHE_OPT_MATCH_SERVER) {
-        pr_netaddr_t *na;
+        const pr_netaddr_t *na;
 
         /* Make sure that the IP address/port in the mcache entry matches
          * our address/port.
@@ -1866,11 +1866,13 @@ static server_rec *ban_get_server_by_id(int sid) {
   return s;
 }
 
-static int ban_get_sid_by_addr(pr_netaddr_t *server_addr,
+static int ban_get_sid_by_addr(const pr_netaddr_t *server_addr,
     unsigned int server_port) {
   server_rec *s = NULL;
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    pr_signals_handle();
+
     if (s->ServerPort == 0) {
       continue;
     }
@@ -2167,7 +2169,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     if (server_str != NULL) {
       char *ptr;
-      pr_netaddr_t *server_addr = NULL;
+      const pr_netaddr_t *server_addr = NULL;
       unsigned int server_port = 21;
       int res;
 
@@ -2255,12 +2257,11 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     /* Add each site to the list */
     for (i = optind; i < reqargc; i++) {
+      const pr_netaddr_t *site;
 
       /* XXX handle multiple addresses */
-      pr_netaddr_t *site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool,
-        reqargv[i], NULL);
-
-      if (!site) {
+      site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[i], NULL);
+      if (site == NULL) {
         pr_ctrls_add_response(ctrl, "ban: unknown host '%s'", reqargv[i]);
         continue;
       }
