@@ -33,8 +33,8 @@ static pool *resp_pool = NULL;
 
 static char resp_buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 
-static char *resp_last_response_code = NULL;
-static char *resp_last_response_msg = NULL;
+static const char *resp_last_response_code = NULL;
+static const char *resp_last_response_msg = NULL;
 
 static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
 
@@ -82,21 +82,22 @@ void pr_response_set_pool(pool *p) {
 
   /* Copy any old "last" values out of the new pool. */
   if (resp_last_response_code != NULL) {
-    char *tmp;
+    const char *tmp;
 
     tmp = resp_last_response_code;
     resp_last_response_code = pstrdup(p, tmp);
   }
 
   if (resp_last_response_msg != NULL) {
-    char *tmp;
+    const char *tmp;
   
     tmp = resp_last_response_msg;
     resp_last_response_msg = pstrdup(p, tmp);
   }
 }
 
-int pr_response_get_last(pool *p, char **response_code, char **response_msg) {
+int pr_response_get_last(pool *p, const char **response_code,
+    const char **response_msg) {
   if (p == NULL) {
     errno = EINVAL;
     return -1;
@@ -142,7 +143,7 @@ void pr_response_clear(pr_response_t **head) {
 
 void pr_response_flush(pr_response_t **head) {
   unsigned char ml = FALSE;
-  char *last_numeric = NULL;
+  const char *last_numeric = NULL;
   pr_response_t *resp = NULL;
 
   if (resp_blocked) {

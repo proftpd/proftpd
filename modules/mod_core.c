@@ -408,7 +408,7 @@ MODRET set_debuglevel(cmd_rec *cmd) {
 }
 
 MODRET set_defaultaddress(cmd_rec *cmd) {
-  pr_netaddr_t *main_addr = NULL;
+  const pr_netaddr_t *main_addr = NULL;
   array_header *addrs = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
@@ -435,7 +435,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
   main_server->ServerAddress = pr_netaddr_get_ipstr(main_addr);
   main_server->addr = main_addr;
 
-  if (addrs) {
+  if (addrs != NULL) {
     register unsigned int i;
     pr_netaddr_t **elts = addrs->elts;
 
@@ -445,9 +445,10 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
 
 #ifdef PR_USE_IPV6
       if (pr_netaddr_use_ipv6()) {
-        char *ipbuf = pcalloc(cmd->tmp_pool, INET6_ADDRSTRLEN + 1);
-        if (pr_netaddr_get_family(elts[i]) == AF_INET) {
+        char *ipbuf;
 
+        ipbuf = pcalloc(cmd->tmp_pool, INET6_ADDRSTRLEN + 1);
+        if (pr_netaddr_get_family(elts[i]) == AF_INET) {
           /* Create the bind record using the IPv4-mapped IPv6 version of
            * this address.
            */
@@ -470,7 +471,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     char *addrs_str = (char *) pr_netaddr_get_ipstr(main_addr);
 
     for (i = 2; i < cmd->argc; i++) {
-      pr_netaddr_t *addr;
+      const pr_netaddr_t *addr;
       addrs = NULL;
 
       addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
@@ -493,7 +494,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ",
         pr_netaddr_get_ipstr(addr), NULL);
 
-      if (addrs) {
+      if (addrs != NULL) {
         register unsigned int j;
         pr_netaddr_t **elts = addrs->elts;
 
@@ -870,7 +871,7 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
   config_rec *c = NULL;
   const char *name;
   size_t namelen;
-  pr_netaddr_t *masq_addr = NULL;
+  const pr_netaddr_t *masq_addr = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   CHECK_ARGS(cmd, 1);
@@ -888,7 +889,6 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
 
   masq_addr = pr_netaddr_get_addr2(cmd->server->pool, name, NULL, addr_flags);
   if (masq_addr == NULL) {
-
     /* If the requested name cannot be resolved because it is not known AT
      * THIS TIME, then do not fail to start the server.  We will simply try
      * again later (Bug#4104).
@@ -3132,12 +3132,13 @@ MODRET set_displayquit(cmd_rec *cmd) {
 
 MODRET add_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL;
-  pr_netaddr_t *addr = NULL;
+  const pr_netaddr_t *addr = NULL;
   array_header *addrs = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT);
 
   s = pr_parser_server_ctxt_open(cmd->argv[1]);
@@ -3165,7 +3166,7 @@ MODRET add_virtualhost(cmd_rec *cmd) {
     add_config_param_str("ServerAlias", 1, cmd->argv[1]);
   }
 
-  if (addrs) {
+  if (addrs != NULL) {
     register unsigned int i;
     pr_netaddr_t **elts = addrs->elts;
 
@@ -3219,7 +3220,7 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 
 MODRET end_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL, *next_s = NULL;
-  pr_netaddr_t *addr = NULL;
+  const pr_netaddr_t *addr = NULL;
   const char *address = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
@@ -3255,7 +3256,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
        */
       if (s != cmd->server) {
         const char *serv_addrstr = NULL;
-        pr_netaddr_t *serv_addr = NULL;
+        const pr_netaddr_t *serv_addr = NULL;
 
         if (s->addr) {
           serv_addr = s->addr;
@@ -3503,7 +3504,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   unsigned int port = 0;
   char *addrstr = NULL, *tmp = NULL;
   config_rec *c = NULL;
-  pr_netaddr_t *bind_addr;
+  const pr_netaddr_t *bind_addr;
   const char *proto;
 
   if (session.sf_flags & SF_EPSV_ALL) {
@@ -3689,7 +3690,7 @@ MODRET core_pasv(cmd_rec *cmd) {
 }
 
 MODRET core_port(cmd_rec *cmd) {
-  pr_netaddr_t *listen_addr = NULL, *port_addr = NULL;
+  const pr_netaddr_t *listen_addr = NULL, *port_addr = NULL;
   char *port_info;
 #ifdef PR_USE_IPV6
   char buf[INET6_ADDRSTRLEN] = {'\0'};
@@ -3852,7 +3853,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   if (allow_foreign_addr == NULL ||
       *allow_foreign_addr == FALSE) {
-    pr_netaddr_t *remote_addr = session.c->remote_addr;
+    const pr_netaddr_t *remote_addr = session.c->remote_addr;
 
 #ifdef PR_USE_IPV6
     if (pr_netaddr_use_ipv6()) {
@@ -3917,7 +3918,8 @@ MODRET core_port(cmd_rec *cmd) {
 }
 
 MODRET core_eprt(cmd_rec *cmd) {
-  pr_netaddr_t na, *listen_addr = NULL;
+  const pr_netaddr_t *listen_addr = NULL;
+  pr_netaddr_t na;
   int family = 0;
   unsigned short port = 0;
   unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
@@ -4237,7 +4239,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   int family = 0;
   int epsv_min_port = 1024, epsv_max_port = 65535;
   config_rec *c = NULL;
-  pr_netaddr_t *bind_addr;
+  const pr_netaddr_t *bind_addr;
 
   CHECK_CMD_MIN_ARGS(cmd, 1);
 

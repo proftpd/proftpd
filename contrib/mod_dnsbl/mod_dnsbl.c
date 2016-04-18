@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_dnsbl -- a module for checking DNSBL (DNS Black Lists)
  *                       servers before allowing a connection
- *
- * Copyright (c) 2007-2014 TJ Saunders
+ * Copyright (c) 2007-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -162,7 +161,7 @@ static void lookup_reason(pool *p, const char *name) {
 }
 
 static int lookup_addr(pool *p, const char *addr, const char *domain) {
-  pr_netaddr_t *reject_addr = NULL;
+  const pr_netaddr_t *reject_addr = NULL;
   const char *name = pstrcat(p, addr, ".", domain, NULL);
 
   (void) pr_log_writefile(dnsbl_logfd, MOD_DNSBL_VERSION,

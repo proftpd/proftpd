@@ -34,20 +34,20 @@ struct pr_netacl_t {
 
   char *pattern;
   int negated;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   unsigned int masklen;
 };
 
 static const char *trace_channel = "netacl";
 
-pr_netacl_type_t pr_netacl_get_type(pr_netacl_t *acl) {
+pr_netacl_type_t pr_netacl_get_type(const pr_netacl_t *acl) {
   return acl->type;
 }
 
 /* Returns 1 if there was a positive match, -1 if there was a negative
  * match, -2 if there was an error, and zero if there was no match at all.
  */
-int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
+int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
   pool *tmp_pool;
 
   if (acl == NULL ||
@@ -482,7 +482,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
   return acl;
 }
 
-pr_netacl_t *pr_netacl_dup(pool *p, pr_netacl_t *acl) {
+pr_netacl_t *pr_netacl_dup(pool *p, const pr_netacl_t *acl) {
   pr_netacl_t *acl2;
 
   if (p == NULL ||
@@ -496,29 +496,33 @@ pr_netacl_t *pr_netacl_dup(pool *p, pr_netacl_t *acl) {
   /* A simple memcpy(3) won't suffice; we need a deep copy. */
   acl2->type = acl->type;
 
-  if (acl->pattern) {
+  if (acl->pattern != NULL) {
     acl2->pattern = pstrdup(p, acl->pattern);
   }
 
   acl2->negated = acl->negated;
 
-  if (acl->addr) {
-    acl2->addr = pr_netaddr_alloc(p);
+  if (acl->addr != NULL) {
+    pr_netaddr_t *addr;
 
-    pr_netaddr_set_family(acl2->addr, pr_netaddr_get_family(acl->addr));
-    pr_netaddr_set_sockaddr(acl2->addr, pr_netaddr_get_sockaddr(acl->addr));
+    addr = pr_netaddr_alloc(p);
+    pr_netaddr_set_family(addr, pr_netaddr_get_family(acl->addr));
+    pr_netaddr_set_sockaddr(addr, pr_netaddr_get_sockaddr(acl->addr));
+
+    acl2->addr = addr;
   }
 
   acl2->masklen = acl->masklen;
 
-  if (acl->aclstr)
+  if (acl->aclstr != NULL) {
     acl2->aclstr = pstrdup(p, acl->aclstr);
+  }
 
   return acl2;
 }
 
-int pr_netacl_get_negated(pr_netacl_t *acl) {
-  if (!acl) {
+int pr_netacl_get_negated(const pr_netacl_t *acl) {
+  if (acl == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -526,7 +530,7 @@ int pr_netacl_get_negated(pr_netacl_t *acl) {
   return acl->negated;
 }
 
-const char *pr_netacl_get_str2(pool *p, pr_netacl_t *acl, int flags) {
+const char *pr_netacl_get_str2(pool *p, const pr_netacl_t *acl, int flags) {
   char *res = "";
 
   if (p == NULL ||
@@ -606,6 +610,6 @@ const char *pr_netacl_get_str2(pool *p, pr_netacl_t *acl, int flags) {
   return res;
 }
 
-const char *pr_netacl_get_str(pool *p, pr_netacl_t *acl) {
+const char *pr_netacl_get_str(pool *p, const pr_netacl_t *acl) {
   return pr_netacl_get_str2(p, acl, 0);
 }

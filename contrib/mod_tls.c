@@ -1734,12 +1734,15 @@ static int tls_check_server_cert(SSL *ssl, conn_t *conn) {
       !(tls_flags & TLS_SESS_VERIFY_SERVER_NO_DNS)) {
     int reverse_dns;
     const char *remote_name;
+    pr_netaddr_t *remote_addr;
 
     reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
 
     pr_netaddr_clear_ipcache(pr_netaddr_get_ipstr(conn->remote_addr));
 
-    conn->remote_addr->na_have_dnsstr = FALSE;
+    remote_addr = (pr_netaddr_t *) conn->remote_addr;
+    remote_addr->na_have_dnsstr = FALSE;
+
     remote_name = pr_netaddr_get_dnsstr(conn->remote_addr);
     pr_netaddr_set_reverse_dns(reverse_dns);
 
@@ -11253,7 +11256,7 @@ MODRET set_tlslog(cmd_rec *cmd) {
 /* usage: TLSMasqueradeAddress ip-addr|dns-name */
 MODRET set_tlsmasqaddr(cmd_rec *cmd) {
   config_rec *c = NULL;
-  pr_netaddr_t *masq_addr = NULL;
+  const pr_netaddr_t *masq_addr = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   CHECK_ARGS(cmd, 1);

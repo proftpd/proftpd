@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_statcache -- a module implementing caching of stat(2),
  *                           fstat(2), and lstat(2) calls
- *
  * Copyright (c) 2013-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify

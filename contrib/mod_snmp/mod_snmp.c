@@ -1867,7 +1867,7 @@ MODRET set_snmpagent(cmd_rec *cmd) {
   agent_addrs = make_array(snmp_pool, 1, sizeof(pr_netaddr_t *));
 
   for (i = 2; i < cmd->argc; i++) {
-    pr_netaddr_t *agent_addr;
+    const pr_netaddr_t *agent_addr;
     int agent_port = SNMP_DEFAULT_AGENT_PORT;
     char *addr = NULL, *ptr;
     size_t addrlen;
@@ -2023,7 +2023,7 @@ MODRET set_snmpmaxvariables(cmd_rec *cmd) {
  */
 MODRET set_snmpnotify(cmd_rec *cmd) {
   config_rec *c;
-  pr_netaddr_t *notify_addr;
+  const pr_netaddr_t *notify_addr;
   int notify_port = SNMP_DEFAULT_TRAP_PORT;
   char *ptr;
 
@@ -2059,7 +2059,7 @@ MODRET set_snmpnotify(cmd_rec *cmd) {
   }
 
   pr_netaddr_set_port(notify_addr, htons(notify_port));
-  c->argv[0] = notify_addr;
+  c->argv[0] = (void *) notify_addr;
 
   return PR_HANDLED(cmd);
 }

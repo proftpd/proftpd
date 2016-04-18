@@ -213,7 +213,7 @@ static int data_passive_open(const char *reason, off_t size) {
 static int data_active_open(const char *reason, off_t size) {
   conn_t *c;
   int bind_port, rev;
-  pr_netaddr_t *bind_addr = NULL;
+  const pr_netaddr_t *bind_addr = NULL;
   unsigned char *root_revoke = NULL;
 
   if (session.c->remote_addr == NULL) {

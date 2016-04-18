@@ -1591,7 +1591,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       break;
 
     case LOGFMT_META_RESPONSE_CODE: {
-      char *resp_code = NULL;
+      const char *resp_code = NULL;
       int res;
 
       argp = arg;
@@ -1637,7 +1637,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
     }
 
     case LOGFMT_META_RESPONSE_STR: {
-      char *resp_msg = NULL;
+      const char *resp_msg = NULL;
       int res;
 
       argp = arg;
@@ -1700,7 +1700,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
 
           } else {
             int res;
-            char *resp_code = NULL, *resp_msg = NULL;
+            const char *resp_code = NULL, *resp_msg = NULL;
 
             /* Get the last response code/message.  We use heuristics here to
              * determine when to use "failed" versus "success".
@@ -1768,7 +1768,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
 
           if (!(XFER_ABORTED)) {
             int res;
-            char *resp_code = NULL, *resp_msg = NULL;
+            const char *resp_code = NULL, *resp_msg = NULL;
 
             /* Get the last response code/message.  We use heuristics here to
              * determine when to use "failed" versus "success".

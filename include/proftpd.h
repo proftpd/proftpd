@@ -119,7 +119,7 @@ typedef struct {
 
   pr_table_t *notes;			/* Session notes table */
 
-  pr_class_t *conn_class;		/* Session class */
+  const pr_class_t *conn_class;		/* Session class */
   const char *proc_prefix;		/* The "prefix" of our process name */
 
   int wtmp_log;				/* Are we logging to wtmp? */
