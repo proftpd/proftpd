@@ -4611,6 +4611,14 @@ int pr_fsio_close(pr_fh_t *fh) {
     pr_fs_clear_cache2(fh->fh_path);
   }
 
+  /* Make sure to scrub any buffered memory, too. */
+  if (fh->fh_buf != NULL) {
+    pr_buffer_t *pbuf;
+
+    pbuf = fh->fh_buf;
+    pr_memscrub(pbuf->buf, pbuf->buflen);
+  }
+
   if (fh->fh_pool != NULL) {
     destroy_pool(fh->fh_pool);
     fh->fh_pool = NULL;

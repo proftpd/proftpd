@@ -684,6 +684,11 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path) {
     return NULL;
   }
 
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fh, NULL, _IONBF, 0);
+
   cert = PEM_read_X509(fh, &cert, NULL, NULL);
   (void) fclose(fh);
 
@@ -2384,6 +2389,11 @@ static int tls_get_passphrase(server_rec *s, const char *path,
       SYSerr(SYS_F_FOPEN, xerrno);
       return -1;
     }
+
+    /* As the file contains sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(keyf, NULL, _IONBF, 0);
   }
 
   pdata.s = s;
@@ -5128,6 +5138,11 @@ static int tls_init_server(void) {
       return -1;
     }
 
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fh, NULL, _IONBF, 0);
+
     cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
       ssl_ctx->default_passwd_callback_userdata);
     if (cert == NULL) {
@@ -5199,6 +5214,11 @@ static int tls_init_server(void) {
       errno = xerrno;
       return -1;
     }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fh, NULL, _IONBF, 0);
 
     cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
       ssl_ctx->default_passwd_callback_userdata);
@@ -5272,6 +5292,11 @@ static int tls_init_server(void) {
       errno = xerrno;
       return -1;
     }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fh, NULL, _IONBF, 0);
 
     cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
       ssl_ctx->default_passwd_callback_userdata);
@@ -5352,6 +5377,11 @@ static int tls_init_server(void) {
         strerror(xerrno));
       return -1;
     }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fp, NULL, _IONBF, 0);
 
     /* Note that this should NOT fail; we will have already parsed the
      * PKCS12 file already, in order to get the password and key passphrases.
@@ -6907,6 +6937,11 @@ static int tls_dotlogin_allow(const char *user) {
     tls_log(".tlslogin check: unable to open '%s': %s", buf, strerror(xerrno));
     return FALSE;
   }
+
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fp, NULL, _IONBF, 0);
 
   while ((file_cert = PEM_read_X509(fp, NULL, NULL, NULL))) {
     pr_signals_handle();
