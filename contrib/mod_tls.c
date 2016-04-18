@@ -684,6 +684,11 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path) {
     return NULL;
   }
 
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fh, NULL, _IONBF, 0);
+
   cert = PEM_read_X509(fh, &cert, NULL, NULL);
   (void) fclose(fh);
 
@@ -1729,12 +1734,15 @@ static int tls_check_server_cert(SSL *ssl, conn_t *conn) {
       !(tls_flags & TLS_SESS_VERIFY_SERVER_NO_DNS)) {
     int reverse_dns;
     const char *remote_name;
+    pr_netaddr_t *remote_addr;
 
     reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
 
     pr_netaddr_clear_ipcache(pr_netaddr_get_ipstr(conn->remote_addr));
 
-    conn->remote_addr->na_have_dnsstr = FALSE;
+    remote_addr = (pr_netaddr_t *) conn->remote_addr;
+    remote_addr->na_have_dnsstr = FALSE;
+
     remote_name = pr_netaddr_get_dnsstr(conn->remote_addr);
     pr_netaddr_set_reverse_dns(reverse_dns);
 
@@ -2384,6 +2392,11 @@ static int tls_get_passphrase(server_rec *s, const char *path,
       SYSerr(SYS_F_FOPEN, xerrno);
       return -1;
     }
+
+    /* As the file contains sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(keyf, NULL, _IONBF, 0);
   }
 
   pdata.s = s;
@@ -5128,6 +5141,11 @@ static int tls_init_server(void) {
       return -1;
     }
 
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fh, NULL, _IONBF, 0);
+
     cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
       ssl_ctx->default_passwd_callback_userdata);
     if (cert == NULL) {
@@ -5199,6 +5217,11 @@ static int tls_init_server(void) {
       errno = xerrno;
       return -1;
     }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fh, NULL, _IONBF, 0);
 
     cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
       ssl_ctx->default_passwd_callback_userdata);
@@ -5272,6 +5295,11 @@ static int tls_init_server(void) {
       errno = xerrno;
       return -1;
     }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fh, NULL, _IONBF, 0);
 
     cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
       ssl_ctx->default_passwd_callback_userdata);
@@ -5352,6 +5380,11 @@ static int tls_init_server(void) {
         strerror(xerrno));
       return -1;
     }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fp, NULL, _IONBF, 0);
 
     /* Note that this should NOT fail; we will have already parsed the
      * PKCS12 file already, in order to get the password and key passphrases.
@@ -6907,6 +6940,11 @@ static int tls_dotlogin_allow(const char *user) {
     tls_log(".tlslogin check: unable to open '%s': %s", buf, strerror(xerrno));
     return FALSE;
   }
+
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fp, NULL, _IONBF, 0);
 
   while ((file_cert = PEM_read_X509(fp, NULL, NULL, NULL))) {
     pr_signals_handle();
@@ -11218,7 +11256,7 @@ MODRET set_tlslog(cmd_rec *cmd) {
 /* usage: TLSMasqueradeAddress ip-addr|dns-name */
 MODRET set_tlsmasqaddr(cmd_rec *cmd) {
   config_rec *c = NULL;
-  pr_netaddr_t *masq_addr = NULL;
+  const pr_netaddr_t *masq_addr = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   CHECK_ARGS(cmd, 1);

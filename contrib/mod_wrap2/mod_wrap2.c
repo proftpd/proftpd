@@ -336,12 +336,16 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
 
     reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
     if (reverse_dns) {
+      pr_netaddr_t *remote_addr;
+
       /* If UseReverseDNS is on, then clear any caches, so that we really do
        * use the DNS name here if possible.
        */
       pr_netaddr_clear_cache();
 
-      session.c->remote_addr->na_have_dnsstr = FALSE;
+      remote_addr = (pr_netaddr_t *) session.c->remote_addr;
+      remote_addr->na_have_dnsstr = FALSE;
+
       sstrncpy(host->name, pr_netaddr_get_dnsstr(session.c->remote_addr),
         sizeof(host->name));
 
@@ -353,7 +357,7 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
       }
 
       pr_netaddr_set_reverse_dns(reverse_dns);
-      session.c->remote_addr->na_have_dnsstr = TRUE;
+      remote_addr->na_have_dnsstr = TRUE;
 
     } else {
       wrap2_log("'UseReverseDNS off' in effect, NOT resolving %s to DNS name "
@@ -607,7 +611,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
   } else if (pr_netaddr_use_ipv6() &&
              *tok == '[') {
     char *cp;
-    pr_netaddr_t *acl_addr;
+    const pr_netaddr_t *acl_addr;
 
     /* IPv6 address */
 
@@ -663,7 +667,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     return (wrap2_match_netmask(tok, mask, wrap2_get_hostaddr(host)));
 
   } else {
-    pr_netaddr_t *acl_addr;
+    const pr_netaddr_t *acl_addr;
 
     /* Anything else.
      *

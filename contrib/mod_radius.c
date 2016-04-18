@@ -152,7 +152,7 @@ typedef struct radius_server_obj {
   pool *pool;
 
   /* RADIUS server IP address */
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   /* RADIUS server port */
   unsigned short port;
@@ -2593,7 +2593,7 @@ static void radius_build_packet(radius_packet_t *packet,
 
 #ifdef PR_USE_IPV6
   if (pr_netaddr_use_ipv6()) {
-    pr_netaddr_t *local_addr;
+    const pr_netaddr_t *local_addr;
     int family;
 
     local_addr = pr_netaddr_get_sess_local_addr();

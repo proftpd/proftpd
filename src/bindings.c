@@ -45,7 +45,7 @@ static void server_cleanup_cb(void *conn) {
 /* The hashing function for the hash table of bindings.  This algorithm
  * is stolen from Apache's http_vhost.c
  */
-static unsigned int ipbind_hash_addr(pr_netaddr_t *addr) {
+static unsigned int ipbind_hash_addr(const pr_netaddr_t *addr) {
   size_t offset;
   unsigned int key;
 
@@ -67,14 +67,14 @@ struct listener_rec {
   struct listener_rec *next, *prev;
 
   pool *pool;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   unsigned int port;
   conn_t *conn;
   int claimed;
 };
 
-conn_t *pr_ipbind_get_listening_conn(server_rec *server, pr_netaddr_t *addr,
-    unsigned int port) {
+conn_t *pr_ipbind_get_listening_conn(server_rec *server,
+    const pr_netaddr_t *addr, unsigned int port) {
   conn_t *l;
   pool *p;
   struct listener_rec *lr;
@@ -225,13 +225,15 @@ int pr_ipbind_add_binds(server_rec *serv) {
   int res = 0;
   config_rec *c = NULL;
   conn_t *listen_conn = NULL;
-  pr_netaddr_t *addr = NULL;
+  const pr_netaddr_t *addr = NULL;
 
-  if (!serv)
+  if (serv == NULL) {
+    errno = EINVAL;
     return -1;
+  }
 
   c = find_config(serv->conf, CONF_PARAM, "_bind_", FALSE);
-  while (c) {
+  while (c != NULL) {
     listen_conn = NULL;
 
     pr_signals_handle();
@@ -269,7 +271,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
   return 0;
 }
 
-int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
+int pr_ipbind_close(const pr_netaddr_t *addr, unsigned int port,
     unsigned char close_namebinds) {
   register unsigned int i = 0;
 
@@ -410,7 +412,7 @@ int pr_ipbind_close_listeners(void) {
   return 0;
 }
 
-int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr,
+int pr_ipbind_create(server_rec *server, const pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
   register unsigned int i = 0;
@@ -464,7 +466,7 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr,
   return 0;
 }
 
-pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
+pr_ipbind_t *pr_ipbind_find(const pr_netaddr_t *addr, unsigned int port,
     unsigned char skip_inactive) {
   register unsigned int i;
   pr_ipbind_t *ipbind = NULL;
@@ -537,7 +539,7 @@ pr_ipbind_t *pr_ipbind_get(pr_ipbind_t *prev) {
   return NULL;
 }
 
-server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
+server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
   pr_netaddr_t wildcard_addr;
   int addr_family;
@@ -687,8 +689,8 @@ int pr_ipbind_listen(fd_set *readfds) {
   return maxfd;
 }
 
-int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
-    unsigned char isdefault, unsigned char islocalhost,
+int pr_ipbind_open(const pr_netaddr_t *addr, unsigned int port,
+    conn_t *listen_conn, unsigned char isdefault, unsigned char islocalhost,
     unsigned char open_namebinds) {
   int res = 0;
   pr_ipbind_t *ipbind = NULL;
@@ -757,7 +759,7 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   return 0;
 }
 
-int pr_namebind_close(const char *name, pr_netaddr_t *addr) {
+int pr_namebind_close(const char *name, const pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
   unsigned int port;
 
@@ -779,7 +781,7 @@ int pr_namebind_close(const char *name, pr_netaddr_t *addr) {
 }
 
 int pr_namebind_create(server_rec *server, const char *name,
-    pr_netaddr_t *addr, unsigned int server_port) {
+    const pr_netaddr_t *addr, unsigned int server_port) {
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL, **namebinds = NULL;
   unsigned int port;
@@ -918,7 +920,7 @@ int pr_namebind_create(server_rec *server, const char *name,
   return 0;
 }
 
-pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
+pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
     unsigned int port, unsigned char skip_inactive) {
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL;
@@ -1032,7 +1034,7 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
   return NULL;
 }
 
-server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
+server_rec *pr_namebind_get_server(const char *name, const pr_netaddr_t *addr,
     unsigned int port) {
   pr_namebind_t *namebind = NULL;
 
@@ -1063,7 +1065,7 @@ unsigned int pr_namebind_count(server_rec *srv) {
   return count;
 }
 
-int pr_namebind_open(const char *name, pr_netaddr_t *addr) {
+int pr_namebind_open(const char *name, const pr_netaddr_t *addr) {
   pr_namebind_t *namebind = NULL;
   unsigned int port;
 

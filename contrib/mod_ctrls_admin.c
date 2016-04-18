@@ -238,23 +238,26 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-static int admin_addr_down(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_down(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     unsigned int port) {
 
   pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "down: disabling %s#%u",
     pr_netaddr_get_ipstr(addr), port);
 
   if (pr_ipbind_close(addr, port, FALSE) < 0) {
-    if (errno == ENOENT)
+    if (errno == ENOENT) {
       pr_ctrls_add_response(ctrl, "down: no such server: %s#%u",
         pr_netaddr_get_ipstr(addr), port);
-    else
+
+    } else {
       pr_ctrls_add_response(ctrl, "down: %s#%u already disabled",
         pr_netaddr_get_ipstr(addr), port);
+    }
 
-  } else
+  } else {
     pr_ctrls_add_response(ctrl, "down: %s#%u disabled",
       pr_netaddr_get_ipstr(addr), port);
+  }
 
   return 0;
 }
@@ -284,7 +287,7 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
   for (i = 0; i < reqargc; i++) {
     unsigned int server_port = 21;
     char *server_str = reqargv[i], *tmp = NULL;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
     /* Check for an argument of "all" */
@@ -301,7 +304,7 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
     }
 
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
-    if (!server_addr) {
+    if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "down: no such server: %s#%u",
         server_str, server_port);
       continue;
@@ -309,12 +312,13 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
 
     admin_addr_down(ctrl, server_addr, server_port);
 
-    if (addrs) {
+    if (addrs != NULL) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
-      for (j = 0; j < addrs->nelts; j++)
+      for (j = 0; j < addrs->nelts; j++) {
         admin_addr_down(ctrl, elts[j], server_port);
+      }
     }
   }
 
@@ -569,7 +573,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
     for (i = optind; i < reqargc; i++) {
       unsigned char kicked_host = FALSE;
       const char *addr;
-      pr_netaddr_t *na;
+      const pr_netaddr_t *na;
 
       na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[i], NULL);
       if (na == NULL) {
@@ -924,7 +928,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-static int admin_addr_status(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_status(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
 
@@ -942,7 +946,6 @@ static int admin_addr_status(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
 
   pr_ctrls_add_response(ctrl, "status: %s#%u %s", pr_netaddr_get_ipstr(addr),
     port, ipbind->ib_isactive ? "UP" : "DOWN");
-
   return 0;
 }
 
@@ -967,7 +970,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
   for (i = 0; i < reqargc; i++) {
     unsigned int server_port = 21;
     char *server_str = reqargv[i], *tmp = NULL;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
     /* Check for an argument of "all" */
@@ -993,22 +996,23 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
     }
 
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
-
-    if (!server_addr) {
+    if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "status: no such server: %s#%u",
         server_str, server_port);
       continue;
     }
 
-    if (admin_addr_status(ctrl, server_addr, server_port) < 0)
+    if (admin_addr_status(ctrl, server_addr, server_port) < 0) {
       continue;
+    }
 
-    if (addrs) {
+    if (addrs != NULL) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
-      for (j = 0; j < addrs->nelts; j++)
+      for (j = 0; j < addrs->nelts; j++) {
         admin_addr_status(ctrl, elts[j], server_port);
+      }
     }
   }
 
@@ -1107,7 +1111,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
 #endif /* PR_USE_TRACE */
 }
 
-static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_up(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
   int res = 0;
@@ -1118,6 +1122,7 @@ static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     pr_ctrls_add_response(ctrl,
       "up: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
       port);
+    errno = ENOENT;
     return -1;
   }
 
@@ -1184,7 +1189,7 @@ static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
   for (i = 0; i < reqargc; i++) {
     unsigned int server_port = 21;
     char *server_str = reqargv[i], *tmp = NULL;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
     tmp = strchr(server_str, '#');
@@ -1194,22 +1199,25 @@ static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
     }
 
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
-    if (!server_addr) {
+    if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "up: unable to resolve address for '%s'",
         server_str);
       return -1;
     }
 
-    if (admin_addr_up(ctrl, server_addr, server_port) < 0)
+    if (admin_addr_up(ctrl, server_addr, server_port) < 0) {
       return -1;
+    }
 
-    if (addrs) {
+    if (addrs != NULL) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
-      for (j = 0; j < addrs->nelts; j++)
-        if (admin_addr_up(ctrl, elts[j], server_port) < 0)
+      for (j = 0; j < addrs->nelts; j++) {
+        if (admin_addr_up(ctrl, elts[j], server_port) < 0) {
           return -1;
+        }
+      }
     }
   }
 

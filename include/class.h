@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2015 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,19 +45,19 @@ typedef struct pr_class_t {
 /* Returns the class object associated with the given name, or NULL if
  * there is no matching class object.
  */
-pr_class_t *pr_class_find(const char *);
+const pr_class_t *pr_class_find(const char *);
 
 /* Iterate through the Class list, returning the next class.  Returns NULL
  * once the end of the list is reached.  If prev is NULL, the iterator
  * restarts at the beginning of the list.
  */
-pr_class_t *pr_class_get(pr_class_t *prev);
+const pr_class_t *pr_class_get(const pr_class_t *prev);
 
 /* Returns the class object for which the given address matches every rule.
  * If multiple classes exist that might match the given address, the first
  * defined class matches.
  */
-pr_class_t *pr_class_match_addr(pr_netaddr_t *);
+const pr_class_t *pr_class_match_addr(const pr_netaddr_t *);
 
 /* Start a new class object, allocated from the given pool, with the given
  * name.
@@ -72,7 +72,7 @@ int pr_class_open(pool *, const char *);
 int pr_class_close(void);
 
 /* Add the given ACL object to the currently opened class object. */
-int pr_class_add_acl(pr_netacl_t *);
+int pr_class_add_acl(const pr_netacl_t *);
 
 /* Set the Satisfy flag on the currently opened class object. */
 int pr_class_set_satisfy(int);

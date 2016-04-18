@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_ident -- a module for performing identd lookups [RFC1413]
- *
- * Copyright (c) 2008-2014 The ProFTPD Project
+ * Copyright (c) 2008-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,13 +61,13 @@ static int ident_timeout_cb(CALLBACK_FRAME) {
 static char *ident_lookup(pool *p, conn_t *conn) {
   conn_t *ident_conn = NULL, *ident_io = NULL;
   char buf[256], *ident = NULL;
-  int timerno, res = 0;
-  int ident_port = pr_inet_getservport(p, "ident", "tcp");
-  pr_netaddr_t *bind_addr;
+  int ident_port, timerno, res = 0;
+  const pr_netaddr_t *bind_addr;
 
   ident_nstrm = NULL;
   ident_timeout_triggered = FALSE;
   
+  ident_port = pr_inet_getservport(p, "ident", "tcp");
   if (ident_port == -1) {
     return NULL;
   }

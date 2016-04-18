@@ -255,7 +255,7 @@ void pr_session_send_banner(server_rec *s, int flags) {
 
   masq = find_config(s->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
   if (masq != NULL) {
-    pr_netaddr_t *masq_addr = NULL;
+    const pr_netaddr_t *masq_addr = NULL;
 
     if (masq->argv[0] != NULL) {
       masq_addr = masq->argv[0];
@@ -276,7 +276,7 @@ void pr_session_send_banner(server_rec *s, int flags) {
         /* Stash the resolved pr_netaddr_t in the config_rec, so that other
          * code paths will find it (within this session process).
          */
-        masq->argv[0] = masq_addr;
+        masq->argv[0] = (void *) masq_addr;
 
       } else {
         pr_log_debug(DEBUG5, "unable to resolve '%s'", name);

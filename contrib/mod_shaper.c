@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_shaper -- a module implementing daemon-wide rate throttling
  *                        via IPC
- *
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1649,11 +1648,11 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
 
   } else if (strcmp(reqargv[0], "host") == 0) {
     pr_scoreboard_entry_t *score;
-    const char *addr;
+    const const char *addr;
     pr_netaddr_t *na;
 
     na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[1], NULL);
-    if (!na) {
+    if (na == NULL) {
       pr_ctrls_add_response(ctrl, "error resolving '%s': %s", reqargv[1],
         strerror(errno));
       return -1;
@@ -1677,8 +1676,9 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
           pr_ctrls_add_response(ctrl, "error adjusting pid %u: %s",
             (unsigned int) score->sce_pid, strerror(errno));
 
-        } else
+        } else {
           adjusted = TRUE;
+        }
       }
     }
 
@@ -1704,8 +1704,9 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
           pr_ctrls_add_response(ctrl, "error adjusting pid %u: %s",
             (unsigned int) score->sce_pid, strerror(errno));
 
-        } else
+        } else {
           adjusted = TRUE;
+        }
       }
     }
 
@@ -1717,8 +1718,9 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (adjusted)
+  if (adjusted) {
     pr_ctrls_add_response(ctrl, "sessions adjusted");
+  }
 
   return 0;
 }

@@ -2868,7 +2868,7 @@ int fixup_servers(xaset_t *list) {
         *default_server == TRUE) {
 
       if (SocketBindTight == FALSE) {
-        pr_netaddr_set_sockaddr_any(s->addr);
+        pr_netaddr_set_sockaddr_any((pr_netaddr_t *) s->addr);
 
       } else {
         pr_log_pri(PR_LOG_NOTICE,

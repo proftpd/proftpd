@@ -2694,7 +2694,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
 
         } else {
           int res;
-          char *resp_code = NULL, *resp_msg = NULL;
+          const char *resp_code = NULL, *resp_msg = NULL;
 
           /* Get the last response code/message.  We use heuristics here to
            * determine when to use "failed" versus "success".
@@ -2784,7 +2784,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
 
         if (!(XFER_ABORTED)) {
           int res;
-          char *resp_code = NULL, *resp_msg = NULL;
+          const char *resp_code = NULL, *resp_msg = NULL;
 
           /* Get the last response code/message.  We use heuristics here to
            * determine when to use "failed" versus "success".
@@ -3303,7 +3303,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     }
 
     case 's': {
-      char *resp_code = NULL;
+      const char *resp_code = NULL;
       int res;
 
       argp = arg;
@@ -3321,7 +3321,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
     }
 
     case 'S': {
-      char *resp_msg = NULL;
+      const char *resp_msg = NULL;
       int res;
 
       argp = arg;

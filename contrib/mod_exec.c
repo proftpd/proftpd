@@ -935,7 +935,7 @@ static const char *exec_subst_var(pool *tmp_pool, const char *varstr,
 
   ptr = strstr(varstr, "%a");
   if (ptr != NULL) {
-    pr_netaddr_t *remote_addr;
+    const pr_netaddr_t *remote_addr;
 
     remote_addr = pr_netaddr_get_sess_remote_addr();
     varstr = sreplace(tmp_pool, varstr, "%a",

@@ -652,6 +652,11 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
     return -1;
   }
 
+  /* As the file contains sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fp, NULL, _IONBF, 0);
+
   k->host_pkey = get_page(PEM_BUFSIZE, &k->host_pkey_ptr);
   if (k->host_pkey == NULL) {
     pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
@@ -2082,31 +2087,44 @@ static int load_file_hostkey(pool *p, const char *path) {
   if (fd < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error reading '%s': %s", path, strerror(xerrno));
+    errno = xerrno;
     return -1;
   }
 
   if (has_req_perms(fd, path) < 0) {
-    if (errno == EACCES) {
+    xerrno = errno;
+
+    if (xerrno == EACCES) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "'%s' is accessible by group or world, which is not allowed", path);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error checking '%s' perms: %s", path, strerror(errno));
+        "error checking '%s' perms: %s", path, strerror(xerrno));
     }
 
-    close(fd);
+    (void) close(fd);
+    errno = xerrno;
     return -1;
   }
 
   /* OpenSSL's APIs prefer stdio file handles. */
   fp = fdopen(fd, "r");
   if (fp == NULL) {
+    xerrno = errno;
+
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error opening stdio fp on fd %d: %s", fd, strerror(errno));
-    close(fd);
+      "error opening stdio handle on fd %d: %s", fd, strerror(xerrno));
+    (void) close(fd);
+
+    errno = xerrno;
     return -1;
   }
+
+  /* As the file contains sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fp, NULL, _IONBF, 0);
 
   if (server_pkey == NULL) {
     server_pkey = lookup_pkey();
