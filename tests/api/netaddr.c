@@ -108,7 +108,7 @@ START_TEST (netaddr_clear_test) {
 END_TEST
 
 START_TEST (netaddr_get_addr_test) {
-  pr_netaddr_t *res;
+  const pr_netaddr_t *res;
   const char *name;
   array_header *addrs = NULL;
 
@@ -205,7 +205,7 @@ START_TEST (netaddr_get_addr_test) {
 END_TEST
 
 START_TEST (netaddr_get_addr2_test) {
-  pr_netaddr_t *res;
+  const pr_netaddr_t *res;
   const char *name;
   int flags;
 
@@ -237,7 +237,7 @@ START_TEST (netaddr_get_addr2_test) {
 END_TEST
 
 START_TEST (netaddr_get_family_test) {
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   int res;
 
   res = pr_netaddr_get_family(NULL);
@@ -262,7 +262,7 @@ START_TEST (netaddr_set_family_test) {
   fail_unless(res == -1, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, "127.0.0.1", NULL);
   fail_unless(addr != NULL, "Failed to get addr for '127.0.0.1': %s",
     strerror(errno));
 
@@ -280,7 +280,7 @@ START_TEST (netaddr_set_family_test) {
 END_TEST
 
 START_TEST (netaddr_cmp_test) {
-  pr_netaddr_t *addr, *addr2;
+  const pr_netaddr_t *addr, *addr2;
   int res;
   const char *name;
 
@@ -323,7 +323,7 @@ START_TEST (netaddr_cmp_test) {
 END_TEST
 
 START_TEST (netaddr_ncmp_test) {
-  pr_netaddr_t *addr, *addr2;
+  const pr_netaddr_t *addr, *addr2;
   int res;
   unsigned int nbits = 0;
   const char *name;
@@ -381,7 +381,7 @@ START_TEST (netaddr_ncmp_test) {
 END_TEST
 
 START_TEST (netaddr_fnmatch_test) {
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   int flags, res;
   const char *name;
 
@@ -443,7 +443,7 @@ START_TEST (netaddr_get_sockaddr_test) {
     strerror(errno), errno);
 
   name = "127.0.0.1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -452,7 +452,7 @@ START_TEST (netaddr_get_sockaddr_test) {
 
 #ifdef PR_USE_IPV6
   name = "::1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -491,7 +491,7 @@ START_TEST (netaddr_get_sockaddr_len_test) {
     strerror(errno), errno);
 
   name = "127.0.0.1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -500,7 +500,7 @@ START_TEST (netaddr_get_sockaddr_len_test) {
 
 #ifdef PR_USE_IPV6
   name = "::1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -542,7 +542,7 @@ START_TEST (netaddr_set_sockaddr_test) {
     strerror(errno), errno);
 
   name = "127.0.0.1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -558,7 +558,7 @@ START_TEST (netaddr_set_sockaddr_test) {
 
 #ifdef PR_USE_IPV6
   name = "::1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -599,7 +599,7 @@ START_TEST (netaddr_set_sockaddr_any_test) {
     strerror(errno), errno);
 
   name = "127.0.0.1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -608,7 +608,7 @@ START_TEST (netaddr_set_sockaddr_any_test) {
 
 #ifdef PR_USE_IPV6
   name = "::1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -648,7 +648,7 @@ START_TEST (netaddr_get_inaddr_test) {
 
   family = AF_INET;
   name = "127.0.0.1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -658,7 +658,7 @@ START_TEST (netaddr_get_inaddr_test) {
 #ifdef PR_USE_IPV6
   family = AF_INET6;
   name = "::1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -699,7 +699,7 @@ START_TEST (netaddr_get_inaddr_len_test) {
     strerror(errno), errno);
 
   name = "127.0.0.1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -708,7 +708,7 @@ START_TEST (netaddr_get_inaddr_len_test) {
 
 #ifdef PR_USE_IPV6
   name = "::1";
-  addr = pr_netaddr_get_addr(p, name, NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
@@ -735,7 +735,7 @@ START_TEST (netaddr_get_port_test) {
   fail_unless(res == 0, "Failed to handle null addr");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, "127.0.0.1", NULL);
   fail_unless(addr != NULL, "Failed to get addr for '127.0.0.1': %s",
     strerror(errno));
 
@@ -758,7 +758,7 @@ START_TEST (netaddr_set_port_test) {
   fail_unless(res == -1, "Failed to handle null addr");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, "127.0.0.1", NULL);
   fail_unless(addr != NULL, "Failed to get addr for '127.0.0.1': %s",
     strerror(errno));
 
@@ -788,7 +788,7 @@ START_TEST (netaddr_set_reverse_dns_test) {
 END_TEST
 
 START_TEST (netaddr_get_dnsstr_test) {
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   const char *ip, *res;
 
   ip = "127.0.0.1";
@@ -818,7 +818,7 @@ START_TEST (netaddr_get_dnsstr_test) {
     strerror(errno));
   fail_unless(strcmp(res, ip) == 0, "Expected '%s', got '%s'", ip, res);
 
-  pr_netaddr_clear(addr);
+  pr_netaddr_clear((pr_netaddr_t *) addr);
 
   /* Clearing the address doesn't work, since that removes even the address
    * info, in addition to the cached strings.
@@ -856,7 +856,7 @@ END_TEST
 
 START_TEST (netaddr_get_dnsstr_list_test) {
   array_header *res, *addrs = NULL;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   int reverse_dns;
   const char *dnsstr;
 
@@ -906,7 +906,7 @@ END_TEST
 
 #ifdef PR_USE_IPV6
 START_TEST (netaddr_get_dnsstr_ipv6_test) {
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   const char *ip, *res;
 
   ip = "::1";
@@ -936,7 +936,7 @@ START_TEST (netaddr_get_dnsstr_ipv6_test) {
     strerror(errno));
   fail_unless(strcmp(res, ip) == 0, "Expected '%s', got '%s'", ip, res);
 
-  pr_netaddr_clear(addr);
+  pr_netaddr_clear((pr_netaddr_t *) addr);
 
   /* Clearing the address doesn't work, since that removes even the address
    * info, in addition to the cached strings.
@@ -979,7 +979,7 @@ END_TEST
 #endif /* PR_USE_IPV6 */
 
 START_TEST (netaddr_get_ipstr_test) {
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   const char *res;
 
   res = pr_netaddr_get_ipstr(NULL);
@@ -997,10 +997,9 @@ START_TEST (netaddr_get_ipstr_test) {
     "127.0.0.1", res);
   fail_unless(addr->na_have_ipstr == 1, "addr should have cached IP str");
 
-  pr_netaddr_clear(addr);
+  pr_netaddr_clear((pr_netaddr_t *) addr);
   res = pr_netaddr_get_ipstr(addr);
   fail_unless(res == NULL, "Expected null, got '%s'", res);
-
 }
 END_TEST
 
@@ -1050,7 +1049,7 @@ START_TEST (netaddr_get_localaddr_str_test) {
 END_TEST
 
 START_TEST (netaddr_is_loopback_test) {
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   int res;
   const char *name;
 
@@ -1152,7 +1151,7 @@ END_TEST
 START_TEST (netaddr_is_v4mappedv6_test) {
   int res;
   const char *name;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_netaddr_is_v4mappedv6(NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
@@ -1203,7 +1202,7 @@ END_TEST
 START_TEST (netaddr_is_rfc1918_test) {
   int res;
   const char *name;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_netaddr_is_rfc1918(NULL);
   fail_unless(res == -1, "Failed to handle null arguments");
@@ -1255,7 +1254,7 @@ START_TEST (netaddr_is_rfc1918_test) {
 END_TEST
 
 START_TEST (netaddr_v6tov4_test) {
-  pr_netaddr_t *addr, *addr2;
+  const pr_netaddr_t *addr, *addr2;
   const char *name, *ipstr;
 
   addr = pr_netaddr_v6tov4(NULL, NULL);

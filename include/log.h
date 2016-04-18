@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -100,7 +100,7 @@
 #endif
 
 int log_lastlog(uid_t uid, const char *user_name, const char *tty,
-  pr_netaddr_t *remote_addr);
+  const pr_netaddr_t *remote_addr);
 #endif /* PR_USE_LASTLOG */
 
 /* Note: Like lastlog.h, it would be tempting to split out the declaration of
@@ -108,7 +108,7 @@ int log_lastlog(uid_t uid, const char *user_name, const char *tty,
  * wtmp.h file.  But that would collide with the system wtmp.h file on
  * some systems.
  */
-int log_wtmp(const char *, const char *, const char *, pr_netaddr_t *);
+int log_wtmp(const char *, const char *, const char *, const pr_netaddr_t *);
 
 /* file-based logging functions */
 int pr_log_openfile(const char *, int *, mode_t);

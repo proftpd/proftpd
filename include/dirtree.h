@@ -80,10 +80,10 @@ typedef struct server_struc {
   unsigned char tcp_sndbuf_override;
 
   /* Administrator name */
-  char *ServerAdmin;
+  const char *ServerAdmin;
 
   /* Internal address of this server */
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   /* The listener for this server.  Note that this listener, and that
    * pointed to by ipbind->ib_listener (where ipbind->ib_server points to

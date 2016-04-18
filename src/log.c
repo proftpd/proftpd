@@ -477,13 +477,17 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   if (main_server &&
       main_server->ServerFQDN) {
-    pr_netaddr_t *remote_addr = pr_netaddr_get_sess_remote_addr();
-    const char *remote_name = pr_netaddr_get_sess_remote_name();
+    const pr_netaddr_t *remote_addr;
+    const char *remote_name;
+
+    remote_addr = pr_netaddr_get_sess_remote_addr();
+    remote_name = pr_netaddr_get_sess_remote_name();
 
     snprintf(serverinfo, sizeof(serverinfo)-1, "%s", main_server->ServerFQDN);
     serverinfo[sizeof(serverinfo)-1] = '\0';
 
-    if (remote_addr && remote_name) {
+    if (remote_addr != NULL &&
+        remote_name != NULL) {
       size_t serverinfo_len;
 
       serverinfo_len = strlen(serverinfo);
