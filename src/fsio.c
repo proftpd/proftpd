@@ -76,10 +76,6 @@ static const char *trace_channel = "fsio";
 static pr_fs_t *root_fs = NULL, *fs_cwd = NULL;
 static array_header *fs_map = NULL;
 
-#ifdef PR_FS_MATCH
-static pr_fs_match_t *fs_match_list = NULL;
-#endif /* PR_FS_MATCH */
-
 static fsopendir_t *fsopendir_list;
 
 static void *fs_cache_dir = NULL;
@@ -226,20 +222,6 @@ static int sys_open(pr_fh_t *fh, const char *path, int flags) {
   }
 
   res = open(path, flags, PR_OPEN_MODE);
-  return res;
-}
-
-static int sys_creat(pr_fh_t *fh, const char *path, mode_t mode) {
-  int res;
-
-  if (fsio_guard_chroot) {
-    res = chroot_allow_path(path);
-    if (res < 0) {
-      return -1;
-    }
-  }
-
-  res = creat(path, mode);
   return res;
 }
 
@@ -868,10 +850,6 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
   int exact = FALSE;
   size_t tmp_pathlen = 0;
 
-#ifdef PR_FS_MATCH
-  pr_fs_match_t *fsm = NULL;
-#endif /* PR_FS_MATCH */
-
   memset(buf, '\0', sizeof(buf));
   memset(tmp_path, '\0', sizeof(tmp_path));
   sstrncpy(buf, path, sizeof(buf));
@@ -902,49 +880,11 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
   }
 
   fs = pr_get_fs(tmp_path, &exact);
-
-#ifdef PR_FS_MATCH
-/* NOTE: what if there is a perfect matching pr_fs_t for the given path,
- *  but an fs_match with pattern of "." is registered?  At present, that
- *  fs_match will never trigger...hmmm...OK.  fs_matches are only scanned
- *  if and only if there is *not* an exactly matching pr_fs_t.
- *
- *  NOTE: this is experimental code, not yet ready for module consumption.
- *  It was present in the older FS code, hence its presence now.
- */
-
-  /* Is the returned pr_fs_t "close enough"? */
-  if (!fs || !exact) {
-
-    /* Look for an fs_match */
-    fsm = pr_get_fs_match(tmp_path, op);
-
-    while (fsm) {
-
-      /* Invoke the fs_match's callback function, if set
-       *
-       * NOTE: what pr_fs_t is being passed to the trigger??
-       */
-      if (fsm->trigger) {
-        if (fsm->trigger(fs, tmp_path, op) <= 0)
-          pr_log_pri(PR_LOG_DEBUG, "error: fs_match '%s' trigger failed",
-            fsm->name);
-      }
-
-      /* Get the next matching fs_match */
-      fsm = pr_get_next_fs_match(fsm, tmp_path, op);
-    }
+  if (fs == NULL) {
+    fs = root_fs;
   }
 
-  /* Now, check for a new pr_fs_t, if any were registered by fs_match
-   * callbacks.  This time, it doesn't matter if it's an exact match --
-   * any pr_fs_t will do.
-   */
-  if (chk_fs_map)
-    fs = pr_get_fs(tmp_path, &exact);
-#endif /* PR_FS_MATCH */
-
-  return (fs ? fs : root_fs);
+  return fs;
 }
 
 /* lookup_file_fs() performs the same function as lookup_dir_fs, however
@@ -1859,227 +1799,6 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
   /* Return best-match by default */
   return best_match_fs;
 }
-
-#if defined(PR_USE_REGEX) && defined(PR_FS_MATCH)
-void pr_associate_fs(pr_fs_match_t *fsm, pr_fs_t *fs) {
-  *((pr_fs_t **) push_array(fsm->fsm_fs_objs)) = fs;
-}
-
-pr_fs_match_t *pr_create_fs_match(pool *p, const char *name,
-    const char *pattern, int opmask) {
-  pr_fs_match_t *fsm = NULL;
-  pool *match_pool = NULL;
-  regex_t *regexp = NULL;
-  int res = 0;
-  char regerr[80] = {'\0'};
-
-  if (p == NULL ||
-      name == NULL ||
-      pattern == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  match_pool = make_sub_pool(p);
-  fsm = (pr_fs_match_t *) pcalloc(match_pool, sizeof(pr_fs_match_t));
-  if (fsm == NULL)
-    return NULL;
-  }
-
-  fsm->fsm_next = NULL;
-  fsm->fsm_prev = NULL;
-
-  fsm->fsm_pool = match_pool;
-  fsm->fsm_name = pstrdup(fsm->fsm_pool, name);
-  fsm->fsm_opmask = opmask;
-  fsm->fsm_pattern = pstrdup(fsm->fsm_pool, pattern);
-
-  regexp = pr_regexp_alloc();
-
-  res = pr_regexp_compile(regexp, pattern, REG_EXTENDED|REG_NOSUB);
-  if (res != 0) {
-    pr_regexp_error(res, regexp, regerr, sizeof(regerr));
-    pr_regexp_free(regexp);
-
-    pr_log_pri(PR_LOG_WARNING, "unable to compile regex '%s': %s", pattern,
-      regerr);
-
-    /* Destroy the just allocated pr_fs_match_t */
-    destroy_pool(fsm->fsm_pool);
-
-    return NULL;
-  }
-
-  fsm->fsm_regex = regexp;
-
-  /* All pr_fs_match_ts start out as null patterns, i.e. no defined callback.
-   */
-  fsm->trigger = NULL;
-
-  /* Allocate an array_header, used to record the pointers of any pr_fs_ts
-   * this pr_fs_match_t may register.  This array_header should be accessed
-   * via associate_fs().
-   */
-  fsm->fsm_fs_objs = make_array(fsm->fsm_pool, 0, sizeof(pr_fs_t *));
-
-  return fsm;
-}
-
-int pr_insert_fs_match(pr_fs_match_t *fsm) {
-  pr_fs_match_t *fsmi = NULL;
-
-  if (fs_match_list) {
-
-    /* Find the end of the fs_match list */
-    fsmi = fs_match_list;
-
-    /* Prevent pr_fs_match_ts with duplicate names */
-    if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
-      pr_log_pri(PR_LOG_DEBUG,
-        "error: duplicate fs_match names not allowed: '%s'", fsm->fsm_name);
-      return FALSE;
-    }
-
-    while (fsmi->fsm_next) {
-      fsmi = fsmi->fsm_next;
-
-      if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
-        pr_log_pri(PR_LOG_DEBUG,
-          "error: duplicate fs_match names not allowed: '%s'", fsm->fsm_name);
-        return FALSE;
-      }
-    }
-
-    fsm->fsm_next = NULL;
-    fsm->fsm_prev = fsmi;
-    fsmi->fsm_next = fsm;
-
-  } else
-
-    /* This fs_match _becomes_ the start of the fs_match list */
-    fs_match_list = fsm;
-
-  return TRUE;
-}
-
-pr_fs_match_t *pr_register_fs_match(pool *p, const char *name,
-    const char *pattern, int opmask) {
-  pr_fs_match_t *fsm = NULL;
-
-  /* Sanity check */
-  if (!p || !name || !pattern) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  /* Instantiate an fs_match */
-  if ((fsm = pr_create_fs_match(p, name, pattern, opmask)) != NULL) {
-
-    /* Insert the fs_match into the list */
-    if (!pr_insert_fs_match(fsm)) {
-      pr_regexp_free(fsm->fsm_regex);
-      destroy_pool(fsm->fsm_pool);
-
-      return NULL;
-    }
-  }
-
-  return fsm;
-}
-
-int pr_unregister_fs_match(const char *name) {
-  pr_fs_match_t *fsm = NULL;
-  pr_fs_t **assoc_fs_objs = NULL, *assoc_fs = NULL;
-  int removed = FALSE;
-
-  /* fs_matches are required to have duplicate names, so using the name as
-   * the identifier will work.
-   */
-
-  /* Sanity check*/
-  if (!name) {
-    errno = EINVAL;
-    return FALSE;
-  }
-
-  if (fs_match_list) {
-    for (fsm = fs_match_list; fsm; fsm = fsm->fsm_next) {
-
-      /* Search by name */
-      if ((name && fsm->fsm_name && strcmp(fsm->fsm_name, name) == 0)) {
-
-        /* Remove this fs_match from the list */
-        if (fsm->fsm_prev)
-          fsm->fsm_prev->fsm_next = fsm->fsm_next;
-
-        if (fsm->fsm_next)
-          fsm->fsm_next->fsm_prev = fsm->fsm_prev;
-
-        /* Check for any pr_fs_ts this pattern may have registered, and
-         * remove them as well.
-         */
-        assoc_fs_objs = (pr_fs_t **) fsm->fsm_fs_objs->elts;
-
-        for (assoc_fs = *assoc_fs_objs; assoc_fs; assoc_fs++)
-          pr_unregister_fs(assoc_fs->fs_path);
-
-        pr_regexp_free(fsm->fsm_regex);
-        destroy_pool(fsm->fsm_pool);
-
-        /* If this fs_match's prev and next pointers are NULL, it is the
-         * last fs_match in the list.  If this is the case, make sure
-         * that fs_match_list is set to NULL, signalling that there are
-         * no more registered fs_matches.
-         */
-        if (fsm->fsm_prev == NULL && fsm->fsm_next == NULL) {
-          fs_match_list = NULL;
-          fsm = NULL;
-        }
-
-        removed = TRUE;
-      }
-    }
-  }
-
-  return (removed ? TRUE : FALSE);
-}
-
-pr_fs_match_t *pr_get_next_fs_match(pr_fs_match_t *fsm, const char *path,
-    int op) {
-  pr_fs_match_t *fsmi = NULL;
-
-  /* Sanity check */
-  if (!fsm) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  for (fsmi = fsm->fsm_next; fsmi; fsmi = fsmi->fsm_next) {
-    if ((fsmi->fsm_opmask & op) &&
-        pr_regexp_exec(fsmi->fsm_regex, path, 0, NULL, 0) == 0)
-      return fsmi;
-  }
-
-  return NULL;
-}
-
-pr_fs_match_t *pr_get_fs_match(const char *path, int op) {
-  pr_fs_match_t *fsm = NULL;
-
-  if (!fs_match_list)
-    return NULL;
-
-  /* Check the first element in the fs_match_list... */
-  fsm = fs_match_list;
-
-  if ((fsm->fsm_opmask & op) &&
-      pr_regexp_exec(fsm->fsm_regex, path, 0, NULL, 0) == 0)
-    return fsm;
-
-  /* ...otherwise, hand the search off to pr_get_next_fs_match() */
-  return pr_get_next_fs_match(fsm, path, op);
-}
-#endif /* PR_USE_REGEX and PR_FS_MATCH */
 
 int pr_fs_setcwd(const char *dir) {
   if (pr_fs_resolve_path(dir, cwd, sizeof(cwd)-1, FSIO_DIR_CHDIR) < 0) {
@@ -4468,123 +4187,6 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   return fh;
 }
 
-pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
-  char *deref = NULL;
-  pool *tmp_pool = NULL;
-  pr_fh_t *fh = NULL;
-  pr_fs_t *fs;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CREAT);
-  if (fs == NULL) {
-    return NULL;
-  }
-
-  /* Allocate a filehandle. */
-  tmp_pool = make_sub_pool(fs->fs_pool);
-  pr_pool_tag(tmp_pool, "pr_fsio_creat_canon() subpool");
-
-  fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
-  fh->fh_pool = tmp_pool;
-  fh->fh_path = pstrdup(fh->fh_pool, name);
-  fh->fh_fd = -1;
-  fh->fh_buf = NULL;
-  fh->fh_fs = fs;
-
-  /* Find the first non-NULL custom creat handler.  If there are none,
-   * use the system creat.
-   */
-  while (fs && fs->fs_next && !fs->creat) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
-    name);
-  fh->fh_fd = (fs->creat)(fh, deref, mode);
-  if (fh->fh_fd < 0) {
-    int xerrno = errno;
-
-    destroy_pool(fh->fh_pool);
-    fh->fh_pool = NULL;
-
-    errno = xerrno;
-    return NULL;
-  }
-
-  pr_fs_clear_cache2(name);
-
-  if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    if (errno != EBADF) {
-      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-        fh->fh_fd, strerror(errno));
-    }
-  }
-
-  return fh;
-}
-
-pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
-  pool *tmp_pool = NULL;
-  pr_fh_t *fh = NULL;
-  pr_fs_t *fs;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  fs = lookup_file_fs(name, NULL, FSIO_FILE_CREAT);
-  if (fs == NULL) {
-    return NULL;
-  }
-
-  /* Allocate a filehandle. */
-  tmp_pool = make_sub_pool(fs->fs_pool);
-  pr_pool_tag(tmp_pool, "pr_fsio_creat() subpool");
-
-  fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
-  fh->fh_pool = tmp_pool;
-  fh->fh_path = pstrdup(fh->fh_pool, name);
-  fh->fh_fd = -1;
-  fh->fh_buf = NULL;
-  fh->fh_fs = fs;
-
-  /* Find the first non-NULL custom creat handler.  If there are none,
-   * use the system creat.
-   */
-  while (fs && fs->fs_next && !fs->creat) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
-    name);
-  fh->fh_fd = (fs->creat)(fh, name, mode);
-  if (fh->fh_fd < 0) {
-    int xerrno = errno;
-
-    destroy_pool(fh->fh_pool);
-    fh->fh_pool = NULL;
-
-    errno = xerrno;
-    return NULL;
-  }
-
-  pr_fs_clear_cache2(name);
-
-  if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    if (errno != EBADF) {
-      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-        fh->fh_fd, strerror(errno));
-    }
-  }
-
-  return fh;
-}
-
 int pr_fsio_close(pr_fh_t *fh) {
   int res = 0, xerrno = 0;
   pr_fs_t *fs;
@@ -6148,7 +5750,6 @@ int init_fs(void) {
   root_fs->rename = sys_rename;
   root_fs->unlink = sys_unlink;
   root_fs->open = sys_open;
-  root_fs->creat = sys_creat;
   root_fs->close = sys_close;
   root_fs->read = sys_read;
   root_fs->write = sys_write;
@@ -6226,10 +5827,6 @@ static const char *get_fs_hooks_str(pool *p, pr_fs_t *fs) {
 
   if (fs->open) {
     hooks = pstrcat(p, hooks, *hooks ? ", " : "", "open(2)", NULL);
-  }
-
-  if (fs->creat) {
-    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "creat(2)", NULL);
   }
 
   if (fs->close) {

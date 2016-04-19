@@ -297,82 +297,6 @@ START_TEST (fsio_sys_unlink_chroot_guard_test) {
 }
 END_TEST
 
-START_TEST (fsio_sys_creat_test) {
-  int flags;
-  pr_fh_t *fh;
-
-  flags = O_CREAT|O_EXCL|O_RDONLY;
-  fh = pr_fsio_creat(NULL, flags);
-  fail_unless(fh == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  flags = O_RDWR;
-  fh = pr_fsio_creat(fsio_test_path, flags);
-  fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
-     strerror(errno));
-  (void) pr_fsio_close(fh);
-  (void) pr_fsio_unlink(fsio_test_path);
-
-  flags = O_EXCL|O_RDONLY;
-  fh = pr_fsio_creat("/etc/resolv.conf", flags);
-  fail_unless(fh == NULL, "Created /etc/resolv.conf unexpectedly");
-  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s %d", EACCES,
-    strerror(errno), errno);
-}
-END_TEST
-
-START_TEST (fsio_sys_creat_canon_test) {
-  int flags;
-  pr_fh_t *fh;
-
-  flags = O_CREAT|O_EXCL|O_RDONLY;
-  fh = pr_fsio_creat_canon(NULL, flags);
-  fail_unless(fh == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  flags = O_RDWR;
-  fh = pr_fsio_creat_canon(fsio_test_path, flags);
-  fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
-    strerror(errno));
-  (void) pr_fsio_close(fh);
-  (void) pr_fsio_unlink(fsio_test_path);
-
-  flags = O_EXCL|O_RDONLY;
-  fh = pr_fsio_creat_canon("/etc/resolv.conf", flags);
-  fail_unless(fh == NULL, "Created /etc/resolv.conf unexpectedly");
-  fail_unless(errno == EACCES, "Expected EACCES (%d), %s (%d)", EACCES,
-    strerror(errno), errno);
-}
-END_TEST
-
-START_TEST (fsio_sys_creat_chroot_guard_test) {
-  int flags, res;
-  pr_fh_t *fh;
-
-  res = pr_fsio_guard_chroot(TRUE);
-  fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
-
-  flags = O_RDWR;
-  fh = pr_fsio_creat("/etc/resolv.conf", flags);
-  if (fh != NULL) {
-    (void) pr_fsio_close(fh);
-    fail("creat(2) of /etc/resolv.conf succeeded unexpectedly");
-  }
-
-  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s %d", EACCES,
-    strerror(errno), errno);
-
-  (void) pr_fsio_guard_chroot(FALSE);
-
-  fh = pr_fsio_creat("/lib/foo.bar.baz.d/test.dat", flags);
-  fail_unless(fh == NULL, "Created /lib/foo.bar.baz.d/test.dat unexpectedly");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
-    strerror(errno), errno);
-}
-END_TEST
-
 START_TEST (fsio_sys_stat_test) {
   int res;
   struct stat st;
@@ -2426,7 +2350,6 @@ START_TEST (fs_dump_fs_test) {
   fs->rename = root_fs->rename;
   fs->unlink = root_fs->unlink;
   fs->open = root_fs->open;
-  fs->creat = root_fs->creat;
   fs->close = root_fs->close;
   fs->read = root_fs->read;
   fs->write = root_fs->write;
@@ -3519,9 +3442,6 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_unlink_test);
   tcase_add_test(testcase, fsio_sys_unlink_canon_test);
   tcase_add_test(testcase, fsio_sys_unlink_chroot_guard_test);
-  tcase_add_test(testcase, fsio_sys_creat_test);
-  tcase_add_test(testcase, fsio_sys_creat_canon_test);
-  tcase_add_test(testcase, fsio_sys_creat_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_stat_test);
   tcase_add_test(testcase, fsio_sys_stat_canon_test);
   tcase_add_test(testcase, fsio_sys_fstat_test);
