@@ -1204,6 +1204,7 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
       write_confirm(p, channel_id, 1,
         pstrcat(p, parent_sp->path, ": error setting mode: ", strerror(xerrno),
         NULL));
+      parent_sp->wrote_errors = TRUE;
       ok = FALSE;
     }
 
@@ -1283,12 +1284,14 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         if (!S_ISDIR(st.st_mode)) {
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->path, ": ", strerror(ENOTDIR), NULL));
+          sp->wrote_errors = TRUE;
           return 1;
         }
 
       } else {
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->path, ": ", strerror(errno), NULL));
+        sp->wrote_errors = TRUE;
         return 1;
       }
 
@@ -1309,6 +1312,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         if (res < 0) {
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->path, ": ", strerror(errno), NULL));
+          sp->wrote_errors = TRUE;
           return 1;
         }
       }
@@ -1422,10 +1426,10 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
         pr_trace_msg(trace_channel, 2, "error truncating '%s' to %" PR_LU
           " bytes: %s", sp->best_path, (pr_off_t) sp->filesz, strerror(xerrno));
+
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": error truncating file: ",
           strerror(xerrno), NULL));
-
         sp->wrote_errors = TRUE;
       }
     }
@@ -1444,10 +1448,10 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
         pr_trace_msg(trace_channel, 2, "error setting mode %04o on '%s': %s",
           (unsigned int) sp->perms, sp->best_path, strerror(xerrno));
+
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": error setting mode: ", strerror(xerrno),
           NULL));
-
         sp->wrote_errors = TRUE;
       }
 
@@ -1469,9 +1473,9 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "scp: error closing '%s': %s", sp->best_path, strerror(xerrno));
+
       write_confirm(p, channel_id, 1,
         pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
-
       sp->wrote_errors = TRUE;
     }
 
@@ -1539,10 +1543,10 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
           "error setting atime %lu, mtime %lu on '%s': %s",
           (unsigned long) sp->times[0].tv_sec,
           (unsigned long) sp->times[1].tv_sec, sp->best_path, strerror(xerrno));
+
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": error setting times: ", strerror(xerrno),
           NULL));
-
         sp->wrote_errors = TRUE;
       }
 
@@ -2128,6 +2132,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
       errno = xerrno;
       return 1;
+
     } else {
       off_t curr_offset;
 
@@ -2326,8 +2331,9 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
 
     res = recv_path(pkt->pool, channel_id, paths[scp_session->path_idx], data,
       datalen);
-    if (res < 0)
+    if (res < 0) {
       return -1;
+    }
 
     if (res == 1) {
       /* Clear out any transfer-specific data. */
