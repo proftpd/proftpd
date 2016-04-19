@@ -605,7 +605,7 @@ END_TEST
 
 START_TEST (netacl_match_test) {
   pr_netacl_t *acl;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   char *acl_str;
   int have_localdomain = FALSE, res, reverse_dns;
 

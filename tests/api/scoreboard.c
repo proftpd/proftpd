@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -745,7 +745,7 @@ START_TEST (scoreboard_entry_update_test) {
   int num, res;
   const char *val;
   pid_t pid = getpid();
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   time_t now;
   off_t len;
   unsigned long elapsed;

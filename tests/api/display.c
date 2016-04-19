@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -114,7 +114,7 @@ static int write_file(const char *path, const char **lines,
 START_TEST (display_file_test) {
   int res;
   const char *path = NULL, *resp_code = NULL;
-  char *last_resp_code = NULL, *last_resp_msg = NULL;
+  const char *last_resp_code = NULL, *last_resp_msg = NULL;
   pr_class_t *conn_class;
 
   res = pr_display_file(NULL, NULL, NULL, 0);
@@ -214,7 +214,7 @@ START_TEST (display_fh_test) {
   pr_fh_t *fh;
   int res;
   const char *path = NULL, *resp_code = NULL;
-  char *last_resp_code = NULL, *last_resp_msg = NULL;
+  const char *last_resp_code = NULL, *last_resp_msg = NULL;
 
   res = pr_display_fh(NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
