@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -183,7 +183,7 @@ START_TEST (class_set_satisfy_test) {
 END_TEST
 
 START_TEST (class_get_test) {
-  pr_class_t *class;
+  const pr_class_t *class;
   int res;
   pr_netacl_t *acl;
 
@@ -218,7 +218,7 @@ START_TEST (class_get_test) {
 END_TEST
 
 START_TEST (class_find_test) {
-  pr_class_t *class;
+  const pr_class_t *class;
   pr_netacl_t *acl;
   int res;
 
@@ -258,9 +258,9 @@ START_TEST (class_find_test) {
 END_TEST
 
 START_TEST (class_match_addr_test) {
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
+  const pr_class_t *class;
   pr_netacl_t *acl;
-  pr_class_t *class;
   int res;
 
   class = pr_class_match_addr(NULL);

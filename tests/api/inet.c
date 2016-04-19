@@ -496,7 +496,7 @@ END_TEST
 START_TEST (inet_connect_ipv4_test) {
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_inet_connect(NULL, NULL, NULL, port);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -556,7 +556,7 @@ START_TEST (inet_connect_ipv6_test) {
 #ifdef PR_USE_IPV6
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   unsigned char use_ipv6;
 
   use_ipv6 = pr_netaddr_use_ipv6();
@@ -626,7 +626,7 @@ END_TEST
 START_TEST (inet_connect_nowait_test) {
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_inet_connect_nowait(NULL, NULL, NULL, port);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -728,7 +728,7 @@ END_TEST
 START_TEST (inet_openrw_test) {
   int sockfd = -1, port = INPORT_ANY;
   conn_t *conn, *res;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_inet_openrw(NULL, NULL, NULL, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
   fail_unless(res == NULL, "Failed to handle null arguments");

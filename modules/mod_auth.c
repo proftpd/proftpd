@@ -2826,7 +2826,6 @@ MODRET auth_pre_retr(cmd_rec *cmd) {
 
     /* For all other FSIO callbacks, use the underlying FS. */
     robots_fs->rename = curr_fs->rename;
-    robots_fs->creat = curr_fs->creat;
     robots_fs->lseek = curr_fs->lseek;
     robots_fs->link = curr_fs->link;
     robots_fs->readlink = curr_fs->readlink;
