@@ -1723,6 +1723,9 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   char *buf;
   size_t bufsz;
   int dst_existed = FALSE, res;
+#ifdef PR_USE_XATTR
+  array_header *xattrs = NULL;
+#endif /* PR_USE_XATTR */
 
   if (src == NULL ||
       dst == NULL) {
@@ -2009,6 +2012,42 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 # endif /* HAVE_SOLARIS_POSIX_ACL && PR_USE_FACL */
   }
 #endif /* HAVE_POSIX_ACL */
+
+#ifdef PR_USE_XATTR
+  /* Copy any xattrs that the source file may have. We'll use the
+   * destination file handle's pool for our xattr allocations.
+   */
+  if (pr_fsio_flistxattr(dst_fh->fh_pool, src_fh, &xattrs) > 0) {
+    register unsigned int i;
+    const char **names;
+
+    names = xattrs->elts;
+    for (i = 0; xattrs->nelts; i++) {
+      ssize_t valsz;
+
+      /* First, find out how much memory we need for this attribute's
+       * value.
+       */
+      valsz = pr_fsio_fgetxattr(dst_fh->fh_pool, src_fh, names[i], NULL, 0);
+      if (valsz > 0) {
+        void *val;
+        ssize_t sz;
+
+        val = palloc(dst_fh->fh_pool, valsz);
+        sz = pr_fsio_fgetxattr(dst_fh->fh_pool, src_fh, names[i], val, valsz);
+        if (sz > 0) {
+          sz = pr_fsio_fsetxattr(dst_fh->fh_pool, dst_fh, names[i], val,
+            valsz, 0);
+          if (sz < 0) {
+            pr_trace_msg(trace_channel, 7,
+              "error copying xattr '%s' (%lu bytes) from '%s' to '%s': %s",
+              names[i], (unsigned long) valsz, src, dst, strerror(errno));
+          }
+        }
+      }
+    }
+  }
+#endif /* PR_USE_XATTR */
 
   (void) pr_fsio_close(src_fh);
 
