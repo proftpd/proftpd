@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -743,6 +743,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           "rejecting", sp->path);
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->path, ": cannot use directory (no -r option)", NULL));
+        sp->wrote_errors = TRUE;
         return 1;
       }
 
@@ -755,6 +756,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
         sp->path, data[0]);
       write_confirm(p, channel_id, 1,
         pstrcat(p, sp->path, ": expected control message", NULL));
+      sp->wrote_errors = TRUE;
       return 1;
   }
 
@@ -1165,6 +1167,7 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
       write_confirm(p, channel_id, 1,
         pstrcat(p, parent_sp->path, ": error setting mode: ", strerror(xerrno),
         NULL));
+      sp->wrote_errors = TRUE;
       ok = FALSE;
     }
 
@@ -1243,12 +1246,14 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         if (!S_ISDIR(st.st_mode)) {
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->path, ": ", strerror(ENOTDIR), NULL));
+          sp->wrote_errors = TRUE;
           return 1;
         }
 
       } else {
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->path, ": ", strerror(errno), NULL));
+        sp->wrote_errors = TRUE;
         return 1;
       }
 
@@ -1268,6 +1273,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         if (res < 0) {
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->path, ": ", strerror(errno), NULL));
+          sp->wrote_errors = TRUE;
           return 1;
         }
       }
@@ -1384,7 +1390,6 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": error truncating file: ",
           strerror(xerrno), NULL));
-
         sp->wrote_errors = TRUE;
       }
     }
@@ -1406,7 +1411,6 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": error setting mode: ", strerror(xerrno),
           NULL));
-
         sp->wrote_errors = TRUE;
       }
 
@@ -1430,7 +1434,6 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         "scp: error closing '%s': %s", sp->best_path, strerror(xerrno));
       write_confirm(p, channel_id, 1,
         pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
-
       sp->wrote_errors = TRUE;
     }
 
@@ -1505,7 +1508,6 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": error setting times: ", strerror(xerrno),
           NULL));
-
         sp->wrote_errors = TRUE;
       }
 
