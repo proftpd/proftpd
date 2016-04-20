@@ -761,6 +761,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           "rejecting", sp->path);
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->path, ": cannot use directory (no -r option)", NULL));
+        sp->wrote_errors = TRUE;
         return 1;
       }
 
@@ -773,6 +774,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
         sp->path, data[0]);
       write_confirm(p, channel_id, 1,
         pstrcat(p, sp->path, ": expected control message", NULL));
+      sp->wrote_errors = TRUE;
       return 1;
   }
 
