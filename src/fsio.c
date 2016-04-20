@@ -72,7 +72,6 @@ struct fsopendir {
   DIR *dir;
 };
 
-static const char *trace_channel = "fsio";
 static pr_fs_t *root_fs = NULL, *fs_cwd = NULL;
 static array_header *fs_map = NULL;
 
@@ -93,6 +92,7 @@ static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 static size_t cwd_len = 1;
 
 static int fsio_guard_chroot = FALSE;
+static unsigned long fsio_opts = 0UL;
 
 /* Runtime enabling/disabling of mkdtemp(3) use. */
 #ifdef HAVE_MKDTEMP
@@ -103,6 +103,8 @@ static int fsio_use_mkdtemp = FALSE;
 
 /* Runtime enabling/disabling of encoding of paths. */
 static int use_encoding = TRUE;
+
+static const char *trace_channel = "fsio";
 
 /* Guard against attacks like "Roaring Beast" when we are chrooted.  See:
  *
@@ -2038,7 +2040,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         if (sz > 0) {
           sz = pr_fsio_fsetxattr(dst_fh->fh_pool, dst_fh, names[i], val,
             valsz, 0);
-          if (sz < 0) {
+          if (sz < 0 &&
+              errno != ENOSYS) {
             pr_trace_msg(trace_channel, 7,
               "error copying xattr '%s' (%lu bytes) from '%s' to '%s': %s",
               names[i], (unsigned long) valsz, src, dst, strerror(errno));
@@ -3806,6 +3809,15 @@ int pr_fsio_guard_chroot(int guard) {
   return prev;
 }
 
+unsigned long pr_fsio_set_options(unsigned long opts) {
+  unsigned long prev;
+
+  prev = fsio_opts;
+  fsio_opts = opts;
+
+  return prev;
+}
+
 int pr_fsio_set_use_mkdtemp(int value) {
   int prev_value;
 
@@ -5535,6 +5547,11 @@ ssize_t pr_fsio_getxattr(pool *p, const char *path, const char *name, void *val,
     return -1;
   }
 
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
   fs = lookup_file_fs(path, NULL, FSIO_FILE_GETXATTR);
   if (fs == NULL) {
     return -1;
@@ -5562,6 +5579,11 @@ ssize_t pr_fsio_lgetxattr(pool *p, const char *path, const char *name,
       path == NULL ||
       name == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
     return -1;
   }
 
@@ -5595,6 +5617,11 @@ ssize_t pr_fsio_fgetxattr(pool *p, pr_fh_t *fh, const char *name, void *val,
     return -1;
   }
 
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
   /* Find the first non-NULL custom fgetxattr handler.  If there are none,
    * use the system fgetxattr.
    */
@@ -5617,6 +5644,11 @@ int pr_fsio_listxattr(pool *p, const char *path, array_header **names) {
       path == NULL ||
       names == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
     return -1;
   }
 
@@ -5649,6 +5681,11 @@ int pr_fsio_llistxattr(pool *p, const char *path, array_header **names) {
     return -1;
   }
 
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
   fs = lookup_file_fs(path, NULL, FSIO_FILE_LLISTXATTR);
   if (fs == NULL) {
     return -1;
@@ -5678,6 +5715,11 @@ int pr_fsio_flistxattr(pool *p, pr_fh_t *fh, array_header **names) {
     return -1;
   }
 
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
   /* Find the first non-NULL custom flistxattr handler.  If there are none,
    * use the system flistxattr.
    */
@@ -5700,6 +5742,11 @@ int pr_fsio_removexattr(pool *p, const char *path, const char *name) {
       path == NULL ||
       name == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
     return -1;
   }
 
@@ -5732,6 +5779,11 @@ int pr_fsio_lremovexattr(pool *p, const char *path, const char *name) {
     return -1;
   }
 
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
   fs = lookup_file_fs(path, NULL, FSIO_FILE_LREMOVEXATTR);
   if (fs == NULL) {
     return -1;
@@ -5761,6 +5813,11 @@ int pr_fsio_fremovexattr(pool *p, pr_fh_t *fh, const char *name) {
     return -1;
   }
 
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
   /* Find the first non-NULL custom fremovexattr handler.  If there are none,
    * use the system fremovexattr.
    */
@@ -5784,6 +5841,11 @@ int pr_fsio_setxattr(pool *p, const char *path, const char *name, void *val,
       path == NULL ||
       name == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
     return -1;
   }
 
@@ -5817,6 +5879,11 @@ int pr_fsio_lsetxattr(pool *p, const char *path, const char *name, void *val,
     return -1;
   }
 
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
   fs = lookup_file_fs(path, NULL, FSIO_FILE_LSETXATTR);
   if (fs == NULL) {
     return -1;
@@ -5844,6 +5911,11 @@ int pr_fsio_fsetxattr(pool *p, pr_fh_t *fh, const char *name, void *val,
       fh == NULL ||
       name == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
     return -1;
   }
 

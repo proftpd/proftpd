@@ -306,6 +306,12 @@ int pr_fsio_guard_chroot(int);
  */
 int pr_fsio_set_use_mkdtemp(int);
 
+/* Sets a bitmask of various FSIO API options.  Returns the previously
+ * set options.
+ */
+unsigned long pr_fsio_set_options(unsigned long opts);
+#define PR_FSIO_OPT_IGNORE_XATTR		0x00001
+
 /* FS-related functions */
 
 char *pr_fsio_getline(char *, size_t, pr_fh_t *, unsigned int *);
