@@ -957,6 +957,21 @@ The currently implemented options are:
   </li>
 
   <p>
+  <li><code>IgnoreFIFOs</code>
+    <p>
+    By default, <code>mod_sftp</code> allows uploading and downloading of FIFOs,
+    just as if they were regular files.  However, in some cases this can lead
+    to "hangs" on the SFTP/SCP client end, especially when the FIFO
+    reader/writer processes are not running at the time.  Thus to tell
+    <code>mod_sftp</code> to ignore/reject requests to read from/write to FIFOs,
+    for both SFTP and SCP, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc3</code>.
+  </li>
+
+  <p>
   <li><code>IgnoreSCPUploadPerms</code><br>
     <p>
     When an SCP client uploads a file, the desired permissions on the file
