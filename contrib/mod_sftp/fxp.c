@@ -8141,6 +8141,50 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       "fstat error on '%s' (fd %d): %s", path, fh->fh_fd, strerror(errno));
   }
 
+#ifdef S_ISFIFO
+  /* The path in question might be a FIFO.  The FIFO case requires some special
+   * handling, modulo any IgnoreFIFOs SFTPOption that might be in effect.
+   */
+  if (S_ISFIFO(st.st_mode) &&
+      (sftp_opts & SFTP_OPT_IGNORE_FIFOS)) {
+    uint32_t status_code;
+    const char *reason;
+    int xerrno = EPERM;
+
+    (void) pr_fsio_close(fh);
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error opening '%s': %s", hiddenstore_path ? hiddenstore_path : path,
+      strerror(xerrno));
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason,
+      xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
+
+    if (cmd2) {
+      pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
+    }
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+#endif /* S_ISFIFO */
+
   if (pr_fsio_set_block(fh) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error setting fd %d (file '%s') as blocking: %s", fh->fh_fd,
