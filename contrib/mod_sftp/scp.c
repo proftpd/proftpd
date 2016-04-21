@@ -739,6 +739,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
     unsigned char *buf, uint32_t buflen) {
   register unsigned int i;
   const char *hiddenstore_path = NULL;
+  struct stat st;
   unsigned char *data = NULL, *msg;
   uint32_t datalen = 0;
   char *ptr = NULL;
@@ -837,7 +838,6 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   sp->recvd_finfo = TRUE;
 
   if (have_dir) {
-    struct stat st;
     struct scp_path *parent_sp;
 
     pr_fs_clear_cache2(sp->filename);
@@ -1038,6 +1038,42 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   if (hiddenstore_path) {
     sp->hiddenstore = TRUE;
+  }
+
+  if (pr_fsio_fstat(sp->fh, &st) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "fstat(2) error on '%s': %s", sp->fh->fh_path, strerror(errno));
+
+  } else {
+    /* The path in question might be a FIFO.  The FIFO case requires some
+     * special handling, modulo any IgnoreFIFOs SFTPOption that might be in
+     * effect.
+     */
+#ifdef S_ISFIFO
+    if (S_ISFIFO(st.st_mode)) {
+      if (sftp_opts & SFTP_OPT_IGNORE_FIFOS) {
+        int xerrno = EPERM;
+
+        (void) pr_fsio_close(sp->fh);
+        sp->fh = NULL;
+
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "scp: error using FIFO '%s': %s (IgnoreFIFOs SFTPOption in effect)",
+          hiddenstore_path ? hiddenstore_path : sp->best_path,
+          strerror(xerrno));
+
+        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+        write_confirm(p, channel_id, 1,
+          pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
+        sp->wrote_errors = TRUE;
+
+        errno = xerrno;
+        return 1;
+      }
+    }
+#endif /* S_ISFIFO */
   }
 
   if (pr_fsio_set_block(sp->fh) < 0) {
@@ -1951,7 +1987,7 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
  * never send it (due to some error).
  */
 static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
-  int res;
+  int res, is_file = FALSE;
   struct stat st;
   cmd_rec *cmd = NULL;
 
@@ -2046,37 +2082,36 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
     return 1;
   }
 
-  if (!S_ISREG(st.st_mode)
+  /* The path in question might be a file, a directory, or a FIFO.  The FIFO
+   * case requires some special handling, modulo any IgnoreFIFOs SFTPOption
+   * that might be in effect.
+   */
+  if (S_ISREG(st.st_mode)) {
+    is_file = TRUE;
+
+  } else {
 #ifdef S_ISFIFO
-      && !S_ISFIFO(st.st_mode)
-#endif
-     ) {
+    if (S_ISFIFO(st.st_mode)) {
+      is_file = TRUE;
+
+      if (sftp_opts & SFTP_OPT_IGNORE_FIFOS) {
+        is_file = FALSE;
+      }
+    }
+#endif /* S_ISFIFO */
+  }
+
+  if (is_file == FALSE) {
     if (S_ISDIR(st.st_mode)) {
       if (scp_opts & SFTP_SCP_OPT_RECURSE) {
         res = send_dir(p, channel_id, sp, &st);
         destroy_pool(cmd->pool);
         session.curr_cmd_rec = NULL;
         return res;
-
-      } else {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "cannot send directory '%s' (no -r option)", sp->path);
-
-        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-
-        destroy_pool(cmd->pool);
-        session.curr_cmd_rec = NULL;
-
-        write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->path, ": ", strerror(EPERM), NULL));
-        sp->wrote_errors = TRUE;
-        return 1;
       }
 
-    } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "cannot send '%s': Not a regular file", sp->path);
+        "cannot send directory '%s' (no -r option)", sp->path);
 
       (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -2089,6 +2124,20 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
       sp->wrote_errors = TRUE;
       return 1;
     }
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "cannot send '%s': Not a regular file", sp->path);
+
+    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    destroy_pool(cmd->pool);
+    session.curr_cmd_rec = NULL;
+
+    write_confirm(p, channel_id, 1,
+      pstrcat(p, sp->path, ": ", strerror(EPERM), NULL));
+    sp->wrote_errors = TRUE;
+    return 1;
   }
 
   if (sp->fh == NULL) {
