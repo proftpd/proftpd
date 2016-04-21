@@ -1445,6 +1445,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "AllowWeakDH") == 0) {
       opts |= SFTP_OPT_ALLOW_WEAK_DH;
 
+    } else if (strcmp(cmd->argv[i], "IgnoreFIFOs") == 0) {
+      opts |= SFTP_OPT_IGNORE_FIFOS;
+
     } else if (strcmp(cmd->argv[i],
                "IgnoreSFTPUploadExtendedAttributes") == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS;
