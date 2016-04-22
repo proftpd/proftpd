@@ -41,12 +41,13 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
   struct passwd *pw;
   char *hostkey_algo, *host_fqdn, *host_user, *host_user_utf8;
-  const char *fp = NULL;
+  const char *fp = NULL, *fp_algo = NULL;
   unsigned char *hostkey_data, *signature_data;
   unsigned char *buf2, *ptr2;
   const unsigned char *id;
   uint32_t buflen2, bufsz2, hostkey_datalen, id_len, signature_len;
   enum sftp_key_type_e pubkey_type;
+  int fp_algo_id;
 
   if (pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -136,9 +137,6 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
 #ifdef OPENSSL_FIPS
   if (FIPS_mode()) {
-    int fp_algo_id;
-    const char *fp_algo;
-
 # if defined(HAVE_SHA256_OPENSSL)
     fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
     fp_algo = "SHA256";
@@ -161,9 +159,6 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   } else {
 #endif /* OPENSSL_FIPS */
-    int fp_algo_id;
-    const char *fp_algo;
-
 #if defined(HAVE_SHA256_OPENSSL)
     fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
     fp_algo = "SHA256";

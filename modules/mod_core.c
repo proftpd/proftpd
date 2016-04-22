@@ -1431,6 +1431,37 @@ MODRET set_fscachepolicy(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: FSOptions opt1 opt2 ... */
+MODRET set_fsoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "IgnoreExtendedAttributes") == 0) {
+      opts |= PR_FSIO_OPT_IGNORE_XATTR;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown FSOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_group(cmd_rec *cmd) {
   struct group *grp = NULL;
 
@@ -4818,6 +4849,9 @@ MODRET core_post_host(cmd_rec *cmd) {
     int res;
     config_rec *c;
 
+    /* Reset the FS options */
+    (void) pr_fsio_set_options(0UL);
+
     /* Remove the TimeoutIdle timer. */
     (void) pr_timer_remove(PR_TIMER_IDLE, ANY_MODULE);
 
@@ -6463,11 +6497,12 @@ static int core_sess_init(void) {
   char *displayquit = NULL;
   config_rec *c = NULL;
   unsigned int *debug_level = NULL;
+  unsigned long fs_opts = 0UL;
 
   init_auth();
 
   c = find_config(main_server->conf, CONF_PARAM, "MultilineRFC2228", FALSE);
-  if (c) {
+  if (c != NULL) {
     session.multiline_rfc2228 = *((int *) c->argv[0]);
   }
 
@@ -6496,8 +6531,23 @@ static int core_sess_init(void) {
  
   /* Check for a configured DebugLevel. */
   debug_level = get_param_ptr(main_server->conf, "DebugLevel", FALSE);
-  if (debug_level != NULL)
+  if (debug_level != NULL) {
     pr_log_setdebuglevel(*debug_level);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "FSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    fs_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "FSOptions", FALSE);
+  }
+
+  (void) pr_fsio_set_options(fs_opts);
 
   /* Check for any server-specific RegexOptions */
   c = find_config(main_server->conf, CONF_PARAM, "RegexOptions", FALSE);
@@ -6772,6 +6822,7 @@ static conftable core_conftab[] = {
   { "DisplayQuit",		set_displayquit,		NULL },
   { "From",			add_from,			NULL },
   { "FSCachePolicy",		set_fscachepolicy,		NULL },
+  { "FSOptions",		set_fsoptions,			NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "HideFiles",		set_hidefiles,			NULL },

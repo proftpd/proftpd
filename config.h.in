@@ -276,6 +276,18 @@
 /* Define if you have the endprotoent function.  */
 #undef HAVE_ENDPROTOENT
 
+/* Define if you have the extattr_delete_link function.  */
+#undef HAVE_EXTATTR_DELETE_LINK
+
+/* Define if you have the extattr_delete_link function.  */
+#undef HAVE_EXTATTR_GET_LINK
+
+/* Define if you have the extattr_delete_link function.  */
+#undef HAVE_EXTATTR_LIST_LINK
+
+/* Define if you have the extattr_delete_link function.  */
+#undef HAVE_EXTATTR_SET_LINK
+
 /* Define if you have the fconvert function.  */
 #undef HAVE_FCONVERT
 
@@ -378,8 +390,20 @@
 /* Define if you have the inet_pton function.  */
 #undef HAVE_INET_PTON
 
+/* Define if you have the lgetxattr function.  */
+#undef HAVE_LGETXATTR
+
+/* Define if you have the llistxattr function.  */
+#undef HAVE_LLISTXATTR
+
 /* Define if you have the loginrestrictions function.  */
 #undef HAVE_LOGINRESTRICTIONS
+
+/* Define if you have the lremovexattr function.  */
+#undef HAVE_LREMOVEXATTR
+
+/* Define if you have the lsetxattr function.  */
+#undef HAVE_LSETXATTR
 
 /* Define if you have the memcpy function.  */
 #undef HAVE_MEMCPY
@@ -567,6 +591,9 @@
 /* Define if you have the <arpa/inet.h> header file.  */
 #undef HAVE_ARPA_INET_H
 
+/* Define if you have the <attr/xattr.h> header file.  */
+#undef HAVE_ATTR_XATTR_H
+
 /* Define if you have the <bstring.h> header file.  */
 #undef HAVE_BSTRING_H
 
@@ -714,6 +741,9 @@
 /* Define if you have the <sys/dir.h> header file.  */
 #undef HAVE_SYS_DIR_H
 
+/* Define if you have the <sys/extattr.h> header file.  */
+#undef HAVE_SYS_EXTATTR_H
+
 /* Define if you have the <sys/file.h> header file.  */
 #undef HAVE_SYS_FILE_H
 
@@ -785,6 +815,9 @@
 
 /* Define if you have <sys/wait.h> that is POSIX.1 compatible.  */
 #undef HAVE_SYS_WAIT_H
+
+/* Define if you have the <sys/xattr.h> header file.  */
+#undef HAVE_SYS_XATTR_H
 
 /* Define if you have the <termios.h> header file.  */
 #undef HAVE_TERMIOS_H
@@ -1045,6 +1078,9 @@
 
 /* Define if using trace support.  */
 #undef PR_USE_TRACE
+
+/* Define if using xattr support.  */
+#undef PR_USE_XATTR
 
 /* Tunable parameters */
 #undef PR_TUNABLE_BUFFER_SIZE

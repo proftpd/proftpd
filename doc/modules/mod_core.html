@@ -27,6 +27,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#DisplayConnect">DisplayConnect</a>
   <li><a href="#DisplayQuit">DisplayQuit</a>
   <li><a href="#FSCachePolicy">FSCachePolicy</a>
+  <li><a href="#FSOptions">FSOptions</a>
   <li><a href="#GroupOwner">GroupOwner</a>
   <li><a href="#HideGroup">HideGroup</a>
   <li><a href="#HideNoAccess">HideNoAccess</a>
@@ -450,6 +451,28 @@ same directive, <i>e.g.</i>:
   # Set the maximum cache size at 128, and the max age at 120 seconds
   FSCachePolicy size 128 maxAge 120
 </pre>
+
+<hr>
+<h2><a name="FSOptions">FSOptions</a></h2>
+<strong>Syntax:</strong> FSOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>FSOptions</code> directive configures various optional behavior of
+ProFTPD's filesystem API.  The currently supported options are:
+<ul>
+  <li><code>IgnoreExtendedAttributes</code>
+    <p>
+    When the <code>--enable-xattr</code> configure option is enabled, ProFTPD
+    will support <a href="https://en.wikipedia.org/wiki/Extended_file_attributes"><em>extended attributes</em></a> where possible.  However, this might cause
+    issues with some clients (<i>e.g.</i> some SFTP clients) that do not
+    properly support them.  Use this option to disable ProFTPD's support for
+    extended attributes.
+  </li>
+</ul>
 
 <hr>
 <h2><a name="GroupOwner">GroupOwner</a></h2>

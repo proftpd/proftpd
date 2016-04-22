@@ -31,6 +31,17 @@
 
 #include "conf.h"
 
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+#  include <sys/extattr.h>
+# elif defined(HAVE_SYS_XATTR_H)
+#  include <sys/xattr.h>
+#  if defined(HAVE_ATTR_XATTR_H)
+#   include <attr/xattr.h>
+#  endif /* HAVE_ATTR_XATTR_H */
+# endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
+
 /* This is a Tru64-specific hack, to work around some macro funkiness
  * in their /usr/include/sys/mount.h header.
  */
@@ -56,6 +67,14 @@
 #define FSIO_FILE_CHOWN		(1 << 14)
 #define FSIO_FILE_ACCESS	(1 << 15)
 #define FSIO_FILE_UTIMES	(1 << 23)
+#define FSIO_FILE_GETXATTR	(1 << 24)
+#define FSIO_FILE_LGETXATTR	(1 << 25)
+#define FSIO_FILE_LISTXATTR	(1 << 26)
+#define FSIO_FILE_LLISTXATTR	(1 << 27)
+#define FSIO_FILE_REMOVEXATTR	(1 << 28)
+#define FSIO_FILE_LREMOVEXATTR	(1 << 29)
+#define FSIO_FILE_SETXATTR	(1 << 30)
+#define FSIO_FILE_LSETXATTR	(1 << 31)
 
 /* Macro that defines the most common file ops */
 #define FSIO_FILE_COMMON	(FSIO_FILE_OPEN|FSIO_FILE_READ|FSIO_FILE_WRITE|\
@@ -127,6 +146,24 @@ struct fs_rec {
   int (*utimes)(pr_fs_t *, const char *, struct timeval *);
   int (*futimes)(pr_fh_t *, int, struct timeval *);
   int (*fsync)(pr_fh_t *, int);
+
+  /* Extended attribute support */
+  ssize_t (*getxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t);
+  ssize_t (*lgetxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t);
+  ssize_t (*fgetxattr)(pool *, pr_fh_t *, int, const char *, void *, size_t);
+  int (*listxattr)(pool *, pr_fs_t *, const char *, array_header **);
+  int (*llistxattr)(pool *, pr_fs_t *, const char *, array_header **);
+  int (*flistxattr)(pool *, pr_fh_t *, int, array_header **);
+  int (*removexattr)(pool *, pr_fs_t *, const char *, const char *);
+  int (*lremovexattr)(pool *, pr_fs_t *, const char *, const char *);
+  int (*fremovexattr)(pool *, pr_fh_t *, int, const char *);
+  int (*setxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t, int);
+  int (*lsetxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t, int);
+  int (*fsetxattr)(pool *, pr_fh_t *, int, const char *, void *, size_t, int);
 
   /* For actual operations on the directory (or subdirs)
    * we cast the return from opendir to DIR* in src/fs.c, so
@@ -240,6 +277,24 @@ int pr_fsio_futimes(pr_fh_t *, struct timeval *);
 int pr_fsio_fsync(pr_fh_t *fh);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
 
+/* Extended attribute support */
+ssize_t pr_fsio_getxattr(pool *p, const char *, const char *, void *, size_t);
+ssize_t pr_fsio_lgetxattr(pool *, const char *, const char *, void *, size_t);
+ssize_t pr_fsio_fgetxattr(pool *, pr_fh_t *, const char *, void *, size_t);
+int pr_fsio_listxattr(pool *, const char *, array_header **);
+int pr_fsio_llistxattr(pool *, const char *, array_header **);
+int pr_fsio_flistxattr(pool *, pr_fh_t *, array_header **);
+int pr_fsio_removexattr(pool *, const char *, const char *);
+int pr_fsio_lremovexattr(pool *, const char *, const char *);
+int pr_fsio_fremovexattr(pool *, pr_fh_t *, const char *);
+int pr_fsio_setxattr(pool *, const char *, const char *, void *, size_t, int);
+int pr_fsio_lsetxattr(pool *, const char *, const char *, void *, size_t, int);
+int pr_fsio_fsetxattr(pool *, pr_fh_t *, const char *, void *, size_t, int);
+
+/* setxattr flags */
+#define PR_FSIO_XATTR_FL_CREATE		0x001
+#define PR_FSIO_XATTR_FL_REPLACE	0x002
+
 /* Set a flag determining whether we guard against write operations in
  * certain sensitive directories while we are chrooted, e.g. "Roaring Beast"
  * style attacks.
@@ -250,6 +305,12 @@ int pr_fsio_guard_chroot(int);
  * Returns the previously-set value.
  */
 int pr_fsio_set_use_mkdtemp(int);
+
+/* Sets a bitmask of various FSIO API options.  Returns the previously
+ * set options.
+ */
+unsigned long pr_fsio_set_options(unsigned long opts);
+#define PR_FSIO_OPT_IGNORE_XATTR		0x00001
 
 /* FS-related functions */
 

@@ -36,6 +36,7 @@
 #include "disconnect.h"
 #include "interop.h"
 #include "tap.h"
+#include "misc.h"
 
 #ifdef PR_USE_SODIUM
 # include <sodium.h>
@@ -1124,44 +1125,6 @@ static int finish_ecdh(struct sftp_kex *kex) {
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
-static array_header *parse_namelist(pool *p, const char *names) {
-  char *ptr;
-  array_header *list;
-  size_t names_len;
-
-  list = make_array(p, 0, sizeof(const char *));
-
-  names_len = strlen(names);
-  if (names_len == 0) {
-    return list;
-  }
-
-  ptr = memchr(names, ',', names_len);
-  while (ptr != NULL) {
-    char *elt;
-    size_t elt_len;
-
-    pr_signals_handle();
-
-    elt_len = ptr - names;
-
-    elt = palloc(p, elt_len + 1);
-    memcpy(elt, names, elt_len);
-    elt[elt_len] = '\0';
-
-    *((const char **) push_array(list)) = elt;
-    names = ++ptr;
-
-    /* Add one for the ',' character we skipped over. */
-    names_len -= (elt_len + 1);
-
-    ptr = memchr(names, ',', names_len);
-  }
-  *((const char **) push_array(list)) = pstrdup(p, names);
-
-  return list;
-}
-
 /* Given a name-list, return the first (i.e. preferred) name in the list. */
 static const char *get_preferred_name(pool *p, const char *names) {
   register unsigned int i;
@@ -1183,45 +1146,6 @@ static const char *get_preferred_name(pool *p, const char *names) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "unable to find preferred name in '%s'", names);
   return NULL;
-}
-
-/* Given name-lists from the client and server, find the first name from the
- * client list which appears on the server list.
- */
-static const char *get_shared_name(pool *p, const char *c2s_names,
-    const char *s2c_names) {
-  register unsigned int i;
-  const char *name = NULL, **client_names, **server_names;
-  pool *tmp_pool;
-  array_header *client_list, *server_list;
-
-  tmp_pool = make_sub_pool(p);
-  pr_pool_tag(tmp_pool, "SSH2 session shared name pool");
-
-  client_list = parse_namelist(tmp_pool, c2s_names);
-  client_names = (const char **) client_list->elts;
-
-  server_list = parse_namelist(tmp_pool, s2c_names);
-  server_names = (const char **) server_list->elts;
-
-  for (i = 0; i < client_list->nelts; i++) {
-    register unsigned int j;
-
-    if (name)
-      break;
-
-    for (j = 0; j < server_list->nelts; j++) {
-      if (strcmp(client_names[i], server_names[j]) == 0) {
-        name = client_names[i];
-        break;
-      }
-    }
-  }
-
-  name = pstrdup(p, name);
-  destroy_pool(tmp_pool);
-
-  return name;
 }
 
 /* Note that in this default list of key exchange algorithms, one of the
@@ -1766,7 +1690,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     }
   }
 
-  kex_algo = get_shared_name(kex->pool, client_list, server_list);
+  kex_algo = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (kex_algo != NULL) {
     /* Unlike the following algorithms, we wait to setup the chosen kex algo
      * until the end.  Why?  The kex algo setup may require knowledge of the
@@ -1793,7 +1717,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent host key algorithms: %s", server_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_hostkey_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1821,7 +1745,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent client encryption algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_encrypt_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1849,7 +1773,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent server encryption algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_encrypt_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1877,7 +1801,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent client MAC algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_mac_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1905,7 +1829,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent server MAC algorithms: %s",
     server_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_mac_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1933,7 +1857,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent client compression algorithms: %s", server_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_comp_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1961,7 +1885,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent server compression algorithms: %s", server_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_comp_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -1989,7 +1913,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent client languages: %s", client_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_c2s_lang(kex, shared) < 0) {
       destroy_pool(tmp_pool);
@@ -2020,7 +1944,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8,
     "server-sent server languages: %s", client_list);
 
-  shared = get_shared_name(kex->pool, client_list, server_list);
+  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
   if (shared) {
     if (setup_s2c_lang(kex, shared) < 0) {
       destroy_pool(tmp_pool);

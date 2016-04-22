@@ -1262,7 +1262,7 @@ START_TEST (bin2hex_test) {
   /* Empty string. */
   str = (const unsigned char *) "foobar";
   expected = "";
-  res = pr_str_bin2hex(p, str, 0, 0);
+  res = pr_str_bin2hex(p, (const unsigned char *) str, 0, 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
@@ -1322,7 +1322,7 @@ START_TEST (hex2bin_test) {
   expected[1] = 34;
   expected[2] = 51;
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1341,7 +1341,7 @@ START_TEST (hex2bin_test) {
   expected[4] = 'a';
   expected[5] = 'r';
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1352,7 +1352,7 @@ START_TEST (hex2bin_test) {
   hex = (const unsigned char *) "666F6F626172";
   hex_len = strlen((char *) hex);
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
