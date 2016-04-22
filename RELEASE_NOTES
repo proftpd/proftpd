@@ -13,9 +13,12 @@ ChangeLog files.
     SHA1 or MD5.
   + mod_sql_passwd supports Scrypt and Argon2 password hashing algorithms
     when built using libsodium.
+  + mod_sftp now supports extended attributes (xattrs) via SFTP.
 
   
   + New Configuration Directives:
+
+    FSOptions IgnoreExtendedAttributes
 
     SFTPKeyLimits (Bug#4233)
 
@@ -31,6 +34,8 @@ ChangeLog files.
     SFTPKeyExchanges
       The mod_sftp module now supports the "curve25519-sha256@libssh.org"
       SSH key exchange algorithm, when compiled with the libsodium library.
+
+    SFTPOptions IgnoreFIFOs, IgnoreSFTPSetExtendedAttributes, IgnoreSFTPUploadExtendedAttributes
 
 
   + API Changes
