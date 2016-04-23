@@ -99,6 +99,8 @@
 # endif
 #endif
 
+void pr_log_stacktrace(const char*moduleversion, const char*function);
+
 int log_lastlog(uid_t uid, const char *user_name, const char *tty,
   const pr_netaddr_t *remote_addr);
 #endif /* PR_USE_LASTLOG */
