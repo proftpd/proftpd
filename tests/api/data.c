@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -165,9 +165,10 @@ static int data_poll_cb(pr_netio_stream_t *nstrm) {
 
 static int data_read_eagain = FALSE;
 static int data_read_epipe = FALSE;
+static int data_read_dangling_cr = FALSE;
 
 static int data_read_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
-  const char *data = "Hello, World!\n";
+  const char *data = "Hello,\r\n World!\r\n";
   size_t sz;
 
   if (data_read_eagain) {
@@ -180,6 +181,10 @@ static int data_read_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     data_read_epipe = FALSE;
     errno = EPIPE;
     return -1;
+  }
+
+  if (data_read_dangling_cr) {
+    data = "Hello,\r\n World!\r\n\r";
   }
 
   sz = strlen(data);
@@ -585,11 +590,110 @@ START_TEST (data_clear_xfer_pool_test) {
 }
 END_TEST
 
-START_TEST (data_xfer_test) {
+START_TEST (data_xfer_read_binary_test) {
+  int res;
+  char *buf, *expected;
+  size_t bufsz, expected_len;
+  cmd_rec *cmd;
+
+  pr_data_clear_xfer_pool();
+  pr_data_reset();
+
+  res = pr_data_xfer(NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  bufsz = 1024;
+  buf = palloc(p, bufsz);
+
+  res = pr_data_xfer(buf, 0);
+  fail_unless(res < 0, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(errno == ECONNABORTED,
+    "Expected ECONNABORTED (%d), got %s (%d)", ECONNABORTED,
+    strerror(errno), errno);
+
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  /* read binary data */
+  session.xfer.direction = PR_NETIO_IO_RD;
+
+  /* Note: this string comes from the data_read_cb() we register with our
+   * DATA stream callback.
+   */
+  expected = "Hello,\r\n World!\r\n";
+  expected_len = strlen(expected);
+
+  mark_point();
+  data_write_eagain = TRUE;
+  session.xfer.buf = NULL;
+  session.xfer.buflen = 0;
+
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = data_open_streams(session.d, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to open streams on session.d: %s",
+    strerror(errno));
+
+  mark_point();
+  session.xfer.buf = NULL;
+  session.xfer.buflen = 0;
+
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+
+  session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = data_open_streams(session.c, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to open streams on session.c: %s",
+    strerror(errno));
+
+  mark_point();
+  session.xfer.buf = NULL;
+  session.xfer.buflen = 0;
+
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 0,
+    "Expected session.xfer.buflen 0, got %lu",
+    (unsigned long) session.xfer.buflen);
+
+  mark_point();
+  session.xfer.buf = NULL;
+  session.xfer.buflen = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "syst"));
+  tests_stubs_set_next_cmd(cmd);
+  data_read_eagain = TRUE;
+
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 0,
+    "Expected session.xfer.buflen 0, got %lu",
+    (unsigned long) session.xfer.buflen);
+}
+END_TEST
+
+START_TEST (data_xfer_write_binary_test) {
   int res;
   char *buf;
-  size_t buflen, bufsz;
-  cmd_rec *cmd;
+  size_t buflen;
+
+  pr_data_clear_xfer_pool();
+  pr_data_reset();
 
   res = pr_data_xfer(NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -598,6 +702,7 @@ START_TEST (data_xfer_test) {
 
   buf = "Hello, World!\n";
   buflen = strlen(buf);
+
   res = pr_data_xfer(buf, 0);
   fail_unless(res < 0, "Failed to handle zero buffer length");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -615,6 +720,7 @@ START_TEST (data_xfer_test) {
 
   /* write binary data */
   session.xfer.direction = PR_NETIO_IO_WR;
+  session.xfer.p = make_sub_pool(p);
   session.xfer.buflen = 1024;
   session.xfer.buf = pcalloc(p, session.xfer.buflen);
 
@@ -645,56 +751,317 @@ START_TEST (data_xfer_test) {
   res = pr_data_xfer(buf, buflen);
   fail_unless(res == (int) buflen, "Expected %lu, got %d",
     (unsigned long) buflen, res);
+  fail_unless(strncmp(session.xfer.buf, buf, buflen) == 0,
+    "Expected '%s', got '%.100s'", buf, session.xfer.buf);
+}
+END_TEST
 
-  /*  write ASCII data */
-  session.sf_flags |= SF_ASCII_OVERRIDE;
+START_TEST (data_xfer_read_ascii_test) {
+  int res;
+  char *buf, *expected;
+  size_t bufsz, expected_len;
+  cmd_rec *cmd;
+
+  pr_data_clear_xfer_pool();
+  pr_data_reset();
+
+  res = pr_data_xfer(NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  bufsz = 1024;
+  buf = palloc(p, bufsz);
+
+  res = pr_data_xfer(buf, 0);
+  fail_unless(res < 0, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(errno == ECONNABORTED,
+    "Expected ECONNABORTED (%d), got %s (%d)", ECONNABORTED,
+    strerror(errno), errno);
+
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  /* read ASCII data */
+  session.xfer.direction = PR_NETIO_IO_RD;
+  session.xfer.p = make_sub_pool(p);
+  session.xfer.bufsize = 1024;
+
+  /* Note: this string comes from the data_read_cb() we register with our
+   * DATA stream callback.
+   */
+  expected = "Hello,\n World!\n";
+  expected_len = strlen(expected);
+
+  mark_point();
+  data_write_eagain = TRUE;
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+
+  session.sf_flags |= SF_ASCII;
+  res = pr_data_xfer(buf, bufsz);
+  session.sf_flags &= ~SF_ASCII;
+
+  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = data_open_streams(session.d, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to open streams on session.d: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+
+  session.sf_flags |= SF_ASCII;
+  res = pr_data_xfer(buf, bufsz);
+  session.sf_flags &= ~SF_ASCII;
+
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+
+  session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = data_open_streams(session.c, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to open streams on session.c: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+
+  session.sf_flags |= SF_ASCII;
+  res = pr_data_xfer(buf, bufsz);
+  session.sf_flags &= ~SF_ASCII;
+
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 0,
+    "Expected session.xfer.buflen 0, got %lu",
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(buf, expected, expected_len) == 0,
+    "Expected '%s', got '%.100s'", expected, buf);
+
   mark_point();
   cmd = pr_cmd_alloc(p, 1, pstrdup(p, "noop"));
   tests_stubs_set_next_cmd(cmd);
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+
+  session.sf_flags |= SF_ASCII;
+  res = pr_data_xfer(buf, bufsz);
+  session.sf_flags &= ~SF_ASCII;
+
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 0,
+    "Expected session.xfer.buflen 0, got %lu",
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(buf, expected, expected_len) == 0,
+    "Expected '%s', got '%.100s'", expected, buf);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "pasv"));
+  tests_stubs_set_next_cmd(cmd);
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+
+  session.sf_flags |= SF_ASCII;
+  res = pr_data_xfer(buf, bufsz);
+  session.sf_flags &= ~SF_ASCII;
+
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 0,
+    "Expected session.xfer.buflen 0, got %lu",
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(buf, expected, expected_len) == 0,
+    "Expected '%s', got '%.100s'", expected, buf);
+
+  /* Bug#4237 happened because of insufficient testing of the edge case
+   * where the LAST character in the buffer is a CR.
+   *
+   * Note that to properly test this, we need to KEEP the same session.xfer.buf
+   * in place, and do the read TWICE (at least; maybe more).
+   */
+
+  mark_point();
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+  data_read_dangling_cr = TRUE;
+
+  session.sf_flags |= SF_ASCII;
+  res = pr_data_xfer(buf, bufsz);
+  session.sf_flags &= ~SF_ASCII;
+
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 1,
+    "Expected session.xfer.buflen 1, got %lu",
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(buf, expected, expected_len) == 0,
+    "Expected '%s', got '%.100s'", expected, buf);
+}
+END_TEST
+
+START_TEST (data_xfer_write_ascii_test) {
+  int res;
+  char *buf, *ascii_buf;
+  size_t buflen, ascii_buflen;
+  cmd_rec *cmd;
+
+  pr_data_clear_xfer_pool();
+  pr_data_reset();
+
+  res = pr_data_xfer(NULL, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  buf = "Hello,\n World\n";
+  buflen = strlen(buf);
+
+  ascii_buf = "Hello,\r\n World\r\n";
+  ascii_buflen = strlen(ascii_buf);
+
+  res = pr_data_xfer(buf, 0);
+  fail_unless(res < 0, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
   res = pr_data_xfer(buf, buflen);
+  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(errno == ECONNABORTED,
+    "Expected ECONNABORTED (%d), got %s (%d)", ECONNABORTED,
+    strerror(errno), errno);
+
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  /* write ASCII data */
+  session.xfer.direction = PR_NETIO_IO_WR;
+  session.xfer.p = make_sub_pool(p);
+  session.xfer.buflen = 1024;
+  session.xfer.buf = pcalloc(p, session.xfer.buflen);
+
+  mark_point();
+  data_write_eagain = TRUE;
+  pr_ascii_ftp_reset();
+  session.sf_flags |= SF_ASCII_OVERRIDE;
+  res = pr_data_xfer(buf, buflen);
+  session.sf_flags &= ~SF_ASCII_OVERRIDE;
+
+  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = data_open_streams(session.d, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to open streams on session.d: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_ascii_ftp_reset();
+  session.sf_flags |= SF_ASCII_OVERRIDE;
+  res = pr_data_xfer(buf, buflen);
+  session.sf_flags &= ~SF_ASCII_OVERRIDE;
+
   fail_unless(res == (int) buflen, "Expected %lu, got %d",
     (unsigned long) buflen, res);
+
+  session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = data_open_streams(session.c, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to open streams on session.c: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_ascii_ftp_reset();
+  session.xfer.buflen = 1024;
+  session.xfer.buf = pcalloc(p, session.xfer.buflen);
+
+  session.sf_flags |= SF_ASCII_OVERRIDE;
+  res = pr_data_xfer(buf, buflen);
+  session.sf_flags &= ~SF_ASCII_OVERRIDE;
+
+  fail_unless(res == (int) buflen, "Expected %lu, got %d",
+    (unsigned long) buflen, res);
+  fail_unless(session.xfer.buflen == ascii_buflen,
+    "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
+    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "noop"));
+  tests_stubs_set_next_cmd(cmd);
+  pr_ascii_ftp_reset();
+  session.xfer.buflen = 1024;
+  session.xfer.buf = pcalloc(p, session.xfer.buflen);
+
+  session.sf_flags |= SF_ASCII_OVERRIDE;
+  res = pr_data_xfer(buf, buflen);
+  session.sf_flags &= ~SF_ASCII_OVERRIDE;
+
+  fail_unless(res == (int) buflen, "Expected %lu, got %d",
+    (unsigned long) buflen, res);
+  fail_unless(session.xfer.buflen == ascii_buflen,
+    "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
+    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
 
   session.xfer.p = make_sub_pool(p);
   mark_point();
   cmd = pr_cmd_alloc(p, 1, pstrdup(p, "pasv"));
   tests_stubs_set_next_cmd(cmd);
+  pr_ascii_ftp_reset();
+  session.xfer.buflen = 1024;
+  session.xfer.buf = pcalloc(p, session.xfer.buflen);
+
+  session.sf_flags |= SF_ASCII_OVERRIDE;
   res = pr_data_xfer(buf, buflen);
-  fail_unless(res == (int) buflen, "Expected %lu, got %d",
-    (unsigned long) buflen, res);
   session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
-  session.sf_flags |= SF_ASCII;
+  fail_unless(res == (int) buflen, "Expected %lu, got %d",
+    (unsigned long) buflen, res);
+  fail_unless(session.xfer.buflen == ascii_buflen,
+    "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
+    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
+
   mark_point();
+  pr_ascii_ftp_reset();
+  session.xfer.buflen = 1024;
+  session.xfer.buf = pcalloc(p, session.xfer.buflen);
+
+  session.sf_flags |= SF_ASCII;
   res = pr_data_xfer(buf, buflen);
-  fail_unless(res == (int) buflen, "Expected %lu, got %d",
-    (unsigned long) buflen, res);
-
   session.sf_flags &= ~SF_ASCII;
 
-  /* read binary data */
-  session.xfer.direction = PR_NETIO_IO_RD;
-  bufsz = 1024;
-  buf = palloc(p, bufsz);
-
-  mark_point();
-  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "syst"));
-  tests_stubs_set_next_cmd(cmd);
-  data_read_eagain = TRUE;
-  res = pr_data_xfer(buf, bufsz);
   fail_unless(res == (int) buflen, "Expected %lu, got %d",
     (unsigned long) buflen, res);
-
-  /* read ASCII data */
-  session.sf_flags |= SF_ASCII;
-
-  mark_point();
-  data_read_eagain = TRUE;
-  res = pr_data_xfer(buf, bufsz);
-  fail_unless(res == (int) (buflen * 2), "Expected %lu, got %d",
-    (unsigned long) (buflen * 2), res);
-
-  session.sf_flags &= ~SF_ASCII;
+  fail_unless(session.xfer.buflen == ascii_buflen,
+    "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
+    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
 }
 END_TEST
 
@@ -720,7 +1087,10 @@ Suite *tests_get_data_suite(void) {
   tcase_add_test(testcase, data_reset_test);
   tcase_add_test(testcase, data_cleanup_test);
   tcase_add_test(testcase, data_clear_xfer_pool_test);
-  tcase_add_test(testcase, data_xfer_test);
+  tcase_add_test(testcase, data_xfer_read_binary_test);
+  tcase_add_test(testcase, data_xfer_write_binary_test);
+  tcase_add_test(testcase, data_xfer_read_ascii_test);
+  tcase_add_test(testcase, data_xfer_write_ascii_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
