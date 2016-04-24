@@ -908,8 +908,9 @@ START_TEST (data_xfer_read_ascii_test) {
   res = pr_data_xfer(buf, bufsz);
   session.sf_flags &= ~SF_ASCII;
 
-  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
-    (unsigned long) expected_len, res);
+  /* We add one to the expected length because of the dangling CR. */
+  fail_unless(res == (int) expected_len + 1, "Expected %lu, got %d",
+    (unsigned long) expected_len + 1, res);
   fail_unless(session.xfer.buflen == 1,
     "Expected session.xfer.buflen 1, got %lu",
     (unsigned long) session.xfer.buflen);
