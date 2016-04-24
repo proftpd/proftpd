@@ -61,7 +61,6 @@ int pr_ascii_ftp_from_crlf(pool *p, char *in, size_t inlen, char **out,
         /* copy, but save it for later */
         adj++;
         *dst++ = *src++;
-        (*outlen)++;
 
       } else {
         if (*(src+1) == '\n') {
