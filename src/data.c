@@ -1110,12 +1110,10 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
     /* We use ASCII translation if:
      *
-     * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
      * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
      */
-    if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
-        ((session.sf_flags & SF_ASCII) &&
-         !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
+    if (((session.sf_flags & SF_ASCII) &&
+        !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
       int adjlen, buflen;
 
       do {
@@ -1173,12 +1171,12 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         if (len >= 0 &&
             buflen > 0) {
 
-          /* Perform translation:
+          /* Perform ASCII translation:
            *
-           * buflen is returned as the modified buffer length after
-           *        translation
-           * adjlen is returned as the number of characters unprocessed in
-           *        the buffer (to be dealt with later)
+           * buflen: is returned as the modified buffer length after
+           *         translation
+           * res:    is returned as the number of characters unprocessed in
+           *         the buffer (to be dealt with later)
            *
            * We skip the call to pr_ascii_ftp_from_crlf() in one case:
            * when we have one character in the buffer and have reached

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -134,9 +134,62 @@ START_TEST (ascii_ftp_from_crlf_test) {
   dst = pcalloc(p, src_len + 1);
   dst_len = 0;
   res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
-  fail_unless(res == 1, "Failed to handle input buffer with trailing CR");
+  fail_unless(res == 1,
+    "Failed to handle input buffer with trailing CR: expected %d, got %d", 1,
+    res);
   expected = "he\nl\nlo\r";
-  expected_len = 8;
+  expected_len = 7;
+  fail_unless(dst_len == expected_len,
+    "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
+    (unsigned long) dst_len);
+  fail_unless(strcmp(dst, expected) == 0,
+    "Expected output buffer '%s', got '%s'", expected, dst);
+
+  /* Handle an input buffer of just an LF. */
+  pr_ascii_ftp_reset();
+  src = "\n";
+  src_len = 1;
+  dst = pcalloc(p, src_len + 1);
+  dst_len = 0;
+  res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
+  fail_unless(res == 0,
+    "Failed to handle input buffer of single LF: expected %d, got %d", 0, res);
+  expected = "\n";
+  expected_len = 1;
+  fail_unless(dst_len == expected_len,
+    "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
+    (unsigned long) dst_len);
+  fail_unless(strcmp(dst, expected) == 0,
+    "Expected output buffer '%s', got '%s'", expected, dst);
+
+  /* Handle an input buffer of just a CR. */
+  pr_ascii_ftp_reset();
+  src = "\r";
+  src_len = 1;
+  dst = pcalloc(p, src_len + 1);
+  dst_len = 0;
+  res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
+  fail_unless(res == 1,
+    "Failed to handle input buffer of single CR: expected %d, got %d", 1, res);
+  expected = "\r";
+  expected_len = 0;
+  fail_unless(dst_len == expected_len,
+    "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
+    (unsigned long) dst_len);
+  fail_unless(strcmp(dst, expected) == 0,
+    "Expected output buffer '%s', got '%s'", expected, dst);
+
+  /* Handle an input buffer of just CRs. */
+  pr_ascii_ftp_reset();
+  src = "\r\r\r";
+  src_len = 3;
+  dst = pcalloc(p, src_len + 1);
+  dst_len = 0;
+  res = pr_ascii_ftp_from_crlf(p, src, src_len, &dst, &dst_len);
+  fail_unless(res == 1,
+    "Failed to handle input buffer of single CR: expected %d, got %d", 3, res);
+  expected = "\r\r\r";
+  expected_len = 2;
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);

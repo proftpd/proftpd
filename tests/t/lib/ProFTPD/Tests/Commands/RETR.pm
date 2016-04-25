@@ -32,6 +32,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  retr_ok_ascii_file_bug4237 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   retr_abs_symlink => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -395,6 +400,173 @@ sub retr_ok_file {
   # Stop server
   server_stop($setup->{pid_file});
 
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub retr_ok_ascii_file_bug4237 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "\r" x 32768;
+
+    unless (close($fh)) {
+      die("Unable to write $test_file: $!");
+    }
+
+  } else {
+    die("Unable to open $test_file: $!");
+  }
+
+  my $test_file2 = File::Spec->rel2abs("$tmpdir/test2.dat");
+  if (open(my $fh, "> $test_file2")) {
+    print $fh "\n" x 32768;
+
+    unless (close($fh)) {
+      die("Unable to write $test_file2: $!");
+    }
+
+  } else {
+    die("Unable to open $test_file2: $!");
+  }
+
+  my $test_file3 = File::Spec->rel2abs("$tmpdir/test3.dat");
+  if (open(my $fh, "> $test_file3")) {
+    print $fh "\r\n" x 32768;
+
+    unless (close($fh)) {
+      die("Unable to write $test_file3: $!");
+    }
+
+  } else {
+    die("Unable to open $test_file3: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('ascii');
+
+      # Download a file of all CRs
+      my $conn = $client->retr_raw($test_file);
+      unless ($conn) {
+        die("RETR failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = '';
+      my $tmp;
+      while ($conn->read($tmp, 8192, 25)) {
+        $buf .= $tmp;
+      }
+      eval { $conn->close() };
+
+      my $size = length($buf);
+      my $expected = -s $test_file;
+      $self->assert($expected == $size,
+        test_msg("Expected size $expected, got $size"));
+
+      # Download a file of all LFs
+      my $conn = $client->retr_raw($test_file2);
+      unless ($conn) {
+        die("RETR failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = '';
+      my $tmp;
+      while ($conn->read($tmp, 8192, 25)) {
+        $buf .= $tmp;
+      }
+      eval { $conn->close() };
+
+      $size = length($buf);
+      $expected = -s $test_file2;
+      $self->assert($expected == $size,
+        test_msg("Expected size $expected, got $size"));
+
+      # Download a file of all CRLF pairs
+      $conn = $client->retr_raw($test_file3);
+      unless ($conn) {
+        die("RETR failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      $buf = '';
+      while ($conn->read($tmp, 8192, 25)) {
+        $buf .= $tmp;
+      }
+      eval { $conn->close() };
+
+      $size = length($buf);
+
+      # Note: the expected size here is half the length of the file.  Why?
+      # The test3.dat file is comprised of 32K "\r\n" pairs.  As such, the
+      # will SEND that data as is.  And on the client end, since we are a Unix
+      # machine, they will be converted to just "\n" (32K of them) -- thus
+      # half the original file size.
+      $expected = (-s $test_file3) / 2;
+      $self->assert($expected == $size,
+        test_msg("Expected size $expected, got $size"));
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
