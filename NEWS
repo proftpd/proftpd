@@ -17,6 +17,8 @@
   directory".
 - Bug 4154 - Support for scrypt in mod_sql_passwd.  This also includes
   support for Argon2, assuming use of libsodium-1.0.9 or later.
+- Bug 4237 - Corrupted ASCII uploads.  The refactoring work for Bug#4151 had
+  introduced a bug in the handling of ASCII uploads, now fixed.
 
 1.3.6rc2 - Released 10-Mar-2016
 --------------------------------
