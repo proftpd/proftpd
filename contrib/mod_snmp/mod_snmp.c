@@ -1926,9 +1926,8 @@ MODRET set_snmpagent(cmd_rec *cmd) {
         NULL));
     }
 
-    pr_netaddr_set_port(agent_addr, htons(agent_port));
-
-    *((pr_netaddr_t **) push_array(agent_addrs)) = agent_addr;
+    pr_netaddr_set_port((pr_netaddr_t *) agent_addr, htons(agent_port));
+    *((pr_netaddr_t **) push_array(agent_addrs)) = (pr_netaddr_t *) agent_addr;
   }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
@@ -1950,20 +1949,20 @@ MODRET set_snmpcommunity(cmd_rec *cmd) {
 
 /* usage: SNMPEnable on|off */
 MODRET set_snmpenable(cmd_rec *cmd) {
-  int bool = -1;
+  int enabled = -1;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  enabled = get_boolean(cmd, 1);
+  if (enabled == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = enabled;
 
   return PR_HANDLED(cmd);
 }
@@ -2058,8 +2057,8 @@ MODRET set_snmpnotify(cmd_rec *cmd) {
       "': ", strerror(errno), NULL));
   }
 
-  pr_netaddr_set_port(notify_addr, htons(notify_port));
-  c->argv[0] = (void *) notify_addr;
+  pr_netaddr_set_port((pr_netaddr_t *) notify_addr, htons(notify_port));
+  c->argv[0] = (const void *) notify_addr;
 
   return PR_HANDLED(cmd);
 }
