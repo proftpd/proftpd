@@ -62,7 +62,7 @@ script:
 after_success:
   - cd ${TRAVIS_BUILD_DIR}
   # capture the test coverage info
-  - lcov --ignore-errors source --directory . --capture --output-file coverage.info
+  - lcov --ignore-errors gcov,source --directory . --capture --output-file coverage.info
   # filter out system and test code
   - lcov --remove coverage.info 'lib/glibc-glob.*' 'lib/pr_fnmatch_loop.*' 'tests/*' '/usr/*' --output-file coverage.info
   # debug before upload
