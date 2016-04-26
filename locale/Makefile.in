@@ -71,7 +71,7 @@ check:
         done
 
 clean:
-	$(RM) *.gcno *.gmo *.mo 
+	$(RM) *.gcda *.gcno *.gmo *.mo 
 
 $(LANGS):
 	-if [ ! -f $@.po ]; then \

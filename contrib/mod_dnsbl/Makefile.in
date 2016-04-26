@@ -41,7 +41,7 @@ install:
 	fi
 
 clean:
-	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.gcno *.lo .libs/*.o
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.gcda *.gcno *.lo .libs/*.o
 
 dist: clean
 	$(RM) Makefile mod_dnsbl.h config.status config.cache config.log

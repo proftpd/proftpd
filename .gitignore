@@ -38,6 +38,7 @@ tests/api-tests
 tests/api-tests.log
 utils/*.[0-9]
 *.a
+*.gcda
 *.gcno
 *.la
 *.lo

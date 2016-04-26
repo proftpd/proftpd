@@ -21,7 +21,7 @@ Makefile: Makefile.in ../config.status
 utils: $(FTPCOUNT_OBJS) $(FTPSCRUB_OBJS) $(FTPSHUT_OBJS) $(FTPTOP_OBJS) $(FTPWHO_OBJS)
 
 clean:
-	rm -f *.o *.gcno
+	rm -f *.o *.gcda *.gcno
 
 depend:
 	$(MAKEDEPEND) $(CPPFLAGS) *.c 2>/dev/null

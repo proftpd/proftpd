@@ -35,7 +35,7 @@ lib: libsupp.a $(LIB_DEPS)
 install:
 
 clean:
-	rm -f *.o libsupp.a *.gcno
+	rm -f *.o libsupp.a *.gcda *.gcno
 	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) clean)
 
 depend:
