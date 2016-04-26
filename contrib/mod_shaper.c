@@ -1648,8 +1648,8 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
 
   } else if (strcmp(reqargv[0], "host") == 0) {
     pr_scoreboard_entry_t *score;
-    const const char *addr;
-    pr_netaddr_t *na;
+    const char *addr;
+    const pr_netaddr_t *na;
 
     na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[1], NULL);
     if (na == NULL) {
