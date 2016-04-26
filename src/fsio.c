@@ -967,9 +967,9 @@ static int sys_setxattr(pool *p, pr_fs_t *fs, const char *path,
   xattr_flags = get_setxattr_flags(flags);
 
 #  if defined(XATTR_NOFOLLOW)
-  res = setxattr(path, name, val, valsz, 0, flags);
+  res = setxattr(path, name, val, valsz, 0, xattr_flags);
 #  else
-  res = setxattr(path, name, val, valsz, flags);
+  res = setxattr(path, name, val, valsz, xattr_flags);
 #  endif /* XATTR_NOFOLLOW */
 # endif /* HAVE_SYS_XATTR_H */
 #else
@@ -1005,12 +1005,12 @@ static int sys_lsetxattr(pool *p, pr_fs_t *fs, const char *path,
   xattr_flags = get_setxattr_flags(flags);
 
 #  if defined(HAVE_LSETXATTR)
-  res = lsetxattr(path, name, val, valsz, flags);
+  res = lsetxattr(path, name, val, valsz, xattr_flags);
 #  elif defined(XATTR_NOFOLLOW)
   xattr_flags |= XATTR_NOFOLLOW;
-  res = setxattr(path, name, val, valsz, 0, flags);
+  res = setxattr(path, name, val, valsz, 0, xattr_flags);
 #  else
-  res = setxattr(path, name, val, valsz, flags);
+  res = setxattr(path, name, val, valsz, xattr_flags);
 #  endif /* XATTR_NOFOLLOW */
 # endif /* HAVE_SYS_XATTR_H */
 #else
@@ -1045,7 +1045,7 @@ static int sys_fsetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
 #  if defined(XATTR_NOFOLLOW)
   res = fsetxattr(fd, name, val, valsz, 0, xattr_flags);
 #  else
-  res = fgetxattr(fd, name, val, valsz);
+  res = fsetxattr(fd, name, val, valsz, xattr_flags);
 #  endif /* XATTR_NOFOLLOW */
 # endif /* HAVE_SYS_XATTR_H */
 #else

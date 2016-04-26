@@ -2393,7 +2393,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
 
   if (server_str != NULL) {
     char *ptr;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     unsigned int server_port = 21;
     int res;
 
@@ -2499,12 +2499,11 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
       }
 
       for (i = optind; i < reqargc; i++) {
+        const pr_netaddr_t *site;
 
         /* XXX handle multiple addresses */
-        pr_netaddr_t *site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool,
-          reqargv[i], NULL);
-
-        if (site) {
+        site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[i], NULL);
+        if (site != NULL) {
           if (ban_list_remove(BAN_TYPE_HOST, sid,
                 pr_netaddr_get_ipstr(site)) == 0) {
             (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
