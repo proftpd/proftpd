@@ -64,8 +64,8 @@ install-misc:
 	$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644 blacklist.dat $(DESTDIR)$(sysconfdir)/blacklist.dat
 
 clean:
-	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.gcda *.gcno *.lo .libs/*.o
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.lo .libs/*.o
 
 dist: clean
-	$(RM) Makefile $(MODULE_NAME).h config.status config.cache config.log
+	$(RM) Makefile $(MODULE_NAME).h config.status config.cache config.log *.gcda *.gcno
 	-$(RM) -r CVS/ RCS/
