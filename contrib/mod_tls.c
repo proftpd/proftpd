@@ -5728,17 +5728,29 @@ static int tls_compare_session_ids(SSL_SESSION *ctrl_sess,
    */
   res = SSL_SESSION_cmp(ctrl_sess, data_sess);
 #else
-  unsigned char *sess_id;
+  const unsigned char *sess_id;
   unsigned int sess_id_len;
 
 # if OPENSSL_VERSION_NUMBER > 0x000908000L
-  sess_id = (unsigned char *) SSL_SESSION_get_id(data_sess, &sess_id_len);
+  sess_id = (const unsigned char *) SSL_SESSION_get_id(data_sess, &sess_id_len);
 # else
   /* XXX Directly accessing these fields cannot be a Good Thing. */
   sess_id = data_sess->session_id;
   sess_id_len = data_sess->session_id_length;
 # endif
+
   res = SSL_has_matching_session_id(ctrl_ssl, sess_id, sess_id_len);
+
+  /* SSL_has_matchin_session_id() returns 1 for true, 0 for false.  Thus to
+   * emulate the memcmp(3) type interface, we return 0 for true, and -1 for
+   * false.
+   */
+  if (res == 1) {
+    res = 0;
+
+  } else {
+    res = -1;
+  }
 #endif
 
   return res;
@@ -6167,10 +6179,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
         pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
         return -1;
-
-      } else {
-        tls_log("%s", "client reused SSL session for data connection");
       }
+
+      tls_log("%s", "client reused SSL session for data connection");
 
       ctrl_sess = SSL_get_session(ctrl_ssl);
       if (ctrl_sess != NULL) {
