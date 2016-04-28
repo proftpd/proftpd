@@ -56,7 +56,7 @@ static int fd_set_block(int fd) {
 }
 #endif /* PR_USE_NONBLOCKING_LOG_OPEN */
 
-void pr_log_stacktrace(const char*moduleversion, const char*function) {
+void pr_log_stacktrace(module *module, int debuglevel, const char*file, int line) {
 #if defined(HAVE_EXECINFO_H) && \
     defined(HAVE_BACKTRACE) && \
     defined(HAVE_BACKTRACE_SYMBOLS)
@@ -64,11 +64,11 @@ void pr_log_stacktrace(const char*moduleversion, const char*function) {
   char **strings;
   int tracesz;
 
-  (void) pr_log_debug(DEBUG4, "%s: -----BEGIN STACK TRACE in %s -----",moduleversion, function);
+  (void) pr_log_debug(debuglevel, "%s/%s: -----BEGIN STACK TRACE in %s -----",module->name,module->module_version, function);
 
   tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
   if (tracesz < 0) {
-    (void) pr_log_debug(DEBUG4, "%s: backtrace(3) error: %s", moduleversion, strerror(errno));
+    (void) pr_log_debug(debuglevel, "%s/%s: backtrace(3) error: %s", module->name, module->module_version, strerror(errno));
   }
 
   strings = backtrace_symbols(trace, tracesz);
@@ -76,17 +76,17 @@ void pr_log_stacktrace(const char*moduleversion, const char*function) {
     register unsigned int i;
 
     for (i = 1; i < tracesz; i++) {
-      (void) pr_log_debug(DEBUG4, "%s: [%u] %s", moduleversion, i-1, strings[i]);
+      (void) pr_log_debug(debuglevel, "%s/%s: [%u] %s", module->name, module->module_version, i-1, strings[i]);
     }
 
     /* Prevent memory leaks. */
     free(strings);
 
   } else {
-    (void) pr_log_debug(DEBUG4, "%s: error obtaining stacktrace symbols: %s", moduleversion, strerror(errno));
+    (void) pr_log_debug(debuglevel, "%s/%s: error obtaining stacktrace symbols: %s", module->name, module->module_version, strerror(errno));
   }
  
-  (void) pr_log_debug(DEBUG4, "%s: -----END STACK TRACE-----",moduleversion);
+  (void) pr_log_debug(debuglevel, "%s/%s: -----END STACK TRACE-----",module->name, module->module_version);
 #endif
 }
 
