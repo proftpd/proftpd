@@ -64,7 +64,7 @@ void pr_log_stacktrace(module *module, int debuglevel, const char*file, int line
   char **strings;
   int tracesz;
 
-  (void) pr_log_debug(debuglevel, "%s/%s: -----BEGIN STACK TRACE in %s -----",module->name,module->module_version, function);
+  (void) pr_log_debug(debuglevel, "%s/%s: -----BEGIN STACK TRACE from %s/%d -----",module->name,module->module_version, function);
 
   tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
   if (tracesz < 0) {
