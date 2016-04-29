@@ -38,6 +38,8 @@
 #define AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY	0x002
 #define AUTH_OTP_OPT_DISPLAY_VERIFICATION_CODE	0x004
 
+#define AUTH_OTP_VERIFICATION_CODE_PROMPT	"Verification code: "
+
 /* From src/response.c */
 extern pr_response_t *resp_list;
 
@@ -94,7 +96,7 @@ static int auth_otp_kbdint_open(sftp_kbdint_driver_t *driver,
 
 static int auth_otp_kbdint_authenticate(sftp_kbdint_driver_t *driver,
     const char *user) {
-  int authoritative = FALSE, res;
+  int authoritative = FALSE, res, xerrno;
   sftp_kbdint_challenge_t *challenge;
   unsigned int recvd_count = 0;
   const char **recvd_responses = NULL, *user_otp = NULL;
@@ -103,8 +105,35 @@ static int auth_otp_kbdint_authenticate(sftp_kbdint_driver_t *driver,
     authoritative = TRUE;
   }
 
+  /* Check first to see if we even have information for this user, for to
+   * use when verifying them.  If not, then don't prompt the user for info
+   * that we know, a priori, we cannot verify.
+   */
+  res = auth_otp_db_rlock(dbh);
+  if (res < 0) {
+    (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
+      "failed to read-lock AuthOTPTable: %s", strerror(errno));
+  }
+
+  res = auth_otp_db_have_user_info(driver->driver_pool, dbh, user);
+  xerrno = errno;
+
+  if (auth_otp_db_unlock(dbh) < 0) {
+    (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
+      "failed to unlock AuthOTPTable: %s", strerror(errno));
+  }
+
+  if (res < 0) {
+    (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
+      "no info for user '%s' found in AuthOTPTable, skipping "
+      "SSH2 keyboard-interactive challenge", user);
+    errno = xerrno;
+    return -1;
+  }
+
   challenge = pcalloc(driver->driver_pool, sizeof(sftp_kbdint_challenge_t));
-  challenge->challenge = pstrdup(driver->driver_pool, "Verification code: ");
+  challenge->challenge = pstrdup(driver->driver_pool,
+    AUTH_OTP_VERIFICATION_CODE_PROMPT);
   challenge->display_response = FALSE;
 
   if (auth_otp_opts & AUTH_OTP_OPT_DISPLAY_VERIFICATION_CODE) {
@@ -112,15 +141,23 @@ static int auth_otp_kbdint_authenticate(sftp_kbdint_driver_t *driver,
   }
 
   if (sftp_kbdint_send_challenge(NULL, NULL, 1, challenge) < 0) {
+    xerrno = errno;
+
     pr_trace_msg(trace_channel, 3,
-      "error sending keyboard-interactive challenges: %s", strerror(errno));
+      "error sending keyboard-interactive challenges: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
   if (sftp_kbdint_recv_response(driver->driver_pool, 1,
       &recvd_count, &recvd_responses) < 0) {
+    xerrno = errno;
+
     pr_trace_msg(trace_channel, 3,
-      "error receiving keyboard-interactive responses: %s", strerror(errno));
+      "error receiving keyboard-interactive responses: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -242,7 +279,7 @@ static int update_otp_counter(pool *p, const char *user,
 /* Sets the auth_otp_auth_code variable upon failure. */
 static int handle_user_otp(pool *p, const char *user, const char *user_otp,
     int authoritative) {
-  int res = 0;
+  int res = 0, xerrno = 0;
   const unsigned char *secret = NULL;
   size_t secret_len = 0;
   unsigned long counter = 0, *counter_ptr = NULL, next_counter = 0;
@@ -281,12 +318,16 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
       "failed to read-lock AuthOTPTable: %s", strerror(errno));
   }
 
-  res = auth_otp_db_user_info(p, dbh, user, &secret, &secret_len, counter_ptr);
+  res = auth_otp_db_get_user_info(p, dbh, user, &secret, &secret_len,
+    counter_ptr);
+  xerrno = errno;
+
+  if (auth_otp_db_unlock(dbh) < 0) {
+    (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
+      "failed to unlock AuthOTPTable: %s", strerror(errno));
+  }
+
   if (res < 0) {
-    int xerrno = errno;
-
-    (void) auth_otp_db_unlock(dbh);
-
     if (xerrno == ENOENT) {
       pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
         "user '%s' has no OTP info in AuthOTPTable", user);
@@ -323,12 +364,6 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
     }
 
     return 0;
-  }
-
-  res = auth_otp_db_unlock(dbh);
-  if (res < 0) {
-    (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
-      "failed to unlock AuthOTPTable: %s", strerror(errno));
   }
 
   res = check_otp_code(p, user, user_otp, secret, secret_len, counter);

@@ -166,8 +166,9 @@ struct auth_otp_db *auth_otp_db_open(pool *p, const char *tabinfo) {
   return dbh;
 }
 
-int auth_otp_db_user_info(pool *p, struct auth_otp_db *dbh, const char *user,
-    const unsigned char **secret, size_t *secret_len, unsigned long *counter) {
+int auth_otp_db_get_user_info(pool *p, struct auth_otp_db *dbh,
+    const char *user, const unsigned char **secret, size_t *secret_len,
+    unsigned long *counter) {
   int res;
   pool *tmp_pool = NULL;
   cmdtable *sql_cmdtab = NULL;
@@ -263,6 +264,23 @@ int auth_otp_db_user_info(pool *p, struct auth_otp_db *dbh, const char *user,
 
   destroy_pool(tmp_pool);
   return 0;
+}
+
+int auth_otp_db_have_user_info(pool *p, struct auth_otp_db *dbh,
+    const char *user) {
+  int res, xerrno = 0;
+  const unsigned char *secret = NULL;
+  size_t secret_len = 0;
+
+  res = auth_otp_db_get_user_info(p, dbh, user, &secret, &secret_len, NULL);
+  xerrno = errno;
+
+  if (res == 0) {
+    pr_memscrub((void *) secret, secret_len);
+  }
+
+  errno = xerrno;
+  return res;
 }
 
 int auth_otp_db_update_counter(struct auth_otp_db *dbh, const char *user,
