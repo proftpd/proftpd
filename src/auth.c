@@ -1806,6 +1806,21 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   gid_t *gids = NULL, *proc_gids = NULL;
   size_t ngids = 0, nproc_gids = 0;
   char *strgids = "";
+  int have_root_privs = TRUE;
+
+  /* First, check to see whether we even CAN set the process GIDs, which
+   * requires root privileges.
+   */
+  if (getuid() != PR_ROOT_UID) {
+    have_root_privs = FALSE;
+  }
+
+  if (have_root_privs == FALSE) {
+    pr_trace_msg(trace_channel, 3,
+      "unable to set groups due to lack of root privs");
+    errno = ENOSYS;
+    return -1;
+  }
 
   /* sanity check */
   if (p == NULL ||
@@ -1860,8 +1875,9 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
       }
     }
 
-    if (!skip_gid)
+    if (!skip_gid) {
       proc_gids[nproc_gids++] = gids[i];
+    }
   }
 
   for (i = 0; i < nproc_gids; i++) {
@@ -1878,23 +1894,31 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   /* Set the supplemental groups. */
   res = setgroups(nproc_gids, proc_gids);
   if (res < 0) {
+    int xerrno = errno;
+
     destroy_pool(tmp_pool);
+
+    errno = xerrno;
     return res;
   }
 #endif /* !HAVE_SETGROUPS */
 
 #ifndef PR_DEVEL_COREDUMP
-  /* Set the primary GID of the process.
-   */
+  /* Set the primary GID of the process. */
   res = setgid(primary_gid);
   if (res < 0) {
-    if (tmp_pool)
+    int xerrno = errno;
+
+    if (tmp_pool != NULL) {
       destroy_pool(tmp_pool);
+    }
+
+    errno = xerrno;
     return res;
   }
 #endif /* PR_DEVEL_COREDUMP */
 
-  if (tmp_pool) {
+  if (tmp_pool != NULL) {
     destroy_pool(tmp_pool);
   }
 

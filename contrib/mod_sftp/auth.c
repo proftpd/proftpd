@@ -505,8 +505,10 @@ static int setup_env(pool *p, char *user) {
   PRIVS_RELINQUISH
 
   if (res < 0) {
-    pr_log_pri(PR_LOG_WARNING, "unable to set process groups: %s",
-      strerror(xerrno));
+    if (xerrno != ENOSYS) {
+      pr_log_pri(PR_LOG_WARNING, "unable to set process groups: %s",
+        strerror(xerrno));
+    }
   }
 
   default_root = get_default_root(session.pool);

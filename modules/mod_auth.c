@@ -1244,8 +1244,10 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     PRIVS_ROOT
     res = set_groups(p, pw->pw_gid, session.gids);
     if (res < 0) {
-      pr_log_pri(PR_LOG_WARNING, "error: unable to set groups: %s",
-        strerror(errno));
+      if (errno != ENOSYS) {
+        pr_log_pri(PR_LOG_WARNING, "error: unable to set groups: %s",
+          strerror(errno));
+      }
     }
 
 #ifndef PR_DEVEL_COREDUMP
@@ -1364,8 +1366,10 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     PRIVS_ROOT
     res = set_groups(p, daemon_gid, daemon_gids);
     if (res < 0) {
-      pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
-        strerror(errno));
+      if (errno != ENOSYS) {
+        pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+          strerror(errno));
+      }
     }
 
 #ifndef PR_DEVEL_COREDUMP
@@ -1572,8 +1576,10 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
 
   res = set_groups(p, pw->pw_gid, session.gids);
   if (res < 0) {
-    pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
-      strerror(errno));
+    if (errno != ENOSYS) {
+      pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+        strerror(errno));
+    }
   }
 
   PRIVS_RELINQUISH
