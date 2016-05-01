@@ -1453,8 +1453,8 @@ int pr_inet_accept_nowait(pool *p, conn_t *c) {
 conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
     unsigned char resolve) {
   conn_t *res = NULL;
-  unsigned char *allow_foreign_addr = NULL;
-  int fd = -1;
+  unsigned char *foreign_addr = NULL;
+  int fd = -1, allow_foreign_address = FALSE;
   pr_netaddr_t na;
   socklen_t nalen;
 
@@ -1472,8 +1472,10 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
 
   d->mode = CM_ACCEPT;
 
-  allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF,
-    "AllowForeignAddress", FALSE);
+  foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress", FALSE);
+  if (foreign_addr != NULL) {
+    allow_foreign_address = *foreign_addr;
+  }
 
   /* A directive could enforce only IPv4 or IPv6 connections here, by
    * actually using a sockaddr argument to accept(2), and checking the
@@ -1484,30 +1486,44 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
     pr_signals_handle();
 
     fd = accept(d->listen_fd, pr_netaddr_get_sockaddr(&na), &nalen);
-    if (fd != -1) {
-      if ((!allow_foreign_addr || *allow_foreign_addr == FALSE) &&
-          (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1)) {
-
-        if (pr_netaddr_cmp(&na, c->remote_addr) != 0) {
-          pr_log_pri(PR_LOG_NOTICE,
-            "SECURITY VIOLATION: Passive connection from %s rejected.",
-            pr_netaddr_get_ipstr(&na));
-          close(fd);
-          continue;
-        }
-      }
-
-      d->mode = CM_OPEN;
-      res = pr_inet_openrw(p, d, NULL, PR_NETIO_STRM_DATA, fd, rfd, wfd,
-        resolve);
-
-    } else {
-      if (errno == EINTR)
+    if (fd < 0) {
+      if (errno == EINTR) {
         continue;
+      }
 
       d->mode = CM_ERROR;
       d->xerrno = errno;
+      break;
     }
+
+    if (allow_foreign_address == FALSE) {
+      /* If foreign addresses (i.e. IP addresses that do not match the
+       * control connection's remote IP address) are not allowed, we
+       * need to see just what our remote address IS.
+       */
+      if (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) < 0) {
+        /* If getpeername(2) fails, should we still allow this connection?
+         * Caution (and the AllowForeignAddress setting say "no".
+         */
+        pr_log_pri(PR_LOG_DEBUG, "rejecting passive connection; "
+          "failed to get address of remote peer: %s", strerror(errno));
+        (void) close(fd);
+        continue;
+      }
+
+      if (pr_netaddr_cmp(&na, c->remote_addr) != 0) {
+        pr_log_pri(PR_LOG_NOTICE, "SECURITY VIOLATION: Passive connection "
+          "from foreign IP address %s rejected (does not match client "
+          "IP address %s).", pr_netaddr_get_ipstr(&na),
+          pr_netaddr_get_ipstr(c->remote_addr));
+        (void) close(fd);
+        continue;
+      }
+    }
+
+    d->mode = CM_OPEN;
+    res = pr_inet_openrw(p, d, NULL, PR_NETIO_STRM_DATA, fd, rfd, wfd,
+      resolve);
 
     break;
   }
