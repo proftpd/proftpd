@@ -543,6 +543,7 @@ static void log_write(int priority, int f, char *s, int discard) {
       buf, buflen);
 
     fprintf(stderr, "%s", buf);
+    fflush(stderr);
     return;
   }
 
