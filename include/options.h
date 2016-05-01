@@ -48,8 +48,9 @@
  * burst before the kernel rejects.  This can be configured by the
  * "tcpBackLog" configuration directive, this value is just the default.
  */
-
-#define PR_TUNABLE_DEFAULT_BACKLOG	32
+#ifndef PR_TUNABLE_DEFAULT_BACKLOG
+# define PR_TUNABLE_DEFAULT_BACKLOG	128
+#endif /* PR_TUNABLE_DEFAULT_BACKLOG */
 
 /* The default TCP send/receive buffer sizes, should explicit sizes not
  * be defined at compile time, or should the runtime determination process
