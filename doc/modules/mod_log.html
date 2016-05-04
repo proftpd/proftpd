@@ -518,6 +518,39 @@ The <code>mod_log</code> module is compiled by default.
 <b>Frequently Asked Questions</b><br>
 
 <p>
+<font color=red>Question</font>: I have configured ProFTPD to use DNS names
+in my <code>proftpd.conf</code> using:
+<pre>
+  UseReverseDNS on
+</pre>
+But in my <code>ExtendedLog</code>, I still see IP addresses rather than the
+DNS names I expect to see.  How can that happen?<br>
+<font color=blue>Answer</font>: The
+<a href="#LogFormat"><code>LogFormat</code></a> <code>%h</code> is what is used
+to log DNS names.  The logged value might be an IP address if ProFTPD cannot
+properly verify that the client IP address resolves to a DNS name.
+
+<p>
+"Properly verifying" an IP address, in this case, means resolving the DNS name
+for an IP address <em>and then resolving that DNS name back to its IP
+addresses</em>:
+<pre>
+  $ host 10.1.2.3
+  3.2.1.10.in-addr.arpa domain name pointer host.domain.example.com.
+  $ host host.domain.example.com
+  host.domain.example.com has address 10.4.5.6
+</pre>
+In this example, the IP address 10.1.2.3 does not resolve back to itself via
+DNS, but rather to a <i>different</i> IP address.
+
+<p>
+If the DNS name does not resolve back to the original IP address, then that
+DNS name is <b>not used</b>, as that DNS name is considered "unreliable"; only
+<em>reliable</em> information is logged (and used elsewhere).  Thus ProFTPD
+resorts to logging just the client IP address for the <code>%h</code> variable,
+rather than the DNS name, in these situations.
+
+<p>
 <font color=red>Question</font>: How can I get the reason a client was
 disconnected, for whatever reason, logged to my <code>ExtendedLog</code>?<br>
 <font color=blue>Answer</font>: You can use the <code>%E</code>
