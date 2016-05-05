@@ -1516,7 +1516,7 @@ Optional Features:
   --enable-autoshadow     enable run-time auto-detection of shadowed passwords
                           (requires shadow)
 
-  --enable-auth-pam       enable PAM support (default=yes)
+  --enable-auth-pam       enable PAM support (default=auto)
 
   --enable-builtin-getaddrinfo
                           force use of builtin getaddrinfo (default=no)
@@ -1555,7 +1555,7 @@ Optional Features:
 
   --enable-openssl        enable OpenSSL support (default=no)
 
-  --enable-sodium         enable Sodium support (default=yes)
+  --enable-sodium         enable Sodium support (default=auto)
 
   --disable-sendfile      disable sendfile support (default=no)
 
@@ -1567,7 +1567,7 @@ Optional Features:
 
   --disable-trace         disable trace support (default=no)
 
-  --disable-xattr         disable extended attribute support (default=no)
+  --disable-xattr         disable extended attribute support (default=auto)
 
   --enable-devel          enable developer-only code (default=no)
 
