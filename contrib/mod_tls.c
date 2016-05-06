@@ -10675,12 +10675,16 @@ MODRET tls_prot(cmd_rec *cmd) {
   }
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
-    pr_response_add_err(R_503,
-      _("You must issue the PBSZ command prior to PROT"));
+#if 0
+      pr_response_add_err(R_503,
+                          _("You must issue the PBSZ command prior to PROT"));
 
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
-    return PR_ERROR(cmd);
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
+      return PR_ERROR(cmd);
+#else
+      tls_flags |= TLS_SESS_PBSZ_OK;
+#endif
   }
 
   /* Check for <Limit> restrictions. */
@@ -11373,7 +11377,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "dNSNameRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_FQDN;
- 
+
     } else if (strcmp(cmd->argv[i], "iPAddressRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_IP_ADDR;
 
