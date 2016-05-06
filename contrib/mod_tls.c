@@ -10674,18 +10674,18 @@ MODRET tls_prot(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
-#if 0
-      pr_response_add_err(R_503,
-                          _("You must issue the PBSZ command prior to PROT"));
-
-      pr_cmd_set_errno(cmd, EPERM);
-      errno = EPERM;
-      return PR_ERROR(cmd);
-#else
-      tls_flags |= TLS_SESS_PBSZ_OK;
-#endif
-  }
+  /* In theory, we could enforce the RFC 4217 semantics, which require
+   * that PBSZ be sent before the PROT command.
+   *
+   * However, some broken FTPS clients do not send PBSZ before PROT.  And,
+   * in practice, since the PBSZ value for FTPS is ALWAYS zero, there is little
+   * value in punishing users of these broken clients by refusing to work
+   * with their client.
+   *
+   * Thus we've relaxed our PBSZ requirements, by acting as if PBSZ has been
+   * sent already, even if it has not.  For now.
+   */
+  tls_flags |= TLS_SESS_PBSZ_OK;
 
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
