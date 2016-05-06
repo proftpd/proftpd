@@ -485,6 +485,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_VERIFY_CERT_CN				0x0800
 #define TLS_OPT_NO_AUTO_ECDH				0x1000
 #define TLS_OPT_ALLOW_WEAK_DH				0x2000
+#define TLS_OPT_REQUIRE_PBSZ        0x4000
 
 /* mod_tls SSCN modes */
 #define TLS_SSCN_MODE_SERVER				0
@@ -10654,6 +10655,8 @@ MODRET tls_post_pass(cmd_rec *cmd) {
 }
 
 MODRET tls_prot(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  unsigned long tls_opts = 0;
   char *prot;
 
   if (!tls_engine ||
@@ -10674,13 +10677,28 @@ MODRET tls_prot(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
-    pr_response_add_err(R_503,
-      _("You must issue the PBSZ command prior to PROT"));
+  c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
 
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
-    return PR_ERROR(cmd);
+    pr_signals_handle();
+    opts = *((unsigned long *) c->argv[0]);
+    tls_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSOptions", FALSE);
+  }
+
+  if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
+    if ( tls_opts & TLS_OPT_REQUIRE_PBSZ ) {
+      pr_response_add_err(R_503,
+                          _("You must issue the PBSZ command prior to PROT"));
+
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
+      return PR_ERROR(cmd);
+    } else {
+      tls_flags |= TLS_SESS_PBSZ_OK;
+    }
   }
 
   /* Check for <Limit> restrictions. */
@@ -11373,7 +11391,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "dNSNameRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_FQDN;
- 
+
     } else if (strcmp(cmd->argv[i], "iPAddressRequired") == 0) {
       opts |= TLS_OPT_VERIFY_CERT_IP_ADDR;
 
@@ -11385,6 +11403,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "NoAutoECDH") == 0) {
       opts |= TLS_OPT_NO_AUTO_ECDH;
+
+    } else if (strcmp(cmd->argv[i], "RequirePBSZ") == 0) {
+      opts |= TLS_OPT_REQUIRE_PBSZ;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
