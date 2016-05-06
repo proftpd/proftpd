@@ -10655,8 +10655,6 @@ MODRET tls_post_pass(cmd_rec *cmd) {
 }
 
 MODRET tls_prot(cmd_rec *cmd) {
-  config_rec *c = NULL;
-  unsigned long tls_opts = 0;
   char *prot;
 
   if (!tls_engine ||
@@ -10677,19 +10675,8 @@ MODRET tls_prot(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
-  while (c != NULL) {
-    unsigned long opts = 0;
-
-    pr_signals_handle();
-    opts = *((unsigned long *) c->argv[0]);
-    tls_opts |= opts;
-
-    c = find_config_next(c, c->next, CONF_PARAM, "TLSOptions", FALSE);
-  }
-
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
-    if ( tls_opts & TLS_OPT_REQUIRE_PBSZ ) {
+    if (tls_opts & TLS_OPT_REQUIRE_PBSZ) {
       pr_response_add_err(R_503,
                           _("You must issue the PBSZ command prior to PROT"));
 
