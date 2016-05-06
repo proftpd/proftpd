@@ -485,7 +485,6 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_VERIFY_CERT_CN				0x0800
 #define TLS_OPT_NO_AUTO_ECDH				0x1000
 #define TLS_OPT_ALLOW_WEAK_DH				0x2000
-#define TLS_OPT_REQUIRE_PBSZ        0x4000
 
 /* mod_tls SSCN modes */
 #define TLS_SSCN_MODE_SERVER				0
@@ -10676,16 +10675,16 @@ MODRET tls_prot(cmd_rec *cmd) {
   }
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
-    if (tls_opts & TLS_OPT_REQUIRE_PBSZ) {
+#if 0
       pr_response_add_err(R_503,
                           _("You must issue the PBSZ command prior to PROT"));
 
       pr_cmd_set_errno(cmd, EPERM);
       errno = EPERM;
       return PR_ERROR(cmd);
-    } else {
+#else
       tls_flags |= TLS_SESS_PBSZ_OK;
-    }
+#endif
   }
 
   /* Check for <Limit> restrictions. */
@@ -11390,9 +11389,6 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "NoAutoECDH") == 0) {
       opts |= TLS_OPT_NO_AUTO_ECDH;
-
-    } else if (strcmp(cmd->argv[i], "RequirePBSZ") == 0) {
-      opts |= TLS_OPT_REQUIRE_PBSZ;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSOption '",
