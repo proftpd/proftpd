@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_geoip -- a module for looking up country/city/etc for clients
- *
- * Copyright (c) 2010-2015 TJ Saunders
+ * Copyright (c) 2010-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +35,7 @@
  * module for Apache.
  */
 
-#define MOD_GEOIP_VERSION		"mod_geoip/0.8"
+#define MOD_GEOIP_VERSION		"mod_geoip/0.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -141,6 +140,129 @@ static const char *trace_channel = "geoip";
 
 static const char *get_geoip_filter_name(int);
 static const char *get_geoip_filter_value(int);
+
+#if PR_USE_REGEX
+static int prepare_filter(pool *p, const char *pattern, pr_regex_t **pre) {
+  int res;
+
+  *pre = pr_regexp_alloc(&geoip_module);
+
+  res = pr_regexp_compile(*pre, pattern, REG_EXTENDED|REG_NOSUB|REG_ICASE);
+  if (res != 0) {
+    char errstr[256];
+
+    memset(errstr, '\0', sizeof(errstr));
+    pr_regexp_error(res, *pre, errstr, sizeof(errstr)-1);
+    pr_regexp_free(&geoip_module, *pre);
+    *pre = NULL;
+
+    pr_log_pri(PR_LOG_DEBUG, MOD_GEOIP_VERSION
+      ": pattern '%s' failed regex compilation: %s", pattern, errstr);
+    errno = EINVAL;
+    return -1;
+  }
+
+  return res;
+}
+#endif /* PR_USE_REGEX */
+
+static const char *get_sql_pattern(pool *p, const char *query_name) {
+  cmdtable *sql_cmdtab = NULL;
+  cmd_rec *sql_cmd = NULL;
+  modret_t *sql_res = NULL;
+  array_header *sql_data = NULL;
+  const char *pattern = NULL, **values = NULL;
+
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
+  if (sql_cmdtab == NULL) {
+    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      "unable to execute SQLNamedQuery '%s': mod_sql not loaded", query_name);
+    errno = EPERM;
+    return NULL;
+  }
+
+  sql_cmd = pr_cmd_alloc(p, 2, "sql_lookup", query_name);
+
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  if (sql_res == NULL ||
+      MODRET_ISERROR(sql_res)) {
+    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      "error processing SQLNamedQuery '%s'; check mod_sql logs for details",
+      query_name);
+    errno = EPERM;
+    return NULL;
+  }
+
+  sql_data = sql_res->data;
+  pr_trace_msg(trace_channel, 9, "SQLNamedQuery '%s' returned item count %d",
+    query_name, sql_data->nelts);
+
+  if (sql_data->nelts == 0) {
+    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      "SQLNamedQuery '%s' returned no values", query_name);
+    errno = ENOENT;
+    return NULL;
+  }
+
+  /* We only use the first string returned. */
+  values = sql_data->elts;
+  pattern = values[0];
+
+  pr_trace_msg(trace_channel, 8,
+    "SQLNamedQuery '%s' returned pattern '%s'", query_name, pattern);
+  return pattern;
+}
+
+static void resolve_deferred_patterns(pool *p, const char *directive) {
+#if PR_USE_REGEX
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, directive, FALSE);
+  while (c != NULL) {
+    register unsigned int i;
+    array_header *deferred_patterns, *filters;
+    struct geoip_filter *filter;
+
+    pr_signals_handle();
+
+    filters = c->argv[0];
+    deferred_patterns = c->argv[1];
+
+    for (i = 0; i < deferred_patterns->nelts; i++) {
+      pr_regex_t *pre = NULL;
+      const char *pattern, *query_name;
+
+      filter = ((struct geoip_filter **) deferred_patterns->elts)[i];
+
+      /* Advance past the "sql:/" prefix. */
+      query_name = filter->filter_pattern + 5;
+
+      pattern = get_sql_pattern(p, query_name);
+      if (pattern == NULL) {
+        continue;
+      }
+
+      if (prepare_filter(p, pattern, &pre) < 0) {
+        pr_trace_msg(trace_channel, 3,
+          "unable to use deferred %s pattern '%s' as filter: %s", directive,
+          pattern, strerror(errno));
+        continue;
+      }
+
+      filter->filter_re = pre;
+      *((struct geoip_filter **) push_array(filters)) = filter;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, directive, FALSE);
+  }
+#endif /* PR_USE_REGEX */
+}
+
+static void resolve_deferred_filters(pool *p) {
+  resolve_deferred_patterns(p, "GeoIPAllowFilter");
+  resolve_deferred_patterns(p, "GeoIPDenyFilter");
+}
 
 static int check_geoip_filters(geoip_policy_e policy) {
   int allow_conn = 0, matched_allow_filter = -1, matched_deny_filter = -1;
@@ -1023,27 +1145,31 @@ static void set_geoip_values(void) {
 
 /* usage:
  *  GeoIPAllowFilter key1 regex1 [key2 regex2 ...]
+ *                   key1 sql:/...
  *  GeoIPDenyFilter key1 regex1 [key2 regex2 ...]
+ *                  key1 sql:/...
  */
 MODRET set_geoipfilter(cmd_rec *cmd) {
 #if PR_USE_REGEX
   register unsigned int i;
   config_rec *c;
-  array_header *filters;
+  array_header *deferred_patterns, *filters;
 
   if ((cmd->argc-1) % 2 != 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   filters = make_array(c->pool, 0, sizeof(struct geoip_filter *));
+  deferred_patterns = make_array(c->pool, 0, sizeof(struct geoip_filter *));
 
   for (i = 1; i < cmd->argc; i += 2) {
     register unsigned int j;
-    pr_regex_t *pre;
-    int filter_id = -1, res;
+    pr_regex_t *pre = NULL;
+    int filter_id = -1;
     struct geoip_filter *filter;
+    const char *pattern = NULL;
 
     /* Make sure a supported filter key was configured. */
     for (j = 0; geoip_filter_keys[j].filter_name != NULL; j++) {
@@ -1058,30 +1184,31 @@ MODRET set_geoipfilter(cmd_rec *cmd) {
         cmd->argv[1], "'", NULL));
     }
 
-    pre = pr_regexp_alloc(&geoip_module);
-
-    res = pr_regexp_compile(pre, cmd->argv[i+1],
-      REG_EXTENDED|REG_NOSUB|REG_ICASE);
-    if (res != 0) {
-      char errstr[256];
-
-      memset(errstr, '\0', sizeof(errstr));
-      pr_regexp_error(res, pre, errstr, sizeof(errstr)-1);
-      pr_regexp_free(&geoip_module, pre);
-
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "pattern '", cmd->argv[i+1],
-        "' failed regex compilation: ", errstr, NULL));
-    }
+    pattern = cmd->argv[i+1];
 
     filter = pcalloc(c->pool, sizeof(struct geoip_filter));
     filter->filter_id = filter_id;
-    filter->filter_pattern = pstrdup(c->pool, cmd->argv[i+1]);
-    filter->filter_re = pre;
+    filter->filter_pattern = pstrdup(c->pool, pattern);
 
+    /* If the given pattern starts with "sql:/", then we defer the
+     * construction/preparation of the filter until authentication time.
+     */
+    if (strncmp(pattern, "sql:/", 5) == 0) {
+      *((struct geoip_filter **) push_array(deferred_patterns)) = filter;
+      continue;
+    }
+
+    if (prepare_filter(cmd->tmp_pool, pattern, &pre) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use pattern '",
+        pattern, "' as filter: ", strerror(errno), NULL));
+    }
+
+    filter->filter_re = pre;
     *((struct geoip_filter **) push_array(filters)) = filter;
   }
 
   c->argv[0] = filters;
+  c->argv[1] = deferred_patterns;
   return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
@@ -1207,6 +1334,9 @@ MODRET geoip_post_pass(cmd_rec *cmd) {
   if (geoip_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
+
+  /* Scan for any deferred GeoIP filters and resolve them. */
+  resolve_deferred_filters(cmd->tmp_pool);
 
   /* Modules such as mod_ifsession may have added new filters; check the
    * filters again.
@@ -1352,7 +1482,7 @@ static int geoip_sess_init(void) {
   get_geoip_info(sess_geoips);
 
   c = find_config(main_server->conf, CONF_PARAM, "GeoIPPolicy", FALSE);
-  if (c) {
+  if (c != NULL) {
     geoip_policy = *((geoip_policy_e *) c->argv[0]);
   }
 
