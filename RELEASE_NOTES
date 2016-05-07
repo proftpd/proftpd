@@ -27,6 +27,8 @@ ChangeLog files.
 
   + Changed Configuration Directives:
 
+    GeoIPAllowFilter, GeoIPDenyFilter (Bug#4220)
+
     MasqueradeAddress
       The MasqueradeAddress directive is now allowed in <Global> sections,
       to ease configuration for name-based virtual hosts.
