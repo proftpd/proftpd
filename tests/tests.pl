@@ -289,6 +289,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_geoip)],
     },
 
+    't/modules/mod_geoip/sql.t' => {
+      order => ++$order,
+      test_class => [qw(mod_geoip mod_sql mod_sql_sqlite)],
+    },
+
     't/modules/mod_ifversion.t' => {
       order => ++$order,
       test_class => [qw(mod_ifversion)],
