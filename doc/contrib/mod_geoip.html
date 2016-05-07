@@ -93,6 +93,13 @@ The <em>pattern</em> parameter is <b>case-insensitive</b> regular expression
 that will be applied to the specified <em>filter</em> value, if available.
 
 <p>
+Note that as of <code>proftpd-1.3.6rc3</code> and later, the
+<code>GeoIPAllowFilter</code> directive can also take a <em>single</em>
+parameter which specifies a SQL query (via <code>mod_sql</code>'s
+<a href="mod_sql.html#SQLNamedQuery"><code>SQLNamedQuery</code></a>), which
+will be used to retrieve the <em>filter</em> and <em>pattern</em> values to use.
+
+<p>
 Examples:
 <pre>
   # Allow clients with high-speed connections
@@ -100,6 +107,41 @@ Examples:
 
   # Reject clients connecting from North America or South America
   GeoIPDenyFilter Continent (NA|SA)
+</pre>
+The following more complex configuration demonstrates what can be done using
+SQL querires:
+<pre>
+  &lt;IfModule mod_sql.c&gt;
+    ...
+    SQLNamedQuery get-geo-allowed SELECT "filter_name, pattern FROM allowed_user_geo WHERE user_name = '%u'"
+    SQLNamedQuery get-geo-denied SELECT "filter_name, pattern FROM denied_user_geo WHERE user_name = '%u'"
+  &lt;/IfModule&gt;
+
+  &lt;IfModule mod_geoip.c&gt;
+    GeoIPEngine on
+
+    GeoIPAllowFilter sql:/get-geo-allowed
+    GeoIPDenyFilter sql:/get-geo-denied
+  &lt;/IfModule&gt;
+</pre>
+The above assumes SQL tables with schema similar to the following (expressed
+using SQLite syntax):
+<pre>
+  CREATE TABLE allowed_user_geo (
+    user_name TEXT,
+    filter_name TEXT,
+    pattern TEXT
+  );
+
+  CREATE TABLE denied_user_geo (
+    user_name TEXT,
+    filter_name TEXT,
+    pattern TEXT
+  );
+
+  # Note that we create separate indexes, to allow for multiple rows per user
+  CREATE INDEX allowed_user_geo_name_idx ON allowed_user_geo (user_name);
+  CREATE INDEX denied_user_geo_name_idx ON denied_user_geo (user_name);
 </pre>
 
 <p>
@@ -119,6 +161,13 @@ on the geographic data provided by the GeoIP library.
 Multiple <code>GeoIPDenyFilter</code> directives in the configuration are
 supported; if <b>any</b> filter matches the connecting client, the connection
 will be rejected.
+
+<p>
+Note that as of <code>proftpd-1.3.6rc3</code> and later, the
+<code>GeoIPDenyFilter</code> directive can also take a <em>single</em>
+parameter which specifies a SQL query (via <code>mod_sql</code>'s
+<a href="mod_sql.html#SQLNamedQuery"><code>SQLNamedQuery</code></a>), which
+will be used to retrieve the <em>filter</em> and <em>pattern</em> values to use.
 
 <p>
 See <a href="#GeoIPAllowFilter"><code>GeoIPAllowFilter</code></a> for

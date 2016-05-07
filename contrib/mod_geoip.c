@@ -141,8 +141,22 @@ static const char *trace_channel = "geoip";
 static const char *get_geoip_filter_name(int);
 static const char *get_geoip_filter_value(int);
 
+static int get_filter_id(const char *filter_name) {
+  register unsigned int i;
+  int filter_id = -1;
+
+  for (i = 0; geoip_filter_keys[i].filter_name != NULL; i++) {
+    if (strcasecmp(filter_name, geoip_filter_keys[i].filter_name) == 0) {
+      filter_id = geoip_filter_keys[i].filter_id;
+      break;
+    }
+  }
+
+  return filter_id;
+}
+
 #if PR_USE_REGEX
-static int prepare_filter(pool *p, const char *pattern, pr_regex_t **pre) {
+static int get_filter(pool *p, const char *pattern, pr_regex_t **pre) {
   int res;
 
   *pre = pr_regexp_alloc(&geoip_module);
@@ -164,14 +178,40 @@ static int prepare_filter(pool *p, const char *pattern, pr_regex_t **pre) {
 
   return res;
 }
-#endif /* PR_USE_REGEX */
 
-static const char *get_sql_pattern(pool *p, const char *query_name) {
+static struct geoip_filter *make_filter(pool *p, const char *filter_name,
+    const char *pattern) {
+  struct geoip_filter *filter;
+  int filter_id;
+  pr_regex_t *pre = NULL;
+
+  filter_id = get_filter_id(filter_name);
+  if (filter_id < 0) {
+    pr_log_debug(DEBUG0, MOD_GEOIP_VERSION ": unknown GeoIP filter name '%s'",
+      filter_name);
+    return NULL;
+  }
+
+  if (get_filter(p, pattern, &pre) < 0) {
+    return NULL;
+  }
+
+  filter = pcalloc(p, sizeof(struct geoip_filter));
+  filter->filter_id = filter_id;
+  filter->filter_pattern = pstrdup(p, pattern);
+  filter->filter_re = pre;
+
+  return filter;
+}
+
+static array_header *get_sql_filters(pool *p, const char *query_name) {
+  register unsigned int i;
   cmdtable *sql_cmdtab = NULL;
   cmd_rec *sql_cmd = NULL;
   modret_t *sql_res = NULL;
   array_header *sql_data = NULL;
-  const char *pattern = NULL, **values = NULL;
+  const char **values = NULL;
+  array_header *sql_filters = NULL;
 
   sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
     NULL);
@@ -205,14 +245,37 @@ static const char *get_sql_pattern(pool *p, const char *query_name) {
     return NULL;
   }
 
-  /* We only use the first string returned. */
-  values = sql_data->elts;
-  pattern = values[0];
+  if (sql_data->nelts % 2 == 1) {
+    (void) pr_log_writefile(geoip_logfd, MOD_GEOIP_VERSION,
+      "SQLNamedQuery '%s' returned odd number of values (%d), "
+      "expected even number", query_name, sql_data->nelts);
+    errno = EINVAL;
+    return NULL;
+  }
 
-  pr_trace_msg(trace_channel, 8,
-    "SQLNamedQuery '%s' returned pattern '%s'", query_name, pattern);
-  return pattern;
+  values = sql_data->elts;
+  sql_filters = make_array(p, 0, sizeof(struct geoip_filter));
+
+  for (i = 0; i < sql_data->nelts; i += 2) {
+    const char *filter_name, *pattern = NULL;
+    struct geoip_filter *filter;
+
+    filter_name = values[i];
+    pattern = values[i+1];
+
+    filter = make_filter(p, filter_name, pattern);
+    if (filter == NULL) {
+      pr_trace_msg(trace_channel, 3, "unable to use '%s %s' as filter: %s",
+        filter_name, pattern, strerror(errno));
+      continue;
+    }
+
+    *((struct geoip_filter **) push_array(sql_filters)) = filter;
+  }
+
+  return sql_filters;
 }
+#endif /* PR_USE_REGEX */
 
 static void resolve_deferred_patterns(pool *p, const char *directive) {
 #if PR_USE_REGEX
@@ -221,37 +284,25 @@ static void resolve_deferred_patterns(pool *p, const char *directive) {
   c = find_config(main_server->conf, CONF_PARAM, directive, FALSE);
   while (c != NULL) {
     register unsigned int i;
-    array_header *deferred_patterns, *filters;
-    struct geoip_filter *filter;
+    array_header *deferred_filters, *filters;
 
     pr_signals_handle();
 
     filters = c->argv[0];
-    deferred_patterns = c->argv[1];
+    deferred_filters = c->argv[1];
 
-    for (i = 0; i < deferred_patterns->nelts; i++) {
-      pr_regex_t *pre = NULL;
-      const char *pattern, *query_name;
+    for (i = 0; i < deferred_filters->nelts; i++) {
+      const char *query_name;
+      array_header *sql_filters;
 
-      filter = ((struct geoip_filter **) deferred_patterns->elts)[i];
+      query_name = ((const char **) deferred_filters->elts)[i];
 
-      /* Advance past the "sql:/" prefix. */
-      query_name = filter->filter_pattern + 5;
-
-      pattern = get_sql_pattern(p, query_name);
-      if (pattern == NULL) {
+      sql_filters = get_sql_filters(p, query_name);
+      if (sql_filters == NULL) {
         continue;
       }
 
-      if (prepare_filter(p, pattern, &pre) < 0) {
-        pr_trace_msg(trace_channel, 3,
-          "unable to use deferred %s pattern '%s' as filter: %s", directive,
-          pattern, strerror(errno));
-        continue;
-      }
-
-      filter->filter_re = pre;
-      *((struct geoip_filter **) push_array(filters)) = filter;
+      array_cat(filters, sql_filters);
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, directive, FALSE);
@@ -1145,66 +1196,66 @@ static void set_geoip_values(void) {
 
 /* usage:
  *  GeoIPAllowFilter key1 regex1 [key2 regex2 ...]
- *                   key1 sql:/...
+ *                   sql:/...
  *  GeoIPDenyFilter key1 regex1 [key2 regex2 ...]
- *                  key1 sql:/...
+ *                  sql:/...
  */
 MODRET set_geoipfilter(cmd_rec *cmd) {
 #if PR_USE_REGEX
-  register unsigned int i;
   config_rec *c;
   array_header *deferred_patterns, *filters;
 
-  if ((cmd->argc-1) % 2 != 0) {
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (cmd->argc == 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* IFF the first parameter starts with "sql:/", then we expect ONLY one
+   * parameter.  If not, then we expect an even number of parameters.
+   */
+
+  if (strncmp(cmd->argv[1], "sql:/", 5) == 0) {
+    if (cmd->argc > 2) {
+      CONF_ERROR(cmd, "wrong number of parameters");
+    }
+
+  } else {
+    if ((cmd->argc-1) % 2 != 0) {
+      CONF_ERROR(cmd, "wrong number of parameters");
+    }
+  }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   filters = make_array(c->pool, 0, sizeof(struct geoip_filter *));
-  deferred_patterns = make_array(c->pool, 0, sizeof(struct geoip_filter *));
+  deferred_patterns = make_array(c->pool, 0, sizeof(char *));
 
-  for (i = 1; i < cmd->argc; i += 2) {
-    register unsigned int j;
-    pr_regex_t *pre = NULL;
-    int filter_id = -1;
-    struct geoip_filter *filter;
-    const char *pattern = NULL;
+  if (cmd->argc == 2) {
+    const char *pattern;
 
-    /* Make sure a supported filter key was configured. */
-    for (j = 0; geoip_filter_keys[j].filter_name != NULL; j++) {
-      if (strcasecmp(cmd->argv[i], geoip_filter_keys[j].filter_name) == 0) {
-        filter_id = geoip_filter_keys[j].filter_id;
-        break;
+    pattern = cmd->argv[1];
+
+    /* Advance past the "sql:/" prefix. */
+    *((char **) push_array(deferred_patterns)) = pstrdup(c->pool, pattern + 5);
+
+  } else {
+    register unsigned int i;
+
+    for (i = 1; i < cmd->argc; i += 2) {
+      const char *filter_name, *pattern = NULL;
+      struct geoip_filter *filter;
+
+      filter_name = cmd->argv[i];
+      pattern = cmd->argv[i+1];
+
+      filter = make_filter(c->pool, filter_name, pattern);
+      if (filter == NULL) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '",
+          filter_name, " ", pattern, "' as filter: ", strerror(errno), NULL));
       }
+
+      *((struct geoip_filter **) push_array(filters)) = filter;
     }
-
-    if (filter_id == -1) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown GeoIP filter name '",
-        cmd->argv[1], "'", NULL));
-    }
-
-    pattern = cmd->argv[i+1];
-
-    filter = pcalloc(c->pool, sizeof(struct geoip_filter));
-    filter->filter_id = filter_id;
-    filter->filter_pattern = pstrdup(c->pool, pattern);
-
-    /* If the given pattern starts with "sql:/", then we defer the
-     * construction/preparation of the filter until authentication time.
-     */
-    if (strncmp(pattern, "sql:/", 5) == 0) {
-      *((struct geoip_filter **) push_array(deferred_patterns)) = filter;
-      continue;
-    }
-
-    if (prepare_filter(cmd->tmp_pool, pattern, &pre) < 0) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use pattern '",
-        pattern, "' as filter: ", strerror(errno), NULL));
-    }
-
-    filter->filter_re = pre;
-    *((struct geoip_filter **) push_array(filters)) = filter;
   }
 
   c->argv[0] = filters;
