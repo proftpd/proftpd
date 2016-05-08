@@ -403,7 +403,7 @@ if test x"$enable_memcache" = xyes; then
 fi
 
 dnl List of modules which are not allowed to be built as DSOs
-ac_unshareable_modules="mod_auth mod_rlimit mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_log mod_site mod_cap mod_ctrls"
+ac_unshareable_modules="mod_auth mod_rlimit mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_log mod_site mod_cap mod_ctrls mod_memcache"
 
 AC_ARG_WITH(shared,
   [AC_HELP_STRING(

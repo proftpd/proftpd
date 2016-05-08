@@ -16878,7 +16878,7 @@ if test x"$enable_memcache" = xyes; then
   ac_build_static_modules="$ac_build_static_modules modules/mod_memcache.o"
 fi
 
-ac_unshareable_modules="mod_auth mod_rlimit mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_log mod_site mod_cap mod_ctrls"
+ac_unshareable_modules="mod_auth mod_rlimit mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_log mod_site mod_cap mod_ctrls mod_memcache"
 
 
 # Check whether --with-shared was given.
