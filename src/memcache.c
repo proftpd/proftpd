@@ -308,8 +308,15 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
 
   memcached_servers_reset(clone);
 
-  /* XXX Find out why this segfaults, on Mac OSX, using libmemcached-1.0.18. */
+  /* Bug#4242: Don't use memcached_server_push() if we're using
+   * libmemcached-1.0.18 or earlier.  Doing so leads to a segfault; I believe
+   * it is caused by:
+   *
+   *  https://bugs.launchpad.net/libmemcached/+bug/1154159
+   */
+#if LIBMEMCACHED_VERSION_HEX > 0x01000018
   memcached_server_push(clone, configured_server_list);
+#endif
 
   server_count = memcached_server_count(clone);
   pr_trace_msg(trace_channel, 16,
