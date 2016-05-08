@@ -309,8 +309,8 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
   memcached_servers_reset(clone);
 
   /* Bug#4242: Don't use memcached_server_push() if we're using
-   * libmemcached-1.0.18 or earlier.  Doing so leads to a segfault; I believe
-   * it is caused by:
+   * libmemcached-1.0.18 or earlier.  Doing so leads to a segfault, due to
+   * this libmemcached bug:
    *
    *  https://bugs.launchpad.net/libmemcached/+bug/1154159
    */
