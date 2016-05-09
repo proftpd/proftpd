@@ -20,6 +20,8 @@
 - Bug 4237 - Corrupted ASCII uploads.  The refactoring work for Bug#4151 had
   introduced a bug in the handling of ASCII uploads, now fixed.
 - Bug 4420 - Support reading geoip filters from SQL databases.
+- Bug 4242 - Using mod_memcache results in segfault (signal 11).  Caused by
+  a bug in libmemcached-1.0.18 and earlier.
 
 1.3.6rc2 - Released 10-Mar-2016
 --------------------------------
