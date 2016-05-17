@@ -138,7 +138,10 @@ int pr_response_block(int bool) {
 
 void pr_response_clear(pr_response_t **head) {
   reset_last_response();
-  *head = NULL;
+
+  if (head != NULL) {
+    *head = NULL;
+  }
 }
 
 void pr_response_flush(pr_response_t **head) {
@@ -149,6 +152,7 @@ void pr_response_flush(pr_response_t **head) {
   if (resp_blocked) {
     pr_trace_msg(trace_channel, 19,
       "responses blocked, not flushing response chain");
+    pr_response_clear(head);
     return;
   }
 
@@ -156,6 +160,7 @@ void pr_response_flush(pr_response_t **head) {
     /* Not sure what happened to the control connection, but since it's gone,
      * there's no need to flush any messages.
      */
+    pr_response_clear(head);
     return;
   }
 
