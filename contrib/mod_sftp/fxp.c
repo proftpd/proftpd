@@ -13561,6 +13561,12 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
 
     pr_response_set_pool(fxp->pool);
 
+    /* Make sure to clear the response lists of any cruft from previous
+     * requests.
+     */
+    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
+
     switch (fxp->request_type) {
       case SFTP_SSH2_FXP_INIT:
         /* If we already know the version, then the client has sent
