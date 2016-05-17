@@ -131,14 +131,14 @@ recommended.
 An example MySQL schema looks like:
 <pre>
   CREATE TABLE sftpuserkeys (
-    name VARCHAR(255) NOT NULL,
-    key VARCHAR(255) NOT NULL
+    name VARCHAR(8192) NOT NULL,
+    key VARCHAR(8192) NOT NULL
   );
   CREATE INDEX sftpuserkeys_idx ON sftpuserkeys (name);
 
   CREATE TABLE sftphostkeys (
-    host VARCHAR(255) NOT NULL,
-    key VARCHAR(255) NOT NULL
+    host VARCHAR(8192) NOT NULL,
+    key VARCHAR(8192) NOT NULL
   );
   CREATE INDEX sftphostkeys_idx ON sftphostkeys (host);
 </pre>
@@ -159,14 +159,12 @@ bulk data loading tools which can also be used to load a CSV file containing
 keys into your SQL tables, for use via <code>mod_sftp_sql</code>.
 
 <p>
-<hr><br>
-
+<hr>
 <font size=2><b><i>
-&copy; Copyright 2009-2015 TJ Saunders<br>
+&copy; Copyright 2009-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
