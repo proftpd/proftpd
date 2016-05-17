@@ -131,14 +131,14 @@ recommended.
 An example MySQL schema looks like:
 <pre>
   CREATE TABLE sftpuserkeys (
-    name VARCHAR(8192) NOT NULL,
-    key VARCHAR(8192) NOT NULL
+    name TEXT(8192) NOT NULL,
+    key TEXT(8192) NOT NULL
   );
   CREATE INDEX sftpuserkeys_idx ON sftpuserkeys (name);
 
   CREATE TABLE sftphostkeys (
-    host VARCHAR(8192) NOT NULL,
-    key VARCHAR(8192) NOT NULL
+    host TEXT(8192) NOT NULL,
+    key TEXT(8192) NOT NULL
   );
   CREATE INDEX sftphostkeys_idx ON sftphostkeys (host);
 </pre>
@@ -157,6 +157,14 @@ Then simply add the output data to your SQL table (<i>e.g.</i> to the
 Other databases (<i>e.g.</i> MySQL, Postgres, Oracle, <i>etc</i>) have
 bulk data loading tools which can also be used to load a CSV file containing
 keys into your SQL tables, for use via <code>mod_sftp_sql</code>.
+
+<p>
+<b>Note</b> that the newlines which are part of the RFC 4716 formatted key
+data <b>are important</b>.  Use of the wrong data type in your SQL schema
+could lead to unexpected parsing issues, which will be logged as:
+<pre>
+  mod_sftp_sql/0.4[16284]: error base64-decoding raw key data from database
+</pre>
 
 <p>
 <hr>
