@@ -1,6 +1,3 @@
-<!-- $Id: mod_wrap2_file.html,v 1.2 2008-12-17 00:24:47 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_wrap2_file.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_wrap2_file</title>
@@ -60,7 +57,8 @@ of that path will be delayed until a user requests a connection, at which time
 the path will be resolved to that user's home directory; or if the path starts
 with <code>~user/</code>, where user is some system user.  In this latter case,
 <code>mod2_wrap</code> will attempt to resolve and verify the given user's home
-directory on start-up.
+directory on start-up.  The <code>%U</code> variable can also be used in the
+paths; it will be resolved to the <code>USER</code> name sent by the client.
 
 <p>
 The format for the files used by <code>mod_wrap2_file</code> is described
@@ -77,6 +75,9 @@ Examples:
 
   # Per-user access files, which are to be found in the user's home directory
   WrapUserTables file:~/my.allow file:~/my.deny
+
+  # Per-user access files, which are <b>not</b> found in the user's home.
+  WrapUserTables file:/etc/ftpd/acls/%U.allow file:/etc/ftpd/acls/%U.deny
 </pre>
 
 <p>
@@ -129,19 +130,12 @@ still permits finger requests from other hosts and domains.
 </pre>
 
 <p>
-<hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2008-12-17 00:24:47 $</i><br>
-
-<br><hr>
-
+<hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2008 TJ Saunders<br>
+&copy; Copyright 2000-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
