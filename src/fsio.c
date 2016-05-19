@@ -1201,6 +1201,7 @@ static const struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
       (unsigned long) age, age != 1 ? "secs" : "sec",
       (unsigned long) statcache_max_age);
     (void) pr_table_remove(cache_tab, path, NULL);
+    destroy_pool(sc->sc_pool);
   }
 
   errno = ENOENT;
@@ -1225,6 +1226,7 @@ static int fs_statcache_evict_expired(const void *key_data, size_t key_datasz,
       (char *) key_data, (unsigned long) age, age != 1 ? "secs" : "sec",
       (unsigned long) evict_data->max_age);
     (void) pr_table_kremove(cache_tab, key_data, key_datasz, NULL);
+    destroy_pool(sc->sc_pool);
   }
 
   return 0;
@@ -1688,7 +1690,13 @@ int pr_fs_clear_cache2(const char *path) {
 
     stat_count = pr_table_exists(stat_statcache_tab, cleaned_path);
     if (stat_count > 0) {
-      pr_table_remove(stat_statcache_tab, cleaned_path, NULL);
+      const struct fs_statcache *sc;
+
+      sc = pr_table_remove(stat_statcache_tab, cleaned_path, NULL);
+      if (sc != NULL) {
+        destroy_pool(sc->sc_pool);
+      }
+
       pr_trace_msg(statcache_channel, 17, "cleared stat(2) entry for '%s'",
         path);
       res += stat_count;
@@ -1696,7 +1704,13 @@ int pr_fs_clear_cache2(const char *path) {
 
     lstat_count = pr_table_exists(lstat_statcache_tab, cleaned_path);
     if (lstat_count > 0) {
-      pr_table_remove(lstat_statcache_tab, cleaned_path, NULL);
+      const struct fs_statcache *sc;
+
+      sc = pr_table_remove(lstat_statcache_tab, cleaned_path, NULL);
+      if (sc != NULL) {
+        destroy_pool(sc->sc_pool);
+      }
+
       pr_trace_msg(statcache_channel, 17, "cleared lstat(2) entry for '%s'",
         path);
       res += lstat_count;
