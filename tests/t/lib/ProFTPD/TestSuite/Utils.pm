@@ -32,6 +32,7 @@ our @FEATURES = qw(
 
 our @RUNNING = qw(
   server_restart
+  server_signal
   server_start
   server_stop
   server_wait
@@ -875,9 +876,11 @@ sub feature_have_module_loaded {
   }
 }
 
-sub server_restart {
+sub server_signal {
   my $pid_file = shift;
   croak("Missing PID file argument") unless $pid_file;
+  my $signal_name = shift;
+  $signal_name = 'HUP' unless $signal_name;
 
   my $pid;
   if (open(my $fh, "< $pid_file")) {
@@ -889,13 +892,25 @@ sub server_restart {
     croak("Can't read $pid_file: $!");
   }
 
-  my $cmd = "kill -HUP $pid";
+  my $cmd = "kill -$signal_name $pid";
 
   if ($ENV{TEST_VERBOSE}) {
-    print STDERR "Restarting server: $cmd\n";
+    my $label = 'Signalling';
+    if ($signal_name eq 'HUP') {
+      $label = 'Restarting';
+    }
+
+    print STDERR "$label server: $cmd\n";
   }
 
   my @output = `$cmd`;
+}
+
+sub server_restart {
+  my $pid_file = shift;
+  croak("Missing PID file argument") unless $pid_file;
+
+  server_signal($pid_file, 'HUP');
 }
 
 sub server_start {
