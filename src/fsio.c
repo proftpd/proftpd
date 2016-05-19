@@ -1313,9 +1313,15 @@ static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
 
   res = pr_table_add(cache_tab, pstrndup(sc_pool, path, path_len), sc,
     sizeof(struct fs_statcache *));
-  if (res < 0 &&
-      errno == EEXIST) {
-    res = 0;
+  if (res < 0) {
+    int tmp_errno = errno;
+
+    if (tmp_errno == EEXIST) {
+      res = 0;
+    }
+
+    destroy_pool(sc->sc_pool);
+    errno = tmp_errno;
   }
 
   return (res == 0 ? 1 : res);
@@ -1718,9 +1724,7 @@ int pr_fs_clear_cache2(const char *path) {
 
   } else {
     /* Caller is requesting that we empty the entire cache. */
-
-    (void) pr_table_empty(stat_statcache_tab);
-    (void) pr_table_empty(lstat_statcache_tab);
+    pr_fs_statcache_reset();
     res = 0;
   }
 
