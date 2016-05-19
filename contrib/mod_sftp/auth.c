@@ -1554,6 +1554,8 @@ struct sftp_auth_chain *sftp_auth_chain_alloc(pool *p) {
   }
 
   sub_pool = pr_pool_create_sz(p, 256);
+  pr_pool_tag(sub_pool, "SSH2 Auth Chain Pool");
+
   auth_chain = pcalloc(sub_pool, sizeof(struct sftp_auth_chain));
   auth_chain->pool = sub_pool;
   auth_chain->methods = make_array(sub_pool, 1,
