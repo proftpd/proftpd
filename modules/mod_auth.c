@@ -337,7 +337,6 @@ MODRET auth_err_pass(cmd_rec *cmd) {
 }
 
 MODRET auth_log_pass(cmd_rec *cmd) {
-  size_t passwd_len;
 
   /* Only log, to the syslog, that the login has succeeded here, where we
    * know that the login has definitely succeeded.
@@ -346,6 +345,8 @@ MODRET auth_log_pass(cmd_rec *cmd) {
     (session.anon_config != NULL) ? "ANON" : C_USER, session.user);
 
   if (cmd->arg != NULL) {
+    size_t passwd_len;
+
     /* And scrub the memory holding the password sent by the client, for
      * safety/security.
      */
@@ -2476,20 +2477,32 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
         size_t passwd_len = 0;
  
         if (cmd->argc > 1) {
-          passwd_len = strlen(cmd->arg);
+          if (cmd->arg != NULL) {
+            passwd_len = strlen(cmd->arg);
+          }
         }
 
+        /* Make sure to NOT enforce 'AllowEmptyPasswords off' if e.g.
+         * the AllowDotLogin TLSOption is in effect.
+         */
         if (cmd->argc == 1 ||
             passwd_len == 0) {
-          pr_log_debug(DEBUG5,
-            "Refusing empty password from user '%s' (AllowEmptyPasswords "
-            "false)", user);
-          pr_log_auth(PR_LOG_NOTICE,
-            "Refusing empty password from user '%s'", user);
 
-          pr_event_generate("mod_auth.empty-password", user);
-          pr_response_add_err(R_501, _("Login incorrect."));
-          return PR_ERROR(cmd);
+          if (session.auth_mech == NULL ||
+              strcmp(session.auth_mech, "mod_tls.c") != 0) {
+            pr_log_debug(DEBUG5,
+              "Refusing empty password from user '%s' (AllowEmptyPasswords "
+              "false)", user);
+            pr_log_auth(PR_LOG_NOTICE,
+              "Refusing empty password from user '%s'", user);
+
+            pr_event_generate("mod_auth.empty-password", user);
+            pr_response_add_err(R_501, _("Login incorrect."));
+            return PR_ERROR(cmd);
+          }
+
+          pr_log_debug(DEBUG9, "%s", "'AllowEmptyPasswords off' in effect, "
+            "BUT client authenticated via the AllowDotLogin TLSOption");
         }
       }
     }
