@@ -1741,33 +1741,36 @@ int pr_auth_chroot(const char *path) {
   int res, xerrno = 0;
   time_t now;
   char *tz = NULL;
+  const char *default_tz;
 
   if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-#if defined(HAVE_SETENV) && \
-    defined(__GLIBC__) && \
+#if defined(__GLIBC__) && \
     defined(__GLIBC_MINOR__) && \
     __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
+  default_tz = tzname[0];
+#else
+  /* Per the tzset(3) man page, this should be the assumed default. */
+  default_tz = ":/etc/localtime";
+#endif
 
   tz = pr_env_get(session.pool, "TZ"); 
   if (tz == NULL) {
     if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
-        tzname[0])) < 0) { 
+        default_tz)) < 0) {
       pr_log_debug(DEBUG0, "error setting TZ environment variable to " 
-        "'%s': %s", tzname[0], strerror(errno));
+        "'%s': %s", default_tz, strerror(errno));
 
     } else {
-      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
+      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", default_tz);
     }
+
   } else {
     pr_log_debug(DEBUG10, "TZ environment variable already set to '%s'", tz);
   }
-#else
-  (void) tz;
-#endif
 
   pr_log_debug(DEBUG1, "Preparing to chroot to directory '%s'", path);
 
