@@ -1540,8 +1540,6 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
   /* Convert the CN field to a string, by way of an ASN1 object. */
   cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry);
   if (cn_asn1 == NULL) {
-    X509_NAME_ENTRY_free(cn_entry);
-
     pr_trace_msg(trace_channel, 12,
       "unable to check certificate CommonName against '%s': "
       "error converting CommoName atribute to ASN.1: %s", name,
@@ -1560,8 +1558,6 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
   cn_len = strlen(cn_str);
 
   if (ASN1_STRING_length(cn_asn1) != cn_len) {
-    X509_NAME_ENTRY_free(cn_entry);
-
     tls_log("%s", "cert CommonName contains embedded NULs, rejecting as "
       "possible spoof attempt");
     tls_log("suspicious CommonName value: '%s'",
@@ -1585,7 +1581,6 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
     /* XXX Implement wildcard checking. */
   }
  
-  X509_NAME_ENTRY_free(cn_entry);
   return matched;
 }
 
