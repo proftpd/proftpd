@@ -284,14 +284,15 @@ static void sql_check_cmd(cmd_rec *cmd, char *msg) {
  * This function makes assumptions about the db_conn_t members.
  */
 static int sql_timer_cb(CALLBACK_FRAME) {
-  conn_entry_t *entry = NULL;
-  int i = 0;
-  cmd_rec *cmd = NULL;
+  register unsigned int i;
  
   for (i = 0; i < conn_cache->nelts; i++) {
-    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    conn_entry_t *entry = NULL;
 
-    if (entry->timer == p2) {
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    if ((unsigned long) entry->timer == p2) {
+      cmd_rec *cmd = NULL;
+
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
       cmd = sql_make_cmd(conn_pool, 2, entry->name, "1");
       cmd_close(cmd);
@@ -1021,7 +1022,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
-  int cnt = 0;
+  unsigned long cnt = 0;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_select");
@@ -1055,21 +1056,21 @@ MODRET cmd_select(cmd_rec *cmd) {
     query = pstrcat(cmd->tmp_pool, cmd->argv[2], " FROM ", cmd->argv[1], NULL);
 
     if (cmd->argc > 3 &&
-        cmd->argv[3])
+        cmd->argv[3]) {
       query = pstrcat(cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL);
+    }
 
     if (cmd->argc > 4 &&
-        cmd->argv[4])
+        cmd->argv[4]) {
       query = pstrcat(cmd->tmp_pool, query, " LIMIT ", cmd->argv[4], NULL);
+    }
 
     if (cmd->argc > 5) {
-
       /* Handle the optional arguments -- they're rare, so in this case
        * we'll play with the already constructed query string, but in 
        * general we should probably take optional arguments into account 
        * and put the query string together later once we know what they are.
        */
-    
       for (cnt = 5; cnt < cmd->argc; cnt++) {
 	if (cmd->argv[cnt] &&
             strcasecmp("DISTINCT", cmd->argv[cnt]) == 0) {

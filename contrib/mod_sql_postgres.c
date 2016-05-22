@@ -195,14 +195,15 @@ static void sql_check_cmd(cmd_rec *cmd, char *msg) {
  * This function makes assumptions about the db_conn_t members.
  */
 static int sql_timer_cb(CALLBACK_FRAME) {
-  conn_entry_t *entry = NULL;
-  int i = 0;
-  cmd_rec *cmd = NULL;
- 
-  for (i = 0; i < conn_cache->nelts; i++) {
-    entry = ((conn_entry_t **) conn_cache->elts)[i];
+  register unsigned int i;
 
-    if (entry->timer == p2) {
+  for (i = 0; i < conn_cache->nelts; i++) {
+    conn_entry_t *entry = NULL;
+
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    if ((unsigned long) entry->timer == p2) {
+      cmd_rec *cmd = NULL;
+
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
       cmd = sql_make_cmd(conn_pool, 2, entry->name, "1");
       cmd_close(cmd);
@@ -236,7 +237,8 @@ static modret_t *build_data(cmd_rec *cmd, db_conn_t *conn) {
   PGresult *result = NULL;
   sql_data_t *sd = NULL;
   char **data = NULL;
-  int idx = 0, row = 0;
+  int idx = 0;
+  unsigned long row;
 
   if (conn == NULL) {
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
@@ -252,7 +254,7 @@ static modret_t *build_data(cmd_rec *cmd, db_conn_t *conn) {
     ((sd->rnum * sd->fnum) + 1));
 
   for (row = 0; row < sd->rnum; row++) {
-    int field;
+    unsigned long field;
 
     for (field = 0; field < sd->fnum; field++) {
       data[idx++] = pstrdup(cmd->tmp_pool, PQgetvalue(result, row, field));
@@ -899,7 +901,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
-  int cnt = 0;
+  unsigned long cnt = 0;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_select");
@@ -949,8 +951,8 @@ MODRET cmd_select(cmd_rec *cmd) {
        * and put the query string together later once we know what they are.
        */
     
-      for (cnt=5; cnt < cmd->argc; cnt++) {
-	if ((cmd->argv[cnt]) && !strcasecmp("DISTINCT",cmd->argv[cnt])) {
+      for (cnt = 5; cnt < cmd->argc; cnt++) {
+	if ((cmd->argv[cnt]) && !strcasecmp("DISTINCT", cmd->argv[cnt])) {
 	  query = pstrcat(cmd->tmp_pool, "DISTINCT ", query, NULL);
 	}
       }

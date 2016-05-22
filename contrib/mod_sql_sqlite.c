@@ -108,9 +108,10 @@ static int sql_sqlite_timer_cb(CALLBACK_FRAME) {
   register unsigned int i = 0;
  
   for (i = 0; i < conn_cache->nelts; i++) {
-    conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
+    conn_entry_t *entry;
 
-    if (entry->timer == p2) {
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    if ((unsigned long) entry->timer == p2) {
       cmd_rec *cmd = NULL;
 
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
@@ -134,7 +135,7 @@ static array_header *result_list = NULL;
 
 static int exec_cb(void *n, int ncols, char **cols,
     char **colnames) {
-  register unsigned int i;
+  register int i;
   char ***row;
   cmd_rec *cmd = n;
 
@@ -239,8 +240,9 @@ static modret_t *sql_sqlite_get_data(cmd_rec *cmd) {
   char **data;
   sql_data_t *sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
-  if (result_list == NULL)
+  if (result_list == NULL) {
     return mod_create_data(cmd, sd);
+  }
 
   sd->rnum = result_list->nelts;
   sd->fnum = result_ncols;
@@ -248,11 +250,13 @@ static modret_t *sql_sqlite_get_data(cmd_rec *cmd) {
   data = pcalloc(cmd->tmp_pool, sizeof(char *) * (count + 1));
 
   for (i = 0; i < result_list->nelts; i++) {
-    register unsigned int j;
-    char **row = ((char ***) result_list->elts)[i];
+    register int j;
+    char **row;
 
-    for (j = 0; j < result_ncols; j++)
+    row = ((char ***) result_list->elts)[i];
+    for (j = 0; j < result_ncols; j++) {
       data[k++] = pstrdup(cmd->tmp_pool, row[j]);
+    }
   }
 
   data[k] = NULL;
