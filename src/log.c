@@ -470,7 +470,7 @@ void log_discard(void) {
 }
 
 static void log_write(int priority, int f, char *s, int discard) {
-  unsigned int max_priority = 0, *ptr = NULL;
+  int max_priority = 0, *ptr = NULL;
   char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
   memset(serverinfo, '\0', sizeof(serverinfo));

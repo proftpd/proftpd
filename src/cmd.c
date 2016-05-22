@@ -149,7 +149,8 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   int *xerrno = NULL;
   va_list args;
 
-  if (p == NULL) {
+  if (p == NULL ||
+      argc < 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -165,8 +166,8 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   cmd->tmp_pool = make_sub_pool(cmd->pool);
   pr_pool_tag(cmd->tmp_pool, "cmd_rec tmp pool");
 
-  if (argc) {
-    register unsigned int i = 0;
+  if (argc > 0) {
+    register int i = 0;
 
     cmd->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
     va_start(args, argc);
@@ -326,7 +327,7 @@ int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
 
 const char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
   const char *res;
-  int argc;
+  unsigned int argc;
   void **argv;
   pool *p;
 

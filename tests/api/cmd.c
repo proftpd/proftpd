@@ -52,6 +52,10 @@ START_TEST (cmd_alloc_test) {
   fail_unless(cmd != NULL, "Failed to create cmd_rec: %s", strerror(errno));
   fail_unless(cmd->argc == 0, "Expected argc = 0, got %d", cmd->argc);
 
+  cmd = pr_cmd_alloc(p, -1, "foo");
+  fail_unless(cmd == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
+
   cmd = pr_cmd_alloc(p, 1, "foo");
   fail_unless(cmd != NULL, "Failed to create cmd_rec: %s", strerror(errno));
   fail_unless(cmd->argc == 1, "Expected argc = 1, got %d", cmd->argc);

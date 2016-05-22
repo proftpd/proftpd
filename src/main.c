@@ -1662,8 +1662,9 @@ static void daemon_loop(void) {
         /* While we're looking, tally up the number of children forked in
          * the past interval.
          */
-        if (ch->ch_when >= (now - (unsigned long) max_connect_interval))
+        if (ch->ch_when >= (time_t) (now - (long) max_connect_interval)) {
           nconnects++;
+        }
       }
     }
 
@@ -1684,11 +1685,12 @@ static void daemon_loop(void) {
     if (listen_conn) {
 
       /* Check for exceeded MaxInstances. */
-      if (ServerMaxInstances && (child_count() >= ServerMaxInstances)) {
+      if (ServerMaxInstances > 0 &&
+          child_count() >= ServerMaxInstances) {
         pr_event_generate("core.max-instances", NULL);
         
         pr_log_pri(PR_LOG_WARNING,
-          "MaxInstances (%d) reached, new connection denied",
+          "MaxInstances (%lu) reached, new connection denied",
           ServerMaxInstances);
         close(fd);
 

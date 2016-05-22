@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project
+ * Copyright (c) 2001-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -184,10 +184,10 @@ int pr_netio_printf_async(pr_netio_stream_t *, char *,...);
 int pr_netio_poll(pr_netio_stream_t *);
 
 /* Read, from the given stream, into the buffer the requested size_t number
- * of bytes.  The int is the minimum number of bytes to read before
+ * of bytes.  The size_t is the minimum number of bytes to read before
  * returning 1 (or greater).
  */
-int pr_netio_read(pr_netio_stream_t *, char *, size_t, int);
+int pr_netio_read(pr_netio_stream_t *, char *, size_t, size_t);
 
 pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *, int, int);
 

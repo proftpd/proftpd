@@ -321,7 +321,7 @@ static tpl_node *tpl_map_va(char *fmt, va_list ap) {
     tpl_pound_data *pd;
     int *fxlens, num_fxlens, pound_num, pound_prod, applies_to_struct;
     int contig_fxlens[10]; /* temp space for contiguous fxlens */
-    int num_contig_fxlens, i, j;
+    unsigned int num_contig_fxlens, i, j;
     ptrdiff_t inter_elt_len=0; /* padded element length of contiguous structs in array */
 
 
@@ -1249,7 +1249,7 @@ static int tpl_needs_endian_swap(void *d) {
 }
 
 static size_t tpl_size_for(char c) {
-  int i;
+  register size_t i;
   for(i=0; i < sizeof(tpl_types)/sizeof(tpl_types[0]); i++) {
     if (tpl_types[i].c == c) return tpl_types[i].sz;
   }
@@ -2259,7 +2259,7 @@ static int tpl_gather_blocking(int fd, void **img, size_t *sz) {
     do { 
         rc = read(fd,&((*(char**)img)[i]),tpllen-i);
         i += (rc>0) ? rc : 0;
-    } while ((rc==-1 && (errno==EINTR||errno==EAGAIN)) || (rc>0 && i<tpllen));
+    } while ((rc==-1 && (errno==EINTR||errno==EAGAIN)) || (rc>0 && (uint32_t)i<tpllen));
 
     if (rc<0) {
         tpl_hook.oops("tpl_gather_fd_blocking failed: %s\n", strerror(errno));
@@ -2269,7 +2269,7 @@ static int tpl_gather_blocking(int fd, void **img, size_t *sz) {
         /* tpl_hook.oops("tpl_gather_fd_blocking: eof\n"); */
         tpl_hook.free(*img);
         return 0;
-    } else if (i != tpllen) {
+    } else if ((uint32_t)i != tpllen) {
         tpl_hook.oops("internal error\n");
         tpl_hook.free(*img);
         return -1;

@@ -38,7 +38,7 @@ server_rec *main_server = NULL;
 int tcpBackLog = PR_TUNABLE_DEFAULT_BACKLOG;
 int SocketBindTight = FALSE;
 char ServerType = SERVER_STANDALONE;
-int ServerMaxInstances = 0;
+unsigned long ServerMaxInstances = 0UL;
 int ServerUseReverseDNS = TRUE;
 
 /* Default TCP send/receive buffer sizes. */
@@ -175,7 +175,7 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
   substr_path = *path;
   substr = substr_path ? strstr(substr_path, "%u[") : NULL;
   while (substr) {
-    int i = 0;
+    long i = 0;
     char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
     char ref_char[2] = {'\0', '\0'};
 
@@ -221,7 +221,6 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
 
     /* Scan the index string into a number, watching for bad strings. */
     i = strtol(substr, &endp, 10);
-
     if (endp && *endp) {
       *substr_end = ']';
       substr_path = substr;
@@ -229,7 +228,8 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
     }
 
     /* Make sure that index is within bounds. */
-    if (i < 0 || i > strlen(session.user) - 1) {
+    if (i < 0 ||
+        (size_t) i > strlen(session.user) - 1) {
 
       /* Put the closing ']' back. */
       *substr_end = ']';

@@ -60,7 +60,7 @@ const pr_class_t *pr_class_match_addr(const pr_netaddr_t *addr) {
   for (cls = class_list; cls; cls = cls->cls_next) {
     array_header *acl_list;
     const pr_netacl_t **acls;
-    register int i;
+    register unsigned int i;
     int next_class = FALSE;
 
     acl_list = cls->cls_acls;

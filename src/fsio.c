@@ -706,7 +706,7 @@ static int sys_listxattr(pool *p, pr_fs_t *fs, const char *path,
   *names = parse_xattr_namelist(p, namelist, len);
   if (pr_trace_get_level(trace_channel) >= 15) {
     register unsigned int i;
-    int count;
+    unsigned int count;
     const char **attr_names;
 
     count = (*names)->nelts;
@@ -758,7 +758,7 @@ static int sys_llistxattr(pool *p, pr_fs_t *fs, const char *path,
   *names = parse_xattr_namelist(p, namelist, len);
   if (pr_trace_get_level(trace_channel) >= 15) {
     register unsigned int i;
-    int count;
+    unsigned int count;
     const char **attr_names;
 
     count = (*names)->nelts;
@@ -809,7 +809,7 @@ static int sys_flistxattr(pool *p, pr_fh_t *fh, int fd, array_header **names) {
   *names = parse_xattr_namelist(p, namelist, len);
   if (pr_trace_get_level(trace_channel) >= 15) {
     register unsigned int i;
-    int count;
+    unsigned int count;
     const char **attr_names;
 
     count = (*names)->nelts;
@@ -1233,7 +1233,7 @@ static int fs_statcache_evict_expired(const void *key_data, size_t key_datasz,
 }
 
 static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
-  int res;
+  int res, table_count;
   struct fs_statcache_evict_data evict_data;
 
   /* We try to make room in two passes.  First, evict any item that has
@@ -1253,7 +1253,9 @@ static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
       "error evicting expired items: %s", strerror(errno));
   }
 
-  if (pr_table_count(cache_tab) < statcache_size) {
+  table_count = pr_table_count(cache_tab);
+  if (table_count < 0 ||
+      (unsigned int) table_count < statcache_size) {
     return 0;
   }
 
@@ -1268,7 +1270,9 @@ static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
     }
   }
 
-  if (pr_table_count(cache_tab) < statcache_size) {
+  table_count = pr_table_count(cache_tab);
+  if (table_count < 0 ||
+      (unsigned int) table_count < statcache_size) {
     return 0;
   }
 
@@ -1284,7 +1288,7 @@ static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
  */
 static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
     size_t path_len, struct stat *st, int xerrno, int retval, time_t now) {
-  int res;
+  int res, table_count;
   pool *sc_pool;
   struct fs_statcache *sc;
 
@@ -1294,7 +1298,9 @@ static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
     return 0;
   }
 
-  if (pr_table_count(cache_tab) >= statcache_size) {
+  table_count = pr_table_count(cache_tab);
+  if (table_count > 0 &&
+      (unsigned int) table_count >= statcache_size) {
     /* We've reached capacity, and need to evict some items to make room. */
     if (fs_statcache_evict(cache_tab, now) < 0) {
       pr_trace_msg(statcache_channel, 8,
@@ -1930,7 +1936,7 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         return -1;
       }
 
-      if (res == datalen) {
+      if ((size_t) res == datalen) {
         break;
       }
 
@@ -2202,7 +2208,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
   /* Check for duplicates. */
   if (fs_map->nelts > 0) {
     pr_fs_t *fsi = NULL, **fs_objs = (pr_fs_t **) fs_map->elts;
-    register int i;
+    register unsigned int i;
 
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
@@ -3376,7 +3382,7 @@ int pr_fs_valid_path(const char *path) {
   if (fs_map != NULL &&
       fs_map->nelts > 0) {
     pr_fs_t *fsi = NULL, **fs_objs = (pr_fs_t **) fs_map->elts;
-    register int i;
+    register unsigned int i;
 
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
@@ -6255,7 +6261,7 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
  * until the new fd is not one of the big three.
  */
 int pr_fs_get_usable_fd(int fd) {
-  register unsigned int i;
+  register int i;
   int fdi, dup_fds[FSIO_MAX_DUPFDS], n; 
 
   if (fd > STDERR_FILENO) {
@@ -6272,7 +6278,7 @@ int pr_fs_get_usable_fd(int fd) {
 
     dup_fds[i] = dup(fdi);
     if (dup_fds[i] < 0) {
-      register unsigned int j;
+      register int j;
       int xerrno  = errno;
 
       /* Need to clean up any previously opened dups as well. */
@@ -7031,7 +7037,7 @@ void pr_fs_dump(void (*dumpf)(const char *, ...)) {
 
   if (fs_map->nelts > 0) {
     pr_fs_t **fs_objs = (pr_fs_t **) fs_map->elts;
-    register int i;
+    register unsigned int i;
 
     for (i = 0; i < fs_map->nelts; i++) {
       pr_fs_t *fsi = fs_objs[i];
