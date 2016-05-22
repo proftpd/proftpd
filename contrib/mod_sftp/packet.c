@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: packet.c,v 1.46 2013-03-08 16:22:18 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -217,7 +215,6 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
      * EAGAIN/EWOULDBLOCK errors.
      */
     res = read(sockfd, ptr, remainlen);
-
     while (res <= 0) {
       if (res < 0) {
         int xerrno = errno;
@@ -288,8 +285,9 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
     session.total_raw_in += reqlen;
     time(&last_recvd);
 
-    if (res == remainlen)
+    if ((size_t) res == remainlen) {
       break;
+    }
 
     if (flags & SFTP_PACKET_READ_FL_PESSIMISTIC) {
       pr_trace_msg(trace_channel, 20, "read %lu bytes, expected %lu bytes; "

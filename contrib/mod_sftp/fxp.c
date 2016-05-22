@@ -6226,7 +6226,8 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
   uint32_t buflen, bufsz, status_code;
   const char *reason;
   struct fxp_packet *resp;
-  int res = 0, version = 0;
+  int res = 0, val = 0;
+  unsigned int version = 0;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -6257,19 +6258,29 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
     return -1;
   }
 
-  version = atoi(version_str);
-
-  if (version > fxp_max_client_version) {
+  val = atoi(version_str);
+  if (val < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "client requested SFTP protocol version %d via 'version-select', "
+      "client requested invalid SFTP protocol version %d via 'version-select'",
+      val);
+    res = -1;
+  }
+
+  version = val;
+
+  if (res == 0 &&
+      version > fxp_max_client_version) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client requested SFTP protocol version %u via 'version-select', "
       "which exceeds SFTPClientMatch max SFTP protocol version %u, rejecting",
       version, fxp_max_client_version);
     res = -1;
   }
 
-  if (version < fxp_min_client_version) {
+  if (res == 0 &&
+      version < fxp_min_client_version) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "client requested SFTP protocol version %d via 'version-select', "
+      "client requested SFTP protocol version %u via 'version-select', "
       "which is less than SFTPClientMatch min SFTP protocol version %u, "
       "rejecting", version, fxp_min_client_version);
     res = -1;
@@ -6280,9 +6291,10 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
    * UTF8, and thus every other version of SFTP.  Otherwise, we can only
    * support up to version 3.
    */
-  if (version > 3) {
+  if (res == 0 &&
+      version > 3) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "client requested SFTP protocol version %d via 'version-select', "
+      "client requested SFTP protocol version %u via 'version-select', "
       "but we can only support protocol version 3 due to lack of "
       "UTF8 support (requires --enable-nls)", version);
     res = -1;
@@ -6315,7 +6327,7 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
   }
 
   pr_trace_msg(trace_channel, 7, "client requested switch to SFTP protocol "
-    "version %d via 'version-select'", version);
+    "version %u via 'version-select'", version);
   fxp_session->client_version = (unsigned long) version;
 
   status_code = SSH2_FX_OK;
@@ -9859,7 +9871,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
 
-  if (offset > fxh->fh_st->st_size) {
+  if ((off_t) offset > fxh->fh_st->st_size) {
     uint32_t status_code;
     const char *reason;
     int xerrno = EOF;
@@ -13119,7 +13131,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     size_t new_size;
 
     new_size = offset + res;
-    if (new_size > fxh->fh_st->st_size) {
+    if ((off_t) new_size > fxh->fh_st->st_size) {
       fxh->fh_st->st_size = new_size;
     }
 

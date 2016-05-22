@@ -498,7 +498,7 @@ uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
 
   res = BN_bn2bin(mpint, data + 1);
   if (res < 0 ||
-      res != (datalen - 1)) {
+      res != (int) (datalen - 1)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: BN_bn2bin() failed: expected %lu bytes, got %d",
       (unsigned long) (datalen - 1), res);

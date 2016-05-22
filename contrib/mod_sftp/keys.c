@@ -101,9 +101,9 @@ struct sftp_pkey_data {
  * refers to the size of the modulus.  The EC size refers to the minimum
  * order of the base point on the elliptic curve.
  */
-static unsigned int keys_rsa_min_nbits = 768;
-static unsigned int keys_dsa_min_nbits = 384;
-static unsigned int keys_ec_min_nbits = 160;
+static int keys_rsa_min_nbits = 768;
+static int keys_dsa_min_nbits = 384;
+static int keys_ec_min_nbits = 160;
 
 static const char *trace_channel = "ssh2";
 

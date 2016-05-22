@@ -113,7 +113,7 @@ static int validate_blacklist(int fd, unsigned int *bytes,
   *shift = (hdr.shift[0] << 8) + hdr.shift[1];
 
   expected = sizeof(hdr) + 0x20000 + (*records) * (*bytes);
-  if (st.st_size != expected) {
+  if (st.st_size != (off_t) expected) {
     pr_trace_msg(trace_channel, 4,
       "unexpected SFTPKeyBlacklist '%s' file size: expected %lu, found %lu",
       blacklist_path, (unsigned long) expected, (unsigned long) st.st_size);
