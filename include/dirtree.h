@@ -112,7 +112,7 @@ typedef struct cmd_struc {
   struct pool_rec *tmp_pool;	/* Temporary pool which only exists
 				 * while the cmd's handler is running
 				 */
-  int argc;
+  unsigned int argc;
 
   char *arg;			/* entire argument (excluding command) */
   void **argv;

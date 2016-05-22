@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ struct config_struc {
   struct pool_rec *pool;	/* Memory pool for this object */
   xaset_t *set;			/* The set we are stored in */
   char *name;
-  int argc;
+  unsigned int argc;
   void **argv;
 
   long flags;			/* Flags */
