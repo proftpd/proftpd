@@ -176,7 +176,7 @@ static off_t find_max_nbytes(char *directive) {
   }
 
   /* Print out some nice debugging information. */
-  if (max_nbytes > 0UL &&
+  if (max_nbytes > 0 &&
       (have_user_limit || have_group_limit ||
        have_class_limit || have_all_limit)) {
     pr_log_debug(DEBUG5, "%s (%" PR_LU " bytes) in effect for %s",

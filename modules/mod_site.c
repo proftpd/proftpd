@@ -44,19 +44,20 @@ static struct {
   { NULL,	NULL,					FALSE }
 };
 
-static char *_get_full_cmd(cmd_rec *cmd) {
+static char *full_cmd(cmd_rec *cmd) {
+  register unsigned int i;
   char *res = "";
   size_t reslen = 0;
-  int i;
 
-  for (i = 0; i < cmd->argc; i++)
+  for (i = 0; i < cmd->argc; i++) {
     res = pstrcat(cmd->tmp_pool, res, cmd->argv[i], " ", NULL);
+  }
 
   reslen = strlen(res);
   while (reslen >= 1 &&
          res[reslen-1] == ' ') {
     res[reslen-1] = '\0';
-    reslen = strlen(res);
+    reslen--;
   }
 
   return res;
@@ -73,8 +74,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
 #endif
 
   if (cmd->argc < 3) {
-    pr_response_add_err(R_500, _("'SITE %s' not understood"),
-      _get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'SITE %s' not understood"), full_cmd(cmd));
     return NULL;
   }
 
@@ -212,8 +212,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 #endif
 
   if (cmd->argc < 3) {
-    pr_response_add_err(R_500, _("'SITE %s' not understood"),
-      _get_full_cmd(cmd));
+    pr_response_add_err(R_500, _("'SITE %s' not understood"), full_cmd(cmd));
     return NULL;
   }
 

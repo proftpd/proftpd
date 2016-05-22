@@ -906,17 +906,17 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
 }
 
 MODRET set_maxinstances(cmd_rec *cmd) {
-  int max_instances;
+  long max_instances;
   char *endp;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
   if (strcasecmp(cmd->argv[1], "none") == 0) {
-    max_instances = 0;
+    max_instances = 0UL;
 
   } else {
-    max_instances = (int) strtol(cmd->argv[1], &endp, 10);
+    max_instances = strtol(cmd->argv[1], &endp, 10);
 
     if ((endp && *endp) ||
         max_instances < 1) {
@@ -6422,7 +6422,7 @@ static void set_server_auth_order(void) {
   c = find_config(main_server->conf, CONF_PARAM, "AuthOrder", FALSE);
   if (c != NULL) {
     array_header *module_list = (array_header *) c->argv[0];
-    int modulec = 0;
+    unsigned int modulec = 0;
     char **modulev = NULL;
     register unsigned int i = 0;
 

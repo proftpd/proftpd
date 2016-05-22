@@ -150,7 +150,7 @@ extern server_rec		*main_server;
 extern int			tcpBackLog;
 extern int			SocketBindTight;
 extern char			ServerType;
-extern int			ServerMaxInstances;
+extern unsigned long		ServerMaxInstances;
 extern int			ServerUseReverseDNS;
 
 /* These macros are used to help handle configuration in modules */
