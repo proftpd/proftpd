@@ -59,6 +59,11 @@ static int sendline(int flags, char *fmt, ...)
 #define LS_FL_NLST_ONLY			0x0004
 static unsigned long list_flags = 0;
 
+/* Maximum size of the "dsize" directory block we'll allocate for all of the
+ * entries in a directory (Bug#4247).
+ */
+#define LS_MAX_DSIZE			(1024 * 1024 * 8)
+
 static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
@@ -1098,6 +1103,9 @@ static char **sreaddir(const char *dirname, const int sort) {
 
   /* Guess the number of entries in the directory. */
   dsize = (((size_t) st.st_size) / 4) + 10;
+  if (dsize > LS_MAX_DSIZE) {
+    dsize = LS_MAX_DSIZE;
+  }
 
   /* The directory has been opened already, but portably accessing the file
    * descriptor inside the DIR struct isn't easy.  Some systems use "dd_fd" or
