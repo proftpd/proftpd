@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -374,7 +374,7 @@ START_TEST (netio_telnet_gets_single_line_test) {
     xerrno, strerror(xerrno));
   fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
-  fail_unless(pbuf->remaining == xfer_bufsz,
+  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 }
@@ -422,7 +422,7 @@ START_TEST (netio_telnet_gets_multi_line_test) {
   pr_netio_close(in);
   pr_netio_close(out);
 
-  fail_unless(pbuf->remaining == xfer_bufsz,
+  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 }
@@ -1221,9 +1221,9 @@ START_TEST (netio_telnet_gets2_single_line_test) {
   fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
-  fail_unless(res == cmd_len, "Expected length %lu, got %d",
+  fail_unless((size_t) res == cmd_len, "Expected length %lu, got %d",
     (unsigned long) cmd_len, res);
-  fail_unless(pbuf->remaining == xfer_bufsz,
+  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 }
@@ -1263,9 +1263,9 @@ START_TEST (netio_telnet_gets2_single_line_crnul_test) {
   fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
-  fail_unless(res == cmd_len, "Expected length %lu, got %d",
+  fail_unless((size_t) res == cmd_len, "Expected length %lu, got %d",
     (unsigned long) cmd_len, res);
-  fail_unless(pbuf->remaining == xfer_bufsz,
+  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 }
@@ -1304,9 +1304,9 @@ START_TEST (netio_telnet_gets2_single_line_lf_test) {
   fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
-  fail_unless(res == cmd_len, "Expected length %lu, got %d",
+  fail_unless((size_t) res == cmd_len, "Expected length %lu, got %d",
     (unsigned long) cmd_len, res);
-  fail_unless(pbuf->remaining == xfer_bufsz,
+  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 }
@@ -1339,6 +1339,9 @@ static int netio_read_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
   text = "Hello, World!\r\n";
   sstrncpy(buf, text, buflen);
+
+  /* Make sure the next read returns EOF. */
+  netio_read_eof = TRUE;
 
   res = strlen(text);
   return res;
@@ -1490,7 +1493,7 @@ static int netio_write_to_stream(int strm_type, int use_async) {
     res = pr_netio_write(nstrm, buf, buflen);
   }
 
-  if (res != buflen) {
+  if ((size_t) res != buflen) {
     pr_trace_msg("netio", 1, "wrote buffer (%lu bytes), got %d",
       (unsigned long) buflen, res);
     pr_netio_close(nstrm);
@@ -1739,7 +1742,7 @@ static int netio_print_to_stream(int strm_type, int use_async) {
     res = pr_netio_printf(nstrm, "%s", buf);
   }
 
-  if (res != buflen) {
+  if ((size_t) res != buflen) {
     pr_trace_msg("netio", 1, "printed buffer (%lu bytes), got %d",
       (unsigned long) buflen, res);
     pr_netio_close(nstrm);

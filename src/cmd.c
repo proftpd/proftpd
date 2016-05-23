@@ -143,14 +143,13 @@ static struct cmd_entry smtp_ids[] = {
   { NULL,	0 }
 };
 
-cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) { 
+cmd_rec *pr_cmd_alloc(pool *p, unsigned int argc, ...) {
   pool *newpool = NULL;
   cmd_rec *cmd = NULL;
   int *xerrno = NULL;
   va_list args;
 
-  if (p == NULL ||
-      argc < 0) {
+  if (p == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -167,7 +166,7 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   pr_pool_tag(cmd->tmp_pool, "cmd_rec tmp pool");
 
   if (argc > 0) {
-    register int i = 0;
+    register unsigned int i = 0;
 
     cmd->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
     va_start(args, argc);

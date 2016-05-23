@@ -2365,7 +2365,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
-    int argc = cmd->argc - 3;
+    unsigned int argc = cmd->argc - 3;
     void **argv;
 
     argv = &(cmd->argv[2]);
@@ -2833,7 +2833,8 @@ MODRET set_order(cmd_rec *cmd) {
 MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   config_rec *c;
   void **argv;
-  int argc, eval_type;
+  unsigned int argc;
+  int eval_type;
   array_header *acl = NULL;
  
   CHECK_CONF(cmd, CONF_LIMIT);

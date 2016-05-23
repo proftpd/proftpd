@@ -3290,14 +3290,15 @@ MODRET set_createhome(cmd_rec *cmd) {
 MODRET add_defaultroot(cmd_rec *cmd) {
   config_rec *c;
   char *dir;
-  int argc;
+  unsigned int argc;
   void **argv;
   array_header *acl = NULL;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (cmd->argc < 2)
-    CONF_ERROR(cmd,"syntax: DefaultRoot <directory> [<group-expression>]");
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "syntax: DefaultRoot <directory> [<group-expression>]");
+  }
 
   argc = cmd->argc - 2;
   argv = cmd->argv;
@@ -3321,7 +3322,6 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
-
   c = add_config_param(cmd->argv[0], 0);
 
   c->argc = argc + 1;
@@ -3342,14 +3342,15 @@ MODRET add_defaultroot(cmd_rec *cmd) {
 MODRET add_defaultchdir(cmd_rec *cmd) {
   config_rec *c;
   char *dir;
-  int argc;
+  unsigned int argc;
   void **argv;
   array_header *acl = NULL;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     CONF_ERROR(cmd, "syntax: DefaultChdir <directory> [<group-expression>]");
+  }
 
   argc = cmd->argc - 2;
   argv = cmd->argv;
@@ -3366,7 +3367,6 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
-
   c = add_config_param(cmd->argv[0], 0);
 
   c->argc = argc + 1;
@@ -3849,7 +3849,7 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
 
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
-    int argc;
+    unsigned int argc;
     void **argv;
 
     argc = cmd->argc - 3;

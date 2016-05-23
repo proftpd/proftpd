@@ -72,7 +72,7 @@ START_TEST (sstrncpy_test) {
   len = 1;
 
   res = sstrncpy(dst, ok, len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
     strlen(dst));
   fail_unless(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
@@ -81,7 +81,7 @@ START_TEST (sstrncpy_test) {
   len = 7;
 
   res = sstrncpy(dst, ok, len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
     strlen(dst));
   fail_unless(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
@@ -90,7 +90,7 @@ START_TEST (sstrncpy_test) {
   len = sz;
 
   res = sstrncpy(dst, ok, len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
     strlen(dst));
   fail_unless(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
@@ -99,7 +99,7 @@ START_TEST (sstrncpy_test) {
   len = sz;
 
   res = sstrncpy(dst, "", len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == 0, "Expected len %u, got len %u", 0, strlen(dst));
   fail_unless(*dst == '\0', "Expected NUL, got '%c'", *dst);
 }

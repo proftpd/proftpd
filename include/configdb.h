@@ -87,11 +87,11 @@ struct config_struc {
 
 config_rec *add_config_set(xaset_t **, const char *);
 config_rec *add_config(struct server_struc *, const char *);
-config_rec *add_config_param(const char *, int, ...);
-config_rec *add_config_param_str(const char *, int, ...);
-config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
+config_rec *add_config_param(const char *, unsigned int, ...);
+config_rec *add_config_param_str(const char *, unsigned int, ...);
+config_rec *add_config_param_set(xaset_t **, const char *, unsigned int, ...);
 config_rec *pr_conf_add_server_config_param_str(struct server_struc *,
-  const char *, int, ...);
+  const char *, unsigned int, ...);
 
 /* Flags used when searching for specific config_recs in the in-memory
  * config database, particularly when 'recurse' is TRUE.
