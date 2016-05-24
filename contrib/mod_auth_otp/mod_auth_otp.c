@@ -818,7 +818,7 @@ static void auth_otp_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_auth_otp.c", (const char *) event_data) == 0) {
 # if defined(HAVE_SFTP)
     if (pr_module_exists("mod_sftp.c") == TRUE) {
-      sftp_kbdint_unregister_drive("auth_otp");
+      sftp_kbdint_unregister_driver("auth_otp");
     }
 # endif /* HAVE_SFTP */
     pr_event_unregister(&auth_otp_module, NULL, NULL);
