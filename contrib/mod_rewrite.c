@@ -1403,7 +1403,7 @@ static const char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
    */
 
   pr_signals_unblock();
-  mak_lookup_keylen = strlen(map->map_lookup_key);
+  map_lookup_keylen = strlen(map->map_lookup_key);
   res = rewrite_write_fifo(fifo_fd,
     pstrcat(cmd->tmp_pool, map->map_lookup_key, "\n", NULL),
     map_lookup_keylen + 1);
