@@ -379,7 +379,7 @@ static int ctrls_cls_write(void) {
 
       if (cl->cl_ctrls != NULL &&
           cl->cl_ctrls->nelts > 0) {
-        register int i = 0;
+        register unsigned int i = 0;
         pr_ctrls_t **ctrlv = NULL;
 
         ctrlv = (pr_ctrls_t **) cl->cl_ctrls->elts;

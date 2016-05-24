@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
- *
  * Copyright (c) 2004-2016 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -335,7 +334,7 @@ static int dso_unload_module_by_name(const char *name) {
 
 static int dso_handle_insmod(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i;
+  register int i;
 
   /* Check the ACL. */
   if (!pr_ctrls_check_acl(ctrl, dso_acttab, "insmod")) {
@@ -413,7 +412,7 @@ static int dso_handle_lsmod(pr_ctrls_t *ctrl, int reqargc,
 
 static int dso_handle_rmmod(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i;
+  register int i;
 
   /* Check the ACL. */
   if (!pr_ctrls_check_acl(ctrl, dso_acttab, "rmmod")) {
