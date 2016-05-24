@@ -157,13 +157,13 @@ extern int			ServerUseReverseDNS;
 #define CONF_ERROR(x, s)	return PR_ERROR_MSG((x),NULL,pstrcat((x)->tmp_pool, \
 				(x)->argv[0],": ",(s),NULL));
 
-#define CHECK_ARGS(x, n)	if ((n) >= 0 && (x)->argc > 0 && (x)->argc-1 < (n)) \
+#define CHECK_ARGS(x, n)	if ((n) > 0 && (x)->argc > 0 && (x)->argc-1 < (n)) \
 				CONF_ERROR(x,"missing arguments")
 
 #define CHECK_VARARGS(x, n, m)	if ((x)->argc - 1 < n || (x)->argc - 1 > m) \
 				CONF_ERROR(x,"missing arguments")
 
-#define CHECK_HASARGS(x, n)	((x)->argc - 1) == n
+#define CHECK_HASARGS(x, n)	((x)->argc - 1) == (n)
 
 #define CHECK_CONF(x,p)		if (!check_context((x),(p))) \
 				CONF_ERROR((x), \

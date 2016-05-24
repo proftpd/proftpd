@@ -2570,7 +2570,10 @@ MODRET set_allowoverride(cmd_rec *cmd) {
 MODRET end_directory(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_DIR);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2618,7 +2621,10 @@ MODRET add_anonymous(cmd_rec *cmd) {
 MODRET end_anonymous(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ANON);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2634,15 +2640,19 @@ MODRET add_class(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (pr_class_open(main_server->pool, cmd->argv[1]) < 0)
+  if (pr_class_open(main_server->pool, cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating <Class ",
       cmd->argv[1], ">: ", strerror(errno), NULL));
+  }
 
   return PR_HANDLED(cmd);
 }
 
 MODRET end_class(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_CLASS);
 
   if (pr_class_close() < 0) {
@@ -2655,8 +2665,10 @@ MODRET end_class(cmd_rec *cmd) {
 MODRET add_global(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  if (cmd->argc-1 != 0)
+  if (cmd->argc-1 != 0) {
     CONF_ERROR(cmd, "Too many parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   c = pr_parser_config_ctxt_open(cmd->argv[0]);
@@ -2668,7 +2680,10 @@ MODRET add_global(cmd_rec *cmd) {
 MODRET end_global(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_GLOBAL);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -3035,7 +3050,10 @@ MODRET set_allowdeny(cmd_rec *cmd) {
 MODRET set_denyall(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3048,7 +3066,10 @@ MODRET set_denyall(cmd_rec *cmd) {
 MODRET set_allowall(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3084,7 +3105,10 @@ MODRET set_authorder(cmd_rec *cmd) {
 MODRET end_limit(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -3257,7 +3281,10 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   const char *address = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_VIRTUAL);
 
   if (cmd->server->ServerAddress) {

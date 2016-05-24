@@ -584,7 +584,7 @@ static int deflate_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
           session.total_raw_out += res;
 
           /* Watch out for short writes. */
-          if (res == datalen) {
+          if ((size_t) res == datalen) {
             break;
           }
 
@@ -684,7 +684,7 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
         (unsigned long) datalen, nstrm->strm_fd);
 
       /* Watch out for short writes */
-      if (res == datalen) {
+      if ((size_t) res == datalen) {
         zstrm->next_out = deflate_zbuf;
         zstrm->avail_out = deflate_zbufsz;
         break;

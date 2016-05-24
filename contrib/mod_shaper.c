@@ -1012,8 +1012,9 @@ static int shaper_table_sess_add(pid_t sess_pid, unsigned int prio,
     int downincr, int upincr) {
   struct shaper_sess *sess;
 
-  if (shaper_table_lock(LOCK_EX) < 0)
+  if (shaper_table_lock(LOCK_EX) < 0) {
     return -1;
+  }
 
   if (shaper_table_refresh() < 0) {
     int xerrno = errno;
@@ -1223,10 +1224,12 @@ static int shaper_table_sess_remove(pid_t sess_pid) {
  */
 static int shaper_handle_all(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i;
+  register int i;
   int send_tab = TRUE;
 
-  if (reqargc < 2 || reqargc > 14 || reqargc % 2 != 0) {
+  if (reqargc < 2 ||
+      reqargc > 14 ||
+      reqargc % 2 != 0) {
     pr_ctrls_add_response(ctrl, "wrong number of parameters");
     return -1;
   }
@@ -1506,11 +1509,13 @@ static int shaper_handle_info(pr_ctrls_t *ctrl, int reqargc,
  */
 static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i;
+  register int i;
   int adjusted = FALSE, send_tab = TRUE;
   int prio = -1, downincr = 0, upincr = 0;
 
-  if (reqargc < 4 || reqargc > 6 || reqargc % 2 != 0) {
+  if (reqargc < 4 ||
+      reqargc > 6 ||
+      reqargc % 2 != 0) {
     pr_ctrls_add_response(ctrl, "wrong number of parameters");
     return -1;
   }

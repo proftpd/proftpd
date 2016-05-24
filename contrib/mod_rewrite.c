@@ -1334,6 +1334,7 @@ static const char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   int fifo_fd = -1, fifo_lockfd = -1, res;
   char *value = NULL, *fifo_lockname = NULL;
   const char *fifo = (char *) c->argv[2];
+  size_t map_lookup_keylen;
 
 #ifndef HAVE_FLOCK
   struct flock lock;
@@ -1402,18 +1403,20 @@ static const char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
    */
 
   pr_signals_unblock();
-  if (rewrite_write_fifo(fifo_fd,
-      pstrcat(cmd->tmp_pool, map->map_lookup_key, "\n", NULL),
-      strlen(map->map_lookup_key) + 1) != strlen(map->map_lookup_key) + 1) {
-
+  mak_lookup_keylen = strlen(map->map_lookup_key);
+  res = rewrite_write_fifo(fifo_fd,
+    pstrcat(cmd->tmp_pool, map->map_lookup_key, "\n", NULL),
+    map_lookup_keylen + 1);
+  if ((size_t) res != (map_lookup_keylen + 1)) {
     rewrite_log("rewrite_subst_maps_fifo(): error writing lookup key '%s' to "
       "FIFO '%s': %s", map->map_lookup_key, fifo, strerror(errno));
 
     if (fifo_lockfd != -1) {
 #ifdef HAVE_FLOCK
-      if (flock(fifo_lockfd, LOCK_UN) < 0)
+      if (flock(fifo_lockfd, LOCK_UN) < 0) {
         rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
           strerror(errno));
+      }
 #else
       lock.l_type = F_UNLCK;
       lock.l_whence = 0;
@@ -1990,8 +1993,10 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
   static unsigned long ucs4_longs[PR_TUNABLE_BUFFER_SIZE] = {0L};
 
   /* If the key is NULL or empty, do nothing. */
-  if (!key || !strlen(key))
+  if (key == NULL ||
+      !strlen(key)) {
     return NULL;
+  }
 
   /* Always make sure the buffers are clear for this run. */
   memset(utf8_val, '\0', PR_TUNABLE_BUFFER_SIZE);
@@ -2007,14 +2012,15 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
     return NULL;
 
   } else if (ucs4strlen > 1) {
-    register unsigned int i = 0;
+    register int i = 0;
 
     /* Cast the UTF-8 longs to unsigned chars.  NOTE: this is an assumption
      * about casts; it just so happens, quite nicely, that UCS4 maps one-to-one
      * to ISO-8859-1 (Latin-1).
      */
-    for (i = 0; i < ucs4strlen; i++)
+    for (i = 0; i < ucs4strlen; i++) {
       utf8_val[i] = (unsigned char) ucs4_longs[i];
+    }
 
     return pstrdup(map_pool, (const char *) utf8_val);
   }
