@@ -61,13 +61,13 @@ int auth_otp_base32_encode(pool *p, const unsigned char *raw,
     bits_rem = 8;
 
     while ((buflen < bufsz) &&
-           (bits_rem > 0 || i < raw_len)) {
+           (bits_rem > 0 || (size_t) i < raw_len)) {
       int j;
 
       pr_signals_handle();
 
       if (bits_rem < 5) {
-        if (i < raw_len) {
+        if ((size_t) i < raw_len) {
           d <<= 8;
           d |= raw[i++] & 0xff;
           bits_rem += 8;

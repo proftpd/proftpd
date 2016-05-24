@@ -824,7 +824,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
       uint64_t max_len;
 
       memcpy(&max_len, value, valuesz);
-      if (sess_len > max_len) {
+      if ((uint64_t) sess_len > max_len) {
         if (pr_memcache_set(sess_mcache, &tls_memcache_module, max_len_key,
             &max_len, sizeof(max_len), 0, 0) < 0) {
           pr_trace_msg(trace_channel, 2,
@@ -1685,7 +1685,7 @@ static int ocsp_cache_add_large_resp(tls_ocsp_cache_t *cache,
       uint64_t max_len;
 
       memcpy(&max_len, value, valuesz);
-      if (resp_derlen > max_len) {
+      if ((uint64_t) resp_derlen > max_len) {
         if (pr_memcache_set(ocsp_mcache, &tls_memcache_module, max_len_key,
             &max_len, sizeof(max_len), 0, 0) < 0) {
           pr_trace_msg(trace_channel, 2,

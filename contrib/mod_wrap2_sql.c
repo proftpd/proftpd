@@ -33,10 +33,10 @@
 
 module wrap2_sql_module;
 
-static cmd_rec *sql_cmd_create(pool *parent_pool, int argc, ...) {
+static cmd_rec *sql_cmd_create(pool *parent_pool, unsigned int argc, ...) {
+  register unsigned int i = 0;
   pool *cmd_pool = NULL;
   cmd_rec *cmd = NULL;
-  register unsigned int i = 0;
   va_list argp;
 
   cmd_pool = make_sub_pool(parent_pool);

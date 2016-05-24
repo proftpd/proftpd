@@ -1308,7 +1308,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 }
 
 int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
-    size_t bufmin) {
+    int bufmin) {
   int bread = 0, total = 0;
   const char *nstrm_mode;
   pr_buffer_t *pbuf;
@@ -1331,7 +1331,8 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     bufmin = 1;
   }
 
-  if (bufmin > buflen) {
+  if (bufmin > 0 &&
+      (size_t) bufmin > buflen) {
     bufmin = buflen;
   }
 

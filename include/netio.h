@@ -184,10 +184,10 @@ int pr_netio_printf_async(pr_netio_stream_t *, char *,...);
 int pr_netio_poll(pr_netio_stream_t *);
 
 /* Read, from the given stream, into the buffer the requested size_t number
- * of bytes.  The size_t is the minimum number of bytes to read before
+ * of bytes.  The last argument is the minimum number of bytes to read before
  * returning 1 (or greater).
  */
-int pr_netio_read(pr_netio_stream_t *, char *, size_t, size_t);
+int pr_netio_read(pr_netio_stream_t *, char *, size_t, int);
 
 pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *, int, int);
 

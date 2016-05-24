@@ -264,7 +264,7 @@ static int admin_addr_down(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
 
 static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
 
   /* Handle scheduled downs of virtual servers in the future, and
    * cancellations of scheduled downs.
@@ -436,7 +436,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'kick user' requests. */
   if (strcmp(reqargv[0], "user") == 0) {
-    register unsigned int i = 0;
+    register int i = 0;
     int optc, kicked_count = 0, kicked_max = -1;
     const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
@@ -536,7 +536,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'kick host' requests. */
   } else if (strcmp(reqargv[0], "host") == 0) {
-    register unsigned int i = 0;
+    register int i = 0;
     int optc, kicked_count = 0, kicked_max = -1;
     const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
@@ -634,7 +634,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'kick class' requests. */
   } else if (strcmp(reqargv[0], "class") == 0) {
-    register unsigned int i = 0;
+    register int i = 0;
     int optc, kicked_count = 0, kicked_max = -1;
     const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
@@ -822,7 +822,7 @@ static int ctrls_handle_scoreboard(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
   int respargc = 0;
   char **respargv = NULL;
 
@@ -854,8 +854,9 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
       /* If the timeout is less than the waiting period, reduce the
        * waiting period by half.
        */
-      if (timeout < waiting)
+      if (timeout < waiting) {
         waiting /= 2;
+      }
     }
 
     /* Now, simply wait for all sessions to be done.  For bonus points,
@@ -917,10 +918,11 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
     "shutdown: flushed to %s/%s client: return value: 0",
     ctrl->ctrls_cl->cl_user, ctrl->ctrls_cl->cl_group);
 
-  for (i = 0; i < respargc; i++)
+  for (i = 0; i < respargc; i++) {
     pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
       "shutdown: flushed to %s/%s client: '%s'",
       ctrl->ctrls_cl->cl_user, ctrl->ctrls_cl->cl_group, respargv[i]);
+  }
 
   /* Shutdown by raising SIGTERM.  Easy. */
   raise(SIGTERM);
@@ -951,7 +953,7 @@ static int admin_addr_status(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
 
 static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
 
   /* Check the status ACL. */
   if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "status")) {
@@ -1038,7 +1040,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
   }
 
   if (strcmp(reqargv[0], "info") != 0) {
-    register unsigned int i;
+    register int i;
 
     for (i = 0; i < reqargc; i++) {
       char *channel, *tmp;
@@ -1166,7 +1168,7 @@ static int admin_addr_up(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
 
 static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
 
   /* Handle scheduled ups of virtual servers in the future, and
    * cancellations of scheduled ups.

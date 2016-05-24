@@ -432,7 +432,7 @@ static int ifsess_sess_merge_class(void) {
 MODRET start_ifctxt(cmd_rec *cmd) {
   config_rec *c = NULL;
   int config_type = 0, eval_type = 0;
-  int argc = 0;
+  unsigned int argc = 0;
   char *name = NULL;
   void **argv = NULL;
   array_header *acl = NULL;
