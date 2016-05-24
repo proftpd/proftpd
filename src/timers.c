@@ -28,7 +28,7 @@
 #include "conf.h"
 
 /* From src/main.c */
-volatile extern unsigned int recvd_signal_flags;
+extern volatile unsigned int recvd_signal_flags;
 
 struct timer {
   struct timer *next, *prev;
