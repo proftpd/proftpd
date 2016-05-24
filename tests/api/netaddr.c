@@ -534,6 +534,9 @@ START_TEST (netaddr_set_sockaddr_test) {
   const char *name;
 #ifdef PR_USE_IPV6
   int family;
+# if defined(HAVE_GETADDRINFO)
+  struct addrinfo hints, *info = NULL;
+# endif /* HAVE_GETADDRINFO */
 #endif /* PR_USE_IPV6 */
 
   res = pr_netaddr_set_sockaddr(NULL, NULL);
@@ -562,16 +565,28 @@ START_TEST (netaddr_set_sockaddr_test) {
   fail_unless(addr != NULL, "Failed to resolve '%s': %s", name,
     strerror(errno));
 
-  res = pr_netaddr_set_sockaddr(addr, &sa);
+# if defined(HAVE_GETADDRINFO)
+  hints.ai_family = AF_INET6;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_NUMERICHOST;
+#  if defined(AI_V4MAPPED)
+  hints.ai_flags |= AI_V4MAPPED;
+#  endif /* AI_V4MAPPED */
+  res = getaddrinfo("::1", NULL, &hints, &info);
+  fail_unless(res == 0, "getaddinfo('127.0.0.1') failed");
+
+  res = pr_netaddr_set_sockaddr(addr, info->ai_addr);
   fail_unless(res == 0, "Failed to set sockaddr: %s", strerror(errno));
 
   pr_netaddr_disable_ipv6();
-  res = pr_netaddr_set_sockaddr(addr, &sa);
+  res = pr_netaddr_set_sockaddr(addr, info->ai_addr);
   fail_unless(res < 0, "Set sockaddr unexpectedly");
   fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
+  freeaddrinfo(info);
   pr_netaddr_enable_ipv6();
+# endif /* HAVE_GETADDRINFO */
 
   family = addr->na_family;
   addr->na_family = 777;
