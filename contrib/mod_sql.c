@@ -1223,7 +1223,7 @@ static unsigned int _passwd_name(const void *val) {
   }
 
   namelen = strlen(name);
-  for (i = 0; i < strlen(name); i++) {
+  for (i = 0; i < namelen; i++) {
     nameval += name[i];
   }
 
