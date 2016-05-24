@@ -2434,6 +2434,9 @@ MODRET xfer_allo(cmd_rec *cmd) {
         return PR_ERROR(cmd);
       }
 
+      pr_log_debug(DEBUG9, "%s requested %" PR_LU " KB, %" PR_LU
+        " KB available on '%s'", cmd->argv[0], (pr_off_t) requested_kb,
+        (pr_off_t) avail_kb, path);
       pr_response_add(R_200, _("%s command successful"), cmd->argv[0]);
     }
 
