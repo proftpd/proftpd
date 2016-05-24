@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ struct config_struc {
   struct pool_rec *pool;	/* Memory pool for this object */
   xaset_t *set;			/* The set we are stored in */
   char *name;
-  int argc;
+  unsigned int argc;
   void **argv;
 
   long flags;			/* Flags */
@@ -87,11 +87,11 @@ struct config_struc {
 
 config_rec *add_config_set(xaset_t **, const char *);
 config_rec *add_config(struct server_struc *, const char *);
-config_rec *add_config_param(const char *, int, ...);
-config_rec *add_config_param_str(const char *, int, ...);
-config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
+config_rec *add_config_param(const char *, unsigned int, ...);
+config_rec *add_config_param_str(const char *, unsigned int, ...);
+config_rec *add_config_param_set(xaset_t **, const char *, unsigned int, ...);
 config_rec *pr_conf_add_server_config_param_str(struct server_struc *,
-  const char *, int, ...);
+  const char *, unsigned int, ...);
 
 /* Flags used when searching for specific config_recs in the in-memory
  * config database, particularly when 'recurse' is TRUE.

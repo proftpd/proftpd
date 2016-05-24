@@ -404,14 +404,19 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   cmd_rec *c;
   pool *sub_pool;
 
+  if (argc < 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   c = pcalloc(cp, sizeof(cmd_rec));
 
   c->argc = argc;
   c->stash_index = -1;
   c->stash_hash = 0;
 
-  if (argc) {
-    register unsigned int i;
+  if (argc > 0) {
+    register int i;
 
     c->argv = pcalloc(cp, sizeof(void *) * (argc + 1));
 

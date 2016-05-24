@@ -359,7 +359,7 @@ static void ldap_tracelog_cb(const char *msg) {
 #endif /* no LBER_OPT_LOG_PRINT_FN */
 
 static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
-  int start_server_index;
+  unsigned int start_server_index;
   char *item;
   LDAPURLDesc *url;
 
@@ -1549,7 +1549,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
 
   /* Check to see how the password is encrypted, and check accordingly. */
 
-  if (encname_len == strlen(cryptpass + 1)) {
+  if ((size_t) encname_len == strlen(cryptpass + 1)) {
     /* No leading {scheme}. */
     hash_method = ldap_defaultauthscheme;
     encname_len = 0;
@@ -1683,7 +1683,8 @@ MODRET set_ldapprotoversion(cmd_rec *cmd) {
 }
 
 MODRET set_ldapserver(cmd_rec *cmd) {
-  int i, len;
+  register unsigned int i;
+  int len;
   char *item;
   LDAPURLDesc *url;
   array_header *urls = NULL;

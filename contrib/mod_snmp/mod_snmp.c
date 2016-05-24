@@ -2058,7 +2058,7 @@ MODRET set_snmpnotify(cmd_rec *cmd) {
   }
 
   pr_netaddr_set_port((pr_netaddr_t *) notify_addr, htons(notify_port));
-  c->argv[0] = (const void *) notify_addr;
+  c->argv[0] = (void *) notify_addr;
 
   return PR_HANDLED(cmd);
 }

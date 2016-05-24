@@ -1134,7 +1134,7 @@ int snmp_mib_get_max_idx(void) {
 }
 
 struct snmp_mib *snmp_mib_get_by_idx(unsigned int mib_idx) {
-  if (mib_idx > snmp_mib_get_max_idx()) {
+  if (mib_idx > (unsigned int) snmp_mib_get_max_idx()) {
     errno = EINVAL;
     return NULL;
   }

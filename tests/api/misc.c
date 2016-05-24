@@ -309,7 +309,7 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
     dst_path, buf);
@@ -326,7 +326,7 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
     dst_path, buf);
@@ -346,7 +346,7 @@ START_TEST (dir_readlink_test) {
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
@@ -365,7 +365,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
     dst_path, buf);
@@ -383,7 +383,7 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
     dst_path, buf);
@@ -400,7 +400,7 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == dst_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   fail_unless(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
     dst_path, buf);
@@ -419,7 +419,7 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
@@ -438,7 +438,7 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
@@ -457,7 +457,7 @@ START_TEST (dir_readlink_test) {
 
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
@@ -478,7 +478,7 @@ START_TEST (dir_readlink_test) {
   flags = 0;
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
@@ -500,7 +500,7 @@ START_TEST (dir_readlink_test) {
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
@@ -523,7 +523,7 @@ START_TEST (dir_readlink_test) {
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
-  fail_unless(res == expected_pathlen, "Expected length %lu, got %d",
+  fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);

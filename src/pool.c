@@ -290,7 +290,7 @@ static unsigned int subpools_in_pool(pool *p) {
 /* Walk all pools, starting with top level permanent pool, displaying a
  * tree.
  */
-static long walk_pools(pool *p, int level,
+static long walk_pools(pool *p, unsigned long level,
     void (*debugf)(const char *, ...)) {
   char _levelpad[80] = "";
   long total = 0;
@@ -695,9 +695,10 @@ int array_cat2(array_header *dst, const array_header *src) {
   elt_size = dst->elt_size;
 
   if (dst->nelts + src->nelts > dst->nalloc) {
-    int new_size = dst->nalloc * 2;
+    size_t new_size;
     char *new_data;
 
+    new_size = dst->nalloc * 2;
     if (new_size == 0) {
       ++new_size;
     }

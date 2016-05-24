@@ -779,13 +779,14 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   level = pr_log_str2sysloglevel(cmd->argv[1]);
-  if (level < 0)
+  if (level < 0) {
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
       "emerg/alert/crit/error/warn/notice/info/debug");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = level;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = level;
 
   return PR_HANDLED(cmd);
 }
@@ -906,17 +907,17 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
 }
 
 MODRET set_maxinstances(cmd_rec *cmd) {
-  int max_instances;
+  long max_instances;
   char *endp;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
   if (strcasecmp(cmd->argv[1], "none") == 0) {
-    max_instances = 0;
+    max_instances = 0UL;
 
   } else {
-    max_instances = (int) strtol(cmd->argv[1], &endp, 10);
+    max_instances = strtol(cmd->argv[1], &endp, 10);
 
     if ((endp && *endp) ||
         max_instances < 1) {
@@ -2364,7 +2365,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
-    int argc = cmd->argc - 3;
+    unsigned int argc = cmd->argc - 3;
     void **argv;
 
     argv = &(cmd->argv[2]);
@@ -2569,7 +2570,10 @@ MODRET set_allowoverride(cmd_rec *cmd) {
 MODRET end_directory(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_DIR);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2617,7 +2621,10 @@ MODRET add_anonymous(cmd_rec *cmd) {
 MODRET end_anonymous(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ANON);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2633,15 +2640,19 @@ MODRET add_class(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (pr_class_open(main_server->pool, cmd->argv[1]) < 0)
+  if (pr_class_open(main_server->pool, cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating <Class ",
       cmd->argv[1], ">: ", strerror(errno), NULL));
+  }
 
   return PR_HANDLED(cmd);
 }
 
 MODRET end_class(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_CLASS);
 
   if (pr_class_close() < 0) {
@@ -2654,8 +2665,10 @@ MODRET end_class(cmd_rec *cmd) {
 MODRET add_global(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  if (cmd->argc-1 != 0)
+  if (cmd->argc-1 != 0) {
     CONF_ERROR(cmd, "Too many parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   c = pr_parser_config_ctxt_open(cmd->argv[0]);
@@ -2667,7 +2680,10 @@ MODRET add_global(cmd_rec *cmd) {
 MODRET end_global(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_GLOBAL);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2832,7 +2848,8 @@ MODRET set_order(cmd_rec *cmd) {
 MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   config_rec *c;
   void **argv;
-  int argc, eval_type;
+  unsigned int argc;
+  int eval_type;
   array_header *acl = NULL;
  
   CHECK_CONF(cmd, CONF_LIMIT);
@@ -3033,7 +3050,10 @@ MODRET set_allowdeny(cmd_rec *cmd) {
 MODRET set_denyall(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3046,7 +3066,10 @@ MODRET set_denyall(cmd_rec *cmd) {
 MODRET set_allowall(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3082,7 +3105,10 @@ MODRET set_authorder(cmd_rec *cmd) {
 MODRET end_limit(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -3255,7 +3281,10 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   const char *address = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_VIRTUAL);
 
   if (cmd->server->ServerAddress) {
@@ -6422,7 +6451,7 @@ static void set_server_auth_order(void) {
   c = find_config(main_server->conf, CONF_PARAM, "AuthOrder", FALSE);
   if (c != NULL) {
     array_header *module_list = (array_header *) c->argv[0];
-    int modulec = 0;
+    unsigned int modulec = 0;
     char **modulev = NULL;
     register unsigned int i = 0;
 

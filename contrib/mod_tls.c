@@ -1346,12 +1346,15 @@ static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
 
   sans = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
   if (sans != NULL) {
-    register unsigned int i;
+    register int i;
     int nsans = sk_GENERAL_NAME_num(sans);
 
     for (i = 0; i < nsans; i++) {
-      GENERAL_NAME *alt_name = sk_GENERAL_NAME_value(sans, i);
+      GENERAL_NAME *alt_name;
 
+      pr_signals_handle();
+
+      alt_name = sk_GENERAL_NAME_value(sans, i);
       if (alt_name->type == GEN_DNS) {
         char *dns_san;
         size_t dns_sanlen;
@@ -1365,7 +1368,7 @@ static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
          * only checks "www.goodguy.com".
          */
 
-        if (ASN1_STRING_length(alt_name->d.ia5) != dns_sanlen) {
+        if ((size_t) ASN1_STRING_length(alt_name->d.ia5) != dns_sanlen) {
           tls_log("%s", "cert dNSName SAN contains embedded NULs, "
             "rejecting as possible spoof attempt");
           tls_log("suspicious dNSName SAN value: '%s'",
@@ -1408,12 +1411,15 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
 
   sans = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
   if (sans != NULL) {
-    register unsigned int i;
+    register int i;
     int nsans = sk_GENERAL_NAME_num(sans);
 
     for (i = 0; i < nsans; i++) {
-      GENERAL_NAME *alt_name = sk_GENERAL_NAME_value(sans, i);
+      GENERAL_NAME *alt_name;
 
+      pr_signals_handle();
+
+      alt_name = sk_GENERAL_NAME_value(sans, i);
       if (alt_name->type == GEN_IPADD) {
         unsigned char *san_data = NULL;
         int have_ipstr = FALSE, san_datalen;
@@ -1557,7 +1563,7 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
 
   cn_len = strlen(cn_str);
 
-  if (ASN1_STRING_length(cn_asn1) != cn_len) {
+  if ((size_t) ASN1_STRING_length(cn_asn1) != cn_len) {
     tls_log("%s", "cert CommonName contains embedded NULs, rejecting as "
       "possible spoof attempt");
     tls_log("suspicious CommonName value: '%s'",
@@ -3558,7 +3564,7 @@ static int ocsp_check_response(pool *p, X509 *cert, X509 *issuer, SSL *ssl,
 # endif
 
     if (extra_certs != NULL) {
-      register unsigned int i;
+      register int i;
 
       for (i = 0; i < sk_X509_num(extra_certs); i++) {
         sk_X509_push(chain, sk_X509_value(extra_certs, i));
@@ -4799,7 +4805,7 @@ static int tls_init_ctx(void) {
    */
   if (tls_ticket_keys == NULL) {
     struct tls_ticket_key *k;
-    int new_ticket_key_intvl;
+    unsigned int new_ticket_key_intvl;
 
     pr_log_debug(DEBUG9, MOD_TLS_VERSION
       ": generating initial TLS session ticket key");
@@ -7018,7 +7024,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
       /* Watch for any embedded NULs, which can cause verification
        * problems via spoofing.
        */
-      if (data_len != strlen((char *) data_str)) {
+      if ((size_t) data_len != strlen((char *) data_str)) {
         tls_log("%s", "client cert CommonName contains embedded NULs, "
           "ignoring as possible spoof attempt");
         tls_log("suspicious CommonName value: '%s'", data_str);
@@ -7043,11 +7049,15 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
     sk_alt_names = X509_get_ext_d2i(client_cert, NID_subject_alt_name, NULL,
       NULL);
     if (sk_alt_names != NULL) {
-      register unsigned int i;
+      register int i;
       int nnames = sk_GENERAL_NAME_num(sk_alt_names);
 
       for (i = 0; i < nnames; i++) {
-        GENERAL_NAME *name = sk_GENERAL_NAME_value(sk_alt_names, i);
+        GENERAL_NAME *name;
+
+        pr_signals_handle();
+
+        name = sk_GENERAL_NAME_value(sk_alt_names, i);
 
         /* We're only looking for the Email type. */
         if (name->type == GEN_EMAIL) {
@@ -7060,7 +7070,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
           /* Watch for any embedded NULs, which can cause verification
            * problems via spoofing.
            */
-          if (data_len != strlen((char *) data_str)) {
+          if ((size_t) data_len != strlen((char *) data_str)) {
             tls_log("%s", "client cert Email SAN contains embedded NULs, "
               "ignoring as possible spoof attempt");
             tls_log("suspicious Email SubjAltName value: '%s'", data_str);
@@ -7092,12 +7102,14 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
 
     nexts = X509_get_ext_count(client_cert);
     if (nexts > 0) {
-      register unsigned int i;
+      register int i;
 
       for (i = 0; i < nexts; i++) {
         X509_EXTENSION *ext = NULL;
         ASN1_OBJECT *asn_object = NULL;
         char oid[PR_TUNABLE_PATH_MAX];
+
+        pr_signals_handle();
 
         ext = X509_get_ext(client_cert, i);
         asn_object = X509_EXTENSION_get_object(ext);
@@ -7117,7 +7129,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
             /* Watch for any embedded NULs, which can cause verification
              * problems via spoofing.
              */
-            if (asn_datalen != strlen((char *) asn_datastr)) {
+            if ((size_t) asn_datalen != strlen((char *) asn_datastr)) {
               tls_log("client cert %s extension contains embedded NULs, "
                 "ignoring as possible spoof attempt", field_name);
               tls_log("suspicious %s extension value: '%s'", field_name,
@@ -7353,12 +7365,14 @@ static void tls_setup_cert_ext_environ(const char *env_prefix, X509 *cert) {
 
   nexts = X509_get_ext_count(cert);
   if (nexts > 0) {
-    register unsigned int i = 0;
+    register int i;
 
     for (i = 0; i < nexts; i++) {
-      X509_EXTENSION *ext = X509_get_ext(cert, i);
-      const char *extstr = OBJ_nid2sn(OBJ_obj2nid(
-        X509_EXTENSION_get_object(ext)));
+      X509_EXTENSION *ext;
+      const char *extstr;
+
+      ext = X509_get_ext(cert, i);
+      extstr = OBJ_nid2sn(OBJ_obj2nid(X509_EXTENSION_get_object(ext)));
     }
   }
 #endif
@@ -7388,12 +7402,17 @@ static void tls_setup_cert_ext_environ(const char *env_prefix, X509 *cert) {
  */
 
 static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
-  register unsigned int i = 0;
+  register int i;
   char *k, *v;
 
   for (i = 0; i < sk_X509_NAME_ENTRY_num(name->entries); i++) {
-    X509_NAME_ENTRY *entry = sk_X509_NAME_ENTRY_value(name->entries, i);
-    int nid = OBJ_obj2nid(entry->object);
+    X509_NAME_ENTRY *entry;
+    int nid;
+
+    pr_signals_handle();
+
+    entry = sk_X509_NAME_ENTRY_value(name->entries, i);
+    nid = OBJ_obj2nid(entry->object);
 
     switch (nid) {
       case NID_countryName:
@@ -7698,14 +7717,17 @@ static void tls_setup_environ(SSL *ssl) {
 
   sk_cert_chain = SSL_get_peer_cert_chain(ssl);
   if (sk_cert_chain) {
+    register int i;
     char *data = NULL;
     long datalen = 0;
-    register unsigned int i = 0;
     BIO *bio = NULL;
 
     /* Adding TLS_CLIENT_CERT_CHAIN environ variables. */
     for (i = 0; i < sk_X509_num(sk_cert_chain); i++) {
       size_t klen = 256;
+
+      pr_signals_handle();
+
       k = pcalloc(main_server->pool, klen);
       snprintf(k, klen - 1, "%s%u", "TLS_CLIENT_CERT_CHAIN", i + 1);
 
@@ -7816,14 +7838,17 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
         break;
 
       case X509_V_ERR_INVALID_PURPOSE: {
-        register unsigned int i;
-        int count = X509_PURPOSE_get_count();
+        register int i;
+        int count;
 
         tls_log("client certificate failed verification: %s",
           X509_verify_cert_error_string(ctx->error));
 
+        count = X509_PURPOSE_get_count();
         for (i = 0; i < count; i++) {
-          X509_PURPOSE *purp = X509_PURPOSE_get0(i);
+          X509_PURPOSE *purp;
+
+          purp = X509_PURPOSE_get0(i);
           tls_log("  purpose #%d: %s", i+1, X509_PURPOSE_get0_name(purp));
         }
 
@@ -7946,7 +7971,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     ASN1_UTCTIME_print(b, crl->crl->nextUpdate);
 
     len = BIO_read(b, buf, sizeof(buf) - 1);
-    if (len >= sizeof(buf)) {
+    if ((size_t) len >= sizeof(buf)) {
       len = sizeof(buf)-1;
     }
     buf[len] = '\0';
@@ -8413,7 +8438,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
 
 static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L && defined(PR_USE_OPENSSL_OCSP)
-  register unsigned int i;
+  register int i;
   X509 *cert;
   const char *subj;
   STACK_OF(ACCESS_DESCRIPTION) *descs;
@@ -8440,8 +8465,9 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
   }
 
   for (i = 0; i < sk_ACCESS_DESCRIPTION_num(descs); i++) {
-    ACCESS_DESCRIPTION *desc = sk_ACCESS_DESCRIPTION_value(descs, i);
+    ACCESS_DESCRIPTION *desc;
 
+    desc = sk_ACCESS_DESCRIPTION_value(descs, i);
     if (OBJ_obj2nid(desc->method) == NID_ad_OCSP) {
       /* Found an OCSP AuthorityInfoAccess attribute */
 
@@ -8472,7 +8498,7 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
     "'%s'", ocsp_urls->nelts, ocsp_urls->nelts != 1 ? "URLs" : "URL", subj);
 
   /* Check each of the URLs. */
-  for (i = 0; i < ocsp_urls->nelts; i++) {
+  for (i = 0; i < (int) ocsp_urls->nelts; i++) {
     char *url = ((char **) ocsp_urls->elts)[i];
 
     ok = tls_verify_ocsp_url(ctx, cert, url);
@@ -8569,7 +8595,7 @@ static char *tls_x509_name_oneline(X509_NAME *x509_name) {
     if (data) {
       memset(&buf, '\0', sizeof(buf));
 
-      if (datalen >= sizeof(buf)) {
+      if ((size_t) datalen >= sizeof(buf)) {
         datalen = sizeof(buf)-1;
       }
 
@@ -13120,7 +13146,7 @@ static int tls_sess_init(void) {
 #if defined(PSK_MAX_PSK_LEN)
   c = find_config(main_server->conf, CONF_PARAM, "TLSPreSharedKey", FALSE);
   while (c != NULL) {
-    register unsigned int i;
+    register int i;
     char key_buf[PR_TUNABLE_BUFFER_SIZE], *identity, *path;
     int fd, key_len, valid_hex = TRUE, xerrno;
     struct stat st;

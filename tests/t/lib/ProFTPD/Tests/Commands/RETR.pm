@@ -89,7 +89,7 @@ my $TESTS = {
 
   retr_fails_abs_symlink_enoent_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking rootprivs)],
   },
 
   retr_fails_rel_symlink_enoent => {
@@ -99,7 +99,7 @@ my $TESTS = {
 
   retr_fails_rel_symlink_enoent_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking rootprivs)],
   },
 
   retr_fails_eperm => {

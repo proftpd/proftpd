@@ -112,7 +112,7 @@ typedef struct cmd_struc {
   struct pool_rec *tmp_pool;	/* Temporary pool which only exists
 				 * while the cmd's handler is running
 				 */
-  int argc;
+  unsigned int argc;
 
   char *arg;			/* entire argument (excluding command) */
   void **argv;
@@ -150,20 +150,20 @@ extern server_rec		*main_server;
 extern int			tcpBackLog;
 extern int			SocketBindTight;
 extern char			ServerType;
-extern int			ServerMaxInstances;
+extern unsigned long		ServerMaxInstances;
 extern int			ServerUseReverseDNS;
 
 /* These macros are used to help handle configuration in modules */
 #define CONF_ERROR(x, s)	return PR_ERROR_MSG((x),NULL,pstrcat((x)->tmp_pool, \
 				(x)->argv[0],": ",(s),NULL));
 
-#define CHECK_ARGS(x, n)	if((x)->argc-1 < n) \
+#define CHECK_ARGS(x, n)	if ((n) > 0 && (x)->argc > 0 && (x)->argc-1 < (n)) \
 				CONF_ERROR(x,"missing arguments")
 
-#define CHECK_VARARGS(x, n, m)	if((x)->argc - 1 < n || (x)->argc - 1 > m) \
+#define CHECK_VARARGS(x, n, m)	if ((x)->argc - 1 < n || (x)->argc - 1 > m) \
 				CONF_ERROR(x,"missing arguments")
 
-#define CHECK_HASARGS(x, n)	((x)->argc - 1) == n
+#define CHECK_HASARGS(x, n)	((x)->argc - 1) == (n)
 
 #define CHECK_CONF(x,p)		if (!check_context((x),(p))) \
 				CONF_ERROR((x), \

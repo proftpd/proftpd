@@ -590,7 +590,7 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
 
 /* Make sure that the DH key we're generating is good enough. */
 static int have_good_dh(DH *dh, BIGNUM *pub_key) {
-  register unsigned int i;
+  register int i;
   unsigned int nbits = 0;
   BIGNUM *tmp;
 
@@ -1236,7 +1236,7 @@ static const char *get_kexinit_hostkey_algo_list(pool *p) {
 #ifdef PR_USE_OPENSSL_ECC
   res = sftp_keys_have_ecdsa_hostkey(p, &nids);
   if (res > 0) {
-    register unsigned int i;
+    register int i;
 
     for (i = 0; i < res; i++) {
       char *algo_name = NULL;
@@ -2483,7 +2483,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
       pool *tmp_pool;
       array_header *smaller_dhs, *pref_dhs, *larger_dhs;
       DH *dh, **dhs;
-      int smaller_dh_nbits = 0, larger_dh_nbits = 0;
+      uint32_t smaller_dh_nbits = 0, larger_dh_nbits = 0;
 
       pr_trace_msg(trace_channel, 15,
         "using DH parameters from SFTPDHParamFile '%s' for group exchange",
@@ -2516,7 +2516,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
        */
 
       while (TRUE) {
-        int nbits;
+        uint32_t nbits;
 
         pr_signals_handle();
 
@@ -3582,7 +3582,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     return -1;
   }
 
-  if (res != ecdhlen) {
+  if ((size_t) res != ecdhlen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "computed ECDH shared secret length (%d) does not match needed length "
       "(%lu), rejecting", res, (unsigned long) ecdhlen);

@@ -650,7 +650,7 @@ START_TEST (data_xfer_read_binary_test) {
   session.xfer.buflen = 0;
 
   res = pr_data_xfer(buf, bufsz);
-  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+  fail_unless((size_t) res == expected_len, "Expected %lu, got %d",
     (unsigned long) expected_len, res);
 
   session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
@@ -826,7 +826,7 @@ START_TEST (data_xfer_read_ascii_test) {
   res = pr_data_xfer(buf, bufsz);
   session.sf_flags &= ~SF_ASCII;
 
-  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+  fail_unless((size_t) res == expected_len, "Expected %lu, got %d",
     (unsigned long) expected_len, res);
 
   session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);

@@ -333,7 +333,7 @@ static int config_cmp(const config_rec *a, const char *a_name,
 
 static config_rec *copy_config_from(const config_rec *src, config_rec *dst) {
   config_rec *c;
-  int cargc;
+  unsigned int cargc;
   void **cargv, **sargv;
 
   if (src == NULL ||
@@ -721,7 +721,7 @@ int remove_config(xaset_t *set, const char *name, int recurse) {
 }
 
 config_rec *add_config_param_set(xaset_t **set, const char *name,
-    int num, ...) {
+    unsigned int num, ...) {
   config_rec *c;
   void **argv;
   va_list ap;
@@ -747,7 +747,7 @@ config_rec *add_config_param_set(xaset_t **set, const char *name,
   return c;
 }
 
-config_rec *add_config_param_str(const char *name, int num, ...) {
+config_rec *add_config_param_str(const char *name, unsigned int num, ...) {
   config_rec *c;
   char *arg = NULL;
   void **argv = NULL;
@@ -779,7 +779,7 @@ config_rec *add_config_param_str(const char *name, int num, ...) {
 }
 
 config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
-    int num, ...) {
+    unsigned int num, ...) {
   config_rec *c;
   char *arg = NULL;
   void **argv = NULL;
@@ -811,7 +811,7 @@ config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
   return c;
 }
 
-config_rec *add_config_param(const char *name, int num, ...) {
+config_rec *add_config_param(const char *name, unsigned int num, ...) {
   config_rec *c;
   void **argv;
   va_list ap;

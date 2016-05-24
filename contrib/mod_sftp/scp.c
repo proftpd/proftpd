@@ -1140,8 +1140,11 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   if (writelen > 0) {
     while (TRUE) {
+      int res;
+
       /* XXX Do we need to properly handle short writes here? */
-      if (pr_fsio_write(sp->fh, (char *) data, writelen) != writelen) {
+      res = pr_fsio_write(sp->fh, (char *) data, writelen);
+      if ((uint32_t) res != writelen) {
         int xerrno = errno;
 
         if (xerrno == EINTR ||

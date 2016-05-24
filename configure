@@ -15713,7 +15713,7 @@ fi
 
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
-  CFLAGS="$fullCFLAGS"
+  CFLAGS="-g2 $fullCFLAGS"
 fi
 
 if test x$exec_prefix = xNONE ; then
@@ -20568,7 +20568,7 @@ if test "${enable_xattr+set}" = set; then
 fi
 
 
-pr_devel_cflags="-g -O0 -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
+pr_devel_cflags="-g3 -O0 -fno-omit-frame-pointer -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
 pr_devel_libs=""
 
 # Check whether --enable-devel was given.
@@ -20576,6 +20576,114 @@ if test "${enable_devel+set}" = set; then
   enableval=$enable_devel;
     if test x"$enableval" != xno ; then
       devel="yes"
+
+      # Additional warnings but only for developer mode.  Note that
+      # -Wconversion is a bit noisy at the moment, thus why we
+      # selectively choose which warnings to enable.
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wdangling-else" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wdangling-else... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wdangling-else conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wdangling-else"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wextra" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wextra... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wextra conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wextra"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Winit-self" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Winit-self... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Winit-self conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Winit-self"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-missing-field-initializers" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-missing-field-initializers... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wno-missing-field-initializers conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wno-missing-field-initializers"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-unused-parameter" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-unused-parameter... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wno-unused-parameter conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wno-unused-parameter"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wnull-dereference" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wnull-dereference... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wnull-dereference conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wnull-dereference"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wstrict-prototypes" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wstrict-prototypes... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wstrict-prototypes conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wstrict-prototypes"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+      { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -fdelete-null-pointer-checks" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -fdelete-null-pointer-checks... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -fdelete-null-pointer-checks conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -fdelete-null-pointer-checks"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
 
 
       if test `echo $enableval | grep -c coredump` = "1" ; then
@@ -41373,6 +41481,19 @@ echo "${ECHO_T}no" >&6; }
    fi
    rm -f conftest*
 
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wstrict-overflow" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wstrict-overflow... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wstrict-overflow conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -Wstrict-overflow"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wswitch" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wswitch... $ECHO_C" >&6; }
    echo 'void f(){}' > conftest.c
@@ -41393,6 +41514,19 @@ echo $ECHO_N "checking whether ${CC-cc} accepts -Wunreachable-code... $ECHO_C" >
      { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
      CFLAGS="$CFLAGS -Wunreachable-code"
+   else
+     { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+   fi
+   rm -f conftest*
+
+    { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -fstack-protector" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -fstack-protector... $ECHO_C" >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -fstack-protector conftest.c 2>&1`"; then
+     { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+     CFLAGS="$CFLAGS -fstack-protector"
    else
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }

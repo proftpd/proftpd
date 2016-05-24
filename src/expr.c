@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2011 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,9 +26,9 @@
 
 #include "conf.h"
 
-array_header *pr_expr_create(pool *p, int *argc, char **argv) {
+array_header *pr_expr_create(pool *p, unsigned int *argc, char **argv) {
   array_header *acl = NULL;
-  int cnt;
+  unsigned int cnt;
   char *s, *ent;
 
   if (p == NULL ||

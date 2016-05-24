@@ -1803,11 +1803,12 @@ static void radius_reset(void) {
 
 static unsigned char *radius_xor(unsigned char *p, unsigned char *q,
     size_t len) {
-  register int i = 0;
+  register size_t i = 0;
   unsigned char *tmp = p;
 
-  for (i = 0; i < len; i++)
+  for (i = 0; i < len; i++) {
     *(p++) ^= *(q++);
+  }
 
   return tmp;
 }

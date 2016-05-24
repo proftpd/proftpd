@@ -843,7 +843,7 @@ static int can_digest_file(pool *p, const char *path, off_t start, size_t len,
   }
 
   if (len > 0) {
-    if (start + len > st->st_size) {
+    if (((off_t) (start + len)) > st->st_size) {
       pr_log_debug(DEBUG3, MOD_DIGEST_VERSION
         ": requested offset/length (offset %" PR_LU " bytes, length %lu bytes) "
         "for path '%s' exceeds file size (%lu bytes)", (pr_off_t) start,
@@ -987,7 +987,7 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
   buf = palloc(p, bufsz);
 
   readsz = bufsz;
-  if (readsz > len) {
+  if ((off_t) readsz > len) {
     readsz = len;
   }
 
@@ -1026,7 +1026,7 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
     }
 
     readsz = bufsz;
-    if (readsz > len) {
+    if ((off_t) readsz > len) {
       readsz = len;
     }
 

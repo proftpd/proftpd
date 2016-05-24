@@ -496,7 +496,7 @@ START_TEST (fsio_sys_write_test) {
   fail_unless(res == 0, "Failed to handle zero buffer length");
 
   res = pr_fsio_write(fh, buf, buflen);
-  fail_unless(res == buflen, "Failed to write %lu bytes: %s",
+  fail_unless((size_t) res == buflen, "Failed to write %lu bytes: %s",
     (unsigned long) buflen, strerror(errno));
 
   (void) pr_fsio_close(fh);

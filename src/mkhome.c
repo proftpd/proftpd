@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2015 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Home-on-demand support
- */
+/* Home-on-demand support */
 
 #include "conf.h"
 #include "privs.h"
@@ -309,7 +308,7 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
   flags = *((unsigned long *) c->argv[7]);
 
   dst_uid = uid;
-  dst_gid = (home_gid == -1) ? gid : home_gid;
+  dst_gid = (home_gid == (gid_t) -1) ? gid : home_gid;
 
   dst_mode = *((mode_t *) c->argv[1]);
 

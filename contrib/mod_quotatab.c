@@ -2741,7 +2741,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
     } else {
       if (session.groups) {
-        register int i = 0;
+        register unsigned int i = 0;
 
         char **group_names = session.groups->elts;
         gid_t *group_ids = session.gids->elts;
@@ -2880,7 +2880,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
     } else {
       if (session.groups) {
-        register int i = 0;
+        register unsigned int i = 0;
 
         char **group_names = session.groups->elts;
         gid_t *group_ids = session.gids->elts;

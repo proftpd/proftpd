@@ -740,7 +740,7 @@ static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
         min_size = sizeof(struct sesscache_data) +
           sizeof(struct sesscache_entry);
 
-        if (size < min_size) {
+        if ((size_t) size < min_size) {
           pr_trace_msg(trace_channel, 1,
             "requested size (%lu bytes) smaller than minimum size "
             "(%lu bytes), ignoring", (unsigned long) size,
@@ -956,7 +956,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
 
     if (shmcache_lock_shm(sesscache_fh, F_WRLCK) == 0) {
       sesscache_data->nexceeded++;
-      if (sess_len > sesscache_data->exceeded_maxsz) {
+      if ((size_t) sess_len > sesscache_data->exceeded_maxsz) {
         sesscache_data->exceeded_maxsz = sess_len;
       }
 
@@ -1730,7 +1730,7 @@ static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
         min_size = sizeof(struct ocspcache_data) +
           sizeof(struct ocspcache_entry);
 
-        if (size < min_size) {
+        if ((size_t) size < min_size) {
           pr_trace_msg(trace_channel, 1,
             "requested size (%lu bytes) smaller than minimum size "
             "(%lu bytes), ignoring", (unsigned long) size,
@@ -1941,7 +1941,7 @@ static int ocsp_cache_add_large_resp(tls_ocsp_cache_t *cache,
 
     if (shmcache_lock_shm(ocspcache_fh, F_WRLCK) == 0) {
       ocspcache_data->nexceeded++;
-      if (resp_derlen > ocspcache_data->exceeded_maxsz) {
+      if ((size_t) resp_derlen > ocspcache_data->exceeded_maxsz) {
         ocspcache_data->exceeded_maxsz = resp_derlen;
       }
 

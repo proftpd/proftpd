@@ -441,7 +441,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
   }
 
   if (len == 0 ||
-      len == bufsz) {
+      (size_t) len == bufsz) {
     /* If we read nothing in, OR if the given buffer was completely
      * filled WITHOUT terminating NUL, there's really nothing we can/should
      * be doing.
@@ -510,7 +510,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
   }
 
   if (is_abs_dst == TRUE &&
-      len < chroot_pathlen) {
+      (size_t) len < chroot_pathlen) {
     /* If the destination path length is shorter than the chroot path,
      * AND the destination path is absolute, then by definition it CANNOT
      * point within the chroot.

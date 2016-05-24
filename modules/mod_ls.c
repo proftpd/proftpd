@@ -502,7 +502,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
        */
       for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
         if (!PR_ISPRINT(display_name[i])) {
-          register unsigned int k;
+          register int k;
           int replace_len = 0;
           char replace[32];
 
@@ -554,7 +554,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           return 0;
         }
 
-        if (len >= sizeof(m)) {
+        if ((size_t) len >= sizeof(m)) {
           return 0;
         }
 
@@ -597,7 +597,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         return 0;
       }
 
-      if (len >= sizeof(l)) {
+      if ((size_t) len >= sizeof(l)) {
         return 0;
       }
 
@@ -818,8 +818,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
   return rval;
 }
 
-static int colwidth = 0;
-static int filenames = 0;
+static size_t colwidth = 0;
+static unsigned int filenames = 0;
 
 struct filename {
   struct filename *down;
@@ -1211,7 +1211,7 @@ static char **sreaddir(const char *dirname, const int sort) {
   while ((de = pr_fsio_readdir(d)) != NULL) {
     pr_signals_handle();
 
-    if (i >= dsize - 1) {
+    if ((size_t) i >= dsize - 1) {
       char **newp;
 
       /* The test above goes off one item early in case this is the last item
@@ -1903,7 +1903,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
       const char *p;
 
       for (i = 0, p = arg + 1;
-          (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
+          ((size_t) i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
           pbuffer[i++] = *p++);
 
       pbuffer[i] = '\0';
@@ -2248,7 +2248,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
      */
     for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
       if (!PR_ISPRINT(display_name[i])) {
-        register unsigned int k;
+        register int k;
         int replace_len = 0;
         char replace[32];
 
@@ -2410,7 +2410,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     }
 
     if (i > 0) {
-      if (i >= sizeof(file)) {
+      if ((size_t) i >= sizeof(file)) {
         continue;
       }
 

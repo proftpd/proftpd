@@ -1331,7 +1331,8 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     bufmin = 1;
   }
 
-  if (bufmin > buflen) {
+  if (bufmin > 0 &&
+      (size_t) bufmin > buflen) {
     bufmin = buflen;
   }
 

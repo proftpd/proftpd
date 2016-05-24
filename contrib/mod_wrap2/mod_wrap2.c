@@ -1219,7 +1219,7 @@ static unsigned char wrap2_eval_or_expression(char **acl, array_header *creds) {
   list = (char **) creds->elts;
 
   for (; *acl; acl++) {
-    register int i = 0;
+    register unsigned int i = 0;
     elem = *acl;
     found = FALSE;
 
@@ -1255,7 +1255,7 @@ static unsigned char wrap2_eval_and_expression(char **acl, array_header *creds) 
   list = (char **) creds->elts;
 
   for (; *acl; acl++) {
-    register int i = 0;
+    register unsigned int i = 0;
     elem = *acl;
     found = FALSE;
 
@@ -1433,7 +1433,7 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
   register unsigned int i = 0;
   unsigned char have_registration = FALSE;
   config_rec *c = NULL;
-  int argc = 1;
+  unsigned int argc = 1;
   void **argv = NULL;
   array_header *acl = NULL;
 
@@ -1468,7 +1468,6 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 0);
-
   acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) &cmd->argv[0]);
 
   /* Build the desired config_rec manually. */
@@ -1595,7 +1594,7 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
   register unsigned int i = 0;
   unsigned char have_registration = FALSE;
   config_rec *c = NULL;
-  int argc = 1;
+  unsigned int argc = 1;
   void **argv = NULL;
   array_header *acl = NULL;
 
@@ -1630,7 +1629,6 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 0);
-
   acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) &cmd->argv[0]);
 
   /* Build the desired config_rec manually. */

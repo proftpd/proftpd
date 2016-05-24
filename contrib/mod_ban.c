@@ -191,7 +191,7 @@ struct ban_mcache_entry {
 
   /* IP address/port of origin/source server/vhost of this cache entry. */
   char *ip_addr;
-  int port;
+  unsigned int port;
 
   /* We could use a struct ban_entry here, except that it uses fixed-size
    * buffers for the strings, and for cache storage, dynamically allocated
@@ -507,7 +507,7 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
   field = json_find_member(json, key);
   if (field != NULL) {
     if (field->tag == JSON_NUMBER) {
-      bme->port = (int) field->number_;
+      bme->port = (unsigned int) field->number_;
 
     } else {
       pr_trace_msg(trace_channel, 3,
@@ -525,10 +525,10 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
     return -1;
   }
 
-  if (bme->port <= 0 ||
+  if (bme->port == 0 ||
       bme->port > 65535) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "invalid port number %d in cached JSON value, rejecting", bme->port);
+      "invalid port number %u in cached JSON value, rejecting", bme->port);
     json_delete(json);
     errno = EINVAL;
     return -1;
@@ -1850,7 +1850,7 @@ static void ban_event_list_expire(void) {
 /* Controls handlers
  */
 
-static server_rec *ban_get_server_by_id(int sid) {
+static server_rec *ban_get_server_by_id(unsigned int sid) {
   server_rec *s = NULL;
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
@@ -2118,7 +2118,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
 static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
   unsigned int sid = 0;
 
   /* Check the ban ACL */
@@ -2346,7 +2346,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
 static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
   int optc;
   unsigned int sid = 0;
   const char *reqopts = "s:";

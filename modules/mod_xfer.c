@@ -176,7 +176,7 @@ static off_t find_max_nbytes(char *directive) {
   }
 
   /* Print out some nice debugging information. */
-  if (max_nbytes > 0UL &&
+  if (max_nbytes > 0 &&
       (have_user_limit || have_group_limit ||
        have_class_limit || have_all_limit)) {
     pr_log_debug(DEBUG5, "%s (%" PR_LU " bytes) in effect for %s",
@@ -3282,7 +3282,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
 
   } else {
     array_header *acl = NULL;
-    int argc;
+    unsigned int argc;
     void **argv;
 
     argc = cmd->argc - 4;
@@ -3645,14 +3645,13 @@ MODRET set_transferrate(cmd_rec *cmd) {
 
   } else {
     array_header *acl = NULL;
-    int argc;
+    unsigned int argc;
     void **argv;
 
     argc = cmd->argc - 4;
     argv = cmd->argv + 3;
 
     acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
-
     c = add_config_param(cmd->argv[0], 0);
 
     /* Parse the command list.

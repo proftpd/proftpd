@@ -50,7 +50,7 @@ static const char *str_vreplace(pool *p, unsigned int max_replaces,
   while ((m = va_arg(args, char *)) != NULL &&
          nmatches < PR_STR_MAX_MATCHES) {
     char *tmp = NULL;
-    int count = 0;
+    unsigned int count = 0;
 
     r = va_arg(args, char *);
     if (r == NULL) {

@@ -1200,7 +1200,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
           }
 
           /* Now copy everything we can into cl_buf */
-          if (buflen > cl_size) {
+          if ((size_t) buflen > cl_size) {
             /* Because we have to cut our buffer short, make sure this
              * is made up for later by increasing adjlen.
              */
