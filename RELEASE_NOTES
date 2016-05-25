@@ -14,6 +14,8 @@ ChangeLog files.
   + mod_sql_passwd supports Scrypt and Argon2 password hashing algorithms
     when built using libsodium.
   + mod_sftp now supports extended attributes (xattrs) via SFTP.
+  + Fixed bug in filesystem free space calculation causing ALLO to fail
+    unexpectedly.
 
   
   + New Configuration Directives:
