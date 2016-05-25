@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -161,7 +161,7 @@ static void handle_terminate_other(void) {
 
 #ifdef PR_DEVEL_STACK_TRACE
 static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
-  register unsigned i;
+  register int i;
 # if defined(HAVE_UCONTEXT_H)
   ucontext_t *uc = NULL;
 # endif /* !HAVE_UCONTEXT_H */
