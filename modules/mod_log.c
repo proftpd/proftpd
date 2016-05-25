@@ -246,6 +246,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
           continue;
         }
 
+        if (strncmp(tmp, "{remote-port}", 13) == 0) {
+          add_meta(&outs, LOGFMT_META_REMOTE_PORT, 0);
+          tmp += 13;
+          continue;
+        }
+
         if (strncmp(tmp, "{uid}", 5) == 0) {
           add_meta(&outs, LOGFMT_META_UID, 0);
           tmp += 5;
@@ -1277,6 +1283,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       argp = arg;
       len = sstrncpy(argp,
         pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()), sizeof(arg));
+      m++;
+      break;
+
+    case LOGFMT_META_REMOTE_PORT:
+      argp = arg;
+      len = snprintf(argp, sizeof(arg), "%d", session.c->remote_port);
       m++;
       break;
 
