@@ -6440,15 +6440,15 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
-      sizeof(fs.f_frsize) > 4) {
+      sizeof(fs.f_bsize) > 4) {
 
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
 
   } else {
-    *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
   res = 0;
@@ -6501,7 +6501,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
 
   } else {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
@@ -6557,7 +6557,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
 
   } else {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
