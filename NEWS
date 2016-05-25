@@ -24,6 +24,8 @@
   a bug in libmemcached-1.0.18 and earlier.
 - Bug 4244 - Long-running sessions consume memory continuously.
 - Bug 4248 - ALLO command failed unexpectedly.
+- Bug 4247 - ProFTPD runs out of memory when listing very large directories
+  (e.g. over 400GB).
 
 1.3.6rc2 - Released 10-Mar-2016
 --------------------------------
