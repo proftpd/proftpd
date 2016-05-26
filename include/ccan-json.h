@@ -103,6 +103,10 @@ void json_prepend_member(JsonNode *object, const char *key, JsonNode *value);
 
 void json_remove_from_parent(JsonNode *node);
 
+/*** Error Handling ***/
+
+void json_set_oom(void (*oom)(void));
+
 /*** Debugging ***/
 
 /*
