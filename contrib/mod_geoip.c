@@ -1401,6 +1401,7 @@ MODRET geoip_post_pass(cmd_rec *cmd) {
       ": Connection denied to %s due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
 
+    pr_event_generate("mod_geoip.connection-denied", NULL);
     pr_session_disconnect(&geoip_module, PR_SESS_DISCONNECT_CONFIG_ACL,
       "GeoIP Filters");
   }
@@ -1559,6 +1560,8 @@ static int geoip_sess_init(void) {
     pr_log_pri(PR_LOG_NOTICE, MOD_GEOIP_VERSION
       ": Connection denied to %s due to GeoIP filter/policy",
       pr_netaddr_get_ipstr(session.c->remote_addr));
+
+    pr_event_generate("mod_geoip.connection-denied", NULL);
 
     /* XXX send_geoip_mesg(tmp_pool, mesg) */
     destroy_pool(tmp_pool);
