@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_tls API
- * Copyright (c) 2002-2015 TJ Saunders
+ * Copyright (c) 2002-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,15 +81,15 @@ typedef struct sess_cache_st {
   /* Add a new session entry to the cache.  The provided sess_id is effectively
    * the cache lookup key.
    */
-  int (*add)(struct sess_cache_st *cache, unsigned char *sess_id,
+  int (*add)(struct sess_cache_st *cache, const unsigned char *sess_id,
     unsigned int sess_id_len, time_t expires, SSL_SESSION *sess);
 
   /* Retrieve a session from the cache, using the provided sess_id key. */
-  SSL_SESSION *(*get)(struct sess_cache_st *cache, unsigned char *sess_id,
+  SSL_SESSION *(*get)(struct sess_cache_st *cache, const unsigned char *sess_id,
     unsigned int sess_id_len);
 
   /* Remove the specified session from the cache. */
-  int (*delete)(struct sess_cache_st *cache, unsigned char *sess_id,
+  int (*delete)(struct sess_cache_st *cache, const unsigned char *sess_id,
     unsigned int sess_id_len);
 
   /* Clear the cache of all sessions, regardless of their normal expiration
