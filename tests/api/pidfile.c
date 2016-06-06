@@ -29,6 +29,8 @@
 static pool *p = NULL;
 static const char *pidfile_path = "/tmp/prt-pidfile";
 
+/* Fixtures */
+
 static void set_up(void) {
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
@@ -43,6 +45,8 @@ static void tear_down(void) {
 
   (void) unlink(pidfile_path);
 }
+
+/* Tests */
 
 START_TEST (pidfile_set_test) {
   int res;

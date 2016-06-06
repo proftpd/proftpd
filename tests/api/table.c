@@ -723,7 +723,6 @@ Suite *tests_get_table_suite(void) {
   TCase *testcase;
 
   suite = suite_create("table");
-
   testcase = tcase_create("base");
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);
@@ -750,6 +749,5 @@ Suite *tests_get_table_suite(void) {
   tcase_add_test(testcase, table_pcalloc_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

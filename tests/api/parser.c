@@ -62,6 +62,8 @@ static void tear_down(void) {
   } 
 }
 
+/* Tests */
+
 START_TEST (parser_prepare_test) {
   int res;
   xaset_t *parsed_servers = NULL;

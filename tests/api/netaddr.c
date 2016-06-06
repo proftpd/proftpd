@@ -43,13 +43,13 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("dns", 0, 0);
+  }
+
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
-  }
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_set_levels("dns", 0, 0);
   }
 }
 

@@ -588,8 +588,8 @@ Suite *tests_get_stash_suite(void) {
   TCase *testcase;
 
   suite = suite_create("stash");
-
   testcase = tcase_create("stash");
+
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, stash_add_symbol_test);
@@ -606,6 +606,5 @@ Suite *tests_get_stash_suite(void) {
   tcase_add_test(testcase, stash_remove_hook_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }
