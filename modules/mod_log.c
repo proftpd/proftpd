@@ -755,18 +755,17 @@ MODRET set_systemlog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static struct tm *_get_gmtoff(int *tz) {
+static struct tm *get_gmtoff(int *tz) {
   time_t now;
-  struct tm *tm;
+  struct tm *gmt, *tm = NULL;
 
   time(&now);
-  tm = pr_localtime(NULL, &now);
-  if (tm != NULL) {
+  gmt = gmtime(&now);
+  if (gmt != NULL) {
     int days, hours, minutes;
-    struct tm *gmt;
 
-    gmt = gmtime(&now);
-    if (gmt != NULL) {
+    tm = pr_localtime(NULL, &now);
+    if (tm != NULL) {
       days = tm->tm_yday - gmt->tm_yday;
       hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)
               + tm->tm_hour - gmt->tm_hour);
@@ -1420,7 +1419,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
           internal_fmt = 0;
         }
 
-        t = *_get_gmtoff(&timz);
+        t = *get_gmtoff(&timz);
         sign = (timz < 0 ? '-' : '+');
         if (timz < 0) {
           timz = -timz;
