@@ -1086,6 +1086,8 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
     switch (pr_netio_poll(nstrm)) {
       case 1:
+        /* pr_netio_poll() returns 1 only if the stream has been aborted. */
+        errno = ECONNABORTED;
         return -2;
 
       case -1:

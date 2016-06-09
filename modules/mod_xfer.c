@@ -45,6 +45,7 @@
 
 extern module auth_module;
 extern pid_t mpid;
+extern pr_response_t *resp_list, *resp_err_list;
 
 /* Variables for this module */
 static pr_fh_t *retr_fh = NULL;
@@ -2594,6 +2595,12 @@ MODRET xfer_abor(cmd_rec *cmd) {
   }
 
   pr_data_abort(0, FALSE);
+
+  /* If we going to send a successful response here, then explicitly clear
+   * the error response list (to which pr_data_abort() MAY have added
+   * something), to prevent confusing clients (Bug#4252).
+   */
+  pr_response_clear(&resp_err_list);
 
   pr_response_add(R_226, _("Abort successful"));
   return PR_HANDLED(cmd);
