@@ -45,7 +45,6 @@
 
 extern module auth_module;
 extern pid_t mpid;
-extern pr_response_t *resp_list, *resp_err_list;
 
 /* Variables for this module */
 static pr_fh_t *retr_fh = NULL;
@@ -2522,10 +2521,43 @@ MODRET xfer_retr(cmd_rec *cmd) {
       /* Make sure that the errno value, needed for the pr_data_abort() call,
        * is preserved; errno itself might be overwritten in retr_abort().
        */
-      int xerrno = errno;
+      int already_aborted = FALSE, xerrno = errno;
 
       retr_abort();
-      pr_data_abort(xerrno, FALSE);
+
+      /* Do we need to abort the data transfer here?  It's possible that
+       * the transfer has already been aborted, e.g. via the TCP OOB marker
+       * and/or the ABOR command.  And if that is the case, then calling
+       * pr_data_abort() here will only lead to a spurious response code
+       * (see Bug#4252).
+       *
+       * However, there are OTHER error conditions which would lead to this
+       * code path.  So we need to resort to some heuristics to differentiate
+       * between these cases.  The errno value checks match those in the
+       * pr_data_xfer() function, after the control channel has been polled
+       * for commands such as ABOR.
+       */
+
+      if (session.d == NULL &&
+#if defined(ECONNABORTED)
+          xerrno == ECONNABORTED &&
+#elif defined(ENOTCONN)
+          xerrno == ENOTCONN &&
+#else
+          xerrno == EIO &&
+#endif
+          session.xfer.xfer_type == STOR_DEFAULT) {
+
+        /* If the ABOR command has been sent, then pr_data_reset() and
+         * pr_data_cleanup() will have been called; the latter resets the
+         * xfer_type value to DEFAULT.
+         */
+        already_aborted = TRUE;
+      }
+
+      if (already_aborted == FALSE) {
+        pr_data_abort(xerrno, FALSE);
+      }
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -2595,12 +2627,6 @@ MODRET xfer_abor(cmd_rec *cmd) {
   }
 
   pr_data_abort(0, FALSE);
-
-  /* If we going to send a successful response here, then explicitly clear
-   * the error response list (to which pr_data_abort() MAY have added
-   * something), to prevent confusing clients (Bug#4252).
-   */
-  pr_response_clear(&resp_err_list);
 
   pr_response_add(R_226, _("Abort successful"));
   return PR_HANDLED(cmd);
