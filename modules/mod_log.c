@@ -759,6 +759,12 @@ static struct tm *get_gmtoff(int *tz) {
   time_t now;
   struct tm *gmt, *tm = NULL;
 
+  /* Note that the ordering of the calls to gmtime(3) and pr_localtime()
+   * here are IMPORTANT; gmtime(3) MUST be called first.  Otherwise,
+   * the TZ environment variable may not be honored as one would expect;
+   * see:
+   *  https://forums.proftpd.org/smf/index.php/topic,11971.0.html
+   */
   time(&now);
   gmt = gmtime(&now);
   if (gmt != NULL) {
