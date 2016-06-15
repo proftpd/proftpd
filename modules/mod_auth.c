@@ -824,6 +824,8 @@ static int get_default_root(pool *p, int allow_symlinks, const char **root) {
        * root.
        */
 
+      pr_fs_clear_cache2(dir);
+
       PRIVS_USER
       realdir = dir_realpath(p, dir);
       xerrno = errno;
