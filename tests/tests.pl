@@ -147,6 +147,7 @@ if (scalar(@ARGV) > 0) {
     t/config/maxclientsperuser.t
     t/config/maxcommandrate.t
     t/config/maxconnectionsperhost.t
+    t/config/maxhostsperuser.t
     t/config/maxinstances.t
     t/config/maxloginattempts.t
     t/config/maxretrievefilesize.t
