@@ -1088,8 +1088,7 @@ START_TEST (path_subst_uservar_test) {
 
   session.user = "user";
   original = "/home/%u[]";
-  /* XXX TODO: This SHOULD be "/home/user[]" */
-  expected = "/home/u";
+  expected = "/home/user[]";
   path = pstrdup(p, original);
   mark_point();
   res = path_subst_uservar(p, &path);
