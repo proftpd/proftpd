@@ -1171,3 +1171,122 @@ int pr_gettimeofday_millis(uint64_t *millis) {
   return 0;
 }
 
+/* Substitute any appearance of the %u variable in the given string with
+ * the value.
+ */
+const char *path_subst_uservar(pool *path_pool, const char **path) {
+  const char *new_path = NULL, *substr_path = NULL;
+  char *substr = NULL;
+
+  /* Sanity check. */
+  if (path_pool == NULL ||
+      path == NULL ||
+      !*path) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* If no %u string present, do nothing. */
+  if (strstr(*path, "%u") == NULL) {
+    return *path;
+  }
+
+  /* First, deal with occurrences of "%u[index]" strings.  Note that
+   * with this syntax, the '[' and ']' characters become invalid in paths,
+   * but only if that '[' appears after a "%u" string -- certainly not
+   * a common phenomenon (I hope).  This means that in the future, an escape
+   * mechanism may be needed in this function.  Caveat emptor.
+   */
+
+  substr_path = *path;
+  substr = substr_path ? strstr(substr_path, "%u[") : NULL;
+  while (substr) {
+    long i = 0;
+    char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
+    char ref_char[2] = {'\0', '\0'};
+
+    pr_signals_handle();
+
+    /* Now, find the closing ']'. If not found, it is a syntax error;
+     * continue on without processing this occurrence.
+     */
+    substr_end = strchr(substr, ']');
+    if (substr_end == NULL) {
+      /* Just end here. */
+      break;
+    }
+
+    /* Make a copy of the entire substring. */
+    substr_dup = pstrdup(path_pool, substr);
+
+    /* The substr_end variable (used as an index) should work here, too
+     * (trying to obtain the entire substring).
+     */
+    substr_dup[substr_end - substr + 1] = '\0';
+
+    /* Advance the substring pointer by three characters, so that it is
+     * pointing at the character after the '['.
+     */
+    substr += 3;
+
+    /* If the closing ']' is the next character after the opening '[', it
+     * is a syntax error.
+     */
+    if (substr_end == (substr + 3)) {
+      /* Do not forget to advance the substring search path pointer. */
+      substr_path = substr;
+      continue;
+    }
+
+    /* Temporarily set the ']' to '\0', to make it easy for the string
+     * scanning below.
+     */
+    *substr_end = '\0';
+
+    /* Scan the index string into a number, watching for bad strings. */
+    i = strtol(substr, &endp, 10);
+    if (endp && *endp) {
+      *substr_end = ']';
+      substr_path = substr;
+      continue;
+    }
+
+    /* Make sure that index is within bounds. */
+    if (i < 0 ||
+        (size_t) i > strlen(session.user) - 1) {
+
+      /* Put the closing ']' back. */
+      *substr_end = ']';
+
+      /* Syntax error. Advance the substring search path pointer, and move
+       * on.
+       */
+      substr_path = substr;
+
+      continue;
+    }
+
+    ref_char[0] = session.user[i];
+
+    /* Put the closing ']' back. */
+    *substr_end = ']';
+
+    /* Now, to substitute the whole "%u[index]" substring with the
+     * referenced character/string.
+     */
+    substr_path = sreplace(path_pool, substr_path, substr_dup, ref_char, NULL);
+    substr = substr_path ? strstr(substr_path, "%u[") : NULL;
+  }
+
+  /* Check for any bare "%u", and handle those if present. */
+  if (substr_path &&
+      strstr(substr_path, "%u") != NULL) {
+    new_path = sreplace(path_pool, substr_path, "%u", session.user, NULL);
+
+  } else {
+    new_path = substr_path;
+  }
+
+  return new_path;
+}
+
