@@ -1177,6 +1177,7 @@ int pr_gettimeofday_millis(uint64_t *millis) {
 const char *path_subst_uservar(pool *path_pool, const char **path) {
   const char *new_path = NULL, *substr_path = NULL;
   char *substr = NULL;
+  size_t user_len = 0;
 
   /* Sanity check. */
   if (path_pool == NULL ||
@@ -1191,6 +1192,10 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
     return *path;
   }
 
+  if (session.user != NULL) {
+    user_len = strlen(session.user);
+  }
+
   /* First, deal with occurrences of "%u[index]" strings.  Note that
    * with this syntax, the '[' and ']' characters become invalid in paths,
    * but only if that '[' appears after a "%u" string -- certainly not
@@ -1200,7 +1205,7 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
 
   substr_path = *path;
   substr = substr_path ? strstr(substr_path, "%u[") : NULL;
-  while (substr) {
+  while (substr != NULL) {
     long i = 0;
     char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
     char ref_char[2] = {'\0', '\0'};
@@ -1232,10 +1237,9 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
     /* If the closing ']' is the next character after the opening '[', it
      * is a syntax error.
      */
-    if (substr_end == (substr + 3)) {
-      /* Do not forget to advance the substring search path pointer. */
-      substr_path = substr;
-      continue;
+    if (*substr == ']') {
+      substr_path = *path;
+      break;
     }
 
     /* Temporarily set the ']' to '\0', to make it easy for the string
@@ -1247,23 +1251,29 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
     i = strtol(substr, &endp, 10);
     if (endp && *endp) {
       *substr_end = ']';
-      substr_path = substr;
-      continue;
+      pr_trace_msg("auth", 3,
+        "invalid index number syntax found in '%s', ignoring", substr);
+      return *path;
     }
 
     /* Make sure that index is within bounds. */
     if (i < 0 ||
-        (size_t) i > strlen(session.user) - 1) {
+        (size_t) i > user_len - 1) {
 
       /* Put the closing ']' back. */
       *substr_end = ']';
 
-      /* Syntax error. Advance the substring search path pointer, and move
-       * on.
-       */
-      substr_path = substr;
+      if (i < 0) {
+        pr_trace_msg("auth", 3,
+          "out-of-bounds index number (%d) found in '%s', ignoring", i, substr);
 
-      continue;
+      } else {
+        pr_trace_msg("auth", 3,
+          "out-of-bounds index number (%d > %lu) found in '%s', ignoring", i,
+          (unsigned long) user_len-1, substr);
+      }
+
+      return *path;
     }
 
     ref_char[0] = session.user[i];
