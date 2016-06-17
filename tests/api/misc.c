@@ -48,6 +48,7 @@ static void set_up(void) {
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("auth", 1, 20);
     pr_trace_set_levels("fsio", 1, 20);
     pr_trace_set_levels("fs.statcache", 1, 20);
   }
@@ -64,6 +65,7 @@ static void tear_down(void) {
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("auth", 0, 0);
     pr_trace_set_levels("fsio", 0, 0);
     pr_trace_set_levels("fs.statcache", 0, 0);
   }
@@ -1108,11 +1110,22 @@ START_TEST (path_subst_uservar_test) {
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
     res);
 
+  /* Attempt to use an invalid index */
+  session.user = "user";
+  original = "/home/users/%u[a]/%u[b]%u[c]/%u";
+  expected = original;
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
   /* Attempt to use an out-of-bounds index */
   session.user = "user";
   original = "/home/users/%u[0]/%u[-1]%u[1]/%u";
-  /* XXX TODO: This SHOULD be ??? */
-  expected = "s/user";
+  expected = original;
   path = pstrdup(p, original);
   mark_point();
   res = path_subst_uservar(p, &path);
@@ -1124,8 +1137,7 @@ START_TEST (path_subst_uservar_test) {
   /* Attempt to use an out-of-bounds index */
   session.user = "user";
   original = "/home/users/%u[0]/%u[0]%u[4]/%u";
-  /* XXX TODO: This SHOULD be ??? */
-  expected = "user";
+  expected = original;
   path = pstrdup(p, original);
   mark_point();
   res = path_subst_uservar(p, &path);
