@@ -109,4 +109,9 @@ const char *pr_strtime2(time_t, int);
 int pr_gettimeofday_millis(uint64_t *);
 int pr_timeval2millis(struct timeval *, uint64_t *);
 
+/* Resolve/substitute any "%u" variables in the path.  Returns the resolved
+ * path, or NULL if there was an error.
+ */
+const char *path_subst_uservar(pool *p, const char **path);
+
 #endif /* PR_SUPPORT_H */
