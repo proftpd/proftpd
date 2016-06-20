@@ -566,6 +566,7 @@ START_TEST (netaddr_set_sockaddr_test) {
     strerror(errno));
 
 # if defined(HAVE_GETADDRINFO)
+  memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_NUMERICHOST;
@@ -573,7 +574,7 @@ START_TEST (netaddr_set_sockaddr_test) {
   hints.ai_flags |= AI_V4MAPPED;
 #  endif /* AI_V4MAPPED */
   res = getaddrinfo("::1", NULL, &hints, &info);
-  fail_unless(res == 0, "getaddinfo('127.0.0.1') failed");
+  fail_unless(res == 0, "getaddrinfo('::1') failed: %s", gai_strerror(res));
 
   res = pr_netaddr_set_sockaddr(addr, info->ai_addr);
   fail_unless(res == 0, "Failed to set sockaddr: %s", strerror(errno));

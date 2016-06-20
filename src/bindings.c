@@ -466,6 +466,44 @@ int pr_ipbind_create(server_rec *server, const pr_netaddr_t *addr,
   return 0;
 }
 
+/* Returns the LAST matching ipbind for the given port, if any.  If provided,
+ * the match_count pointer will contain the number of ipbinds found that
+ * matched that port.
+ */
+static pr_ipbind_t *ipbind_find_port(unsigned int port,
+    unsigned char skip_inactive, unsigned int *match_count) {
+  register unsigned int i;
+  pr_ipbind_t *matched_ipbind = NULL;
+
+  for (i = 0; i < PR_BINDINGS_TABLE_SIZE; i++) {
+    pr_ipbind_t *ipbind;
+
+    for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
+      pr_signals_handle();
+
+      if (skip_inactive &&
+          !ipbind->ib_isactive) {
+        continue;
+      }
+
+      if (ipbind->ib_port == port) {
+        if (match_count != NULL) {
+          (*match_count)++;
+        }
+
+        matched_ipbind = ipbind;
+      }
+    }
+  }
+
+  if (matched_ipbind == NULL) {
+    errno = ENOENT;
+    return NULL;
+  }
+
+  return matched_ipbind;
+}
+
 pr_ipbind_t *pr_ipbind_find(const pr_netaddr_t *addr, unsigned int port,
     unsigned char skip_inactive) {
   register unsigned int i;
@@ -543,13 +581,15 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
   pr_netaddr_t wildcard_addr;
   int addr_family;
+  unsigned int match_count = 0;
 
   /* If we've got a binding configured for this exact address, return it
    * straightaway.
    */
   ipbind = pr_ipbind_find(addr, port, TRUE);
-  if (ipbind != NULL)
+  if (ipbind != NULL) {
     return ipbind->ib_server;
+  }
 
   /* Look for a vhost bound to the wildcard address (i.e. INADDR_ANY).
    *
@@ -577,11 +617,12 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
     if (addr_family == AF_INET6 &&
         pr_netaddr_use_ipv6()) {
 
-      /* The pr_ipbind_find() probably returned NULL because there aren't
-       * any <VirtualHost> sections configured explicitly for the wildcard
-       * IPv6 address of "::", just the IPv4 wildcard "0.0.0.0" address.
+      /* The pr_ipbind_find() probably returned NULL because there aren't any
+       * <VirtualHost> sections configured explicitly for the wildcard IPv6
+       * address of "::", just the IPv4 wildcard "0.0.0.0" address.
        *
-       * So try the pr_ipbind_find() again, this time using the IPv4 wildcard.
+       * So try the pr_ipbind_find() again, this time using the IPv4
+       * wildcard.
        */
       pr_netaddr_clear(&wildcard_addr);
       pr_netaddr_set_family(&wildcard_addr, AF_INET);
@@ -596,6 +637,18 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
       }
     }
 #endif /* PR_USE_IPV6 */
+  }
+
+  /* Check for any bindings that match the port.  IF there is only one ONE
+   * vhost which matches the requested port, use that (Bug#4251).
+   */
+  ipbind = ipbind_find_port(port, TRUE, &match_count);
+  if (ipbind != NULL) {
+    pr_trace_msg(trace_channel, 18, "found %u possible %s for port %u",
+      match_count, match_count != 1 ? "ipbinds" : "ipbind", port);
+    if (match_count == 1) {
+      return ipbind->ib_server;
+    }
   }
 
   /* Use the default server, if set. */
@@ -623,12 +676,14 @@ int pr_ipbind_listen(fd_set *readfds) {
   register unsigned int i = 0;
 
   /* sanity check */
-  if (!readfds)
+  if (readfds == NULL) {
+    errno = EINVAL;
     return -1;
+  }
 
   FD_ZERO(readfds);
 
-  if (!binding_pool) {
+  if (binding_pool == NULL) {
     binding_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(binding_pool, "Bindings Pool");
   }
