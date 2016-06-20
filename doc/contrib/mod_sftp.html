@@ -1950,6 +1950,11 @@ configuration, listening on the address and port that you wish, <i>e.g.</i>:
     &lt;/VirtualHost&gt;
   &lt;/IfModule&gt;
 </pre>
+<b>Note</b> that if you use the above configuration, and you wish to handle
+<b><i>any</i></b> address requested by incoming connections, use
+<code>0.0.0.0</code> as the <i>a.b.c.d</i> IP address.  <code>0.0.0.0</code>
+is known as the "wildcard address", and indicates that ProFTPD wants to listen
+on any/all addresses, on those ports.
 
 <p><a name="SFTPOnly">
 <font color=red>Question</font>: How can I configure <code>proftpd</code>
