@@ -1265,11 +1265,12 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
 
       if (i < 0) {
         pr_trace_msg("auth", 3,
-          "out-of-bounds index number (%d) found in '%s', ignoring", i, substr);
+          "out-of-bounds index number (%ld) found in '%s', ignoring", i,
+          substr);
 
       } else {
         pr_trace_msg("auth", 3,
-          "out-of-bounds index number (%d > %lu) found in '%s', ignoring", i,
+          "out-of-bounds index number (%ld > %lu) found in '%s', ignoring", i,
           (unsigned long) user_len-1, substr);
       }
 
