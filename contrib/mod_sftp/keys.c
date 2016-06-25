@@ -1353,8 +1353,9 @@ static void debug_rsa_key(pool *p, const char *label, RSA *rsa) {
   datalen = BIO_get_mem_data(bio, &data);
   if (data != NULL &&
       datalen > 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", label);
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", data);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",label);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%.*s",
+      (int) datalen, data);
   }
 
   BIO_free(bio);
@@ -1396,7 +1397,7 @@ int sftp_keys_compare_keys(pool *p,
   if (EVP_PKEY_type(remote_pkey->type) == EVP_PKEY_type(local_pkey->type)) {
     switch (EVP_PKEY_type(remote_pkey->type)) {
       case EVP_PKEY_RSA: {
-        RSA *remote_rsa, *local_rsa;
+        RSA *remote_rsa = NULL, *local_rsa = NULL;
 
         local_rsa = EVP_PKEY_get1_RSA(local_pkey);
         if (keys_rsa_min_nbits > 0) {
@@ -1421,7 +1422,7 @@ int sftp_keys_compare_keys(pool *p,
         remote_rsa = EVP_PKEY_get1_RSA(remote_pkey);
 
 #ifdef SFTP_DEBUG_KEYS
-        debug_rsa_key(p, "client-sent RSA key:", remote_rsa);
+        debug_rsa_key(p, "remote RSA key:", remote_rsa);
         debug_rsa_key(p, "local RSA key:", local_rsa);
 #endif
 
@@ -1450,7 +1451,7 @@ int sftp_keys_compare_keys(pool *p,
 
 #if !defined(OPENSSL_NO_DSA)
       case EVP_PKEY_DSA: {
-        DSA *remote_dsa, *local_dsa;
+        DSA *remote_dsa = NULL, *local_dsa = NULL;
 
         local_dsa = EVP_PKEY_get1_DSA(local_pkey);
         if (keys_dsa_min_nbits > 0) {
