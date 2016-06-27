@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2007-2012 The ProFTPD Project team
+ * Copyright (c) 2007-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Proctitle management
- * $Id: proctitle.c,v 1.13 2012-04-15 18:04:15 castaglia Exp $
- */
+/* Proctitle management */
 
 #include "conf.h"
 
