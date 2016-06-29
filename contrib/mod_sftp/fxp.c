@@ -10439,8 +10439,15 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   /* For READDIR requests, since they do NOT contain a flags field for clients
    * to express which attributes they want, we ASSUME some standard fields.
    */
-  attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
-    SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
+
+  if (fxp_session->client_version <= 3) {
+    attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
+      SSH2_FX_ATTR_ACMODTIME;
+
+  } else {
+    attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
+      SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
+  }
 
   if (fxp_session->client_version >= 3) {
 #ifdef PR_USE_XATTR
