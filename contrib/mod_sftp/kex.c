@@ -3883,6 +3883,21 @@ int sftp_kex_rekey(void) {
     return 0;
   }
 
+  /* If the client has NOT authenticated by this point in time, try again
+   * later.  Some clients do not deal well with having their authentication
+   * processes interrupted by a rekey (Bug#4254).
+   */
+  if (!(sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH)) {
+    pr_trace_msg(trace_channel, 17,
+      "authentication not completed, delaying rekey request");
+
+    /* If the rekey interval is so short as to interfere the client before
+     * it has authenticated, assume the rekey interval is short enough to
+     * fire again soon, such that we do not need to change its schedule.
+     */
+    return 1;
+  }
+
   /* Make sure that any rekey timer will try not to interfere while the
    * rekeying is happening.
    */
