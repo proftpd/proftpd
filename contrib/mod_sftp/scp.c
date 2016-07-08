@@ -2748,6 +2748,10 @@ int sftp_scp_open_session(uint32_t channel_id) {
   }
 
   pr_session_set_protocol("scp");
+
+  /* Clear any ASCII flags (set by default for FTP sessions. */
+  session.sf_flags &= ~SF_ASCII;
+
   return 0;
 }
 

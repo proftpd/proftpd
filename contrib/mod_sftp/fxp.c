@@ -13853,6 +13853,10 @@ int sftp_fxp_open_session(uint32_t channel_id) {
   (void) fxp_send_display_login_file(channel_id);
 
   pr_session_set_protocol("sftp");
+
+  /* Clear any ASCII flags (set by default for FTP sessions. */
+  session.sf_flags &= ~SF_ASCII;
+
   return 0;
 }
 
