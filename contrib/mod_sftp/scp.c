@@ -38,6 +38,8 @@
  */
 #define SFTP_SCP_MAX_CTL_LEN	(PR_TUNABLE_PATH_MAX + 256)
 
+extern pr_response_t *resp_list, *resp_err_list;
+
 struct scp_path {
   char *path;
 
@@ -2321,6 +2323,8 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
   }
 
+  pr_response_set_pool(pkt->pool);
+
   if (need_confirm) {
     /* Handle the confirmation/response from the client. */
     if (read_confirm(pkt, &data, &datalen) < 0) {
@@ -2347,8 +2351,9 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       pr_signals_handle();
 
       res = send_path(pkt->pool, channel_id, paths[scp_session->path_idx]);
-      if (res < 0)
+      if (res < 0) {
         return -1;
+      }
 
       if (res == 1) {
         /* If send_path() returns 1, it means we've finished that path,
@@ -2361,6 +2366,12 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
           destroy_pool(session.xfer.p);
         }
         memset(&session.xfer, 0, sizeof(session.xfer));
+
+        /* Make sure to clear the response lists of any cruft from previous
+         * requests.
+         */
+        pr_response_clear(&resp_list);
+        pr_response_clear(&resp_err_list);
       }
     }
 
@@ -2412,6 +2423,12 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         destroy_pool(session.xfer.p);
       }
       memset(&session.xfer, 0, sizeof(session.xfer));
+
+      /* Make sure to clear the response lists of any cruft from previous
+       * requests.
+       */
+      pr_response_clear(&resp_list);
+      pr_response_clear(&resp_err_list);
 
       /* Note: we don't increment path_idx here because when we're receiving
        * files (i.e. it's an SCP upload), we either receive a single file,
