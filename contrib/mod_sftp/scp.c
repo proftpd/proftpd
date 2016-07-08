@@ -40,6 +40,10 @@
 
 struct scp_path {
   char *path;
+
+  /* The original path, as provided in the scp command. */
+  const char *orig_path;
+
   pr_fh_t *fh;
 
   /* Points to the parent directory "context" path, if any.  For handling
@@ -903,6 +907,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
      */
 
     parent_sp = pcalloc(scp_pool, sizeof(struct scp_path));
+    parent_sp->orig_path = pstrdup(scp_pool, sp->orig_path);
     parent_sp->path = pstrdup(scp_pool, sp->filename);
     parent_sp->filename = pstrdup(scp_pool, sp->filename);
     parent_sp->best_path = pstrdup(scp_pool, sp->best_path);
@@ -1284,8 +1289,9 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
   }
 
-  if (ok)
+  if (ok) {
     write_confirm(p, channel_id, 0, NULL);
+  }
 
   return 1;
 }
@@ -1386,8 +1392,19 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         parent_dir = sp->parent_dir->parent_dir;
       }
 
-      if (parent_dir) {
+      if (parent_dir != NULL) {
+        pr_trace_msg(trace_channel, 18,
+          "received EOD, resetting path from '%s' to '%s'", sp->path,
+          parent_dir->path);
         sp->path = parent_dir->path;
+
+      } else {
+        if (sp->orig_path != NULL) {
+          sp->path = pstrdup(scp_pool, sp->orig_path);
+        }
+
+        pr_trace_msg(trace_channel, 18,
+          "received EOD, no parent found for '%s'", sp->path);
       }
 
       sp->parent_dir = parent_dir;
@@ -2556,6 +2573,8 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
                 sp->path[--pathlen] = '\0';
               }
 
+              sp->orig_path = pstrdup(paths->pool, sp->path);
+
               if (pathlen > 0) {
                 *((struct scp_path **) push_array(paths->paths)) = sp;
               }
@@ -2610,6 +2629,8 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
           pr_signals_handle();
           sp->path[--pathlen] = '\0';
         }
+
+        sp->orig_path = pstrdup(paths->pool, sp->path);
 
         if (pathlen > 0) {
           *((struct scp_path **) push_array(paths->paths)) = sp;
@@ -2698,6 +2719,7 @@ int sftp_scp_open_session(uint32_t channel_id) {
     src_sp = ((struct scp_path **) paths->paths->elts)[i];
 
     dst_sp = pcalloc(sess->pool, sizeof(struct scp_path));
+    dst_sp->orig_path = pstrdup(sess->pool, src_sp->orig_path);
     dst_sp->path = pstrdup(sess->pool, src_sp->path);
 
     *((struct scp_path **) push_array(sess->paths)) = dst_sp;
