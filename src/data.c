@@ -678,7 +678,7 @@ void pr_data_close(int quiet) {
  * send the OOB byte (which results in a broken pipe on our
  * end).  Thus, it's a race between the OOB data and the tcp close
  * finishing.  Either way, it's ok (client will see either "Broken pipe"
- * error or "Aborted").  cmd_abor in mod_xfer cleans up the session
+ * error or "Aborted").  xfer_abor() in mod_xfer cleans up the session
  * flags in any case.  session flags will end up have SF_POST_ABORT
  * set if the OOB byte won the race.
  */
@@ -705,6 +705,11 @@ void pr_data_cleanup(void) {
 void pr_data_abort(int err, int quiet) {
   int true_abort = XFER_ABORTED;
   nstrm = NULL;
+
+  pr_trace_msg(trace_channel, 9,
+    "aborting data transfer (errno = %s (%d), quiet = %s, true abort = %s)",
+    strerror(err), err, quiet ? "true" : "false",
+    true_abort ? "true" : "false");
 
   if (session.d) {
     if (true_abort == FALSE) {
