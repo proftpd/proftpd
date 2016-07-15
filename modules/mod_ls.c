@@ -455,6 +455,7 @@ static char months[12][4] =
 
 static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
     const char *name) {
+  register unsigned int i;
   int rval = 0, len;
   time_t sort_time;
   char m[PR_TUNABLE_PATH_MAX+1] = {'\0'}, l[PR_TUNABLE_PATH_MAX+1] = {'\0'}, s[16] = {'\0'};
@@ -462,6 +463,29 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
   struct tm *t = NULL;
   char suffix[2];
   int hidden = 0;
+  char *filename, *ptr;
+  size_t namelen;
+
+  /* Note that listfile() expects to be given the file name, NOT the path.
+   * So strip off any path elements, watching out for any trailing slashes
+   * (Bug#4259).
+   */
+  namelen = strlen(name);
+  for (i = namelen-1; i > 0; i--) {
+    if (name[i] != '/') {
+      break;
+    }
+
+    namelen--;
+  }
+
+  filename = pstrndup(p, name, namelen);
+
+  ptr = strrchr(filename, '/');
+  if (ptr != NULL) {
+    /* Advance past that path separator to get just the filename. */
+    filename = ptr + 1;
+  }
 
   if (list_nfiles.curr && list_nfiles.max &&
       list_nfiles.curr >= list_nfiles.max) {
@@ -490,7 +514,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
 #ifndef PR_USE_NLS
     if (opt_B) {
-      register unsigned int i, j;
+      register unsigned int j;
       size_t display_namelen, printable_namelen;
       char *printable_name = NULL;
 
@@ -622,8 +646,11 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
     }
 
     /* Skip dotfiles, unless requested not to via -a or -A. */
-    if (*name == '.' &&
-        (!opt_a && (!opt_A || is_dotdir(name)))) {
+    if (*filename == '.' &&
+        (!opt_a && (!opt_A || is_dotdir(filename)))) {
+      pr_log_debug(DEBUG10,
+        "skipping listing of hidden file '%s' (no -A/-a options in effect)",
+        filename);
       return 0;
     }
 
@@ -1998,7 +2025,6 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
         }
 
       } else {
-
         /* Trick the following code into using the non-glob() processed path */
         a = 0;
         g.gl_pathv = (char **) pcalloc(cmd->tmp_pool, 2 * sizeof(char *));
@@ -2012,8 +2038,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
       path = g.gl_pathv;
 
-      if (path && path[0] && path[1])
+      if (path && path[0] && path[1]) {
         justone = 0;
+      }
 
       while (path &&
              *path) {
@@ -2038,7 +2065,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           }
 
           /* If the -d option is used or the file is not a directory, OR
-           * if the -R option is NOT used AND the file IS a directory AND,
+           * if the -R option is NOT used AND the file IS a directory AND
            * the file is NOT the target/given parameter, then list the file
            * as is.
            */

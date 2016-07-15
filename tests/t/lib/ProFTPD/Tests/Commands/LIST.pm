@@ -33,6 +33,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  list_file_rel_paths_bug4259 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   list_file_after_upload => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -527,6 +532,158 @@ sub list_ok_file {
       unless (defined($res->{$test_file})) {
         die("LIST failed to return $test_file");
       }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+# See: https://forums.proftpd.org/smf/index.php/topic,12000.0.html
+sub list_file_rel_paths_bug4259 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $rel_path = 'test.dat';
+      my $conn = $client->list_raw($rel_path);
+      unless ($conn) {
+        die("LIST failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response: $buf\n";
+      }
+
+      my $res = {};
+      my $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      my $count = scalar(keys(%$res));
+      unless ($count == 1) {
+        die("LIST returned wrong number of entries (expected 1, got $count)");
+      }
+
+      unless (defined($res->{$rel_path})) {
+        die("LIST failed to return $rel_path");
+      }
+
+      # Now list using a different relative path syntax
+      $rel_path = './test.dat';
+      $conn = $client->list_raw($rel_path);
+      unless ($conn) {
+        die("LIST failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      $buf = '';
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response: $buf\n";
+      }
+
+      $res = {};
+      $lines = [split(/\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      $count = scalar(keys(%$res));
+      unless ($count == 1) {
+        die("LIST returned wrong number of entries (expected 1, got $count)");
+      }
+
+      unless (defined($res->{$rel_path})) {
+        die("LIST failed to return $rel_path");
+      }
+
+      $client->quit();
     };
     if ($@) {
       $ex = $@;
