@@ -10723,7 +10723,7 @@ static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags,
 
 static int fxp_handle_realpath(struct fxp_packet *fxp) {
   int res, xerrno;
-  unsigned char *buf, realpath_flags = 0;
+  unsigned char *buf, realpath_flags = SSH2_FXRP_NO_CHECK;
   char *path;
   uint32_t buflen;
   struct stat st;
@@ -10764,7 +10764,6 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
      *
      * for the semantics and defaults of these crazy flags.
      */
-    realpath_flags = SSH2_FXRP_NO_CHECK;
 
     if (fxp->payload_sz >= sizeof(char)) {
       char *composite_path = NULL;
