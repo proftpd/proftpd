@@ -757,9 +757,13 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
    */
   next_ctrl = ctrls_lookup_next_action(NULL, TRUE);
 
-  while (next_ctrl) {
-    if (pr_ctrls_copy_args(ctrl, next_ctrl)) {
+  while (next_ctrl != NULL) {
+    if (pr_ctrls_copy_args(ctrl, next_ctrl) < 0) {
+      int xerrno = errno;
+
       pr_signals_unblock();
+
+      errno = xerrno;
       return -1;
     }
 
