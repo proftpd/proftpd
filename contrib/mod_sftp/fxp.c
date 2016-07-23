@@ -5227,12 +5227,14 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       "File or directory exists, ready for destination name");
     pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd2->argv[0],
       strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
   }
 
   session.xfer.path = pstrdup(session.xfer.p, dst);
@@ -5241,12 +5243,14 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     pr_response_add(R_250, "Rename successful");
     pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd3, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd3->argv[0],
       strerror(xerrno));
     pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
@@ -6627,10 +6631,12 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
       pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
       pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+      pr_response_clear(&resp_err_list);
 
     } else {
       pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
       pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
+      pr_response_clear(&resp_list);
     }
 
     fxh->dirh = NULL;
@@ -6672,8 +6678,16 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   session.xfer.file_size = xfer_file_size;
   session.xfer.total_bytes = xfer_total_bytes;
 
-  pr_cmd_dispatch_phase(cmd, res < 0 ? POST_CMD_ERR : POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, res < 0 ? LOG_CMD_ERR : LOG_CMD, 0);
+  if (res < 0) {
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+  } else {
+    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+  }
 
   /* Clear out session.xfer again. */
   memset(&session.xfer, 0, sizeof(session.xfer));
@@ -7158,7 +7172,11 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
     &xattrs);
   if (attrs == NULL) {
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+
+    /* XXX TODO: Provide a response to the client here! */
     return 0;
   }
 
@@ -7840,7 +7858,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
 
     pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_err_list);
+    pr_response_clear(&resp_list);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
@@ -8850,7 +8868,9 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   if (attrs == NULL) {
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
+
+    /* XXX TODO: Provide a response to the client here */
     return 0;
   }
 
@@ -9890,8 +9910,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
   
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
     pr_response_clear(&resp_err_list);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -11847,12 +11867,14 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       "File or directory exists, ready for destination name");
     pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd2->argv[0],
       strerror(xerrno));
     pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
   }
 
   session.xfer.path = pstrdup(session.xfer.p, new_path);
@@ -11861,18 +11883,28 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     pr_response_add(R_250, "Rename successful");
     pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
     pr_cmd_dispatch_phase(cmd3, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd3->argv[0],
       strerror(xerrno));
     pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
-  pr_cmd_dispatch_phase(cmd, xerrno == 0 ? POST_CMD : POST_CMD_ERR, 0);
-  pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  if (xerrno == 0) {
+    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+    pr_response_clear(&resp_list);
+
+  } else {
+    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    pr_response_clear(&resp_err_list);
+  }
 
   /* Clear out any transfer-specific data. */
   if (session.xfer.p) {
