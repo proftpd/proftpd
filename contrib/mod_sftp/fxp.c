@@ -9937,7 +9937,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   }
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, file);
-  cmd2->cmd_class = CL_WRITE|CL_SFTP;
+  cmd2->cmd_class = CL_READ|CL_SFTP;
 
   if (!dir_check(fxp->pool, cmd, G_READ, fxh->fh->fh_path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
