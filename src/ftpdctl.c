@@ -175,7 +175,7 @@ static RETSIGTYPE sig_pipe(int sig) {
 }
 
 static void usage(void) {
-  fprintf(stdout, "usage: %s [options]\n", program);
+  fprintf(stdout, "usage: %s [options] action [...]\n", program);
   fprintf(stdout, "  -h\tdisplays this message\n");
   fprintf(stdout, "  -s\tspecify an alternate local socket\n");
   fprintf(stdout, "  -v\tdisplays more verbose information\n");
@@ -194,12 +194,6 @@ int main(int argc, char *argv[]) {
   unsigned int reqargc = 0;
   pool *ctl_pool = NULL;
   array_header *reqargv = NULL;
-
-  /* Make sure we were called with at least one argument. */
-  if (argc-1 < 1) {
-    fprintf(stdout, "%s: missing required arguments\n", program);
-    exit(1);
-  }
 
   /* Set the POSIXLY_CORRECT environment variable, so that control handlers
    * can themselves have optional flags.
@@ -235,6 +229,12 @@ int main(int argc, char *argv[]) {
         fprintf(stdout, "%s: unknown option: %c\n", program, (char) optopt);
         break;
     }
+  }
+
+  /* Make sure we were called with at least one argument. */
+  if (argv[optind] == NULL) {
+    fprintf(stdout, "%s: missing required action\n", program);
+    exit(1);
   }
 
   signal(SIGPIPE, sig_pipe);
