@@ -13931,6 +13931,11 @@ int sftp_fxp_close_session(uint32_t channel_id) {
             "aborting %d unclosed file %s", count,
             count != 1 ? "handles" : "handle");
 
+          /* Make sure that any abort processing has a valid response pool to
+           * work with.
+           */
+          pr_response_set_pool(sess->pool);
+
           res = pr_table_do(sess->handle_tab, fxp_handle_abort, callback_data,
             PR_TABLE_DO_FL_ALL);
           if (res < 0) {
