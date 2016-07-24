@@ -1477,7 +1477,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 /* This is one messy function.  Yuck.  Yay legacy code. */
 config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
     char **real_user, char **anon_name) {
-  config_rec *c = NULL, *topc = NULL, *anon_c = NULL;
+  config_rec *c = NULL, *topc = NULL;
   char *config_user_name = NULL, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
   unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
@@ -1574,7 +1574,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
      */
     if (c->parent &&
         c->parent->config_type == CONF_ANON) {
-      anon_c = c = c->parent;
+      c = c->parent;
 
     } else {
       c = NULL;
@@ -1607,7 +1607,6 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
         if (anon_name != NULL) {
           *anon_name = config_anon_name;
         }
-        anon_c = c;
         break;
       }
  
