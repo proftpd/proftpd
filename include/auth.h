@@ -102,7 +102,8 @@ int pr_auth_requires_pass(pool *, const char *);
  * configuration for that user.  If the user name is not be handled as
  * an anonymous login, NULL is returned.
  */
-config_rec *pr_auth_get_anon_config(pool *p, const char **, char **, char **);
+config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
+  char **real_user, char **anon_user);
 
 /* Wrapper function around the chroot(2) system call, handles setting of
  * appropriate environment variables if necessary.

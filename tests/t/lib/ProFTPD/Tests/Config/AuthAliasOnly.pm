@@ -20,7 +20,7 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  authaliasonly_off_bug2070 => {
+  authaliasonly_off_anon_bug2070 => {
     order => ++$order,
     test_class => [qw(bug forking rootprivs)],
   },
@@ -128,7 +128,7 @@ sub authaliasonly_on {
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub authaliasonly_off_bug2070 {
+sub authaliasonly_off_anon_bug2070 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -159,7 +159,7 @@ sub authaliasonly_off_bug2070 {
     }
   }
 
-  my $alias = 'ftp';
+  my $alias = 'ftptest';
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash'); 
@@ -171,6 +171,8 @@ sub authaliasonly_off_bug2070 {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
+    TraceLog => $log_file,
+    Trace => 'auth:20',
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
@@ -222,7 +224,18 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($alias, $passwd);
+
+      # Make sure that we are indeed logging in anonymously
+      my ($resp_code, $resp_msg) = $client->login($alias, 'ftp@nospam.org');
+
+      my $expected = 230;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Anonymous access granted, restrictions apply';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
       $client->quit();
     };
 
@@ -342,16 +355,26 @@ sub authaliasonly_on_anon_bug3501 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       my ($resp_code, $resp_msg) = $client->user($config_user);
 
-      my $expected;
+      my $expected = 331;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      # Since AuthAliasOnly is true, it means that that anonymous login can
+      # ONLY happen via the alias, NOT via the configured User.
+      $expected = "Password required for $config_user";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      # What about using the alias, though?
+      ($resp_code, $resp_msg) = $client->user('anonymous');
 
       $expected = 331;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "Password required for $config_user";
+      $expected = "Anonymous login ok, send your complete email address as your password";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-
       $client->quit();
     };
 
@@ -476,12 +499,9 @@ sub authaliasonly_on_system_bug3501 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       my ($resp_code, $resp_msg) = $client->user($user);
 
-      my $expected;
-
-      $expected = 331;
+      my $expected = 331;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -531,6 +551,8 @@ sub authaliasonly_on_anon_bug4255 {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:20',
 
     User => $config_user,
     Group => $config_group,
@@ -574,14 +596,27 @@ sub authaliasonly_on_anon_bug4255 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      sleep(1);
+
+      # First, try logging in as user 'anonymous', i.e. the alias.
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
-      my ($resp_code, $resp_msg) = $client->login("anonymous", 'ftp@nospam.org');
+      my ($resp_code, $resp_msg) = $client->user("anonymous");
 
       my $expected = 331;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "Password required for $config_user";
+      $expected = 'Anonymous login ok, send your complete email address as your password';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      ($resp_code, $resp_msg) = $client->pass('ftp@nospam.org');
+
+      $expected = 230;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Anonymous access granted, restrictions apply';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
