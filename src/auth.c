@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2013 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.102 2013-11-10 01:56:49 castaglia Exp $
- */
+/* Authentication front-end for ProFTPD */
 
 #include "conf.h"
 #include "privs.h"
@@ -1137,7 +1135,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     char **user_name, char **anon_name) {
   config_rec *c = NULL, *topc = NULL;
-  char *config_user_name, *config_anon_name = NULL;
+  char *config_user_name = NULL, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
   unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
 
@@ -1148,8 +1146,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
    */
 
   config_user_name = get_param_ptr(main_server->conf, "UserName", FALSE);
-  if (config_user_name &&
-      user_name) {
+  if (config_user_name != NULL &&
+      user_name != NULL) {
     *user_name = config_user_name;
   }
 
@@ -1174,6 +1172,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
       if (strncmp(c->argv[0], "*", 2) == 0 ||
           strcmp(c->argv[0], *login_name) == 0) {
         is_alias = TRUE;
+        topc = c;
         break;
       }
 
@@ -1182,10 +1181,10 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   }
 
   /* This is where things get messy, rapidly. */
-  topc = c;
+  c = topc;
 
   while (c && c->parent &&
-    (auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly", FALSE))) {
+    (auth_alias_only = get_param_ptr(c->parent->subset, "AuthAliasOnly", FALSE))) {
 
     /* while() loops should always handle signals. */
     pr_signals_handle();
@@ -1241,23 +1240,29 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   }
 
   if (c) {
+    config_rec *starting_c;
+
+    starting_c = c;
     do {
       pr_signals_handle();
 
       config_anon_name = get_param_ptr(c->subset, "UserName", FALSE);
-
-      if (!config_anon_name)
+      if (config_anon_name == NULL) {
         config_anon_name = config_user_name;
+      }
 
-      if (config_anon_name &&
+      if (config_anon_name != NULL &&
           strcmp(config_anon_name, *login_name) == 0) {
-         if (anon_name)
+         if (anon_name != NULL) {
            *anon_name = config_anon_name;
+         }
          break;
       }
  
     } while ((c = find_config_next(c, c->next, CONF_ANON, NULL,
       FALSE)) != NULL);
+
+    c = starting_c;
   }
 
   if (!is_alias) {
@@ -1278,8 +1283,11 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
         *login_name = NULL;
       }
 
-      auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
-        FALSE);
+      if (c != NULL) {
+        auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
+          FALSE);
+      }
+
       if (*login_name &&
           auth_alias_only &&
           *auth_alias_only == TRUE) {

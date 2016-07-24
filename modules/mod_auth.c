@@ -854,7 +854,7 @@ static void ensure_open_passwd(pool *p) {
 static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   struct passwd *pw;
   config_rec *c, *tmpc;
-  char *origuser, *ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
+  char *origuser, *ourname = NULL, *anonname = NULL, *anongroup = NULL, *ugroup = NULL;
   char *defaulttransfermode, *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
   const char *sess_ttyname;
   int aclp, i, res = 0, allow_chroot_symlinks = TRUE, showsymlinks;
@@ -879,6 +879,18 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   }
 
   pw = pr_auth_getpwnam(p, user);
+  if (pw == NULL &&
+      c != NULL &&
+      ourname != NULL) {
+    /* If the client is authenticating using an alias (e.g. "AuthAliasOnly on"),
+     * then we need to try checking using the real username, too (Bug#4255).
+     */
+    pr_trace_msg("auth", 16,
+      "no user entry found for <Anonymous> alias '%s', using '%s'", user,
+      ourname);
+    pw = pr_auth_getpwnam(p, ourname);
+  }
+
   if (pw == NULL) {
     int auth_code = PR_AUTH_NOPWD;
 
@@ -3474,8 +3486,9 @@ MODRET set_useralias(cmd_rec *cmd) {
   /* Note: only merge this directive down if it is not appearing in an
    * <Anonymous> context.
    */
-  if (!check_context(cmd, CONF_ANON))
-    c->flags |= CF_MERGEDOWN;
+  if (!check_context(cmd, CONF_ANON)) {
+    c->flags |= CF_MERGEDOWN_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }
