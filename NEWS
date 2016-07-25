@@ -13,6 +13,7 @@
 - Bug 4254 - SSH rekey during authentication can cause issues with clients.
 - Bug 4257 - Recursive SCP uploads of multiple directories not handled properly.
 - Bug 4259 - LIST returns different results for file, depending on path syntax.
+- Bug 4255 - "AuthAliasOnly on" in server config breaks anonymous logins.
 
 1.3.5b - Released 10-Mar-2016
 --------------------------------
