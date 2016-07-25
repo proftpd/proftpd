@@ -1,6 +1,3 @@
-<!-- $Id: mod_auth.html,v 1.11 2013-08-19 16:28:23 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_auth.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_auth</title>
@@ -20,6 +17,9 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 <h2>Directives</h2>
 <ul>
   <li><a href="#AllowChrootSymlinks">AllowChrootSymlinks</a>
+  <li><a href="#AnonRequirePassword">AnonRequirePassword</a>
+  <li><a href="#AuthAliasOnly">AuthAliasOnly</a>
+  <li><a href="#AuthUsingAlias">AuthUsingAlias</a>
   <li><a href="#CreateHome">CreateHome</a>
   <li><a href="#DefaultRoot">DefaultRoot</a>
   <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a>
@@ -30,6 +30,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#TimeoutLogin">TimeoutLogin</a>
   <li><a href="#TimeoutSession">TimeoutSession</a>
   <li><a href="#UseFtpUsers">UseFtpUsers</a>
+  <li><a href="#UserAlias">UserAlias</a>
   <li><a href="#UserPassword">UserPassword</a>
 </ul>
 
@@ -59,6 +60,104 @@ directories which might be FTP users' home directories (<i>or</i>
 This includes sites which are hosting providers, <i>i.e.</i> which allow
 users to run their untrusted webapps (<i>e.g.</i> PHP, Perl, Ruby, Python,
 <i>etc</i> apps) on the servers.
+
+<p>
+<hr>
+<h2><a name="AnonRequirePassword">AnonRequirePassword</a></h2>
+<strong>Syntax:</strong> AnonRequirePassword <em>off|on</em><br>
+<strong>Default:</strong> AnonRequirePassword off<br>
+<strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+Normally, anonymous FTP logins do not require the client to authenticate
+themselves using <em>real</em> passwords; instead, anonymous FTP logins are
+expected to provide their email address as the password.  Using
+<code>AnonRequirePassword on</code>, however, will <i>require</i> a real
+password for that login.  The provided password will be matched against the
+<code>&lt;Anonymous&gt;</code> user's password.
+
+<p>
+This functionality, in conjunction with the <code>AuthUsingAlias</code>
+directive, can be used to create "guest" accounts, which function exactly as
+normal anonymous logins do, <b>but</b> which require a valid password on the
+server's host system.
+
+<p>
+See also: <a href="#AuthUsingAlias"><code>AuthUsingAlias</code></a>, <a href="#UserAlias"><code>UserAlias</code></a>
+
+<p>
+<hr>
+<h2><a name="AuthAliasOnly">AuthAliasOnly</a></h2>
+<strong>Syntax:</strong> AuthAliasOnly <em>off|on</em><br>
+<strong>Default:</strong> AuthAliasOnly off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.1.3 and later
+
+<p>
+The <code>AuthAliasOnly</code> directive restricts authentication to "aliased"
+logins only, <i>i.e.</i> those usernames provided by clients which are "mapped"
+to a <em>real</em> username by the <code>UserAlias</code> directive.  Using
+<code>AuthAliasOnly on</code> in a particular configuration context will
+cause ProFTPD to completely ignore all <em>non-aliased</em> logins for the
+entire context.
+
+<p>
+See also: <a href="#AuthUsingAlias"><code>AuthUsingAlias</code></a>, <a href="#UserAlias"><code>UserAlias</code></a>
+
+<p>
+<hr>
+<h2><a name="AuthUsingAlias">AuthUsingAlias</a></h2>
+<strong>Syntax:</strong> AuthUsingAlias <em>off|on</em><br>
+<strong>Default:</strong> AuthUsingAlias off<br>
+<strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.2.0pre9 and later
+
+<p>
+The <code>AuthUsingAlias</code> directive disables the resolving of aliased usernames (via <code>UserAlias</code>) for authentication purposes.  For example,
+if you have aliased the username "anonymous" to the real user "ftp", the
+password gets checked against the user "anonymous".  When
+<code>AuthUsingAlias</code> is <em>disabled</em>, the checked username would
+be "ftp".
+
+<p>
+Here is an example of an <code>&lt;Anonymous&gt;</code> section where only
+the aliased usernames are allowed to login:
+<pre>
+  &lt;Anonymous ~ftp&gt;
+    AuthUsingAlias on
+    UserAlias anonymous nobody
+    UserAlias ftp nobody
+
+    # Make this a read-only anonymous login
+    &lt;Limit WRITE&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/Anonymous&gt;
+</pre>
+and here, by contrast, is an <code>&lt;Anonymous&gt;</code> section where
+certain real users are allowed to login <i>using their own passwords</i> (even
+though it will still be considered an <i>anonymous</i> login):
+<pre>
+  &lt;Anonymous ~ftp&gt;
+    # Require real passwords for these logins
+    AnonRequirePassword on
+
+    AuthAliasOnly on
+    AuthUsingAlias on
+
+    # This is the list of authorized users; password checks will occur
+    # using their own respective passwords, not user "nobody".
+    UserAlias fred nobody
+    UserAlias jenn nobody
+  &lt;/Anonymous&gt;
+</pre>
+
+<p>
+See also: <a href="#AnonRequirePassword"><code>AnonRequirePassword</code></a>, <a href="#UserAlias"><code>UserAlias</code></a>
 
 <p>
 <hr>
@@ -353,6 +452,37 @@ using the <code>UseFtpUsers</code> directive, <i>e.g.</i>:
 
 <p>
 <hr>
+<h2><a name="UserAlias">UserAlias</a></h2>
+<strong>Syntax:</strong> UserAlias <em>alias real-user</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+ProFTPD requires a real username (<i>i.e.</i> known via
+<code>/etc/passwd</code>, <code>AuthUserFile</code>, LDAP, SQL, RADIUS,
+<i>etc</i>) when authenticating a client.  There <i>are</i>, however, times
+when an additional <em>alias</em> is required <i>but</i> is undesirable to
+provide an additional login accounts.
+
+<p>
+The <code>UserAlias</code> directive provides a mechanism to do just this.
+A typical and common example of <code>UserAlias</code> is for
+<code>&lt;Anonymous&gt;</code> configuration sections.  It is conventional for
+the server to use user "ftp" as the primary authentication user; it is common
+practice to allow users to login using the name "anonymous".  This is achieved
+by using the following in the config file:
+<pre>
+  &lt;Anonymous ~ftp&gt;
+    ...
+    UserAlias anonymous ftp
+    ...
+  &lt;/Anonymous&gt;
+</pre>
+
+<p>
+<hr>
 <h2><a name="UserPassword">UserPassword</a></h2>
 <strong>Syntax:</strong> UserPassword <em>user encrypted-password</em><br>
 <strong>Default:</strong> None<br>
@@ -395,19 +525,12 @@ Example configuration:
 The <code>mod_auth</code> module is compiled by default.
 
 <p>
-<hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-08-19 16:28:23 $</i><br>
-
-<br><hr>
-
+<hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2013<br>
+&copy; Copyright 2002-2016<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
