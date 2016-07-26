@@ -247,7 +247,9 @@ int main(int argc, char **argv) {
 
   auth_otp_pool = make_sub_pool(NULL);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
   ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
 
