@@ -9,6 +9,7 @@ ChangeLog files.
 1.3.6rc3
 ---------
 
+  + Support for OpenSSL 1.1.x API changes.
   + mod_sftp uses SHA256 for publickey fingerprints by default, rather than
     SHA1 or MD5.
   + mod_sql_passwd supports Scrypt and Argon2 password hashing algorithms
