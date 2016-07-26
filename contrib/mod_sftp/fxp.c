@@ -1031,6 +1031,18 @@ static const char *fxp_strtime(pool *p, time_t t) {
   return buf;
 }
 
+static void fxp_cmd_dispatch(cmd_rec *cmd) {
+  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+  pr_response_clear(&resp_list);
+}
+
+static void fxp_cmd_dispatch_err(cmd_rec *cmd) {
+  pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+  pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+  pr_response_clear(&resp_err_list);
+}
+
 static const char *fxp_get_request_type_desc(unsigned char request_type) {
   switch (request_type) {
     case SFTP_SSH2_FXP_INIT:
@@ -2898,10 +2910,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
     pr_response_clear(&resp_list);
     pr_response_clear(&resp_err_list);
-
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     fxh->dirh = NULL;
     return 0;
@@ -2990,9 +2999,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     pr_response_clear(&resp_err_list);
 
     pr_response_add_err(R_451, "%s: %s", cmd->arg, strerror(ECONNRESET));
-    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
   }
 
   if (pr_fsio_close(fxh->fh) < 0) {
@@ -4386,9 +4393,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4411,9 +4416,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4436,9 +4439,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4462,9 +4463,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4513,9 +4512,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         reason, NULL);
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -4537,9 +4534,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4565,9 +4560,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4591,9 +4584,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4608,9 +4599,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   pr_fs_clear_cache2(dst);
   pr_fsio_stat(dst, &st);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   /* Write a TransferLog entry as well. */
   abs_path = dir_abs_path(fxp->pool, dst, TRUE);
@@ -4676,14 +4665,10 @@ static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
     reason, NULL);
 
   if (xerrno == 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
 
   } else {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -4732,8 +4717,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4756,8 +4740,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4781,8 +4764,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4806,8 +4788,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4828,8 +4809,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4867,12 +4847,10 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
     reason, NULL);
 
   if (xerrno == 0) {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
 
   } else {
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -4920,15 +4898,12 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4951,15 +4926,12 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       fxp_strerror(status_code), NULL);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4988,20 +4960,15 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -5024,20 +4991,15 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       fxp_strerror(status_code), NULL);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -5058,20 +5020,15 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -5093,20 +5050,15 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EEXIST));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EEXIST));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -5125,20 +5077,15 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -5225,37 +5172,34 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
   if (xerrno == 0) {
     pr_response_add(R_350,
       "File or directory exists, ready for destination name");
-    pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd2);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd2->argv[0],
       strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
   }
 
   session.xfer.path = pstrdup(session.xfer.p, dst);
 
   if (xerrno == 0) {
     pr_response_add(R_250, "Rename successful");
-    pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd3);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd3->argv[0],
       strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
-  pr_cmd_dispatch_phase(cmd, xerrno == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+  if (xerrno == 0) {
+    fxp_cmd_dispatch(cmd);
+
+  } else {
+    fxp_cmd_dispatch_err(cmd);
+  }
 
   /* Clear out any transfer-specific data. */
   if (session.xfer.p) {
@@ -6403,9 +6347,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -6427,9 +6369,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     fxp_handle_delete(fxh);
     destroy_pool(fxh->pool);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -6560,8 +6500,6 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     xfer_total_bytes = session.xfer.total_bytes;
 
     if (cmd2) {
-      int post_phase = POST_CMD, log_phase = LOG_CMD;
-
       if (fxh->fh_existed &&
           (pr_cmd_cmp(cmd2, PR_CMD_STOR_ID) == 0 ||
            pr_cmd_cmp(cmd2, PR_CMD_APPE_ID) == 0)) {
@@ -6595,21 +6533,12 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
           xerrno != EOF) {
 
         pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-        post_phase = POST_CMD_ERR;
-        log_phase = LOG_CMD_ERR;
+        fxp_cmd_dispatch_err(cmd2);
 
       } else {
         pr_response_add(R_226, "%s", "Transfer complete");
+        fxp_cmd_dispatch(cmd2);
       }
-
-      /* XXX We don't really care about the success of this dispatch, since
-       * there's not much that we can do, in this code, at this point.
-       */
-      (void) pr_cmd_dispatch_phase(cmd2, post_phase, 0);
-      (void) pr_cmd_dispatch_phase(cmd2, log_phase, 0);
-
-      pr_response_clear(&resp_list);
-      pr_response_clear(&resp_err_list);
     }
 
   } else if (fxh->dirh != NULL) {
@@ -6628,15 +6557,10 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error closing directory '%s': %s", fxh->dir, strerror(xerrno));
-
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd2);
 
     } else {
-      pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
-      pr_response_clear(&resp_list);
+      fxp_cmd_dispatch(cmd2);
     }
 
     fxh->dirh = NULL;
@@ -6679,14 +6603,10 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   session.xfer.total_bytes = xfer_total_bytes;
 
   if (res < 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
   } else {
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
   }
 
   /* Clear out session.xfer again. */
@@ -6733,7 +6653,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
    */
   if (strncmp(ext_request_name, "vendor-id", 10) == 0) {
     res = fxp_handle_ext_vendor_id(fxp);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6746,7 +6671,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       &fxp->payload_sz);
 
     res = fxp_handle_ext_version_select(fxp, version_str);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6766,7 +6696,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     res = fxp_handle_ext_check_file(fxp, digest_list, path, offset, len,
       blocksz);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6791,7 +6726,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -6816,7 +6751,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -6835,7 +6770,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     res = fxp_handle_ext_check_file(fxp, digest_list, path, offset, len,
       blocksz);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6850,7 +6790,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     overwrite = sftp_msg_read_bool(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
     res = fxp_handle_ext_copy_file(fxp, src, dst, overwrite);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6876,7 +6821,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -6899,7 +6844,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -6909,7 +6854,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     }
 
     res = fxp_handle_ext_fsync(fxp, fxh);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6927,7 +6877,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     }
 
     res = fxp_handle_ext_hardlink(fxp, src, dst);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6945,7 +6900,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     }
 
     res = fxp_handle_ext_posix_rename(fxp, src, dst);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6958,7 +6918,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
     res = fxp_handle_ext_space_avail(fxp, path);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6970,7 +6935,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
     res = fxp_handle_ext_statvfs(fxp, path);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -6996,7 +6966,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -7008,7 +6978,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     path = fxh->fh ? fxh->fh->fh_path : fxh->dir;
 
     res = fxp_handle_ext_statvfs(fxp, path);
-    pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
 
     return res;
   }
@@ -7025,7 +7000,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_fgetxattr(fxp, handle, name, valsz);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7036,7 +7016,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       handle = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_flistxattr(fxp, handle);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7048,7 +7033,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_fremovexattr(fxp, handle, name);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7066,7 +7056,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       pflags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_fsetxattr(fxp, handle, name, val, valsz, pflags);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7080,7 +7075,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_getxattr(fxp, path, name, valsz);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7091,7 +7091,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_listxattr(fxp, path);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7103,7 +7108,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_removexattr(fxp, path, name);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7121,7 +7131,12 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       pflags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
       res = fxp_handle_ext_setxattr(fxp, path, name, val, valsz, pflags);
-      pr_cmd_dispatch_phase(cmd, res == 0 ? LOG_CMD : LOG_CMD_ERR, 0);
+      if (res == 0) {
+        fxp_cmd_dispatch(cmd);
+
+      } else {
+        fxp_cmd_dispatch_err(cmd);
+      }
 
       return res;
     }
@@ -7132,7 +7147,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     "client requested '%s' extension, rejecting", ext_request_name);
   status_code = SSH2_FX_OP_UNSUPPORTED;
 
-  pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+  fxp_cmd_dispatch_err(cmd);
 
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
     (unsigned long) status_code, fxp_strerror(status_code));
@@ -7172,9 +7187,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
     &xattrs);
   if (attrs == NULL) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     /* XXX TODO: Provide a response to the client here! */
     return 0;
@@ -7205,9 +7218,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7234,9 +7245,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7259,9 +7268,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7300,9 +7307,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7380,9 +7385,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7399,9 +7402,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -7466,9 +7467,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -7485,10 +7484,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -7517,9 +7514,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -7545,10 +7540,8 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -7587,9 +7580,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   buf = fxb->buf;
   buflen = fxb->buflen;
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = fxb->ptr;
@@ -7695,9 +7686,8 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   pr_event_generate("mod_sftp.sftp.protocol-version",
     &(fxp_session->client_version));
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -7812,9 +7802,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7845,9 +7833,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
       "('%s' [%d])", (unsigned long) status_code, reason,
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
   } else {
     errno = 0;
@@ -7856,9 +7842,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, reason);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
@@ -7918,9 +7902,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7941,10 +7923,8 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7965,9 +7945,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -7991,10 +7969,8 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8017,10 +7993,8 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
-  
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -8097,9 +8071,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8119,9 +8091,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -8195,9 +8165,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -8225,9 +8193,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -8253,9 +8219,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -8283,9 +8247,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -8323,9 +8285,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   buf = fxb->buf;
   buflen = fxb->buflen;
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = fxb->ptr;
@@ -8418,9 +8378,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8442,16 +8400,12 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8471,16 +8425,12 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8509,16 +8459,12 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8538,16 +8484,12 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8582,16 +8524,12 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8620,16 +8558,12 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -8651,18 +8585,14 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
     (unsigned long) status_code, fxp_strerror(status_code));
 
-  pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd2);
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
 
   pr_response_add(R_257, "\"%s\" - Directory successfully created",
     quote_dir(cmd->tmp_pool, path));
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -8757,9 +8687,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -8813,9 +8741,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -8842,9 +8768,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -8866,9 +8790,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
     &xattrs);
   if (attrs == NULL) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     /* XXX TODO: Provide a response to the client here */
     return 0;
@@ -8983,13 +8905,9 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         xerrno);
 
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd2);
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         reason, NULL);
@@ -9127,17 +9045,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     if (cmd2) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9176,17 +9090,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     if (cmd2) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9254,14 +9164,10 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     if (cmd2) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd2);
     }
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9299,17 +9205,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     if (cmd2) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9346,17 +9248,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     if (cmd2) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-      pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9403,9 +9301,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   /* Add a note containing the file handle for logging (Bug#3707). */
   fxp_set_filehandle_note(cmd, fxh);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -9466,9 +9362,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9514,9 +9408,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9537,9 +9429,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9579,16 +9469,12 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
        xerrno);
 
     pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9616,16 +9502,12 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
     pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9657,16 +9539,12 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
     pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9691,16 +9569,12 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
     pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9734,16 +9608,12 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
     destroy_pool(fxh->pool);
 
     pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9784,9 +9654,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
       fxp_timeout_stalled_cb, "TimeoutStalled");
   }
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -9854,9 +9722,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9873,10 +9739,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9909,10 +9773,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9951,9 +9813,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -9976,9 +9836,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -10005,10 +9863,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         reason, NULL);
-  
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -10081,14 +9937,10 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
       reason, NULL);
 
     if (xerrno != EOF) {
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
     } else {
-      pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-      pr_response_clear(&resp_list);
+      fxp_cmd_dispatch(cmd);
     }
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -10114,10 +9966,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   fxh->fh_bytes_xferred += res;
   session.xfer.total_bytes += res;
   session.total_bytes += res;
-  
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+
+  fxp_cmd_dispatch(cmd);
 
   res = fxp_packet_write(resp);
   return res;
@@ -10179,9 +10029,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10198,10 +10046,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10257,9 +10103,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0); 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10296,9 +10140,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10413,9 +10255,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10433,10 +10273,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+
+    fxp_cmd_dispatch(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10503,10 +10341,8 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   session.xfer.total_bytes += resp->payload_sz;
   session.total_bytes += resp->payload_sz;
-  
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+
+  fxp_cmd_dispatch(cmd);
 
   return fxp_packet_write(resp);
 }
@@ -10563,9 +10399,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10596,9 +10430,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10620,9 +10452,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10661,9 +10491,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
   } else {
     struct stat st;
@@ -10702,9 +10530,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     buf = fxb->buf;
     buflen = fxb->buflen;
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -10856,9 +10682,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       buflen = fxb->buflen;
     }
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -10922,9 +10746,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         buflen = fxb->buflen;
       }
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = fxb->ptr;
@@ -10990,9 +10812,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       buflen = fxb->buflen;
     }
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
   } else {
    /* draft-ietf-secsh-filexfer-13 says:
@@ -11070,9 +10890,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
         buflen = fxb->buflen;
       }
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+      fxp_cmd_dispatch_err(cmd);
 
     } else {
       const char *fake_user = NULL, *fake_group = NULL;
@@ -11106,9 +10924,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       buf = fxb->buf;
       buflen = fxb->buflen;
 
-      pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-      pr_response_clear(&resp_list);
+      fxp_cmd_dispatch(cmd);
     }
   }
 
@@ -11170,9 +10986,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11194,16 +11008,12 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(EPERM));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11230,16 +11040,12 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(EPERM));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11259,16 +11065,12 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11291,16 +11093,12 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11324,16 +11122,12 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11355,16 +11149,12 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       xerrno);
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11386,9 +11176,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       "error unlinking '%s': %s", real_path, strerror(xerrno));
 
     pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     errno = xerrno;
 
@@ -11404,9 +11192,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
       'b', 'd', 'r', session.user, 'c', "_");
 
     pr_response_add(R_250, "%s command successful", (char *) cmd2->argv[0]);
-    pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd2);
 
     errno = 0;
   }
@@ -11421,14 +11207,10 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     reason, NULL);
 
   if (res == 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
 
   } else {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -11526,16 +11308,12 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11555,15 +11333,12 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11593,21 +11368,15 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11627,20 +11396,15 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11661,21 +11425,15 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11697,21 +11455,15 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       xerrno);
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11732,21 +11484,15 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11765,21 +11511,15 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -11865,45 +11605,33 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   if (xerrno == 0) {
     pr_response_add(R_350,
       "File or directory exists, ready for destination name");
-    pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd2);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd2->argv[0],
       strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
   }
 
   session.xfer.path = pstrdup(session.xfer.p, new_path);
 
   if (xerrno == 0) {
     pr_response_add(R_250, "Rename successful");
-    pr_cmd_dispatch_phase(cmd3, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd3);
 
   } else {
     pr_response_add_err(R_550, "%s: %s", (char *) cmd3->argv[0],
       strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd3, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd3, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd3);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
   if (xerrno == 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
 
   } else {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
   }
 
   /* Clear out any transfer-specific data. */
@@ -11970,9 +11698,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12013,9 +11739,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12035,16 +11759,12 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12082,16 +11802,12 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12109,16 +11825,12 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12186,28 +11898,20 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
     errno != EOF ? strerror(errno) : "End of file", errno);
 
   if (res == 0) {
-    pr_cmd_dispatch_phase(cmd2, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd2);
 
   } else {
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
 
   if (res == 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
 
   } else {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
   }
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -12279,9 +11983,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12322,9 +12024,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12350,9 +12050,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12412,9 +12110,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   res = fxp_attrs_set(NULL, path, attrs, attr_flags, xattrs, &buf, &buflen,
     fxp);
   if (res < 0) {
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12431,9 +12127,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -12506,9 +12200,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -12554,9 +12246,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -12582,9 +12272,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -12614,9 +12302,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = fxb->ptr;
@@ -12653,9 +12339,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   buf = fxb->buf;
   buflen = fxb->buflen;
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = fxb->ptr;
@@ -12746,9 +12430,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12774,9 +12456,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12811,16 +12491,12 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
       (unsigned long) status_code, fxp_strerror(status_code));
 
     pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(EACCES));
-    pr_cmd_dispatch_phase(cmd2, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd2, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd2);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12870,9 +12546,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12896,9 +12570,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
       "('%s' [%d])", (unsigned long) status_code, reason,
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
   } else {
     errno = 0;
@@ -12907,9 +12579,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
       (unsigned long) status_code, reason);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-    pr_response_clear(&resp_list);
+    fxp_cmd_dispatch(cmd);
   }
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
@@ -12972,9 +12642,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -12991,10 +12659,8 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13033,9 +12699,8 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
-  
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13070,9 +12735,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13090,9 +12753,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13118,10 +12779,8 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         reason, NULL);
-  
-      pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-      pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-      pr_response_clear(&resp_err_list);
+
+      fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
       resp->payload = ptr;
@@ -13207,9 +12866,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13258,9 +12915,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
         fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
           reason, NULL);
 
-        pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-        pr_response_clear(&resp_err_list);
+        fxp_cmd_dispatch_err(cmd);
 
         resp = fxp_packet_create(fxp->pool, fxp->channel_id);
         resp->payload = ptr;
@@ -13279,9 +12934,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
@@ -13337,9 +12990,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13360,10 +13011,8 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13389,9 +13038,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13419,10 +13066,8 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       fxp_strerror(status_code), NULL);
-  
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13470,9 +13115,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
-    pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
-    pr_response_clear(&resp_err_list);
+    fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -13491,9 +13134,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
 
-  pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
-  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  pr_response_clear(&resp_list);
+  fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
