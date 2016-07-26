@@ -66,7 +66,7 @@ static void log_stacktrace(void) {
 
   strings = backtrace_symbols(trace, tracesz);
   if (strings != NULL) {
-    register unsigned int i;
+    register int i;
 
     for (i = 1; i < tracesz; i++) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,13 +42,13 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+  }
+
   if (p) {
     destroy_pool(p);
     p = NULL;
-  }
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
   }
 }
 

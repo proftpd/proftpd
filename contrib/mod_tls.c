@@ -595,7 +595,7 @@ static char *tls_get_subj_name(SSL *);
 static int tls_openlog(void);
 static int tls_seed_prng(void);
 static int tls_sess_init(void);
-static void tls_setup_environ(SSL *);
+static void tls_setup_environ(pool *, SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
 static int tls_verify_crl(int, X509_STORE_CTX *);
 static int tls_verify_ocsp(int, X509_STORE_CTX *);
@@ -673,7 +673,7 @@ static int tls_data_need_init_handshake = TRUE;
 
 static const char *timing_channel = "timing";
 
-static const char * tls_get_fingerprint(pool *p, X509 *cert) {
+static const char *tls_get_fingerprint(pool *p, X509 *cert) {
   const EVP_MD *md = EVP_sha1();
   unsigned char fp[EVP_MAX_MD_SIZE];
   unsigned int fp_len = 0;
@@ -6166,7 +6166,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       reused > 0 ? ", resumed session" : "");
 
     /* Setup the TLS environment variables, if requested. */
-    tls_setup_environ(ssl);
+    tls_setup_environ(session.pool, ssl);
 
     if (reused > 0) {
       pr_log_writefile(tls_logfd, MOD_TLS_VERSION, "%s",
@@ -7570,7 +7570,8 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
   }
 }
 
-static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
+static void tls_setup_cert_environ(pool *p, const char *env_prefix,
+    X509 *cert) {
   char *data = NULL, *k, *v;
   long datalen = 0;
   BIO *bio = NULL;
@@ -7585,18 +7586,18 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
     snprintf(buf, sizeof(buf) - 1, "%lu", X509_get_version(cert) + 1);
     buf[sizeof(buf)-1] = '\0';
 
-    k = pstrcat(main_server->pool, env_prefix, "M_VERSION", NULL);
-    v = pstrdup(main_server->pool, buf);
-    pr_env_set(main_server->pool, k, v);
+    k = pstrcat(p, env_prefix, "M_VERSION", NULL);
+    v = pstrdup(p, buf);
+    pr_env_set(p, k, v);
 
     if (serial->length < 4) {
       memset(buf, '\0', sizeof(buf));
       snprintf(buf, sizeof(buf) - 1, "%lu", ASN1_INTEGER_get(serial));
       buf[sizeof(buf)-1] = '\0';
 
-      k = pstrcat(main_server->pool, env_prefix, "M_SERIAL", NULL);
-      v = pstrdup(main_server->pool, buf);
-      pr_env_set(main_server->pool, k, v);
+      k = pstrcat(p, env_prefix, "M_SERIAL", NULL);
+      v = pstrdup(p, buf);
+      pr_env_set(p, k, v);
 
     } else {
 
@@ -7606,33 +7607,30 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
       tls_log("%s", "certificate serial number not printable");
     }
 
-    k = pstrcat(main_server->pool, env_prefix, "S_DN", NULL);
-    v = pstrdup(main_server->pool,
-      tls_x509_name_oneline(X509_get_subject_name(cert)));
-    pr_env_set(main_server->pool, k, v);
+    k = pstrcat(p, env_prefix, "S_DN", NULL);
+    v = pstrdup(p, tls_x509_name_oneline(X509_get_subject_name(cert)));
+    pr_env_set(p, k, v);
 
-    tls_setup_cert_dn_environ(pstrcat(main_server->pool, env_prefix, "S_DN_",
+    tls_setup_cert_dn_environ(pstrcat(p, env_prefix, "S_DN_",
       NULL), X509_get_subject_name(cert));
 
-    k = pstrcat(main_server->pool, env_prefix, "I_DN", NULL);
-    v = pstrdup(main_server->pool,
-      tls_x509_name_oneline(X509_get_issuer_name(cert)));
-    pr_env_set(main_server->pool, k, v);
+    k = pstrcat(p, env_prefix, "I_DN", NULL);
+    v = pstrdup(p, tls_x509_name_oneline(X509_get_issuer_name(cert)));
+    pr_env_set(p, k, v);
 
-    tls_setup_cert_dn_environ(pstrcat(main_server->pool, env_prefix, "I_DN_",
-      NULL), X509_get_issuer_name(cert));
+    tls_setup_cert_dn_environ(pstrcat(p, env_prefix, "I_DN_", NULL),
+      X509_get_issuer_name(cert));
 
-    tls_setup_cert_ext_environ(pstrcat(main_server->pool, env_prefix, "EXT_",
-      NULL), cert);
+    tls_setup_cert_ext_environ(pstrcat(p, env_prefix, "EXT_", NULL), cert);
 
     bio = BIO_new(BIO_s_mem());
     ASN1_TIME_print(bio, X509_get_notBefore(cert));
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
-    k = pstrcat(main_server->pool, env_prefix, "V_START", NULL);
-    v = pstrdup(main_server->pool, data);
-    pr_env_set(main_server->pool, k, v);
+    k = pstrcat(p, env_prefix, "V_START", NULL);
+    v = pstrdup(p, data);
+    pr_env_set(p, k, v);
 
     BIO_free(bio);
 
@@ -7641,9 +7639,9 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
-    k = pstrcat(main_server->pool, env_prefix, "V_END", NULL);
-    v = pstrdup(main_server->pool, data);
-    pr_env_set(main_server->pool, k, v);
+    k = pstrcat(p, env_prefix, "V_END", NULL);
+    v = pstrdup(p, data);
+    pr_env_set(p, k, v);
 
     BIO_free(bio);
 
@@ -7657,9 +7655,9 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
-    k = pstrcat(main_server->pool, env_prefix, "A_SIG", NULL);
-    v = pstrdup(main_server->pool, data);
-    pr_env_set(main_server->pool, k, v);
+    k = pstrcat(p, env_prefix, "A_SIG", NULL);
+    v = pstrdup(p, data);
+    pr_env_set(p, k, v);
 
     BIO_free(bio);
 
@@ -7675,9 +7673,9 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
-    k = pstrcat(main_server->pool, env_prefix, "A_KEY", NULL);
-    v = pstrdup(main_server->pool, data);
-    pr_env_set(main_server->pool, k, v);
+    k = pstrcat(p, env_prefix, "A_KEY", NULL);
+    v = pstrdup(p, data);
+    pr_env_set(p, k, v);
 
     BIO_free(bio);
   }
@@ -7687,14 +7685,14 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
   datalen = BIO_get_mem_data(bio, &data);
   data[datalen] = '\0';
 
-  k = pstrcat(main_server->pool, env_prefix, "CERT", NULL);
-  v = pstrdup(main_server->pool, data);
-  pr_env_set(main_server->pool, k, v);
+  k = pstrcat(p, env_prefix, "CERT", NULL);
+  v = pstrdup(p, data);
+  pr_env_set(p, k, v);
 
   BIO_free(bio);
 }
 
-static void tls_setup_environ(SSL *ssl) {
+static void tls_setup_environ(pool *p, SSL *ssl) {
   X509 *cert = NULL;
   STACK_OF(X509) *sk_cert_chain = NULL;
   char *k, *v;
@@ -7709,40 +7707,33 @@ static void tls_setup_environ(SSL *ssl) {
     SSL_SESSION *ssl_session = NULL;
     const char *sni = NULL;
 
-    k = pstrdup(main_server->pool, "FTPS");
-    v = pstrdup(main_server->pool, "1");
-    pr_env_set(main_server->pool, k, v);
+    k = pstrdup(p, "FTPS");
+    v = pstrdup(p, "1");
+    pr_env_set(p, k, v);
 
-    k = pstrdup(main_server->pool, "TLS_PROTOCOL");
-    v = pstrdup(main_server->pool, SSL_get_version(ssl));
-    pr_env_set(main_server->pool, k, v);
+    k = pstrdup(p, "TLS_PROTOCOL");
+    v = pstrdup(p, SSL_get_version(ssl));
+    pr_env_set(p, k, v);
 
     /* Process the SSL session-related environ variable. */
     ssl_session = SSL_get_session(ssl);
     if (ssl_session) {
-      register unsigned int i = 0;
-      char buf[SSL_MAX_SSL_SESSION_ID_LENGTH*2+1];
-      const unsigned char *sess_id;
-      unsigned int sess_id_len;
-
-      /* Have to obtain a stringified session ID the hard way. */
-      memset(buf, '\0', sizeof(buf));
+      const unsigned char *sess_data;
+      unsigned int sess_datalen;
+      char *sess_id;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      sess_id = SSL_SESSION_get_id(ssl_session, &sess_id_len);
+      sess_data = SSL_SESSION_get_id(ssl_session, &sess_datalen);
 #else
-      sess_id_len = ssl_session->session_id_length;
-      sess_id = ssl_session->session_id;
+      sess_datalen = ssl_session->session_id_length;
+      sess_data = ssl_session->session_id;
 #endif /* OpenSSL-1.1.x and later */
 
-      for (i = 0; i < sess_id_len; i++) {
-        snprintf(&(buf[i*2]), sizeof(buf) - (i*2) - 1, "%02X", sess_id[i]);
-      }
-      buf[sizeof(buf)-1] = '\0';
+      sess_id = pr_str_bin2hex(p, sess_data, sess_datalen,
+        PR_STR_FL_HEX_USE_UC);
 
-      k = pstrdup(main_server->pool, "TLS_SESSION_ID");
-      v = pstrdup(main_server->pool, buf);
-      pr_env_set(main_server->pool, k, v);
+      k = pstrdup(p, "TLS_SESSION_ID");
+      pr_env_set(p, k, sess_id);
     }
 
     /* Process the SSL cipher-related environ variables. */
@@ -7751,45 +7742,45 @@ static void tls_setup_environ(SSL *ssl) {
       char buf[10] = {'\0'};
       int cipher_bits_used = 0, cipher_bits_possible = 0;
 
-      k = pstrdup(main_server->pool, "TLS_CIPHER");
-      v = pstrdup(main_server->pool, SSL_CIPHER_get_name(cipher));
-      pr_env_set(main_server->pool, k, v);
+      k = pstrdup(p, "TLS_CIPHER");
+      v = pstrdup(p, SSL_CIPHER_get_name(cipher));
+      pr_env_set(p, k, v);
 
       cipher_bits_used = SSL_CIPHER_get_bits(cipher, &cipher_bits_possible);
 
       if (cipher_bits_used < 56) {
-        k = pstrdup(main_server->pool, "TLS_CIPHER_EXPORT");
-        v = pstrdup(main_server->pool, "1");
-        pr_env_set(main_server->pool, k, v);
+        k = pstrdup(p, "TLS_CIPHER_EXPORT");
+        v = pstrdup(p, "1");
+        pr_env_set(p, k, v);
       }
 
       memset(buf, '\0', sizeof(buf));
       snprintf(buf, sizeof(buf), "%d", cipher_bits_possible);
       buf[sizeof(buf)-1] = '\0';
 
-      k = pstrdup(main_server->pool, "TLS_CIPHER_KEYSIZE_POSSIBLE");
-      v = pstrdup(main_server->pool, buf);
-      pr_env_set(main_server->pool, k, v);
+      k = pstrdup(p, "TLS_CIPHER_KEYSIZE_POSSIBLE");
+      v = pstrdup(p, buf);
+      pr_env_set(p, k, v);
 
       memset(buf, '\0', sizeof(buf));
       snprintf(buf, sizeof(buf), "%d", cipher_bits_used);
       buf[sizeof(buf)-1] = '\0';
 
-      k = pstrdup(main_server->pool, "TLS_CIPHER_KEYSIZE_USED");
-      v = pstrdup(main_server->pool, buf);
-      pr_env_set(main_server->pool, k, v);
+      k = pstrdup(p, "TLS_CIPHER_KEYSIZE_USED");
+      v = pstrdup(p, buf);
+      pr_env_set(p, k, v);
     }
 
     sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
     if (sni != NULL) {
-      k = pstrdup(main_server->pool, "TLS_SERVER_NAME");
-      v = pstrdup(main_server->pool, sni);
-      pr_env_set(main_server->pool, k, v);
+      k = pstrdup(p, "TLS_SERVER_NAME");
+      v = pstrdup(p, sni);
+      pr_env_set(p, k, v);
     }
 
-    k = pstrdup(main_server->pool, "TLS_LIBRARY_VERSION");
-    v = pstrdup(main_server->pool, OPENSSL_VERSION_TEXT);
-    pr_env_set(main_server->pool, k, v);
+    k = pstrdup(p, "TLS_LIBRARY_VERSION");
+    v = pstrdup(p, OPENSSL_VERSION_TEXT);
+    pr_env_set(p, k, v);
   }
 
   sk_cert_chain = SSL_get_peer_cert_chain(ssl);
@@ -7805,7 +7796,7 @@ static void tls_setup_environ(SSL *ssl) {
 
       pr_signals_handle();
 
-      k = pcalloc(main_server->pool, klen);
+      k = pcalloc(p, klen);
       snprintf(k, klen - 1, "%s%u", "TLS_CLIENT_CERT_CHAIN", i + 1);
 
       bio = BIO_new(BIO_s_mem());
@@ -7813,9 +7804,8 @@ static void tls_setup_environ(SSL *ssl) {
       datalen = BIO_get_mem_data(bio, &data);
       data[datalen] = '\0';
 
-      v = pstrdup(main_server->pool, data);
-
-      pr_env_set(main_server->pool, k, v);
+      v = pstrdup(p, data);
+      pr_env_set(p, k, v);
 
       BIO_free(bio);
     } 
@@ -7825,8 +7815,8 @@ static void tls_setup_environ(SSL *ssl) {
    * so we do not call X509_free() on it.
    */
   cert = SSL_get_certificate(ssl);
-  if (cert) {
-    tls_setup_cert_environ("TLS_SERVER_", cert);
+  if (cert != NULL) {
+    tls_setup_cert_environ(p, "TLS_SERVER_", cert);
 
   } else {
     tls_log("unable to set server certificate environ variables: "
@@ -7834,8 +7824,8 @@ static void tls_setup_environ(SSL *ssl) {
   }
 
   cert = SSL_get_peer_certificate(ssl);
-  if (cert) {
-    tls_setup_cert_environ("TLS_CLIENT_", cert);
+  if (cert != NULL) {
+    tls_setup_cert_environ(p, "TLS_CLIENT_", cert);
     X509_free(cert);
 
   } else {

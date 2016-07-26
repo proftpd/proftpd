@@ -246,6 +246,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
           continue;
         }
 
+        if (strncmp(tmp, "{remote-port}", 13) == 0) {
+          add_meta(&outs, LOGFMT_META_REMOTE_PORT, 0);
+          tmp += 13;
+          continue;
+        }
+
         if (strncmp(tmp, "{uid}", 5) == 0) {
           add_meta(&outs, LOGFMT_META_UID, 0);
           tmp += 5;
@@ -749,18 +755,23 @@ MODRET set_systemlog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static struct tm *_get_gmtoff(int *tz) {
+static struct tm *get_gmtoff(int *tz) {
   time_t now;
-  struct tm *tm;
+  struct tm *gmt, *tm = NULL;
 
+  /* Note that the ordering of the calls to gmtime(3) and pr_localtime()
+   * here are IMPORTANT; gmtime(3) MUST be called first.  Otherwise,
+   * the TZ environment variable may not be honored as one would expect;
+   * see:
+   *  https://forums.proftpd.org/smf/index.php/topic,11971.0.html
+   */
   time(&now);
-  tm = pr_localtime(NULL, &now);
-  if (tm != NULL) {
+  gmt = gmtime(&now);
+  if (gmt != NULL) {
     int days, hours, minutes;
-    struct tm *gmt;
 
-    gmt = gmtime(&now);
-    if (gmt != NULL) {
+    tm = pr_localtime(NULL, &now);
+    if (tm != NULL) {
       days = tm->tm_yday - gmt->tm_yday;
       hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)
               + tm->tm_hour - gmt->tm_hour);
@@ -1280,6 +1291,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       m++;
       break;
 
+    case LOGFMT_META_REMOTE_PORT:
+      argp = arg;
+      len = snprintf(argp, sizeof(arg), "%d", session.c->remote_port);
+      m++;
+      break;
+
     case LOGFMT_META_RENAME_FROM: {
       const char *rnfr_path = "-";
 
@@ -1408,7 +1425,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
           internal_fmt = 0;
         }
 
-        t = *_get_gmtoff(&timz);
+        t = *get_gmtoff(&timz);
         sign = (timz < 0 ? '-' : '+');
         if (timz < 0) {
           timz = -timz;

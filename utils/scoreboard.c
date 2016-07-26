@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* ProFTPD scoreboard support (modified for use by external utilities).
- * $Id: scoreboard.c,v 1.17 2011-05-23 20:46:20 castaglia Exp $
- */
+/* ProFTPD scoreboard support (modified for use by external utilities). */
 
 #include "utils.h"
 

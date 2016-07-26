@@ -48,11 +48,13 @@ static void set_up(void) {
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("auth", 1, 20);
     pr_trace_set_levels("fsio", 1, 20);
     pr_trace_set_levels("fs.statcache", 1, 20);
   }
 
   schedule_called = 0;
+  session.user = NULL;
 }
 
 static void tear_down(void) {
@@ -63,9 +65,12 @@ static void tear_down(void) {
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
 
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("auth", 0, 0);
     pr_trace_set_levels("fsio", 0, 0);
     pr_trace_set_levels("fs.statcache", 0, 0);
   }
+
+  session.user = NULL;
 
   if (p) {
     destroy_pool(p);
@@ -1034,6 +1039,115 @@ START_TEST (gettimeofday_millis_test) {
 }
 END_TEST
 
+START_TEST (path_subst_uservar_test) {
+  const char *path = NULL, *res, *original, *expected;
+
+  res = path_subst_uservar(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = path_subst_uservar(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path pointer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = path_subst_uservar(p, &path);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  original = expected = "somepathhere";
+  path = pstrdup(p, expected);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  session.user = "user";
+  original = "/home/%u";
+  expected = "/home/user";
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  session.user = "user";
+  original = "/home/%u[";
+  expected = "/home/user[";
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  session.user = "user";
+  original = "/home/%u[]";
+  expected = "/home/user[]";
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  session.user = "user";
+  original = "/home/users/%u[0]/%u[0]%u[1]/%u";
+  expected = "/home/users/u/us/user";
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  /* Attempt to use an invalid index */
+  session.user = "user";
+  original = "/home/users/%u[a]/%u[b]%u[c]/%u";
+  expected = original;
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  /* Attempt to use an out-of-bounds index */
+  session.user = "user";
+  original = "/home/users/%u[0]/%u[-1]%u[1]/%u";
+  expected = original;
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  /* Attempt to use an out-of-bounds index */
+  session.user = "user";
+  original = "/home/users/%u[0]/%u[0]%u[4]/%u";
+  expected = original;
+  path = pstrdup(p, original);
+  mark_point();
+  res = path_subst_uservar(p, &path);
+  fail_unless(res != NULL, "Failed to handle path '%s': %s", path,
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+}
+END_TEST
+
 Suite *tests_get_misc_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1072,6 +1186,7 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, strtime2_test);
   tcase_add_test(testcase, timeval2millis_test);
   tcase_add_test(testcase, gettimeofday_millis_test);
+  tcase_add_test(testcase, path_subst_uservar_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

@@ -283,7 +283,7 @@ static int auth_sess_init(void) {
   return 0;
 }
 
-static int _do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
+static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
   char *cpw = NULL;
   config_rec *c;
 
@@ -621,7 +621,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 }
 
 /* Handle group based authentication, only checked if pw based fails. */
-static config_rec *_auth_group(pool *p, const char *user, char **group,
+static config_rec *auth_group(pool *p, const char *user, char **group,
     char **ournamep, char **anonnamep, char *pass) {
   config_rec *c;
   char *ourname = NULL, *anonname = NULL;
@@ -824,6 +824,8 @@ static int get_default_root(pool *p, int allow_symlinks, const char **root) {
        * root.
        */
 
+      pr_fs_clear_cache2(dir);
+
       PRIVS_USER
       realdir = dir_realpath(p, dir);
       xerrno = errno;
@@ -895,7 +897,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
   struct passwd *pw;
   config_rec *c, *tmpc;
   const char *defchdir = NULL, *defroot = NULL, *origuser, *sess_ttyname;
-  char *ourname, *anonname = NULL, *anongroup = NULL, *ugroup = NULL;
+  char *ourname = NULL, *anonname = NULL, *anongroup = NULL, *ugroup = NULL;
   char *xferlog = NULL;
   int aclp, i, res = 0, allow_chroot_symlinks = TRUE, showsymlinks;
   unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
@@ -919,6 +921,18 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
   }
 
   pw = pr_auth_getpwnam(p, user);
+  if (pw == NULL &&
+      c != NULL &&
+      ourname != NULL) {
+    /* If the client is authenticating using an alias (e.g. "AuthAliasOnly on"),
+     * then we need to try checking using the real username, too (Bug#4255).
+     */
+    pr_trace_msg("auth", 16,
+      "no user entry found for <Anonymous> alias '%s', using '%s'", user,
+      ourname);
+    pw = pr_auth_getpwnam(p, ourname);
+  }
+
   if (pw == NULL) {
     int auth_code = PR_AUTH_NOPWD;
 
@@ -975,7 +989,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
    * and session.groups lists are stale, and clear them out.
    */
   if (strcmp(pw->pw_name, user) != 0) {
-    pr_log_debug(DEBUG10, "local user name '%s' differs from client-sent "
+    pr_trace_msg("auth", 10, "local user name '%s' differs from client-sent "
       "user name '%s', clearing cached group data", pw->pw_name, user);
     session.gids = NULL;
     session.groups = NULL;
@@ -992,7 +1006,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
      */
      res = pr_auth_getgroups(p, pw->pw_name, &session.gids, &session.groups);
      if (res < 1) {
-       pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'",
+       pr_log_debug(DEBUG5, "no supplemental groups found for user '%s'",
          pw->pw_name);
      }
   }
@@ -1006,7 +1020,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
   /* If c != NULL from this point on, we have an anonymous login */
   aclp = login_check_limits(main_server->conf, FALSE, TRUE, &i);
 
-  if (c) {
+  if (c != NULL) {
     anongroup = get_param_ptr(c->subset, "GroupName", FALSE);
     if (anongroup == NULL) {
       anongroup = get_param_ptr(main_server->conf, "GroupName",FALSE);
@@ -1058,13 +1072,14 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     goto auth_failure;
   }
 
-  if (c) {
+  if (c != NULL) {
     anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
       FALSE);
   }
 
-  if (!c ||
-      (anon_require_passwd && *anon_require_passwd == TRUE)) {
+  if (c == NULL ||
+      (anon_require_passwd != NULL &&
+       *anon_require_passwd == TRUE)) {
     int auth_code;
     const char *user_name = user;
 
@@ -1089,10 +1104,10 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
 
     /* It is possible for the user to have already been authenticated during
      * the handling of the USER command, as by an RFC2228 mechanism.  If
-     * that had happened, we won't need to call _do_auth() here.
+     * that had happened, we won't need to call do_auth() here.
      */
     if (!authenticated_without_pass) {
-      auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name,
+      auth_code = do_auth(p, c ? c->subset : main_server->conf, user_name,
         pass);
 
     } else {
@@ -1106,7 +1121,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
        * passes
        */
 
-      c = _auth_group(p, user, &anongroup, &ourname, &anonname, pass);
+      c = auth_group(p, user, &anongroup, &ourname, &anonname, pass);
       if (c != NULL) {
         if (c->config_type != CONF_ANON) {
           c = NULL;
@@ -3947,21 +3962,27 @@ MODRET set_uselastlog(cmd_rec *cmd) {
 /* usage: UserAlias alias real-user */
 MODRET set_useralias(cmd_rec *cmd) {
   config_rec *c = NULL;
+  char *alias, *real_user;
 
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* Make sure that the given names differ. */
-  if (strcmp(cmd->argv[1], cmd->argv[2]) == 0)
-    CONF_ERROR(cmd, "alias and real user names must differ");
+  alias = cmd->argv[1];
+  real_user = cmd->argv[2];
 
-  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  if (strcmp(alias, real_user) == 0) {
+    CONF_ERROR(cmd, "alias and real user names must differ");
+  }
+
+  c = add_config_param_str(cmd->argv[0], 2, alias, real_user);
 
   /* Note: only merge this directive down if it is not appearing in an
    * <Anonymous> context.
    */
-  if (!check_context(cmd, CONF_ANON))
-    c->flags |= CF_MERGEDOWN;
+  if (!check_context(cmd, CONF_ANON)) {
+    c->flags |= CF_MERGEDOWN_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }

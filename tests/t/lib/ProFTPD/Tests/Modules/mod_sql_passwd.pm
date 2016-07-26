@@ -207,62 +207,62 @@ my $TESTS = {
 
   sql_passwd_scrypt_base64_interactive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_scrypt_hex_lc_interactive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_scrypt_hex_uc_interactive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_scrypt_base64_sensitive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_scrypt_hex_lc_sensitive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_scrypt_hex_uc_sensitive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_argon2_base64_interactive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_argon2_hex_lc_interactive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_argon2_hex_uc_interactive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_argon2_base64_interactive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_argon2_hex_lc_sensitive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
   sql_passwd_argon2_hex_uc_sensitive_cost => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(feature_sodium forking)],
   },
 
 };

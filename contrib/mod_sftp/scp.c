@@ -38,8 +38,14 @@
  */
 #define SFTP_SCP_MAX_CTL_LEN	(PR_TUNABLE_PATH_MAX + 256)
 
+extern pr_response_t *resp_list, *resp_err_list;
+
 struct scp_path {
   char *path;
+
+  /* The original path, as provided in the scp command. */
+  const char *orig_path;
+
   pr_fh_t *fh;
 
   /* Points to the parent directory "context" path, if any.  For handling
@@ -903,6 +909,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
      */
 
     parent_sp = pcalloc(scp_pool, sizeof(struct scp_path));
+    parent_sp->orig_path = pstrdup(scp_pool, sp->orig_path);
     parent_sp->path = pstrdup(scp_pool, sp->filename);
     parent_sp->filename = pstrdup(scp_pool, sp->filename);
     parent_sp->best_path = pstrdup(scp_pool, sp->best_path);
@@ -1284,8 +1291,9 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
     }
   }
 
-  if (ok)
+  if (ok) {
     write_confirm(p, channel_id, 0, NULL);
+  }
 
   return 1;
 }
@@ -1386,8 +1394,19 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
         parent_dir = sp->parent_dir->parent_dir;
       }
 
-      if (parent_dir) {
+      if (parent_dir != NULL) {
+        pr_trace_msg(trace_channel, 18,
+          "received EOD, resetting path from '%s' to '%s'", sp->path,
+          parent_dir->path);
         sp->path = parent_dir->path;
+
+      } else {
+        if (sp->orig_path != NULL) {
+          sp->path = pstrdup(scp_pool, sp->orig_path);
+        }
+
+        pr_trace_msg(trace_channel, 18,
+          "received EOD, no parent found for '%s'", sp->path);
       }
 
       sp->parent_dir = parent_dir;
@@ -2304,6 +2323,8 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
   }
 
+  pr_response_set_pool(pkt->pool);
+
   if (need_confirm) {
     /* Handle the confirmation/response from the client. */
     if (read_confirm(pkt, &data, &datalen) < 0) {
@@ -2330,8 +2351,9 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       pr_signals_handle();
 
       res = send_path(pkt->pool, channel_id, paths[scp_session->path_idx]);
-      if (res < 0)
+      if (res < 0) {
         return -1;
+      }
 
       if (res == 1) {
         /* If send_path() returns 1, it means we've finished that path,
@@ -2344,6 +2366,12 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
           destroy_pool(session.xfer.p);
         }
         memset(&session.xfer, 0, sizeof(session.xfer));
+
+        /* Make sure to clear the response lists of any cruft from previous
+         * requests.
+         */
+        pr_response_clear(&resp_list);
+        pr_response_clear(&resp_err_list);
       }
     }
 
@@ -2395,6 +2423,12 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         destroy_pool(session.xfer.p);
       }
       memset(&session.xfer, 0, sizeof(session.xfer));
+
+      /* Make sure to clear the response lists of any cruft from previous
+       * requests.
+       */
+      pr_response_clear(&resp_list);
+      pr_response_clear(&resp_err_list);
 
       /* Note: we don't increment path_idx here because when we're receiving
        * files (i.e. it's an SCP upload), we either receive a single file,
@@ -2556,6 +2590,8 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
                 sp->path[--pathlen] = '\0';
               }
 
+              sp->orig_path = pstrdup(paths->pool, sp->path);
+
               if (pathlen > 0) {
                 *((struct scp_path **) push_array(paths->paths)) = sp;
               }
@@ -2610,6 +2646,8 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
           pr_signals_handle();
           sp->path[--pathlen] = '\0';
         }
+
+        sp->orig_path = pstrdup(paths->pool, sp->path);
 
         if (pathlen > 0) {
           *((struct scp_path **) push_array(paths->paths)) = sp;
@@ -2698,6 +2736,7 @@ int sftp_scp_open_session(uint32_t channel_id) {
     src_sp = ((struct scp_path **) paths->paths->elts)[i];
 
     dst_sp = pcalloc(sess->pool, sizeof(struct scp_path));
+    dst_sp->orig_path = pstrdup(sess->pool, src_sp->orig_path);
     dst_sp->path = pstrdup(sess->pool, src_sp->path);
 
     *((struct scp_path **) push_array(sess->paths)) = dst_sp;
@@ -2726,6 +2765,10 @@ int sftp_scp_open_session(uint32_t channel_id) {
   }
 
   pr_session_set_protocol("scp");
+
+  /* Clear any ASCII flags (set by default for FTP sessions. */
+  session.sf_flags &= ~SF_ASCII;
+
   return 0;
 }
 

@@ -226,7 +226,6 @@ int dir_check(pool *, cmd_rec *, const char *, const char *, int *);
 int dir_check_canon(pool *, cmd_rec *, const char *, const char *, int *);
 int is_dotdir(const char *);
 int login_check_limits(xaset_t *, int, int, int *);
-const char *path_subst_uservar(pool *, const char **);
 void resolve_anonymous_dirs(xaset_t *);
 void resolve_deferred_dirs(server_rec *);
 void fixup_dirs(server_rec *, int);

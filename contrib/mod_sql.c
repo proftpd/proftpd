@@ -2693,6 +2693,16 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 11 &&
+      strncmp(tag, "remote-port", 12) == 0) {
+    char buf[64];
+
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "%d", session.c->remote_port);
+    long_tag = pstrdup(cmd->tmp_pool, buf);
+  }
+
+  if (long_tag == NULL &&
       tag_len == 16 &&
       strncmp(tag, "transfer-failure", 17) == 0) {
 

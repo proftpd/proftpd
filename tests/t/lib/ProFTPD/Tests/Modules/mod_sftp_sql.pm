@@ -891,7 +891,7 @@ sub ssh2_auth_publickey_rsa_dsa_sql {
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
   key BLOB NOT NULL
 );
 
@@ -1645,7 +1645,7 @@ NJ/pRF0JutY1UDEUMQ==
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
-  name TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
   key BLOB NOT NULL
 );
 
@@ -2213,13 +2213,16 @@ EOS
   $self->assert($expected eq $login,
     test_msg("Expected user '$expected', got '$login'"));
 
-  $expected = 'b8:ce:c2:e8:e8:9c:f7:93:11:a4:79:c2:48:64:19:45';
-  $self->assert($expected eq $key_fp,
-    test_msg("Expected key fingerprint '$expected', got '$key_fp'"));
+  # The value here depends on the version of OpenSSL we use
+  my $expected_md5 = 'b8:ce:c2:e8:e8:9c:f7:93:11:a4:79:c2:48:64:19:45';
+  my $expected_sha256 = 'ad:13:cf:f3:07:f4:1f:20:95:44:e5:71:d9:e9:3c:9c:fa:4b:2a:d1:0d:90:fb:1f:a5:0e:77:ea:c1:91:f9:37';
+  $self->assert($expected_md5 eq $key_fp || $expected_sha256 eq $key_fp,
+    test_msg("Expected key fingerprint '$expected_md5' or '$expected_sha256', got '$key_fp'"));
 
-  $expected = 'MD5';
-  $self->assert($expected eq $key_fp_algo,
-    test_msg("Expected '$expected', got '$key_fp_algo'"));
+  $expected_md5 = 'MD5';
+  $expected_sha256 = 'SHA256';
+  $self->assert($expected_md5 eq $key_fp_algo || $expected_sha256 eq $key_fp_algo,
+    test_msg("Expected '$expected_md5' or '$expected_sha256', got '$key_fp_algo'"));
 
   unlink($log_file, $db_file);
 }

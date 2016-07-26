@@ -279,7 +279,6 @@ Suite *tests_get_timers_suite(void) {
   TCase *testcase;
 
   suite = suite_create("timers");
-
   testcase = tcase_create("base");
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);
@@ -297,6 +296,5 @@ Suite *tests_get_timers_suite(void) {
   tcase_set_timeout(testcase, 5);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

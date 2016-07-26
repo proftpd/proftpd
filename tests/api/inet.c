@@ -45,6 +45,10 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("inet", 0, 0);
+  }
+
   pr_inet_set_default_family(p, 0);
   pr_inet_clear();
 
@@ -52,11 +56,9 @@ static void tear_down(void) {
     destroy_pool(p);
     p = permanent_pool = NULL;
   } 
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_set_levels("inet", 0, 0);
-  }
 }
+
+/* Tests */
 
 START_TEST (inet_family_test) {
   int res;

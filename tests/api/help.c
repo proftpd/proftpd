@@ -41,14 +41,15 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+  }
+
+  pr_response_set_pool(NULL);
+
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
-  }
-  pr_response_set_pool(NULL);
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
   }
 }
 

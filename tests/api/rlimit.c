@@ -176,7 +176,6 @@ Suite *tests_get_rlimit_suite(void) {
   TCase *testcase;
 
   suite = suite_create("rlimit");
-
   testcase = tcase_create("base");
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);

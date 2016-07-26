@@ -84,17 +84,19 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
-  if (p) {
-    destroy_pool(p);
-    p = permanent_pool = NULL;
-  } 
-
-  test_cleanup();
-
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("netio", 0, 0);
   }
+
+  test_cleanup();
+
+  if (p) {
+    destroy_pool(p);
+    p = permanent_pool = NULL;
+  }
 }
+
+/* Tests */
 
 START_TEST (netio_open_test) {
   pr_netio_stream_t *nstrm;
