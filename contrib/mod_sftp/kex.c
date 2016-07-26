@@ -958,10 +958,11 @@ static int create_dh(struct sftp_kex *kex, int type) {
     }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    DH_get0_key(kex->dh, &dh_pub_key, NULL);
+    DH_get0_key(dh, &dh_pub_key, NULL);
 #else
-    dh_pub_key = kex->dh->pub_key;
+    dh_pub_key = dh->pub_key;
 #endif /* prior to OpenSSL-1.1.0 */
+
     if (have_good_dh(dh, dh_pub_key) < 0) {
       DH_free(dh);
       continue;
