@@ -384,7 +384,7 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
     unsigned char *suffix, size_t suffix_len,
     unsigned int *hash_len) {
 
-  EVP_MD_CTX md_ctx;
+  EVP_MD_CTX *md_ctx;
   unsigned char *hash;
 
   hash = palloc(p, EVP_MAX_MD_SIZE);
@@ -394,69 +394,76 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
    * compiler will error out with "void value not ignored as it ought to be".
    */
 
+  md_ctx = EVP_MD_CTX_create();
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestInit(&md_ctx, md) != 1) {
+  if (EVP_DigestInit(md_ctx, md) != 1) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": error initializing '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
       get_crypto_errors());
+    EVP_MD_CTX_destroy(md_ctx);
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestInit(&md_ctx, md);
+  EVP_DigestInit(md_ctx, md);
 #endif
 
   if (prefix != NULL) {
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-    if (EVP_DigestUpdate(&md_ctx, prefix, prefix_len) != 1) {
+    if (EVP_DigestUpdate(md_ctx, prefix, prefix_len) != 1) {
       sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
         ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
         get_crypto_errors());
+      EVP_MD_CTX_destroy(md_ctx);
       errno = EPERM;
       return NULL;
     }
 #else
-    EVP_DigestUpdate(&md_ctx, prefix, prefix_len);
+    EVP_DigestUpdate(md_ctx, prefix, prefix_len);
 #endif
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestUpdate(&md_ctx, data, data_len) != 1) {
+  if (EVP_DigestUpdate(md_ctx, data, data_len) != 1) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
       get_crypto_errors());
+    EVP_MD_CTX_destroy(md_ctx);
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestUpdate(&md_ctx, data, data_len);
+  EVP_DigestUpdate(md_ctx, data, data_len);
 #endif
 
   if (suffix != NULL) {
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-    if (EVP_DigestUpdate(&md_ctx, suffix, suffix_len) != 1) {
+    if (EVP_DigestUpdate(md_ctx, suffix, suffix_len) != 1) {
       sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
         ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
         get_crypto_errors());
+      EVP_MD_CTX_destroy(md_ctx);
       errno = EPERM;
       return NULL;
     }
 #else
-    EVP_DigestUpdate(&md_ctx, suffix, suffix_len);
+    EVP_DigestUpdate(md_ctx, suffix, suffix_len);
 #endif
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestFinal(&md_ctx, hash, hash_len) != 1) {
+  if (EVP_DigestFinal(md_ctx, hash, hash_len) != 1) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": error finishing '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
       get_crypto_errors());
+    EVP_MD_CTX_destroy(md_ctx);
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestFinal(&md_ctx, hash, hash_len);
+  EVP_DigestFinal(md_ctx, hash, hash_len);
 #endif
+  EVP_MD_CTX_destroy(md_ctx);
 
   return hash;
 }

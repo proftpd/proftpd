@@ -31,6 +31,7 @@
 #include "packet.h"
 #include "interop.h"
 #include "crypto.h"
+#include "cipher.h"
 #include "mac.h"
 #include "keys.h"
 #include "keystore.h"
@@ -1689,6 +1690,7 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
     sftp_interop_free();
     sftp_keystore_free();
     sftp_keys_free();
+    sftp_cipher_free();
     sftp_mac_free();
     pr_response_block(FALSE);
     sftp_utf8_free();
@@ -1710,7 +1712,9 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   server_rec *s;
 
   /* Initialize OpenSSL. */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
   ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
 
@@ -1806,6 +1810,7 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   sftp_interop_free();
   sftp_keystore_free();
   sftp_keys_free();
+  sftp_cipher_free();
   sftp_mac_free();
   sftp_utf8_free();
 
@@ -1961,6 +1966,7 @@ static int sftp_init(void) {
 #endif /* HAVE_SODIUM_H */
 
   sftp_keystore_init();
+  sftp_cipher_init();
   sftp_mac_init();
 
   pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);

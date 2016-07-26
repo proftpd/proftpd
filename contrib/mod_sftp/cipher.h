@@ -27,6 +27,9 @@
 #ifndef MOD_SFTP_CIPHER_H
 #define MOD_SFTP_CIPHER_H
 
+int sftp_cipher_init(void);
+int sftp_cipher_free(void);
+
 /* Returns the cipher block size, or 8, whichever is larger. This value is
  * used when reading in the first bytes of a packet in order to determine
  * the packet length.  See RFC4253, Section 6, "Binary Packet Protocol".

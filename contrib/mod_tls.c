@@ -88,6 +88,57 @@ extern int ServerUseReverseDNS;
  * Last updated on 2013-01-13.
  */
 
+static const char *trace_channel = "tls";
+
+static DH *get_dh(BIGNUM *p, BIGNUM *g) {
+  DH *dh;
+
+  dh = DH_new();
+  if (dh == NULL) {
+    return NULL;
+  }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  if (DH_set0_pqg(dh, p, NULL, g) != 1) {
+    pr_trace_msg(trace_channel, 3, "error setting DH p/q parameters: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    DH_free(dh);
+    return NULL;
+  }
+#else
+  dh->p = p;
+  dh->g = g;
+#endif /* OpenSSL 1.1.x and later */
+
+  return dh;
+}
+
+static X509 *read_cert(FILE *fh, SSL_CTX *ssl_ctx) {
+  X509 *cert;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  cert = PEM_read_X509(fh, NULL, SSL_CTX_get_default_passwd_cb(ssl_ctx),
+    SSL_CTX_get_default_passwd_cb_userdata(ssl_ctx));
+#else
+  cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
+    ssl_ctx->default_passwd_callback_userdata);
+#endif /* OpenSSL-1.1.x and later */
+
+  return cert;
+}
+
+static int get_pkey_type(EVP_PKEY *pkey) {
+  int pkey_type;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  pkey_type = EVP_PKEY_id(pkey);
+#else
+  pkey_type = EVP_PKEY_type(pkey->type);
+#endif /* OpenSSL 1.1.x and later */
+
+  return pkey_type;
+}
+
 /*
 -----BEGIN DH PARAMETERS-----
 MEYCQQC6VcB8+WFeFz/HQnk/vXreozxdppNBY4gN8rdzitjTDppPBswzU4ZL/hBS
@@ -109,22 +160,16 @@ static unsigned char dh512_g[] = {
 };
 
 static DH *get_dh512(void) {
-  DH *dh;
+  BIGNUM *p, *g;
 
-  dh = DH_new();
-  if (dh == NULL)
-    return NULL;
-
-  dh->p = BN_bin2bn(dh512_p, sizeof(dh512_p), NULL);
-  dh->g = BN_bin2bn(dh512_g, sizeof(dh512_g), NULL);
-
-  if (dh->p == NULL ||
-      dh->g == NULL) {
-    DH_free(dh);
+  p = BN_bin2bn(dh512_p, sizeof(dh512_p), NULL);
+  g = BN_bin2bn(dh512_g, sizeof(dh512_g), NULL);
+  if (p == NULL ||
+      g == NULL) {
     return NULL;
   }
 
-  return dh;
+  return get_dh(p, g);
 }
 
 /*
@@ -151,22 +196,16 @@ static unsigned char dh768_g[] = {
 };
 
 static DH *get_dh768(void) {
-  DH *dh;
+  BIGNUM *p, *g;
 
-  dh = DH_new();
-  if (dh == NULL)
-    return NULL;
-
-  dh->p = BN_bin2bn(dh768_p, sizeof(dh768_p), NULL);
-  dh->g = BN_bin2bn(dh768_g, sizeof(dh768_g), NULL);
-
-  if (dh->p == NULL ||
-      dh->g == NULL) {
-    DH_free(dh);
+  p = BN_bin2bn(dh768_p, sizeof(dh768_p), NULL);
+  g = BN_bin2bn(dh768_g, sizeof(dh768_g), NULL);
+  if (p == NULL ||
+      g == NULL) {
     return NULL;
   }
 
-  return dh;
+  return get_dh(p, g);
 }
 
 /*
@@ -196,22 +235,16 @@ static unsigned char dh1024_g[] = {
 };
 
 static DH *get_dh1024(void) {
-  DH *dh;
+  BIGNUM *p, *g;
 
-  dh = DH_new();
-  if (dh == NULL)
-    return NULL;
-
-  dh->p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
-  dh->g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
-
-  if (dh->p == NULL ||
-      dh->g == NULL) {
-    DH_free(dh);
+  p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
+  g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
+  if (p == NULL ||
+      g == NULL) {
     return NULL;
   }
 
-  return(dh);
+  return get_dh(p, g);
 }
 
 /*
@@ -248,22 +281,16 @@ static unsigned char dh1536_g[] = {
 };
 
 static DH *get_dh1536(void) {
-  DH *dh;
+  BIGNUM *p, *g;
 
-  dh = DH_new();
-  if (dh == NULL)
-    return NULL;
-
-  dh->p = BN_bin2bn(dh1536_p, sizeof(dh1536_p), NULL);
-  dh->g = BN_bin2bn(dh1536_g, sizeof(dh1536_g), NULL);
-
-  if (dh->p == NULL ||
-      dh->g == NULL) {
-    DH_free(dh);
+  p = BN_bin2bn(dh1536_p, sizeof(dh1536_p), NULL);
+  g = BN_bin2bn(dh1536_g, sizeof(dh1536_g), NULL);
+  if (p == NULL ||
+      g == NULL) {
     return NULL;
   }
 
-  return dh;
+  return get_dh(p, g);
 }
 
 /*
@@ -307,22 +334,16 @@ static unsigned char dh2048_g[] = {
 };
 
 static DH *get_dh2048(void) {
-  DH *dh;
+  BIGNUM *p, *g;
 
-  dh = DH_new();
-  if (dh == NULL)
-    return NULL;
-
-  dh->p = BN_bin2bn(dh2048_p, sizeof(dh2048_p), NULL);
-  dh->g = BN_bin2bn(dh2048_g, sizeof(dh2048_g), NULL);
-
-  if (dh->p == NULL ||
-      dh->g == NULL) {
-    DH_free(dh);
+  p = BN_bin2bn(dh2048_p, sizeof(dh2048_p), NULL);
+  g = BN_bin2bn(dh2048_g, sizeof(dh2048_g), NULL);
+  if (p == NULL ||
+      g == NULL) {
     return NULL;
   }
 
-  return dh;
+  return get_dh(p, g);
 }
 
 /* ASN1_BIT_STRING_cmp was renamed in 0.9.5 */
@@ -594,8 +615,8 @@ static int tls_sess_cache_remove(void);
 static int tls_sess_cache_status(pr_ctrls_t *, int);
 #endif /* PR_USE_CTRLS */
 static int tls_sess_cache_add_sess_cb(SSL *, SSL_SESSION *);
-static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, unsigned char *, int,
-  int *);
+static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, const unsigned char *,
+  int, int *);
 static void tls_sess_cache_delete_sess_cb(SSL_CTX *, SSL_SESSION *);
 
 /* OCSP response cache API */
@@ -650,7 +671,6 @@ static ctrls_acttab_t tls_acttab[];
 static int tls_ctrl_need_init_handshake = TRUE;
 static int tls_data_need_init_handshake = TRUE;
 
-static const char *trace_channel = "tls";
 static const char *timing_channel = "timing";
 
 static const char *tls_get_fingerprint(pool *p, X509 *cert) {
@@ -801,7 +821,11 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
         break;
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      case TLS_ST_OK:
+#else
       case SSL_ST_OK:
+#endif /* OpenSSL-1.1.x and later */
         str = "ok";
         break;
 
@@ -821,8 +845,12 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
     ssl_state = SSL_get_state(ssl);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (ssl_state == TLS_ST_SR_CLNT_HELLO) {
+#else
     if (ssl_state == SSL3_ST_SR_CLNT_HELLO_A ||
         ssl_state == SSL23_ST_SR_CLNT_HELLO_A) {
+#endif /* OpenSSL-1.1.x and later */
 
       /* If we have already completed our initial handshake, then this might
        * a session renegotiation.
@@ -858,7 +886,8 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
         }
       }
 
-#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
+#if OPENSSL_VERSION_NUMBER >= 0x009080cfL && \
+    OPENSSL_VERSION_NUMBER < 0x10100000L
     } else if (ssl_state & SSL_ST_RENEGOTIATE) {
       if ((ssl == ctrl_ssl && !tls_ctrl_need_init_handshake) ||
           (ssl != ctrl_ssl && !tls_data_need_init_handshake)) {
@@ -2784,8 +2813,8 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylen) {
    */
   pkey = SSL_get_privatekey(ssl);
   if (pkey != NULL) {
-    if (EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA ||
-        EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA) {
+    if (get_pkey_type(pkey) == EVP_PKEY_RSA ||
+        get_pkey_type(pkey) == EVP_PKEY_DSA) {
       pkeylen = EVP_PKEY_bits(pkey);
 
       if (pkeylen < TLS_DH_MIN_LEN) {
@@ -4443,7 +4472,7 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
 }
 #endif /* TLS_USE_SESSION_TICKETS */
 
-#if defined(PR_USE_OPENSSL_ECC)
+#if defined(PR_USE_OPENSSL_ECC) && OPENSSL_VERSION_NUMBER < 0x10100000L
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
   static EC_KEY *ecdh = NULL;
   static int init = 0;
@@ -4461,7 +4490,7 @@ static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
 
   return ecdh;
 }
-#endif /* PR_USE_OPENSSL_ECC */
+#endif /* PR_USE_OPENSSL_ECC and before OpenSSL-1.1.x */
 
 #if defined(PR_USE_OPENSSL_ALPN)
 static int tls_alpn_select_cb(SSL *ssl,
@@ -5147,8 +5176,7 @@ static int tls_init_server(void) {
      */
     (void) setvbuf(fh, NULL, _IONBF, 0);
 
-    cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
-      ssl_ctx->default_passwd_callback_userdata);
+    cert = read_cert(fh, ssl_ctx);
     if (cert == NULL) {
       PRIVS_RELINQUISH
       tls_log("error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
@@ -5224,8 +5252,7 @@ static int tls_init_server(void) {
      */
     (void) setvbuf(fh, NULL, _IONBF, 0);
 
-    cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
-      ssl_ctx->default_passwd_callback_userdata);
+    cert = read_cert(fh, ssl_ctx);
     if (cert == NULL) {
       PRIVS_RELINQUISH
       tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
@@ -5302,8 +5329,7 @@ static int tls_init_server(void) {
      */
     (void) setvbuf(fh, NULL, _IONBF, 0);
 
-    cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
-      ssl_ctx->default_passwd_callback_userdata);
+    cert = read_cert(fh, ssl_ctx);
     if (cert == NULL) {
       PRIVS_RELINQUISH
       tls_log("error reading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
@@ -5444,7 +5470,7 @@ static int tls_init_server(void) {
 
     if (pkey &&
         tls_pkey) {
-      switch (EVP_PKEY_type(pkey->type)) {
+      switch (get_pkey_type(pkey)) {
         case EVP_PKEY_RSA:
           tls_pkey->flags |= TLS_PKEY_USE_RSA;
           tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
@@ -5505,7 +5531,7 @@ static int tls_init_server(void) {
      * pointer around until after the handling of a cert chain file.
      */
     if (pkey != NULL) {
-      switch (EVP_PKEY_type(pkey->type)) {
+      switch (get_pkey_type(pkey)) {
         case EVP_PKEY_RSA:
           server_rsa_cert = cert;
           break;
@@ -6531,12 +6557,16 @@ static void tls_cleanup(int flags) {
     ERR_free_strings();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    ERR_remove_thread_state();
+# else
     /* The ERR_remove_state(0) usage is deprecated due to thread ID
      * differences among platforms; see the OpenSSL-1.0.0 CHANGES file
      * for details.  So for new enough OpenSSL installations, use the
      * proper way to clear the error queue state.
      */
     ERR_remove_thread_state(NULL);
+# endif /* OpenSSL-1.1.x and later */
 #else
     ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */
@@ -6560,12 +6590,16 @@ static void tls_cleanup(int flags) {
       ERR_free_strings();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      ERR_remove_thread_state();
+# else
       /* The ERR_remove_state(0) usage is deprecated due to thread ID
        * differences among platforms; see the OpenSSL-1.0.0c CHANGES file
        * for details.  So for new enough OpenSSL installations, use the
        * proper way to clear the error queue state.
        */
       ERR_remove_thread_state(NULL);
+# endif /* OpenSSL-1.1.x and later */
 #else
       ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */
@@ -6915,6 +6949,8 @@ static int tls_dotlogin_allow(const char *user) {
   /* If the client did not provide a cert, we cannot do the .tlslogin check. */
   client_cert = SSL_get_peer_certificate(ctrl_ssl);
   if (client_cert == NULL) {
+    pr_trace_msg(trace_channel, 9, "%s",
+      "client did not provide certificate, skipping AllowDotLogin check");
     return FALSE;
   }
 
@@ -6959,9 +6995,23 @@ static int tls_dotlogin_allow(const char *user) {
   (void) setvbuf(fp, NULL, _IONBF, 0);
 
   while ((file_cert = PEM_read_X509(fp, NULL, NULL, NULL))) {
+    ASN1_BIT_STRING *client_sig = NULL, *file_sig = NULL;
+
     pr_signals_handle();
 
-    if (!M_ASN1_BIT_STRING_cmp(client_cert->signature, file_cert->signature)) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    X509_get0_signature(&client_sig, NULL, client_cert);
+    X509_get0_signature(&file_sig, NULL, file_cert);
+#else
+    client_sig = client_cert->signature;
+    file_sig = file_cert->signature;
+#endif /* OpenSSL-1.1.x and later */
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (!ASN1_STRING_cmp(client_sig, file_sig)) {
+#else
+    if (!M_ASN1_BIT_STRING_cmp(client_sig, file_sig)) {
+#endif /* OpenSSL-1.1.x and later */
       allow_user = TRUE;
     }
 
@@ -7403,92 +7453,98 @@ static void tls_setup_cert_ext_environ(const char *env_prefix, X509 *cert) {
 
 static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
   register int i;
+  int nentries;
   char *k, *v;
 
-  for (i = 0; i < sk_X509_NAME_ENTRY_num(name->entries); i++) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  nentries = X509_NAME_entry_count(name);
+#else
+  nentries = sk_X509_NAME_ENTRY_num(name->entries);
+#endif /* OpenSSL-1.1.x and later */
+
+  for (i = 0; i < nentries; i++) {
     X509_NAME_ENTRY *entry;
-    int nid;
+    unsigned char *entry_data;
+    int nid, entry_len;
 
     pr_signals_handle();
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    entry = X509_NAME_get_entry(name, i);
+    nid = OBJ_obj2nid(X509_NAME_ENTRY_get_object(entry));
+    entry_data = ASN1_STRING_data(X509_NAME_ENTRY_get_data(entry));
+    entry_len = ASN1_STRING_length(X509_NAME_ENTRY_get_data(entry));
+#else
     entry = sk_X509_NAME_ENTRY_value(name->entries, i);
     nid = OBJ_obj2nid(entry->object);
+    entry_data = entry->value->data;
+    entry_len = entry->value->length;
+#endif /* OpenSSL-1.1.x and later */
 
     switch (nid) {
       case NID_countryName:
         k = pstrcat(session.pool, env_prefix, "C", NULL);
-        v = pstrndup(session.pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(session.pool, k, v);
         break;
 
       case NID_commonName:
         k = pstrcat(session.pool, env_prefix, "CN", NULL);
-        v = pstrndup(session.pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(session.pool, k, v);
         break;
 
       case NID_description:
         k = pstrcat(main_server->pool, env_prefix, "D", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_givenName:
         k = pstrcat(main_server->pool, env_prefix, "G", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_initials:
         k = pstrcat(main_server->pool, env_prefix, "I", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_localityName:
         k = pstrcat(main_server->pool, env_prefix, "L", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_organizationName:
         k = pstrcat(main_server->pool, env_prefix, "O", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_organizationalUnitName:
         k = pstrcat(main_server->pool, env_prefix, "OU", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_stateOrProvinceName:
         k = pstrcat(main_server->pool, env_prefix, "ST", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_surname:
         k = pstrcat(main_server->pool, env_prefix, "S", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_title:
         k = pstrcat(main_server->pool, env_prefix, "T", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
@@ -7498,15 +7554,13 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
       case NID_uniqueIdentifier:
 #endif
         k = pstrcat(main_server->pool, env_prefix, "UID", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
       case NID_pkcs9_emailAddress:
         k = pstrcat(main_server->pool, env_prefix, "Email", NULL);
-        v = pstrndup(main_server->pool, (const char *) entry->value->data,
-          entry->value->length);
+        v = pstrndup(session.pool, (const char *) entry_data, entry_len);
         pr_env_set(main_server->pool, k, v);
         break;
 
@@ -7525,6 +7579,8 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
     char buf[80] = {'\0'};
     ASN1_INTEGER *serial = X509_get_serialNumber(cert);
+    X509_ALGOR *algo;
+    X509_PUBKEY *pubkey;
 
     memset(buf, '\0', sizeof(buf));
     snprintf(buf, sizeof(buf) - 1, "%lu", X509_get_version(cert) + 1);
@@ -7590,7 +7646,12 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
-    i2a_ASN1_OBJECT(bio, cert->cert_info->signature->algorithm);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    X509_get0_signature(NULL, &algo, cert);
+#else
+    algo = cert->cert_info->signature;
+#endif /* OpenSSL-1.1.x and later */
+    i2a_ASN1_OBJECT(bio, algo->algorithm);
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
@@ -7601,7 +7662,14 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
-    i2a_ASN1_OBJECT(bio, cert->cert_info->key->algor->algorithm);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    pubkey = X509_get_X509_PUBKEY(cert);
+    X509_PUBKEY_get0_param(NULL, NULL, NULL, &algo, pubkey);
+#else
+    pubkey = cert->cert_info->key;
+    algo = pubkey->algor;
+#endif /* OpenSSL-1.1.x and later */
+    i2a_ASN1_OBJECT(bio, algo->algorithm);
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
@@ -7650,10 +7718,19 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
     /* Process the SSL session-related environ variable. */
     ssl_session = SSL_get_session(ssl);
     if (ssl_session) {
+      const unsigned char *sess_data;
+      unsigned int sess_datalen;
       char *sess_id;
 
-      sess_id = pr_str_bin2hex(p, ssl_session->session_id,
-        ssl_session->session_id_length, PR_STR_FL_HEX_USE_UC);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      sess_data = SSL_SESSION_get_id(ssl_session, &sess_datalen);
+#else
+      sess_datalen = ssl_session->session_id_length;
+      sess_data = ssl_session->session_id;
+#endif /* OpenSSL-1.1.x and later */
+
+      sess_id = pr_str_bin2hex(p, sess_data, sess_datalen,
+        PR_STR_FL_HEX_USE_UC);
 
       k = pstrdup(p, "TLS_SESSION_ID");
       pr_env_set(p, k, sess_id);
@@ -7799,9 +7876,17 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
   }
 
   if (!ok) {
-    X509 *cert = X509_STORE_CTX_get_current_cert(ctx);
-    int depth = X509_STORE_CTX_get_error_depth(ctx);
+    X509 *cert;
+    int ctx_error, depth;
+
+    cert = X509_STORE_CTX_get_current_cert(ctx);
+    depth = X509_STORE_CTX_get_error_depth(ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    verify_err = X509_STORE_CTX_get_error(ctx);
+#else
     verify_err = ctx->error;
+#endif /* OpenSSL-1.1.x and later */
 
     tls_log("error: unable to verify certificate at depth %d", depth);
     tls_log("error: cert subject: %s", tls_x509_name_oneline(
@@ -7810,10 +7895,17 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       X509_get_issuer_name(cert)));
 
     /* Catch a too long certificate chain here. */
-    if (depth > tls_verify_depth)
+    if (depth > tls_verify_depth) {
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_CHAIN_TOO_LONG);
+    }
 
-    switch (ctx->error) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    ctx_error = X509_STORE_CTX_get_error(ctx);
+#else
+    ctx_error = ctx->error;
+#endif /* OpenSSL-1.1.x and later */
+
+    switch (ctx_error) {
       case X509_V_ERR_CERT_CHAIN_TOO_LONG:
       case X509_V_ERR_CERT_HAS_EXPIRED:
       case X509_V_ERR_CERT_REVOKED:
@@ -7823,7 +7915,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
       case X509_V_ERR_APPLICATION_VERIFICATION:
         tls_log("client certificate failed verification: %s",
-          X509_verify_cert_error_string(ctx->error));
+          X509_verify_cert_error_string(ctx_error));
         ok = 0;
         break;
 
@@ -7832,7 +7924,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
         int count;
 
         tls_log("client certificate failed verification: %s",
-          X509_verify_cert_error_string(ctx->error));
+          X509_verify_cert_error_string(ctx_error));
 
         count = X509_PURPOSE_get_count();
         for (i = 0; i < count; i++) {
@@ -7848,7 +7940,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
 
       default:
         tls_log("error verifying client certificate: [%d] %s",
-          ctx->error, X509_verify_cert_error_string(ctx->error));
+          ctx_error, X509_verify_cert_error_string(ctx_error));
         ok = 0;
         break;
     }
@@ -7868,13 +7960,12 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
  * <rse@engelshall.com>.  Comments by Ralf.
  */
 static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
-  X509_OBJECT obj;
+  register int i = 0;
   X509_NAME *subject = NULL, *issuer = NULL;
   X509 *xs = NULL;
-  X509_CRL *crl = NULL;
-  X509_STORE_CTX store_ctx;
+  STACK_OF(X509_CRL) *crls = NULL;
+  X509_STORE_CTX *store_ctx = NULL;
   int n, res;
-  register int i = 0;
 
   /* Unless a revocation store for CRLs was created we cannot do any
    * CRL-based verification, of course.
@@ -7883,11 +7974,10 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     return ok;
   }
 
-  tls_log("CRL store present, checking client certificate against configured "
-    "CRLs");
+  tls_log("%s",
+    "CRL store present, checking client certificate against configured CRLs");
 
-  /* Determine certificate ingredients in advance.
-   */
+  /* Determine certificate ingredients in advance. */
   xs = X509_STORE_CTX_get_current_cert(ctx);
 
   subject = X509_get_subject_name(xs);
@@ -7931,128 +8021,150 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   /* Try to retrieve a CRL corresponding to the _subject_ of
    * the current certificate in order to verify its integrity.
    */
-  memset(&obj, 0, sizeof(obj));
+  store_ctx = X509_STORE_CTX_new();
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-  if (X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL) <= 0) {
+  if (X509_STORE_CTX_init(store_ctx, tls_crl_store, NULL, NULL) <= 0) {
     tls_log("error initializing CRL store context: %s", tls_get_errors());
+    X509_STORE_CTX_free(store_ctx);
     return ok;
   }
 #else
-  X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL);
+  X509_STORE_CTX_init(store_ctx, tls_crl_store, NULL, NULL);
 #endif
 
-  res = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, subject, &obj);
-  crl = obj.data.crl;
+  crls = X509_STORE_get1_crls(store_ctx, subject);
+  if (crls != NULL) {
+    for (i = 0; i < sk_X509_CRL_num(crls); i++) {
+      X509_CRL *crl = NULL;
+      EVP_PKEY *pubkey;
+      char buf[512];
+      int len;
+      BIO *b = BIO_new(BIO_s_mem());
 
-  if (res > 0 &&
-      crl != NULL) {
-    EVP_PKEY *pubkey;
-    char buf[512];
-    int len;
-    BIO *b = BIO_new(BIO_s_mem());
+      crl = sk_X509_CRL_value(crls, i);
+      BIO_printf(b, "CA CRL: Issuer: ");
+      X509_NAME_print(b, issuer, 0);
 
-    BIO_printf(b, "CA CRL: Issuer: ");
-    X509_NAME_print(b, issuer, 0);
+      BIO_printf(b, ", lastUpdate: ");
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      ASN1_UTCTIME_print(b, X509_CRL_get_lastUpdate(crl));
+#else
+      ASN1_UTCTIME_print(b, crl->crl->lastUpdate);
+#endif /* OpenSSL-1.1.x and later */
 
-    BIO_printf(b, ", lastUpdate: ");
-    ASN1_UTCTIME_print(b, crl->crl->lastUpdate);
+      BIO_printf(b, ", nextUpdate: ");
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      ASN1_UTCTIME_print(b, X509_CRL_get_nextUpdate(crl));
+#else
+      ASN1_UTCTIME_print(b, crl->crl->nextUpdate);
+#endif /* OpenSSL-1.1.x and later */
 
-    BIO_printf(b, ", nextUpdate: ");
-    ASN1_UTCTIME_print(b, crl->crl->nextUpdate);
+      len = BIO_read(b, buf, sizeof(buf) - 1);
+      if ((size_t) len >= sizeof(buf)) {
+        len = sizeof(buf)-1;
+      }
+      buf[len] = '\0';
 
-    len = BIO_read(b, buf, sizeof(buf) - 1);
-    if ((size_t) len >= sizeof(buf)) {
-      len = sizeof(buf)-1;
+      BIO_free(b);
+      tls_log("%s", buf);
+
+      pubkey = X509_get_pubkey(xs);
+
+      /* Verify the signature on this CRL */
+      res = X509_CRL_verify(crl, pubkey);
+      if (pubkey) {
+        EVP_PKEY_free(pubkey);
+      }
+
+      if (res <= 0) {
+        tls_log("invalid signature on CRL: %s", tls_get_errors());
+
+        X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
+        sk_X509_CRL_free(crls);
+        X509_STORE_CTX_cleanup(store_ctx);
+        X509_STORE_CTX_free(store_ctx);
+        return FALSE;
+      }
+
+      /* Check date of CRL to make sure it's not expired */
+      res = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
+      if (res == 0) {
+        tls_log("CRL has invalid nextUpdate field: %s", tls_get_errors());
+
+        X509_STORE_CTX_set_error(ctx,
+          X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
+        sk_X509_CRL_free(crls);
+        X509_STORE_CTX_cleanup(store_ctx);
+        X509_STORE_CTX_free(store_ctx);
+        return FALSE;
+      }
+
+      if (res < 0) {
+        /* XXX This is a bit draconian, rejecting all certificates if the CRL
+         * has expired.  See also Bug#3216, about automatically reloading
+         * the CRL file when it has expired.
+         */
+        tls_log("%s", "CRL is expired, revoking all certificates until an "
+          "updated CRL is obtained");
+
+        X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_HAS_EXPIRED);
+        sk_X509_CRL_free(crls);
+        X509_STORE_CTX_cleanup(store_ctx);
+        X509_STORE_CTX_free(store_ctx);
+        return FALSE;
+      }
     }
-    buf[len] = '\0';
 
-    BIO_free(b);
-
-    tls_log("%s", buf);
-
-    pubkey = X509_get_pubkey(xs);
-
-    /* Verify the signature on this CRL */
-    res = X509_CRL_verify(crl, pubkey);
-
-    if (pubkey) {
-      EVP_PKEY_free(pubkey);
-    }
-
-    if (res <= 0) {
-      tls_log("invalid signature on CRL: %s", tls_get_errors());
-
-      X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
-      X509_OBJECT_free_contents(&obj);
-      X509_STORE_CTX_cleanup(&store_ctx);
-      return FALSE;
-    }
-
-    /* Check date of CRL to make sure it's not expired */
-    i = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
-    if (i == 0) {
-      tls_log("CRL has invalid nextUpdate field: %s", tls_get_errors());
-      X509_STORE_CTX_set_error(ctx, X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
-      X509_OBJECT_free_contents(&obj);
-      X509_STORE_CTX_cleanup(&store_ctx);
-      return FALSE;
-    }
-
-    if (i < 0) {
-      /* XXX This is a bit draconian, rejecting all certificates if the CRL
-       * has expired.  See also Bug#3216, about automatically reloading
-       * the CRL file when it has expired.
-       */
-      tls_log("%s", "CRL is expired, revoking all certificates until an "
-        "updated CRL is obtained");
-      X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_HAS_EXPIRED);
-      X509_OBJECT_free_contents(&obj);
-      X509_STORE_CTX_cleanup(&store_ctx);
-      return FALSE;
-    }
-
-    X509_OBJECT_free_contents(&obj);
+    sk_X509_CRL_free(crls);
+    crls = NULL;
   }
 
   /* Try to retrieve a CRL corresponding to the _issuer_ of
    * the current certificate in order to check for revocation.
    */
-  memset(&obj, 0, sizeof(obj));
 
-  res = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, issuer, &obj);
-  crl = obj.data.crl;
+  crls = X509_STORE_get1_crls(store_ctx, issuer);
+  if (crls != NULL) {
+    for (i = 0; i < sk_X509_CRL_num(crls); i++) {
+      register int j;
+      X509_CRL *crl;
 
-  if (res > 0 &&
-      crl != NULL) {
+      crl = sk_X509_CRL_value(crls, i);
 
-    /* Check if the current certificate is revoked by this CRL */
-    n = sk_X509_REVOKED_num(X509_CRL_get_REVOKED(crl));
+      /* Check if the current certificate is revoked by this CRL */
+      n = sk_X509_REVOKED_num(X509_CRL_get_REVOKED(crl));
+      for (j = 0; j < n; j++) {
+        X509_REVOKED *revoked;
+        ASN1_INTEGER *sn;
 
-    for (i = 0; i < n; i++) {
-      X509_REVOKED *revoked;
-      ASN1_INTEGER *sn;
+        revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), j);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        sn = X509_REVOKED_get0_serialNumber(revoked);
+#else
+        sn = revoked->serialNumber;
+#endif /* OpenSSL-1.1.x and later */
 
-      revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), i);
-      sn = revoked->serialNumber;
+        if (ASN1_INTEGER_cmp(sn, X509_get_serialNumber(xs)) == 0) {
+          long serial = ASN1_INTEGER_get(sn);
+          char *cp = tls_x509_name_oneline(issuer);
 
-      if (ASN1_INTEGER_cmp(sn, X509_get_serialNumber(xs)) == 0) {
-        long serial = ASN1_INTEGER_get(sn);
-        char *cp = tls_x509_name_oneline(issuer);
+          tls_log("certificate with serial number %ld (0x%lX) revoked per CRL "
+            "from issuer '%s'", serial, serial, cp ? cp : "(ERROR)");
 
-        tls_log("certificate with serial number %ld (0x%lX) revoked per CRL "
-          "from issuer '%s'", serial, serial, cp ? cp : "(ERROR)");
-
-        X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
-        X509_OBJECT_free_contents(&obj);
-        X509_STORE_CTX_cleanup(&store_ctx);
-        return FALSE;
+          X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
+          sk_X509_CRL_free(crls);
+          X509_STORE_CTX_cleanup(store_ctx);
+          X509_STORE_CTX_free(store_ctx);
+          return FALSE;
+        }
       }
     }
 
-    X509_OBJECT_free_contents(&obj);
+    sk_X509_CRL_free(crls);
   }
 
-  X509_STORE_CTX_cleanup(&store_ctx);
+  X509_STORE_CTX_cleanup(store_ctx);
+  X509_STORE_CTX_free(store_ctx);
   return ok;
 }
 
@@ -8062,6 +8174,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   BIO *conn;
   X509 *issuing_cert = NULL;
   X509_NAME *subj = NULL;
+  X509_STORE *store = NULL;
   const char *subj_name;
   char *host = NULL, *port = NULL, *uri = NULL;
   int ok = FALSE, res = 0 , use_ssl = 0;
@@ -8290,7 +8403,12 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return FALSE;
   }
 
-  res = OCSP_basic_verify(basic_resp, NULL, ctx->ctx, 0);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  store = X509_STORE_CTX_get0_store(ctx);
+#else
+  store = ctx->ctx;
+#endif /* OpenSSL-1.1.x and later */
+  res = OCSP_basic_verify(basic_resp, NULL, store, 0);
   if (res != 1) {
     tls_log("error verifying basic response from OCSP responder at '%s': %s",
       url, tls_get_errors());
@@ -9369,7 +9487,7 @@ static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
 }
 
 static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl,
-    unsigned char *sess_id, int sess_id_len, int *do_copy) {
+    const unsigned char *sess_id, int sess_id_len, int *do_copy) {
   SSL_SESSION *sess;
 
   /* Indicate to OpenSSL that the ref count should not be incremented
@@ -12955,7 +13073,9 @@ static int tls_init(void) {
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
   pr_event_register(&tls_module, "core.shutdown", tls_shutdown_ev, NULL);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
   SSL_load_error_strings();
   SSL_library_init();
 
@@ -13416,7 +13536,9 @@ static int tls_sess_init(void) {
     SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_ECDH_USE);
     SSL_CTX_set_tmp_ecdh(ssl_ctx, ec_key);
   } else {
+# if OPENSSL_VERSION_NUMBER < 0x10100000L
     SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
+# endif /* Before OpenSSL-1.1.x */
   }
 #endif /* PR_USE_OPENSSL_ECC */
 
@@ -13630,7 +13752,9 @@ static int tls_sess_init(void) {
       /* Load all ENGINE implementations bundled with OpenSSL. */
       ENGINE_load_builtin_engines();
       ENGINE_register_all_complete();
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
       OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
 
       tls_log("%s", "enabled all builtin crypto devices");
 
@@ -13639,7 +13763,9 @@ static int tls_sess_init(void) {
 
       /* Load all ENGINE implementations bundled with OpenSSL. */
       ENGINE_load_builtin_engines();
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
       OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
 
       e = ENGINE_by_id(tls_crypto_device);
       if (e) {

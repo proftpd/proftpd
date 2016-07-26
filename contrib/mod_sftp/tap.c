@@ -222,10 +222,7 @@ int sftp_tap_send_packet(void) {
 
     rand_data = palloc(pkt->pool, rand_datalen);
 
-    /* We don't need cryptographically secure random bytes here, just
-     * pseudo-random data.
-     */
-    RAND_pseudo_bytes(rand_data, rand_datalen);
+    RAND_bytes(rand_data, rand_datalen);
 
     sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_IGNORE);
     sftp_msg_write_data(&buf, &buflen, rand_data, rand_datalen, TRUE);

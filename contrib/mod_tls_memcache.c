@@ -82,9 +82,9 @@ struct sesscache_entry {
 struct sesscache_large_entry {
   time_t expires;
   unsigned int sess_id_len;
-  unsigned char *sess_id;
+  const unsigned char *sess_id;
   unsigned int sess_datalen;
-  unsigned char *sess_data;
+  const unsigned char *sess_data;
 };
 
 /* These stats are stored in memcached as well, so that the status command can
@@ -247,7 +247,7 @@ static const char *mcache_get_errors(void) {
 
 /* Functions for marshalling key/value data to/from memcached. */
 
-static int sess_cache_get_tpl_key(pool *p, unsigned char *sess_id,
+static int sess_cache_get_tpl_key(pool *p, const unsigned char *sess_id,
     unsigned int sess_id_len, void **key, size_t *keysz) {
   char *sess_id_hex;
   void *data = NULL;
@@ -269,7 +269,7 @@ static int sess_cache_get_tpl_key(pool *p, unsigned char *sess_id,
   return 0;
 }
 
-static int sess_cache_get_json_key(pool *p, unsigned char *sess_id,
+static int sess_cache_get_json_key(pool *p, const unsigned char *sess_id,
     unsigned int sess_id_len, void **key, size_t *keysz) {
   char *sess_id_hex, *json_str;
   JsonNode *json;
@@ -289,7 +289,7 @@ static int sess_cache_get_json_key(pool *p, unsigned char *sess_id,
   return 0;
 }
 
-static int sess_cache_get_key(pool *p, unsigned char *sess_id,
+static int sess_cache_get_key(pool *p, const unsigned char *sess_id,
     unsigned int sess_id_len, void **key, size_t *keysz) {
   int res;
   const char *key_type = "unknown";
@@ -481,7 +481,7 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   return 0;
 }
 
-static int sess_cache_mcache_entry_get(pool *p, unsigned char *sess_id,
+static int sess_cache_mcache_entry_get(pool *p, const unsigned char *sess_id,
     unsigned int sess_id_len, struct sesscache_entry *se) {
   int res;
   void *key = NULL, *value = NULL;
@@ -536,7 +536,7 @@ static int sess_cache_mcache_entry_get(pool *p, unsigned char *sess_id,
   return 0;
 }
 
-static int sess_cache_mcache_entry_delete(pool *p, unsigned char *sess_id,
+static int sess_cache_mcache_entry_delete(pool *p, const unsigned char *sess_id,
     unsigned int sess_id_len) {
   int res;
   void *key = NULL;
@@ -656,7 +656,7 @@ static int sess_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
   return 0;
 }
 
-static int sess_cache_mcache_entry_set(pool *p, unsigned char *sess_id,
+static int sess_cache_mcache_entry_set(pool *p, const unsigned char *sess_id,
     unsigned int sess_id_len, struct sesscache_entry *se) {
   int res, xerrno = 0;
   void *key = NULL, *value = NULL;
@@ -786,7 +786,7 @@ static int sess_cache_close(tls_sess_cache_t *cache) {
 
         entry = &(entries[i]);
         if (entry->expires > 0) {
-          pr_memscrub(entry->sess_data, entry->sess_datalen);
+          pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
         }
       }
 
@@ -798,7 +798,7 @@ static int sess_cache_close(tls_sess_cache_t *cache) {
 }
 
 static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
-    unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
+    const unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
     SSL_SESSION *sess, int sess_len) {
   struct sesscache_large_entry *entry = NULL;
 
@@ -853,7 +853,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
       if (entry->expires <= now) {
         /* This entry has expired; clear and reuse its slot. */
         entry->expires = 0;
-        pr_memscrub(entry->sess_data, entry->sess_datalen);
+        pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
 
         ok = TRUE;
         break;
@@ -874,15 +874,15 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
   entry->expires = expires;
   entry->sess_id_len = sess_id_len;
   entry->sess_id = palloc(cache->cache_pool, sess_id_len);
-  memcpy(entry->sess_id, sess_id, sess_id_len);
+  memcpy((unsigned char *) entry->sess_id, sess_id, sess_id_len);
   entry->sess_datalen = sess_len;
   entry->sess_data = palloc(cache->cache_pool, sess_len);
-  i2d_SSL_SESSION(sess, &(entry->sess_data));
+  i2d_SSL_SESSION(sess, (unsigned char **) &(entry->sess_data));
 
   return 0;
 }
 
-static int sess_cache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
+static int sess_cache_add(tls_sess_cache_t *cache, const unsigned char *sess_id,
     unsigned int sess_id_len, time_t expires, SSL_SESSION *sess) {
   struct sesscache_entry entry;
   int sess_len;
@@ -941,7 +941,7 @@ static int sess_cache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
 }
 
 static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
-    unsigned char *sess_id, unsigned int sess_id_len) {
+    const unsigned char *sess_id, unsigned int sess_id_len) {
   struct sesscache_entry entry;
   time_t now;
   SSL_SESSION *sess = NULL;
@@ -1034,8 +1034,8 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
   return sess;
 }
 
-static int sess_cache_delete(tls_sess_cache_t *cache, unsigned char *sess_id,
-    unsigned int sess_id_len) {
+static int sess_cache_delete(tls_sess_cache_t *cache,
+    const unsigned char *sess_id, unsigned int sess_id_len) {
   const char *key = sesscache_keys[SESSCACHE_KEY_DELETES].key;
   int res;
 
@@ -1055,7 +1055,7 @@ static int sess_cache_delete(tls_sess_cache_t *cache, unsigned char *sess_id,
       if (entry->sess_id_len == sess_id_len &&
           memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
 
-        pr_memscrub(entry->sess_data, entry->sess_datalen);
+        pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
         entry->expires = 0;
         return 0;
       }
@@ -1098,7 +1098,7 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
 
       entry = &(entries[i]);
       entry->expires = 0;
-      pr_memscrub(entry->sess_data, entry->sess_datalen);
+      pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
     }
   }
 
@@ -1217,6 +1217,16 @@ static int sess_cache_status(tls_sess_cache_t *cache,
           case TLS1_VERSION:
             statusf(arg, "    Protocol: %s", "TLSv1");
             break;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+          case TLS1_1_VERSION:
+            statusf(arg, "    Protocol: %s", "TLSv1.1");
+            break;
+
+          case TLS1_2_VERSION:
+            statusf(arg, "    Protocol: %s", "TLSv1.2");
+            break;
+#endif
 
           default:
             statusf(arg, "    Protocol: %s", "unknown");

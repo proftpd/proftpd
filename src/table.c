@@ -363,9 +363,7 @@ static unsigned int tab_get_seed(void) {
 #endif /* Not PR_USE_OPENSSL */
 
 #ifdef PR_USE_OPENSSL
-  if (RAND_bytes((unsigned char *) &seed, sizeof(seed)) != 1) {
-    RAND_pseudo_bytes((unsigned char *) &seed, sizeof(seed));
-  }
+  RAND_bytes((unsigned char *) &seed, sizeof(seed));
 #else
   /* Try reading from /dev/urandom, if present */
   fp = fopen("/dev/urandom", "rb");

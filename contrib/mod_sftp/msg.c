@@ -470,7 +470,7 @@ uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
     return sftp_msg_write_int(buf, buflen, 0);
   }
 
-  if (mpint->neg) {
+  if (BN_is_negative(mpint)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to write mpint (negative numbers not "
       "supported)");
