@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013 The ProFTPD Project
+ * Copyright (c) 2013-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -135,10 +135,10 @@ LDAP_SEARCH(LDAP *ld, char *base, int scope, char *filter, char *attrs[],
 static array_header *ldap_servers = NULL;
 static unsigned int cur_server_index = 0;
 static char *ldap_dn, *ldap_dnpass,
-            *ldap_user_basedn, *ldap_user_name_filter,
-            *ldap_user_uid_filter,
-            *ldap_gid_basedn = NULL, *ldap_group_gid_filter,
-            *ldap_group_name_filter, *ldap_group_member_filter,
+            *ldap_user_basedn = NULL, *ldap_user_name_filter = NULL,
+            *ldap_user_uid_filter = NULL,
+            *ldap_gid_basedn = NULL, *ldap_group_gid_filter = NULL,
+            *ldap_group_name_filter = NULL, *ldap_group_member_filter = NULL,
             *ldap_defaultauthscheme = "crypt", *ldap_authbind_dn = NULL,
             *ldap_genhdir_prefix = NULL, *ldap_default_quota = NULL,
             *ldap_attr_uid = "uid",
@@ -1148,20 +1148,25 @@ MODRET handle_ldap_quota_lookup(cmd_rec *cmd) {
 }
 
 MODRET handle_ldap_ssh_pubkey_lookup(cmd_rec *cmd) {
+  char *user;
+
   if (ldap_do_users == FALSE) {
     return PR_DECLINED(cmd);
   }
 
+  user = cmd->argv[0];
+
   if (cached_ssh_pubkeys != NULL &&
-      strcasecmp(((char **) cached_ssh_pubkeys->elts)[0], cmd->argv[0]) == 0) {
+      cached_ssh_pubkeys->nelts > 0 &&
+      strcasecmp(((char **) cached_ssh_pubkeys->elts)[0], user) == 0) {
 
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "returning cached SSH public keys for user %s", cmd->argv[0]);
+      "returning cached SSH public keys for user %s", user);
     return mod_create_data(cmd, cached_ssh_pubkeys);
   }
 
   if (pr_ldap_ssh_pubkey_lookup(cmd->tmp_pool, ldap_user_name_filter,
-      cmd->argv[0], ldap_user_basedn) == FALSE) {
+      user, ldap_user_basedn) == FALSE) {
     return PR_DECLINED(cmd);
   }
 
