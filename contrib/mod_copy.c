@@ -28,7 +28,7 @@
 
 #include "conf.h"
 
-#define MOD_COPY_VERSION	"mod_copy/0.5"
+#define MOD_COPY_VERSION	"mod_copy/0.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030401
@@ -268,10 +268,17 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
 
       } else {
         if (pr_fs_copy_file(src_path, dst_path) < 0) {
+          int xerrno = errno;
+
+          pr_log_debug(DEBUG7, MOD_COPY_VERSION
+            ": error copying file '%s' to '%s': %s", src_path, dst_path,
+            strerror(xerrno));
+
           pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
           pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
           pr_response_clear(&resp_err_list);
 
+          errno = xerrno;
           res = -1;
           break;
 
@@ -768,8 +775,35 @@ MODRET copy_cpto(cmd_rec *cmd) {
 
   if (copy_paths(cmd->tmp_pool, from, to) < 0) {
     int xerrno = errno;
+    const char *resp_code = R_550;
 
-    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[1],
+    pr_log_debug(DEBUG7, MOD_COPY_VERSION
+      ": error copying '%s' to '%s': %s", from, to, strerror(xerrno));
+
+    /* Check errno for EDQOUT (or the most appropriate alternative).
+     * (I hate the fact that FTP has a special response code just for
+     * this, and that clients actually expect it.  Special cases are
+     * stupid.)
+     */
+    switch (xerrno) {
+#if defined(EDQUOT)
+      case EDQUOT:
+#endif /* EDQUOT */
+#if defined(EFBIG)
+      case EFBIG:
+#endif /* EFBIG */
+#if defined(ENOSPC)
+      case ENOSPC:
+#endif /* ENOSPC */
+        resp_code = R_552;
+        break;
+
+      default:
+        resp_code = R_550;
+        break;
+    }
+
+    pr_response_add_err(resp_code, "%s: %s", (char *) cmd->argv[1],
       strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);

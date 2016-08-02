@@ -1392,13 +1392,17 @@ int quotatab_write(quota_tally_t *tally,
 /* FSIO handlers
  */
 
+static off_t copied_bytes = 0;
+
 static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
     size_t bufsz) {
   int res;
+  off_t total_bytes;
 
   res = write(fd, buf, bufsz);
-  if (res < 0)
+  if (res < 0) {
     return res;
+  }
 
   if (have_quota_update == 0) {
     return res;
@@ -1415,8 +1419,22 @@ static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
    * simultaneous connections.
    */
 
+  /* If the client is copying a file (versus uploading a file), then we need
+   * to track the "total bytes" differently.
+   */
+  if (session.curr_cmd_id == PR_CMD_SITE_ID &&
+      (session.curr_cmd_rec->argc >= 2 &&
+       (strncasecmp(session.curr_cmd_rec->argv[1], "CPTO", 5) == 0 ||
+        strncasecmp(session.curr_cmd_rec->argv[1], "COPY", 5) == 0))) {
+    copied_bytes += res;
+    total_bytes = copied_bytes;
+
+  } else {
+    total_bytes = session.xfer.total_bytes;
+  }
+
   if (sess_limit.bytes_in_avail > 0.0 &&
-      sess_tally.bytes_in_used + session.xfer.total_bytes > sess_limit.bytes_in_avail) {
+      sess_tally.bytes_in_used + total_bytes > sess_limit.bytes_in_avail) {
     int xerrno;
     char *errstr = NULL;
 
@@ -1428,7 +1446,7 @@ static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
   }
 
   if (sess_limit.bytes_xfer_avail > 0.0 &&
-      sess_tally.bytes_xfer_used + session.xfer.total_bytes > sess_limit.bytes_xfer_avail) {
+      sess_tally.bytes_xfer_used + total_bytes > sess_limit.bytes_xfer_avail) {
     int xerrno;
     char *errstr = NULL;
 
@@ -2135,6 +2153,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
 MODRET quotatab_pre_copy(cmd_rec *cmd) {
   struct stat st;
 
+  copied_bytes = 0;
   have_aborted_transfer = FALSE;
   have_err_response = FALSE;
 
@@ -2248,6 +2267,7 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
     }
   }
 
+  have_quota_update = QUOTA_HAVE_WRITE_UPDATE;
   return PR_DECLINED(cmd);
 }
 
@@ -2256,13 +2276,18 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
   off_t copy_bytes = 0;
   int dst_truncated = FALSE;
 
+  copied_bytes = 0;
+
   /* Sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->argv[2])) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       (char *) cmd->argv[0], (char *) cmd->argv[2], quota_exclude_filter);
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
   }
 
@@ -2421,19 +2446,25 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
   /* Clear the cached bytes/files. */
   quotatab_disk_nbytes = 0;
   quotatab_disk_nfiles = 0;
-  
+
+  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_copy_err(cmd_rec *cmd) {
+  copied_bytes = 0;
+
   /* Sanity check */
-  if (!use_quotas)
+  if (!use_quotas) {
+    have_quota_update = 0;
     return PR_DECLINED(cmd);
+  }
 
   /* Clear the cached bytes/files. */
   quotatab_disk_nbytes = 0;
   quotatab_disk_nfiles = 0;
-  
+
+  have_quota_update = 0;
   return PR_DECLINED(cmd);
 }
 
