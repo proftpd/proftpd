@@ -39,6 +39,8 @@ extern pr_response_t *resp_list, *resp_err_list;
 
 module copy_module;
 static int copy_engine = TRUE;
+static unsigned long copy_opts = 0UL;
+#define COPY_OPT_DELETE_ON_FAILURE	0x0001
 
 static const char *trace_channel = "copy";
 
@@ -506,6 +508,36 @@ MODRET set_copyengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: CopyOptions opt1 ... */
+MODRET set_copyoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "DeleteOnFailure") == 0) {
+      opts |= COPY_OPT_DELETE_ON_FAILURE;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown CopyOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Command handlers
  */
 
@@ -590,8 +622,26 @@ MODRET copy_copy(cmd_rec *cmd) {
     if (copy_paths(cmd->tmp_pool, from, to) < 0) {
       int xerrno = errno;
 
+      pr_log_debug(DEBUG7, MOD_COPY_VERSION
+        ": error copying '%s' to '%s': %s", from, to, strerror(xerrno));
+
       pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[1],
         strerror(xerrno));
+
+      if (copy_opts & COPY_OPT_DELETE_ON_FAILURE) {
+        int res;
+
+        res = pr_fsio_unlink(to);
+        if (res == 0) {
+          pr_trace_msg(trace_channel, 12, "deleted failed copy '%s'", to);
+
+        } else {
+          if (errno != ENOENT) {
+            pr_trace_msg(trace_channel, 7,
+              "error deleting failed copy '%s': %s", to, strerror(errno));
+          }
+        }
+      }
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -806,6 +856,21 @@ MODRET copy_cpto(cmd_rec *cmd) {
     pr_response_add_err(resp_code, "%s: %s", (char *) cmd->argv[1],
       strerror(xerrno));
 
+    if (copy_opts & COPY_OPT_DELETE_ON_FAILURE) {
+      int res;
+
+      res = pr_fsio_unlink(to);
+      if (res == 0) {
+        pr_trace_msg(trace_channel, 12, "deleted failed copy '%s'", to);
+
+      } else {
+        if (errno != ENOENT) {
+          pr_trace_msg(trace_channel, 7,
+            "error deleting failed copy '%s': %s", to, strerror(errno));
+        }
+      }
+    }
+
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
@@ -846,6 +911,22 @@ MODRET copy_post_pass(cmd_rec *cmd) {
     copy_engine = *((int *) c->argv[0]);
   }
 
+  if (copy_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "CopyOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    copy_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "CopyOptions", FALSE);
+  }
+
   return PR_DECLINED(cmd);
 }
 
@@ -874,6 +955,7 @@ static int copy_sess_init(void) {
 
 static conftable copy_conftab[] = {
   { "CopyEngine",	set_copyengine,		NULL },
+  { "CopyOptions",	set_copyoptions,	NULL },
 
   { NULL }
 };
