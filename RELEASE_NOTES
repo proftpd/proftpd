@@ -21,6 +21,8 @@ ChangeLog files.
   
   + New Configuration Directives:
 
+    CopyOptions DeleteOnFailure
+
     FSOptions IgnoreExtendedAttributes
 
     SFTPKeyLimits (Bug#4233)
