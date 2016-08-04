@@ -1743,7 +1743,8 @@ void pr_fs_clear_cache(void) {
 
 /* FS functions proper */
 
-int pr_fs_copy_file(const char *src, const char *dst) {
+int pr_fs_copy_file2(const char *src, const char *dst, int flags,
+    void (*progress_cb)(int)) {
   pr_fh_t *src_fh, *dst_fh;
   struct stat src_st, dst_st;
   char *buf;
@@ -1856,7 +1857,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
     /* Don't unlink the destination file if it already existed. */
     if (!dst_existed) {
-      (void) pr_fsio_unlink(dst);
+      if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
+        if (pr_fsio_unlink(dst) < 0) {
+          pr_trace_msg(trace_channel, 12,
+            "error deleting failed copy of '%s': %s", dst, strerror(errno));
+        }
+      }
     }
 
     errno = xerrno;
@@ -1925,7 +1931,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
         /* Don't unlink the destination file if it already existed. */
         if (!dst_existed) {
-          (void) pr_fsio_unlink(dst);
+          if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
+            if (pr_fsio_unlink(dst) < 0) {
+              pr_trace_msg(trace_channel, 12,
+                "error deleting failed copy of '%s': %s", dst, strerror(errno));
+            }
+          }
         }
 
         pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
@@ -1934,6 +1945,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
         errno = xerrno;
         return -1;
+      }
+
+      if (progress_cb != NULL) {
+        (progress_cb)(res);
       }
 
       if ((size_t) res == datalen) {
@@ -2078,9 +2093,23 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
   (void) pr_fsio_close(src_fh);
 
+  if (progress_cb != NULL) {
+    (progress_cb)(0);
+  }
+
   res = pr_fsio_close(dst_fh);
   if (res < 0) {
     int xerrno = errno;
+
+    /* Don't unlink the destination file if it already existed. */
+    if (!dst_existed) {
+      if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
+        if (pr_fsio_unlink(dst) < 0) {
+          pr_trace_msg(trace_channel, 12,
+            "error deleting failed copy of '%s': %s", dst, strerror(errno));
+        }
+      }
+    }
 
     pr_log_pri(PR_LOG_WARNING, "error closing '%s': %s", dst,
       strerror(xerrno));
@@ -2089,6 +2118,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   }
 
   return res;
+}
+
+int pr_fs_copy_file(const char *src, const char *dst) {
+  return pr_fs_copy_file2(src, dst, 0, NULL);
 }
 
 pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
