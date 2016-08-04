@@ -1743,7 +1743,8 @@ void pr_fs_clear_cache(void) {
 
 /* FS functions proper */
 
-int pr_fs_copy_file(const char *src, const char *dst) {
+int pr_fs_copy_file2(const char *src, const char *dst,
+    void (*progress_cb)(void)) {
   pr_fh_t *src_fh, *dst_fh;
   struct stat src_st, dst_st;
   char *buf;
@@ -1936,6 +1937,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         return -1;
       }
 
+      if (progress_cb != NULL) {
+        (progress_cb)();
+      }
+
       if ((size_t) res == datalen) {
         break;
       }
@@ -2089,6 +2094,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   }
 
   return res;
+}
+
+int pr_fs_copy_file(const char *src, const char *dst) {
+  return pr_fs_copy_file2(src, dst, NULL);
 }
 
 pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {

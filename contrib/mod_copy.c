@@ -42,6 +42,15 @@ static int copy_engine = TRUE;
 static unsigned long copy_opts = 0UL;
 #define COPY_OPT_DELETE_ON_FAILURE	0x0001
 
+static size_t copy_iter_count = 0;
+
+/* We will reset timers in the progress callback every Nth iteration of the
+ * callback when copying a file.
+ */
+#ifndef COPY_PROGRESS_NTH_ITER
+# define COPY_PROGRESS_NTH_ITER       50000
+#endif
+
 static const char *trace_channel = "copy";
 
 static int copy_sess_init(void);
@@ -157,6 +166,41 @@ static int create_path(pool *p, const char *path) {
   return 0;
 }
 
+static void copy_reset_progress(void) {
+  copy_iter_count = 0;
+}
+
+static void copy_progress_cb(void) {
+  int res;
+
+  copy_iter_count++;
+  if ((copy_iter_count % COPY_PROGRESS_NTH_ITER) != 0) {
+    return;
+  }
+
+  /* Reset some of the Timeouts which might interfere, i.e. TimeoutIdle and
+   * TimeoutNoDataTransfer.
+   */
+
+  res = pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14, "error resetting TimeoutIdle timer: %s",
+      strerror(errno));
+  }
+
+  res = pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14,
+      "error resetting TimeoutNoTransfer timer: %s", strerror(errno));
+  }
+
+  res = pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14,
+      "error resetting TimeoutStalled timer: %s", strerror(errno));
+  }
+}
+
 static int copy_symlink(pool *p, const char *src_path, const char *dst_path) {
   char *link_path = pcalloc(p, PR_TUNABLE_BUFFER_SIZE);
   int len;
@@ -269,7 +313,8 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir) {
         break;
 
       } else {
-        if (pr_fs_copy_file(src_path, dst_path) < 0) {
+        copy_reset_progress();
+        if (pr_fs_copy_file2(src_path, dst_path, copy_progress_cb) < 0) {
           int xerrno = errno;
 
           pr_log_debug(DEBUG7, MOD_COPY_VERSION
@@ -393,7 +438,8 @@ static int copy_paths(pool *p, const char *from, const char *to) {
       }
     }
 
-    res = pr_fs_copy_file(from, to);
+    copy_reset_progress();
+    res = pr_fs_copy_file2(from, to, copy_progress_cb);
     if (res < 0) {
       int xerrno = errno;
 
@@ -459,6 +505,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
           *allow_overwrite == FALSE) {
         pr_log_debug(DEBUG6, MOD_COPY_VERSION
           ": AllowOverwrite permission denied for '%s'", to);
+
         errno = EACCES;
         return -1;
       }
@@ -478,6 +525,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
   } else {
     pr_log_debug(DEBUG7, MOD_COPY_VERSION
       ": unsupported file type for '%s'", from);
+
     errno = EINVAL;
     return -1;
   }
@@ -825,7 +873,7 @@ MODRET copy_cpto(cmd_rec *cmd) {
 
   if (copy_paths(cmd->tmp_pool, from, to) < 0) {
     int xerrno = errno;
-    const char *resp_code = R_550;
+    const char *err_code = R_550;
 
     pr_log_debug(DEBUG7, MOD_COPY_VERSION
       ": error copying '%s' to '%s': %s", from, to, strerror(xerrno));
@@ -845,15 +893,15 @@ MODRET copy_cpto(cmd_rec *cmd) {
 #if defined(ENOSPC)
       case ENOSPC:
 #endif /* ENOSPC */
-        resp_code = R_552;
+        err_code = R_552;
         break;
 
       default:
-        resp_code = R_550;
+        err_code = R_550;
         break;
     }
 
-    pr_response_add_err(resp_code, "%s: %s", (char *) cmd->argv[1],
+    pr_response_add_err(err_code, "%s: %s", (char *) cmd->argv[1],
       strerror(xerrno));
 
     if (copy_opts & COPY_OPT_DELETE_ON_FAILURE) {
@@ -900,6 +948,7 @@ MODRET copy_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
   if (copy_engine == FALSE) {
+    pr_event_unregister(&copy_module, NULL, NULL);
     return PR_DECLINED(cmd);
   }
 
@@ -912,6 +961,7 @@ MODRET copy_post_pass(cmd_rec *cmd) {
   }
 
   if (copy_engine == FALSE) {
+    pr_event_unregister(&copy_module, NULL, NULL);
     return PR_DECLINED(cmd);
   }
 

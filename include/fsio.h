@@ -350,7 +350,15 @@ void pr_fs_statcache_reset(void);
 int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
   unsigned int flags);
 
-int pr_fs_copy_file(const char *, const char *);
+/* Copy a file from the given source path to the destination path. */
+int pr_fs_copy_file(const char *src, const char *dst);
+
+/* Similar to pr_fs_copy_file(), with the addition of an optional progress
+ * callback, invoked during the potentially long-running copy process.
+ */
+int pr_fs_copy_file2(const char *src, const char *dst,
+  void (*progress_cb)(void));
+
 int pr_fs_setcwd(const char *);
 const char *pr_fs_getcwd(void);
 const char *pr_fs_getvwd(void);
