@@ -21,7 +21,7 @@ ChangeLog files.
   
   + New Configuration Directives:
 
-    CopyOptions DeleteOnFailure
+    CopyOptions NoDeleteOnFailure
 
     FSOptions IgnoreExtendedAttributes
 

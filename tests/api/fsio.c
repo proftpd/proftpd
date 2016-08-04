@@ -3294,12 +3294,13 @@ static void copy_progress_cb(int nwritten) {
 }
 
 START_TEST (fs_copy_file2_test) {
-  int res;
+  int res, flags;
   char *src_path, *dst_path, *text;
   pr_fh_t *fh;
 
   src_path = "/tmp/prt-fs-src.dat";
   dst_path = "/tmp/prt-fs-dst.dat";
+  flags = PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE;
 
   fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
   fail_unless(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));
@@ -3315,7 +3316,7 @@ START_TEST (fs_copy_file2_test) {
   copy_progress_iter = 0;
 
   mark_point();
-  res = pr_fs_copy_file2(src_path, dst_path, copy_progress_cb);
+  res = pr_fs_copy_file2(src_path, dst_path, flags, copy_progress_cb);
   fail_unless(res == 0, "Failed to copy file: %s", strerror(errno));
 
   (void) pr_fsio_unlink(src_path);

@@ -359,8 +359,9 @@ int pr_fs_copy_file(const char *src, const char *dst);
  * The callback, when present, will be invoked with the number of bytes
  * just written to the destination file in that iteration.
  */
-int pr_fs_copy_file2(const char *src, const char *dst,
+int pr_fs_copy_file2(const char *src, const char *dst, int flags,
   void (*progress_cb)(int));
+#define PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE	0x0001
 
 int pr_fs_setcwd(const char *);
 const char *pr_fs_getcwd(void);
