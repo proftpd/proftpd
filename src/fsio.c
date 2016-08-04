@@ -1744,7 +1744,7 @@ void pr_fs_clear_cache(void) {
 /* FS functions proper */
 
 int pr_fs_copy_file2(const char *src, const char *dst,
-    void (*progress_cb)(void)) {
+    void (*progress_cb)(int)) {
   pr_fh_t *src_fh, *dst_fh;
   struct stat src_st, dst_st;
   char *buf;
@@ -1938,7 +1938,7 @@ int pr_fs_copy_file2(const char *src, const char *dst,
       }
 
       if (progress_cb != NULL) {
-        (progress_cb)();
+        (progress_cb)(res);
       }
 
       if ((size_t) res == datalen) {

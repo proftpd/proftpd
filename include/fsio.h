@@ -355,9 +355,12 @@ int pr_fs_copy_file(const char *src, const char *dst);
 
 /* Similar to pr_fs_copy_file(), with the addition of an optional progress
  * callback, invoked during the potentially long-running copy process.
+ *
+ * The callback, when present, will be invoked with the number of bytes
+ * just written to the destination file in that iteration.
  */
 int pr_fs_copy_file2(const char *src, const char *dst,
-  void (*progress_cb)(void));
+  void (*progress_cb)(int));
 
 int pr_fs_setcwd(const char *);
 const char *pr_fs_getcwd(void);

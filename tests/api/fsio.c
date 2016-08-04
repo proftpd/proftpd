@@ -3289,7 +3289,7 @@ START_TEST (fs_copy_file_test) {
 END_TEST
 
 static unsigned int copy_progress_iter = 0;
-static void copy_progress_cb(void) {
+static void copy_progress_cb(int nwritten) {
   copy_progress_iter++;
 }
 

@@ -170,7 +170,7 @@ static void copy_reset_progress(void) {
   copy_iter_count = 0;
 }
 
-static void copy_progress_cb(void) {
+static void copy_progress_cb(int nwritten) {
   int res;
 
   copy_iter_count++;
