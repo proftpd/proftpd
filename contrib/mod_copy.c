@@ -948,7 +948,6 @@ MODRET copy_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
   if (copy_engine == FALSE) {
-    pr_event_unregister(&copy_module, NULL, NULL);
     return PR_DECLINED(cmd);
   }
 
@@ -961,7 +960,6 @@ MODRET copy_post_pass(cmd_rec *cmd) {
   }
 
   if (copy_engine == FALSE) {
-    pr_event_unregister(&copy_module, NULL, NULL);
     return PR_DECLINED(cmd);
   }
 
