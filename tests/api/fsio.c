@@ -3288,6 +3288,44 @@ START_TEST (fs_copy_file_test) {
 }
 END_TEST
 
+static unsigned int copy_progress_iter = 0;
+static void copy_progress_cb(void) {
+  copy_progress_iter++;
+}
+
+START_TEST (fs_copy_file2_test) {
+  int res;
+  char *src_path, *dst_path, *text;
+  pr_fh_t *fh;
+
+  src_path = "/tmp/prt-fs-src.dat";
+  dst_path = "/tmp/prt-fs-dst.dat";
+
+  fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));
+
+  text = "Hello, World!\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  fail_if(res < 0, "Failed to write '%s' to '%s': %s", text, src_path,
+    strerror(errno));
+
+  res = pr_fsio_close(fh);
+  fail_unless(res == 0, "Failed to close '%s': %s", src_path, strerror(errno));
+
+  copy_progress_iter = 0;
+
+  mark_point();
+  res = pr_fs_copy_file2(src_path, dst_path, copy_progress_cb);
+  fail_unless(res == 0, "Failed to copy file: %s", strerror(errno));
+
+  (void) pr_fsio_unlink(src_path);
+  (void) pr_fsio_unlink(dst_path);
+
+  fail_unless(copy_progress_iter > 0, "Unexpected progress callback count (%u)",
+    copy_progress_iter);
+}
+END_TEST
+
 START_TEST (fs_interpolate_test) {
   int res;
   char buf[PR_TUNABLE_PATH_MAX], *path;
@@ -4159,6 +4197,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_setcwd_test);
   tcase_add_test(testcase, fs_glob_test);
   tcase_add_test(testcase, fs_copy_file_test);
+  tcase_add_test(testcase, fs_copy_file2_test);
   tcase_add_test(testcase, fs_interpolate_test);
   tcase_add_test(testcase, fs_resolve_partial_test);
   tcase_add_test(testcase, fs_resolve_path_test);
