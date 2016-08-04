@@ -74,12 +74,12 @@ behavior of <code>mod_copy</code>.
 <p>
 The currently implemented options are:
 <ul>
-  <li><code>DeleteOnFailure</code><br>
+  <li><code>NoDeleteOnFailure</code><br>
     <p>
     The <code>mod_copy</code> file, when a copying operation fails, will
-    <b>not</b> delete the <i>destination</i> file by default.  If, however,
-    you do not want to keep that destination file when a failure happens, use
-    this option.
+    delete the <i>destination</i> file by default.  If, however, you <b>do</b>
+    want to keep that destination file when a failure happens, use this option.
+  </li>
 </ul>
 
 <p>
