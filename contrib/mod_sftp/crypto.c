@@ -1287,33 +1287,46 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 
 const char *sftp_crypto_get_errors(void) {
   unsigned int count = 0;
-  unsigned long e = ERR_get_error();
+  unsigned long error_code;
   BIO *bio = NULL;
   char *data = NULL;
   long datalen;
-  const char *str = "(unknown)";
+  const char *error_data = NULL, *str = "(unknown)";
+  int error_flags = 0;
 
   /* Use ERR_print_errors() and a memory BIO to build up a string with
    * all of the error messages from the error queue.
    */
 
-  if (e)
+  error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
+  if (error_code) {
     bio = BIO_new(BIO_s_mem());
+  }
 
-  while (e) {
-    pr_signals_handle();
-    BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
-    e = ERR_get_error();
+  while (error_code) {
+    if (error_flags & ERR_TXT_STRING) {
+      BIO_printf(bio, "\n  (%u) %s [%s]", ++count,
+        ERR_error_string(error_code, NULL), error_data);
+
+    } else {
+      BIO_printf(bio, "\n  (%u) %s", ++count,
+        ERR_error_string(error_code, NULL));
+    }
+
+    error_data = NULL;
+    error_flags = 0;
+    error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
   }
 
   datalen = BIO_get_mem_data(bio, &data);
-  if (data) {
+  if (data != NULL) {
     data[datalen] = '\0';
     str = pstrdup(sftp_pool, data);
   }
 
-  if (bio)
+  if (bio) {
     BIO_free(bio);
+  }
 
   return str;
 }
