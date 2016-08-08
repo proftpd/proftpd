@@ -9246,7 +9246,6 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   }
 
   if (strncmp(reqargv[0], "info", 5) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "info")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -9256,7 +9255,6 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
     return tls_handle_sesscache_info(ctrl, reqargc, reqargv);
 
   } else if (strncmp(reqargv[0], "clear", 6) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "clear")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -9266,7 +9264,6 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
     return tls_handle_sesscache_clear(ctrl, reqargc, reqargv);
 
   } else if (strncmp(reqargv[0], "remove", 7) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "remove")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -9356,7 +9353,6 @@ static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   }
 
   if (strncmp(reqargv[0], "info", 5) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "info")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -9366,7 +9362,6 @@ static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
     return tls_handle_ocspcache_info(ctrl, reqargc, reqargv);
 
   } else if (strncmp(reqargv[0], "clear", 6) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "clear")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -9376,7 +9371,6 @@ static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
     return tls_handle_ocspcache_clear(ctrl, reqargc, reqargv);
 
   } else if (strncmp(reqargv[0], "remove", 7) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "remove")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -9402,7 +9396,6 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   }
 
   if (strncmp(reqargv[0], "sesscache", 10) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "sesscache")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -9413,7 +9406,6 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   }
 
   if (strncmp(reqargv[0], "ocspcache", 10) == 0) {
-
     /* Check the ACLs. */
     if (!pr_ctrls_check_acl(ctrl, tls_acttab, "ocspcache")) {
       pr_ctrls_add_response(ctrl, "access denied");
@@ -11137,19 +11129,22 @@ MODRET set_tlsctrlsacls(cmd_rec *cmd) {
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
   if (strncmp(cmd->argv[2], "allow", 6) != 0 &&
-      strncmp(cmd->argv[2], "deny", 5) != 0)
+      strncmp(cmd->argv[2], "deny", 5) != 0) {
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+  }
 
   /* Check the third parameter to make sure it is "user" or "group" */
   if (strncmp(cmd->argv[3], "user", 5) != 0 &&
-      strncmp(cmd->argv[3], "group", 6) != 0)
+      strncmp(cmd->argv[3], "group", 6) != 0) {
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+  }
 
   bad_action = pr_ctrls_set_module_acls(tls_acttab, tls_act_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
-  if (bad_action != NULL)
+  if (bad_action != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
+  }
 
   return PR_HANDLED(cmd);
 #else
@@ -12612,7 +12607,7 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
   tls_scrub_pkeys();
 
 #ifdef PR_USE_CTRLS
-  if (tls_act_pool) {
+  if (tls_act_pool != NULL) {
     destroy_pool(tls_act_pool);
     tls_act_pool = NULL;
   }
@@ -13878,7 +13873,7 @@ static int tls_sess_init(void) {
 static ctrls_acttab_t tls_acttab[] = {
   { "clear", NULL, NULL, NULL },
   { "info", NULL, NULL, NULL },
-  { "remove", NULL, NULL, NULL },
+  { "ocspcache", NULL, NULL, NULL },
   { "sesscache", NULL, NULL, NULL },
  
   { NULL, NULL, NULL, NULL }
