@@ -143,6 +143,8 @@ static struct cmd_entry smtp_ids[] = {
   { NULL,	0 }
 };
 
+static const char *trace_channel = "command";
+
 cmd_rec *pr_cmd_alloc(pool *p, unsigned int argc, ...) {
   pool *newpool = NULL;
   cmd_rec *cmd = NULL;
@@ -370,7 +372,7 @@ const char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
   if (pr_table_add(cmd->notes, pstrdup(cmd->pool, "displayable-str"),
       pstrdup(cmd->pool, res), 0) < 0) {
     if (errno != EEXIST) {
-      pr_log_debug(DEBUG0,
+      pr_trace_msg(trace_channel, 4,
         "error setting 'displayable-str' command note: %s", strerror(errno));
     }
   }
