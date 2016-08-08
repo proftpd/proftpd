@@ -1990,6 +1990,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
  
   *f = m;
   if (mlen != NULL) {
+    /* Guard the caller against errors here (e.g. from sstrncpy() returning
+     * -1 due to bad inputs.
+     */
+    if (len < 0) {
+      len = 0;
+    }
+
     *mlen = len;
   }
 
