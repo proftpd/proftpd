@@ -446,6 +446,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  extlog_stor_var_f_xfer_timed_out => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   # XXX Need unit tests for all LogFormat variables
 };
 
@@ -14799,6 +14804,149 @@ sub extlog_response_millisecs_bug4218 {
       close($fh);
 
       $self->assert($ok, test_msg("ExtendedLog contained unexpected content"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub extlog_stor_var_f_xfer_timed_out {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/sub.d");
+  mkpath($sub_dir);
+
+  my $dst_file = File::Spec->rel2abs("$sub_dir/dst.dat");
+  my $timeout_stalled = 2;
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'response:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    LogFormat => 'custom "%m %s: %f"',
+    ExtendedLog => "$ext_log ALL custom",
+    TimeoutStalled => $timeout_stalled,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->cwd('sub.d');
+
+      my $conn = $client->stor_raw('dst.dat');
+      unless ($conn) {
+        die("Failed to STOR: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = "Foo";
+      $conn->write($buf, length($buf));
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Sleeping for $timeout_stalled secs\n";
+      }
+      sleep($timeout_stalled + 1);
+
+      # Normally we would send a QUIT, but a TimeoutStalled timer would
+      # have disconnected us.
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %f variable was
+  # properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $expected = $dst_file;
+      my $first_ok = 0;
+      my $second_ok = 0;
+
+      if ($^O eq 'darwin') {
+        # MacOSX-specific hack
+        $expected = '/private' . $dst_file;
+      }
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /^STOR 150: (\S+)$/) {
+          my $path = $1;
+
+          if ($path eq $expected) {
+            $first_ok = 1;
+          }
+        }
+
+        if ($line =~ /^STOR 426: (\S+)$/) {
+          my $path = $1;
+
+          if ($path eq $expected) {
+            $second_ok = 1;
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert($first_ok and $second_ok,
+        test_msg("Expected ExtendedLog messages did not appear"));
 
     } else {
       die("Can't read $ext_log: $!");
