@@ -112,6 +112,39 @@ START_TEST (parser_server_ctxt_test) {
 }
 END_TEST
 
+START_TEST (parser_server_ctxt_push_test) {
+  int res;
+  server_rec *ctx, *ctx2;
+
+  res = pr_parser_server_ctxt_push(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  ctx = pcalloc(p, sizeof(server_rec));
+
+  mark_point();
+  res = pr_parser_server_ctxt_push(ctx);
+  fail_unless(res < 0, "Failed to handle unprepared parser");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_parser_prepare(p, NULL);
+
+  mark_point();
+  res = pr_parser_server_ctxt_push(ctx);
+  fail_unless(res == 0, "Failed to push server rec: %s", strerror(errno));
+
+  mark_point();
+  ctx2 = pr_parser_server_ctxt_get();
+  fail_unless(ctx2 != NULL, "Failed to get current server context: %s",
+    strerror(errno));
+  fail_unless(ctx2 == ctx, "Expected server context %p, got %p", ctx, ctx2);
+
+  pr_parser_cleanup();
+}
+END_TEST
+
 START_TEST (parser_config_ctxt_test) {
   int is_empty = FALSE;
   config_rec *ctx, *res;
@@ -145,6 +178,39 @@ START_TEST (parser_config_ctxt_test) {
   fail_unless(is_empty == TRUE, "Expected config context to be empty");
 
   pr_parser_server_ctxt_close();
+}
+END_TEST
+
+START_TEST (parser_config_ctxt_push_test) {
+  int res;
+  config_rec *ctx, *ctx2;
+
+  res = pr_parser_config_ctxt_push(NULL);
+  fail_unless(res < 0, "Failed to handle null argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  ctx = pcalloc(p, sizeof(config_rec));
+
+  mark_point();
+  res = pr_parser_config_ctxt_push(ctx);
+  fail_unless(res < 0, "Failed to handle unprepared parser");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_parser_prepare(p, NULL);
+
+  mark_point();
+  res = pr_parser_config_ctxt_push(ctx);
+  fail_unless(res == 0, "Failed to push config rec: %s", strerror(errno));
+
+  mark_point();
+  ctx2 = pr_parser_config_ctxt_get();
+  fail_unless(ctx2 != NULL, "Failed to get current config context: %s",
+    strerror(errno));
+  fail_unless(ctx2 == ctx, "Expected config context %p, got %p", ctx, ctx2);
+
+  pr_parser_cleanup();
 }
 END_TEST
 
@@ -373,7 +439,9 @@ Suite *tests_get_parser_suite(void) {
 
   tcase_add_test(testcase, parser_prepare_test);
   tcase_add_test(testcase, parser_server_ctxt_test);
+  tcase_add_test(testcase, parser_server_ctxt_push_test);
   tcase_add_test(testcase, parser_config_ctxt_test);
+  tcase_add_test(testcase, parser_config_ctxt_push_test);
   tcase_add_test(testcase, parser_get_lineno_test);
   tcase_add_test(testcase, parser_read_line_test);
   tcase_add_test(testcase, parser_parse_line_test);
