@@ -3826,7 +3826,11 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
     cmd_rec *cmd;
     pr_data_abort(0, FALSE);
 
-    cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
+    cmd = session.curr_cmd_rec;
+    if (cmd == NULL) {
+      cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
+    }
+
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }

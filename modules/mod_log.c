@@ -971,14 +971,24 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
         const char *path;
 
         path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
-        len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+        if (path != NULL) {
+          len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+
+        } else {
+          len = sstrncpy(argp, "", sizeof(arg));
+        }
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
         const char *path;
       
         path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
-        len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+        if (path != NULL) {
+          len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+
+        } else {
+          len = sstrncpy(argp, "", sizeof(arg));
+        }
 
       } else if (session.xfer.p &&
                  session.xfer.path) {
