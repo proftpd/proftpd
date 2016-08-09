@@ -35,6 +35,7 @@
 - Bug 4262 - SITE CPTO returns 250 even when the copy operation fails due to
   the user's quota being exceeded.
 - Bug 4263 - SITE CPTO terminated by TimeoutIdle.
+- Bug 4265 - Omit version information from ServerIdent banner by default.
 
 1.3.6rc2 - Released 10-Mar-2016
 --------------------------------

@@ -17,6 +17,7 @@ ChangeLog files.
   + mod_sftp now supports extended attributes (xattrs) via SFTP.
   + Fixed bug in filesystem free space calculation causing ALLO to fail
     unexpectedly.
+  + Default FTP/SSH2 banner changed to no longer include version information.
 
 
   + Changed Modules:

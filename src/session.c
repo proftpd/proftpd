@@ -332,22 +332,20 @@ void pr_session_send_banner(server_rec *s, int flags) {
                *defer_welcome == TRUE) {
 
       if (flags & PR_DISPLAY_FL_SEND_NOW) {
-        pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server ready.");
+        pr_response_send(R_220, _("ProFTPD Server ready."));
 
       } else {
-        pr_response_add(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server ready.");
+        pr_response_add(R_220, _("ProFTPD Server ready."));
       }
 
     } else {
       if (flags & PR_DISPLAY_FL_SEND_NOW) {
-        pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server (%s) [%s]", s->ServerName, serveraddress);
+        pr_response_send(R_220, _("ProFTPD Server (%s) [%s]"), s->ServerName,
+          serveraddress);
 
       } else {
-        pr_response_add(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server (%s) [%s]", s->ServerName, serveraddress);
+        pr_response_add(R_220, _("ProFTPD Server (%s) [%s]"), s->ServerName,
+          serveraddress);
       }
     }
 

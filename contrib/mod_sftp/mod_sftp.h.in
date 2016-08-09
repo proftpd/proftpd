@@ -92,7 +92,11 @@
 #endif /* PR_USE_OPENSSL_ECC */
 
 #define SFTP_ID_PREFIX		"SSH-2.0-"
-#define SFTP_ID_DEFAULT_STRING	SFTP_ID_PREFIX MOD_SFTP_VERSION
+
+/* Omit the version information in the default banner.  Sites wishing to use
+ * or see that version information can configure it explicitly via ServerIdent.
+ */
+#define SFTP_ID_DEFAULT_STRING	SFTP_ID_PREFIX "mod_sftp"
 
 /* mod_sftp session state flags */
 #define SFTP_SESS_STATE_HAVE_KEX	0x00001
