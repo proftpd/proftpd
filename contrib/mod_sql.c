@@ -5283,8 +5283,9 @@ MODRET cmd_auth(cmd_rec *cmd) {
   modret_t *mr = NULL;
 
   if (!SQL_USERS ||
-      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+      !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
     return PR_DECLINED(cmd);
+  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_auth");
 
@@ -5308,11 +5309,10 @@ MODRET cmd_auth(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
     session.auth_mech = "mod_sql.c";
     return PR_HANDLED(cmd);
-
-  } else {
-    sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
-    return PR_DECLINED(cmd);
   }
+
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
+  return PR_DECLINED(cmd);
 }
 
 MODRET cmd_check(cmd_rec *cmd) {

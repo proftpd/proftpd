@@ -165,6 +165,12 @@ int pr_auth_cache_set(int enable, unsigned int flags);
  */
 const char *pr_auth_get_home(pool *, const char *pw_dir);
 
+/* Policy setting for the maximum allowable password length.  This is
+ * supported for mitigating potential resource consumption attack via the
+ * crypt(3) function.
+ */
+size_t pr_auth_set_max_password_len(pool *p, size_t len);
+
 /* For internal use only. */
 int init_auth(void);
 int set_groups(pool *, gid_t, array_header *);

@@ -227,6 +227,11 @@
 # define PR_TUNABLE_LOGIN_MAX		256
 #endif
 
+#ifndef PR_TUNABLE_PASSWORD_MAX
+/* Maximum length of a password. */
+# define PR_TUNABLE_PASSWORD_MAX	1024
+#endif
+
 #ifndef PR_TUNABLE_EINTR_RETRY_INTERVAL
 /* Define the time to delay, in seconds, after a system call has been
  * interrupted (errno is EINTR) before retrying that call.

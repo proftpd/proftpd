@@ -31,6 +31,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#MaxClientsPerUser">MaxClientsPerUser</a>
   <li><a href="#MaxHostsPerUser">MaxHostsPerUser</a>
   <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a>
+  <li><a href="#MaxPasswordSize">MaxPasswordSize</a>
   <li><a href="#RequireValidShell">RequireValidShell</a>
   <li><a href="#RewriteHome">RewriteHome</a>
   <li><a href="#RootLogin">RootLogin</a>
@@ -543,6 +544,25 @@ times a client may attempt to authenticate to the server <i>on the same TCP
 connection</i>.  After the number of attempts exceeds the configured
 <em>count</em>, the client is disconnected and an appropriate message is
 logged.
+
+<p>
+<hr>
+<h2><a name="MaxPasswordSize">MaxPasswordSize</a></h2>
+<strong>Syntax:</strong> MaxPasswordSize <em>length</em><br>
+<strong>Default:</strong> 1024<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>MaxPasswordSize</code> directive configures the maximum length
+(in bytes) of a password that ProFTPD will accept.  Passwords longer than
+the configured <em>length</em> will be ignored.
+
+<p>
+This directive is provided as a defensive measure, to protect against CPU
+resource consumption attacks by feeding large amounts of data to <i>e.g.</i>
+the <code>crypt(3)</code> function.
 
 <p>
 <hr>
