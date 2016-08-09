@@ -609,13 +609,6 @@ START_TEST (netacl_match_test) {
   char *acl_str;
   int have_localdomain = FALSE, res, reverse_dns;
 
-  /* Note: this test is sensitive to the hostname; on travis, this hostname
-   * is subject to change without notice, causing test failure false positives.
-   */
-  if (getenv("TRAVIS_CI") != NULL) {
-    return;
-  }
-
   res = pr_netacl_match(NULL, NULL);
   fail_unless(res == -2, "Failed to handle NULL arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
@@ -633,12 +626,14 @@ START_TEST (netacl_match_test) {
   fail_unless(addr != NULL, "Failed to get addr for '%s': %s", "localhost",
     strerror(errno));
 
-  /* It's possible that the DNS name for 'localhost' that is used will
-   * actually be 'localhost.localdomain', depending on the contents of
-   * the host's /etc/hosts file.
-   */
-  if (strcmp(pr_netaddr_get_dnsstr(addr), "localhost.localdomain") == 0) {
-    have_localdomain = TRUE;
+  if (getenv("TRAVIS_CI") == NULL) {
+    /* It's possible that the DNS name for 'localhost' that is used will
+     * actually be 'localhost.localdomain', depending on the contents of
+     * the host's /etc/hosts file.
+     */
+    if (strcmp(pr_netaddr_get_dnsstr(addr), "localhost.localdomain") == 0) {
+      have_localdomain = TRUE;
+    }
   }
 
   res = pr_netacl_match(NULL, addr);
@@ -759,8 +754,10 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
-    strerror(errno));
+  if (getenv("TRAVIS_CI") == NULL) {
+    fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
+      strerror(errno));
+  }
 
   if (!have_localdomain) {
     acl_str = pstrdup(p, "!localhost");
@@ -774,8 +771,10 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
-    strerror(errno));
+  if (getenv("TRAVIS_CI") == NULL) {
+    fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
+      strerror(errno));
+  }
 
   acl_str = "!www.google.com";
   acl = pr_netacl_create(p, acl_str);
@@ -798,8 +797,10 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
-    strerror(errno));
+  if (getenv("TRAVIS_CI") == NULL) {
+    fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
+      strerror(errno));
+  }
 
   if (!have_localdomain) {
     acl_str = pstrdup(p, "!loc*st");
@@ -813,8 +814,10 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
-    strerror(errno));
+  if (getenv("TRAVIS_CI") == NULL) {
+    fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
+      strerror(errno));
+  }
 
   acl_str = "!www.g*g.com";
   acl = pr_netacl_create(p, acl_str);

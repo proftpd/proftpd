@@ -385,13 +385,6 @@ START_TEST (netaddr_fnmatch_test) {
   int flags, res;
   const char *name;
 
-  /* Note: this test is sensitive to the hostname; on travis, this hostname
-   * is subject to change without notice, causing test failure false positives.
-   */
-  if (getenv("TRAVIS_CI") != NULL) {
-    return;
-  }
-
   res = pr_netaddr_fnmatch(NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null address");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -412,7 +405,10 @@ START_TEST (netaddr_fnmatch_test) {
   fail_unless(res == FALSE, "Expected FALSE, got %d", res);
 
   res = pr_netaddr_fnmatch(addr, "LOCAL*", flags);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  if (getenv("TRAVIS_CI") == NULL) {
+    /* This test is sensitive the environment. */
+    fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  }
 
   flags = PR_NETADDR_MATCH_IP;
   res = pr_netaddr_fnmatch(addr, "foo", flags);
@@ -814,13 +810,6 @@ START_TEST (netaddr_get_dnsstr_test) {
   const pr_netaddr_t *addr;
   const char *ip, *res;
 
-  /* Note: this test is sensitive to the hostname; on travis, this hostname
-   * is subject to change without notice, causing test failure false positives.
-   */
-  if (getenv("TRAVIS_CI") != NULL) {
-    return;
-  }
-
   ip = "127.0.0.1";
 
   res = pr_netaddr_get_dnsstr(NULL);
@@ -878,9 +867,12 @@ START_TEST (netaddr_get_dnsstr_test) {
    * return either "localhost" or "localhost.localdomain".  Perhaps even
    * other variations, although these should be the most common.
    */
-  fail_unless(strcmp(res, "localhost") == 0 ||
-              strcmp(res, "localhost.localdomain") == 0,
-    "Expected '%s', got '%s'", "localhost or localhost.localdomain", res);
+  if (getenv("TRAVIS_CI") == NULL) {
+    /* This test is sensitive the environment. */
+    fail_unless(strcmp(res, "localhost") == 0 ||
+                strcmp(res, "localhost.localdomain") == 0,
+      "Expected '%s', got '%s'", "localhost or localhost.localdomain", res);
+  }
 }
 END_TEST
 
@@ -939,13 +931,6 @@ START_TEST (netaddr_get_dnsstr_ipv6_test) {
   const pr_netaddr_t *addr;
   const char *ip, *res;
 
-  /* Note: this test is sensitive to the hostname; on travis, this hostname
-   * is subject to change without notice, causing test failure false positives.
-   */
-  if (getenv("TRAVIS_CI") != NULL) {
-    return;
-  }
-
   ip = "::1";
 
   res = pr_netaddr_get_dnsstr(NULL);
@@ -1003,14 +988,16 @@ START_TEST (netaddr_get_dnsstr_ipv6_test) {
    * return either "localhost" or "localhost.localdomain".  Perhaps even
    * other variations, although these should be the most common.
    */
-  fail_unless(strcmp(res, "localhost") == 0 ||
-              strcmp(res, "localhost.localdomain") == 0 ||
-              strcmp(res, "localhost6") == 0 ||
-              strcmp(res, "localhost6.localdomain") == 0 ||
-              strcmp(res, "ip6-localhost") == 0 ||
-              strcmp(res, "ip6-loopback") == 0 ||
-              strcmp(res, ip) == 0,
-    "Expected '%s', got '%s'", "localhost, localhost.localdomain et al", res);
+  if (getenv("TRAVIS_CI") == NULL) {
+    fail_unless(strcmp(res, "localhost") == 0 ||
+                strcmp(res, "localhost.localdomain") == 0 ||
+                strcmp(res, "localhost6") == 0 ||
+                strcmp(res, "localhost6.localdomain") == 0 ||
+                strcmp(res, "ip6-localhost") == 0 ||
+                strcmp(res, "ip6-loopback") == 0 ||
+                strcmp(res, ip) == 0,
+      "Expected '%s', got '%s'", "localhost, localhost.localdomain et al", res);
+  }
 }
 END_TEST
 #endif /* PR_USE_IPV6 */
