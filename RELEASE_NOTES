@@ -18,7 +18,12 @@ ChangeLog files.
   + Fixed bug in filesystem free space calculation causing ALLO to fail
     unexpectedly.
 
+
+  + Changed Modules:
+
+    mod_ctrls_admin: config set/remove
   
+
   + New Configuration Directives:
 
     CopyOptions NoDeleteOnFailure
