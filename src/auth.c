@@ -30,6 +30,7 @@
 #include "privs.h"
 
 static pool *auth_pool = NULL;
+static size_t auth_max_passwd_len = PR_TUNABLE_PASSWORD_MAX;
 static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *user_tab = NULL,
   *gid_tab = NULL, *group_tab = NULL;
 static xaset_t *auth_module_list = NULL;
@@ -1051,6 +1052,7 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
   modret_t *mr = NULL;
   module *m = NULL;
   int res = PR_AUTH_BADPWD;
+  size_t cleartext_passwd_len = 0;
 
   /* Note: it's possible for ciphertext_passwd to be NULL (mod_ldap might do
    * this, for example), so we cannot enforce that it be non-NULL.
@@ -1060,6 +1062,15 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
       name == NULL ||
       cleartext_passwd == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  cleartext_passwd_len = strlen(cleartext_passwd);
+  if (cleartext_passwd_len > auth_max_passwd_len) {
+    pr_log_auth(PR_LOG_INFO,
+      "client-provided password size exceeds MaxPasswordSize (%lu), "
+      "rejecting", (unsigned long) auth_max_passwd_len);
+    errno = EPERM;
     return -1;
   }
 
@@ -2258,6 +2269,22 @@ const char *pr_auth_get_home(pool *p, const char *pw_dir) {
     "for original home directory '%s'", home_dir, pw_dir);
 
   return home_dir;
+}
+
+size_t pr_auth_set_max_password_len(pool *p, size_t len) {
+  size_t prev_len;
+
+  prev_len = auth_max_passwd_len;
+
+  if (len == 0) {
+    /* Restore default. */
+    auth_max_passwd_len = PR_TUNABLE_PASSWORD_MAX;
+
+  } else {
+    auth_max_passwd_len = len;
+  }
+
+  return prev_len;
 }
 
 /* Internal use only.  To be called in the session process. */

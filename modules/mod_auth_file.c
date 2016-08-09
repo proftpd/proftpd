@@ -1170,8 +1170,9 @@ MODRET authfile_auth(cmd_rec *cmd) {
 
   cleartxt_pass = pstrdup(cmd->tmp_pool, tmp);
 
-  if (pr_auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1]))
+  if (pr_auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1])) {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
   session.auth_mech = "mod_auth_file.c";
   return PR_HANDLED(cmd);

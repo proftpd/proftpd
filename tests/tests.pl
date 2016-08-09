@@ -150,6 +150,7 @@ if (scalar(@ARGV) > 0) {
     t/config/maxconnectionsperhost.t
     t/config/maxinstances.t
     t/config/maxloginattempts.t
+    t/config/maxpasswordsize.t
     t/config/maxretrievefilesize.t
     t/config/maxstorefilesize.t
     t/config/maxtransfersperhost.t
