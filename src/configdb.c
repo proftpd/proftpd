@@ -675,7 +675,7 @@ void *get_param_ptr_next(const char *name, int recurse) {
   return NULL;
 }
 
-int remove_config(xaset_t *set, const char *name, int recurse) {
+int pr_config_remove(xaset_t *set, const char *name, int flags, int recurse) {
   server_rec *s;
   config_rec *c;
   int found = 0;
@@ -708,16 +708,24 @@ int remove_config(xaset_t *set, const char *name, int recurse) {
         s->conf = NULL;
       }
 
-      /* Next, destroy the set's pool, which destroys the set as well. */
-      destroy_pool(found_set->pool);
+      if (!(flags & PR_CONFIG_FL_PRESERVE_ENTRY)) {
+        /* Next, destroy the set's pool, which destroys the set as well. */
+        destroy_pool(found_set->pool);
+      }
 
     } else {
-      /* If the set was not empty, destroy only the requested config_rec. */
-      destroy_pool(c->pool);
+      if (!(flags & PR_CONFIG_FL_PRESERVE_ENTRY)) {
+        /* If the set was not empty, destroy only the requested config_rec. */
+        destroy_pool(c->pool);
+      }
     }
   }
 
   return found;
+}
+
+int remove_config(xaset_t *set, const char *name, int recurse) {
+  return pr_config_remove(set, name, 0, recurse);
 }
 
 config_rec *add_config_param_set(xaset_t **set, const char *name,

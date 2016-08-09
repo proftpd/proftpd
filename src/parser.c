@@ -62,16 +62,6 @@ static struct config_src *parser_sources = NULL;
 /* Private functions
  */
 
-static void add_config_ctxt(config_rec *c) {
-  if (!*parser_curr_config) {
-    *parser_curr_config = c;
-
-  } else {
-    parser_curr_config = (config_rec **) push_array(parser_confstack);
-    *parser_curr_config = c;
-  }
-}
-
 static struct config_src *add_config_source(pr_fh_t *fh) {
   pool *p = pr_pool_create_sz(parser_pool, PARSER_CONFIG_SRC_POOL_SZ);
   struct config_src *cs = pcalloc(p, sizeof(struct config_src));
@@ -316,8 +306,30 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
     }
   }
 
-  add_config_ctxt(c);
+  (void) pr_parser_config_ctxt_push(c);
   return c;
+}
+
+int pr_parser_config_ctxt_push(config_rec *c) {
+  if (c == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (parser_confstack == NULL) {
+    errno = EPERM;
+    return -1;
+  }
+
+  if (!*parser_curr_config) {
+    *parser_curr_config = c;
+
+  } else {
+    parser_curr_config = (config_rec **) push_array(parser_confstack);
+    *parser_curr_config = c;
+  }
+
+  return 0;
 }
 
 unsigned int pr_parser_get_lineno(void) {
@@ -403,8 +415,8 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
    */
   cs = add_config_source(fh);
 
-  if (start) {
-    add_config_ctxt(start);
+  if (start != NULL) {
+    (void) pr_parser_config_ctxt_push(start);
   }
 
   bufsz = PR_TUNABLE_PARSER_BUFFER_SIZE;
@@ -770,6 +782,23 @@ server_rec *pr_parser_server_ctxt_get(void) {
   return NULL;
 }
 
+int pr_parser_server_ctxt_push(server_rec *s) {
+  if (s == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (parser_servstack == NULL) {
+    errno = EPERM;
+    return -1;
+  }
+
+  parser_curr_server = (server_rec **) push_array(parser_servstack);
+  *parser_curr_server = s;
+
+  return 0;
+}
+
 server_rec *pr_parser_server_ctxt_open(const char *addrstr) {
   server_rec *s;
   pool *p;
@@ -802,8 +831,6 @@ server_rec *pr_parser_server_ctxt_open(const char *addrstr) {
   /* Default server port */
   s->ServerPort = pr_inet_getservport(s->pool, "ftp", "tcp");
 
-  parser_curr_server = (server_rec **) push_array(parser_servstack);
-  *parser_curr_server = s;
-
+  (void) pr_parser_server_ctxt_push(s);
   return s;
 }

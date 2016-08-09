@@ -29,7 +29,7 @@
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.8"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
@@ -110,6 +110,281 @@ static void mem_printf(const char *fmt, ...) {
 
 /* Controls handlers
  */
+
+static server_rec *ctrls_config_find_server(pr_ctrls_t *ctrl,
+    const char *name) {
+  unsigned int port = 21;
+  const pr_netaddr_t *addr;
+  pr_ipbind_t *ipbind;
+  char *name_dup, *ptr;
+
+  name_dup = pstrdup(ctrl->ctrls_tmp_pool, name);
+  if (*name_dup == '[') {
+    size_t namelen;
+
+    /* Possible IPv6 address; make sure there's a terminating bracket. */
+    ptr = strchr(name_dup + 1, ']');
+    if (ptr == NULL) {
+      pr_ctrls_add_response(ctrl, "config: badly formatted IPv6 address: %s",
+        name);
+      errno = EINVAL;
+      return NULL;
+    }
+
+    namelen = ptr - (name_dup + 1);
+    name_dup = pstrndup(ctrl->ctrls_tmp_pool, name_dup + 1, namelen);
+
+    if (*(ptr+1) != '\0') {
+      port = atoi(ptr + 1);
+    }
+
+  } else {
+    ptr = strrchr(name_dup, ':');
+    if (ptr != NULL) {
+      port = atoi(ptr + 1);
+      *ptr = '\0';
+    }
+  }
+
+  addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, name_dup, NULL);
+  if (addr == NULL) {
+    pr_ctrls_add_response(ctrl, "config: no such server: %s", name_dup);
+    errno = EINVAL;
+    return NULL;
+  }
+
+  ipbind = pr_ipbind_find(addr, port, TRUE);
+  if (ipbind != NULL) {
+    return ipbind->ib_server;
+  }
+
+  pr_ctrls_add_response(ctrl, "config: no such server: %s", name);
+  errno = ENOENT;
+  return NULL;
+}
+
+static int ctrls_config_dispatch_cmd(pr_ctrls_t *ctrl, cmd_rec *cmd) {
+  conftable *conftab;
+  char found = FALSE;
+
+  cmd->server = pr_parser_server_ctxt_get();
+  cmd->config = pr_parser_config_ctxt_get();
+
+  conftab = pr_stash_get_symbol2(PR_SYM_CONF, cmd->argv[0], NULL,
+    &cmd->stash_index, &cmd->stash_hash);
+  while (conftab != NULL) {
+    modret_t *mr;
+
+    pr_signals_handle();
+
+    cmd->argv[0] = conftab->directive;
+
+    mr = pr_module_call(conftab->m, conftab->handler, cmd);
+    if (mr != NULL) {
+      if (MODRET_ISERROR(mr)) {
+        pr_ctrls_add_response(ctrl, "config set: %s", MODRET_ERRMSG(mr));
+        errno = EPERM;
+        return -1;
+      }
+    }
+
+    if (!MODRET_ISDECLINED(mr)) {
+      found = TRUE;
+    }
+
+    conftab = pr_stash_get_symbol2(PR_SYM_CONF, cmd->argv[0], conftab,
+      &cmd->stash_index, &cmd->stash_hash);
+  }
+
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+  }
+
+  if (found == FALSE) {
+    pr_ctrls_add_response(ctrl,
+      "config set: unknown configuration directive '%s'",
+      (char *) cmd->argv[0]);
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  register int i;
+  int res;
+  server_rec *s, *curr_main_server;
+  config_rec *c;
+  cmd_rec *cmd;
+  const char *name, *text;
+  size_t textlen;
+
+  /* At this point, reqargv should look something like:
+   *
+   *  0: "127.0.0.1:2121"
+   *  1: "TLSRequired"
+   *  ...
+   */
+
+  if (reqargc < 3 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl,
+      "config set: missing required parameters");
+    return -1;
+  }
+
+  name = reqargv[0];
+  s = ctrls_config_find_server(ctrl, name);
+  if (s == NULL) {
+    return -1;
+  }
+
+  res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl, "config set: error preparing parser: %s",
+      strerror(errno));
+    return -1;
+  }
+
+  res = pr_parser_server_ctxt_push(s);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "config set: error adding server to parser stack: %s", strerror(errno));
+    (void) pr_parser_cleanup();
+    return -1;
+  }
+
+  text = "";
+  for (i = 1; i < reqargc; i++) {
+    text = pstrcat(ctrl->ctrls_tmp_pool, text, *text ? " " : "", reqargv[i],
+      NULL);
+  }
+
+  textlen = strlen(text);
+  cmd = pr_parser_parse_line(ctrl->ctrls_tmp_pool, text, textlen);
+  if (cmd == NULL) {
+    pr_ctrls_add_response(ctrl, "config set: error parsing config data: %s",
+      strerror(errno));
+    (void) pr_parser_cleanup();
+    return -1;
+  }
+
+  c = find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE);
+  if (c != NULL) {
+    /* Note that remove_config() relies on the Parser API. */
+    pr_config_remove(s->conf, cmd->argv[0], PR_CONFIG_FL_PRESERVE_ENTRY, FALSE);
+  }
+
+  curr_main_server = main_server;
+  res = ctrls_config_dispatch_cmd(ctrl, cmd);
+  main_server = curr_main_server;
+
+  if (res < 0) {
+    if (c != NULL) {
+      xaset_t *set;
+
+      /* The config_rec "remembers" its parent set; we just need to add
+       * the record back into that set.
+       */
+      set = c->set;
+      xaset_insert_end(set, (xasetmember_t *) c);
+    }
+
+  } else {
+    pr_ctrls_add_response(ctrl, "config set: %s configured",
+      (char *) cmd->argv[0]);
+    pr_config_merge_down(s->conf, TRUE);
+  }
+
+  (void) pr_parser_cleanup();
+  return 0;
+}
+
+static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int res;
+  server_rec *s;
+  const char *name, *directive;
+
+  /* At this point, reqargv should look something like:
+   *
+   *  0: "127.0.0.1:2121"
+   *  1: "TLSRequired"
+   */
+
+  if (reqargc < 2 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl,
+      "config remove: missing required parameters");
+    return -1;
+  }
+
+  if (reqargc != 2) {
+    pr_ctrls_add_response(ctrl,
+      "config remove: wrong number of parameters");
+    return -1;
+  }
+
+  name = reqargv[0];
+  s = ctrls_config_find_server(ctrl, name);
+  if (s == NULL) {
+    return -1;
+  }
+
+  res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl, "config remove: error preparing parser: %s",
+      strerror(errno));
+    return -1;
+  }
+
+  res = pr_parser_server_ctxt_push(s);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "config remove: error adding server to parser stack: %s",
+      strerror(errno));
+    (void) pr_parser_cleanup();
+    return -1;
+  }
+
+  directive = reqargv[1];
+  res = remove_config(s->conf, directive, FALSE);
+  if (res == TRUE) {
+    pr_ctrls_add_response(ctrl, "config remove: %s removed", directive);
+    pr_config_merge_down(s->conf, TRUE);
+
+  } else {
+    pr_ctrls_add_response(ctrl, "config remove: %s not found in configuration",
+      directive);
+  }
+
+  (void) pr_parser_cleanup();
+  return 0;
+}
+
+static int ctrls_handle_config(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+
+  /* Sanity check */
+  if (reqargc == 0 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "config: missing required parameters");
+    return -1;
+  }
+
+  if (strncmp(reqargv[0], "set", 4) == 0) {
+    return ctrls_handle_config_set(ctrl, --reqargc, ++reqargv);
+
+  } else if (strncmp(reqargv[0], "remove", 7) == 0) {
+    return ctrls_handle_config_remove(ctrl, --reqargc, ++reqargv);
+  }
+
+  pr_ctrls_add_response(ctrl, "config: unknown config action: '%s'",
+    reqargv[0]);
+  return -1;
+}
 
 static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
@@ -1421,6 +1696,8 @@ static int ctrls_admin_init(void) {
 }
 
 static ctrls_acttab_t ctrls_admin_acttab[] = {
+  { "config",	"set config directives",	NULL,
+    ctrls_handle_config },
   { "debug",    "set debugging level",		NULL,
     ctrls_handle_debug },
   { "dns",	"set UseReverseDNS configuration",	NULL,
