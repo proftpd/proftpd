@@ -182,7 +182,7 @@ static int ctrls_config_dispatch_cmd(pr_ctrls_t *ctrl, cmd_rec *cmd) {
     mr = pr_module_call(conftab->m, conftab->handler, cmd);
     if (mr != NULL) {
       if (MODRET_ISERROR(mr)) {
-        pr_ctrls_add_response(ctrl, "config: warning: %s", MODRET_ERRMSG(mr));
+        pr_ctrls_add_response(ctrl, "config set: %s", MODRET_ERRMSG(mr));
         errno = EPERM;
         return -1;
       }
@@ -201,7 +201,8 @@ static int ctrls_config_dispatch_cmd(pr_ctrls_t *ctrl, cmd_rec *cmd) {
   }
 
   if (found == FALSE) {
-    pr_ctrls_add_response(ctrl, "config: unknown configuration directive '%s'",
+    pr_ctrls_add_response(ctrl,
+      "config set: unknown configuration directive '%s'",
       (char *) cmd->argv[0]);
     errno = EPERM;
     return -1;
@@ -242,7 +243,7 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
 
   res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
   if (res < 0) {
-    pr_ctrls_add_response(ctrl, "config: error preparing parser: %s",
+    pr_ctrls_add_response(ctrl, "config set: error preparing parser: %s",
       strerror(errno));
     return -1;
   }
@@ -250,7 +251,7 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
   res = pr_parser_server_ctxt_push(s);
   if (res < 0) {
     pr_ctrls_add_response(ctrl,
-      "config: error adding server to parser stack: %s", strerror(errno));
+      "config set: error adding server to parser stack: %s", strerror(errno));
     (void) pr_parser_cleanup();
     return -1;
   }
@@ -264,7 +265,7 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
   textlen = strlen(text);
   cmd = pr_parser_parse_line(ctrl->ctrls_tmp_pool, text, textlen);
   if (cmd == NULL) {
-    pr_ctrls_add_response(ctrl, "config: error parsing config data: %s",
+    pr_ctrls_add_response(ctrl, "config set: error parsing config data: %s",
       strerror(errno));
     (void) pr_parser_cleanup();
     return -1;
@@ -292,7 +293,8 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
     }
 
   } else {
-    pr_ctrls_add_response(ctrl, "config: %s configured", (char *) cmd->argv[0]);
+    pr_ctrls_add_response(ctrl, "config set: %s configured",
+      (char *) cmd->argv[0]);
     pr_config_merge_down(s->conf, TRUE);
   }
 
@@ -333,7 +335,7 @@ static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
 
   res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
   if (res < 0) {
-    pr_ctrls_add_response(ctrl, "config: error preparing parser: %s",
+    pr_ctrls_add_response(ctrl, "config remove: error preparing parser: %s",
       strerror(errno));
     return -1;
   }
@@ -341,7 +343,8 @@ static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
   res = pr_parser_server_ctxt_push(s);
   if (res < 0) {
     pr_ctrls_add_response(ctrl,
-      "config: error adding server to parser stack: %s", strerror(errno));
+      "config remove: error adding server to parser stack: %s",
+      strerror(errno));
     (void) pr_parser_cleanup();
     return -1;
   }
@@ -349,11 +352,11 @@ static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
   directive = reqargv[1];
   res = remove_config(s->conf, directive, FALSE);
   if (res == TRUE) {
-    pr_ctrls_add_response(ctrl, "config: %s removed", directive);
+    pr_ctrls_add_response(ctrl, "config remove: %s removed", directive);
     pr_config_merge_down(s->conf, TRUE);
 
   } else {
-    pr_ctrls_add_response(ctrl, "config: %s not found in configuration",
+    pr_ctrls_add_response(ctrl, "config remove: %s not found in configuration",
       directive);
   }
 
