@@ -109,11 +109,13 @@ config_rec *find_config(xaset_t *, int, const char *, int);
 config_rec *find_config2(xaset_t *, int, const char *, int, unsigned long);
 void find_config_set_top(config_rec *);
 
-int remove_config(xaset_t *, const char *, int);
+int remove_config(xaset_t *set, const char *name, int recurse);
 
 #define PR_CONFIG_FL_INSERT_HEAD	0x001
+#define PR_CONFIG_FL_PRESERVE_ENTRY	0x002
 config_rec *pr_config_add_set(xaset_t **, const char *, int);
 config_rec *pr_config_add(struct server_struc *, const char *, int);
+int pr_config_remove(xaset_t *set, const char *name, int flags, int recurse);
 
 /* Returns the assigned ID for the provided directive name, or zero
  * if no ID mapping was found.
