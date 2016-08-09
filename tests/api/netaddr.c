@@ -385,6 +385,13 @@ START_TEST (netaddr_fnmatch_test) {
   int flags, res;
   const char *name;
 
+  /* Note: this test is sensitive to the hostname; on travis, this hostname
+   * is subject to change without notice, causing test failure false positives.
+   */
+  if (getenv("TRAVIS_CI") != NULL) {
+    return;
+  }
+
   res = pr_netaddr_fnmatch(NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null address");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -807,6 +814,13 @@ START_TEST (netaddr_get_dnsstr_test) {
   const pr_netaddr_t *addr;
   const char *ip, *res;
 
+  /* Note: this test is sensitive to the hostname; on travis, this hostname
+   * is subject to change without notice, causing test failure false positives.
+   */
+  if (getenv("TRAVIS_CI") != NULL) {
+    return;
+  }
+
   ip = "127.0.0.1";
 
   res = pr_netaddr_get_dnsstr(NULL);
@@ -924,6 +938,13 @@ END_TEST
 START_TEST (netaddr_get_dnsstr_ipv6_test) {
   const pr_netaddr_t *addr;
   const char *ip, *res;
+
+  /* Note: this test is sensitive to the hostname; on travis, this hostname
+   * is subject to change without notice, causing test failure false positives.
+   */
+  if (getenv("TRAVIS_CI") != NULL) {
+    return;
+  }
 
   ip = "::1";
 
