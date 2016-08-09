@@ -30,6 +30,8 @@ ChangeLog files.
 
     FSOptions IgnoreExtendedAttributes
 
+    MaxPasswordSize (Issue#318)
+
     SFTPKeyLimits (Bug#4233)
 
     SQLPasswordCost (Bug#4154)
