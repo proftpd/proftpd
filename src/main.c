@@ -79,6 +79,7 @@ extern pr_response_t *resp_list, *resp_err_list;
 
 int nodaemon = 0;
 
+static int no_forking = FALSE;
 static int quiet = 0;
 static int shutting_down = 0;
 static int syntax_check = 0;
@@ -1077,7 +1078,7 @@ static void set_server_privs(void) {
   }
 }
 
-static void fork_server(int fd, conn_t *l, unsigned char nofork) {
+static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
   conn_t *conn = NULL;
   int i, rev;
   int semfds[2] = { -1, -1 };
@@ -1087,7 +1088,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pid_t pid;
   sigset_t sig_set;
 
-  if (!nofork) {
+  if (no_fork == FALSE) {
 
     /* A race condition exists on heavily loaded servers where the parent
      * catches SIGHUP and attempts to close/re-open the main listening
@@ -1705,7 +1706,7 @@ static void daemon_loop(void) {
 
       /* Fork off a child to handle the connection. */
       } else {
-        PR_DEVEL_CLOCK(fork_server(fd, listen_conn, FALSE));
+        PR_DEVEL_CLOCK(fork_server(fd, listen_conn, no_forking));
       }
     }
 #ifdef PR_DEVEL_NO_DAEMON
@@ -2177,6 +2178,9 @@ static struct option_help {
   { "--version-status", "-vv",
     "Print extended version information and exit" },
 
+  { "--nofork", "-X",
+    "Non-forking debug mode; exits after one session" },
+
   { "--ipv4", "-4",
     "Support IPv4 connections only" },
 
@@ -2204,7 +2208,7 @@ static void show_usage(int exit_code) {
 
 int main(int argc, char *argv[], char **envp) {
   int optc, show_version = 0;
-  const char *cmdopts = "D:NVc:d:hlnp:qS:tv46";
+  const char *cmdopts = "D:NVc:d:hlnp:qS:tvX46";
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
@@ -2260,6 +2264,8 @@ int main(int argc, char *argv[], char **envp) {
    * --configtest
    * -v                 report version number
    * --version
+   * -X
+   * --nofork           debug/non-fork mode
    * -4                 support IPv4 connections only
    * --ipv4
    * -6                 support IPv6 connections
@@ -2373,6 +2379,10 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'v':
       show_version++;
+      break;
+
+    case 'X':
+      no_forking = TRUE;
       break;
 
     case 1:
