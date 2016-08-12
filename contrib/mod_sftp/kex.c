@@ -4060,25 +4060,25 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
     switch (mesg_type) {
       case SFTP_SSH2_MSG_DEBUG:
         sftp_ssh2_packet_handle_debug(pkt);
-        destroy_pool(pkt->pool);
+        pr_response_set_pool(NULL);
         pkt = NULL;
         break;
 
       case SFTP_SSH2_MSG_DISCONNECT:
         sftp_ssh2_packet_handle_disconnect(pkt);
-        destroy_pool(pkt->pool);
+        pr_response_set_pool(NULL);
         pkt = NULL;
         break;
 
       case SFTP_SSH2_MSG_IGNORE:
         sftp_ssh2_packet_handle_ignore(pkt);
-        destroy_pool(pkt->pool);
+        pr_response_set_pool(NULL);
         pkt = NULL;
         break;
 
       case SFTP_SSH2_MSG_UNIMPLEMENTED:
-        sftp_ssh2_packet_handle_ignore(pkt);
-        destroy_pool(pkt->pool);
+        sftp_ssh2_packet_handle_unimplemented(pkt);
+        pr_response_set_pool(NULL);
         pkt = NULL;
         break;
 
@@ -4087,6 +4087,7 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "received %s (%d) unexpectedly, disconnecting",
           sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+        pr_response_set_pool(NULL);
         destroy_kex(kex);
         destroy_pool(pkt->pool);
         SFTP_DISCONNECT_CONN(disconn_code, NULL);
