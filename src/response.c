@@ -149,6 +149,10 @@ void pr_response_flush(pr_response_t **head) {
   const char *last_numeric = NULL;
   pr_response_t *resp = NULL;
 
+  if (head == NULL) {
+    return;
+  }
+
   if (resp_blocked) {
     pr_trace_msg(trace_channel, 19,
       "responses blocked, not flushing response chain");
