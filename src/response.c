@@ -147,6 +147,10 @@ void pr_response_flush(pr_response_t **head) {
   char *last_numeric = NULL;
   pr_response_t *resp = NULL;
 
+  if (head == NULL) {
+    return;
+  }
+
   if (resp_blocked) {
     return;
   }
