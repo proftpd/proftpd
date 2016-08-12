@@ -1414,6 +1414,7 @@ int sftp_ssh2_packet_handle(void) {
 
   pr_response_clear(&resp_list);
   pr_response_clear(&resp_err_list);
+  pr_response_set_pool(pkt->pool);
 
   /* Note: Some of the SSH messages will be handled regardless of the
    * sftp_sess_state flags; this is intentional, and is the way that

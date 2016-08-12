@@ -48,6 +48,7 @@
  */
 #define SFTP_DH_MIN_LEN			2048
 
+extern pr_response_t *resp_list, *resp_err_list;
 extern module sftp_module;
 
 /* For managing the kexinit process */
@@ -4021,6 +4022,10 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
       errno = xerrno;
       return NULL;
     }
+
+    pr_response_clear(&resp_list);
+    pr_response_clear(&resp_err_list);
+    pr_response_set_pool(pkt->pool);
 
     /* Per RFC 4253, Section 11, DEBUG, DISCONNECT, IGNORE, and UNIMPLEMENTED
      * messages can occur at any time, even during KEX.  We have to be prepared
