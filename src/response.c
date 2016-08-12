@@ -77,22 +77,23 @@ void pr_response_set_pool(pool *p) {
   resp_pool = p;
 
   if (p == NULL) {
+    reset_last_response();
     return;
   }
 
   /* Copy any old "last" values out of the new pool. */
   if (resp_last_response_code != NULL) {
-    const char *tmp;
+    const char *ptr;
 
-    tmp = resp_last_response_code;
-    resp_last_response_code = pstrdup(p, tmp);
+    ptr = resp_last_response_code;
+    resp_last_response_code = pstrdup(p, ptr);
   }
 
   if (resp_last_response_msg != NULL) {
-    const char *tmp;
+    const char *ptr;
   
-    tmp = resp_last_response_msg;
-    resp_last_response_msg = pstrdup(p, tmp);
+    ptr = resp_last_response_msg;
+    resp_last_response_msg = pstrdup(p, ptr);
   }
 }
 
