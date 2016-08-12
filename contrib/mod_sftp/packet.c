@@ -1550,6 +1550,7 @@ int sftp_ssh2_packet_handle(void) {
         "Unsupported protocol sequence");
   }
 
+  pr_response_set_pool(NULL);
   return 0;
 }
 
