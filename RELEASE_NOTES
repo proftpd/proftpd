@@ -18,6 +18,7 @@ ChangeLog files.
   + Fixed bug in filesystem free space calculation causing ALLO to fail
     unexpectedly.
   + Default FTP/SSH2 banner changed to no longer include version information.
+  + New -X command-line option for disabling forking, to aid debugging.
 
 
   + Changed Modules:
