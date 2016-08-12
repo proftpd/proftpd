@@ -182,6 +182,9 @@ START_TEST (response_block_test) {
 END_TEST
 
 START_TEST (response_clear_test) {
+  mark_point();
+  pr_response_clear(NULL);
+
   pr_response_set_pool(p);
   pr_response_add(R_200, "%s", "OK");
   pr_response_clear(&resp_list);
@@ -222,6 +225,9 @@ START_TEST (response_flush_test) {
   int res, sockfd = -2;
   conn_t *conn;
   pr_netio_t *netio;
+
+  mark_point();
+  pr_response_flush(NULL);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = response_netio_poll_cb;
