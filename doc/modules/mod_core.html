@@ -61,6 +61,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TraceOptions">TraceOptions</a>
   <li><a href="#TransferLog">TransferLog</a>
   <li><a href="#Umask">Umask</a>
+  <li><a href="#UseReverseDNS">UseReverseDNS</a>
   <li><a href="#UserOwner">UserOwner</a>
   <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a>
 </ul>
@@ -413,7 +414,7 @@ See also: <a href="#DisplayChdir"><code>DisplayChdir</code></a>,
 
 <hr>
 <h2><a name="FSCachePolicy">FSCachePolicy</a></h2>
-<strong>Syntax:</strong> FSCachePolicy <em>on|off|size count [maxAge <em>secs]</em><br>
+<strong>Syntax:</strong> FSCachePolicy <em>on|off|size count [maxAge secs]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
@@ -1712,8 +1713,8 @@ to disable the option, use a '-' (minus) character prefix.  For example:
 
 <p>
 The <code>TransferLog</code> directive configures the full <em>path</em> to the
-"wu-ftpd style" file transfer log; see the <a href="../docs/howto/Logging.html#TransferLog"><code>xferlog(5)</code> description or man page for a description
-of this log file format.  Separate log files can be created for each
+"wu-ftpd style" file transfer log; see the <a href="../docs/howto/Logging.html#TransferLog"><code>xferlog(5)</code></a> man page for a description of this log
+file format.  Separate log files can be created for each
 <code>&lt;Anonymous&gt;</code> and/or <code>&lt;VirtualHost&gt;</code>.
 Additionally, the special keyword "none" (available in proftpd-1.1.7 and later)
 can be used, which disables wu-ftpd style transfer logging for the context in
@@ -1756,6 +1757,42 @@ uploaded file can be changed by issuing a <code>SITE CHMOD</code> command,
 <p>
 The <code>Umask</code> <a href="../howto/Umask.html">howto</a> also talks about
 umasks in greater detail.
+
+<p>
+<hr>
+<h2><a name="UseReverseDNS">UseReverseDNS</a></h2>
+<strong>Syntax:</strong> UseReverseDNS <em>on|off</em><br>
+<strong>Default:</strong> UseReverseDNS on<br>
+<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+The <code>UseReverseDNS</code> directive is used to control whether ProFTPD
+performs a <a href="https://en.wikipedia.org/wiki/Reverse_DNS_lookup">reverse
+DNS lookup</a> on connecting clients, both for control <i>and</i> for data
+connections.  When reverse DNS lookups are enabled, the
+<a href="mod_log.html#LogFormat"><code>LogFormat %h</code></a> variable will
+use the IP address, rather than the remote hostname.
+
+<p>
+Normally, <i>incoming</i> active mode data connections and <i>outgoing</i>
+passive mode data connections have reverse DNS lookups performed on the remote
+host's IP address.  However, when the session is chrooted (<i>e.g.</i> due to
+the <a href="mod_auth.html#DefaultRoot"><code>DefaultRoot</code></a> directive
+or an <code>&lt;Anonymous&gt;</code> login), the local <code>/etc/hosts</code>
+file cannot be checked, and the only possible resolution is via DNS.  If for
+some reason, DNS is not available or improperly configured <i>for that
+remote host</i>, this can result in ProFTPD blocking/stalling <i>until</i> the
+DNS resolution times out.
+
+<p>
+<b>Note</b> that using:
+<pre>
+  UseReverseDNS on
+</pre>
+<i>can</i> lead to delays when connecting to ProFTPD, due to the time needed
+to perform the forward <i>and</i> reverse DNS resolutions.
 
 <p>
 <hr>
@@ -1895,14 +1932,12 @@ listen <b>only</b> on that 'localhost' IP address, rather than on all
 addresses.
 
 <p>
-<hr><br>
-
+<hr>
 <font size=2><b><i>
 &copy; Copyright 2000-2016 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
