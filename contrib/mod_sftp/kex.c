@@ -2163,6 +2163,7 @@ static int read_dh_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
 static int set_session_keys(struct sftp_kex *kex) {
   const char *k, *v;
+  int comp_read_flags, comp_write_flags;
 
   if (sftp_cipher_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
       kex->hlen) < 0)
@@ -2180,10 +2181,29 @@ static int set_session_keys(struct sftp_kex *kex) {
       kex->hlen) < 0)
     return -1;
 
-  if (sftp_compress_init_read(SFTP_COMPRESS_FL_NEW_KEY) < 0)
+  comp_read_flags = comp_write_flags = SFTP_COMPRESS_FL_NEW_KEY;
+
+  /* If we are rekeying, AND the existing compression is "delayed", then
+   * we need to use slightly different compression flags.
+   */
+  if (kex_rekey_kex) {
+    const char *algo;
+
+    algo = sftp_compress_get_read_algo();
+    if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
+      comp_read_flags = SFTP_COMPRESS_FL_AUTHENTICATED;
+    }
+
+    algo = sftp_compress_get_write_algo();
+    if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
+      comp_write_flags = SFTP_COMPRESS_FL_AUTHENTICATED;
+    }
+  }
+
+  if (sftp_compress_init_read(comp_read_flags) < 0)
     return -1;
 
-  if (sftp_compress_init_write(SFTP_COMPRESS_FL_NEW_KEY) < 0)
+  if (sftp_compress_init_write(comp_write_flags) < 0)
     return -1;
 
   k = pstrdup(session.pool, "SFTP_CLIENT_CIPHER_ALGO");

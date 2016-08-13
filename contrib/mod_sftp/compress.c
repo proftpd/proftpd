@@ -168,7 +168,7 @@ int sftp_compress_set_read_algo(const char *algo) {
     idx = get_next_read_index();
   }
 
-  if (strncmp(algo, "zlib@openssh.com", 9) == 0) {
+  if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
     read_compresses[idx].use_zlib = SFTP_COMPRESS_FL_AUTHENTICATED;
     return 0;
   }
@@ -361,7 +361,7 @@ int sftp_compress_set_write_algo(const char *algo) {
     idx = get_next_write_index();
   }
 
-  if (strncmp(algo, "zlib@openssh.com", 9) == 0) {
+  if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
     write_compresses[idx].use_zlib = SFTP_COMPRESS_FL_AUTHENTICATED;
     return 0;
   }
