@@ -1,12 +1,12 @@
 <html>
 <head>
-<title>ProFTPD HOWTO - Configuring a &lt;Directory&gt;</title>
+<title>ProFTPD: Configuring a &lt;Directory&gt;</title>
 </head>
 
 <body bgcolor=white>
 
 <hr>
-<center><h2><b>Configuring a <code>&lt;Directory&gt;</code></b></h2></center>
+<center><h2><b>ProFTPD: Configuring a <code>&lt;Directory&gt;</code></b></h2></center>
 <hr>
 
 <p>
@@ -147,10 +147,10 @@ which will achieve the desired effect of allowing uploads only in
 subdirectories of the given directory, <code>upload/</code>.
 
 <p>
-Also, it is good to keep in mind the <a href="http://www.castaglia.org/proftpd/doc/devel-guide/internals/ftpaccess.html">similarity</a> between a
-<code>&lt;Directory&gt;</code> section and a <code>.ftpaccess</code> file.
-In some cases, using <code>.ftpaccess</code> files might be more convenient.
-The
+Also, it is good to keep in mind the <a href="ftpaccess.html">similarity</a>
+between a <code>&lt;Directory&gt;</code> section and a <code>.ftpaccess</code>
+file.  In some cases, using <code>.ftpaccess</code> files might be more
+convenient.  The
 <a href="../modules/mod_core.html#AllowOverride"><code>AllowOverride</code></a>
 configuration directive (which first appeared in the 1.2.7rc1 release) provides
 fine-grained control over when <code>.ftpaccess</code> files will be honored.
@@ -204,7 +204,7 @@ For example, if you tried:
     &lt;Limit WRITE&gt;
       DenyAll
     &lt;/Limit&gt;
-  &lt/Directory&gt;
+  &lt;/Directory&gt;
 </pre>
 When starting <code>proftpd</code>, you would see something like:
 <pre>

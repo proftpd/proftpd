@@ -19,20 +19,25 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#AllowFilter">AllowFilter</a>
   <li><a href="#AllowForeignAddress">AllowForeignAddress</a>
   <li><a href="#AllowOverride">AllowOverride</a>
+  <li><a href="#Anonymous">&lt;Anonymous&gt;</a>
   <li><a href="#AuthOrder">AuthOrder</a>
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DefaultAddress">DefaultAddress</a>
   <li><a href="#DenyFilter">DenyFilter</a>
+  <li><a href="#Directory">&lt;Directory&gt;</a>
   <li><a href="#DisplayChdir">DisplayChdir</a>
   <li><a href="#DisplayConnect">DisplayConnect</a>
   <li><a href="#DisplayQuit">DisplayQuit</a>
   <li><a href="#FSCachePolicy">FSCachePolicy</a>
   <li><a href="#FSOptions">FSOptions</a>
+  <li><a href="#Global">&lt;Global&gt;</a>
+  <li><a href="#Group">Group</a>
   <li><a href="#GroupOwner">GroupOwner</a>
   <li><a href="#HideGroup">HideGroup</a>
   <li><a href="#HideNoAccess">HideNoAccess</a>
   <li><a href="#HideUser">HideUser</a>
   <li><a href="#Include">Include</a>
+  <li><a href="#Limit">&lt;Limit&gt;</a>
   <li><a href="#MasqueradeAddress">MasqueradeAddress</a>
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
   <li><a href="#MaxConnectionRate">MaxConnectionRate</a>
@@ -61,6 +66,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TraceOptions">TraceOptions</a>
   <li><a href="#TransferLog">TransferLog</a>
   <li><a href="#Umask">Umask</a>
+  <li><a href="#User">User</a>
   <li><a href="#UseReverseDNS">UseReverseDNS</a>
   <li><a href="#UserOwner">UserOwner</a>
   <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a>
@@ -159,6 +165,76 @@ named <code>.ftpaccess</code> in the encountered directories.  These files
 provide functionality similar to Apache's <code>.htaccess</code> files --
 mini-configuration files.  This <code>AllowOverride</code> directive controls
 when/if these <code>.ftpaccess</code> files will be parsed.
+
+<p>
+<hr>
+<h2><a name="Anonymous">&lt;Anonymous&gt;</a></h2>
+<strong>Syntax:</strong> &lt;Anonymous <em>anon-directory</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>&lt;Anonymous&gt;</code> configuration section is used to create an
+anonymous FTP login, and is closed by a matching &lt;/Anonymous&gt; directive.
+The <em>anon-directory</em> parameter specifies the directory to which the
+daemon, immediately after successful authentication, will restrict the session
+via <code>chroot(2)</code>.
+
+<p>
+Once the <code>chroot(2)</code> successfully completes, higher level
+directories are no longer accessible to that session process (and thus to the
+logged in user).  By default, ProFTPD <i>assumes</i> an anonymous login
+<i>if</i> the remote client attempts to authenticate as the currently running
+<code>User</code> for that server.  Unless the current user is &quot;root&quot;,
+in which case anonymous logins are <b>not</b> allowed regardless of the
+presence of an <code>&lt;Anonymous&gt;</code> section.  To force anonymous
+logins to be bound to a user other than the current user, see the
+<a href="#User><code>User</code></a> and <a href="#Group"><code>Group</code></a>
+directives.  In addition, if a <code>User</code> or <code>Group</code>
+directive <i>is</i> present in an <code>&lt;Anonymous&gt;</code> section,
+ProFTPD permanently switches to that UID/GID before the <code>chroot(2)</code>.
+
+<p>
+Normally, anonymous logins are <b>not</b> required to authenticate with a
+password, but <b>are</b> expected to enter a valid email address in place of a
+normal password; this email address is logged.  If this behavior is undesirable
+for a given <code>&lt;Anonymous&gt;</code> configuration section, it can be
+overridden via the
+<a href="mod_auth.html#AnonRequirePassword"><code>AnonRequirePassword</code></a>
+directive.
+
+<p>
+The following is an example of a typical anonymous FTP configuration:
+<pre>
+  &lt;Anonymous /home/ftp&gt;
+    # After anonymous login, daemon runs as user/group ftp.
+    User ftp
+    Group ftp
+
+    # The client login 'anonymous' is aliased to the "real" user 'ftp'.
+    UserAlias anonymous ftp
+
+    # Deny write operations to all directories, except for 'incoming' where
+    # STOR is allowed (but READ operations are prohibited).
+    &lt;Directory *&gt;
+      &lt;Limit WRITE&gt;
+        DenyAll
+      &lt;/Limit&gt;
+    &lt;/Directory&gt;
+
+    &lt;Directory incoming&gt;
+      &lt;Limit READ&gt;
+        DenyAll
+      &lt;/Limit&gt;
+
+      &lt;Limit STOR&gt;
+        AllowAll
+      &lt;/Limit&gt;
+    &lt;/Directory&gt;
+  &lt;/Anonymous&gt;
+</pre>
 
 <p>
 <hr>
@@ -323,6 +399,70 @@ greater detail.
 See also: <a href="#AllowFilter"><code>AllowFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
 
 <hr>
+<h2><a name="Directory">&lt;Directory&gt;</a></h2>
+<strong>Syntax:</strong> &lt;Directory <em>path</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>&lt;Directory&gt;</code> section creates a set of configuration
+directives which applies only to the specified directory <i>and</i> its
+sub-directories.  The section is ended with a matching
+<code>&lt;/Directory&gt;</code>.  Per-directory configuration is implemented
+with a "closest" match algorithm, meaning that the
+<code>&lt;Directory&gt;</code> section with the closest matching path to the
+actual path of the file/directory in question is used.  Per-directory
+configuration is inherited by all sub-directories until a closer matching
+<code>&lt;Directory&gt;</code> is found.
+
+<p>
+A trailing slash and wildcard (&quot;<code>/*</code>&quot;) can be appended to
+the <em>path</em>, specifying that the configuration section applies <b>only</b>
+to the contents (and sub-contents), <b>not</b> to the actual directory itself.
+Such wildcard matches always take precedence over non-wildcard
+<code>&lt;Directory&gt;</code> configuration sections.
+<code>&lt;Directory&gt;</code> sections <b>cannot</b> be nested; they are
+automatically nested at runtime based on their <em>paths</em>.  <em>Paths</em>
+must always be absolute (except inside <code>&lt;Anonymous&gt;</code> sections),
+and should not reference symbolic links. Path inside of an
+<code>&lt;Anonymous&gt;</code> section <i>may</i> be relative, indicating that
+they are based on the <code>&lt;Anonymous&gt;</code> root directory.
+
+<p>
+As of <code>proftpd-1.1.3</code> and later, <code>&lt;Directory&gt;</code> paths
+that begin with the special character <code>~</code>, and which do not specify
+a username immediately after the <code>~</code> character, are put into a
+special <em>deferred</em> mode.  When <em>deferred</em> mode, the
+<code>&lt;Directory&gt;</code> section is not merged into the overall server
+configuration at startup time, but instead the merge is <em>deferred</em> until
+the client has authentication, at which time the <code>~</code> character is
+replaced with that authenticated user's home directory.  This allows for a
+<code>&lt;Directory&gt;</code> section which applies to <i>all</i> users' home
+directories. This feature is not supported within an
+<code>&lt;Anonymous&gt;</code> section, however.
+
+<p>
+Some examples:
+<pre>
+  &lt;Directory /users/robroy/private&gt;
+    HideNoAccess on
+  &lt;/Directory&gt;
+
+  &lt;Directory ~/anonftp&gt;
+    &lt;Limit WRITE&gt;
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+
+<p>
+More information on using <code>&lt;Directory&gt;</code> sections, including
+examples, can be found in the
+<a href="../howto/Directory.html"><code>&lt;Directory&gt;</code> howto</a>.
+
+<hr>
 <h2><a name="DisplayChdir">DisplayChdir</a></h2>
 <strong>Syntax:</strong> DisplayChdir <em>filename ["on"|"off"]</em><br>
 <strong>Default:</strong> None<br>
@@ -474,6 +614,41 @@ ProFTPD's filesystem API.  The currently supported options are:
     extended attributes.
   </li>
 </ul>
+
+<hr>
+<hr>
+<h2><a name="Global">Global</a></h2>
+<strong>Syntax:</strong> &lt;Global&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.16 and later
+
+<p>
+The <code>&lt;Global&gt;</code> section is used to create a set of
+configuration directives; this set is then applied universally to both the main
+server configuration <i>and</i> <b>all</b> <code>&lt;VirtualHost&gt;</code>
+sections.  Most, but not all, other directives can be used inside of a
+<code>&lt;Global&gt;</code> section.
+
+<p>
+In addition, multiple <code>&lt;Global&gt;</code> sections can be used in the
+configuration file.  At startup, all <code>&lt;Global&gt;</code> sections are
+combined, and then merged into each server's configuration.
+<code>&lt;Global&gt;</code> sections are closed by a matching
+<code>&lt;/Global&gt;</code> directive.
+
+<hr>
+<h2><a name="Group">Group</a></h2>
+<strong>Syntax:</strong> Group <em>name</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>Group</code> directive configures which GID ProFTPD will use when
+running.  See the <a href="#User><code>User</code></a> directive for details.
 
 <hr>
 <h2><a name="GroupOwner">GroupOwner</a></h2>
@@ -650,6 +825,36 @@ Examples:
   Include /etc/proftpd/conf/tls.conf
   Include /etc/proftpd/conf/vhosts/*.conf
 </pre>
+
+<p>
+<hr>
+<h2><a name="Limit">&lt;Limit&gt;</a></h2>
+<strong>Syntax:</strong> &lt;Limit <em>cmd-list</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>&lt;Limit&gt;</code> section is used to place access restrictions on
+one or more FTP commands, within a given configuration section.  Limits flow
+downward, so that a <code>&lt;Limit&gt;</code> section in the &quot;server
+config&quot; context applies to all <code>&lt;Directory&gt;</code> and
+<code>&lt;Anonymous&gt;</code> sections that also reside in that configuration.
+Any number of command parameters can be specified in the <em>cmd-list</em>,
+against which the contents of the <code>&lt;Limit&gt;</code> section will be
+applied.
+
+<p>
+<code>&lt;Limit&gt;</code> command restrictions should <b>not</b> be confused
+with file/directory access permission.  While limits can be used to
+<i>restrict</i> a command in a certain directory, they cannot be used to
+<i>override</i> the file permissions; limits <b>cannot</b> <i>grant</i> access
+if the underlying filesystem restricts access.
+
+<p>
+More information on using <code>&lt;Limit&gt;</code> sections, including
+examples, can be found in the <a href="../howto/Limit.html"><code>&lt;Limit&gt;</code> howto</a>.
 
 <p>
 <hr>
@@ -1757,6 +1962,38 @@ uploaded file can be changed by issuing a <code>SITE CHMOD</code> command,
 <p>
 The <code>Umask</code> <a href="../howto/Umask.html">howto</a> also talks about
 umasks in greater detail.
+
+<p>
+<hr>
+<h2><a name="User">User</a></h2>
+<strong>Syntax:</strong> User <em>name</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>User</code> directive configures the UID that ProFTPD will use when
+running.
+
+<p>
+By default, ProFTPD runs as &quot;root&quot;; this is considered undesirable in
+all but the most trusted network configurations.  The <code>User</code>
+directive, used in conjunction with the <a href="#Group"><code>Group</code></a>
+directive, instructs ProFTPD to switch to the specified UID/GID as quickly as
+possible after startup.
+
+<p>
+On some Unix variants, ProFTPD will occasionally switch back to &quot;root&quot;
+in order to accomplish a task which requires superuser access.  Once that task
+is completed, root privileges are relinquished and the server returns to running
+as the specified UID/GID.  When applied to a <code>&lt;VirtualHost&lgt;</code>
+section, ProFTPD will run as the specified UID/GID on connections destined for
+the virtual server's address and port.  If either <code>User</code> or
+<code>Group</code> is applied to an <code>&lt;Anonymous&gt;</code> section,
+ProFTPD will establish an anonymous login when a client attempts to authenticate
+with that specified <code>User</code> name, as well as permanently switching to
+the corresponding UID/GID after authentication.
 
 <p>
 <hr>
