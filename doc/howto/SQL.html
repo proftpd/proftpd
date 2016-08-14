@@ -1,15 +1,12 @@
-<!-- $Id: SQL.html,v 1.18 2014-01-22 17:14:30 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
-
 <html>
 <head>
-<title>ProFTPD mini-HOWTO - SQL and mod_sql</title>
+<title>ProFTPD: SQL and mod_sql</title>
 </head>
 
 <body bgcolor=white>
 
 <hr>
-<center><h2><b>SQL and <code>mod_sql</code></b></h2></center>
+<center><h2><b>ProFTPD: SQL and <code>mod_sql</code></b></h2></center>
 <hr>
 
 <p>
@@ -30,7 +27,7 @@ daemon to use <code>mod_sql</code>, use the <code>--with-modules</code> option
 of the <code>configure</code> script, specifying both <code>mod_sql</code> and
 the backed module, <i>e.g.</i>:
 <pre>
-  ./configure --with-modules=mod_sql:mod_sql_mysql
+  $ ./configure --with-modules=mod_sql:mod_sql_mysql
 </pre>
 Sometimes the necessary header and library files for building in SQL support
 are in non-standard locations; the <code>configure</code> script needs to be
@@ -49,7 +46,7 @@ and the path the library was:
 </pre>
 then, the above <code>configure</code> line would be changed to look like:
 <pre>
-  ./configure \
+  $ ./configure \
     --with-modules=mod_sql:mod_sql_mysql \
     --with-includes=/usr/local/mysql/include/mysql \
     --with-libraries=/usr/local/mysql/lib/mysql
@@ -66,7 +63,7 @@ encrypting passwords stored in database tables.  The <code>configure</code>
 options for building an OpenSSL-capable <code>mod_sql</code> might look
 something like this:
 <pre>
-  CFLAGS=-DHAVE_OPENSSL LIBS=-lcrypto ./configure \
+  $ CFLAGS=-DHAVE_OPENSSL LIBS=-lcrypto ./configure \
     --with-modules=mod_sql:mod_sql_mysql \
     --with-includes=/usr/local/mysql/include/mysql:/usr/local/openssl/include \
     --with-libraries=/usr/local/mysql/lib/mysql:/usr/local/openssl/lib
@@ -592,12 +589,12 @@ is the base64-encoded value of the digested password string.  To get a list
 of the message digest algorithms supported by your OpenSSL installation, you
 can execute the following command:
 <pre>
-  openssl list-message-digest-commands
+  $ openssl list-message-digest-commands
 </pre>
 To generate the string to put into the SQL tables, using MD5 as the digest
 algorithm and &quot;password&quot; as the password:
 <pre>
-  /bin/echo &quot;{md5}&quot;`/bin/echo -n &quot;password&quot; | openssl dgst -binary -md5 | openssl enc -base64`
+  $ /bin/echo &quot;{md5}&quot;`/bin/echo -n &quot;password&quot; | openssl dgst -binary -md5 | openssl enc -base64`
 </pre>
 The &quot;{md5}&quot; prefix is necessary, so that <code>mod_sql</code> knows
 what digest algorithm was used.
@@ -606,7 +603,7 @@ what digest algorithm was used.
 Here's a quick and dirty example of generating database-ready strings using
 every digest algorithm supported by the installed OpenSSL:
 <pre>
-  for c in `openssl list-message-digest-commands`; do
+  $ for c in `openssl list-message-digest-commands`; do
     /bin/echo "{$c}"`/bin/echo -n "password" | openssl dgst -binary -$c | openssl enc -base64`
   done
 </pre>
@@ -749,8 +746,5 @@ compiled with SSL support.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2014-01-22 17:14:30 $</i><br>
-<hr>
-
 </body>
 </html>

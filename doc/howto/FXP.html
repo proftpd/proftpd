@@ -1,12 +1,12 @@
 <html>
 <head>
-<title>ProFTPD HOWTO: FXP (Site-to-Site Transfers)</title>
+<title>ProFTPD: FXP (Site-to-Site Transfers)</title>
 </head>
 
 <body bgcolor=white>
 
 <hr>
-<center><h2><b>ProFTPD and FXP (Site-to-Site Transfers)</b></h2></center>
+<center><h2><b>ProFTPD: FXP (Site-to-Site Transfers)</b></h2></center>
 <hr>
 
 <p>
@@ -27,9 +27,10 @@ In a site-to-site transfer, the client logs in to two servers (server A and
 server B).  It then arranges for a file transfer, telling one server (server A)
 that it will be a passive transfer, and the other server (server B) that it
 will be an active transfer.  For a passive transfer, server A will return an
-address/port (via response to the PASV command) to which the client is to
-connect.  The client then passes that address/port in a PORT command to server
-B.  Then, the client sends a RETR to one of the servers and a STOR to the
+address/port (via response to the <code>PASV</code> command) to which the
+client is to connect.  The client then passes that address/port in a
+<code>PORT</code> command to server B.  Then, the client sends a
+<code>RETR</code> to one of the servers and a <code>STOR</code> to the
 other, thus starting the transfer.  The data does not pass to the client
 machine at all.
 

@@ -23,6 +23,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#AuthOrder">AuthOrder</a>
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DefaultAddress">DefaultAddress</a>
+  <li><a href="#DefaultServer">DefaultServer</a>
   <li><a href="#DenyFilter">DenyFilter</a>
   <li><a href="#Directory">&lt;Directory&gt;</a>
   <li><a href="#DisplayChdir">DisplayChdir</a>
@@ -61,6 +62,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TCPBacklog">TCPBacklog</a>
   <li><a href="#TimeoutIdle">TimeoutIdle</a>
   <li><a href="#TimeoutLinger">TimeoutLinger</a>
+  <li><a href="#TimesGMT">TimesGMT</a>
   <li><a href="#Trace">Trace</a>
   <li><a href="#TraceLog">TraceLog</a>
   <li><a href="#TraceOptions">TraceOptions</a>
@@ -351,6 +353,32 @@ addresses.
 
 <p>
 See also: <a href="VirtualHost"><code>&lt;VirtualHost&gt;</code></a>
+
+<p>
+<hr>
+<h2><a name="DefaultServer">DefaultServer</a></h2>
+<strong>Syntax:</strong> DefaultServer <em>on|off</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>DefaultServer</code> directive controls which server configuration is
+used as the fallback when a matching vhost cannot be found for an incoming
+connection.
+
+<p>
+Normally, if the incoming connection is destined for an IP address which is
+neither the host's primary IP address nor one of the addresses specified in a
+<code>&lt;VirtualHost&gt;</code> configuration section, the "unknown"
+connection is issued a "no server available to service your request" response,
+and is disconnected.  When <code>DefaultServer</code> is enabled for either
+the primary server configuration <i>or</i> a virtual server, these "unknown"
+connections are handled by that configuration.
+
+<p>
+Only a single server configuration can be set as the <code>DefaultServer</code>.
 
 <p>
 <hr>
@@ -1813,6 +1841,27 @@ this <code>TimeoutLinger</code> delay unnecessarily.  The <code>proftpd</code>
 daemon can't detect which type of behavior the client will use, so it is
 up to the site admin to configure <code>proftpd</code> to work best with
 their FTP clients.
+
+<p>
+<hr>
+<h2><a name="TimesGMT">TimesGMT</a></h2>
+<strong>Syntax:</strong> TimesGMT <em>on|off</em><br>
+<strong>Default:</strong> TimesGMT on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0 and later
+
+<p>
+The <code>TimesGMT</code> directive configures whether ProFTPD will use
+timestamps in GMT, not local time, for directory listings (via
+<code>LIST</code> and <code>NLST</code> commands) and the <code>MDTM</code>
+command.
+
+<p>
+To configure ProFTPD to use local time, use:
+<pre>
+  TimesGMT off
+</pre>
 
 <p>
 <hr>

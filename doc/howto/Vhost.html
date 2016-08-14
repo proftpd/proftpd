@@ -1,15 +1,12 @@
-<!-- $Id: Vhost.html,v 1.7 2009-01-12 23:41:26 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Vhost.html,v $ -->
-
 <html>
 <head>
-<title>ProFTPD mini-HOWTO - Virtual Servers</title>
+<title>ProFTPD: Virtual Servers</title>
 </head>
 
 <body bgcolor=white>
 
 <hr>
-<center><h2><b>ProFTPD and Virtual Servers</b></h2></center>
+<center><h2><b>ProFTPD: Virtual Servers</b></h2></center>
 <hr>
 
 <p><a name="Definition"></a>
@@ -43,7 +40,8 @@ Hence the &quot;virtual&quot;.
 <p><a name="Configuration"></a>
 There are three &quot;server&quot; contexts (sometimes also called
 <i>sections</i>) in the <code>proftpd.conf</code> configuration file:
-<a href="http://www.proftpd.org/docs/directives/linked/config_ref_VirtualHost.html"><code>&lt;VirtualHost&gt;</code></a>, <a href="http://www.proftpd.org/docs/directives/linked/config_ref_Global.html"><code>&lt;Global&gt;</code></a>, and &quot;server config&quot;.
+<a href="../modules/mod_core.html#VirtualHost"><code>&lt;VirtualHost&gt;</code></a>, <a href="../modules/mod_core.html#Global"><code>&lt;Global&gt;</code></a>,
+and &quot;server config&quot;.
 
 <p>
 The <code>&lt;VirtualHost&gt;</code> context is used to define the configuration
@@ -115,17 +113,18 @@ function to determine the IP address to which the default server should listen.
 On a single address, single interface system, this default is fine. It is one
 a multiple address system that the default handling does not always work;
 the administrator may wish to explicitly specify to which address the default
-server should listen.  This is what the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_DefaultAddress.html"><code>DefaultAddress</code></a>
-configuration directive provides: the ability to specify to which IP address
-the &quot;server config&quot; vhost should listen.
+server should listen.  This is what the <a href="../modules/mod_core.html#DefaultAddress"><code>DefaultAddress</code></a> configuration directive provides: the
+ability to specify to which IP address the &quot;server config&quot; vhost
+should listen.
 
 <p>
 By default, every server will listen to port 21, the IANA standard port for
 FTP.  If you want to have server react to a different port, use the
-<a href="http://www.proftpd.org/docs/directives/linked/config_ref_Port.html"><code>Port</code></a> directive to change the port.  As might be mentioned
-elsewhere, if you have many different <code>&lt;VirtualHost&gt;</code> contexts
-using the same address but different ports, you'll want to make sure that
-you leave each <code>Port</code>-1 number empty.  <a href="http://www.faqs.org/rfcs/rfc959.html">RFC 959</a> specifies that the source port for an active
+<a href="../modules/mod_core.html#Port"><code>Port</code></a> directive to
+change the port.  As might be mentioned elsewhere, if you have many different
+<code>&lt;VirtualHost&gt;</code> sections using the <i>same address</i> but
+different <i>ports</i>, you'll want to make sure that you leave each
+<code>Port</code>-1 number empty.  <a href="http://www.faqs.org/rfcs/rfc959.html">RFC 959</a> specifies that the source port for an active
 data transfer (read <a href="http://slacksite.com/other/ftp.html">here</a>)
 must be <code>L-1</code>, where <code>L</code> is the port on which your server
 listens.  Also, as mentioned in the <code>Port</code> documentation, using:
@@ -137,20 +136,20 @@ is sometimes used to disable the &quot;server config&quot; configuration.
 
 <p>
 There is another configuration directive that comes into play in all of this
-: <a href="http://www.proftpd.org/docs/directives/linked/config_ref_DefaultServer.html"><code>DefaultServer</code></a>.  Here is why: when a client
-contacts <code>proftpd</code>, the server has to determine which configuration
-to use for handling the client.  To do this, it searches its list of configured
-vhosts, searching for a vhost whose IP address matches the IP address that the
-client contacted.  If there's a matching vhost for that IP address, simple:
-use that configuration.  If not, <code>proftpd</code> will then resort to
-using the configuration that bears the <code>DefaultServer</code> directive,
-which says that the server configuration in which it appers should be used
-in cases like this.  If there is no <code>DefaultServer</code> directive
-in the <code>proftpd.conf</code> file, and no matching configuration can
-be found, then the client will see a message such as &quot;no server available
-to service your request&quot;.  The <code>DefaultServer</code> can be
-used to say that a <code>&lt;VirtualHost&gt;</code> should be the default,
-and not necessarily the &quot;server config&quot; context, as is common.
+: <a href="../modules/mod_core.html#DefaultServer"><code>DefaultServer</code></a>.  Here is why: when a client contacts <code>proftpd</code>, the server has to
+determine which configuration to use for handling the client.  To do this, it
+searches its list of configured vhosts, searching for a vhost whose IP address
+matches the IP address that the client contacted.  If there is a matching vhost
+for that IP address, simple: use that configuration.  If not,
+<code>proftpd</code> will then resort to using the configuration that bears the
+<code>DefaultServer</code> directive, which says that the server configuration
+in which it appers should be used in cases like this.  If there is no
+<code>DefaultServer</code> directive in the <code>proftpd.conf</code> file,
+and no matching configuration can be found, then the client will see a message
+such as &quot;no server available to service your request&quot;.  The
+<code>DefaultServer</code> can be used to say that a
+<code>&lt;VirtualHost&gt;</code> should be the default, and not necessarily the
+&quot;server config&quot; context, as is common.
 
 <p>
 If you would like the same virtual host configuration to be used for
@@ -169,12 +168,13 @@ of the &quot;server config&quot; context, use <code>DefaultAddress</code>
 
 <p>
 There is one last configuration directive about which an administrator should
-know: <a href="http://www.proftpd.org/docs/directives/linked/config_ref_SocketBindTight.html"><code>SocketBindTight</code></a>.  By default, the
+know: <a href="../modules/mod_core.html#SocketBindTight"><code>SocketBindTight</code></a>.  By default, the
 <code>proftpd</code> daemon will listen on all addresses, port 21, for the
 connection requests of remote clients.  Sometimes, the administrator may
 wish to have the <code>proftpd</code> daemon listen <b>only</b> on the IP
 addresses for which it has been configured, and not <i>every</i> address.
-To accomplish this, simply use the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_SocketBindTight.html"><code>SocketBindTight</code></a> configuration directive:
+To accomplish this, simply use the <code>SocketBindTight</code> configuration
+directive:
 <pre>
   SocketBindTight on
 </pre>
@@ -232,9 +232,7 @@ addresses/DNS names:
   DefaultAddress 1.2.3.4 ftp.example.com
 </pre>
 
+<p>
 <hr>
-Last Updated: <i>$Date: 2009-01-12 23:41:26 $</i><br>
-<hr>
-
 </body>
 </html>
