@@ -36,6 +36,7 @@
   the user's quota being exceeded.
 - Bug 4263 - SITE CPTO terminated by TimeoutIdle.
 - Bug 4265 - Omit version information from ServerIdent banner by default.
+- Bug 4264 - Support larger fixed DH groups in SSH key exchange.
 
 1.3.6rc2 - Released 10-Mar-2016
 --------------------------------
