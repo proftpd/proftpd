@@ -1269,6 +1269,9 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
         strncmp(cmd->argv[i], "diffie-hellman-group14-sha1", 28) != 0 &&
 #if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
     (OPENSSL_VERSION_NUMBER > 0x000908000L)
+        strncmp(cmd->argv[i], "diffie-hellman-group14-sha256", 30) != 0 &&
+        strncmp(cmd->argv[i], "diffie-hellman-group16-sha512", 30) != 0 &&
+        strncmp(cmd->argv[i], "diffie-hellman-group18-sha512", 30) != 0 &&
         strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha256", 37) != 0 &&
 #endif
         strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha1", 35) != 0 &&

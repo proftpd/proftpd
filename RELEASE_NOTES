@@ -51,6 +51,12 @@ ChangeLog files.
       The mod_sftp module now supports the "curve25519-sha256@libssh.org"
       SSH key exchange algorithm, when compiled with the libsodium library.
 
+      In addition, the following key exchange algorithms are supported:
+
+        diffie-hellman-group14-sha256
+        diffie-hellman-group16-sha512
+        diffie-hellman-group18-sha512
+
     SFTPOptions IgnoreFIFOs, IgnoreSFTPSetExtendedAttributes, IgnoreSFTPUploadExtendedAttributes
 
 
