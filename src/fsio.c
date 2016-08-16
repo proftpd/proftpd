@@ -1640,6 +1640,10 @@ void pr_fs_statcache_reset(void) {
     lstat_statcache_tab = NULL;
   }
 
+  /* Note: we do not need to explicitly destroy each entry in the statcache
+   * tables, since ALL entries are allocated out of this statcache_pool.
+   * And we destroy this pool here.  Much easier cleanup that way.
+   */
   if (statcache_pool != NULL) {
     destroy_pool(statcache_pool);
     statcache_pool = make_sub_pool(permanent_pool);
