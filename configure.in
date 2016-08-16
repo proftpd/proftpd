@@ -89,6 +89,11 @@ fi
 
 LDFLAGS="-L\$(top_srcdir)/lib $LDFLAGS"
 
+if test $ac_cv_prog_gcc = yes; then
+  dnl Make sure to use the -rdynamic linker flag, for stacktraces
+  LDFLAGS="$LDFLAGS -rdynamic"
+fi
+
 # Record the current CPPFLAGS, LDFLAGS, and LIBS here
 ac_orig_cppflags="$CPPFLAGS"
 ac_orig_ldflags="$LDFLAGS"
@@ -115,6 +120,13 @@ if test $ac_cv_prog_gcc = yes; then
   dnl test for -Wall
   AC_MSG_CHECKING([whether the C compiler accepts -Wall])
   CFLAGS="-Wall"
+  AC_TRY_COMPILE(,,
+    AC_MSG_RESULT(yes); fullCFLAGS="$fullCFLAGS $CFLAGS",
+    AC_MSG_RESULT(no))
+
+  dnl test for -fno-omit-frame-pointer
+  AC_MSG_CHECKING([whether the C compiler accepts -fno-omit-frame-pointer])
+  CFLAGS="-fno-omit-frame-pointer"
   AC_TRY_COMPILE(,,
     AC_MSG_RESULT(yes); fullCFLAGS="$fullCFLAGS $CFLAGS",
     AC_MSG_RESULT(no))
@@ -977,7 +989,7 @@ AC_ARG_ENABLE(xattr,
   ])
 
 dnl Enable developer code
-pr_devel_cflags="-g3 -O0 -fno-omit-frame-pointer -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
+pr_devel_cflags="-g3 -O0 -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
 pr_devel_libs=""
 
 AC_ARG_ENABLE(devel,
@@ -1025,82 +1037,8 @@ AC_ARG_ENABLE(devel,
         pr_devel_libs="-pg $pr_devel_libs"
       fi
 
-      if test `echo $enableval | grep -c stacktrace` = "1"; then
-        pr_devel_cflags="-DPR_DEVEL_STACK_TRACE $pr_devel_cflags"
-
-        # On FreeBSD, the libexecinfo port is needed for the backtrace(3)
-        # function; we thus also need to check for the libexecinfo library
-        AC_CHECK_LIB(execinfo, backtrace)
-
-        # Some libcs need the execinfo.h header for their backtrace symbols,
-        # and some (like Solaris) want ucontext.h.  Check for those headers
-        # here.
-        AC_CHECK_HEADERS(execinfo.h ucontext.h)
-
-        # Make sure that we can find the backtrace(3) and backtrace_symbols(3)
-        # functions
-        AC_MSG_CHECKING([for backtrace])
-        AC_TRY_LINK(
-          [
-            #ifdef HAVE_STDDEF_H
-            # include <stddef.h>
-            #endif
-            #ifdef HAVE_STDLIB_H
-            # include <stdlib.h>
-            #endif
-            #ifdef HAVE_EXECINFO_H
-            # include <execinfo.h>
-            #endif
-            #ifdef HAVE_UCONTEXT_H
-            # include <ucontext.h>
-            #endif
-          ],
-          [
-            void **syms = NULL;
-            int res, nsyms = 0;
-            res = backtrace(syms, nsyms);
-          ],
-          [
-            AC_MSG_RESULT(yes)
-            AC_DEFINE(HAVE_BACKTRACE, 1, [Define if you have backtrace])
-          ],
-          [
-            AC_MSG_RESULT(no)
-          ]
-        )
-
-        AC_MSG_CHECKING([for backtrace_symbols])
-        AC_TRY_LINK(
-          [
-            #ifdef HAVE_STDDEF_H
-            # include <stddef.h>
-            #endif
-            #ifdef HAVE_STDLIB_H
-            # include <stdlib.h>
-            #endif
-            #ifdef HAVE_EXECINFO_H
-            # include <execinfo.h>
-            #endif
-            #ifdef HAVE_UCONTEXT_H
-            # include <ucontext.h>
-            #endif
-          ],
-          [
-            void **syms = NULL;
-            int nsyms = 0;
-            char **res;
-            res = backtrace_symbols(syms, nsyms);
-          ],
-          [
-            AC_MSG_RESULT(yes)
-            AC_DEFINE(HAVE_BACKTRACE_SYMBOLS, 1, [Define if you have backtrace_symbols])
-          ],
-          [
-            AC_MSG_RESULT(no)
-          ]
-        )
-
-      fi
+      dnl Here is where we WOULD check for the stacktrace developer option.
+      dnl However, as of Issue 276, stacktraces are now enabled by default.
 
       if test `echo $enableval | grep -c timing` = "1"; then
         pr_devel_cflags="-DPR_DEVEL_TIMING $pr_devel_cflags"
@@ -1174,15 +1112,15 @@ AC_ARG_ENABLE(scoreboard-updates,
     fi
   ])
 
-keepsyms="no"
+keepsyms="yes"
 AC_ARG_ENABLE(strip,
   [AC_HELP_STRING(
-    [--disable-strip],
-    [do not strip debugging symbols from installed code (default=no)])
+    [--enable-strip],
+    [strip debugging symbols from installed code (default=no)])
   ],
   [
-    if test x"$enableval" = xno ; then
-      keepsyms="yes"
+    if test x"$enableval" = xyes ; then
+      keepsyms="no"
     fi
   ]
 )
@@ -2687,6 +2625,72 @@ else
   fi
 fi
 
+dnl Check for stacktrace support
+dnl On FreeBSD, the libexecinfo port is needed for the backtrace(3) function;
+dnl we thus also need to check for the libexecinfo library
+AC_CHECK_LIB(execinfo, backtrace)
+
+dnl Some libcs need the execinfo.h header for their backtrace symbols, and
+dnl some (like Solaris) want ucontext.h.  Check for those headers here.
+AC_CHECK_HEADERS(execinfo.h ucontext.h)
+
+dnl Make sure that we can find the backtrace(3) and backtrace_symbols(3)
+dnl functions
+AC_MSG_CHECKING([for backtrace])
+AC_TRY_LINK(
+  [
+    #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_EXECINFO_H
+    # include <execinfo.h>
+    #endif
+    #ifdef HAVE_UCONTEXT_H
+    # include <ucontext.h>
+    #endif
+  ], [
+    void **syms = NULL;
+    int res, nsyms = 0;
+    res = backtrace(syms, nsyms);
+  ], [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_BACKTRACE, 1, [Define if you have backtrace])
+  ], [
+    AC_MSG_RESULT(no)
+  ]
+)
+
+AC_MSG_CHECKING([for backtrace_symbols])
+AC_TRY_LINK(
+  [
+    #ifdef HAVE_STDDEF_H
+    # include <stddef.h>
+    #endif
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_EXECINFO_H
+    # include <execinfo.h>
+    #endif
+    #ifdef HAVE_UCONTEXT_H
+    # include <ucontext.h>
+    #endif
+  ], [
+    void **syms = NULL;
+    int nsyms = 0;
+    char **res;
+    res = backtrace_symbols(syms, nsyms);
+  ], [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_BACKTRACE_SYMBOLS, 1, [Define if you have backtrace_symbols])
+  ], [
+    AC_MSG_RESULT(no)
+  ]
+)
+
 dnl Run a small test program to see if the host's printf(3) family can
 dnl actually handle the %llu format.
 AC_MSG_CHECKING([whether printf supports %llu format]);
@@ -3725,7 +3729,7 @@ else
     INSTALL_STRIP=""
 
   else 
-    dnl Make sure to strip symbols from non-developer object files.
+    dnl Make sure to strip symbols from object files.
     INSTALL_STRIP="-s"
   fi
 fi
