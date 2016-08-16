@@ -60,6 +60,7 @@ static const char *trace_log = NULL;
 #endif /* PR_USE_TRACE */
 
 /* Necessary prototypes. */
+static void core_exit_ev(const void *, void *);
 static int core_sess_init(void);
 static void reset_server_auth_order(void);
 
@@ -6250,6 +6251,9 @@ MODRET core_post_pass(cmd_rec *cmd) {
       PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
   }
 
+  /* Register an exit handler here, for clearing the statcache. */
+  pr_event_register(&core_module, "core.exit", core_exit_ev, NULL);
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -6316,6 +6320,10 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
 
 /* Event handlers
  */
+
+static void core_exit_ev(const void *event_data, void *user_data) {
+  pr_fs_statcache_reset();
+}
 
 static void core_restart_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_reset();
