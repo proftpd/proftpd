@@ -2950,19 +2950,19 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
         int r = (int) (rand() / (RAND_MAX / pref_dhs->nelts + 1));
 
         dhs = pref_dhs->elts;
-        dh = dhs[r];
+        dh = DHparams_dup(dhs[r]);
 
       } else if (larger_dhs->nelts > 0) {
         int r = (int) (rand() / (RAND_MAX / larger_dhs->nelts + 1));
 
         dhs = larger_dhs->elts;
-        dh = dhs[r];
+        dh = DHparams_dup(dhs[r]);
 
       } else if (smaller_dhs->nelts > 0) {
         int r = (int) (rand() / (RAND_MAX / smaller_dhs->nelts + 1));
 
         dhs = smaller_dhs->elts;
-        dh = dhs[r];
+        dh = DHparams_dup(dhs[r]);
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -2973,7 +2973,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
         use_fixed_modulus = TRUE;
       }
 
-      if (dh) {
+      if (dh != NULL) {
         BIGNUM *dh_p = NULL, *dh_g = NULL, *dup_p, *dup_g;
 
         pr_trace_msg(trace_channel, 20, "client requested min %lu, pref %lu, "
