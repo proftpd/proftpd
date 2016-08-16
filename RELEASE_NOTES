@@ -19,6 +19,8 @@ ChangeLog files.
     unexpectedly.
   + Default FTP/SSH2 banner changed to no longer include version information.
   + New -X command-line option for disabling forking, to aid debugging.
+  + Logging of stacktraces now enabled by default; this also means that the
+    installed executables do not have symbols stripped at install time.
 
 
   + Changed Modules:
