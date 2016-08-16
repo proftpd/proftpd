@@ -408,31 +408,33 @@ MODRET set_debuglevel(cmd_rec *cmd) {
 }
 
 MODRET set_defaultaddress(cmd_rec *cmd) {
+  const char *name, *main_ipstr;
   const pr_netaddr_t *main_addr = NULL;
   array_header *addrs = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT);
 
-  main_addr = pr_netaddr_get_addr2(main_server->pool, cmd->argv[1], &addrs,
-    addr_flags);
+  name = cmd->argv[1];
+  main_addr = pr_netaddr_get_addr2(main_server->pool, name, &addrs, addr_flags);
   if (main_addr == NULL) {
-    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
-      (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve '", name, "'",
       NULL));
   }
 
   /* If the given name is a DNS name, automatically add a ServerAlias
    * directive.
    */
-  if (pr_netaddr_is_v4(cmd->argv[1]) == FALSE &&
-      pr_netaddr_is_v6(cmd->argv[1]) == FALSE) {
-    add_config_param_str("ServerAlias", 1, cmd->argv[1]);
+  if (pr_netaddr_is_v4(name) == FALSE &&
+      pr_netaddr_is_v6(name) == FALSE) {
+    add_config_param_str("ServerAlias", 1, name);
   }
 
-  main_server->ServerAddress = pr_netaddr_get_ipstr(main_addr);
+  main_server->ServerAddress = main_ipstr = pr_netaddr_get_ipstr(main_addr);
   main_server->addr = main_addr;
 
   if (addrs != NULL) {
@@ -441,7 +443,14 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
 
     /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++) {
-      const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
+      const char *ipstr;
+
+      ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+      /* Skip duplicate addresses. */
+      if (strcmp(main_ipstr, ipstr) == 0) {
+        continue;
+      }
 
 #ifdef PR_USE_IPV6
       if (pr_netaddr_use_ipv6()) {
@@ -471,6 +480,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     char *addrs_str = (char *) pr_netaddr_get_ipstr(main_addr);
 
     for (i = 2; i < cmd->argc; i++) {
+      const char *addr_ipstr;
       const pr_netaddr_t *addr;
       addrs = NULL;
 
@@ -481,7 +491,8 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
           cmd->argv[i], "': ", strerror(errno), NULL));
       }
 
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(addr));
+      addr_ipstr = pr_netaddr_get_ipstr(addr);
+      add_config_param_str("_bind_", 1, addr_ipstr);
 
       /* If the given name is a DNS name, automatically add a ServerAlias
        * directive.
@@ -491,8 +502,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
         add_config_param_str("ServerAlias", 1, cmd->argv[i]);
       }
 
-      addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ",
-        pr_netaddr_get_ipstr(addr), NULL);
+      addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ", addr_ipstr, NULL);
 
       if (addrs != NULL) {
         register unsigned int j;
@@ -500,7 +510,16 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
 
         /* For every additional address, implicitly add a bind record. */
         for (j = 0; j < addrs->nelts; j++) {
-          add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[j]));
+          const char *ipstr;
+
+          ipstr = pr_netaddr_get_ipstr(elts[j]);
+
+          /* Skip duplicate addresses. */
+          if (strcmp(addr_ipstr, ipstr) == 0) {
+            continue;
+          }
+
+          add_config_param_str("_bind_", 1, ipstr);
         }
       }
     }
@@ -508,8 +527,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     pr_log_debug(DEBUG3, "setting default addresses to %s", addrs_str);
 
   } else {
-    pr_log_debug(DEBUG3, "setting default addresses to %s",
-      pr_netaddr_get_ipstr(main_addr));
+    pr_log_debug(DEBUG3, "setting default address to %s", main_ipstr);
   }
 
   return PR_HANDLED(cmd);
