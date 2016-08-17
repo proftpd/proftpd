@@ -2576,6 +2576,9 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 
           } else if (nbits == smaller_dh_nbits) {
             *((DH **) push_array(smaller_dhs)) = dh;
+
+          } else {
+            DH_free(dh);
           }
 
         } else {
@@ -2596,6 +2599,9 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 
           } else if (nbits == larger_dh_nbits) {
             *((DH **) push_array(larger_dhs)) = dh;
+
+          } else {
+            DH_free(dh);
           }
         }
       }
