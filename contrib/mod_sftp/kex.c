@@ -2807,7 +2807,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 
   dhparam_path = PR_CONFIG_DIR "/dhparams.pem";
   c = find_config(main_server->conf, CONF_PARAM, "SFTPDHParamFile", FALSE);
-  if (c) {
+  if (c != NULL) {
     dhparam_path = c->argv[0];
   }
 
@@ -2838,14 +2838,14 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
       register unsigned int i;
       pool *tmp_pool;
       array_header *smaller_dhs, *pref_dhs, *larger_dhs;
-      DH *dh, **dhs;
+      DH *chosen_dh, **dhs;
       uint32_t smaller_dh_nbits = 0, larger_dh_nbits = 0;
 
       pr_trace_msg(trace_channel, 15,
         "using DH parameters from SFTPDHParamFile '%s' for group exchange",
         dhparam_path);
 
-      tmp_pool = make_sub_pool(kex_pool);
+      tmp_pool = make_sub_pool(kex->pool);
       pr_pool_tag(tmp_pool, "Kex DHparams selection pool");
 
       smaller_dhs = make_array(tmp_pool, 1, sizeof(DH *)); 
@@ -2876,8 +2876,8 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 
         pr_signals_handle();
 
-        dh = PEM_read_DHparams(kex_dhparams_fp, NULL, NULL, NULL);
-        if (dh == NULL) {
+        chosen_dh = PEM_read_DHparams(kex_dhparams_fp, NULL, NULL, NULL);
+        if (chosen_dh == NULL) {
           if (!feof(kex_dhparams_fp)) {
             pr_trace_msg(trace_channel, 5, "error reading DH params from "
               "SFTPDHParamFile '%s': %s", dhparam_path,
@@ -2887,16 +2887,20 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
           break;
         }
 
-        nbits = DH_size(dh) * 8;
+        nbits = DH_size(chosen_dh) * 8;
 
         if (nbits < min ||
             nbits > max) {
-          DH_free(dh);
+          pr_trace_msg(trace_channel, 17,
+            "skipping %lu-bit DH from %s (exceeds min %lu, max %lu bits)",
+            (unsigned long) nbits, dhparam_path, (unsigned long) min,
+            (unsigned long) max);
+          DH_free(chosen_dh);
           continue;
         }
 
         if (nbits == pref) {
-          *((DH **) push_array(pref_dhs)) = dh;
+          *((DH **) push_array(pref_dhs)) = chosen_dh;
 
         } else if (nbits < pref) {
           if (nbits > smaller_dh_nbits) {
@@ -2910,10 +2914,13 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
             }
 
             smaller_dh_nbits = nbits;
-            *((DH **) push_array(smaller_dhs)) = dh;
+            *((DH **) push_array(smaller_dhs)) = chosen_dh;
 
           } else if (nbits == smaller_dh_nbits) {
-            *((DH **) push_array(smaller_dhs)) = dh;
+            *((DH **) push_array(smaller_dhs)) = chosen_dh;
+
+          } else {
+            DH_free(chosen_dh);
           }
 
         } else {
@@ -2930,39 +2937,54 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
             }
 
             larger_dh_nbits = nbits;
-            *((DH **) push_array(larger_dhs)) = dh;
+            *((DH **) push_array(larger_dhs)) = chosen_dh;
 
           } else if (nbits == larger_dh_nbits) {
-            *((DH **) push_array(larger_dhs)) = dh;
+            *((DH **) push_array(larger_dhs)) = chosen_dh;
+
+          } else {
+            DH_free(chosen_dh);
           }
         }
       }
 
-      dh = NULL;
+      chosen_dh = NULL;
 
       /* The use of rand(3) below is NOT intended to be perfect, or even
        * uniformly distributed.  It simply needs to be good enough to pick
        * a single item from a small list, where all items are equally
        * usable and valid.
+       *
+       * Ideally we want to find a preferred DH first.  Failing that, a larger
+       * DH is better; if none found there, then we settle for a smaller DH.
        */
 
       if (pref_dhs->nelts > 0) {
         int r = (int) (rand() / (RAND_MAX / pref_dhs->nelts + 1));
 
+        pr_trace_msg(trace_channel, 17,
+          "%s DH selection: preferred DHs (count %u, idx %d)", dhparam_path,
+          pref_dhs->nelts, r);
         dhs = pref_dhs->elts;
-        dh = DHparams_dup(dhs[r]);
+        chosen_dh = dhs[r];
 
       } else if (larger_dhs->nelts > 0) {
         int r = (int) (rand() / (RAND_MAX / larger_dhs->nelts + 1));
 
+        pr_trace_msg(trace_channel, 17,
+          "%s DH selection: larger DHs (count %u, idx %d)", dhparam_path,
+          larger_dhs->nelts, r);
         dhs = larger_dhs->elts;
-        dh = DHparams_dup(dhs[r]);
+        chosen_dh = dhs[r];
 
       } else if (smaller_dhs->nelts > 0) {
         int r = (int) (rand() / (RAND_MAX / smaller_dhs->nelts + 1));
 
+        pr_trace_msg(trace_channel, 17,
+          "%s DH selection: smaller DHs (count %u, idx %d)", dhparam_path,
+          smaller_dhs->nelts, r);
         dhs = smaller_dhs->elts;
-        dh = DHparams_dup(dhs[r]);
+        chosen_dh = dhs[r];
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -2973,19 +2995,23 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
         use_fixed_modulus = TRUE;
       }
 
-      if (dh != NULL) {
+      if (chosen_dh != NULL) {
         BIGNUM *dh_p = NULL, *dh_g = NULL, *dup_p, *dup_g;
 
         pr_trace_msg(trace_channel, 20, "client requested min %lu, pref %lu, "
           "max %lu sizes for DH group exchange, selected DH of %lu bits",
           (unsigned long) min, (unsigned long) pref, (unsigned long) max,
-          (unsigned long) DH_size(dh) * 8);
+          (unsigned long) DH_size(chosen_dh) * 8);
+
+        /* Get the P, G parameters of the chosen DH group, and make copies
+         * of them for our KEX DH.
+         */
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-        DH_get0_pqg(dh, &dh_p, NULL, &dh_g);
+        DH_get0_pqg(chosen_dh, &dh_p, NULL, &dh_g);
 #else
-        dh_p = dh->p;
-        dh_g = dh->g;
+        dh_p = chosen_dh->p;
+        dh_g = chosen_dh->g;
 #endif /* prior to OpenSSL-1.1.0 */
 
         dup_p = BN_dup(dh_p);
@@ -3003,9 +3029,11 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
               "error copying selected DH G: %s", sftp_crypto_get_errors());
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
               "WARNING: using fixed modulus for DH group exchange");
+            BN_clear_free(dup_p);
             use_fixed_modulus = TRUE;
 
           } else {
+            /* Now set those P, G copies into our KEX DH. */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
             DH_set0_pqg(kex->dh, dup_p, NULL, dup_g);
 #else
@@ -3051,6 +3079,8 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
     BIGNUM *dh_p, *dh_g;
 
     dh_p = BN_new();
+
+    /* Note: Consider using a stronger fixed DH group here! */
     if (BN_hex2bn(&dh_p, dh_group14_str) == 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error setting DH P: %s", sftp_crypto_get_errors());
