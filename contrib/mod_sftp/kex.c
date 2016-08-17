@@ -264,7 +264,11 @@ static const char *trace_channel = "ssh2";
 
 static int kex_rekey_timeout_cb(CALLBACK_FRAME) {
   pr_trace_msg(trace_channel, 5,
-    "Failed to rekey before timeout, disconnecting client");
+    "Failed to rekey before %d %s timeout, disconnecting client",
+    kex_rekey_timeout, kex_rekey_timeout != 1 ? "seconds" : "second");
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "Failed to rekey before %d %s timeout, disconnecting client",
+    kex_rekey_timeout, kex_rekey_timeout != 1 ? "seconds" : "second");
   SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   return 0;
 }
@@ -4607,9 +4611,25 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 }
 
 int sftp_kex_free(void) {
+  struct sftp_kex *first_kex, *rekey_kex;
+
   if (kex_dhparams_fp != NULL) {
     (void) fclose(kex_dhparams_fp);
     kex_dhparams_fp = NULL;
+  }
+
+  /* destroy_kex() will set the kex_first_kex AND kex_rekey_kex pointers to
+   * null, so we need to keep our own copies of those pointers here.
+   */
+  first_kex = kex_first_kex;
+  rekey_kex = kex_rekey_kex;
+
+  if (first_kex != NULL) {
+    destroy_kex(first_kex);
+  }
+
+  if (rekey_kex != NULL) {
+    destroy_kex(rekey_kex);
   }
 
   if (kex_pool) {
