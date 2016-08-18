@@ -3207,6 +3207,7 @@ MODRET set_displayquit(cmd_rec *cmd) {
 }
 
 MODRET add_virtualhost(cmd_rec *cmd) {
+  const char *name, *addr_ipstr;
   server_rec *s = NULL;
   const pr_netaddr_t *addr = NULL;
   array_header *addrs = NULL;
@@ -3217,7 +3218,8 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   }
   CHECK_CONF(cmd, CONF_ROOT);
 
-  s = pr_parser_server_ctxt_open(cmd->argv[1]);
+  name = cmd->argv[1];
+  s = pr_parser_server_ctxt_open(name);
   if (s == NULL) {
     CONF_ERROR(cmd, "unable to create virtual server configuration");
   }
@@ -3228,19 +3230,21 @@ MODRET add_virtualhost(cmd_rec *cmd) {
    * are server_recs for each one.
    */
 
-  addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[1], &addrs, addr_flags);
+  addr = pr_netaddr_get_addr2(cmd->tmp_pool, name, &addrs, addr_flags);
   if (addr == NULL) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", cmd->argv[1],
-      "': ", strerror(errno), NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", name, "': ",
+      strerror(errno), NULL));
   }
 
   /* If the given name is a DNS name, automatically add a ServerAlias
    * directive.
    */
-  if (pr_netaddr_is_v4(cmd->argv[1]) == FALSE &&
-      pr_netaddr_is_v6(cmd->argv[1]) == FALSE) {
-    add_config_param_str("ServerAlias", 1, cmd->argv[1]);
+  if (pr_netaddr_is_v4(name) == FALSE &&
+      pr_netaddr_is_v6(name) == FALSE) {
+    add_config_param_str("ServerAlias", 1, name);
   }
+
+  addr_ipstr = pr_netaddr_get_ipstr(addr);
 
   if (addrs != NULL) {
     register unsigned int i;
@@ -3248,7 +3252,16 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 
     /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++) {
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[i]));
+      const char *ipstr;
+
+      ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+      /* Skip duplicate addresses. */
+      if (strcmp(addr_ipstr, ipstr) == 0) {
+        continue;
+      }
+
+      add_config_param_str("_bind_", 1, ipstr);
     }
   }
 
@@ -3262,30 +3275,40 @@ MODRET add_virtualhost(cmd_rec *cmd) {
     for (i = 2; i < cmd->argc; i++) {
       addrs = NULL;
 
-      addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
-        addr_flags);
+      name = cmd->argv[i];
+      addr = pr_netaddr_get_addr2(cmd->tmp_pool, name, &addrs, addr_flags);
       if (addr == NULL) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
-          cmd->argv[i], "': ", strerror(errno), NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", name, "': ",
+          strerror(errno), NULL));
       }
 
       /* If the given name is a DNS name, automatically add a ServerAlias
        * directive.
        */
-      if (pr_netaddr_is_v4(cmd->argv[i]) == FALSE &&
-          pr_netaddr_is_v6(cmd->argv[i]) == FALSE) {
-        add_config_param_str("ServerAlias", 1, cmd->argv[i]);
+      if (pr_netaddr_is_v4(name) == FALSE &&
+          pr_netaddr_is_v6(name) == FALSE) {
+        add_config_param_str("ServerAlias", 1, name);
       }
 
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(addr));
+      addr_ipstr = pr_netaddr_get_ipstr(addr);
+      add_config_param_str("_bind_", 1, addr_ipstr);
 
-      if (addrs) {
+      if (addrs != NULL) {
         register unsigned int j;
         pr_netaddr_t **elts = addrs->elts;
 
         /* For every additional address, implicitly add a bind record. */
         for (j = 0; j < addrs->nelts; j++) {
-          add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[j]));
+          const char *ipstr;
+
+          ipstr = pr_netaddr_get_ipstr(elts[j]);
+
+          /* Skip duplicate addresses. */
+          if (strcmp(addr_ipstr, ipstr) == 0) {
+            continue;
+          }
+
+          add_config_param_str("_bind_", 1, ipstr);
         }
       }
     }
