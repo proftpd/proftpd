@@ -195,6 +195,9 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   return 0;
 }
 
+void pr_log_stacktrace(int fd, const char *name) {
+}
+
 int pr_proctitle_get(char *buf, size_t buflen) {
   errno = ENOSYS;
   return -1;

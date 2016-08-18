@@ -29,7 +29,6 @@
 #include "asn1.h"
 #include "packet.h"
 #include "db.h"
-#include "stacktrace.h"
 
 static const char *trace_channel = "snmp.msg";
 
