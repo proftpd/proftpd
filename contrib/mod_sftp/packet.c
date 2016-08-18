@@ -116,8 +116,9 @@ static int packet_poll(int sockfd, int io) {
   tv.tv_usec = 0;
 
   pr_trace_msg(trace_channel, 19,
-    "waiting for max of %lu secs while polling socket %d using select(2)",
-    (unsigned long) tv.tv_sec, sockfd);
+    "waiting for max of %lu secs while polling socket %d for %s "
+    "using select(2)", (unsigned long) tv.tv_sec, sockfd,
+    io == SFTP_PACKET_IO_RD ? "reading" : "writing");
 
   while (1) {
     pr_signals_handle();

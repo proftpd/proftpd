@@ -274,7 +274,9 @@ static int kex_rekey_timeout_cb(CALLBACK_FRAME) {
 }
 
 static int kex_rekey_timer_cb(CALLBACK_FRAME) {
-  pr_trace_msg(trace_channel, 17, "SFTPRekey timer expired, requesting rekey");
+  pr_trace_msg(trace_channel, 17,
+    "SFTPRekey timer (%d %s) expired, requesting rekey", kex_rekey_interval,
+    kex_rekey_interval != 1 ? "secs" : "sec");
   sftp_kex_rekey();
   return 0;
 }
