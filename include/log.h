@@ -83,6 +83,10 @@
 # include <login.h>
 #endif
 
+#ifdef HAVE_EXECINFO_H
+# include <execinfo.h>
+#endif
+
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif
@@ -99,9 +103,12 @@
 # endif
 #endif
 
+
 int log_lastlog(uid_t uid, const char *user_name, const char *tty,
   const pr_netaddr_t *remote_addr);
 #endif /* PR_USE_LASTLOG */
+
+void pr_log_stacktrace(module *module, int debuglevel, const char*file, int line);
 
 /* Note: Like lastlog.h, it would be tempting to split out the declaration of
  * this function, and its necessary system headers, into a proftpd-specific
