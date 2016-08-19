@@ -3787,25 +3787,27 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   /* If we didn't send our NEWKEYS message earlier, do it now. */
   if (!sent_newkeys) {
+    struct ssh2_packet *pkt2;
+
     pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
 
     /* Send our NEWKEYS reply. */
-    pkt = sftp_ssh2_packet_create(kex_pool);
-    res = write_newkeys_reply(pkt);
+    pkt2 = sftp_ssh2_packet_create(kex_pool);
+    res = write_newkeys_reply(pkt2);
     if (res < 0) {
       destroy_kex(kex);
-      destroy_pool(pkt->pool);
+      destroy_pool(pkt2->pool);
       return -1;
     }
 
-    res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+    res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt2);
     if (res < 0) {
       destroy_kex(kex);
-      destroy_pool(pkt->pool);
+      destroy_pool(pkt2->pool);
       return -1;
     }
 
-    destroy_pool(pkt->pool);
+    destroy_pool(pkt2->pool);
   }
 
   /* Last but certainly not least, set up the keys for encryption and
