@@ -1504,12 +1504,7 @@ int sftp_ssh2_packet_handle(void) {
       }
 
       /* The client might be initiating a rekey; watch for this. */
-      if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
-        sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
-
-      } else {
-        /* First key exchange. */
-
+      if (!(sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX)) {
         if (pr_trace_get_level(timing_channel)) {
           unsigned long elapsed_ms;
           uint64_t finish_ms;
@@ -1522,6 +1517,8 @@ int sftp_ssh2_packet_handle(void) {
         }
       }
  
+      sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
+
       /* Clear any current "have KEX" state. */
       sftp_sess_state &= ~SFTP_SESS_STATE_HAVE_KEX;
 
