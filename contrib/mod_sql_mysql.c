@@ -317,7 +317,8 @@ static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
   }
 
   snprintf(num, 20, "%u", mysql_errno(conn->mysql));
-  return PR_ERROR_MSG(cmd, num, (char *) mysql_error(conn->mysql));
+  return PR_ERROR_MSG(cmd, pstrdup(cmd->pool, num),
+    pstrdup(cmd->pool, (char *) mysql_error(conn->mysql)));
 }
 
 /* build_data: both cmd_select and cmd_procedure potentially
@@ -524,10 +525,19 @@ MODRET cmd_open(cmd_rec *cmd) {
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
       conn->db, (int) strtol(conn->port, (char **) NULL, 10),
       conn->unix_sock, client_flags)) {
+    modret_t *mr = NULL;
 
     /* If it didn't work, return an error. */
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-    return build_error(cmd, conn);
+    mr = build_error(cmd, conn);
+
+    /* Since we failed to connect here, avoid a memory leak by freeing up the
+     * mysql conn struct.
+     */
+    mysql_close(conn->mysql);
+    conn->mysql = NULL;
+
+    return mr;
   }
 
   sql_log(DEBUG_FUNC, "MySQL client version: %s", mysql_get_client_info());
@@ -715,8 +725,10 @@ MODRET cmd_close(cmd_rec *cmd) {
    * timers.
    */
   if (((--entry->connections) == 0) || ((cmd->argc == 2) && (cmd->argv[1]))) {
-    mysql_close(conn->mysql);
-    conn->mysql = NULL;
+    if (conn->mysql != NULL) {
+      mysql_close(conn->mysql);
+      conn->mysql = NULL;
+    }
     entry->connections = 0;
 
     if (entry->timer) {
