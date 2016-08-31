@@ -118,6 +118,7 @@ static struct sftp_version_pattern known_versions[] = {
     "^3\\.2\\.9.*",		SFTP_SSH2_FEAT_IGNORE_MSG,		NULL },
 
   { ".*PuTTY.*|"
+    ".*PUTTY.*|"
     ".*WinSCP.*",		SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING,	NULL },
 
   { ".*SSH_Version_Mapper.*",	SFTP_SSH2_FEAT_SCANNER,			NULL },
