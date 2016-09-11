@@ -384,11 +384,12 @@ static char *quota_display_site_files(pool *p, unsigned int files_used,
 /* Quota logging routines */
 static int quotatab_closelog(void) {
   /* sanity check */
-  if (quota_logfd != -1) {
-    close(quota_logfd);
-    quota_logfd = -1;
-    quota_logname = NULL;
+  if (quota_logfd >= 0) {
+    (void) close(quota_logfd);
   }
+
+  quota_logfd = -1;
+  quota_logname = NULL;
 
   return 0;
 }
@@ -409,15 +410,12 @@ int quotatab_log(const char *fmt, ...) {
 }
 
 int quotatab_openlog(void) {
-  int res = 0;
-
-  /* Sanity checks. */
-  if (quota_logname)
-    return 0;
+  int res = 0, xerrno;
 
   quota_logname = get_param_ptr(main_server->conf, "QuotaLog", FALSE);
-  if (quota_logname == NULL)
+  if (quota_logname == NULL) {
     return 0;
+  }
 
   /* check for "none" */
   if (strcasecmp(quota_logname, "none") == 0) {
@@ -428,13 +426,14 @@ int quotatab_openlog(void) {
   pr_signals_block();
   PRIVS_ROOT
   res = pr_log_openfile(quota_logname, &quota_logfd, PR_LOG_SYSTEM_MODE);
+  xerrno = errno;
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
   switch (res) {
     case -1:
       pr_log_pri(LOG_NOTICE, MOD_QUOTATAB_VERSION
-        ": unable to open QuotaLog '%s': %s", quota_logname, strerror(errno));
+        ": unable to open QuotaLog '%s': %s", quota_logname, strerror(xerrno));
       break;
 
     case PR_LOG_WRITABLE_DIR:
@@ -4304,9 +4303,7 @@ static void quotatab_mod_unload_ev(const void *event_data, void *user_data) {
       quotatab_pool = NULL;
     }
 
-    close(quota_logfd);
-    quota_logfd = -1;
-    quota_logname = NULL;
+    quotatab_closelog();
   }
 }
 #endif

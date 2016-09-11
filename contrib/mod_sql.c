@@ -6478,11 +6478,12 @@ static int sql_logfd = -1;
 static int sql_closelog(void) {
 
   /* sanity check */
-  if (sql_logfd != -1) {
-    close(sql_logfd);
-    sql_logfd = -1;
-    sql_logfile = NULL;
+  if (sql_logfd >= 0) {
+    (void) close(sql_logfd);
   }
+
+  sql_logfd = -1;
+  sql_logfile = NULL;
 
   return 0;
 }
@@ -6920,6 +6921,7 @@ static void sql_mod_unload_ev(const void *event_data, void *user_data) {
 
     close(sql_logfd);
     sql_logfd = -1;
+    sql_logfile = NULL;
   }
 }
 
