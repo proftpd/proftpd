@@ -84,7 +84,7 @@ END_TEST
 
 START_TEST (response_add_test) {
   int res;
-  char *last_resp_code = NULL, *last_resp_msg = NULL;
+  const char *last_resp_code = NULL, *last_resp_msg = NULL;
   char *resp_code = R_200, *resp_msg = "OK";
 
   pr_response_set_pool(p);
@@ -115,7 +115,7 @@ END_TEST
 
 START_TEST (response_add_err_test) {
   int res;
-  char *last_resp_code = NULL, *last_resp_msg = NULL;
+  const char *last_resp_code = NULL, *last_resp_msg = NULL;
   char *resp_code = R_450, *resp_msg = "Busy";
 
   pr_response_set_pool(p);
@@ -142,7 +142,7 @@ END_TEST
 
 START_TEST (response_get_last_test) {
   int res;
-  char *resp_code = NULL, *resp_msg = NULL;
+  const char *resp_code = NULL, *resp_msg = NULL;
 
   res = pr_response_get_last(NULL, NULL, NULL);
   fail_unless(res == -1, "Failed to handle null pool");
@@ -182,6 +182,9 @@ START_TEST (response_block_test) {
 END_TEST
 
 START_TEST (response_clear_test) {
+  mark_point();
+  pr_response_clear(NULL);
+
   pr_response_set_pool(p);
   pr_response_add(R_200, "%s", "OK");
   pr_response_clear(&resp_list);
@@ -222,6 +225,9 @@ START_TEST (response_flush_test) {
   int res, sockfd = -2;
   conn_t *conn;
   pr_netio_t *netio;
+
+  mark_point();
+  pr_response_flush(NULL);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = response_netio_poll_cb;

@@ -107,7 +107,7 @@ static void data_new_xfer(char *filename, int direction) {
   session.xfer.buflen = 0;
 }
 
-static int data_passive_open(char *reason, off_t size) {
+static int data_passive_open(const char *reason, off_t size) {
   conn_t *c;
   int rev, xerrno = 0;
 
@@ -210,10 +210,10 @@ static int data_passive_open(char *reason, off_t size) {
   return -1;
 }
 
-static int data_active_open(char *reason, off_t size) {
+static int data_active_open(const char *reason, off_t size) {
   conn_t *c;
   int bind_port, rev;
-  pr_netaddr_t *bind_addr = NULL;
+  const pr_netaddr_t *bind_addr = NULL;
   unsigned char *root_revoke = NULL;
 
   if (session.c->remote_addr == NULL) {
@@ -678,7 +678,7 @@ void pr_data_close(int quiet) {
  * send the OOB byte (which results in a broken pipe on our
  * end).  Thus, it's a race between the OOB data and the tcp close
  * finishing.  Either way, it's ok (client will see either "Broken pipe"
- * error or "Aborted").  cmd_abor in mod_xfer cleans up the session
+ * error or "Aborted").  xfer_abor() in mod_xfer cleans up the session
  * flags in any case.  session flags will end up have SF_POST_ABORT
  * set if the OOB byte won the race.
  */
@@ -705,6 +705,11 @@ void pr_data_cleanup(void) {
 void pr_data_abort(int err, int quiet) {
   int true_abort = XFER_ABORTED;
   nstrm = NULL;
+
+  pr_trace_msg(trace_channel, 9,
+    "aborting data transfer (errno = %s (%d), quiet = %s, true abort = %s)",
+    strerror(err), err, quiet ? "true" : "false",
+    true_abort ? "true" : "false");
 
   if (session.d) {
     if (true_abort == FALSE) {
@@ -1110,12 +1115,10 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
     /* We use ASCII translation if:
      *
-     * - SF_ASCII_OVERRIDE session flag is set (e.g. for LIST/NLST)
      * - SF_ASCII session flag is set, AND IGNORE_ASCII data opt NOT set
      */
-    if ((session.sf_flags & SF_ASCII_OVERRIDE) ||
-        ((session.sf_flags & SF_ASCII) &&
-         !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
+    if (((session.sf_flags & SF_ASCII) &&
+        !(data_opts & PR_DATA_OPT_IGNORE_ASCII))) {
       int adjlen, buflen;
 
       do {
@@ -1173,12 +1176,12 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         if (len >= 0 &&
             buflen > 0) {
 
-          /* Perform translation:
+          /* Perform ASCII translation:
            *
-           * buflen is returned as the modified buffer length after
-           *        translation
-           * adjlen is returned as the number of characters unprocessed in
-           *        the buffer (to be dealt with later)
+           * buflen: is returned as the modified buffer length after
+           *         translation
+           * res:    is returned as the number of characters unprocessed in
+           *         the buffer (to be dealt with later)
            *
            * We skip the call to pr_ascii_ftp_from_crlf() in one case:
            * when we have one character in the buffer and have reached
@@ -1202,7 +1205,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
           }
 
           /* Now copy everything we can into cl_buf */
-          if (buflen > cl_size) {
+          if ((size_t) buflen > cl_size) {
             /* Because we have to cut our buffer short, make sure this
              * is made up for later by increasing adjlen.
              */

@@ -6,11 +6,17 @@ compiler:
   - clang
 
 install:
+  # Need to add other repos for e.g. libsodium
+  - sudo add-apt-repository -y ppa:chris-lea/libsodium
+  - echo "deb http://ppa.launchpad.net/chris-lea/libsodium/ubuntu trusty main" | sudo tee -a /etc/apt/sources.list > /dev/null
+  - echo "deb-src http://ppa.launchpad.net/chris-lea/libsodium/ubuntu trusty main" | sudo tee -a /etc/apt/sources.list > /dev/null
   - sudo apt-get update -qq
   # for unit tests
   - sudo apt-get install -y check
   # for mod_lang
   - sudo apt-get install -y gettext
+  # for xattr support
+  - sudo apt-get install -y libattr1-dev
   # for mod_cap
   - sudo apt-get install -y libcap-dev
   # for mod_geoip
@@ -27,6 +33,8 @@ install:
   - sudo apt-get install -y libpq-dev
   # for OpenSSL support
   - sudo apt-get install -y libssl-dev
+  # for Sodium support
+  - sudo apt-get install -y --force-yes libsodium-dev
   # for mod_sql_sqlite
   - sudo apt-get install -y libsqlite3-dev sqlite3
   # for PCRE support
@@ -44,17 +52,17 @@ before_script:
 script:
   # - find . -type f -name "*.c" -print | grep -v tests | xargs cppcheck 2>&1
   # - find . -type f -name "*.c" -print | grep -v tests | xargs rats --language=c
-  - ./configure --enable-devel=coverage --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-modules=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_ifsession
+  - ./configure --enable-devel=coverage --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-modules=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_ifsession
   - make
   - make TEST_VERBOSE=1 check-api
   - make clean
-  - ./configure --enable-devel --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_ifsession
+  - ./configure --enable-devel --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_ifsession
   - make
 
 after_success:
   - cd ${TRAVIS_BUILD_DIR}
   # capture the test coverage info
-  - lcov --directory . --capture --output-file coverage.info
+  - lcov --ignore-errors gcov,source --directory . --capture --output-file coverage.info
   # filter out system and test code
   - lcov --remove coverage.info 'lib/glibc-glob.*' 'lib/pr_fnmatch_loop.*' 'tests/*' '/usr/*' --output-file coverage.info
   # debug before upload

@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- *
  * Copyright (c) 2001-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
@@ -134,8 +133,8 @@ static char rewrite_vars[REWRITE_MAX_VARS][13] = {
 /* Necessary prototypes */
 static char *rewrite_argsep(char **);
 static void rewrite_closelog(void);
-static char *rewrite_expand_var(cmd_rec *, const char *, const char *);
-static char *rewrite_get_cmd_name(cmd_rec *);
+static const char *rewrite_expand_var(cmd_rec *, const char *, const char *);
+static const char *rewrite_get_cmd_name(cmd_rec *);
 static void rewrite_log(char *format, ...);
 static unsigned char rewrite_match_cond(cmd_rec *, config_rec *);
 static void rewrite_openlog(void);
@@ -149,14 +148,18 @@ static unsigned char rewrite_regexec(const char *, pr_regex_t *, unsigned char,
     rewrite_match_t *);
 static void rewrite_replace_cmd_arg(cmd_rec *, char *);
 static int rewrite_sess_init(void);
-static char *rewrite_subst(cmd_rec *c, char *);
-static char *rewrite_subst_backrefs(cmd_rec *, char *, rewrite_match_t *);
-static char *rewrite_subst_env(cmd_rec *, char *);
-static char *rewrite_subst_maps(cmd_rec *, char *);
-static char *rewrite_subst_maps_fifo(cmd_rec *, config_rec *, rewrite_map_t *);
-static char *rewrite_subst_maps_int(cmd_rec *, config_rec *, rewrite_map_t *);
-static char *rewrite_subst_maps_txt(cmd_rec *, config_rec *, rewrite_map_t *);
-static char *rewrite_subst_vars(cmd_rec *, char *);
+static const char *rewrite_subst(cmd_rec *c, const char *);
+static const char *rewrite_subst_backrefs(cmd_rec *, const char *,
+  rewrite_match_t *);
+static const char *rewrite_subst_env(cmd_rec *, const char *);
+static const char *rewrite_subst_maps(cmd_rec *, const char *);
+static const char *rewrite_subst_maps_fifo(cmd_rec *, config_rec *,
+  rewrite_map_t *);
+static const char *rewrite_subst_maps_int(cmd_rec *, config_rec *,
+  rewrite_map_t *);
+static const char *rewrite_subst_maps_txt(cmd_rec *, config_rec *,
+  rewrite_map_t *);
+static const char *rewrite_subst_vars(cmd_rec *, const char *);
 static void rewrite_wait_fifo(int);
 static int rewrite_write_fifo(int, char *, size_t);
 
@@ -166,7 +169,7 @@ static int rewrite_write_fifo(int, char *, size_t);
 #define REWRITE_CHECK_VAR(p, m) \
     if (p == NULL) rewrite_log("rewrite_expand_var(): %" m " expands to NULL")
 
-static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
+static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     const char *var) {
   size_t varlen;
 
@@ -177,7 +180,7 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     return (session.conn_class ? session.conn_class->cls_name : NULL);
 
   } else if (strncmp(var, "%F", 3) == 0) {
-    char *cmd_name;
+    const char *cmd_name;
 
     cmd_name = rewrite_get_cmd_name(cmd);
 
@@ -247,21 +250,24 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     return session.user;
 
   } else if (strncmp(var, "%a", 3) == 0) {
-    return (char *) pr_netaddr_get_ipstr(session.c->remote_addr);
+    return pr_netaddr_get_ipstr(session.c->remote_addr);
 
   } else if (strncmp(var, "%h", 3) == 0) {
-    return (char *) session.c->remote_name;
+    return session.c->remote_name;
 
   } else if (strncmp(var, "%v", 3) == 0) {
-    return (char *) main_server->ServerName;
+    return main_server->ServerName;
 
   } else if (strncmp(var, "%G", 3) == 0) {
 
     if (session.groups != NULL) {
       register unsigned int i = 0;
-      char *suppl_groups = pstrcat(cmd->tmp_pool, "", NULL);
-      char **groups = (char **) session.groups->elts;
+      const char *suppl_groups;
+      char **groups;
 
+      suppl_groups = pstrcat(cmd->tmp_pool, "", NULL);
+
+      groups = (char **) session.groups->elts;
       for (i = 0; i < session.groups->nelts; i++) {
         suppl_groups = pstrcat(cmd->tmp_pool, suppl_groups,
           i != 0 ? "," : "", groups[i], NULL);
@@ -280,7 +286,7 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       return pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
 
     } else {
-      char *cmd_name;
+      const char *cmd_name;
 
       cmd_name = rewrite_get_cmd_name(cmd);
       rewrite_log("rewrite_expand_var(): %%w not valid for this command ('%s')",
@@ -422,7 +428,7 @@ static char *rewrite_argsep(char **arg) {
   return res;
 }
 
-static char *rewrite_get_cmd_name(cmd_rec *cmd) {
+static const char *rewrite_get_cmd_name(cmd_rec *cmd) {
   if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) != 0) {
     return cmd->argv[0];
   }
@@ -506,7 +512,7 @@ static unsigned int rewrite_parse_rule_flags(pool *p, const char *flags_str) {
 }
 
 static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
-  char *cond_str = cond->argv[0];
+  const char *cond_str = cond->argv[0];
   unsigned char negated = *((unsigned char *) cond->argv[2]);
   rewrite_cond_op_t cond_op = *((rewrite_cond_op_t *) cond->argv[3]);
 
@@ -567,7 +573,7 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
         cond_str);
 
       memset(&rewrite_cond_matches, '\0', sizeof(rewrite_cond_matches));
-      rewrite_cond_matches.match_string = cond_str;
+      rewrite_cond_matches.match_string = (char *) cond_str;
       return rewrite_regexec(cond_str, cond->argv[1], negated,
         &rewrite_cond_matches);
     }
@@ -655,22 +661,24 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
 
 static unsigned char rewrite_parse_map_str(char *str, rewrite_map_t *map) {
   static char *substr = NULL;
-  char *tmp = NULL;
+  char *ptr = NULL;
 
   /* A NULL string is used to set/reset this function. */
-  if (!str) {
+  if (str == NULL) {
     substr = NULL;
     return FALSE;
   }
 
-  if (!substr)
+  if (substr == NULL) {
     substr = str;
+  }
 
   /* Format: ${map-name:lookup-key[|default-value]} */
   rewrite_log("rewrite_parse_map_str(): parsing '%s'", substr);
-  if (substr && (tmp = strstr(substr, "${")) != NULL) {
+  if (substr != NULL &&
+      (ptr = strstr(substr, "${")) != NULL) {
     char twiddle;
-    char *map_start = tmp + 2;
+    char *map_start = ptr + 2;
     char *map_end = strchr(map_start, '}');
 
     if (!map_end) {
@@ -681,33 +689,33 @@ static unsigned char rewrite_parse_map_str(char *str, rewrite_map_t *map) {
     /* This fiddling is needed to preserve a copy of the complete map string. */
     twiddle = map_end[1];
     map_end[1] = '\0';
-    map->map_string = pstrdup(map->map_pool, tmp);
+    map->map_string = pstrdup(map->map_pool, ptr);
     map_end[1] = twiddle;
 
     /* OK, now back to our regular schedule parsing... */
     *map_end = '\0';
 
-    tmp = strchr(map_start, ':');
-    if (tmp == NULL) {
+    ptr = strchr(map_start, ':');
+    if (ptr == NULL) {
       rewrite_log("rewrite_parse_mapstr(): notice: badly formatted map string");
       return FALSE;
     }
-    *tmp = '\0';
+    *ptr = '\0';
 
     /* We've teased out the map name. */
     map->map_name = map_start;
 
     /* Advance the pointer so that the rest of the components can be parsed. */
-    map_start = ++tmp;
+    map_start = ++ptr;
 
     map->map_lookup_key = map_start;
 
-    tmp = strchr(map_start, '|');
-    if (tmp != NULL) {
-      *tmp = '\0';
+    ptr = strchr(map_start, '|');
+    if (ptr != NULL) {
+      *ptr = '\0';
 
       /* We've got the default value. */
-      map->map_default_value = ++tmp;
+      map->map_default_value = ++ptr;
 
     } else {
       map->map_default_value = "";
@@ -885,9 +893,9 @@ static void rewrite_replace_cmd_arg(cmd_rec *cmd, char *new_arg) {
   }
 }
 
-static char *rewrite_subst(cmd_rec *cmd, char *pattern) {
+static const char *rewrite_subst(cmd_rec *cmd, const char *pattern) {
   int have_cond_backrefs = FALSE;
-  char *new_pattern = NULL;
+  const char *new_pattern = NULL;
 
   rewrite_log("rewrite_subst(): original pattern: '%s'", pattern);
 
@@ -946,10 +954,10 @@ static char *rewrite_subst(cmd_rec *cmd, char *pattern) {
   return new_pattern;
 }
 
-static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
+static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
     rewrite_match_t *matches) {
   register unsigned int i = 0;
-  char *replacement_pattern = NULL;
+  const char *replacement_pattern = NULL;
   int use_notes = TRUE;
 
   /* We do NOT stash the backrefs in the cmd->notes table for sensitive
@@ -1024,7 +1032,8 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
          * string with the literal string.
          */
         if (*(ptr - 1) == '$') {
-          char *res, *var;
+          const char *res;
+          char *var;
           size_t var_len = sizeof(buf) + 1;
 
           var = pcalloc(cmd->tmp_pool, var_len);
@@ -1052,7 +1061,8 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
          * string with the literal string.
          */
         if (*(ptr - 1) == '%') {
-          char *res, *var;
+          const char *res;
+          char *var;
           size_t var_len = sizeof(buf) + 1;
 
           var = pcalloc(cmd->tmp_pool, var_len);
@@ -1076,7 +1086,8 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
     }
 
     if (matches->match_groups[i].rm_so != -1) {
-      char *value, *res, tmp;
+      const char *res;
+      char *value, tmp;
 
       /* There's a match for the backref in the string, substitute in
        * the backreferenced value.
@@ -1127,7 +1138,7 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
       (matches->match_string)[matches->match_groups[i].rm_eo] = tmp;
 
     } else {
-      char *res;
+      const char *res;
 
       /* There's backreference in the string, but there no matching
        * group (i.e. backreferenced value).  Substitute in an empty string
@@ -1175,12 +1186,19 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
   return (replacement_pattern ? replacement_pattern : pattern);
 }
 
-static char *rewrite_subst_env(cmd_rec *cmd, char *pattern) {
-  char *new_pattern = NULL, *ptr;
+static const char *rewrite_subst_env(cmd_rec *cmd, const char *pattern) {
+  const char *new_pattern = NULL;
+  char *pat, *ptr;
 
-  ptr = strstr(pattern, "%{ENV:");
-  while (ptr) {
-    char ch, *ptr2, *key, *res, *val;
+  /* We need to make a duplicate of the given pattern, since we twiddle some
+   * of its bytes.
+   */
+  pat = pstrdup(cmd->tmp_pool, pattern);
+
+  ptr = strstr(pat, "%{ENV:");
+  while (ptr != NULL) {
+    const char *val, *res;
+    char ch, *ptr2, *key;
 
     pr_signals_handle();
 
@@ -1195,13 +1213,13 @@ static char *rewrite_subst_env(cmd_rec *cmd, char *pattern) {
     key = pstrdup(cmd->tmp_pool, ptr);
     *(ptr2 + 1) = ch;
 
-    val = rewrite_expand_var(cmd, pattern, key);
+    val = rewrite_expand_var(cmd, pat, key);
     if (val != NULL) {
       rewrite_log("rewrite_subst_env(): replacing variable '%s' with '%s'",
         key, val);
 
       if (new_pattern == NULL) {
-        new_pattern = pstrdup(cmd->pool, pattern);
+        new_pattern = pstrdup(cmd->pool, pat);
       }
 
       res = pr_str_replace(cmd->pool, rewrite_max_replace, new_pattern, key,
@@ -1223,13 +1241,14 @@ static char *rewrite_subst_env(cmd_rec *cmd, char *pattern) {
   return (new_pattern ? new_pattern : pattern);
 }
 
-static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
+static const char *rewrite_subst_maps(cmd_rec *cmd, const char *pattern) {
   rewrite_map_t map;
-  char *tmp_pattern = pstrdup(cmd->pool, pattern), *new_pattern = NULL;
+  const char *tmp_pattern, *new_pattern = NULL;
 
+  tmp_pattern = pstrdup(cmd->pool, pattern);
   map.map_pool = cmd->tmp_pool;
 
-  while (rewrite_parse_map_str(tmp_pattern, &map)) {
+  while (rewrite_parse_map_str((char *) tmp_pattern, &map)) {
     config_rec *c = NULL;
     unsigned char have_map = FALSE;
 
@@ -1244,12 +1263,11 @@ static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
      * name is actually valid.
      */
     c = find_config(main_server->conf, CONF_PARAM, "RewriteMap", FALSE);
-
-    while (c) {
+    while (c != NULL) {
       pr_signals_handle();
 
       if (strcmp(c->argv[0], map.map_name) == 0) { 
-        char *lookup_value = NULL, *res;
+        const char *lookup_value = NULL, *res;
         have_map = TRUE;
 
         rewrite_log("rewrite_subst_maps(): mapping '%s' using '%s'",
@@ -1311,11 +1329,12 @@ static char *rewrite_subst_maps(cmd_rec *cmd, char *pattern) {
   return (new_pattern ? new_pattern : pattern);
 }
 
-static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
+static const char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
     rewrite_map_t *map) {
   int fifo_fd = -1, fifo_lockfd = -1, res;
   char *value = NULL, *fifo_lockname = NULL;
   const char *fifo = (char *) c->argv[2];
+  size_t map_lookup_keylen;
 
 #ifndef HAVE_FLOCK
   struct flock lock;
@@ -1323,7 +1342,6 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
 
   /* The FIFO file descriptor should already be open. */
   fifo_fd = *((int *) c->argv[3]);
-
   if (fifo_fd == -1) {
     rewrite_log("rewrite_subst_maps_fifo(): missing necessary FIFO file "
       "descriptor");
@@ -1334,8 +1352,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   pr_signals_block();
 
   /* See if a RewriteLock has been configured. */
-  fifo_lockname = (char *) get_param_ptr(main_server->conf, "RewriteLock",
-    FALSE);
+  fifo_lockname = get_param_ptr(main_server->conf, "RewriteLock", FALSE);
   if (fifo_lockname != NULL) {
     /* Make sure the file exists. */
     fifo_lockfd = open(fifo_lockname, O_RDWR|O_CREAT, 0666);
@@ -1348,9 +1365,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   /* Obtain a write lock on the lock file, if configured */
   if (fifo_lockfd != -1) {
 #ifdef HAVE_FLOCK
-    if (flock(fifo_lockfd, LOCK_EX) < 0)
+    if (flock(fifo_lockfd, LOCK_EX) < 0) {
       rewrite_log("rewrite_subst_maps_fifo(): error obtaining lock: %s",
         strerror(errno));
+    }
 #else
     lock.l_type = F_WRLCK;
     lock.l_whence = 0;
@@ -1385,18 +1403,20 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
    */
 
   pr_signals_unblock();
-  if (rewrite_write_fifo(fifo_fd,
-      pstrcat(cmd->tmp_pool, map->map_lookup_key, "\n", NULL),
-      strlen(map->map_lookup_key) + 1) != strlen(map->map_lookup_key) + 1) {
-
+  map_lookup_keylen = strlen(map->map_lookup_key);
+  res = rewrite_write_fifo(fifo_fd,
+    pstrcat(cmd->tmp_pool, map->map_lookup_key, "\n", NULL),
+    map_lookup_keylen + 1);
+  if ((size_t) res != (map_lookup_keylen + 1)) {
     rewrite_log("rewrite_subst_maps_fifo(): error writing lookup key '%s' to "
       "FIFO '%s': %s", map->map_lookup_key, fifo, strerror(errno));
 
     if (fifo_lockfd != -1) {
 #ifdef HAVE_FLOCK
-      if (flock(fifo_lockfd, LOCK_UN) < 0)
+      if (flock(fifo_lockfd, LOCK_UN) < 0) {
         rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
           strerror(errno));
+      }
 #else
       lock.l_type = F_UNLCK;
       lock.l_whence = 0;
@@ -1414,7 +1434,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
       }
 #endif /* HAVE_FLOCK */
 
-      close(fifo_lockfd);
+      (void) close(fifo_lockfd);
     }
 
     /* Return the default value */
@@ -1440,9 +1460,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   pr_signals_unblock();
   res = rewrite_read_fifo(fifo_fd, value, REWRITE_FIFO_MAXLEN);
   if (res <= 0) {
-    if (res < 0)
+    if (res < 0) {
       rewrite_log("rewrite_subst_maps_fifo(): error reading value from FIFO "
         "'%s': %s", fifo, strerror(errno));
+    }
 
     /* Use the default value */
     value = map->map_default_value;
@@ -1474,9 +1495,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
 
   if (fifo_lockfd != -1) {
 #ifdef HAVE_FLOCK
-    if (flock(fifo_lockfd, LOCK_UN) < 0)
+    if (flock(fifo_lockfd, LOCK_UN) < 0) {
       rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
         strerror(errno));
+    }
 #else
     lock.l_type = F_UNLCK;
     lock.l_whence = 0;
@@ -1494,35 +1516,37 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
     }
 #endif /* HAVE_FLOCK */
 
-    close(fifo_lockfd);
+    (void) close(fifo_lockfd);
   }
 
   pr_signals_unblock();
-
   return value;
 }
 
-static char *rewrite_subst_maps_int(cmd_rec *cmd, config_rec *c,
+static const char *rewrite_subst_maps_int(cmd_rec *cmd, config_rec *c,
     rewrite_map_t *map) {
-  char *value = NULL;
+  const char *value = NULL;
   char *(*map_func)(pool *, char *) = (char *(*)(pool *, char *)) c->argv[2];
    
   value = map_func(cmd->tmp_pool, map->map_lookup_key);
-  if (value == NULL)
+  if (value == NULL) {
     value = map->map_default_value;
+  }
 
   return value;
 }
 
-static char *rewrite_subst_maps_txt(cmd_rec *cmd, config_rec *c,
+static const char *rewrite_subst_maps_txt(cmd_rec *cmd, config_rec *c,
     rewrite_map_t *map) {
   rewrite_map_txt_t *txtmap = c->argv[2];
-  char **txt_keys = NULL, **txt_vals = NULL, *value = NULL;
+  const char *value = NULL;
+  char **txt_keys = NULL, **txt_vals = NULL;
   register unsigned int i = 0;
 
   /* Make sure this map is up-to-date. */
-  if (!rewrite_parse_map_txt(txtmap))
+  if (!rewrite_parse_map_txt(txtmap)) {
     rewrite_log("rewrite_subst_maps_txt(): error parsing txt file");
+  }
 
   txt_keys = (char **) txtmap->txt_keys;
   txt_vals = (char **) txtmap->txt_values;
@@ -1540,16 +1564,19 @@ static char *rewrite_subst_maps_txt(cmd_rec *cmd, config_rec *c,
   return value;
 }
 
-static char *rewrite_subst_vars(cmd_rec *cmd, char *pattern) {
+static const char *rewrite_subst_vars(cmd_rec *cmd, const char *pattern) {
   register unsigned int i = 0;
-  char *new_pattern = NULL;
+  const char *new_pattern = NULL;
 
   for (i = 0; i < REWRITE_MAX_VARS; i++) {
-    char *res, *val = NULL;
+    const char *val = NULL, *res;
+
+    pr_signals_handle();
 
     /* Does this variable occur in the substitution pattern? */
-    if (strstr(pattern, rewrite_vars[i]) == NULL)
+    if (strstr(pattern, rewrite_vars[i]) == NULL) {
       continue;
+    }
 
     val = rewrite_expand_var(cmd, pattern, rewrite_vars[i]);
     if (val != NULL) {
@@ -1709,38 +1736,39 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
  * probably will) modify their key arguments.
  */
 
-static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
+static const char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
   char sep = *key;
   char *value = NULL, *src = NULL, *dst = NULL;
-  char *tmp = NULL, *res = NULL;
+  const char *res = NULL;
+  char *ptr = NULL, *str;
 
   /* Due to the way in which this internal function works, the first
    * character of the given key is used as a delimiter separating
    * the given key, and the sequences to replace for this function.
    */
-  char *str = pstrdup(map_pool, key + 1);
+  str = pstrdup(map_pool, key + 1);
 
-  tmp = strchr(str, sep);
-  if (tmp == NULL) {
+  ptr = strchr(str, sep);
+  if (ptr == NULL) {
     rewrite_log("rewrite_map_int_replaceall(): badly formatted input key");
     return NULL;
   }
 
-  *tmp = '\0';
+  *ptr = '\0';
   value = str;
   rewrite_log("rewrite_map_int_replaceall(): actual key: '%s'", value); 
  
-  str = tmp + 1;
+  str = ptr + 1;
 
-  tmp = strchr(str, sep);
-  if (tmp == NULL) {
+  ptr = strchr(str, sep);
+  if (ptr == NULL) {
     rewrite_log("rewrite_map_int_replaceall(): badly formatted input key");
     return NULL;
   }
 
-  *tmp = '\0';
+  *ptr = '\0';
   src = str;
-  dst = tmp + 1;
+  dst = ptr + 1;
   
   rewrite_log("rewrite_map_int_replaceall(): replacing '%s' with '%s'", src,
     dst);
@@ -1768,24 +1796,32 @@ static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
   return res;
 }
 
-static char *rewrite_map_int_tolower(pool *map_pool, char *key) {
+static const char *rewrite_map_int_tolower(pool *map_pool, char *key) {
   register unsigned int i = 0;
-  char *value = pstrdup(map_pool, key);
-  size_t valuelen = strlen(value);
+  char *value;
+  size_t valuelen;
 
-  for (i = 0; i < valuelen; i++)
+  value = pstrdup(map_pool, key);
+  valuelen = strlen(value);
+
+  for (i = 0; i < valuelen; i++) {
     value[i] = tolower(value[i]);
+  }
 
   return value;
 }
 
-static char *rewrite_map_int_toupper(pool *map_pool, char *key) {
+static const char *rewrite_map_int_toupper(pool *map_pool, char *key) {
   register unsigned int i = 0;
-  char *value = pstrdup(map_pool, key);
-  size_t valuelen = strlen(value);
+  char *value;
+  size_t valuelen;
 
-  for (i = 0; i < valuelen; i++)
+  value = pstrdup(map_pool, key);
+  valuelen = strlen(value);
+
+  for (i = 0; i < valuelen; i++) {
     value[i] = toupper(value[i]);
+  }
 
   return value;
 }
@@ -1794,23 +1830,23 @@ static char *rewrite_map_int_toupper(pool *map_pool, char *key) {
  * path).  Returns the escaped string on success, NULL on error; failures can
  * be caused by: bad % escape sequences, decoding %00, or a special character.
  */
-static char *rewrite_map_int_unescape(pool *map_pool, char *key) {
+static const char *rewrite_map_int_unescape(pool *map_pool, char *key) {
   register int i, j;
-  char *value = pcalloc(map_pool, sizeof(char) * strlen(key));
+  char *value;
 
+  value = pcalloc(map_pool, sizeof(char) * strlen(key));
   for (i = 0, j = 0; key[j]; ++i, ++j) {
     if (key[j] != '%') {
       value[i] = key[j];
 
     } else {
-
-      if (!PR_ISXDIGIT(key[j+1]) || !PR_ISXDIGIT(key[j+2])) {
+      if (!PR_ISXDIGIT(key[j+1]) ||
+          !PR_ISXDIGIT(key[j+2])) {
         rewrite_log("rewrite_map_int_unescape(): bad escape sequence '%c%c%c'",
           key[j], key[j+1], key[j+2]);
         return NULL;
 
       } else {
-
         value[i] = rewrite_hex_to_char(&key[j+1]);
         j += 2;
         if (key[i] == '/' || key[i] == '\0') {
@@ -1957,8 +1993,10 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
   static unsigned long ucs4_longs[PR_TUNABLE_BUFFER_SIZE] = {0L};
 
   /* If the key is NULL or empty, do nothing. */
-  if (!key || !strlen(key))
+  if (key == NULL ||
+      !strlen(key)) {
     return NULL;
+  }
 
   /* Always make sure the buffers are clear for this run. */
   memset(utf8_val, '\0', PR_TUNABLE_BUFFER_SIZE);
@@ -1974,14 +2012,15 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
     return NULL;
 
   } else if (ucs4strlen > 1) {
-    register unsigned int i = 0;
+    register int i = 0;
 
     /* Cast the UTF-8 longs to unsigned chars.  NOTE: this is an assumption
      * about casts; it just so happens, quite nicely, that UCS4 maps one-to-one
      * to ISO-8859-1 (Latin-1).
      */
-    for (i = 0; i < ucs4strlen; i++)
+    for (i = 0; i < ucs4strlen; i++) {
       utf8_val[i] = (unsigned char) ucs4_longs[i];
+    }
 
     return pstrdup(map_pool, (const char *) utf8_val);
   }
@@ -2699,7 +2738,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     } 
 
     if (exec_rule) {
-      char *new_arg = NULL;
+      const char *new_arg = NULL;
       unsigned int rule_flags = *((unsigned int *) c->argv[4]);
 
       rewrite_log("rewrite_fixup(): executing RewriteRule");
@@ -2710,7 +2749,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         char *param, *dup_arg;
         array_header *list;
 
-        rewrite_replace_cmd_arg(cmd, new_arg);
+        rewrite_replace_cmd_arg(cmd, (char *) new_arg);
         rewrite_log("rewrite_fixup(): %s arg now '%s'", cmd_name, new_arg);
 
         /* Be sure to overwrite the entire cmd->argv array, not just
@@ -2809,7 +2848,7 @@ static void rewrite_restart_ev(const void *event_data, void *user_data) {
 }
 
 static void rewrite_rewrite_home_ev(const void *event_data, void *user_data) {
-  char *pw_dir;
+  const char *pw_dir;
   pool *tmp_pool;
   cmd_rec *cmd;
   modret_t *mr; 
@@ -2826,7 +2865,7 @@ static void rewrite_rewrite_home_ev(const void *event_data, void *user_data) {
   pr_pool_tag(tmp_pool, "rewrite home pool");
 
   cmd = pr_cmd_alloc(tmp_pool, 2, pstrdup(tmp_pool, "REWRITE_HOME"), pw_dir);
-  cmd->arg = pw_dir;
+  cmd->arg = pstrdup(tmp_pool, pw_dir);
   cmd->tmp_pool = tmp_pool;
 
   /* Call rewrite_fixup() directly, rather than going through the entire

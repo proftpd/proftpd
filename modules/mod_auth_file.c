@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
- *
- * Copyright (c) 2002-2015 The ProFTPD Project team
+ * Copyright (c) 2002-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -637,6 +636,11 @@ static int af_setgrent(pool *p) {
         return -1;
       }
 
+      /* As the file may contain sensitive data, we do not want it lingering
+       * around in stdio buffers.
+       */
+      (void) setvbuf(af_group_file->af_file, NULL, _IONBF, 0);
+
       if (fcntl(fileno(af_group_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
         pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
           ": unable to set CLOEXEC on AuthGroupFile %s (fd %d): %s",
@@ -871,6 +875,11 @@ static int af_setpwent(pool *p) {
         errno = xerrno;
         return -1;
       }
+
+      /* As the file may contain sensitive data, we do not want it lingering
+       * around in stdio buffers.
+       */
+      (void) setvbuf(af_user_file->af_file, NULL, _IONBF, 0);
 
       if (fcntl(fileno(af_user_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
         pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
@@ -1161,8 +1170,9 @@ MODRET authfile_auth(cmd_rec *cmd) {
 
   cleartxt_pass = pstrdup(cmd->tmp_pool, tmp);
 
-  if (pr_auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1]))
+  if (pr_auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1])) {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
 
   session.auth_mech = "mod_auth_file.c";
   return PR_HANDLED(cmd);

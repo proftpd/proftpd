@@ -322,7 +322,7 @@ void pr_netio_abort(pr_netio_stream_t *nstrm) {
 }
 
 int pr_netio_close(pr_netio_stream_t *nstrm) {
-  int res = -1;
+  int res = -1, xerrno = 0;
   const char *nstrm_mode;
 
   if (nstrm == NULL) {
@@ -346,8 +346,8 @@ int pr_netio_close(pr_netio_stream_t *nstrm) {
           default_ctrl_netio->owner_name, nstrm_mode);
         res = (default_ctrl_netio->close)(nstrm);
       }
-      destroy_pool(nstrm->strm_pool);
-      return res;
+      xerrno = errno;
+      break;
 
     case PR_NETIO_STRM_DATA:
       if (data_netio != NULL) {
@@ -360,8 +360,8 @@ int pr_netio_close(pr_netio_stream_t *nstrm) {
           default_data_netio->owner_name, nstrm_mode);
         res = (default_data_netio->close)(nstrm);
       }
-      destroy_pool(nstrm->strm_pool);
-      return res;
+      xerrno = errno;
+      break;
 
     case PR_NETIO_STRM_OTHR:
       if (othr_netio != NULL) {
@@ -374,11 +374,24 @@ int pr_netio_close(pr_netio_stream_t *nstrm) {
           default_othr_netio->owner_name, nstrm_mode);
         res = (default_othr_netio->close)(nstrm);
       }
-      destroy_pool(nstrm->strm_pool);
-      return res;
+      xerrno = errno;
+      break;
+
+    default:
+      errno = EPERM;
+      return -1;
   }
 
-  errno = EPERM;
+  /* Make sure to scrub any buffered memory, too. */
+  if (nstrm->strm_buf != NULL) {
+    pr_buffer_t *pbuf;
+
+    pbuf = nstrm->strm_buf;
+    pr_memscrub(pbuf->buf, pbuf->buflen);
+  }
+
+  destroy_pool(nstrm->strm_pool);
+  errno = xerrno;
   return res;
 }
 
@@ -1073,6 +1086,8 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
     switch (pr_netio_poll(nstrm)) {
       case 1:
+        /* pr_netio_poll() returns 1 only if the stream has been aborted. */
+        errno = ECONNABORTED;
         return -2;
 
       case -1:
@@ -1318,7 +1333,8 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     bufmin = 1;
   }
 
-  if (bufmin > buflen) {
+  if (bufmin > 0 &&
+      (size_t) bufmin > buflen) {
     bufmin = buflen;
   }
 

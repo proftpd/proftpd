@@ -33,8 +33,8 @@ static pool *resp_pool = NULL;
 
 static char resp_buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 
-static char *resp_last_response_code = NULL;
-static char *resp_last_response_msg = NULL;
+static const char *resp_last_response_code = NULL;
+static const char *resp_last_response_msg = NULL;
 
 static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
 
@@ -77,26 +77,28 @@ void pr_response_set_pool(pool *p) {
   resp_pool = p;
 
   if (p == NULL) {
+    reset_last_response();
     return;
   }
 
   /* Copy any old "last" values out of the new pool. */
   if (resp_last_response_code != NULL) {
-    char *tmp;
+    const char *ptr;
 
-    tmp = resp_last_response_code;
-    resp_last_response_code = pstrdup(p, tmp);
+    ptr = resp_last_response_code;
+    resp_last_response_code = pstrdup(p, ptr);
   }
 
   if (resp_last_response_msg != NULL) {
-    char *tmp;
+    const char *ptr;
   
-    tmp = resp_last_response_msg;
-    resp_last_response_msg = pstrdup(p, tmp);
+    ptr = resp_last_response_msg;
+    resp_last_response_msg = pstrdup(p, ptr);
   }
 }
 
-int pr_response_get_last(pool *p, char **response_code, char **response_msg) {
+int pr_response_get_last(pool *p, const char **response_code,
+    const char **response_msg) {
   if (p == NULL) {
     errno = EINVAL;
     return -1;
@@ -137,17 +139,25 @@ int pr_response_block(int bool) {
 
 void pr_response_clear(pr_response_t **head) {
   reset_last_response();
-  *head = NULL;
+
+  if (head != NULL) {
+    *head = NULL;
+  }
 }
 
 void pr_response_flush(pr_response_t **head) {
   unsigned char ml = FALSE;
-  char *last_numeric = NULL;
+  const char *last_numeric = NULL;
   pr_response_t *resp = NULL;
+
+  if (head == NULL) {
+    return;
+  }
 
   if (resp_blocked) {
     pr_trace_msg(trace_channel, 19,
       "responses blocked, not flushing response chain");
+    pr_response_clear(head);
     return;
   }
 
@@ -155,6 +165,7 @@ void pr_response_flush(pr_response_t **head) {
     /* Not sure what happened to the control connection, but since it's gone,
      * there's no need to flush any messages.
      */
+    pr_response_clear(head);
     return;
   }
 

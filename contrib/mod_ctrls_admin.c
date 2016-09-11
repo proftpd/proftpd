@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
- *
- * Copyright (c) 2000-2015 TJ Saunders
+ * Copyright (c) 2000-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +29,7 @@
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.8"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
@@ -111,6 +110,281 @@ static void mem_printf(const char *fmt, ...) {
 
 /* Controls handlers
  */
+
+static server_rec *ctrls_config_find_server(pr_ctrls_t *ctrl,
+    const char *name) {
+  unsigned int port = 21;
+  const pr_netaddr_t *addr;
+  pr_ipbind_t *ipbind;
+  char *name_dup, *ptr;
+
+  name_dup = pstrdup(ctrl->ctrls_tmp_pool, name);
+  if (*name_dup == '[') {
+    size_t namelen;
+
+    /* Possible IPv6 address; make sure there's a terminating bracket. */
+    ptr = strchr(name_dup + 1, ']');
+    if (ptr == NULL) {
+      pr_ctrls_add_response(ctrl, "config: badly formatted IPv6 address: %s",
+        name);
+      errno = EINVAL;
+      return NULL;
+    }
+
+    namelen = ptr - (name_dup + 1);
+    name_dup = pstrndup(ctrl->ctrls_tmp_pool, name_dup + 1, namelen);
+
+    if (*(ptr+1) != '\0') {
+      port = atoi(ptr + 1);
+    }
+
+  } else {
+    ptr = strrchr(name_dup, ':');
+    if (ptr != NULL) {
+      port = atoi(ptr + 1);
+      *ptr = '\0';
+    }
+  }
+
+  addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, name_dup, NULL);
+  if (addr == NULL) {
+    pr_ctrls_add_response(ctrl, "config: no such server: %s", name_dup);
+    errno = EINVAL;
+    return NULL;
+  }
+
+  ipbind = pr_ipbind_find(addr, port, TRUE);
+  if (ipbind != NULL) {
+    return ipbind->ib_server;
+  }
+
+  pr_ctrls_add_response(ctrl, "config: no such server: %s", name);
+  errno = ENOENT;
+  return NULL;
+}
+
+static int ctrls_config_dispatch_cmd(pr_ctrls_t *ctrl, cmd_rec *cmd) {
+  conftable *conftab;
+  char found = FALSE;
+
+  cmd->server = pr_parser_server_ctxt_get();
+  cmd->config = pr_parser_config_ctxt_get();
+
+  conftab = pr_stash_get_symbol2(PR_SYM_CONF, cmd->argv[0], NULL,
+    &cmd->stash_index, &cmd->stash_hash);
+  while (conftab != NULL) {
+    modret_t *mr;
+
+    pr_signals_handle();
+
+    cmd->argv[0] = conftab->directive;
+
+    mr = pr_module_call(conftab->m, conftab->handler, cmd);
+    if (mr != NULL) {
+      if (MODRET_ISERROR(mr)) {
+        pr_ctrls_add_response(ctrl, "config set: %s", MODRET_ERRMSG(mr));
+        errno = EPERM;
+        return -1;
+      }
+    }
+
+    if (!MODRET_ISDECLINED(mr)) {
+      found = TRUE;
+    }
+
+    conftab = pr_stash_get_symbol2(PR_SYM_CONF, cmd->argv[0], conftab,
+      &cmd->stash_index, &cmd->stash_hash);
+  }
+
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+  }
+
+  if (found == FALSE) {
+    pr_ctrls_add_response(ctrl,
+      "config set: unknown configuration directive '%s'",
+      (char *) cmd->argv[0]);
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  register int i;
+  int res;
+  server_rec *s, *curr_main_server;
+  config_rec *c;
+  cmd_rec *cmd;
+  const char *name, *text;
+  size_t textlen;
+
+  /* At this point, reqargv should look something like:
+   *
+   *  0: "127.0.0.1:2121"
+   *  1: "TLSRequired"
+   *  ...
+   */
+
+  if (reqargc < 3 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl,
+      "config set: missing required parameters");
+    return -1;
+  }
+
+  name = reqargv[0];
+  s = ctrls_config_find_server(ctrl, name);
+  if (s == NULL) {
+    return -1;
+  }
+
+  res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl, "config set: error preparing parser: %s",
+      strerror(errno));
+    return -1;
+  }
+
+  res = pr_parser_server_ctxt_push(s);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "config set: error adding server to parser stack: %s", strerror(errno));
+    (void) pr_parser_cleanup();
+    return -1;
+  }
+
+  text = "";
+  for (i = 1; i < reqargc; i++) {
+    text = pstrcat(ctrl->ctrls_tmp_pool, text, *text ? " " : "", reqargv[i],
+      NULL);
+  }
+
+  textlen = strlen(text);
+  cmd = pr_parser_parse_line(ctrl->ctrls_tmp_pool, text, textlen);
+  if (cmd == NULL) {
+    pr_ctrls_add_response(ctrl, "config set: error parsing config data: %s",
+      strerror(errno));
+    (void) pr_parser_cleanup();
+    return -1;
+  }
+
+  c = find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE);
+  if (c != NULL) {
+    /* Note that remove_config() relies on the Parser API. */
+    pr_config_remove(s->conf, cmd->argv[0], PR_CONFIG_FL_PRESERVE_ENTRY, FALSE);
+  }
+
+  curr_main_server = main_server;
+  res = ctrls_config_dispatch_cmd(ctrl, cmd);
+  main_server = curr_main_server;
+
+  if (res < 0) {
+    if (c != NULL) {
+      xaset_t *set;
+
+      /* The config_rec "remembers" its parent set; we just need to add
+       * the record back into that set.
+       */
+      set = c->set;
+      xaset_insert_end(set, (xasetmember_t *) c);
+    }
+
+  } else {
+    pr_ctrls_add_response(ctrl, "config set: %s configured",
+      (char *) cmd->argv[0]);
+    pr_config_merge_down(s->conf, TRUE);
+  }
+
+  (void) pr_parser_cleanup();
+  return 0;
+}
+
+static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int res;
+  server_rec *s;
+  const char *name, *directive;
+
+  /* At this point, reqargv should look something like:
+   *
+   *  0: "127.0.0.1:2121"
+   *  1: "TLSRequired"
+   */
+
+  if (reqargc < 2 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl,
+      "config remove: missing required parameters");
+    return -1;
+  }
+
+  if (reqargc != 2) {
+    pr_ctrls_add_response(ctrl,
+      "config remove: wrong number of parameters");
+    return -1;
+  }
+
+  name = reqargv[0];
+  s = ctrls_config_find_server(ctrl, name);
+  if (s == NULL) {
+    return -1;
+  }
+
+  res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl, "config remove: error preparing parser: %s",
+      strerror(errno));
+    return -1;
+  }
+
+  res = pr_parser_server_ctxt_push(s);
+  if (res < 0) {
+    pr_ctrls_add_response(ctrl,
+      "config remove: error adding server to parser stack: %s",
+      strerror(errno));
+    (void) pr_parser_cleanup();
+    return -1;
+  }
+
+  directive = reqargv[1];
+  res = remove_config(s->conf, directive, FALSE);
+  if (res == TRUE) {
+    pr_ctrls_add_response(ctrl, "config remove: %s removed", directive);
+    pr_config_merge_down(s->conf, TRUE);
+
+  } else {
+    pr_ctrls_add_response(ctrl, "config remove: %s not found in configuration",
+      directive);
+  }
+
+  (void) pr_parser_cleanup();
+  return 0;
+}
+
+static int ctrls_handle_config(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+
+  /* Sanity check */
+  if (reqargc == 0 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "config: missing required parameters");
+    return -1;
+  }
+
+  if (strncmp(reqargv[0], "set", 4) == 0) {
+    return ctrls_handle_config_set(ctrl, --reqargc, ++reqargv);
+
+  } else if (strncmp(reqargv[0], "remove", 7) == 0) {
+    return ctrls_handle_config_remove(ctrl, --reqargc, ++reqargv);
+  }
+
+  pr_ctrls_add_response(ctrl, "config: unknown config action: '%s'",
+    reqargv[0]);
+  return -1;
+}
 
 static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
@@ -239,30 +513,33 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-static int admin_addr_down(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_down(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     unsigned int port) {
 
   pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "down: disabling %s#%u",
     pr_netaddr_get_ipstr(addr), port);
 
   if (pr_ipbind_close(addr, port, FALSE) < 0) {
-    if (errno == ENOENT)
+    if (errno == ENOENT) {
       pr_ctrls_add_response(ctrl, "down: no such server: %s#%u",
         pr_netaddr_get_ipstr(addr), port);
-    else
+
+    } else {
       pr_ctrls_add_response(ctrl, "down: %s#%u already disabled",
         pr_netaddr_get_ipstr(addr), port);
+    }
 
-  } else
+  } else {
     pr_ctrls_add_response(ctrl, "down: %s#%u disabled",
       pr_netaddr_get_ipstr(addr), port);
+  }
 
   return 0;
 }
 
 static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
 
   /* Handle scheduled downs of virtual servers in the future, and
    * cancellations of scheduled downs.
@@ -285,7 +562,7 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
   for (i = 0; i < reqargc; i++) {
     unsigned int server_port = 21;
     char *server_str = reqargv[i], *tmp = NULL;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
     /* Check for an argument of "all" */
@@ -302,7 +579,7 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
     }
 
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
-    if (!server_addr) {
+    if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "down: no such server: %s#%u",
         server_str, server_port);
       continue;
@@ -310,12 +587,13 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
 
     admin_addr_down(ctrl, server_addr, server_port);
 
-    if (addrs) {
+    if (addrs != NULL) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
-      for (j = 0; j < addrs->nelts; j++)
+      for (j = 0; j < addrs->nelts; j++) {
         admin_addr_down(ctrl, elts[j], server_port);
+      }
     }
   }
 
@@ -433,7 +711,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'kick user' requests. */
   if (strcmp(reqargv[0], "user") == 0) {
-    register unsigned int i = 0;
+    register int i = 0;
     int optc, kicked_count = 0, kicked_max = -1;
     const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
@@ -533,7 +811,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'kick host' requests. */
   } else if (strcmp(reqargv[0], "host") == 0) {
-    register unsigned int i = 0;
+    register int i = 0;
     int optc, kicked_count = 0, kicked_max = -1;
     const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
@@ -570,7 +848,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
     for (i = optind; i < reqargc; i++) {
       unsigned char kicked_host = FALSE;
       const char *addr;
-      pr_netaddr_t *na;
+      const pr_netaddr_t *na;
 
       na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[i], NULL);
       if (na == NULL) {
@@ -631,7 +909,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'kick class' requests. */
   } else if (strcmp(reqargv[0], "class") == 0) {
-    register unsigned int i = 0;
+    register int i = 0;
     int optc, kicked_count = 0, kicked_max = -1;
     const char *reqopts = "n:";
     pr_scoreboard_entry_t *score = NULL;
@@ -819,7 +1097,7 @@ static int ctrls_handle_scoreboard(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
   int respargc = 0;
   char **respargv = NULL;
 
@@ -851,8 +1129,9 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
       /* If the timeout is less than the waiting period, reduce the
        * waiting period by half.
        */
-      if (timeout < waiting)
+      if (timeout < waiting) {
         waiting /= 2;
+      }
     }
 
     /* Now, simply wait for all sessions to be done.  For bonus points,
@@ -914,10 +1193,11 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
     "shutdown: flushed to %s/%s client: return value: 0",
     ctrl->ctrls_cl->cl_user, ctrl->ctrls_cl->cl_group);
 
-  for (i = 0; i < respargc; i++)
+  for (i = 0; i < respargc; i++) {
     pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
       "shutdown: flushed to %s/%s client: '%s'",
       ctrl->ctrls_cl->cl_user, ctrl->ctrls_cl->cl_group, respargv[i]);
+  }
 
   /* Shutdown by raising SIGTERM.  Easy. */
   raise(SIGTERM);
@@ -925,7 +1205,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-static int admin_addr_status(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_status(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
 
@@ -943,13 +1223,12 @@ static int admin_addr_status(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
 
   pr_ctrls_add_response(ctrl, "status: %s#%u %s", pr_netaddr_get_ipstr(addr),
     port, ipbind->ib_isactive ? "UP" : "DOWN");
-
   return 0;
 }
 
 static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
 
   /* Check the status ACL. */
   if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "status")) {
@@ -968,7 +1247,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
   for (i = 0; i < reqargc; i++) {
     unsigned int server_port = 21;
     char *server_str = reqargv[i], *tmp = NULL;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
     /* Check for an argument of "all" */
@@ -994,22 +1273,23 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
     }
 
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
-
-    if (!server_addr) {
+    if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "status: no such server: %s#%u",
         server_str, server_port);
       continue;
     }
 
-    if (admin_addr_status(ctrl, server_addr, server_port) < 0)
+    if (admin_addr_status(ctrl, server_addr, server_port) < 0) {
       continue;
+    }
 
-    if (addrs) {
+    if (addrs != NULL) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
-      for (j = 0; j < addrs->nelts; j++)
+      for (j = 0; j < addrs->nelts; j++) {
         admin_addr_status(ctrl, elts[j], server_port);
+      }
     }
   }
 
@@ -1035,7 +1315,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
   }
 
   if (strcmp(reqargv[0], "info") != 0) {
-    register unsigned int i;
+    register int i;
 
     for (i = 0; i < reqargc; i++) {
       char *channel, *tmp;
@@ -1073,17 +1353,18 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
     }
  
   } else {
-    pr_table_t *trace_tab = pr_trace_get_table();
+    pr_table_t *trace_tab;
 
-    if (trace_tab) {
-      void *key = NULL, *value = NULL;
+    trace_tab = pr_trace_get_table();
+    if (trace_tab != NULL) {
+      const void *key = NULL, *value = NULL;
 
       pr_ctrls_add_response(ctrl, "%-10s %-6s", "Channel", "Level");
       pr_ctrls_add_response(ctrl, "---------- ------");
 
       pr_table_rewind(trace_tab);
       key = pr_table_next(trace_tab);
-      while (key) {
+      while (key != NULL) {
         pr_signals_handle();
 
         value = pr_table_get(trace_tab, (const char *) key, NULL);
@@ -1107,7 +1388,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
 #endif /* PR_USE_TRACE */
 }
 
-static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_up(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
   int res = 0;
@@ -1118,6 +1399,7 @@ static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     pr_ctrls_add_response(ctrl,
       "up: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
       port);
+    errno = ENOENT;
     return -1;
   }
 
@@ -1161,7 +1443,7 @@ static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
 
 static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
 
   /* Handle scheduled ups of virtual servers in the future, and
    * cancellations of scheduled ups.
@@ -1184,7 +1466,7 @@ static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
   for (i = 0; i < reqargc; i++) {
     unsigned int server_port = 21;
     char *server_str = reqargv[i], *tmp = NULL;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
     tmp = strchr(server_str, '#');
@@ -1194,22 +1476,25 @@ static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
     }
 
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
-    if (!server_addr) {
+    if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "up: unable to resolve address for '%s'",
         server_str);
       return -1;
     }
 
-    if (admin_addr_up(ctrl, server_addr, server_port) < 0)
+    if (admin_addr_up(ctrl, server_addr, server_port) < 0) {
       return -1;
+    }
 
-    if (addrs) {
+    if (addrs != NULL) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
-      for (j = 0; j < addrs->nelts; j++)
-        if (admin_addr_up(ctrl, elts[j], server_port) < 0)
+      for (j = 0; j < addrs->nelts; j++) {
+        if (admin_addr_up(ctrl, elts[j], server_port) < 0) {
           return -1;
+        }
+      }
     }
   }
 
@@ -1411,6 +1696,8 @@ static int ctrls_admin_init(void) {
 }
 
 static ctrls_acttab_t ctrls_admin_acttab[] = {
+  { "config",	"set config directives",	NULL,
+    ctrls_handle_config },
   { "debug",    "set debugging level",		NULL,
     ctrls_handle_debug },
   { "dns",	"set UseReverseDNS configuration",	NULL,

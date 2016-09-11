@@ -60,6 +60,7 @@ static const char *trace_log = NULL;
 #endif /* PR_USE_TRACE */
 
 /* Necessary prototypes. */
+static void core_exit_ev(const void *, void *);
 static int core_sess_init(void);
 static void reset_server_auth_order(void);
 
@@ -436,46 +437,56 @@ MODRET set_debuglevel(cmd_rec *cmd) {
 }
 
 MODRET set_defaultaddress(cmd_rec *cmd) {
-  pr_netaddr_t *main_addr = NULL;
+  const char *name, *main_ipstr;
+  const pr_netaddr_t *main_addr = NULL;
   array_header *addrs = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT);
 
-  main_addr = pr_netaddr_get_addr2(main_server->pool, cmd->argv[1], &addrs,
-    addr_flags);
+  name = cmd->argv[1];
+  main_addr = pr_netaddr_get_addr2(main_server->pool, name, &addrs, addr_flags);
   if (main_addr == NULL) {
-    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
-      (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve '", name, "'",
       NULL));
   }
 
   /* If the given name is a DNS name, automatically add a ServerAlias
    * directive.
    */
-  if (pr_netaddr_is_v4(cmd->argv[1]) == FALSE &&
-      pr_netaddr_is_v6(cmd->argv[1]) == FALSE) {
-    add_config_param_str("ServerAlias", 1, cmd->argv[1]);
+  if (pr_netaddr_is_v4(name) == FALSE &&
+      pr_netaddr_is_v6(name) == FALSE) {
+    add_config_param_str("ServerAlias", 1, name);
   }
 
-  main_server->ServerAddress = pr_netaddr_get_ipstr(main_addr);
+  main_server->ServerAddress = main_ipstr = pr_netaddr_get_ipstr(main_addr);
   main_server->addr = main_addr;
 
-  if (addrs) {
+  if (addrs != NULL) {
     register unsigned int i;
     pr_netaddr_t **elts = addrs->elts;
 
     /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++) {
-      const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
+      const char *ipstr;
+
+      ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+      /* Skip duplicate addresses. */
+      if (strcmp(main_ipstr, ipstr) == 0) {
+        continue;
+      }
 
 #ifdef PR_USE_IPV6
       if (pr_netaddr_use_ipv6()) {
-        char *ipbuf = pcalloc(cmd->tmp_pool, INET6_ADDRSTRLEN + 1);
-        if (pr_netaddr_get_family(elts[i]) == AF_INET) {
+        char *ipbuf;
 
+        ipbuf = pcalloc(cmd->tmp_pool, INET6_ADDRSTRLEN + 1);
+        if (pr_netaddr_get_family(elts[i]) == AF_INET) {
           /* Create the bind record using the IPv4-mapped IPv6 version of
            * this address.
            */
@@ -498,7 +509,8 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     char *addrs_str = (char *) pr_netaddr_get_ipstr(main_addr);
 
     for (i = 2; i < cmd->argc; i++) {
-      pr_netaddr_t *addr;
+      const char *addr_ipstr;
+      const pr_netaddr_t *addr;
       addrs = NULL;
 
       addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
@@ -508,7 +520,8 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
           cmd->argv[i], "': ", strerror(errno), NULL));
       }
 
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(addr));
+      addr_ipstr = pr_netaddr_get_ipstr(addr);
+      add_config_param_str("_bind_", 1, addr_ipstr);
 
       /* If the given name is a DNS name, automatically add a ServerAlias
        * directive.
@@ -518,16 +531,24 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
         add_config_param_str("ServerAlias", 1, cmd->argv[i]);
       }
 
-      addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ",
-        pr_netaddr_get_ipstr(addr), NULL);
+      addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ", addr_ipstr, NULL);
 
-      if (addrs) {
+      if (addrs != NULL) {
         register unsigned int j;
         pr_netaddr_t **elts = addrs->elts;
 
         /* For every additional address, implicitly add a bind record. */
         for (j = 0; j < addrs->nelts; j++) {
-          add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[j]));
+          const char *ipstr;
+
+          ipstr = pr_netaddr_get_ipstr(elts[j]);
+
+          /* Skip duplicate addresses. */
+          if (strcmp(addr_ipstr, ipstr) == 0) {
+            continue;
+          }
+
+          add_config_param_str("_bind_", 1, ipstr);
         }
       }
     }
@@ -535,8 +556,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     pr_log_debug(DEBUG3, "setting default addresses to %s", addrs_str);
 
   } else {
-    pr_log_debug(DEBUG3, "setting default addresses to %s",
-      pr_netaddr_get_ipstr(main_addr));
+    pr_log_debug(DEBUG3, "setting default address to %s", main_ipstr);
   }
 
   return PR_HANDLED(cmd);
@@ -806,13 +826,14 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   level = pr_log_str2sysloglevel(cmd->argv[1]);
-  if (level < 0)
+  if (level < 0) {
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
       "emerg/alert/crit/error/warn/notice/info/debug");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = level;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = level;
 
   return PR_HANDLED(cmd);
 }
@@ -898,7 +919,7 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
   config_rec *c = NULL;
   const char *name;
   size_t namelen;
-  pr_netaddr_t *masq_addr = NULL;
+  const pr_netaddr_t *masq_addr = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
   CHECK_ARGS(cmd, 1);
@@ -916,7 +937,6 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
 
   masq_addr = pr_netaddr_get_addr2(cmd->server->pool, name, NULL, addr_flags);
   if (masq_addr == NULL) {
-
     /* If the requested name cannot be resolved because it is not known AT
      * THIS TIME, then do not fail to start the server.  We will simply try
      * again later (Bug#4104).
@@ -934,17 +954,17 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
 }
 
 MODRET set_maxinstances(cmd_rec *cmd) {
-  int max_instances;
+  long max_instances;
   char *endp;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
   if (strcasecmp(cmd->argv[1], "none") == 0) {
-    max_instances = 0;
+    max_instances = 0UL;
 
   } else {
-    max_instances = (int) strtol(cmd->argv[1], &endp, 10);
+    max_instances = strtol(cmd->argv[1], &endp, 10);
 
     if ((endp && *endp) ||
         max_instances < 1) {
@@ -1455,6 +1475,37 @@ MODRET set_fscachepolicy(cmd_rec *cmd) {
         cmd->argv[i], NULL));
     }
   }
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: FSOptions opt1 opt2 ... */
+MODRET set_fsoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "IgnoreExtendedAttributes") == 0) {
+      opts |= PR_FSIO_OPT_IGNORE_XATTR;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown FSOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
 
   return PR_HANDLED(cmd);
 }
@@ -2197,8 +2248,9 @@ MODRET add_directory(cmd_rec *cmd) {
   if (*dir != '/' &&
       *dir != '~' &&
       (!cmd->config ||
-       cmd->config->config_type != CONF_ANON))
+       cmd->config->config_type != CONF_ANON)) {
     CONF_ERROR(cmd, "relative path not allowed in non-<Anonymous> sections");
+  }
 
   /* If in anonymous mode, and path is relative, just cat anon root
    * and relative path.
@@ -2360,7 +2412,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
-    int argc = cmd->argc - 3;
+    unsigned int argc = cmd->argc - 3;
     void **argv;
 
     argv = &(cmd->argv[2]);
@@ -2565,7 +2617,10 @@ MODRET set_allowoverride(cmd_rec *cmd) {
 MODRET end_directory(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_DIR);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2613,7 +2668,10 @@ MODRET add_anonymous(cmd_rec *cmd) {
 MODRET end_anonymous(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ANON);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2629,15 +2687,19 @@ MODRET add_class(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (pr_class_open(main_server->pool, cmd->argv[1]) < 0)
+  if (pr_class_open(main_server->pool, cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating <Class ",
       cmd->argv[1], ">: ", strerror(errno), NULL));
+  }
 
   return PR_HANDLED(cmd);
 }
 
 MODRET end_class(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_CLASS);
 
   if (pr_class_close() < 0) {
@@ -2650,8 +2712,10 @@ MODRET end_class(cmd_rec *cmd) {
 MODRET add_global(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  if (cmd->argc-1 != 0)
+  if (cmd->argc-1 != 0) {
     CONF_ERROR(cmd, "Too many parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   c = pr_parser_config_ctxt_open(cmd->argv[0]);
@@ -2663,7 +2727,10 @@ MODRET add_global(cmd_rec *cmd) {
 MODRET end_global(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_GLOBAL);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -2828,7 +2895,8 @@ MODRET set_order(cmd_rec *cmd) {
 MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   config_rec *c;
   void **argv;
-  int argc, eval_type;
+  unsigned int argc;
+  int eval_type;
   array_header *acl = NULL;
  
   CHECK_CONF(cmd, CONF_LIMIT);
@@ -3029,7 +3097,10 @@ MODRET set_allowdeny(cmd_rec *cmd) {
 MODRET set_denyall(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3042,7 +3113,10 @@ MODRET set_denyall(cmd_rec *cmd) {
 MODRET set_allowall(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -3078,7 +3152,10 @@ MODRET set_authorder(cmd_rec *cmd) {
 MODRET end_limit(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_LIMIT);
 
   pr_parser_config_ctxt_close(&empty_ctxt);
@@ -3158,16 +3235,19 @@ MODRET set_displayquit(cmd_rec *cmd) {
 }
 
 MODRET add_virtualhost(cmd_rec *cmd) {
+  const char *name, *addr_ipstr;
   server_rec *s = NULL;
-  pr_netaddr_t *addr = NULL;
+  const pr_netaddr_t *addr = NULL;
   array_header *addrs = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT);
 
-  s = pr_parser_server_ctxt_open(cmd->argv[1]);
+  name = cmd->argv[1];
+  s = pr_parser_server_ctxt_open(name);
   if (s == NULL) {
     CONF_ERROR(cmd, "unable to create virtual server configuration");
   }
@@ -3178,27 +3258,38 @@ MODRET add_virtualhost(cmd_rec *cmd) {
    * are server_recs for each one.
    */
 
-  addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[1], &addrs, addr_flags);
+  addr = pr_netaddr_get_addr2(cmd->tmp_pool, name, &addrs, addr_flags);
   if (addr == NULL) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", cmd->argv[1],
-      "': ", strerror(errno), NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", name, "': ",
+      strerror(errno), NULL));
   }
 
   /* If the given name is a DNS name, automatically add a ServerAlias
    * directive.
    */
-  if (pr_netaddr_is_v4(cmd->argv[1]) == FALSE &&
-      pr_netaddr_is_v6(cmd->argv[1]) == FALSE) {
-    add_config_param_str("ServerAlias", 1, cmd->argv[1]);
+  if (pr_netaddr_is_v4(name) == FALSE &&
+      pr_netaddr_is_v6(name) == FALSE) {
+    add_config_param_str("ServerAlias", 1, name);
   }
 
-  if (addrs) {
+  addr_ipstr = pr_netaddr_get_ipstr(addr);
+
+  if (addrs != NULL) {
     register unsigned int i;
     pr_netaddr_t **elts = addrs->elts;
 
     /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++) {
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[i]));
+      const char *ipstr;
+
+      ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+      /* Skip duplicate addresses. */
+      if (strcmp(addr_ipstr, ipstr) == 0) {
+        continue;
+      }
+
+      add_config_param_str("_bind_", 1, ipstr);
     }
   }
 
@@ -3212,30 +3303,40 @@ MODRET add_virtualhost(cmd_rec *cmd) {
     for (i = 2; i < cmd->argc; i++) {
       addrs = NULL;
 
-      addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
-        addr_flags);
+      name = cmd->argv[i];
+      addr = pr_netaddr_get_addr2(cmd->tmp_pool, name, &addrs, addr_flags);
       if (addr == NULL) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
-          cmd->argv[i], "': ", strerror(errno), NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", name, "': ",
+          strerror(errno), NULL));
       }
 
       /* If the given name is a DNS name, automatically add a ServerAlias
        * directive.
        */
-      if (pr_netaddr_is_v4(cmd->argv[i]) == FALSE &&
-          pr_netaddr_is_v6(cmd->argv[i]) == FALSE) {
-        add_config_param_str("ServerAlias", 1, cmd->argv[i]);
+      if (pr_netaddr_is_v4(name) == FALSE &&
+          pr_netaddr_is_v6(name) == FALSE) {
+        add_config_param_str("ServerAlias", 1, name);
       }
 
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(addr));
+      addr_ipstr = pr_netaddr_get_ipstr(addr);
+      add_config_param_str("_bind_", 1, addr_ipstr);
 
-      if (addrs) {
+      if (addrs != NULL) {
         register unsigned int j;
         pr_netaddr_t **elts = addrs->elts;
 
         /* For every additional address, implicitly add a bind record. */
         for (j = 0; j < addrs->nelts; j++) {
-          add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[j]));
+          const char *ipstr;
+
+          ipstr = pr_netaddr_get_ipstr(elts[j]);
+
+          /* Skip duplicate addresses. */
+          if (strcmp(addr_ipstr, ipstr) == 0) {
+            continue;
+          }
+
+          add_config_param_str("_bind_", 1, ipstr);
         }
       }
     }
@@ -3246,11 +3347,14 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 
 MODRET end_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL, *next_s = NULL;
-  pr_netaddr_t *addr = NULL;
+  const pr_netaddr_t *addr = NULL;
   const char *address = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc > 1) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_VIRTUAL);
 
   if (cmd->server->ServerAddress) {
@@ -3282,7 +3386,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
        */
       if (s != cmd->server) {
         const char *serv_addrstr = NULL;
-        pr_netaddr_t *serv_addr = NULL;
+        const pr_netaddr_t *serv_addr = NULL;
 
         if (s->addr) {
           serv_addr = s->addr;
@@ -3377,7 +3481,7 @@ MODRET regex_filters(cmd_rec *cmd) {
 
 MODRET core_pre_any(cmd_rec *cmd) {
   unsigned long cmd_delay = 0;
-  char *rnfr_path = NULL;
+  const char *rnfr_path = NULL;
 
   /* Check for an exceeded MaxCommandRate. */
   cmd_delay = core_exceeded_cmd_rate(cmd);
@@ -3530,7 +3634,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   unsigned int port = 0;
   char *addrstr = NULL, *tmp = NULL;
   config_rec *c = NULL;
-  pr_netaddr_t *bind_addr;
+  const pr_netaddr_t *bind_addr;
   const char *proto;
 
   if (session.sf_flags & SF_EPSV_ALL) {
@@ -3716,7 +3820,7 @@ MODRET core_pasv(cmd_rec *cmd) {
 }
 
 MODRET core_port(cmd_rec *cmd) {
-  pr_netaddr_t *listen_addr = NULL, *port_addr = NULL;
+  const pr_netaddr_t *listen_addr = NULL, *port_addr = NULL;
   char *port_info;
 #ifdef PR_USE_IPV6
   char buf[INET6_ADDRSTRLEN] = {'\0'};
@@ -3879,7 +3983,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   if (allow_foreign_addr == NULL ||
       *allow_foreign_addr == FALSE) {
-    pr_netaddr_t *remote_addr = session.c->remote_addr;
+    const pr_netaddr_t *remote_addr = session.c->remote_addr;
 
 #ifdef PR_USE_IPV6
     if (pr_netaddr_use_ipv6()) {
@@ -3944,7 +4048,8 @@ MODRET core_port(cmd_rec *cmd) {
 }
 
 MODRET core_eprt(cmd_rec *cmd) {
-  pr_netaddr_t na, *listen_addr = NULL;
+  const pr_netaddr_t *listen_addr = NULL;
+  pr_netaddr_t na;
   int family = 0;
   unsigned short port = 0;
   unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
@@ -4264,7 +4369,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   int family = 0;
   int epsv_min_port = 1024, epsv_max_port = 65535;
   config_rec *c = NULL;
-  pr_netaddr_t *bind_addr;
+  const pr_netaddr_t *bind_addr;
 
   CHECK_CMD_MIN_ARGS(cmd, 1);
 
@@ -4843,6 +4948,9 @@ MODRET core_post_host(cmd_rec *cmd) {
     int res;
     config_rec *c;
 
+    /* Reset the FS options */
+    (void) pr_fsio_set_options(0UL);
+
     /* Remove the TimeoutIdle timer. */
     (void) pr_timer_remove(PR_TIMER_IDLE, ANY_MODULE);
 
@@ -4917,12 +5025,12 @@ MODRET core_syst(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
+int core_chgrp(cmd_rec *cmd, const char *path, uid_t uid, gid_t gid) {
   char *cmd_name;
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "SITE_CHGRP");
-  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dir, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
     pr_log_debug(DEBUG7, "SITE CHGRP command denied by <Limit> config");
     pr_cmd_set_name(cmd, cmd_name);
 
@@ -4931,15 +5039,15 @@ int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  return pr_fsio_lchown(dir, uid, gid);
+  return pr_fsio_lchown(path, uid, gid);
 }
 
-int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
+int core_chmod(cmd_rec *cmd, const char *path, mode_t mode) {
   char *cmd_name;
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "SITE_CHMOD");
-  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, dir, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL)) {
     pr_log_debug(DEBUG7, "SITE CHMOD command denied by <Limit> config");
     pr_cmd_set_name(cmd, cmd_name);
 
@@ -4948,7 +5056,7 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  return pr_fsio_chmod(dir,mode);
+  return pr_fsio_chmod(path, mode);
 }
 
 MODRET core_chdir(cmd_rec *cmd, char *ndir) {
@@ -6086,18 +6194,6 @@ MODRET core_opts(cmd_rec *cmd) {
 MODRET core_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
-  /* Default transfer mode is ASCII */
-  session.sf_flags |= SF_ASCII;
-  c = find_config(main_server->conf, CONF_PARAM, "DefaultTransferMode", FALSE);
-  if (c != NULL) {
-    char *default_transfer_mode;
-
-    default_transfer_mode = c->argv[0];
-    if (strcasecmp(default_transfer_mode, "binary") == 0) {
-      session.sf_flags &= (SF_ALL^SF_ASCII);
-    }
-  }
-
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutIdle", FALSE);
   if (c != NULL) {
     int prev_timeout, timeout;
@@ -6206,6 +6302,9 @@ MODRET core_post_pass(cmd_rec *cmd) {
       PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
   }
 
+  /* Register an exit handler here, for clearing the statcache. */
+  pr_event_register(&core_module, "core.exit", core_exit_ev, NULL);
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -6217,22 +6316,6 @@ MODRET core_post_pass(cmd_rec *cmd) {
 
 /* Configuration directive handlers
  */
-
-MODRET set_defaulttransfermode(cmd_rec *cmd) {
-  char *mode;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  mode = cmd->argv[1];
-  if (strcasecmp(mode, "ascii") != 0 &&
-      strcasecmp(mode, "binary") != 0) {
-    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
-  }
-
-  add_config_param_str(cmd->argv[0], 1, mode);
-  return PR_HANDLED(cmd);
-}
 
 MODRET set_deferwelcome(cmd_rec *cmd) {
   int bool = -1;
@@ -6288,6 +6371,10 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
 
 /* Event handlers
  */
+
+static void core_exit_ev(const void *event_data, void *user_data) {
+  pr_fs_statcache_reset();
+}
 
 static void core_restart_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_reset();
@@ -6441,7 +6528,7 @@ static void set_server_auth_order(void) {
   c = find_config(main_server->conf, CONF_PARAM, "AuthOrder", FALSE);
   if (c != NULL) {
     array_header *module_list = (array_header *) c->argv[0];
-    int modulec = 0;
+    unsigned int modulec = 0;
     char **modulev = NULL;
     register unsigned int i = 0;
 
@@ -6516,11 +6603,12 @@ static int core_sess_init(void) {
   char *displayquit = NULL;
   config_rec *c = NULL;
   unsigned int *debug_level = NULL;
+  unsigned long fs_opts = 0UL;
 
   init_auth();
 
   c = find_config(main_server->conf, CONF_PARAM, "MultilineRFC2228", FALSE);
-  if (c) {
+  if (c != NULL) {
     session.multiline_rfc2228 = *((int *) c->argv[0]);
   }
 
@@ -6549,8 +6637,23 @@ static int core_sess_init(void) {
  
   /* Check for a configured DebugLevel. */
   debug_level = get_param_ptr(main_server->conf, "DebugLevel", FALSE);
-  if (debug_level != NULL)
+  if (debug_level != NULL) {
     pr_log_setdebuglevel(*debug_level);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "FSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    fs_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "FSOptions", FALSE);
+  }
+
+  (void) pr_fsio_set_options(fs_opts);
 
   /* Check for any server-specific RegexOptions */
   c = find_config(main_server->conf, CONF_PARAM, "RegexOptions", FALSE);
@@ -6812,7 +6915,6 @@ static conftable core_conftab[] = {
   { "DebugLevel",		set_debuglevel,			NULL },
   { "DefaultAddress",		set_defaultaddress,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
-  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "DeferWelcome",		set_deferwelcome,		NULL },
   { "Define",			set_define,			NULL },
   { "Deny",			set_allowdeny,			NULL },
@@ -6826,6 +6928,7 @@ static conftable core_conftab[] = {
   { "DisplayQuit",		set_displayquit,		NULL },
   { "From",			add_from,			NULL },
   { "FSCachePolicy",		set_fscachepolicy,		NULL },
+  { "FSOptions",		set_fsoptions,			NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "HideFiles",		set_hidefiles,			NULL },

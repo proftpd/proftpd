@@ -1,4 +1,5 @@
 .deps/
+.github/
 autom4te.cache
 config.log
 config.h
@@ -38,6 +39,8 @@ tests/api-tests
 tests/api-tests.log
 utils/*.[0-9]
 *.a
+*.gcda
+*.gcno
 *.la
 *.lo
 *.log

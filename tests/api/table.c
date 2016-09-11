@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,23 +47,23 @@ static void tear_down(void) {
 
 static unsigned int b_val_count = 0;
 
-static int do_cb(const void *key, size_t keysz, void *value,
+static int do_cb(const void *key, size_t keysz, const void *value,
     size_t valuesz, void *user_data) {
 
-  if (*((char *) value) == 'b') {
+  if (*((const char *) value) == 'b') {
     b_val_count++;
   }
 
   return -1;
 }
 
-static int do_with_remove_cb(const void *key, size_t keysz, void *value,
+static int do_with_remove_cb(const void *key, size_t keysz, const void *value,
     size_t valuesz, void *user_data) {
   pr_table_t *tab;
  
   tab = user_data;
 
-  if (*((char *) value) == 'b') {
+  if (*((const char *) value) == 'b') {
     b_val_count++;
   }
 
@@ -282,7 +282,7 @@ END_TEST
 
 START_TEST (table_get_test) {
   int ok, xerrno;
-  void *res;
+  const void *res;
   pr_table_t *tab;
   char *str;
   size_t sz;
@@ -331,7 +331,7 @@ static unsigned int cache_key_hash(const void *key, size_t keysz) {
 
 START_TEST (table_get_use_cache_test) {
   int ok, xerrno;
-  void *res;
+  const void *res;
   pr_table_t *tab;
   const char *key = "bar";
   char *str;
@@ -382,7 +382,7 @@ END_TEST
 
 START_TEST (table_next_test) {
   int ok;
-  char *res;
+  const char *res;
   pr_table_t *tab;
 
   res = pr_table_next(NULL);
@@ -410,7 +410,7 @@ END_TEST
 
 START_TEST (table_rewind_test) {
   int res;
-  char *key;
+  const char *key;
   pr_table_t *tab;
 
   res = pr_table_rewind(NULL);
@@ -448,7 +448,8 @@ END_TEST
 
 START_TEST (table_remove_test) {
   int ok;
-  char *res, *str;
+  const char *res;
+  char *str;
   pr_table_t *tab;
   size_t sz;
 
@@ -491,7 +492,7 @@ END_TEST
 START_TEST (table_set_test) {
   int res;
   pr_table_t *tab;
-  void *v;
+  const void *v;
   char *str;
   size_t sz;
 
@@ -722,7 +723,6 @@ Suite *tests_get_table_suite(void) {
   TCase *testcase;
 
   suite = suite_create("table");
-
   testcase = tcase_create("base");
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);
@@ -749,6 +749,5 @@ Suite *tests_get_table_suite(void) {
   tcase_add_test(testcase, table_pcalloc_test);
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

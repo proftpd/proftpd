@@ -284,14 +284,15 @@ static void sql_check_cmd(cmd_rec *cmd, char *msg) {
  * This function makes assumptions about the db_conn_t members.
  */
 static int sql_timer_cb(CALLBACK_FRAME) {
-  conn_entry_t *entry = NULL;
-  int i = 0;
-  cmd_rec *cmd = NULL;
+  register unsigned int i;
  
   for (i = 0; i < conn_cache->nelts; i++) {
-    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    conn_entry_t *entry = NULL;
 
-    if (entry->timer == p2) {
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    if ((unsigned long) entry->timer == p2) {
+      cmd_rec *cmd = NULL;
+
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
       cmd = sql_make_cmd(conn_pool, 2, entry->name, "1");
       cmd_close(cmd);
@@ -316,7 +317,8 @@ static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
   }
 
   snprintf(num, 20, "%u", mysql_errno(conn->mysql));
-  return PR_ERROR_MSG(cmd, num, (char *) mysql_error(conn->mysql));
+  return PR_ERROR_MSG(cmd, pstrdup(cmd->pool, num),
+    pstrdup(cmd->pool, (char *) mysql_error(conn->mysql)));
 }
 
 /* build_data: both cmd_select and cmd_procedure potentially
@@ -523,10 +525,19 @@ MODRET cmd_open(cmd_rec *cmd) {
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
       conn->db, (int) strtol(conn->port, (char **) NULL, 10),
       conn->unix_sock, client_flags)) {
+    modret_t *mr = NULL;
 
     /* If it didn't work, return an error. */
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-    return build_error(cmd, conn);
+    mr = build_error(cmd, conn);
+
+    /* Since we failed to connect here, avoid a memory leak by freeing up the
+     * mysql conn struct.
+     */
+    mysql_close(conn->mysql);
+    conn->mysql = NULL;
+
+    return mr;
   }
 
   sql_log(DEBUG_FUNC, "MySQL client version: %s", mysql_get_client_info());
@@ -714,8 +725,10 @@ MODRET cmd_close(cmd_rec *cmd) {
    * timers.
    */
   if (((--entry->connections) == 0) || ((cmd->argc == 2) && (cmd->argv[1]))) {
-    mysql_close(conn->mysql);
-    conn->mysql = NULL;
+    if (conn->mysql != NULL) {
+      mysql_close(conn->mysql);
+      conn->mysql = NULL;
+    }
     entry->connections = 0;
 
     if (entry->timer) {
@@ -1021,7 +1034,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
-  int cnt = 0;
+  unsigned long cnt = 0;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_select");
@@ -1055,21 +1068,21 @@ MODRET cmd_select(cmd_rec *cmd) {
     query = pstrcat(cmd->tmp_pool, cmd->argv[2], " FROM ", cmd->argv[1], NULL);
 
     if (cmd->argc > 3 &&
-        cmd->argv[3])
+        cmd->argv[3]) {
       query = pstrcat(cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL);
+    }
 
     if (cmd->argc > 4 &&
-        cmd->argv[4])
+        cmd->argv[4]) {
       query = pstrcat(cmd->tmp_pool, query, " LIMIT ", cmd->argv[4], NULL);
+    }
 
     if (cmd->argc > 5) {
-
       /* Handle the optional arguments -- they're rare, so in this case
        * we'll play with the already constructed query string, but in 
        * general we should probably take optional arguments into account 
        * and put the query string together later once we know what they are.
        */
-    
       for (cnt = 5; cnt < cmd->argc; cnt++) {
 	if (cmd->argv[cnt] &&
             strcasecmp("DISTINCT", cmd->argv[cnt]) == 0) {

@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2015 The ProFTPD Project
+ * Copyright 2000-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -90,16 +90,18 @@ static const char *trace_channel = "auth.pam";
 
 static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
     struct pam_response **resp, void *appdata_ptr) {
-  register unsigned int i = 0, j = 0;
+  register int i = 0, j = 0;
   struct pam_response *response = NULL;
 
-  if (num_msg <= 0)
+  if (num_msg <= 0) {
     return PAM_CONV_ERR;
+  }
 
   response = calloc(num_msg, sizeof(struct pam_response));
 
-  if (response == NULL)
+  if (response == NULL) {
     return PAM_CONV_ERR;
+  }
 
   for (i = 0; i < num_msg; i++) {
     response[i].resp_retcode = 0; /* PAM_SUCCESS; */

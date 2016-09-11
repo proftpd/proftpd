@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
- *
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -192,7 +191,7 @@ struct ban_mcache_entry {
 
   /* IP address/port of origin/source server/vhost of this cache entry. */
   char *ip_addr;
-  int port;
+  unsigned int port;
 
   /* We could use a struct ban_entry here, except that it uses fixed-size
    * buffers for the strings, and for cache storage, dynamically allocated
@@ -508,7 +507,7 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
   field = json_find_member(json, key);
   if (field != NULL) {
     if (field->tag == JSON_NUMBER) {
-      bme->port = (int) field->number_;
+      bme->port = (unsigned int) field->number_;
 
     } else {
       pr_trace_msg(trace_channel, 3,
@@ -526,10 +525,10 @@ static int ban_mcache_entry_decode_json(pool *p, void *value, size_t valuesz,
     return -1;
   }
 
-  if (bme->port <= 0 ||
+  if (bme->port == 0 ||
       bme->port > 65535) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "invalid port number %d in cached JSON value, rejecting", bme->port);
+      "invalid port number %u in cached JSON value, rejecting", bme->port);
     json_delete(json);
     errno = EINVAL;
     return -1;
@@ -1246,7 +1245,7 @@ static time_t ban_parse_timestr(const char *str) {
  * or, if there isn't a rule-specific message, the BanMessage to the client.
  */
 static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
-  char *mesg = NULL;
+  const char *mesg = NULL;
 
   if (rule_mesg) {
     mesg = pstrdup(p, rule_mesg);
@@ -1255,7 +1254,7 @@ static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
     mesg = pstrdup(p, ban_mesg);
   }
 
-  if (mesg) {
+  if (mesg != NULL) {
     mesg = pstrdup(p, mesg);
 
     if (strstr(mesg, "%c")) {
@@ -1272,8 +1271,9 @@ static void ban_send_mesg(pool *p, const char *user, const char *rule_mesg) {
       mesg = sreplace(p, mesg, "%a", remote_ip, NULL);
     }
 
-    if (strstr(mesg, "%u"))
+    if (strstr(mesg, "%u")) {
       mesg = sreplace(p, mesg, "%u", user, NULL);
+    }
 
     pr_response_send_async(R_530, "%s", mesg);
   }
@@ -1373,7 +1373,7 @@ static int ban_list_add(pool *p, unsigned int type, unsigned int sid,
   if (mcache != NULL &&
       p != NULL) {
     struct ban_mcache_entry bme;
-    pr_netaddr_t *na;
+    const pr_netaddr_t *na;
 
     memset(&bme, 0, sizeof(bme));
 
@@ -1481,7 +1481,7 @@ static int ban_list_exists(pool *p, unsigned int type, unsigned int sid,
        */
 
       if (ban_cache_opts & BAN_CACHE_OPT_MATCH_SERVER) {
-        pr_netaddr_t *na;
+        const pr_netaddr_t *na;
 
         /* Make sure that the IP address/port in the mcache entry matches
          * our address/port.
@@ -1850,7 +1850,7 @@ static void ban_event_list_expire(void) {
 /* Controls handlers
  */
 
-static server_rec *ban_get_server_by_id(int sid) {
+static server_rec *ban_get_server_by_id(unsigned int sid) {
   server_rec *s = NULL;
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
@@ -1866,11 +1866,13 @@ static server_rec *ban_get_server_by_id(int sid) {
   return s;
 }
 
-static int ban_get_sid_by_addr(pr_netaddr_t *server_addr,
+static int ban_get_sid_by_addr(const pr_netaddr_t *server_addr,
     unsigned int server_port) {
   server_rec *s = NULL;
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    pr_signals_handle();
+
     if (s->ServerPort == 0) {
       continue;
     }
@@ -2116,7 +2118,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
 static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
   unsigned int sid = 0;
 
   /* Check the ban ACL */
@@ -2167,7 +2169,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     if (server_str != NULL) {
       char *ptr;
-      pr_netaddr_t *server_addr = NULL;
+      const pr_netaddr_t *server_addr = NULL;
       unsigned int server_port = 21;
       int res;
 
@@ -2255,12 +2257,11 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     /* Add each site to the list */
     for (i = optind; i < reqargc; i++) {
+      const pr_netaddr_t *site;
 
       /* XXX handle multiple addresses */
-      pr_netaddr_t *site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool,
-        reqargv[i], NULL);
-
-      if (!site) {
+      site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[i], NULL);
+      if (site == NULL) {
         pr_ctrls_add_response(ctrl, "ban: unknown host '%s'", reqargv[i]);
         continue;
       }
@@ -2345,7 +2346,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
 static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i = 0;
+  register int i = 0;
   int optc;
   unsigned int sid = 0;
   const char *reqopts = "s:";
@@ -2392,7 +2393,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
 
   if (server_str != NULL) {
     char *ptr;
-    pr_netaddr_t *server_addr = NULL;
+    const pr_netaddr_t *server_addr = NULL;
     unsigned int server_port = 21;
     int res;
 
@@ -2498,12 +2499,11 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
       }
 
       for (i = optind; i < reqargc; i++) {
+        const pr_netaddr_t *site;
 
         /* XXX handle multiple addresses */
-        pr_netaddr_t *site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool,
-          reqargv[i], NULL);
-
-        if (site) {
+        site = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[i], NULL);
+        if (site != NULL) {
           if (ban_list_remove(BAN_TYPE_HOST, sid,
                 pr_netaddr_get_ipstr(site)) == 0) {
             (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
@@ -2590,15 +2590,17 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
  */
 
 MODRET ban_pre_pass(cmd_rec *cmd) {
-  char *user, *rule_mesg = NULL;
+  const char *user;
+  char *rule_mesg = NULL;
 
-  if (ban_engine != TRUE)
+  if (ban_engine != TRUE) {
     return PR_DECLINED(cmd);
+  }
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-
-  if (!user)
+  if (user == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   /* Make sure the list is up-to-date. */
   ban_list_expire();

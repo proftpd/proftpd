@@ -1,12 +1,12 @@
 <html>
 <head>
-<title>ProFTPD Supported FTP Commands</title>
+<title>ProFTPD: Supported FTP Commands</title>
 </head>
 
 <body bgcolor=white>
 
 <hr>
-<center><h2><b>ProFTPD Supported FTP Commands</b></h2></center>
+<center><h2><b>ProFTPD: Supported FTP Commands</b></h2></center>
 <hr>
 
 <p>
@@ -17,6 +17,7 @@
 
   <p>
   <li><a name="ALLO"><b><code>ALLO</code></b></a><br>
+    Short for <b>ALLO</b>cate.<br>
   </li>
 
   <p>
@@ -71,6 +72,14 @@
   <li><a name="FEAT"><b><code>FEAT</code></b></a><br>
     Short for <b>FEAT</b>ures, this command is used by the client to request
     a descriptive list of server-supported features.<br>
+  </li>
+
+  <p>
+  <li><a name="HASH"><b><code>HASH</code></b></a><br>
+    This command is used by clients to request the checksum, or "hash", of
+    a file on the server.  This command is available when the
+    <a href="../contrib/mod_digest.html"><code>mod_digest</code></a> module
+    is compiled/loaded.<br>
   </li>
 
   <p>
@@ -471,5 +480,11 @@ and will, be made more informative.)
 
 <p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2000-2016 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

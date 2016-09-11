@@ -37,6 +37,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  stor_ok_ascii_file_bug4237 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   stor_abs_symlink => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -450,6 +455,125 @@ sub stor_ok_ascii_file {
       my $size = length($buf)-1;
       $self->assert($expected == $size,
         test_msg("Expected size $expected, got $size"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub stor_ok_ascii_file_bug4237 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('ascii');
+
+      my $conn = $client->stor_raw('test.dat');
+      unless ($conn) {
+        die("STOR failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = ("\r\r" x 32768) . "\r";
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $self->assert(-f $test_file,
+        test_msg("File $test_file does not exist as expected"));
+
+      my $expected = -s $test_file;
+
+      my $size = length($buf);
+      $self->assert($expected == $size,
+        test_msg("Expected size $expected, got $size"));
+
+      unlink($test_file);
+
+      $conn = $client->stor_raw('test.dat');
+      unless ($conn) {
+        die("STOR failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      $buf = ("\r\n" x 32768);
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $self->assert(-f $test_file,
+        test_msg("File $test_file does not exist as expected"));
+
+      $expected = -s $test_file;
+
+      # Take back one byte for per CR
+      my $size = length($buf) / 2;
+      $self->assert($expected == $size,
+        test_msg("Expected size $expected, got $size"));
+
+      $client->quit();
     };
     if ($@) {
       $ex = $@;

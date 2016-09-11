@@ -28,6 +28,10 @@
 
 #include "conf.h"
 
+#ifdef HAVE_EXECINFO_H
+# include <execinfo.h>
+#endif
+
 #define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX * 2)
 
 static int syslog_open = FALSE;
@@ -470,20 +474,24 @@ void log_discard(void) {
 }
 
 static void log_write(int priority, int f, char *s, int discard) {
-  unsigned int max_priority = 0, *ptr = NULL;
+  int max_priority = 0, *ptr = NULL;
   char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
   memset(serverinfo, '\0', sizeof(serverinfo));
 
   if (main_server &&
       main_server->ServerFQDN) {
-    pr_netaddr_t *remote_addr = pr_netaddr_get_sess_remote_addr();
-    const char *remote_name = pr_netaddr_get_sess_remote_name();
+    const pr_netaddr_t *remote_addr;
+    const char *remote_name;
+
+    remote_addr = pr_netaddr_get_sess_remote_addr();
+    remote_name = pr_netaddr_get_sess_remote_name();
 
     snprintf(serverinfo, sizeof(serverinfo)-1, "%s", main_server->ServerFQDN);
     serverinfo[sizeof(serverinfo)-1] = '\0';
 
-    if (remote_addr && remote_name) {
+    if (remote_addr != NULL &&
+        remote_name != NULL) {
       size_t serverinfo_len;
 
       serverinfo_len = strlen(serverinfo);
@@ -539,6 +547,7 @@ static void log_write(int priority, int f, char *s, int discard) {
       buf, buflen);
 
     fprintf(stderr, "%s", buf);
+    fflush(stderr);
     return;
   }
 
@@ -877,6 +886,76 @@ int pr_log_event_listening(unsigned int log_type) {
   }
 
   return TRUE;
+}
+
+void pr_log_stacktrace(int log_fd, const char *name) {
+#if defined(HAVE_EXECINFO_H) && \
+    defined(HAVE_BACKTRACE) && \
+    defined(HAVE_BACKTRACE_SYMBOLS)
+  void *trace[PR_TUNABLE_CALLER_DEPTH];
+  int tracesz, use_fd = TRUE;
+
+  if (log_fd < 0 ||
+      name == NULL) {
+    use_fd = FALSE;
+  }
+
+  if (use_fd) {
+    (void) pr_log_writefile(log_fd, name, "%s", "-----BEGIN STACK TRACE-----");
+
+  } else {
+    (void) pr_log_pri(PR_LOG_WARNING, "-----BEGIN STACK TRACE-----");
+  }
+
+  tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
+  if (tracesz < 0) {
+    if (use_fd) {
+      (void) pr_log_writefile(log_fd, name, "backtrace(3) error: %s",
+        strerror(errno));
+
+    } else {
+      (void) pr_log_pri(PR_LOG_WARNING, "backtrace(3) error: %s",
+        strerror(errno));
+    }
+
+  } else {
+    char **strings;
+
+    strings = backtrace_symbols(trace, tracesz);
+    if (strings != NULL) {
+      register int i;
+
+      for (i = 1; i < tracesz; i++) {
+        if (use_fd) {
+          (void) pr_log_writefile(log_fd, name, "[%d] %s", i-1, strings[i]);
+
+        } else {
+          (void) pr_log_pri(PR_LOG_WARNING, "[%d] %s", i-1, strings[i]);
+        }
+      }
+
+      /* Prevent memory leaks. */
+      free(strings);
+
+    } else {
+      if (use_fd) {
+        (void) pr_log_writefile(log_fd, name,
+          "error obtaining backtrace symbols: %s", strerror(errno));
+
+      } else {
+        (void) pr_log_pri(PR_LOG_WARNING,
+          "error obtaining backtrace symbols: %s", strerror(errno));
+      }
+    }
+  }
+
+  if (use_fd) {
+    (void) pr_log_writefile(log_fd, name, "%s", "-----END STACK TRACE-----");
+
+  } else {
+    (void) pr_log_pri(PR_LOG_WARNING, "%s", "-----END STACK TRACE-----");
+  }
+#endif
 }
 
 void init_log(void) {

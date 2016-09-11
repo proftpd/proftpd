@@ -58,11 +58,16 @@ static int sendline(int flags, char *fmt, ...)
 #define LS_FL_NO_ADJUSTED_SYMLINKS	0x0008
 static unsigned long list_flags = 0;
 
+/* Maximum size of the "dsize" directory block we'll allocate for all of the
+ * entries in a directory (Bug#4247).
+ */
+#define LS_MAX_DSIZE			(1024 * 1024 * 8)
+
 static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
 static unsigned char show_symlinks_hold;
-static char *fakeuser = NULL, *fakegroup = NULL;
+static const char *fakeuser = NULL, *fakegroup = NULL;
 static mode_t fakemode;
 static unsigned char have_fake_mode = FALSE;
 static int ls_errno = 0;
@@ -450,6 +455,7 @@ static char months[12][4] =
 
 static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
     const char *name) {
+  register unsigned int i;
   int rval = 0, len;
   time_t sort_time;
   char m[PR_TUNABLE_PATH_MAX+1] = {'\0'}, l[PR_TUNABLE_PATH_MAX+1] = {'\0'}, s[16] = {'\0'};
@@ -457,6 +463,29 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
   struct tm *t = NULL;
   char suffix[2];
   int hidden = 0;
+  char *filename, *ptr;
+  size_t namelen;
+
+  /* Note that listfile() expects to be given the file name, NOT the path.
+   * So strip off any path elements, watching out for any trailing slashes
+   * (Bug#4259).
+   */
+  namelen = strlen(name);
+  for (i = namelen-1; i > 0; i--) {
+    if (name[i] != '/') {
+      break;
+    }
+
+    namelen--;
+  }
+
+  filename = pstrndup(p, name, namelen);
+
+  ptr = strrchr(filename, '/');
+  if (ptr != NULL) {
+    /* Advance past that path separator to get just the filename. */
+    filename = ptr + 1;
+  }
 
   if (list_nfiles.curr && list_nfiles.max &&
       list_nfiles.curr >= list_nfiles.max) {
@@ -485,7 +514,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
 #ifndef PR_USE_NLS
     if (opt_B) {
-      register unsigned int i, j;
+      register unsigned int j;
       size_t display_namelen, printable_namelen;
       char *printable_name = NULL;
 
@@ -502,7 +531,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
        */
       for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
         if (!PR_ISPRINT(display_name[i])) {
-          register unsigned int k;
+          register int k;
           int replace_len = 0;
           char replace[32];
 
@@ -554,7 +583,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           return 0;
         }
 
-        if (len >= sizeof(m)) {
+        if ((size_t) len >= sizeof(m)) {
           return 0;
         }
 
@@ -597,7 +626,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         return 0;
       }
 
-      if (len >= sizeof(l)) {
+      if ((size_t) len >= sizeof(l)) {
         return 0;
       }
 
@@ -617,8 +646,11 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
     }
 
     /* Skip dotfiles, unless requested not to via -a or -A. */
-    if (*name == '.' &&
-        (!opt_a && (!opt_A || is_dotdir(name)))) {
+    if (*filename == '.' &&
+        (!opt_a && (!opt_A || is_dotdir(filename)))) {
+      pr_log_debug(DEBUG10,
+        "skipping listing of hidden file '%s' (no -A/-a options in effect)",
+        filename);
       return 0;
     }
 
@@ -818,8 +850,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
   return rval;
 }
 
-static int colwidth = 0;
-static int filenames = 0;
+static size_t colwidth = 0;
+static unsigned int filenames = 0;
 
 struct filename {
   struct filename *down;
@@ -1165,6 +1197,9 @@ static char **sreaddir(const char *dirname, const int sort) {
 
   /* Guess the number of entries in the directory. */
   dsize = (((size_t) st.st_size) / 4) + 10;
+  if (dsize > LS_MAX_DSIZE) {
+    dsize = LS_MAX_DSIZE;
+  }
 
   /* The directory has been opened already, but portably accessing the file
    * descriptor inside the DIR struct isn't easy.  Some systems use "dd_fd" or
@@ -1211,7 +1246,7 @@ static char **sreaddir(const char *dirname, const int sort) {
   while ((de = pr_fsio_readdir(d)) != NULL) {
     pr_signals_handle();
 
-    if (i >= dsize - 1) {
+    if ((size_t) i >= dsize - 1) {
       char **newp;
 
       /* The test above goes off one item early in case this is the last item
@@ -1903,7 +1938,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
       const char *p;
 
       for (i = 0, p = arg + 1;
-          (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
+          ((size_t) i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
           pbuffer[i++] = *p++);
 
       pbuffer[i] = '\0';
@@ -1990,7 +2025,6 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
         }
 
       } else {
-
         /* Trick the following code into using the non-glob() processed path */
         a = 0;
         g.gl_pathv = (char **) pcalloc(cmd->tmp_pool, 2 * sizeof(char *));
@@ -2004,8 +2038,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
       path = g.gl_pathv;
 
-      if (path && path[0] && path[1])
+      if (path && path[0] && path[1]) {
         justone = 0;
+      }
 
       while (path &&
              *path) {
@@ -2030,7 +2065,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           }
 
           /* If the -d option is used or the file is not a directory, OR
-           * if the -R option is NOT used AND the file IS a directory AND,
+           * if the -R option is NOT used AND the file IS a directory AND
            * the file is NOT the target/given parameter, then list the file
            * as is.
            */
@@ -2248,7 +2283,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
      */
     for (i = 0, j = 0; i < display_namelen && j < printable_namelen; i++) {
       if (!PR_ISPRINT(display_name[i])) {
-        register unsigned int k;
+        register int k;
         int replace_len = 0;
         char replace[32];
 
@@ -2410,7 +2445,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     }
 
     if (i > 0) {
-      if (i >= sizeof(file)) {
+      if ((size_t) i >= sizeof(file)) {
         continue;
       }
 

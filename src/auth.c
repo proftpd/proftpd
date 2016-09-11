@@ -30,6 +30,7 @@
 #include "privs.h"
 
 static pool *auth_pool = NULL;
+static size_t auth_max_passwd_len = PR_TUNABLE_PASSWORD_MAX;
 static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *user_tab = NULL,
   *gid_tab = NULL, *group_tab = NULL;
 static xaset_t *auth_module_list = NULL;
@@ -152,15 +153,16 @@ static void uidcache_add(uid_t uid, const char *name) {
 
 static int uidcache_get(uid_t uid, char *name, size_t namesz) {
   if (uid_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_kget(uid_tab, (const void *) &uid, sizeof(uid_t), NULL);
-    if (v) {
+    if (v != NULL) {
       memset(name, '\0', namesz);
       sstrncpy(name, v, namesz);
 
       pr_trace_msg(trace_channel, 8,
-       "using name '%s' from uidcache for UID %s", name, pr_uid2str(NULL, uid));
+        "using name '%s' from uidcache for UID %s", name,
+        pr_uid2str(NULL, uid));
       return 0;
     }
 
@@ -243,15 +245,16 @@ static void gidcache_add(gid_t gid, const char *name) {
 
 static int gidcache_get(gid_t gid, char *name, size_t namesz) {
   if (gid_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_kget(gid_tab, (const void *) &gid, sizeof(gid_t), NULL);
-    if (v) {
+    if (v != NULL) {
       memset(name, '\0', namesz);
       sstrncpy(name, v, namesz);
 
       pr_trace_msg(trace_channel, 8,
-       "using name '%s' from gidcache for GID %s", name, pr_gid2str(NULL, gid));
+        "using name '%s' from gidcache for GID %s", name,
+        pr_gid2str(NULL, gid));
       return 0;
     }
 
@@ -307,15 +310,15 @@ static void usercache_add(const char *name, uid_t uid) {
 
 static int usercache_get(const char *name, uid_t *uid) {
   if (user_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_get(user_tab, name, NULL);
     if (v != NULL) {
       *uid = *((uid_t *) v);
 
       pr_trace_msg(trace_channel, 8,
-       "using UID %s for user '%s' from usercache", pr_uid2str(NULL, *uid),
-       name);
+        "using UID %s for user '%s' from usercache", pr_uid2str(NULL, *uid),
+        name);
       return 0;
     }
 
@@ -370,15 +373,15 @@ static void groupcache_add(const char *name, gid_t gid) {
 
 static int groupcache_get(const char *name, gid_t *gid) {
   if (group_tab != NULL) {
-    void *v = NULL;
+    const void *v = NULL;
 
     v = pr_table_get(group_tab, name, NULL);
-    if (v) {
+    if (v != NULL) {
       *gid = *((gid_t *) v);
 
       pr_trace_msg(trace_channel, 8,
-       "using GID %s for group '%s' from groupcache", pr_gid2str(NULL, *gid),
-       name);
+        "using GID %s for group '%s' from groupcache", pr_gid2str(NULL, *gid),
+        name);
       return 0;
     }
 
@@ -402,14 +405,19 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   cmd_rec *c;
   pool *sub_pool;
 
+  if (argc < 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   c = pcalloc(cp, sizeof(cmd_rec));
 
   c->argc = argc;
   c->stash_index = -1;
   c->stash_hash = 0;
 
-  if (argc) {
-    register unsigned int i;
+  if (argc > 0) {
+    register int i;
 
     c->argv = pcalloc(cp, sizeof(void *) * (argc + 1));
 
@@ -750,7 +758,7 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   }
 
   /* Get the (possibly rewritten) home directory. */
-  res->pw_dir = pr_auth_get_home(p, res->pw_dir);
+  res->pw_dir = (char *) pr_auth_get_home(p, res->pw_dir);
 
   pr_log_debug(DEBUG10, "retrieved UID %s for user '%s'",
     pr_uid2str(NULL, res->pw_uid), name);
@@ -958,11 +966,12 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
     }
   }
 
-  if (auth_tab) {
+  if (auth_tab != NULL) {
+    const void *v;
 
     /* Fetch the specific module to be used for authenticating this user. */
-    void *v = pr_table_get(auth_tab, name, NULL);
-    if (v) {
+    v = pr_table_get(auth_tab, name, NULL);
+    if (v != NULL) {
       m = *((module **) v);
 
       pr_trace_msg(trace_channel, 4,
@@ -1002,11 +1011,12 @@ int pr_auth_authorize(pool *p, const char *name) {
 
   cmd = make_cmd(p, 1, name);
 
-  if (auth_tab) {
+  if (auth_tab != NULL) {
+    const void *v;
 
     /* Fetch the specific module to be used for authenticating this user. */
-    void *v = pr_table_get(auth_tab, name, NULL);
-    if (v) {
+    v = pr_table_get(auth_tab, name, NULL);
+    if (v != NULL) {
       m = *((module **) v);
 
       pr_trace_msg(trace_channel, 4,
@@ -1042,6 +1052,7 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
   modret_t *mr = NULL;
   module *m = NULL;
   int res = PR_AUTH_BADPWD;
+  size_t cleartext_passwd_len = 0;
 
   /* Note: it's possible for ciphertext_passwd to be NULL (mod_ldap might do
    * this, for example), so we cannot enforce that it be non-NULL.
@@ -1051,6 +1062,15 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
       name == NULL ||
       cleartext_passwd == NULL) {
     errno = EINVAL;
+    return -1;
+  }
+
+  cleartext_passwd_len = strlen(cleartext_passwd);
+  if (cleartext_passwd_len > auth_max_passwd_len) {
+    pr_log_auth(PR_LOG_INFO,
+      "client-provided password size exceeds MaxPasswordSize (%lu), "
+      "rejecting", (unsigned long) auth_max_passwd_len);
+    errno = EPERM;
     return -1;
   }
 
@@ -1101,11 +1121,12 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
     }
   }
 
-  if (auth_tab) {
+  if (auth_tab != NULL) {
+    const void *v;
 
     /* Fetch the specific module to be used for authenticating this user. */
-    void *v = pr_table_get(auth_tab, name, NULL);
-    if (v) {
+    v = pr_table_get(auth_tab, name, NULL);
+    if (v != NULL) {
       m = *((module **) v);
 
       pr_trace_msg(trace_channel, 4,
@@ -1465,10 +1486,10 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 }
 
 /* This is one messy function.  Yuck.  Yay legacy code. */
-config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
-    char **user_name, char **anon_name) {
+config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
+    char **real_user, char **anon_name) {
   config_rec *c = NULL, *topc = NULL;
-  char *config_user_name, *config_anon_name = NULL;
+  char *config_user_name = NULL, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
   unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
 
@@ -1479,9 +1500,9 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
    */
 
   config_user_name = get_param_ptr(main_server->conf, "UserName", FALSE);
-  if (config_user_name &&
-      user_name) {
-    *user_name = config_user_name;
+  if (config_user_name != NULL &&
+      real_user != NULL) {
+    *real_user = config_user_name;
   }
 
   /* If the main_server->conf->set list is large (e.g. there are many
@@ -1500,11 +1521,15 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     config_flags);
   if (c != NULL) {
     do {
+      const char *alias;
+
       pr_signals_handle();
 
-      if (strncmp(c->argv[0], "*", 2) == 0 ||
-          strcmp(c->argv[0], *login_name) == 0) {
+      alias = c->argv[0];
+      if (strncmp(alias, "*", 2) == 0 ||
+          strcmp(alias, *login_user) == 0) {
         is_alias = TRUE;
+        topc = c;
         break;
       }
 
@@ -1513,25 +1538,26 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
   }
 
   /* This is where things get messy, rapidly. */
-  topc = c;
+  c = topc;
 
-  while (c && c->parent &&
-    (auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly", FALSE))) {
+  while (c != NULL &&
+         c->parent != NULL &&
+         (auth_alias_only = get_param_ptr(c->parent->subset, "AuthAliasOnly", FALSE))) {
 
-    /* while() loops should always handle signals. */
     pr_signals_handle();
 
-    if (auth_alias_only) {
-      /* If AuthAliasOnly is on, ignore this one and continue. */
-      if (*auth_alias_only == TRUE) {
-        c = find_config_next2(c, c->next, CONF_PARAM, "UserAlias", TRUE,
-          config_flags);
-        continue;
-      }
+    /* If AuthAliasOnly is on, ignore this one and continue. */
+    if (auth_alias_only != NULL &&
+        *auth_alias_only == TRUE) {
+      c = find_config_next2(c, c->next, CONF_PARAM, "UserAlias", TRUE,
+        config_flags);
+      continue;
     }
 
     /* At this point, we have found an "AuthAliasOnly off" config in
-     * c->parent->set.  See if there's a UserAlias in the same config set.
+     * c->parent->set (which means that we cannot use the UserAlias, and thus
+     * is_alias is set to false).  See if there's a UserAlias in the same
+     * config set.
      */
 
     is_alias = FALSE;
@@ -1540,15 +1566,19 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     c = find_config_next2(c, c->next, CONF_PARAM, "UserAlias", TRUE,
       config_flags);
 
-    if (c &&
+    if (c != NULL &&
         (strncmp(c->argv[0], "*", 2) == 0 ||
-         strcmp(c->argv[0], *login_name) == 0)) {
+         strcmp(c->argv[0], *login_user) == 0)) {
       is_alias = TRUE;
     }
   }
 
-  if (c) {
-    *login_name = c->argv[1];
+  /* At this point in time, c is guaranteed (if not null) to be pointing at
+   * a UserAlias config, either the original OR one found in the AuthAliasOnly
+   * config set.
+   */
+  if (c != NULL) {
+    *login_user = c->argv[1];
 
     /* If the alias is applied inside an <Anonymous> context, we have found
      * our anon block.
@@ -1571,7 +1601,10 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
     find_config_set_top(c);
   }
 
-  if (c) {
+  if (c != NULL) {
+    config_rec *starting_c;
+
+    starting_c = c;
     do {
       pr_signals_handle();
 
@@ -1580,8 +1613,8 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
         config_anon_name = config_user_name;
       }
 
-      if (config_anon_name &&
-          strcmp(config_anon_name, *login_name) == 0) {
+      if (config_anon_name != NULL &&
+          strcmp(config_anon_name, *login_user) == 0) {
         if (anon_name != NULL) {
           *anon_name = config_anon_name;
         }
@@ -1590,35 +1623,40 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
  
     } while ((c = find_config_next(c, c->next, CONF_ANON, NULL,
       FALSE)) != NULL);
+
+    c = starting_c;
   }
 
-  if (!is_alias) {
-    /* Yes, we do want to be using c here.  Otherwise, we risk a regression
-     * of Bug#3501.
-     */
-
+  if (is_alias == FALSE) {
     auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
       "AuthAliasOnly", FALSE);
 
-    if (auth_alias_only &&
+    if (auth_alias_only != NULL &&
         *auth_alias_only == TRUE) {
-      if (c &&
+      if (c != NULL &&
           c->config_type == CONF_ANON) {
         c = NULL;
 
       } else {
-        *login_name = NULL;
+        *login_user = NULL;
       }
 
-      auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
-        FALSE);
-      if (*login_name &&
+      /* Note: We only need to look for AuthAliasOnly in main_server IFF
+       * c is NOT null.  If c IS null, then we will already have looked up
+       * AuthAliasOnly in main_server above.
+       */
+      if (c != NULL) {
+        auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
+          FALSE);
+      }
+
+      if (*login_user &&
           auth_alias_only &&
           *auth_alias_only == TRUE) {
-        *login_name = NULL;
+        *login_user = NULL;
       }
 
-      if ((!login_name || !c) &&
+      if ((!login_user || !c) &&
           anon_name) {
         *anon_name = NULL;
       }
@@ -1736,33 +1774,36 @@ int pr_auth_chroot(const char *path) {
   int res, xerrno = 0;
   time_t now;
   char *tz = NULL;
+  const char *default_tz;
 
   if (path == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-#if defined(HAVE_SETENV) && \
-    defined(__GLIBC__) && \
+#if defined(__GLIBC__) && \
     defined(__GLIBC_MINOR__) && \
     __GLIBC__ == 2 && __GLIBC_MINOR__ >= 3
+  default_tz = tzname[0];
+#else
+  /* Per the tzset(3) man page, this should be the assumed default. */
+  default_tz = ":/etc/localtime";
+#endif
 
   tz = pr_env_get(session.pool, "TZ"); 
   if (tz == NULL) {
     if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
-        tzname[0])) < 0) { 
+        default_tz)) < 0) {
       pr_log_debug(DEBUG0, "error setting TZ environment variable to " 
-        "'%s': %s", tzname[0], strerror(errno));
+        "'%s': %s", default_tz, strerror(errno));
 
     } else {
-      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
+      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", default_tz);
     }
+
   } else {
     pr_log_debug(DEBUG10, "TZ environment variable already set to '%s'", tz);
   }
-#else
-  (void) tz;
-#endif
 
   pr_log_debug(DEBUG1, "Preparing to chroot to directory '%s'", path);
 
@@ -1801,6 +1842,21 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   gid_t *gids = NULL, *proc_gids = NULL;
   size_t ngids = 0, nproc_gids = 0;
   char *strgids = "";
+  int have_root_privs = TRUE;
+
+  /* First, check to see whether we even CAN set the process GIDs, which
+   * requires root privileges.
+   */
+  if (getuid() != PR_ROOT_UID) {
+    have_root_privs = FALSE;
+  }
+
+  if (have_root_privs == FALSE) {
+    pr_trace_msg(trace_channel, 3,
+      "unable to set groups due to lack of root privs");
+    errno = ENOSYS;
+    return -1;
+  }
 
   /* sanity check */
   if (p == NULL ||
@@ -1855,8 +1911,9 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
       }
     }
 
-    if (!skip_gid)
+    if (!skip_gid) {
       proc_gids[nproc_gids++] = gids[i];
+    }
   }
 
   for (i = 0; i < nproc_gids; i++) {
@@ -1873,23 +1930,31 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   /* Set the supplemental groups. */
   res = setgroups(nproc_gids, proc_gids);
   if (res < 0) {
+    int xerrno = errno;
+
     destroy_pool(tmp_pool);
+
+    errno = xerrno;
     return res;
   }
 #endif /* !HAVE_SETGROUPS */
 
 #ifndef PR_DEVEL_COREDUMP
-  /* Set the primary GID of the process.
-   */
+  /* Set the primary GID of the process. */
   res = setgid(primary_gid);
   if (res < 0) {
-    if (tmp_pool)
+    int xerrno = errno;
+
+    if (tmp_pool != NULL) {
       destroy_pool(tmp_pool);
+    }
+
+    errno = xerrno;
     return res;
   }
 #endif /* PR_DEVEL_COREDUMP */
 
-  if (tmp_pool) {
+  if (tmp_pool != NULL) {
     destroy_pool(tmp_pool);
   }
 
@@ -2146,9 +2211,9 @@ int pr_auth_remove_auth_only_module(const char *name) {
   return -1;
 }
 
-char *pr_auth_get_home(pool *p, char *pw_dir) {
+const char *pr_auth_get_home(pool *p, const char *pw_dir) {
   config_rec *c;
-  char *home_dir;
+  const char *home_dir;
 
   if (p == NULL ||
       pw_dir == NULL) {
@@ -2204,6 +2269,22 @@ char *pr_auth_get_home(pool *p, char *pw_dir) {
     "for original home directory '%s'", home_dir, pw_dir);
 
   return home_dir;
+}
+
+size_t pr_auth_set_max_password_len(pool *p, size_t len) {
+  size_t prev_len;
+
+  prev_len = auth_max_passwd_len;
+
+  if (len == 0) {
+    /* Restore default. */
+    auth_max_passwd_len = PR_TUNABLE_PASSWORD_MAX;
+
+  } else {
+    auth_max_passwd_len = len;
+  }
+
+  return prev_len;
 }
 
 /* Internal use only.  To be called in the session process. */

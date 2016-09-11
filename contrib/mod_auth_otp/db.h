@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_auth_otp database routines
- * Copyright (c) 2015 TJ Saunders
+ * Copyright (c) 2015-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,9 +44,14 @@ int auth_otp_db_rlock(struct auth_otp_db *dbh);
 int auth_otp_db_wlock(struct auth_otp_db *dbh);
 int auth_otp_db_unlock(struct auth_otp_db *dbh);
 
+/* Ask if the table has info (secrets, counters) for this user. */
+int auth_otp_db_have_user_info(pool *p, struct auth_otp_db *dbh,
+  const char *user);
+
 /* Retrieve the user's base32-encoded secret, and current counter (for HOTP). */
-int auth_otp_db_user_info(pool *p, struct auth_otp_db *dbh, const char *user,
-  const unsigned char **secret, size_t *secret_len, unsigned long *counter);
+int auth_otp_db_get_user_info(pool *p, struct auth_otp_db *dbh,
+  const char *user, const unsigned char **secret, size_t *secret_len,
+  unsigned long *counter);
 
 /* Update the user's current counter (for HOTP). */
 int auth_otp_db_update_counter(struct auth_otp_db *dbh, const char *user,

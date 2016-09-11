@@ -117,7 +117,7 @@ static const char *trace_channel = "ssh2";
 
 static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     struct pam_response **resps, void *app_data) {
-  register unsigned int i = 0, j = 0;
+  register int i = 0, j = 0;
   array_header *list;
   uint32_t recvd_count = 0;
   const char **recvd_responses = NULL;

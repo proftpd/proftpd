@@ -31,6 +31,17 @@
 
 #include "conf.h"
 
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+#  include <sys/extattr.h>
+# elif defined(HAVE_SYS_XATTR_H)
+#  include <sys/xattr.h>
+#  if defined(HAVE_ATTR_XATTR_H)
+#   include <attr/xattr.h>
+#  endif /* HAVE_ATTR_XATTR_H */
+# endif /* HAVE_SYS_XATTR_H */
+#endif /* PR_USE_XATTR */
+
 /* This is a Tru64-specific hack, to work around some macro funkiness
  * in their /usr/include/sys/mount.h header.
  */
@@ -44,7 +55,7 @@
 #define FSIO_FILE_RENAME	(1 << 2)
 #define FSIO_FILE_UNLINK	(1 << 3)
 #define FSIO_FILE_OPEN		(1 << 4)
-#define FSIO_FILE_CREAT		(1 << 5)
+/* Was FSIO_FILE_CREAT, now unused */
 #define FSIO_FILE_CLOSE		(1 << 6)
 #define FSIO_FILE_READ		(1 << 7)
 #define FSIO_FILE_WRITE		(1 << 8)
@@ -56,10 +67,18 @@
 #define FSIO_FILE_CHOWN		(1 << 14)
 #define FSIO_FILE_ACCESS	(1 << 15)
 #define FSIO_FILE_UTIMES	(1 << 23)
+#define FSIO_FILE_GETXATTR	(1 << 24)
+#define FSIO_FILE_LGETXATTR	(1 << 25)
+#define FSIO_FILE_LISTXATTR	(1 << 26)
+#define FSIO_FILE_LLISTXATTR	(1 << 27)
+#define FSIO_FILE_REMOVEXATTR	(1 << 28)
+#define FSIO_FILE_LREMOVEXATTR	(1 << 29)
+#define FSIO_FILE_SETXATTR	(1 << 30)
+#define FSIO_FILE_LSETXATTR	(1 << 31)
 
 /* Macro that defines the most common file ops */
 #define FSIO_FILE_COMMON	(FSIO_FILE_OPEN|FSIO_FILE_READ|FSIO_FILE_WRITE|\
-                                 FSIO_FILE_CLOSE|FSIO_FILE_CREAT)
+                                 FSIO_FILE_CLOSE)
 
 #define FSIO_DIR_CHROOT		(1 << 16)
 #define FSIO_DIR_CHDIR		(1 << 17)
@@ -108,7 +127,6 @@ struct fs_rec {
   int (*rename)(pr_fs_t *, const char *, const char *);
   int (*unlink)(pr_fs_t *, const char *);
   int (*open)(pr_fh_t *, const char *, int);
-  int (*creat)(pr_fh_t *, const char *, mode_t);
   int (*close)(pr_fh_t *, int);
   int (*read)(pr_fh_t *, int, char *, size_t);
   int (*write)(pr_fh_t *, int, const char *, size_t);
@@ -128,6 +146,24 @@ struct fs_rec {
   int (*utimes)(pr_fs_t *, const char *, struct timeval *);
   int (*futimes)(pr_fh_t *, int, struct timeval *);
   int (*fsync)(pr_fh_t *, int);
+
+  /* Extended attribute support */
+  ssize_t (*getxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t);
+  ssize_t (*lgetxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t);
+  ssize_t (*fgetxattr)(pool *, pr_fh_t *, int, const char *, void *, size_t);
+  int (*listxattr)(pool *, pr_fs_t *, const char *, array_header **);
+  int (*llistxattr)(pool *, pr_fs_t *, const char *, array_header **);
+  int (*flistxattr)(pool *, pr_fh_t *, int, array_header **);
+  int (*removexattr)(pool *, pr_fs_t *, const char *, const char *);
+  int (*lremovexattr)(pool *, pr_fs_t *, const char *, const char *);
+  int (*fremovexattr)(pool *, pr_fh_t *, int, const char *);
+  int (*setxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t, int);
+  int (*lsetxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
+    size_t, int);
+  int (*fsetxattr)(pool *, pr_fh_t *, int, const char *, void *, size_t, int);
 
   /* For actual operations on the directory (or subdirs)
    * we cast the return from opendir to DIR* in src/fs.c, so
@@ -195,40 +231,6 @@ struct fh_rec {
  */
 #define PR_FH_FD(f)	((f)->fh_fd)
 
-#if defined(PR_USE_REGEX) && defined(PR_FS_MATCH)
-typedef struct fs_match_rec pr_fs_match_t;
-struct fs_match_rec {
-
-  pr_fs_match_t *fsm_next, *fsm_prev;
-
-  /* pool for this object's use */
-  pool *fsm_pool;
-
-  /* descriptive tag for this fs regex */
-  char *fsm_name;
-
-  /* mask of the fs operations to which this regex should apply */
-  int fsm_opmask;
-
-  /* string containing the match pattern */
-  char *fsm_pattern;
-
-  /* compiled pattern (regex) */
-  regex_t *fsm_regex;
-
-  /* "trigger" function to be called whenever a path that matches the
-   * compiled regex is given.
-   */
-  int (*trigger)(pr_fh_t *, const char *, int);
-
-  /* NOTE: need some way of keeping track of the pr_fs_t registered by
-   *  an fs_match's trigger function, such that when an fs_match is
-   *  removed, its registered pr_fs_t's are removed as well.
-   */
-  array_header *fsm_fs_objs;
-};
-#endif /* PR_USE_REGEX and PR_FS_MATCH */
-
 int pr_fsio_stat(const char *, struct stat *);
 int pr_fsio_stat_canon(const char *, struct stat *);
 int pr_fsio_fstat(pr_fh_t *, struct stat *);
@@ -250,8 +252,6 @@ int pr_fsio_unlink(const char *);
 int pr_fsio_unlink_canon(const char *);
 pr_fh_t *pr_fsio_open(const char *, int);
 pr_fh_t *pr_fsio_open_canon(const char *, int);
-pr_fh_t *pr_fsio_creat(const char *, mode_t);
-pr_fh_t *pr_fsio_creat_canon(const char *, mode_t);
 int pr_fsio_close(pr_fh_t *);
 int pr_fsio_read(pr_fh_t *, char *, size_t);
 int pr_fsio_write(pr_fh_t *, const char *, size_t);
@@ -277,6 +277,24 @@ int pr_fsio_futimes(pr_fh_t *, struct timeval *);
 int pr_fsio_fsync(pr_fh_t *fh);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
 
+/* Extended attribute support */
+ssize_t pr_fsio_getxattr(pool *p, const char *, const char *, void *, size_t);
+ssize_t pr_fsio_lgetxattr(pool *, const char *, const char *, void *, size_t);
+ssize_t pr_fsio_fgetxattr(pool *, pr_fh_t *, const char *, void *, size_t);
+int pr_fsio_listxattr(pool *, const char *, array_header **);
+int pr_fsio_llistxattr(pool *, const char *, array_header **);
+int pr_fsio_flistxattr(pool *, pr_fh_t *, array_header **);
+int pr_fsio_removexattr(pool *, const char *, const char *);
+int pr_fsio_lremovexattr(pool *, const char *, const char *);
+int pr_fsio_fremovexattr(pool *, pr_fh_t *, const char *);
+int pr_fsio_setxattr(pool *, const char *, const char *, void *, size_t, int);
+int pr_fsio_lsetxattr(pool *, const char *, const char *, void *, size_t, int);
+int pr_fsio_fsetxattr(pool *, pr_fh_t *, const char *, void *, size_t, int);
+
+/* setxattr flags */
+#define PR_FSIO_XATTR_FL_CREATE		0x001
+#define PR_FSIO_XATTR_FL_REPLACE	0x002
+
 /* Set a flag determining whether we guard against write operations in
  * certain sensitive directories while we are chrooted, e.g. "Roaring Beast"
  * style attacks.
@@ -287,6 +305,12 @@ int pr_fsio_guard_chroot(int);
  * Returns the previously-set value.
  */
 int pr_fsio_set_use_mkdtemp(int);
+
+/* Sets a bitmask of various FSIO API options.  Returns the previously
+ * set options.
+ */
+unsigned long pr_fsio_set_options(unsigned long opts);
+#define PR_FSIO_OPT_IGNORE_XATTR		0x00001
 
 /* FS-related functions */
 
@@ -303,16 +327,6 @@ int pr_insert_fs(pr_fs_t *, const char *);
 pr_fs_t *pr_remove_fs(const char *);
 pr_fs_t *pr_unmount_fs(const char *, const char *);
 int pr_unregister_fs(const char *);
-
-#if defined(PR_USE_REGEX) && defined(PR_FS_MATCH)
-pr_fs_match_t *pr_register_fs_match(pool *, const char *, const char *, int);
-void pr_associate_fs(pr_fs_match_t *, pr_fs_t *);
-pr_fs_match_t *pr_create_fs_match(pool *, const char *, const char *, int);
-pr_fs_match_t *pr_get_fs_match(const char *, int);
-pr_fs_match_t *pr_get_next_fs_match(pr_fs_match_t *, const char *, int);
-int pr_insert_fs_match(pr_fs_match_t *);
-int pr_unregister_fs_match(const char *);
-#endif /* PR_USE_REGEX and PR_FS_MATCH */
 
 /* FS Statcache API */
 void pr_fs_clear_cache(void);
@@ -336,7 +350,19 @@ void pr_fs_statcache_reset(void);
 int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
   unsigned int flags);
 
-int pr_fs_copy_file(const char *, const char *);
+/* Copy a file from the given source path to the destination path. */
+int pr_fs_copy_file(const char *src, const char *dst);
+
+/* Similar to pr_fs_copy_file(), with the addition of an optional progress
+ * callback, invoked during the potentially long-running copy process.
+ *
+ * The callback, when present, will be invoked with the number of bytes
+ * just written to the destination file in that iteration.
+ */
+int pr_fs_copy_file2(const char *src, const char *dst, int flags,
+  void (*progress_cb)(int));
+#define PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE	0x0001
+
 int pr_fs_setcwd(const char *);
 const char *pr_fs_getcwd(void);
 const char *pr_fs_getvwd(void);

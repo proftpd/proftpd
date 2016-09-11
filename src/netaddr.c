@@ -68,10 +68,12 @@ static const char *trace_channel = "dns";
 static array_header *netaddr_dnscache_get(pool *p, const char *ip_str) {
   array_header *res = NULL;
 
-  if (netaddr_dnstab) {
-    void *v = pr_table_get(netaddr_dnstab, ip_str, NULL);
-    if (v) {
-      res = v;
+  if (netaddr_dnstab != NULL) {
+    const void *v;
+
+    v = pr_table_get(netaddr_dnstab, ip_str, NULL);
+    if (v != NULL) {
+      res = (array_header *) v;
 
       pr_trace_msg(trace_channel, 4,
         "using %d DNS %s from netaddr DNS cache for IP address '%s'",
@@ -151,10 +153,12 @@ static void netaddr_dnscache_set(const char *ip_str, const char *dns_name) {
 static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
   pr_netaddr_t *res = NULL;
 
-  if (netaddr_iptab) {
-    void *v = pr_table_get(netaddr_iptab, name, NULL);
-    if (v) {
-      res = v;
+  if (netaddr_iptab != NULL) {
+    const void *v;
+
+    v = pr_table_get(netaddr_iptab, name, NULL);
+    if (v != NULL) {
+      res = (pr_netaddr_t *) v;
       pr_trace_msg(trace_channel, 4,
         "using IP address '%s' from netaddr IP cache for name '%s'",
         pr_netaddr_get_ipstr(res), name);
@@ -162,7 +166,7 @@ static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
       /* We return a copy of the cache's netaddr_t, if the caller provided
        * a pool for duplication.
        */
-      if (p) {
+      if (p != NULL) {
         pr_netaddr_t *dup_res = NULL;
 
         dup_res = pr_netaddr_dup(p, res);
@@ -184,8 +188,8 @@ static pr_netaddr_t *netaddr_ipcache_get(pool *p, const char *name) {
   return NULL;
 }
 
-static int netaddr_ipcache_set(const char *name, pr_netaddr_t *na) {
-  if (netaddr_iptab) {
+static int netaddr_ipcache_set(const char *name, const pr_netaddr_t *na) {
+  if (netaddr_iptab != NULL) {
     int count = 0;
     void *v = NULL;
 
@@ -470,10 +474,11 @@ void pr_netaddr_clear(pr_netaddr_t *na) {
   memset(na, 0, sizeof(pr_netaddr_t));
 }
 
-pr_netaddr_t *pr_netaddr_dup(pool *p, pr_netaddr_t *na) {
+pr_netaddr_t *pr_netaddr_dup(pool *p, const pr_netaddr_t *na) {
   pr_netaddr_t *dup_na;
 
-  if (!p || !na) {
+  if (p == NULL ||
+      na == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -883,7 +888,7 @@ static pr_netaddr_t *get_addr_by_device(pool *p, const char *name,
   return NULL;
 }
 
-pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
+const pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
     array_header **addrs, unsigned int flags) {
   pr_netaddr_t *na = NULL;
 
@@ -954,7 +959,7 @@ pr_netaddr_t *pr_netaddr_get_addr2(pool *p, const char *name,
   return NULL;
 }
 
-pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
+const pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     array_header **addrs) {
   return pr_netaddr_get_addr2(p, name, addrs, 0);
 }
@@ -1482,7 +1487,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
   return res;
 }
 
-int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
+int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern, int flags) {
 
   /* Note: I'm still not sure why proftpd bundles an fnmatch(3)
    * implementation rather than using the system library's implementation.
@@ -1500,8 +1505,9 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
   }
 
   if (flags & PR_NETADDR_MATCH_DNS) {
-    const char *dnsstr = pr_netaddr_get_dnsstr(na);
+    const char *dnsstr;
 
+    dnsstr = pr_netaddr_get_dnsstr(na);
     if (pr_fnmatch(pattern, dnsstr, match_flags) == 0) {
       pr_trace_msg(trace_channel, 6, "DNS name '%s' matches pattern '%s'",
         dnsstr, pattern);
@@ -1510,8 +1516,9 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
   }
 
   if (flags & PR_NETADDR_MATCH_IP) {
-    const char *ipstr = pr_netaddr_get_ipstr(na);
+    const char *ipstr;
 
+    ipstr = pr_netaddr_get_ipstr(na);
     if (pr_fnmatch(pattern, ipstr, match_flags) == 0) {
       pr_trace_msg(trace_channel, 6, "IP address '%s' matches pattern '%s'",
         ipstr, pattern);
@@ -1550,15 +1557,16 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
   return FALSE;
 }
 
-const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
+const char *pr_netaddr_get_ipstr(const pr_netaddr_t *na) {
 #ifdef PR_USE_IPV6
   char buf[INET6_ADDRSTRLEN];
 #else
   char buf[INET_ADDRSTRLEN];
 #endif /* PR_USE_IPV6 */
   int res = 0, xerrno;
+  pr_netaddr_t *addr;
   
-  if (!na) {
+  if (na == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -1605,17 +1613,21 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
 #endif /* PR_USE_IPV6 */
 
   /* Copy the string into the pr_netaddr_t cache as well, so we only
-   * have to do this once for this pr_netaddr_t.
+   * have to do this once for this pr_netaddr_t.  But to do this, we need
+   * let the compiler know that the pr_netaddr_t is not really const at this
+   * point.
    */
-  memset(na->na_ipstr, '\0', sizeof(na->na_ipstr));
-  sstrncpy(na->na_ipstr, buf, sizeof(na->na_ipstr));
-  na->na_have_ipstr = TRUE;
+  addr = (pr_netaddr_t *) na;
+  memset(addr->na_ipstr, '\0', sizeof(addr->na_ipstr));
+  sstrncpy(addr->na_ipstr, buf, sizeof(addr->na_ipstr));
+  addr->na_have_ipstr = TRUE;
 
   return na->na_ipstr;
 }
 
 #if defined(HAVE_GETADDRINFO) && !defined(HAVE_GETHOSTBYNAME2)
-static int netaddr_get_dnsstr_getaddrinfo(pr_netaddr_t *na, const char *name) {
+static int netaddr_get_dnsstr_getaddrinfo(const pr_netaddr_t *na,
+    const char *name) {
   struct addrinfo hints, *info = NULL;
   int family, flags = 0, res = 0, ok = FALSE;
   void *inaddr = pr_netaddr_get_inaddr(na);
@@ -1753,17 +1765,19 @@ static int netaddr_get_dnsstr_getaddrinfo(pr_netaddr_t *na, const char *name) {
 #endif /* HAVE_GETADDRINFO and not HAVE_GETHOSTBYNAME2 */
 
 #ifdef HAVE_GETHOSTBYNAME2
-static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
+static int netaddr_get_dnsstr_gethostbyname(const pr_netaddr_t *na,
     const char *name) {
   char **checkaddr;
   struct hostent *hent = NULL;
-  int ok = FALSE;
-  int family = pr_netaddr_get_family(na);
-  void *inaddr = pr_netaddr_get_inaddr(na);
+  int family, ok = FALSE;
+  void *inaddr;
 
+  family = pr_netaddr_get_family(na);
   if (family < 0) {
     return -1;
   }
+
+  inaddr = pr_netaddr_get_inaddr(na);
 
   if (pr_netaddr_is_v4mappedv6(na) == TRUE) {
     family = AF_INET;
@@ -1842,9 +1856,9 @@ static int netaddr_get_dnsstr_gethostbyname(pr_netaddr_t *na,
  * returns a string of the numeric form of the given network address, whereas
  * this function returns a string of the DNS name (if present).
  */
-const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
+const char *pr_netaddr_get_dnsstr(const pr_netaddr_t *na) {
   char dns_buf[1024], *name = NULL;
-  pr_netaddr_t *cache = NULL;
+  pr_netaddr_t *addr = NULL, *cache = NULL;
 
   if (na == NULL) {
     errno = EINVAL;
@@ -1854,9 +1868,10 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
   cache = netaddr_ipcache_get(NULL, pr_netaddr_get_ipstr(na));
   if (cache &&
       cache->na_have_dnsstr) {
-    memset(na->na_dnsstr, '\0', sizeof(na->na_dnsstr));
-    sstrncpy(na->na_dnsstr, cache->na_dnsstr, sizeof(na->na_dnsstr));
-    na->na_have_dnsstr = TRUE;
+    addr = (pr_netaddr_t *) na;
+    memset(addr->na_dnsstr, '\0', sizeof(addr->na_dnsstr));
+    sstrncpy(addr->na_dnsstr, cache->na_dnsstr, sizeof(addr->na_dnsstr));
+    addr->na_have_dnsstr = TRUE;
 
     return na->na_dnsstr;
   }
@@ -1918,11 +1933,14 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
   }
 
   /* Copy the string into the pr_netaddr_t cache as well, so we only
-   * have to do this once for this pr_netaddr_t.
+   * have to do this once for this pr_netaddr_t.  But to do this, we need
+   * let the compiler know that the pr_netaddr_t is not really const at this
+   * point.
    */
-  memset(na->na_dnsstr, '\0', sizeof(na->na_dnsstr));
-  sstrncpy(na->na_dnsstr, name, sizeof(na->na_dnsstr));
-  na->na_have_dnsstr = TRUE;
+  addr = (pr_netaddr_t *) na;
+  memset(addr->na_dnsstr, '\0', sizeof(addr->na_dnsstr));
+  sstrncpy(addr->na_dnsstr, name, sizeof(addr->na_dnsstr));
+  addr->na_have_dnsstr = TRUE;
 
   /* Update the netaddr object in the cache with the resolved DNS names. */
   netaddr_ipcache_set(name, na);
@@ -1931,7 +1949,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
   return na->na_dnsstr;
 }
 
-array_header *pr_netaddr_get_dnsstr_list(pool *p, pr_netaddr_t *na) {
+array_header *pr_netaddr_get_dnsstr_list(pool *p, const pr_netaddr_t *na) {
   array_header *res;
 
   if (p == NULL ||
@@ -2289,7 +2307,7 @@ pr_netaddr_t *pr_netaddr_v6tov4(pool *p, const pr_netaddr_t *na) {
   return res;
 }
 
-pr_netaddr_t *pr_netaddr_get_sess_local_addr(void) {
+const pr_netaddr_t *pr_netaddr_get_sess_local_addr(void) {
   if (have_sess_local_addr) {
     return &sess_local_addr;
   }
@@ -2298,7 +2316,7 @@ pr_netaddr_t *pr_netaddr_get_sess_local_addr(void) {
   return NULL;
 }
 
-pr_netaddr_t *pr_netaddr_get_sess_remote_addr(void) {
+const pr_netaddr_t *pr_netaddr_get_sess_remote_addr(void) {
   if (have_sess_remote_addr) {
     return &sess_remote_addr;
   }

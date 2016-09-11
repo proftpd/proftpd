@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_quotatab_file -- a mod_quotatab sub-module for managing quota
  *                               data via file-based tables
- *
- * Copyright (c) 2002-2014 TJ Saunders
+ * Copyright (c) 2002-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +20,6 @@
  * As a special exemption, TJ Saunders gives permission to link this program
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
- *
- * $Id: mod_quotatab_file.c,v 1.8 2011-05-23 20:56:40 castaglia Exp $
  */
 
 #include "mod_quotatab.h"

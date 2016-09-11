@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_log
- *
  * Copyright (c) 2013-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
@@ -78,5 +77,6 @@
 #define LOGFMT_META_RESPONSE_MS		47
 #define LOGFMT_META_FILE_SIZE		48
 #define LOGFMT_META_XFER_TYPE		49
+#define LOGFMT_META_REMOTE_PORT		50
 
 #endif /* MOD_LOG_H */

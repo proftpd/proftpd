@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_unique_id -- a module for generating a unique ID for each
  *                           FTP session.
- *
- * Copyright (c) 2006-2011 TJ Saunders
+ * Copyright (c) 2006-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +24,6 @@
  *
  * This is mod_unique_id, contrib software for proftpd 1.2.x/1.3.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
- *
- * $Id: mod_unique_id.c,v 1.6 2011-05-23 20:56:40 castaglia Exp $
  */
 
 #include "conf.h"

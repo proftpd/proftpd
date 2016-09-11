@@ -79,6 +79,7 @@ extern pr_response_t *resp_list, *resp_err_list;
 
 int nodaemon = 0;
 
+static int no_forking = FALSE;
 static int quiet = 0;
 static int shutting_down = 0;
 static int syntax_check = 0;
@@ -146,10 +147,9 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
 void shutdown_end_session(void *d1, void *d2, void *d3, void *d4) {
   if (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
       sizeof(shutmsg)) == 1) {
-    char *user;
+    const char *user;
     time_t now;
-    char *msg;
-    const char *serveraddress;
+    const char *msg, *serveraddress;
     config_rec *c = NULL;
     unsigned char *authenticated = get_param_ptr(main_server->conf,
       "authenticated", FALSE);
@@ -223,7 +223,7 @@ static int get_command_class(const char *name) {
 }
 
 static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
-  char *cmdargstr = NULL;
+  const char *cmdargstr = NULL;
   cmdtable *c;
   modret_t *mr;
   int success = 0, xerrno = 0;
@@ -265,8 +265,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     session.curr_phase = cmd_type;
 
     if (c->cmd_type == cmd_type) {
-      if (c->group)
+      if (c->group) {
         cmd->group = pstrdup(cmd->pool, c->group);
+      }
 
       if (c->requires_auth &&
           cmd_auth_chk &&
@@ -578,7 +579,7 @@ static int set_cmd_start_ms(cmd_rec *cmd) {
     return 0;
   }
 
-  v = pr_table_get(cmd->notes, "start_ms", NULL);
+  v = (void *) pr_table_get(cmd->notes, "start_ms", NULL);
   if (v != NULL) {
     return 0;
   }
@@ -1077,7 +1078,7 @@ static void set_server_privs(void) {
   }
 }
 
-static void fork_server(int fd, conn_t *l, unsigned char nofork) {
+static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
   conn_t *conn = NULL;
   int i, rev;
   int semfds[2] = { -1, -1 };
@@ -1087,7 +1088,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pid_t pid;
   sigset_t sig_set;
 
-  if (!nofork) {
+  if (no_fork == FALSE) {
 
     /* A race condition exists on heavily loaded servers where the parent
      * catches SIGHUP and attempts to close/re-open the main listening
@@ -1350,8 +1351,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     time(&now);
     if (!deny || deny <= now) {
       config_rec *c = NULL;
-      char *reason = NULL;
-      const char *serveraddress;
+      const char *reason = NULL, *serveraddress;
 
       serveraddress = (session.c && session.c->local_addr) ?
         pr_netaddr_get_ipstr(session.c->local_addr) :
@@ -1663,8 +1663,9 @@ static void daemon_loop(void) {
         /* While we're looking, tally up the number of children forked in
          * the past interval.
          */
-        if (ch->ch_when >= (now - (unsigned long) max_connect_interval))
+        if (ch->ch_when >= (time_t) (now - (long) max_connect_interval)) {
           nconnects++;
+        }
       }
     }
 
@@ -1685,11 +1686,12 @@ static void daemon_loop(void) {
     if (listen_conn) {
 
       /* Check for exceeded MaxInstances. */
-      if (ServerMaxInstances && (child_count() >= ServerMaxInstances)) {
+      if (ServerMaxInstances > 0 &&
+          child_count() >= ServerMaxInstances) {
         pr_event_generate("core.max-instances", NULL);
         
         pr_log_pri(PR_LOG_WARNING,
-          "MaxInstances (%d) reached, new connection denied",
+          "MaxInstances (%lu) reached, new connection denied",
           ServerMaxInstances);
         close(fd);
 
@@ -1704,7 +1706,7 @@ static void daemon_loop(void) {
 
       /* Fork off a child to handle the connection. */
       } else {
-        PR_DEVEL_CLOCK(fork_server(fd, listen_conn, FALSE));
+        PR_DEVEL_CLOCK(fork_server(fd, listen_conn, no_forking));
       }
     }
 #ifdef PR_DEVEL_NO_DAEMON
@@ -2051,6 +2053,12 @@ static void show_settings(void) {
   printf("%s", "    - NLS support\n");
 #endif /* PR_USE_NLS */
 
+#ifdef PR_USE_SODIUM
+  printf("%s", "    + Sodium support\n");
+#else
+  printf("%s", "    - Sodium support\n");
+#endif /* PR_USE_SODIUM */
+
 #ifdef PR_USE_OPENSSL
 # ifdef PR_USE_OPENSSL_FIPS
     printf("%s", "    + OpenSSL support (FIPS enabled)\n");
@@ -2091,14 +2099,22 @@ static void show_settings(void) {
   printf("%s", "    - Trace support\n");
 #endif /* PR_USE_TRACE */
 
+#ifdef PR_USE_XATTR
+  printf("%s", "    + xattr support\n");
+#else
+  printf("%s", "    - xattr support\n");
+#endif /* PR_USE_XATTR */
+
   /* Tunable settings */
   printf("%s", "\n  Tunable Options:\n");
   printf("    PR_TUNABLE_BUFFER_SIZE = %u\n", PR_TUNABLE_BUFFER_SIZE);
   printf("    PR_TUNABLE_DEFAULT_RCVBUFSZ = %u\n", PR_TUNABLE_DEFAULT_RCVBUFSZ);
   printf("    PR_TUNABLE_DEFAULT_SNDBUFSZ = %u\n", PR_TUNABLE_DEFAULT_SNDBUFSZ);
+  printf("    PR_TUNABLE_ENV_MAX = %u\n", PR_TUNABLE_ENV_MAX);
   printf("    PR_TUNABLE_GLOBBING_MAX_MATCHES = %lu\n", PR_TUNABLE_GLOBBING_MAX_MATCHES);
   printf("    PR_TUNABLE_GLOBBING_MAX_RECURSION = %u\n", PR_TUNABLE_GLOBBING_MAX_RECURSION);
   printf("    PR_TUNABLE_HASH_TABLE_SIZE = %u\n", PR_TUNABLE_HASH_TABLE_SIZE);
+  printf("    PR_TUNABLE_LOGIN_MAX = %u\n", PR_TUNABLE_LOGIN_MAX);
   printf("    PR_TUNABLE_NEW_POOL_SIZE = %u\n", PR_TUNABLE_NEW_POOL_SIZE);
   printf("    PR_TUNABLE_PATH_MAX = %u\n", PR_TUNABLE_PATH_MAX);
   printf("    PR_TUNABLE_SCOREBOARD_BUFFER_SIZE = %u\n",
@@ -2162,6 +2178,9 @@ static struct option_help {
   { "--version-status", "-vv",
     "Print extended version information and exit" },
 
+  { "--nofork", "-X",
+    "Non-forking debug mode; exits after one session" },
+
   { "--ipv4", "-4",
     "Support IPv4 connections only" },
 
@@ -2189,7 +2208,7 @@ static void show_usage(int exit_code) {
 
 int main(int argc, char *argv[], char **envp) {
   int optc, show_version = 0;
-  const char *cmdopts = "D:NVc:d:hlnp:qS:tv46";
+  const char *cmdopts = "D:NVc:d:hlnp:qS:tvX46";
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
@@ -2245,6 +2264,8 @@ int main(int argc, char *argv[], char **envp) {
    * --configtest
    * -v                 report version number
    * --version
+   * -X
+   * --nofork           debug/non-fork mode
    * -4                 support IPv4 connections only
    * --ipv4
    * -6                 support IPv6 connections
@@ -2358,6 +2379,10 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'v':
       show_version++;
+      break;
+
+    case 'X':
+      no_forking = TRUE;
       break;
 
     case 1:
@@ -2527,8 +2552,10 @@ int main(int argc, char *argv[], char **envp) {
     }
 
     if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0) {
-      pr_log_pri(PR_LOG_WARNING, "unable to set daemon groups: %s",
-        strerror(errno));
+      if (errno != ENOSYS) {
+        pr_log_pri(PR_LOG_WARNING, "unable to set daemon groups: %s",
+          strerror(errno));
+      }
     }
   }
 

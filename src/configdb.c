@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -333,7 +333,7 @@ static int config_cmp(const config_rec *a, const char *a_name,
 
 static config_rec *copy_config_from(const config_rec *src, config_rec *dst) {
   config_rec *c;
-  int cargc;
+  unsigned int cargc;
   void **cargv, **sargv;
 
   if (src == NULL ||
@@ -675,7 +675,7 @@ void *get_param_ptr_next(const char *name, int recurse) {
   return NULL;
 }
 
-int remove_config(xaset_t *set, const char *name, int recurse) {
+int pr_config_remove(xaset_t *set, const char *name, int flags, int recurse) {
   server_rec *s;
   config_rec *c;
   int found = 0;
@@ -708,20 +708,28 @@ int remove_config(xaset_t *set, const char *name, int recurse) {
         s->conf = NULL;
       }
 
-      /* Next, destroy the set's pool, which destroys the set as well. */
-      destroy_pool(found_set->pool);
+      if (!(flags & PR_CONFIG_FL_PRESERVE_ENTRY)) {
+        /* Next, destroy the set's pool, which destroys the set as well. */
+        destroy_pool(found_set->pool);
+      }
 
     } else {
-      /* If the set was not empty, destroy only the requested config_rec. */
-      destroy_pool(c->pool);
+      if (!(flags & PR_CONFIG_FL_PRESERVE_ENTRY)) {
+        /* If the set was not empty, destroy only the requested config_rec. */
+        destroy_pool(c->pool);
+      }
     }
   }
 
   return found;
 }
 
+int remove_config(xaset_t *set, const char *name, int recurse) {
+  return pr_config_remove(set, name, 0, recurse);
+}
+
 config_rec *add_config_param_set(xaset_t **set, const char *name,
-    int num, ...) {
+    unsigned int num, ...) {
   config_rec *c;
   void **argv;
   va_list ap;
@@ -747,7 +755,7 @@ config_rec *add_config_param_set(xaset_t **set, const char *name,
   return c;
 }
 
-config_rec *add_config_param_str(const char *name, int num, ...) {
+config_rec *add_config_param_str(const char *name, unsigned int num, ...) {
   config_rec *c;
   char *arg = NULL;
   void **argv = NULL;
@@ -779,7 +787,7 @@ config_rec *add_config_param_str(const char *name, int num, ...) {
 }
 
 config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
-    int num, ...) {
+    unsigned int num, ...) {
   config_rec *c;
   char *arg = NULL;
   void **argv = NULL;
@@ -811,7 +819,7 @@ config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
   return c;
 }
 
-config_rec *add_config_param(const char *name, int num, ...) {
+config_rec *add_config_param(const char *name, unsigned int num, ...) {
   config_rec *c;
   void **argv;
   va_list ap;
@@ -841,15 +849,15 @@ config_rec *add_config_param(const char *name, int num, ...) {
 }
 
 unsigned int pr_config_get_id(const char *name) {
-  void *ptr = NULL;
+  const void *ptr = NULL;
   unsigned int id = 0;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return 0;
   }
 
-  if (!config_tab) {
+  if (config_tab == NULL) {
     errno = EPERM;
     return 0;
   }

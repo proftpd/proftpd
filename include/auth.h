@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2014 The ProFTPD Project team
+ * Copyright (c) 2004-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * the source distribution.
  */
 
-/* ProFTPD Auth API
- * $Id: auth.h,v 1.14 2011-05-23 20:35:35 castaglia Exp $
- */
+/* ProFTPD Auth API */
 
 #ifndef PR_AUTH_H
 #define PR_AUTH_H
@@ -104,7 +102,8 @@ int pr_auth_requires_pass(pool *, const char *);
  * configuration for that user.  If the user name is not be handled as
  * an anonymous login, NULL is returned.
  */
-config_rec *pr_auth_get_anon_config(pool *p, char **, char **, char **);
+config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
+  char **real_user, char **anon_user);
 
 /* Wrapper function around the chroot(2) system call, handles setting of
  * appropriate environment variables if necessary.
@@ -164,7 +163,13 @@ int pr_auth_cache_set(int enable, unsigned int flags);
 /* Wrapper function for retrieving the user's home directory.  This handles
  * any possible RewriteHome configuration.
  */
-char *pr_auth_get_home(pool *, char *pw_dir);
+const char *pr_auth_get_home(pool *, const char *pw_dir);
+
+/* Policy setting for the maximum allowable password length.  This is
+ * supported for mitigating potential resource consumption attack via the
+ * crypt(3) function.
+ */
+size_t pr_auth_set_max_password_len(pool *p, size_t len);
 
 /* For internal use only. */
 int init_auth(void);

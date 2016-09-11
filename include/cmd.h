@@ -25,9 +25,9 @@
 #ifndef PR_CMD_H
 #define PR_CMD_H
 
-cmd_rec *pr_cmd_alloc(pool *p, int, ...);
+cmd_rec *pr_cmd_alloc(pool *p, unsigned int, ...);
 int pr_cmd_clear_cache(cmd_rec *cmd);
-char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *len);
+const char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *len);
 int pr_cmd_get_errno(cmd_rec *cmd);
 
 int pr_cmd_cmp(cmd_rec *cmd, int cmd_id);

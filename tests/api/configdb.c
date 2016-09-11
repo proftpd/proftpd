@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -126,7 +126,7 @@ START_TEST (config_add_config_param_test) {
   pr_config_dump(NULL, s->conf, NULL);
 
   mark_point();
-  res = remove_config(s->conf, name, FALSE);
+  res = pr_config_remove(s->conf, name, PR_CONFIG_FL_PRESERVE_ENTRY, FALSE);
   fail_unless(res > 0, "Failed to remove config '%s': %s", name,
     strerror(errno));
 }

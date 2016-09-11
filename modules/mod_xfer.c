@@ -52,6 +52,7 @@ static pr_fh_t *stor_fh = NULL;
 static pr_fh_t *displayfilexfer_fh = NULL;
 
 static unsigned char have_rfc2228_data = FALSE;
+static unsigned char have_type = FALSE;
 static unsigned char have_zmode = FALSE;
 static unsigned char use_sendfile = TRUE;
 static off_t use_sendfile_len = 0;
@@ -175,7 +176,7 @@ static off_t find_max_nbytes(char *directive) {
   }
 
   /* Print out some nice debugging information. */
-  if (max_nbytes > 0UL &&
+  if (max_nbytes > 0 &&
       (have_user_limit || have_group_limit ||
        have_class_limit || have_all_limit)) {
     pr_log_debug(DEBUG5, "%s (%" PR_LU " bytes) in effect for %s",
@@ -807,7 +808,7 @@ static long transmit_data(pool *p, off_t data_len, off_t *data_offset,
 
 static void stor_chown(pool *p) {
   struct stat st;
-  char *xfer_path = NULL;
+  const char *xfer_path = NULL;
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
     xfer_path = session.xfer.path_hidden;
@@ -1037,9 +1038,10 @@ static int stor_complete(void) {
   return res;
 }
 
-static int get_hidden_store_path(cmd_rec *cmd, char *path, char *prefix,
-    char *suffix) {
-  char *c = NULL, *hidden_path, *parent_dir = NULL;
+static int get_hidden_store_path(cmd_rec *cmd, const char *path,
+    const char *prefix, const char *suffix) {
+  const char *c = NULL;
+  char *hidden_path, *parent_dir = NULL;
   int dotcount = 0, found_slash = FALSE, basenamestart = 0, maxlen;
 
   /* We have to also figure out the temporary hidden file name for receiving
@@ -1389,7 +1391,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   c = find_config(CURRENT_CONF, CONF_PARAM, "HiddenStores", FALSE);
   if (c &&
       *((int *) c->argv[0]) == TRUE) {
-    char *prefix, *suffix;
+    const char *prefix, *suffix;
 
     /* If we're using HiddenStores, then REST won't work. */
     if (session.restart_pos) {
@@ -1598,7 +1600,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 }
 
 MODRET xfer_post_stor(cmd_rec *cmd) {
-  char *path;
+  const char *path;
 
   path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
   if (path != NULL) {
@@ -1623,15 +1625,15 @@ MODRET xfer_post_stor(cmd_rec *cmd) {
  * from being surprised.
  */
 MODRET xfer_post_stou(cmd_rec *cmd) {
-  mode_t mask, perms, *umask;
+  mode_t mask, perms, *umask_setting;
   struct stat st;
 
   /* mkstemp(3) creates a file with 0600 perms; we need to adjust this
    * for the Umask (Bug#4223).
    */
-  umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
-  if (umask != NULL) {
-    mask = *umask;
+  umask_setting = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+  if (umask_setting != NULL) {
+    mask = *umask_setting;
 
   } else {
     mask = (mode_t) 0022;
@@ -1676,7 +1678,8 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 }
 
 MODRET xfer_stor(cmd_rec *cmd) {
-  char *path, *lbuf;
+  const char *path;
+  char *lbuf;
   int bufsz, len, xerrno = 0, res;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
@@ -1700,7 +1703,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   pr_fs_setcwd(pr_fs_getcwd());
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
-    void *nfs;
+    const void *nfs;
     int oflags;
 
     oflags = O_WRONLY;
@@ -1734,7 +1737,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
-    char *appe_path;
+    const char *appe_path;
 
     /* Need to handle the case where the path may be a symlink, and we are
      * chrooted (Bug#4219).
@@ -2305,7 +2308,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 }
 
 MODRET xfer_post_retr(cmd_rec *cmd) {
-  char *path;
+  const char *path;
 
   path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
   if (path != NULL) {
@@ -2325,7 +2328,8 @@ MODRET xfer_post_retr(cmd_rec *cmd) {
 }
 
 MODRET xfer_retr(cmd_rec *cmd) {
-  char *dir = NULL, *lbuf;
+  const char *dir = NULL;
+  char *lbuf;
   struct stat st;
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
@@ -2517,10 +2521,43 @@ MODRET xfer_retr(cmd_rec *cmd) {
       /* Make sure that the errno value, needed for the pr_data_abort() call,
        * is preserved; errno itself might be overwritten in retr_abort().
        */
-      int xerrno = errno;
+      int already_aborted = FALSE, xerrno = errno;
 
       retr_abort();
-      pr_data_abort(xerrno, FALSE);
+
+      /* Do we need to abort the data transfer here?  It's possible that
+       * the transfer has already been aborted, e.g. via the TCP OOB marker
+       * and/or the ABOR command.  And if that is the case, then calling
+       * pr_data_abort() here will only lead to a spurious response code
+       * (see Bug#4252).
+       *
+       * However, there are OTHER error conditions which would lead to this
+       * code path.  So we need to resort to some heuristics to differentiate
+       * between these cases.  The errno value checks match those in the
+       * pr_data_xfer() function, after the control channel has been polled
+       * for commands such as ABOR.
+       */
+
+      if (session.d == NULL &&
+#if defined(ECONNABORTED)
+          xerrno == ECONNABORTED &&
+#elif defined(ENOTCONN)
+          xerrno == ENOTCONN &&
+#else
+          xerrno == EIO &&
+#endif
+          session.xfer.xfer_type == STOR_DEFAULT) {
+
+        /* If the ABOR command has been sent, then pr_data_reset() and
+         * pr_data_cleanup() will have been called; the latter resets the
+         * xfer_type value to DEFAULT.
+         */
+        already_aborted = TRUE;
+      }
+
+      if (already_aborted == FALSE) {
+        pr_data_abort(xerrno, FALSE);
+      }
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -2643,6 +2680,18 @@ MODRET xfer_type(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, ENOSYS);
     errno = ENOSYS;
     return PR_ERROR(cmd);
+  }
+
+  /* Note that the client may NOT be authenticated at this point in time.
+   * If that is the case, set a flag so that the POST_CMD PASS handler does
+   * not overwrite the TYPE command's setting.
+   *
+   * Alternatively, we COULD bar/reject any TYPE commands before authentication.
+   * However, I think that doing so would interfere with many existing clients
+   * which assume that they can send TYPE before authenticating.
+   */
+  if (session.auth_mech == NULL) {
+    have_type = TRUE;
   }
 
   pr_response_add(R_200, _("Type set to %s"), (char *) cmd->argv[1]);
@@ -2812,6 +2861,9 @@ MODRET xfer_allo(cmd_rec *cmd) {
         return PR_ERROR(cmd);
       }
 
+      pr_log_debug(DEBUG9, "%s requested %" PR_LU " KB, %" PR_LU
+        " KB available on '%s'", (char *) cmd->argv[0], (pr_off_t) requested_kb,
+        (pr_off_t) avail_kb, path);
       pr_response_add(R_200, _("%s command successful"), (char *) cmd->argv[0]);
     }
 
@@ -2939,6 +2991,23 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
 MODRET xfer_post_pass(cmd_rec *cmd) {
   config_rec *c;
 
+  /* Default transfer mode is ASCII, per RFC 959, Section 3.1.1.1.  Unless
+   * the client has already sent a TYPE command.
+   */
+  if (have_type == FALSE) {
+    session.sf_flags |= SF_ASCII;
+    c = find_config(main_server->conf, CONF_PARAM, "DefaultTransferMode",
+      FALSE);
+    if (c != NULL) {
+      char *default_transfer_mode;
+
+      default_transfer_mode = c->argv[0];
+      if (strcasecmp(default_transfer_mode, "binary") == 0) {
+        session.sf_flags &= (SF_ALL^SF_ASCII);
+      }
+    }
+  }
+
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutNoTransfer", FALSE);
   if (c != NULL) {
     int timeout = *((int *) c->argv[0]);
@@ -3035,6 +3104,23 @@ MODRET set_allowrestart(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
+  return PR_HANDLED(cmd);
+}
+
+/* usage: DefaultTransferMode ascii|binary */
+MODRET set_defaulttransfermode(cmd_rec *cmd) {
+  char *default_mode;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  default_mode = cmd->argv[1];
+  if (strcasecmp(default_mode, "ascii") != 0 &&
+      strcasecmp(default_mode, "binary") != 0) {
+    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, default_mode);
   return PR_HANDLED(cmd);
 }
 
@@ -3232,7 +3318,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
 
   } else {
     array_header *acl = NULL;
-    int argc;
+    unsigned int argc;
     void **argv;
 
     argc = cmd->argc - 4;
@@ -3595,14 +3681,13 @@ MODRET set_transferrate(cmd_rec *cmd) {
 
   } else {
     array_header *acl = NULL;
-    int argc;
+    unsigned int argc;
     void **argv;
 
     argc = cmd->argc - 4;
     argv = cmd->argv + 3;
 
     acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
-
     c = add_config_param(cmd->argv[0], 0);
 
     /* Parse the command list.
@@ -3741,7 +3826,11 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
     cmd_rec *cmd;
     pr_data_abort(0, FALSE);
 
-    cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
+    cmd = session.curr_cmd_rec;
+    if (cmd == NULL) {
+      cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
+    }
+
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
@@ -3859,6 +3948,8 @@ static int xfer_sess_init(void) {
   pr_event_register(&xfer_module, "core.timeout-stalled",
     xfer_timeout_stalled_ev, NULL);
 
+  have_type = FALSE;
+
   /* Look for a DisplayFileTransfer file which has an absolute path.  If we
    * find one, open a filehandle, such that that file can be displayed
    * even if the session is chrooted.  DisplayFileTransfer files with
@@ -3916,6 +4007,7 @@ static conftable xfer_conftab[] = {
   { "AllowOverwrite",		set_allowoverwrite,		NULL },
   { "AllowRetrieveRestart",	set_allowrestart,		NULL },
   { "AllowStoreRestart",	set_allowrestart,		NULL },
+  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
   { "DisplayFileTransfer",	set_displayfiletransfer,	NULL },
   { "HiddenStores",		set_hiddenstores,		NULL },

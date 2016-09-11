@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2015 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ static const char *trace_channel = "class";
 static pr_class_t *class_list = NULL;
 static pr_class_t *curr_cls = NULL;
 
-pr_class_t *pr_class_get(pr_class_t *prev) {
+const pr_class_t *pr_class_get(const pr_class_t *prev) {
   if (prev != NULL) {
     return prev->cls_next;
   }
@@ -46,7 +46,7 @@ pr_class_t *pr_class_get(pr_class_t *prev) {
   return class_list;
 }
 
-pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
+const pr_class_t *pr_class_match_addr(const pr_netaddr_t *addr) {
   pr_class_t *cls;
   pool *tmp_pool;
 
@@ -59,8 +59,8 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
 
   for (cls = class_list; cls; cls = cls->cls_next) {
     array_header *acl_list;
-    pr_netacl_t **acls;
-    register int i;
+    const pr_netacl_t **acls;
+    register unsigned int i;
     int next_class = FALSE;
 
     acl_list = cls->cls_acls;
@@ -131,7 +131,7 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
   return NULL;
 }
 
-pr_class_t *pr_class_find(const char *name) {
+const pr_class_t *pr_class_find(const char *name) {
   pr_class_t *cls;
 
   if (name == NULL) {
@@ -150,7 +150,7 @@ pr_class_t *pr_class_find(const char *name) {
   return NULL;
 }
 
-int pr_class_add_acl(pr_netacl_t *acl) {
+int pr_class_add_acl(const pr_netacl_t *acl) {
 
   if (acl == NULL) {
     errno = EINVAL;
@@ -264,8 +264,11 @@ int pr_class_close(void) {
 
   /* Now add the current Class to the end of the list. */
   if (class_list) {
-    pr_class_t *ci = class_list;
-    while (ci && ci->cls_next) {
+    pr_class_t *ci;
+
+    ci = class_list;
+    while (ci != NULL &&
+           ci->cls_next != NULL) {
       ci = ci->cls_next;
     }
 

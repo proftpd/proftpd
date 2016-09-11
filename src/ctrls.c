@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2014 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -243,10 +243,12 @@ static char *ctrls_sep(char **str) {
 int pr_ctrls_register(const module *mod, const char *action,
     const char *desc, int (*cb)(pr_ctrls_t *, int, char **)) {
   ctrls_action_t *act = NULL, *acti = NULL;
-  int act_id = -1;
+  unsigned int act_id = 0;
 
   /* sanity checks */
-  if (!action || !desc || !cb) {
+  if (action == NULL ||
+      desc == NULL ||
+      cb == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -527,7 +529,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   size_t reqargsz = 0;
   unsigned int nreqargs = 0, reqarglen = 0;
   int bread, status = 0;
-  register int i = 0;
+  register unsigned int i = 0;
 
   if (cl == NULL) {
     errno = EINVAL;
@@ -643,7 +645,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   }
 
   /* Watch for short reads. */
-  if (bread != reqarglen) {
+  if ((size_t) bread != reqarglen) {
     (void) pr_trace_msg(trace_channel, 3,
       "short read (%d of %u bytes) of reqaction, unable to receive request",
       bread, reqarglen);
@@ -726,7 +728,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     }
 
     /* Watch for short reads. */
-    if (bread != reqarglen) {
+    if ((size_t) bread != reqarglen) {
       (void) pr_trace_msg(trace_channel, 3,
         "short read (%d of %u bytes) of reqarg (#%u), skipping",
         bread, i+1, reqarglen);
@@ -755,9 +757,13 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
    */
   next_ctrl = ctrls_lookup_next_action(NULL, TRUE);
 
-  while (next_ctrl) {
-    if (pr_ctrls_copy_args(ctrl, next_ctrl)) {
+  while (next_ctrl != NULL) {
+    if (pr_ctrls_copy_args(ctrl, next_ctrl) < 0) {
+      int xerrno = errno;
+
       pr_signals_unblock();
+
+      errno = xerrno;
       return -1;
     }
 
@@ -777,7 +783,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
 int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
     int *status, char ***respargv) {
-  register int i = 0;
+  register unsigned int i = 0;
   array_header *resparr = NULL;
   unsigned int respargc = 0, resparglen = 0;
   char response[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
@@ -838,7 +844,7 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
     memset(response, '\0', sizeof(response));
 
     bread = read(ctrls_sockfd, response, resparglen);
-    while (bread != resparglen) {
+    while ((size_t) bread != resparglen) {
       if (bread < 0) {
         pr_signals_unblock(); 
         return -1;
@@ -864,7 +870,7 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
 
 int pr_ctrls_send_msg(int sockfd, int msgstatus, unsigned int msgargc,
     char **msgargv) {
-  register int i = 0;
+  register unsigned int i = 0;
   unsigned int msgarglen = 0;
 
   /* Sanity checks */
@@ -922,8 +928,7 @@ int pr_ctrls_send_msg(int sockfd, int msgstatus, unsigned int msgargc,
 
     while (TRUE) {
       res = write(sockfd, msgargv[i], msgarglen);
-
-      if (res != msgarglen) {
+      if ((size_t) res != msgarglen) {
         if (errno == EAGAIN) {
           continue;
         }
@@ -1724,7 +1729,7 @@ int pr_reset_ctrls(void) {
  */
 unsigned char pr_ctrls_check_group_acl(gid_t cl_gid,
     const ctrls_grp_acl_t *grp_acl) {
-  register int i = 0;
+  register unsigned int i = 0;
   unsigned char res = FALSE;
 
   /* Note: the special condition of ngids of 1 and gids of NULL signals
@@ -1754,7 +1759,7 @@ unsigned char pr_ctrls_check_group_acl(gid_t cl_gid,
  */
 unsigned char pr_ctrls_check_user_acl(uid_t cl_uid,
     const ctrls_usr_acl_t *usr_acl) {
-  register int i = 0;
+  register unsigned int i = 0;
   unsigned char res = FALSE;
 
   /* Note: the special condition of nuids of 1 and uids of NULL signals

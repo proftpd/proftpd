@@ -246,6 +246,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
           continue;
         }
 
+        if (strncmp(tmp, "{remote-port}", 13) == 0) {
+          add_meta(&outs, LOGFMT_META_REMOTE_PORT, 0);
+          tmp += 13;
+          continue;
+        }
+
         if (strncmp(tmp, "{uid}", 5) == 0) {
           add_meta(&outs, LOGFMT_META_UID, 0);
           tmp += 5;
@@ -749,18 +755,23 @@ MODRET set_systemlog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static struct tm *_get_gmtoff(int *tz) {
+static struct tm *get_gmtoff(int *tz) {
   time_t now;
-  struct tm *tm;
+  struct tm *gmt, *tm = NULL;
 
+  /* Note that the ordering of the calls to gmtime(3) and pr_localtime()
+   * here are IMPORTANT; gmtime(3) MUST be called first.  Otherwise,
+   * the TZ environment variable may not be honored as one would expect;
+   * see:
+   *  https://forums.proftpd.org/smf/index.php/topic,11971.0.html
+   */
   time(&now);
-  tm = pr_localtime(NULL, &now);
-  if (tm != NULL) {
+  gmt = gmtime(&now);
+  if (gmt != NULL) {
     int days, hours, minutes;
-    struct tm *gmt;
 
-    gmt = gmtime(&now);
-    if (gmt != NULL) {
+    tm = pr_localtime(NULL, &now);
+    if (tm != NULL) {
       days = tm->tm_yday - gmt->tm_yday;
       hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)
               + tm->tm_hour - gmt->tm_hour);
@@ -775,7 +786,8 @@ static struct tm *_get_gmtoff(int *tz) {
 static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
     size_t *mlen) {
   unsigned char *m;
-  char arg[PR_TUNABLE_PATH_MAX+1] = {'\0'}, *argp = NULL, *pass;
+  const char *pass;
+  char arg[PR_TUNABLE_PATH_MAX+1] = {'\0'}, *argp = NULL;
   int len = 0;
 
   /* This function can cause potential problems.  Custom logformats
@@ -923,8 +935,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       break;
 
     case LOGFMT_META_EOS_REASON: {
-      const char *reason_str;
-      char *details = NULL;
+      const char *details = NULL, *reason_str;
 
       argp = arg;
 
@@ -957,17 +968,27 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
         len = sstrncpy(argp, abs_path, sizeof(arg));
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
-        char *path;
+        const char *path;
 
         path = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
-        len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+        if (path != NULL) {
+          len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+
+        } else {
+          len = sstrncpy(argp, "", sizeof(arg));
+        }
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
                  pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
-        char *path;
+        const char *path;
       
         path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
-        len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+        if (path != NULL) {
+          len = sstrncpy(arg, dir_abs_path(p, path, TRUE), sizeof(arg));
+
+        } else {
+          len = sstrncpy(argp, "", sizeof(arg));
+        }
 
       } else if (session.xfer.p &&
                  session.xfer.path) {
@@ -1250,7 +1271,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
 
         key = get_next_meta(p, cmd, &m, NULL);
         if (key != NULL) {
-          char *note = NULL;
+          const char *note = NULL;
 
           /* Check in the cmd->notes table first. */
           note = pr_table_get(cmd->notes, key, NULL);
@@ -1280,8 +1301,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       m++;
       break;
 
+    case LOGFMT_META_REMOTE_PORT:
+      argp = arg;
+      len = snprintf(argp, sizeof(arg), "%d", session.c->remote_port);
+      m++;
+      break;
+
     case LOGFMT_META_RENAME_FROM: {
-      char *rnfr_path = "-";
+      const char *rnfr_path = "-";
 
       argp = arg;
       if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
@@ -1300,7 +1327,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
     }
 
     case LOGFMT_META_IDENT_USER: {
-      char *rfc1413_ident;
+      const char *rfc1413_ident;
 
       argp = arg;
       rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
@@ -1408,7 +1435,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
           internal_fmt = 0;
         }
 
-        t = *_get_gmtoff(&timz);
+        t = *get_gmtoff(&timz);
         sign = (timz < 0 ? '-' : '+');
         if (timz < 0) {
           timz = -timz;
@@ -1561,12 +1588,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       break;
 
     case LOGFMT_META_ORIGINAL_USER: {
-      char *login_user;
+      const char *login_user;
 
       argp = arg;
 
       login_user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-      if (login_user) {
+      if (login_user != NULL) {
         len = sstrncpy(argp, login_user, sizeof(arg));
 
       } else {
@@ -1591,7 +1618,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       break;
 
     case LOGFMT_META_RESPONSE_CODE: {
-      char *resp_code = NULL;
+      const char *resp_code = NULL;
       int res;
 
       argp = arg;
@@ -1614,7 +1641,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
     }
 
     case LOGFMT_META_RESPONSE_MS: {
-      uint64_t *start_ms = NULL;
+      const uint64_t *start_ms = NULL;
 
       argp = arg;
 
@@ -1637,7 +1664,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
     }
 
     case LOGFMT_META_RESPONSE_STR: {
-      char *resp_msg = NULL;
+      const char *resp_msg = NULL;
       int res;
 
       argp = arg;
@@ -1700,7 +1727,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
 
           } else {
             int res;
-            char *resp_code = NULL, *resp_msg = NULL;
+            const char *resp_code = NULL, *resp_msg = NULL;
 
             /* Get the last response code/message.  We use heuristics here to
              * determine when to use "failed" versus "success".
@@ -1768,7 +1795,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
 
           if (!(XFER_ABORTED)) {
             int res;
-            char *resp_code = NULL, *resp_msg = NULL;
+            const char *resp_code = NULL, *resp_msg = NULL;
 
             /* Get the last response code/message.  We use heuristics here to
              * determine when to use "failed" versus "success".
@@ -1813,7 +1840,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
           /* mod_sftp stashes a note for us in the command notes if the
            * transfer failed.
            */
-          char *status;
+          const char *status;
 
           status = pr_table_get(cmd->notes, "mod_sftp.file-status", NULL);
           if (status == NULL) {
@@ -1880,12 +1907,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       break;
 
     case LOGFMT_META_FILE_MODIFIED: {
-      char *modified;
+      const char *modified;
 
       argp = arg;
 
       modified = pr_table_get(cmd->notes, "mod_xfer.file-modified", NULL);
-      if (modified) {
+      if (modified != NULL) {
         len = sstrncpy(argp, modified, sizeof(arg));
 
       } else {
@@ -1897,12 +1924,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
     }
 
     case LOGFMT_META_FILE_OFFSET: {
-      off_t *offset;
+      const off_t *offset;
 
       argp = arg;
 
       offset = pr_table_get(cmd->notes, "mod_xfer.file-offset", NULL);
-      if (offset) {
+      if (offset != NULL) {
         char offset_str[1024];
 
         memset(offset_str, '\0', sizeof(offset_str));
@@ -1919,7 +1946,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
     }
 
     case LOGFMT_META_FILE_SIZE: {
-      off_t *file_size;
+      const off_t *file_size;
 
       argp = arg;
 
@@ -1963,6 +1990,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
  
   *f = m;
   if (mlen != NULL) {
+    /* Guard the caller against errors here (e.g. from sstrncpy() returning
+     * -1 due to bad inputs.
+     */
+    if (len < 0) {
+      len = 0;
+    }
+
     *mlen = len;
   }
 

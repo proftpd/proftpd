@@ -399,8 +399,8 @@ Suite *tests_get_trace_suite(void) {
   TCase *testcase;
 
   suite = suite_create("trace");
-
   testcase = tcase_create("base");
+
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
 #ifdef PR_USE_TRACE
@@ -416,6 +416,5 @@ Suite *tests_get_trace_suite(void) {
 #endif /* PR_USE_TRACE */
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

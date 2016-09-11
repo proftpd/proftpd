@@ -53,6 +53,15 @@
 # include <acl/libacl.h>
 #endif
 
+/* We will reset timers in the progress callback every Nth iteration of the
+ * callback when copying a file.
+ */
+static size_t copy_iter_count = 0;
+
+#ifndef COPY_PROGRESS_NTH_ITER
+# define COPY_PROGRESS_NTH_ITER       50000
+#endif
+
 /* For determining whether a file is on an NFS filesystem.  Note that
  * this value is Linux specific.  See Bug#3874 for details.
  */
@@ -72,13 +81,8 @@ struct fsopendir {
   DIR *dir;
 };
 
-static const char *trace_channel = "fsio";
 static pr_fs_t *root_fs = NULL, *fs_cwd = NULL;
 static array_header *fs_map = NULL;
-
-#ifdef PR_FS_MATCH
-static pr_fs_match_t *fs_match_list = NULL;
-#endif /* PR_FS_MATCH */
 
 static fsopendir_t *fsopendir_list;
 
@@ -97,6 +101,7 @@ static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 static size_t cwd_len = 1;
 
 static int fsio_guard_chroot = FALSE;
+static unsigned long fsio_opts = 0UL;
 
 /* Runtime enabling/disabling of mkdtemp(3) use. */
 #ifdef HAVE_MKDTEMP
@@ -107,6 +112,8 @@ static int fsio_use_mkdtemp = FALSE;
 
 /* Runtime enabling/disabling of encoding of paths. */
 static int use_encoding = TRUE;
+
+static const char *trace_channel = "fsio";
 
 /* Guard against attacks like "Roaring Beast" when we are chrooted.  See:
  *
@@ -153,6 +160,38 @@ static int chroot_allow_path(const char *path) {
   }
 
   return res;
+}
+
+/* Builtin/default "progress" callback for long-running file copies. */
+static void copy_progress_cb(int nwritten) {
+  int res;
+
+  copy_iter_count++;
+  if ((copy_iter_count % COPY_PROGRESS_NTH_ITER) != 0) {
+    return;
+  }
+
+  /* Reset some of the Timeouts which might interfere, i.e. TimeoutIdle and
+   * TimeoutNoDataTransfer.
+   */
+
+  res = pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14, "error resetting TimeoutIdle timer: %s",
+      strerror(errno));
+  }
+
+  res = pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14,
+      "error resetting TimeoutNoTransfer timer: %s", strerror(errno));
+  }
+
+  res = pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14,
+      "error resetting TimeoutStalled timer: %s", strerror(errno));
+  }
 }
 
 /* The following static functions are simply wrappers for system functions
@@ -226,20 +265,6 @@ static int sys_open(pr_fh_t *fh, const char *path, int flags) {
   }
 
   res = open(path, flags, PR_OPEN_MODE);
-  return res;
-}
-
-static int sys_creat(pr_fh_t *fh, const char *path, mode_t mode) {
-  int res;
-
-  if (fsio_guard_chroot) {
-    res = chroot_allow_path(path);
-    if (res < 0) {
-      return -1;
-    }
-  }
-
-  res = creat(path, mode);
   return res;
 }
 
@@ -492,6 +517,593 @@ static int sys_fsync(pr_fh_t *fh, int fd) {
   return res;
 }
 
+static ssize_t sys_getxattr(pool *p, pr_fs_t *fs, const char *path,
+    const char *name, void *val, size_t valsz) {
+  ssize_t res;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+  res = extattr_get_file(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(XATTR_NOFOLLOW)
+  res = getxattr(path, name, val, valsz, 0, 0);
+#  else
+  res = getxattr(path, name, val, valsz);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static ssize_t sys_lgetxattr(pool *p, pr_fs_t *fs, const char *path,
+    const char *name, void *val, size_t valsz) {
+  ssize_t res;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+#  if defined(HAVE_EXTATTR_GET_LINK)
+  res = extattr_get_link(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
+#  else
+  res = extattr_get_file(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
+#  endif /* HAVE_EXTATTR_GET_LINK */
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(HAVE_LGETXATTR)
+  res = lgetxattr(path, name, val, valsz);
+#  elif defined(XATTR_NOFOLLOW)
+  res = getxattr(path, name, val, valsz, 0, XATTR_NOFOLLOW);
+#  else
+  res = getxattr(path, name, val, valsz);
+#  endif /* HAVE_LGETXATTR */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static ssize_t sys_fgetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
+    void *val, size_t valsz) {
+  ssize_t res;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+  res = extattr_get_fd(fd, EXTATTR_NAMESPACE_USER, name, val, valsz);
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(XATTR_NOFOLLOW)
+  res = fgetxattr(fd, name, val, valsz, 0, 0);
+#  else
+  res = fgetxattr(fd, name, val, valsz);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fh;
+  (void) fd;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+#ifdef PR_USE_XATTR
+static array_header *parse_xattr_namelist(pool *p, char *namelist, size_t sz) {
+  array_header *names;
+  char *ptr;
+
+  names = make_array(p, 0, sizeof(char *));
+  ptr = namelist;
+
+# if defined(HAVE_SYS_EXTATTR_H)
+  /* BSD style name lists use a one-byte length prefix (limiting xattr names
+   * to a maximum length of 255 bytes), followed by the name, without any
+   * terminating NUL.
+   */
+  while (sz > 0) {
+    unsigned char len;
+
+    pr_signals_handle();
+
+    len = (unsigned char) *ptr;
+    ptr++;
+    sz--;
+
+    *((char **) push_array(names)) = pstrndup(p, ptr, len);
+
+    ptr += len;
+    sz -= len;
+  }
+
+# elif defined(HAVE_SYS_XATTR_H)
+  /* Linux/MacOSX style name lists use NUL-terminated xattr names. */
+  while (sz > 0) {
+    char *ptr2;
+    size_t len;
+
+    pr_signals_handle();
+
+    for (ptr2 = ptr; *ptr2; ptr2++);
+    len = ptr2 - ptr;
+    *((char **) push_array(names)) = pstrndup(p, ptr, len);
+
+    ptr = ptr2 + 1;
+    sz -= (len + 1);
+  }
+# endif /* HAVE_SYS_XATTR_H */
+
+  return names;
+}
+
+static ssize_t unix_listxattr(const char *path, char *namelist, size_t len) {
+  ssize_t res;
+
+#if defined(HAVE_SYS_EXTATTR_H)
+  res = extattr_list_file(path, EXTATTR_NAMESPACE_USER, namelist, len);
+#elif defined(HAVE_SYS_XATTR_H)
+# if defined(XATTR_NOFOLLOW)
+  res = listxattr(path, namelist, len, 0);
+# else
+  res = listxattr(path, namelist, len);
+# endif /* XATTR_NOFOLLOW */
+#endif /* HAVE_SYS_XATTR_H */
+
+  return res;
+}
+
+static ssize_t unix_llistxattr(const char *path, char *namelist, size_t len) {
+  ssize_t res;
+
+# if defined(HAVE_SYS_EXTATTR_H)
+#  if defined(HAVE_EXTATTR_LIST_LINK)
+  res = extattr_list_link(path, EXTATTR_NAMESPACE_USER, namelist, len);
+#  else
+  res = extattr_list_file(path, EXTATTR_NAMESPACE_USER, namelist, len);
+#  endif /* HAVE_EXTATTR_LIST_LINK */
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(HAVE_LLISTXATTR)
+  res = llistxattr(path, namelist, len);
+#  elif defined(XATTR_NOFOLLOW)
+  res = listxattr(path, namelist, len, XATTR_NOFOLLOW);
+#  else
+  res = listxattr(path, namelist, len);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+
+  return res;
+}
+
+static ssize_t unix_flistxattr(int fd, char *namelist, size_t len) {
+  ssize_t res;
+
+# if defined(HAVE_SYS_EXTATTR_H)
+  res = extattr_list_fd(fd, EXTATTR_NAMESPACE_USER, namelist, len);
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(XATTR_NOFOLLOW)
+  res = flistxattr(fd, namelist, len, 0);
+#  else
+  res = flistxattr(fd, namelist, len);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+
+  return res;
+}
+#endif /* PR_USE_XATTR */
+
+static int sys_listxattr(pool *p, pr_fs_t *fs, const char *path,
+    array_header **names) {
+  ssize_t res;
+  char *namelist = NULL;
+  size_t len = 0;
+
+#ifdef PR_USE_XATTR
+  /* We need to handle the different formats of namelists that listxattr et al
+   * can provide.  On *BSDs, the namelist buffer uses length prefixes and no
+   * terminating NULs; on Linux/Mac, the namelist buffer uses ONLY
+   * NUL-terminated names.
+   *
+   * Thus we ALWAYS provide all the available attribute names, by first
+   * querying for the full namelist buffer size, allocating that out of
+   * given pool, querying for the names (using the buffer), and then parsing
+   * them into an array.
+   */
+
+  res = unix_listxattr(path, NULL, 0);
+  if (res < 0) {
+    return -1;
+  }
+
+  len = res;
+  namelist = palloc(p, len);
+
+  res = unix_listxattr(path, namelist, len);
+  if (res < 0) {
+    return -1;
+  }
+
+  *names = parse_xattr_namelist(p, namelist, len);
+  if (pr_trace_get_level(trace_channel) >= 15) {
+    register unsigned int i;
+    unsigned int count;
+    const char **attr_names;
+
+    count = (*names)->nelts;
+    attr_names = (*names)->elts;
+
+    pr_trace_msg(trace_channel, 15, "listxattr: found %d xattr names for '%s'",
+      count, path);
+    for (i = 0; i < count; i++) {
+      pr_trace_msg(trace_channel, 15, " [%u]: '%s'", i, attr_names[i]);
+    }
+  }
+
+  res = (*names)->nelts;
+
+#else
+  (void) fs;
+  (void) path;
+  (void) names;
+  (void) namelist;
+  (void) len;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return (int) res;
+}
+
+static int sys_llistxattr(pool *p, pr_fs_t *fs, const char *path,
+    array_header **names) {
+  ssize_t res;
+  char *namelist = NULL;
+  size_t len = 0;
+
+#ifdef PR_USE_XATTR
+  /* See sys_listxattr for a description of why we use this approach. */
+  res = unix_llistxattr(path, NULL, 0);
+  if (res < 0) {
+    return -1;
+  }
+
+  len = res;
+  namelist = palloc(p, len);
+
+  res = unix_llistxattr(path, namelist, len);
+  if (res < 0) {
+    return -1;
+  }
+
+  *names = parse_xattr_namelist(p, namelist, len);
+  if (pr_trace_get_level(trace_channel) >= 15) {
+    register unsigned int i;
+    unsigned int count;
+    const char **attr_names;
+
+    count = (*names)->nelts;
+    attr_names = (*names)->elts;
+
+    pr_trace_msg(trace_channel, 15, "llistxattr: found %d xattr names for '%s'",
+      count, path);
+    for (i = 0; i < count; i++) {
+      pr_trace_msg(trace_channel, 15, " [%u]: '%s'", i, attr_names[i]);
+    }
+  }
+
+  res = (*names)->nelts;
+
+#else
+  (void) fs;
+  (void) path;
+  (void) names;
+  (void) namelist;
+  (void) len;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return (int) res;
+}
+
+static int sys_flistxattr(pool *p, pr_fh_t *fh, int fd, array_header **names) {
+  ssize_t res;
+  char *namelist = NULL;
+  size_t len = 0;
+
+#ifdef PR_USE_XATTR
+  /* See sys_listxattr for a description of why we use this approach. */
+  res = unix_flistxattr(fd, NULL, 0);
+  if (res < 0) {
+    return -1;
+  }
+
+  len = res;
+  namelist = palloc(p, len);
+
+  res = unix_flistxattr(fd, namelist, len);
+  if (res < 0) {
+    return -1;
+  }
+
+  *names = parse_xattr_namelist(p, namelist, len);
+  if (pr_trace_get_level(trace_channel) >= 15) {
+    register unsigned int i;
+    unsigned int count;
+    const char **attr_names;
+
+    count = (*names)->nelts;
+    attr_names = (*names)->elts;
+
+    pr_trace_msg(trace_channel, 15, "flistxattr: found %d xattr names for '%s'",
+      count, fh->fh_path);
+    for (i = 0; i < count; i++) {
+      pr_trace_msg(trace_channel, 15, " [%u]: '%s'", i, attr_names[i]);
+    }
+  }
+
+  res = (*names)->nelts;
+
+#else
+  (void) fh;
+  (void) fd;
+  (void) names;
+  (void) namelist;
+  (void) len;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return (int) res;
+}
+
+static int sys_removexattr(pool *p, pr_fs_t *fs, const char *path,
+    const char *name) {
+  int res;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+  res = extattr_delete_file(path, EXTATTR_NAMESPACE_USER, name);
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(XATTR_NOFOLLOW)
+  res = removexattr(path, name, 0);
+#  else
+  res = removexattr(path, name);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_lremovexattr(pool *p, pr_fs_t *fs, const char *path,
+    const char *name) {
+  int res;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+#  if defined(HAVE_EXTATTR_DELETE_LINK)
+  res = extattr_delete_link(path, EXTATTR_NAMESPACE_USER, name);
+#  else
+  res = extattr_delete_file(path, EXTATTR_NAMESPACE_USER, name);
+#  endif /* HAVE_EXTATTR_DELETE_LINK */
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(HAVE_LREMOVEXATTR)
+  res = lremovexattr(path, name);
+#  elif defined(XATTR_NOFOLLOW)
+  res = removexattr(path, name, XATTR_NOFOLLOW);
+#  else
+  res = removexattr(path, name);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_fremovexattr(pool *p, pr_fh_t *fh, int fd, const char *name) {
+  int res;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+  res = extattr_delete_fd(fd, EXTATTR_NAMESPACE_USER, name);
+# elif defined(HAVE_SYS_XATTR_H)
+#  if defined(XATTR_NOFOLLOW)
+  res = fremovexattr(fd, name, 0);
+#  else
+  res = fremovexattr(fd, name);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fh;
+  (void) fd;
+  (void) name;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+#if defined(PR_USE_XATTR) && defined(HAVE_SYS_XATTR_H)
+/* Map the given flags onto the sys/xattr.h flags */
+static int get_setxattr_flags(int fsio_flags) {
+  int xattr_flags = 0;
+
+  /* If both CREATE and REPLACE are set, use a value of zero; per the
+   * man pages, this value gives the desired "create or replace" semantics.
+   * Right?
+   */
+
+  if (fsio_flags & PR_FSIO_XATTR_FL_CREATE) {
+#if defined(XATTR_CREATE)
+    xattr_flags = XATTR_CREATE;
+#endif /* XATTR_CREATE */
+
+    if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
+      xattr_flags = 0;
+    }
+
+  } else if (fsio_flags & PR_FSIO_XATTR_FL_REPLACE) {
+#if defined(XATTR_REPLACE)
+    xattr_flags = XATTR_REPLACE;
+#endif /* XATTR_REPLACE */
+  }
+
+  return xattr_flags;
+}
+#endif /* PR_USE_XATTR and <sys/xattr.h> */
+
+static int sys_setxattr(pool *p, pr_fs_t *fs, const char *path,
+    const char *name, void *val, size_t valsz, int flags) {
+  int res, xattr_flags = 0;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+  (void) xattr_flags;
+  res = extattr_set_file(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
+
+# elif defined(HAVE_SYS_XATTR_H)
+  xattr_flags = get_setxattr_flags(flags);
+
+#  if defined(XATTR_NOFOLLOW)
+  res = setxattr(path, name, val, valsz, 0, xattr_flags);
+#  else
+  res = setxattr(path, name, val, valsz, xattr_flags);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  (void) flags;
+  (void) xattr_flags;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_lsetxattr(pool *p, pr_fs_t *fs, const char *path,
+    const char *name, void *val, size_t valsz, int flags) {
+  int res, xattr_flags = 0;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+  (void) xattr_flags;
+#  if defined(HAVE_EXTATTR_SET_LINK)
+  res = extattr_set_link(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
+#  else
+  res = extattr_set_file(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
+#  endif /* HAVE_EXTATTR_SET_LINK */
+# elif defined(HAVE_SYS_XATTR_H)
+  xattr_flags = get_setxattr_flags(flags);
+
+#  if defined(HAVE_LSETXATTR)
+  res = lsetxattr(path, name, val, valsz, xattr_flags);
+#  elif defined(XATTR_NOFOLLOW)
+  xattr_flags |= XATTR_NOFOLLOW;
+  res = setxattr(path, name, val, valsz, 0, xattr_flags);
+#  else
+  res = setxattr(path, name, val, valsz, xattr_flags);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fs;
+  (void) path;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  (void) flags;
+  (void) xattr_flags;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
+static int sys_fsetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
+    void *val, size_t valsz, int flags) {
+  int res, xattr_flags = 0;
+
+  (void) p;
+
+#ifdef PR_USE_XATTR
+# if defined(HAVE_SYS_EXTATTR_H)
+  (void) xattr_flags;
+  res = extattr_set_fd(fd, EXTATTR_NAMESPACE_USER, name, val, valsz);
+
+# elif defined(HAVE_SYS_XATTR_H)
+  xattr_flags = get_setxattr_flags(flags);
+
+#  if defined(XATTR_NOFOLLOW)
+  res = fsetxattr(fd, name, val, valsz, 0, xattr_flags);
+#  else
+  res = fsetxattr(fd, name, val, valsz, xattr_flags);
+#  endif /* XATTR_NOFOLLOW */
+# endif /* HAVE_SYS_XATTR_H */
+#else
+  (void) fh;
+  (void) fd;
+  (void) name;
+  (void) val;
+  (void) valsz;
+  (void) flags;
+  (void) xattr_flags;
+  errno = ENOSYS;
+  res = -1;
+#endif /* PR_USE_XATTR */
+
+  return res;
+}
+
 static int sys_chroot(pr_fs_t *fs, const char *path) {
   if (chroot(path) < 0) {
     return -1;
@@ -603,9 +1215,9 @@ static pr_table_t *lstat_statcache_tab = NULL;
 #define fs_cache_lstat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_LSTAT)
 #define fs_cache_stat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_STAT)
 
-static struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
+static const struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
     const char *path, size_t path_len, time_t now) {
-  struct fs_statcache *sc = NULL;
+  const struct fs_statcache *sc = NULL;
 
   if (pr_table_count(cache_tab) == 0) {
     errno = EPERM;
@@ -630,6 +1242,7 @@ static struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
       (unsigned long) age, age != 1 ? "secs" : "sec",
       (unsigned long) statcache_max_age);
     (void) pr_table_remove(cache_tab, path, NULL);
+    destroy_pool(sc->sc_pool);
   }
 
   errno = ENOENT;
@@ -637,8 +1250,8 @@ static struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
 }
 
 static int fs_statcache_evict_expired(const void *key_data, size_t key_datasz,
-    void *value_data, size_t value_datasz, void *user_data) {
-  struct fs_statcache *sc;
+    const void *value_data, size_t value_datasz, void *user_data) {
+  const struct fs_statcache *sc;
   struct fs_statcache_evict_data *evict_data;
   time_t age;
   pr_table_t *cache_tab = NULL;
@@ -654,13 +1267,14 @@ static int fs_statcache_evict_expired(const void *key_data, size_t key_datasz,
       (char *) key_data, (unsigned long) age, age != 1 ? "secs" : "sec",
       (unsigned long) evict_data->max_age);
     (void) pr_table_kremove(cache_tab, key_data, key_datasz, NULL);
+    destroy_pool(sc->sc_pool);
   }
 
   return 0;
 }
 
 static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
-  int res;
+  int res, table_count;
   struct fs_statcache_evict_data evict_data;
 
   /* We try to make room in two passes.  First, evict any item that has
@@ -680,7 +1294,9 @@ static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
       "error evicting expired items: %s", strerror(errno));
   }
 
-  if (pr_table_count(cache_tab) < statcache_size) {
+  table_count = pr_table_count(cache_tab);
+  if (table_count < 0 ||
+      (unsigned int) table_count < statcache_size) {
     return 0;
   }
 
@@ -695,7 +1311,9 @@ static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
     }
   }
 
-  if (pr_table_count(cache_tab) < statcache_size) {
+  table_count = pr_table_count(cache_tab);
+  if (table_count < 0 ||
+      (unsigned int) table_count < statcache_size) {
     return 0;
   }
 
@@ -711,7 +1329,7 @@ static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
  */
 static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
     size_t path_len, struct stat *st, int xerrno, int retval, time_t now) {
-  int res;
+  int res, table_count;
   pool *sc_pool;
   struct fs_statcache *sc;
 
@@ -721,7 +1339,9 @@ static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
     return 0;
   }
 
-  if (pr_table_count(cache_tab) >= statcache_size) {
+  table_count = pr_table_count(cache_tab);
+  if (table_count > 0 &&
+      (unsigned int) table_count >= statcache_size) {
     /* We've reached capacity, and need to evict some items to make room. */
     if (fs_statcache_evict(cache_tab, now) < 0) {
       pr_trace_msg(statcache_channel, 8,
@@ -740,9 +1360,15 @@ static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
 
   res = pr_table_add(cache_tab, pstrndup(sc_pool, path, path_len), sc,
     sizeof(struct fs_statcache *));
-  if (res < 0 &&
-      errno == EEXIST) {
-    res = 0;
+  if (res < 0) {
+    int tmp_errno = errno;
+
+    if (tmp_errno == EEXIST) {
+      res = 0;
+    }
+
+    destroy_pool(sc->sc_pool);
+    errno = tmp_errno;
   }
 
   return (res == 0 ? 1 : res);
@@ -755,7 +1381,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
   size_t path_len;
   pr_table_t *cache_tab = NULL; 
-  struct fs_statcache *sc = NULL;
+  const struct fs_statcache *sc = NULL;
   time_t now;
 
   now = time(NULL);
@@ -868,10 +1494,6 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
   int exact = FALSE;
   size_t tmp_pathlen = 0;
 
-#ifdef PR_FS_MATCH
-  pr_fs_match_t *fsm = NULL;
-#endif /* PR_FS_MATCH */
-
   memset(buf, '\0', sizeof(buf));
   memset(tmp_path, '\0', sizeof(tmp_path));
   sstrncpy(buf, path, sizeof(buf));
@@ -902,49 +1524,11 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
   }
 
   fs = pr_get_fs(tmp_path, &exact);
-
-#ifdef PR_FS_MATCH
-/* NOTE: what if there is a perfect matching pr_fs_t for the given path,
- *  but an fs_match with pattern of "." is registered?  At present, that
- *  fs_match will never trigger...hmmm...OK.  fs_matches are only scanned
- *  if and only if there is *not* an exactly matching pr_fs_t.
- *
- *  NOTE: this is experimental code, not yet ready for module consumption.
- *  It was present in the older FS code, hence its presence now.
- */
-
-  /* Is the returned pr_fs_t "close enough"? */
-  if (!fs || !exact) {
-
-    /* Look for an fs_match */
-    fsm = pr_get_fs_match(tmp_path, op);
-
-    while (fsm) {
-
-      /* Invoke the fs_match's callback function, if set
-       *
-       * NOTE: what pr_fs_t is being passed to the trigger??
-       */
-      if (fsm->trigger) {
-        if (fsm->trigger(fs, tmp_path, op) <= 0)
-          pr_log_pri(PR_LOG_DEBUG, "error: fs_match '%s' trigger failed",
-            fsm->name);
-      }
-
-      /* Get the next matching fs_match */
-      fsm = pr_get_next_fs_match(fsm, tmp_path, op);
-    }
+  if (fs == NULL) {
+    fs = root_fs;
   }
 
-  /* Now, check for a new pr_fs_t, if any were registered by fs_match
-   * callbacks.  This time, it doesn't matter if it's an exact match --
-   * any pr_fs_t will do.
-   */
-  if (chk_fs_map)
-    fs = pr_get_fs(tmp_path, &exact);
-#endif /* PR_FS_MATCH */
-
-  return (fs ? fs : root_fs);
+  return fs;
 }
 
 /* lookup_file_fs() performs the same function as lookup_dir_fs, however
@@ -1097,6 +1681,10 @@ void pr_fs_statcache_reset(void) {
     lstat_statcache_tab = NULL;
   }
 
+  /* Note: we do not need to explicitly destroy each entry in the statcache
+   * tables, since ALL entries are allocated out of this statcache_pool.
+   * And we destroy this pool here.  Much easier cleanup that way.
+   */
   if (statcache_pool != NULL) {
     destroy_pool(statcache_pool);
     statcache_pool = make_sub_pool(permanent_pool);
@@ -1128,21 +1716,58 @@ int pr_fs_clear_cache2(const char *path) {
   }
 
   if (path != NULL) {
+    char cleaned_path[PR_TUNABLE_PATH_MAX+1], pathbuf[PR_TUNABLE_PATH_MAX+1];
     int lstat_count, stat_count;
+
+    if (*path != '/') {
+      size_t pathbuf_len;
+
+      memset(cleaned_path, '\0', sizeof(cleaned_path));
+      memset(pathbuf, '\0', sizeof(pathbuf));
+
+      sstrcat(pathbuf, cwd, sizeof(pathbuf)-1);
+      pathbuf_len = cwd_len;
+
+      if (strncmp(cwd, "/", 2) != 0) {
+        sstrcat(pathbuf + pathbuf_len, "/", sizeof(pathbuf) - pathbuf_len - 1);
+        pathbuf_len++;
+      }
+
+      if (strncmp(path, ".", 2) != 0) {
+        sstrcat(pathbuf + pathbuf_len, path, sizeof(pathbuf)- pathbuf_len - 1);
+      }
+
+    } else {
+      sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
+    }
+
+    pr_fs_clean_path2(pathbuf, cleaned_path, sizeof(cleaned_path)-1, 0);
 
     res = 0;
 
-    stat_count = pr_table_exists(stat_statcache_tab, path);
+    stat_count = pr_table_exists(stat_statcache_tab, cleaned_path);
     if (stat_count > 0) {
-      pr_table_remove(stat_statcache_tab, path, NULL);
+      const struct fs_statcache *sc;
+
+      sc = pr_table_remove(stat_statcache_tab, cleaned_path, NULL);
+      if (sc != NULL) {
+        destroy_pool(sc->sc_pool);
+      }
+
       pr_trace_msg(statcache_channel, 17, "cleared stat(2) entry for '%s'",
         path);
       res += stat_count;
     }
 
-    lstat_count = pr_table_exists(lstat_statcache_tab, path);
+    lstat_count = pr_table_exists(lstat_statcache_tab, cleaned_path);
     if (lstat_count > 0) {
-      pr_table_remove(lstat_statcache_tab, path, NULL);
+      const struct fs_statcache *sc;
+
+      sc = pr_table_remove(lstat_statcache_tab, cleaned_path, NULL);
+      if (sc != NULL) {
+        destroy_pool(sc->sc_pool);
+      }
+
       pr_trace_msg(statcache_channel, 17, "cleared lstat(2) entry for '%s'",
         path);
       res += lstat_count;
@@ -1150,9 +1775,7 @@ int pr_fs_clear_cache2(const char *path) {
 
   } else {
     /* Caller is requesting that we empty the entire cache. */
-
-    (void) pr_table_empty(stat_statcache_tab);
-    (void) pr_table_empty(lstat_statcache_tab);
+    pr_fs_statcache_reset();
     res = 0;
   }
 
@@ -1165,18 +1788,24 @@ void pr_fs_clear_cache(void) {
 
 /* FS functions proper */
 
-int pr_fs_copy_file(const char *src, const char *dst) {
+int pr_fs_copy_file2(const char *src, const char *dst, int flags,
+    void (*progress_cb)(int)) {
   pr_fh_t *src_fh, *dst_fh;
   struct stat src_st, dst_st;
   char *buf;
   size_t bufsz;
   int dst_existed = FALSE, res;
+#ifdef PR_USE_XATTR
+  array_header *xattrs = NULL;
+#endif /* PR_USE_XATTR */
 
   if (src == NULL ||
       dst == NULL) {
     errno = EINVAL;
     return -1;
   }
+
+  copy_iter_count = 0;
 
   /* Use a nonblocking open() for the path; it could be a FIFO, and we don't
    * want to block forever if the other end of the FIFO is not running.
@@ -1275,7 +1904,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
     /* Don't unlink the destination file if it already existed. */
     if (!dst_existed) {
-      (void) pr_fsio_unlink(dst);
+      if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
+        if (pr_fsio_unlink(dst) < 0) {
+          pr_trace_msg(trace_channel, 12,
+            "error deleting failed copy of '%s': %s", dst, strerror(errno));
+        }
+      }
     }
 
     errno = xerrno;
@@ -1344,7 +1978,12 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
         /* Don't unlink the destination file if it already existed. */
         if (!dst_existed) {
-          (void) pr_fsio_unlink(dst);
+          if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
+            if (pr_fsio_unlink(dst) < 0) {
+              pr_trace_msg(trace_channel, 12,
+                "error deleting failed copy of '%s': %s", dst, strerror(errno));
+            }
+          }
         }
 
         pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
@@ -1355,7 +1994,14 @@ int pr_fs_copy_file(const char *src, const char *dst) {
         return -1;
       }
 
-      if (res == datalen) {
+      if (progress_cb != NULL) {
+        (progress_cb)(res);
+
+      } else {
+        copy_progress_cb(res);
+      }
+
+      if ((size_t) res == datalen) {
         break;
       }
 
@@ -1458,11 +2104,65 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   }
 #endif /* HAVE_POSIX_ACL */
 
+#ifdef PR_USE_XATTR
+  /* Copy any xattrs that the source file may have. We'll use the
+   * destination file handle's pool for our xattr allocations.
+   */
+  if (pr_fsio_flistxattr(dst_fh->fh_pool, src_fh, &xattrs) > 0) {
+    register unsigned int i;
+    const char **names;
+
+    names = xattrs->elts;
+    for (i = 0; xattrs->nelts; i++) {
+      ssize_t valsz;
+
+      /* First, find out how much memory we need for this attribute's
+       * value.
+       */
+      valsz = pr_fsio_fgetxattr(dst_fh->fh_pool, src_fh, names[i], NULL, 0);
+      if (valsz > 0) {
+        void *val;
+        ssize_t sz;
+
+        val = palloc(dst_fh->fh_pool, valsz);
+        sz = pr_fsio_fgetxattr(dst_fh->fh_pool, src_fh, names[i], val, valsz);
+        if (sz > 0) {
+          sz = pr_fsio_fsetxattr(dst_fh->fh_pool, dst_fh, names[i], val,
+            valsz, 0);
+          if (sz < 0 &&
+              errno != ENOSYS) {
+            pr_trace_msg(trace_channel, 7,
+              "error copying xattr '%s' (%lu bytes) from '%s' to '%s': %s",
+              names[i], (unsigned long) valsz, src, dst, strerror(errno));
+          }
+        }
+      }
+    }
+  }
+#endif /* PR_USE_XATTR */
+
   (void) pr_fsio_close(src_fh);
+
+  if (progress_cb != NULL) {
+    (progress_cb)(0);
+
+  } else {
+    copy_progress_cb(0);
+  }
 
   res = pr_fsio_close(dst_fh);
   if (res < 0) {
     int xerrno = errno;
+
+    /* Don't unlink the destination file if it already existed. */
+    if (!dst_existed) {
+      if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
+        if (pr_fsio_unlink(dst) < 0) {
+          pr_trace_msg(trace_channel, 12,
+            "error deleting failed copy of '%s': %s", dst, strerror(errno));
+        }
+      }
+    }
 
     pr_log_pri(PR_LOG_WARNING, "error closing '%s': %s", dst,
       strerror(xerrno));
@@ -1471,6 +2171,10 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   }
 
   return res;
+}
+
+int pr_fs_copy_file(const char *src, const char *dst) {
+  return pr_fs_copy_file2(src, dst, 0, NULL);
 }
 
 pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
@@ -1590,7 +2294,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
   /* Check for duplicates. */
   if (fs_map->nelts > 0) {
     pr_fs_t *fsi = NULL, **fs_objs = (pr_fs_t **) fs_map->elts;
-    register int i;
+    register unsigned int i;
 
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
@@ -1834,227 +2538,6 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
   /* Return best-match by default */
   return best_match_fs;
 }
-
-#if defined(PR_USE_REGEX) && defined(PR_FS_MATCH)
-void pr_associate_fs(pr_fs_match_t *fsm, pr_fs_t *fs) {
-  *((pr_fs_t **) push_array(fsm->fsm_fs_objs)) = fs;
-}
-
-pr_fs_match_t *pr_create_fs_match(pool *p, const char *name,
-    const char *pattern, int opmask) {
-  pr_fs_match_t *fsm = NULL;
-  pool *match_pool = NULL;
-  regex_t *regexp = NULL;
-  int res = 0;
-  char regerr[80] = {'\0'};
-
-  if (p == NULL ||
-      name == NULL ||
-      pattern == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  match_pool = make_sub_pool(p);
-  fsm = (pr_fs_match_t *) pcalloc(match_pool, sizeof(pr_fs_match_t));
-  if (fsm == NULL)
-    return NULL;
-  }
-
-  fsm->fsm_next = NULL;
-  fsm->fsm_prev = NULL;
-
-  fsm->fsm_pool = match_pool;
-  fsm->fsm_name = pstrdup(fsm->fsm_pool, name);
-  fsm->fsm_opmask = opmask;
-  fsm->fsm_pattern = pstrdup(fsm->fsm_pool, pattern);
-
-  regexp = pr_regexp_alloc();
-
-  res = pr_regexp_compile(regexp, pattern, REG_EXTENDED|REG_NOSUB);
-  if (res != 0) {
-    pr_regexp_error(res, regexp, regerr, sizeof(regerr));
-    pr_regexp_free(regexp);
-
-    pr_log_pri(PR_LOG_WARNING, "unable to compile regex '%s': %s", pattern,
-      regerr);
-
-    /* Destroy the just allocated pr_fs_match_t */
-    destroy_pool(fsm->fsm_pool);
-
-    return NULL;
-  }
-
-  fsm->fsm_regex = regexp;
-
-  /* All pr_fs_match_ts start out as null patterns, i.e. no defined callback.
-   */
-  fsm->trigger = NULL;
-
-  /* Allocate an array_header, used to record the pointers of any pr_fs_ts
-   * this pr_fs_match_t may register.  This array_header should be accessed
-   * via associate_fs().
-   */
-  fsm->fsm_fs_objs = make_array(fsm->fsm_pool, 0, sizeof(pr_fs_t *));
-
-  return fsm;
-}
-
-int pr_insert_fs_match(pr_fs_match_t *fsm) {
-  pr_fs_match_t *fsmi = NULL;
-
-  if (fs_match_list) {
-
-    /* Find the end of the fs_match list */
-    fsmi = fs_match_list;
-
-    /* Prevent pr_fs_match_ts with duplicate names */
-    if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
-      pr_log_pri(PR_LOG_DEBUG,
-        "error: duplicate fs_match names not allowed: '%s'", fsm->fsm_name);
-      return FALSE;
-    }
-
-    while (fsmi->fsm_next) {
-      fsmi = fsmi->fsm_next;
-
-      if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
-        pr_log_pri(PR_LOG_DEBUG,
-          "error: duplicate fs_match names not allowed: '%s'", fsm->fsm_name);
-        return FALSE;
-      }
-    }
-
-    fsm->fsm_next = NULL;
-    fsm->fsm_prev = fsmi;
-    fsmi->fsm_next = fsm;
-
-  } else
-
-    /* This fs_match _becomes_ the start of the fs_match list */
-    fs_match_list = fsm;
-
-  return TRUE;
-}
-
-pr_fs_match_t *pr_register_fs_match(pool *p, const char *name,
-    const char *pattern, int opmask) {
-  pr_fs_match_t *fsm = NULL;
-
-  /* Sanity check */
-  if (!p || !name || !pattern) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  /* Instantiate an fs_match */
-  if ((fsm = pr_create_fs_match(p, name, pattern, opmask)) != NULL) {
-
-    /* Insert the fs_match into the list */
-    if (!pr_insert_fs_match(fsm)) {
-      pr_regexp_free(fsm->fsm_regex);
-      destroy_pool(fsm->fsm_pool);
-
-      return NULL;
-    }
-  }
-
-  return fsm;
-}
-
-int pr_unregister_fs_match(const char *name) {
-  pr_fs_match_t *fsm = NULL;
-  pr_fs_t **assoc_fs_objs = NULL, *assoc_fs = NULL;
-  int removed = FALSE;
-
-  /* fs_matches are required to have duplicate names, so using the name as
-   * the identifier will work.
-   */
-
-  /* Sanity check*/
-  if (!name) {
-    errno = EINVAL;
-    return FALSE;
-  }
-
-  if (fs_match_list) {
-    for (fsm = fs_match_list; fsm; fsm = fsm->fsm_next) {
-
-      /* Search by name */
-      if ((name && fsm->fsm_name && strcmp(fsm->fsm_name, name) == 0)) {
-
-        /* Remove this fs_match from the list */
-        if (fsm->fsm_prev)
-          fsm->fsm_prev->fsm_next = fsm->fsm_next;
-
-        if (fsm->fsm_next)
-          fsm->fsm_next->fsm_prev = fsm->fsm_prev;
-
-        /* Check for any pr_fs_ts this pattern may have registered, and
-         * remove them as well.
-         */
-        assoc_fs_objs = (pr_fs_t **) fsm->fsm_fs_objs->elts;
-
-        for (assoc_fs = *assoc_fs_objs; assoc_fs; assoc_fs++)
-          pr_unregister_fs(assoc_fs->fs_path);
-
-        pr_regexp_free(fsm->fsm_regex);
-        destroy_pool(fsm->fsm_pool);
-
-        /* If this fs_match's prev and next pointers are NULL, it is the
-         * last fs_match in the list.  If this is the case, make sure
-         * that fs_match_list is set to NULL, signalling that there are
-         * no more registered fs_matches.
-         */
-        if (fsm->fsm_prev == NULL && fsm->fsm_next == NULL) {
-          fs_match_list = NULL;
-          fsm = NULL;
-        }
-
-        removed = TRUE;
-      }
-    }
-  }
-
-  return (removed ? TRUE : FALSE);
-}
-
-pr_fs_match_t *pr_get_next_fs_match(pr_fs_match_t *fsm, const char *path,
-    int op) {
-  pr_fs_match_t *fsmi = NULL;
-
-  /* Sanity check */
-  if (!fsm) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  for (fsmi = fsm->fsm_next; fsmi; fsmi = fsmi->fsm_next) {
-    if ((fsmi->fsm_opmask & op) &&
-        pr_regexp_exec(fsmi->fsm_regex, path, 0, NULL, 0) == 0)
-      return fsmi;
-  }
-
-  return NULL;
-}
-
-pr_fs_match_t *pr_get_fs_match(const char *path, int op) {
-  pr_fs_match_t *fsm = NULL;
-
-  if (!fs_match_list)
-    return NULL;
-
-  /* Check the first element in the fs_match_list... */
-  fsm = fs_match_list;
-
-  if ((fsm->fsm_opmask & op) &&
-      pr_regexp_exec(fsm->fsm_regex, path, 0, NULL, 0) == 0)
-    return fsm;
-
-  /* ...otherwise, hand the search off to pr_get_next_fs_match() */
-  return pr_get_next_fs_match(fsm, path, op);
-}
-#endif /* PR_USE_REGEX and PR_FS_MATCH */
 
 int pr_fs_setcwd(const char *dir) {
   if (pr_fs_resolve_path(dir, cwd, sizeof(cwd)-1, FSIO_DIR_CHDIR) < 0) {
@@ -2985,7 +3468,7 @@ int pr_fs_valid_path(const char *path) {
   if (fs_map != NULL &&
       fs_map->nelts > 0) {
     pr_fs_t *fsi = NULL, **fs_objs = (pr_fs_t **) fs_map->elts;
-    register int i;
+    register unsigned int i;
 
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
@@ -3432,6 +3915,15 @@ int pr_fsio_guard_chroot(int guard) {
 
   prev = fsio_guard_chroot;
   fsio_guard_chroot = guard;
+
+  return prev;
+}
+
+unsigned long pr_fsio_set_options(unsigned long opts) {
+  unsigned long prev;
+
+  prev = fsio_opts;
+  fsio_opts = opts;
 
   return prev;
 }
@@ -3910,6 +4402,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     }
   }
 
+  pr_fs_clear_cache2(path);
   return 0;
 }
 
@@ -4442,123 +4935,6 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   return fh;
 }
 
-pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
-  char *deref = NULL;
-  pool *tmp_pool = NULL;
-  pr_fh_t *fh = NULL;
-  pr_fs_t *fs;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CREAT);
-  if (fs == NULL) {
-    return NULL;
-  }
-
-  /* Allocate a filehandle. */
-  tmp_pool = make_sub_pool(fs->fs_pool);
-  pr_pool_tag(tmp_pool, "pr_fsio_creat_canon() subpool");
-
-  fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
-  fh->fh_pool = tmp_pool;
-  fh->fh_path = pstrdup(fh->fh_pool, name);
-  fh->fh_fd = -1;
-  fh->fh_buf = NULL;
-  fh->fh_fs = fs;
-
-  /* Find the first non-NULL custom creat handler.  If there are none,
-   * use the system creat.
-   */
-  while (fs && fs->fs_next && !fs->creat) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
-    name);
-  fh->fh_fd = (fs->creat)(fh, deref, mode);
-  if (fh->fh_fd < 0) {
-    int xerrno = errno;
-
-    destroy_pool(fh->fh_pool);
-    fh->fh_pool = NULL;
-
-    errno = xerrno;
-    return NULL;
-  }
-
-  pr_fs_clear_cache2(name);
-
-  if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    if (errno != EBADF) {
-      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-        fh->fh_fd, strerror(errno));
-    }
-  }
-
-  return fh;
-}
-
-pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
-  pool *tmp_pool = NULL;
-  pr_fh_t *fh = NULL;
-  pr_fs_t *fs;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  fs = lookup_file_fs(name, NULL, FSIO_FILE_CREAT);
-  if (fs == NULL) {
-    return NULL;
-  }
-
-  /* Allocate a filehandle. */
-  tmp_pool = make_sub_pool(fs->fs_pool);
-  pr_pool_tag(tmp_pool, "pr_fsio_creat() subpool");
-
-  fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
-  fh->fh_pool = tmp_pool;
-  fh->fh_path = pstrdup(fh->fh_pool, name);
-  fh->fh_fd = -1;
-  fh->fh_buf = NULL;
-  fh->fh_fs = fs;
-
-  /* Find the first non-NULL custom creat handler.  If there are none,
-   * use the system creat.
-   */
-  while (fs && fs->fs_next && !fs->creat) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s creat() for path '%s'", fs->fs_name,
-    name);
-  fh->fh_fd = (fs->creat)(fh, name, mode);
-  if (fh->fh_fd < 0) {
-    int xerrno = errno;
-
-    destroy_pool(fh->fh_pool);
-    fh->fh_pool = NULL;
-
-    errno = xerrno;
-    return NULL;
-  }
-
-  pr_fs_clear_cache2(name);
-
-  if (fcntl(fh->fh_fd, F_SETFD, FD_CLOEXEC) < 0) {
-    if (errno != EBADF) {
-      pr_trace_msg(trace_channel, 1, "error setting CLOEXEC on file fd %d: %s",
-        fh->fh_fd, strerror(errno));
-    }
-  }
-
-  return fh;
-}
-
 int pr_fsio_close(pr_fh_t *fh) {
   int res = 0, xerrno = 0;
   pr_fs_t *fs;
@@ -4583,6 +4959,14 @@ int pr_fsio_close(pr_fh_t *fh) {
 
   if (res == 0) {
     pr_fs_clear_cache2(fh->fh_path);
+  }
+
+  /* Make sure to scrub any buffered memory, too. */
+  if (fh->fh_buf != NULL) {
+    pr_buffer_t *pbuf;
+
+    pbuf = fh->fh_buf;
+    pr_memscrub(pbuf->buf, pbuf->buflen);
   }
 
   if (fh->fh_pool != NULL) {
@@ -5261,6 +5645,404 @@ int pr_fsio_fsync(pr_fh_t *fh) {
   return res;
 }
 
+ssize_t pr_fsio_getxattr(pool *p, const char *path, const char *name, void *val,
+    size_t valsz) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_GETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom getxattr handler.  If there are none,
+   * use the system getxattr.
+   */
+  while (fs && fs->fs_next && !fs->getxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s getxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->getxattr)(p, fs, path, name, val, valsz);
+  return res;
+}
+
+ssize_t pr_fsio_lgetxattr(pool *p, const char *path, const char *name,
+    void *val, size_t valsz) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LGETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom lgetxattr handler.  If there are none,
+   * use the system lgetxattr.
+   */
+  while (fs && fs->fs_next && !fs->lgetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s lgetxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->lgetxattr)(p, fs, path, name, val, valsz);
+  return res;
+}
+
+ssize_t pr_fsio_fgetxattr(pool *p, pr_fh_t *fh, const char *name, void *val,
+    size_t valsz) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      fh == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fgetxattr handler.  If there are none,
+   * use the system fgetxattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fgetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s fgetxattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fgetxattr)(p, fh, fh->fh_fd, name, val, valsz);
+  return res;
+}
+
+int pr_fsio_listxattr(pool *p, const char *path, array_header **names) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      names == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LISTXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom listxattr handler.  If there are none,
+   * use the system listxattr.
+   */
+  while (fs && fs->fs_next && !fs->listxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s listxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->listxattr)(p, fs, path, names);
+  return res;
+}
+
+int pr_fsio_llistxattr(pool *p, const char *path, array_header **names) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      names == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LLISTXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom llistxattr handler.  If there are none,
+   * use the system llistxattr.
+   */
+  while (fs && fs->fs_next && !fs->llistxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s llistxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->llistxattr)(p, fs, path, names);
+  return res;
+}
+
+int pr_fsio_flistxattr(pool *p, pr_fh_t *fh, array_header **names) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      fh == NULL ||
+      names == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom flistxattr handler.  If there are none,
+   * use the system flistxattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->flistxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s flistxattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->flistxattr)(p, fh, fh->fh_fd, names);
+  return res;
+}
+
+int pr_fsio_removexattr(pool *p, const char *path, const char *name) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_REMOVEXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom removexattr handler.  If there are none,
+   * use the system removexattr.
+   */
+  while (fs && fs->fs_next && !fs->removexattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s removexattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->removexattr)(p, fs, path, name);
+  return res;
+}
+
+int pr_fsio_lremovexattr(pool *p, const char *path, const char *name) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LREMOVEXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom lremovexattr handler.  If there are none,
+   * use the system lremovexattr.
+   */
+  while (fs && fs->fs_next && !fs->lremovexattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s lremovexattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->lremovexattr)(p, fs, path, name);
+  return res;
+}
+
+int pr_fsio_fremovexattr(pool *p, pr_fh_t *fh, const char *name) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      fh == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fremovexattr handler.  If there are none,
+   * use the system fremovexattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fremovexattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s fremovexattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fremovexattr)(p, fh, fh->fh_fd, name);
+  return res;
+}
+
+int pr_fsio_setxattr(pool *p, const char *path, const char *name, void *val,
+    size_t valsz, int flags) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_SETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom setxattr handler.  If there are none,
+   * use the system setxattr.
+   */
+  while (fs && fs->fs_next && !fs->setxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s setxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->setxattr)(p, fs, path, name, val, valsz, flags);
+  return res;
+}
+
+int pr_fsio_lsetxattr(pool *p, const char *path, const char *name, void *val,
+    size_t valsz, int flags) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_LSETXATTR);
+  if (fs == NULL) {
+    return -1;
+  }
+
+  /* Find the first non-NULL custom lsetxattr handler.  If there are none,
+   * use the system lsetxattr.
+   */
+  while (fs && fs->fs_next && !fs->lsetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s lsetxattr() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->lsetxattr)(p, fs, path, name, val, valsz, flags);
+  return res;
+}
+
+int pr_fsio_fsetxattr(pool *p, pr_fh_t *fh, const char *name, void *val,
+    size_t valsz, int flags) {
+  int res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      fh == NULL ||
+      name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (fsio_opts & PR_FSIO_OPT_IGNORE_XATTR) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom fsetxattr handler.  If there are none,
+   * use the system fsetxattr.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fsetxattr) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s fsetxattr() for path '%s'",
+    fs->fs_name, fh->fh_path);
+  res = (fs->fsetxattr)(p, fh, fh->fh_fd, name, val, valsz, flags);
+  return res;
+}
+
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
  * pr_fs_ts currently registered in the fs_map will have their paths
  * rewritten to reflect the new root.
@@ -5530,7 +6312,7 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
           for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++);
 
           if (*bufp == '#') {
-             continue;
+            continue;
           }
  
         } else {
@@ -5565,7 +6347,7 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
  * until the new fd is not one of the big three.
  */
 int pr_fs_get_usable_fd(int fd) {
-  register unsigned int i;
+  register int i;
   int fdi, dup_fds[FSIO_MAX_DUPFDS], n; 
 
   if (fd > STDERR_FILENO) {
@@ -5582,7 +6364,7 @@ int pr_fs_get_usable_fd(int fd) {
 
     dup_fds[i] = dup(fdi);
     if (dup_fds[i] < 0) {
-      register unsigned int j;
+      register int j;
       int xerrno  = errno;
 
       /* Need to clean up any previously opened dups as well. */
@@ -5744,15 +6526,15 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
-      sizeof(fs.f_frsize) > 4) {
+      sizeof(fs.f_bsize) > 4) {
 
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
 
   } else {
-    *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
   }
 
   res = 0;
@@ -5805,7 +6587,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
 
   } else {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
@@ -5861,7 +6643,7 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
 
   } else {
     *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
@@ -6114,7 +6896,6 @@ int init_fs(void) {
   root_fs->rename = sys_rename;
   root_fs->unlink = sys_unlink;
   root_fs->open = sys_open;
-  root_fs->creat = sys_creat;
   root_fs->close = sys_close;
   root_fs->read = sys_read;
   root_fs->write = sys_write;
@@ -6134,6 +6915,19 @@ int init_fs(void) {
   root_fs->utimes = sys_utimes;
   root_fs->futimes = sys_futimes;
   root_fs->fsync = sys_fsync;
+
+  root_fs->getxattr = sys_getxattr;
+  root_fs->lgetxattr = sys_lgetxattr;
+  root_fs->fgetxattr = sys_fgetxattr;
+  root_fs->listxattr = sys_listxattr;
+  root_fs->llistxattr = sys_llistxattr;
+  root_fs->flistxattr = sys_flistxattr;
+  root_fs->removexattr = sys_removexattr;
+  root_fs->lremovexattr = sys_lremovexattr;
+  root_fs->fremovexattr = sys_fremovexattr;
+  root_fs->setxattr = sys_setxattr;
+  root_fs->lsetxattr = sys_lsetxattr;
+  root_fs->fsetxattr = sys_fsetxattr;
 
   root_fs->chdir = sys_chdir;
   root_fs->chroot = sys_chroot;
@@ -6192,10 +6986,6 @@ static const char *get_fs_hooks_str(pool *p, pr_fs_t *fs) {
 
   if (fs->open) {
     hooks = pstrcat(p, hooks, *hooks ? ", " : "", "open(2)", NULL);
-  }
-
-  if (fs->creat) {
-    hooks = pstrcat(p, hooks, *hooks ? ", " : "", "creat(2)", NULL);
   }
 
   if (fs->close) {
@@ -6333,7 +7123,7 @@ void pr_fs_dump(void (*dumpf)(const char *, ...)) {
 
   if (fs_map->nelts > 0) {
     pr_fs_t **fs_objs = (pr_fs_t **) fs_map->elts;
-    register int i;
+    register unsigned int i;
 
     for (i = 0; i < fs_map->nelts; i++) {
       pr_fs_t *fsi = fs_objs[i];

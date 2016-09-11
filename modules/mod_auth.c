@@ -44,7 +44,7 @@ static int logged_in = FALSE;
 static int auth_anon_allow_robots = FALSE;
 static int auth_anon_allow_robots_enabled = FALSE;
 static int auth_client_connected = FALSE;
-static int auth_tries = 0;
+static unsigned int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
 static pr_fh_t *displaylogin_fh = NULL;
 static int TimeoutSession = 0;
@@ -52,7 +52,7 @@ static int TimeoutSession = 0;
 static int saw_first_user_cmd = FALSE;
 static const char *timing_channel = "timing";
 
-static int auth_count_scoreboard(cmd_rec *, char *);
+static int auth_count_scoreboard(cmd_rec *, const char *);
 static int auth_scan_scoreboard(void);
 static int auth_sess_init(void);
 
@@ -139,6 +139,9 @@ static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
   /* Reset the CreateHome setting. */
   mkhome = FALSE;
 
+  /* Reset any MaxPasswordSize setting. */
+  (void) pr_auth_set_max_password_len(session.pool, 0);
+
 #if defined(PR_USE_LASTLOG)
   lastlog = FALSE;
 #endif /* PR_USE_LASTLOG */
@@ -173,6 +176,15 @@ static int auth_sess_init(void) {
 
   pr_event_register(&auth_module, "core.session-reinit", auth_sess_reinit_ev,
     NULL);
+
+  /* Check for any MaxPasswordSize. */
+  c = find_config(main_server->conf, CONF_PARAM, "MaxPasswordSize", FALSE);
+  if (c != NULL) {
+    size_t len;
+
+    len = *((size_t *) c->argv[0]);
+    (void) pr_auth_set_max_password_len(session.pool, len);
+  }
 
   /* Check for a server-specific TimeoutLogin */
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin", FALSE);
@@ -283,14 +295,15 @@ static int auth_sess_init(void) {
   return 0;
 }
 
-static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
+static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
   char *cpw = NULL;
   config_rec *c;
 
-  if (conf) {
+  if (conf != NULL) {
     c = find_config(conf, CONF_PARAM, "UserPassword", FALSE);
+    while (c != NULL) {
+      pr_signals_handle();
 
-    while (c) {
       if (strcmp(c->argv[0], u) == 0) {
         cpw = (char *) c->argv[1];
         break;
@@ -300,7 +313,7 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
     }
   }
 
-  if (cpw) {
+  if (cpw != NULL) {
     if (pr_auth_getpwnam(p, u) == NULL) {
       int xerrno = errno;
 
@@ -336,7 +349,6 @@ MODRET auth_err_pass(cmd_rec *cmd) {
 }
 
 MODRET auth_log_pass(cmd_rec *cmd) {
-  size_t passwd_len;
 
   /* Only log, to the syslog, that the login has succeeded here, where we
    * know that the login has definitely succeeded.
@@ -345,6 +357,8 @@ MODRET auth_log_pass(cmd_rec *cmd) {
     (session.anon_config != NULL) ? "ANON" : C_USER, session.user);
 
   if (cmd->arg != NULL) {
+    size_t passwd_len;
+
     /* And scrub the memory holding the password sent by the client, for
      * safety/security.
      */
@@ -357,7 +371,7 @@ MODRET auth_log_pass(cmd_rec *cmd) {
 
 MODRET auth_post_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
-  char *grantmsg = NULL, *user;
+  const char *grantmsg = NULL, *user;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
     have_all_timeout, *root_revoke = NULL, *authenticated;
@@ -379,7 +393,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
      * user/group/class-specific sections.
      */
     c = find_config(main_server->conf, CONF_PARAM, "Protocols", FALSE);
-    if (c) {
+    if (c != NULL) {
       register unsigned int i;
       array_header *protocols;
       char **elts;
@@ -618,77 +632,87 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-/* Handle group based authentication, only checked if pw
- * based fails
- */
-
-static config_rec *_auth_group(pool *p, char *user, char **group,
-                               char **ournamep, char **anonnamep, char *pass)
-{
+/* Handle group based authentication, only checked if pw based fails. */
+static config_rec *auth_group(pool *p, const char *user, char **group,
+    char **ournamep, char **anonnamep, char *pass) {
   config_rec *c;
-  char *ourname = NULL,*anonname = NULL;
+  char *ourname = NULL, *anonname = NULL;
   char **grmem;
   struct group *grp;
 
-  ourname = (char*)get_param_ptr(main_server->conf,"UserName",FALSE);
-  if (ournamep && ourname)
+  ourname = get_param_ptr(main_server->conf, "UserName", FALSE);
+  if (ournamep != NULL &&
+      ourname != NULL) {
     *ournamep = ourname;
+  }
 
   c = find_config(main_server->conf, CONF_PARAM, "GroupPassword", TRUE);
-
   if (c) do {
     grp = pr_auth_getgrnam(p, c->argv[0]);
 
-    if (!grp)
+    if (grp != NULL) {
       continue;
+    }
 
-    for (grmem = grp->gr_mem; *grmem; grmem++)
+    for (grmem = grp->gr_mem; *grmem; grmem++) {
       if (strcmp(*grmem, user) == 0) {
-        if (pr_auth_check(p, c->argv[1], user, pass) == 0)
+        if (pr_auth_check(p, c->argv[1], user, pass) == 0) {
           break;
+        }
       }
+    }
 
     if (*grmem) {
-      if (group)
+      if (group != NULL) {
         *group = c->argv[0];
+      }
 
-      if (c->parent)
+      if (c->parent != NULL) {
         c = c->parent;
+      }
 
-      if (c->config_type == CONF_ANON)
-        anonname = (char*)get_param_ptr(c->subset,"UserName",FALSE);
-      if (anonnamep)
+      if (c->config_type == CONF_ANON) {
+        anonname = get_param_ptr(c->subset, "UserName", FALSE);
+      }
+
+      if (anonnamep != NULL) {
         *anonnamep = anonname;
-      if (anonnamep && !anonname && ourname)
+      }
+
+      if (anonnamep != NULL &&
+          !anonname &&
+          ourname != NULL) {
         *anonnamep = ourname;
+      }
 
       break;
     }
-  } while((c = find_config_next(c,c->next,CONF_PARAM,"GroupPassword",TRUE)) != NULL);
+
+  } while((c = find_config_next(c, c->next, CONF_PARAM, "GroupPassword",
+     TRUE)) != NULL);
 
   return c;
 }
 
-/* Determine any applicable chdirs
- */
-
-static char *get_default_chdir(pool *p, xaset_t *conf) {
+/* Determine any applicable chdirs. */
+static const char *get_default_chdir(pool *p, xaset_t *conf) {
   config_rec *c;
-  char *dir = NULL;
-  int ret;
+  const char *dir = NULL;
 
   c = find_config(conf, CONF_PARAM, "DefaultChdir", FALSE);
+  while (c != NULL) {
+    int res;
 
-  while (c) {
+    pr_signals_handle();
+
     /* Check the groups acl */
     if (c->argc < 2) {
       dir = c->argv[0];
       break;
     }
 
-    ret = pr_expr_eval_group_and(((char **) c->argv)+1);
-
-    if (ret) {
+    res = pr_expr_eval_group_and(((char **) c->argv)+1);
+    if (res) {
       dir = c->argv[0];
       break;
     }
@@ -697,26 +721,28 @@ static char *get_default_chdir(pool *p, xaset_t *conf) {
   }
 
   /* If the directory is relative, concatenate w/ session.cwd. */
-  if (dir && *dir != '/' && *dir != '~')
+  if (dir != NULL &&
+      *dir != '/' &&
+      *dir != '~') {
     dir = pdircat(p, session.cwd, dir, NULL);
+  }
 
   /* Check for any expandable variables. */
-  if (dir)
+  if (dir != NULL) {
     dir = path_subst_uservar(p, &dir);
+  }
 
   return dir;
 }
 
-/* Determine if the user (non-anon) needs a default root dir other than /.
- */
-
-static int get_default_root(pool *p, int allow_symlinks, char **root) {
+/* Determine if the user (non-anon) needs a default root dir other than /. */
+static int get_default_root(pool *p, int allow_symlinks, const char **root) {
   config_rec *c = NULL;
-  char *dir = NULL;
+  const char *dir = NULL;
   int res;
 
   c = find_config(main_server->conf, CONF_PARAM, "DefaultRoot", FALSE);
-  while (c) {
+  while (c != NULL) {
     pr_signals_handle();
 
     /* Check the groups acl */
@@ -734,8 +760,8 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
     c = find_config_next(c, c->next, CONF_PARAM, "DefaultRoot", FALSE);
   }
 
-  if (dir) {
-    char *new_dir;
+  if (dir != NULL) {
+    const char *new_dir;
 
     /* Check for any expandable variables. */
     new_dir = path_subst_uservar(p, &dir);
@@ -760,7 +786,7 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
          * symlinks, which is what we do NOT want to do here.
          */
 
-        path = dir;
+        path = pstrdup(p, dir);
         if (*path != '/') {
           if (*path == '~') {
             if (pr_fs_interpolate(dir, target_path,
@@ -809,6 +835,8 @@ static int get_default_root(pool *p, int allow_symlinks, char **root) {
        * directive) as can not traverse down, we can still have the default
        * root.
        */
+
+      pr_fs_clear_cache2(dir);
 
       PRIVS_USER
       realdir = dir_realpath(p, dir);
@@ -877,12 +905,12 @@ static void ensure_open_passwd(pool *p) {
 /* Next function (the biggie) handles all authentication, setting
  * up chroot() jail, etc.
  */
-static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
+static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
   struct passwd *pw;
   config_rec *c, *tmpc;
-  char *origuser, *ourname, *anonname = NULL, *anongroup = NULL, *ugroup = NULL;
-  char *defroot = NULL, *defchdir = NULL, *xferlog = NULL;
-  const char *sess_ttyname;
+  const char *defchdir = NULL, *defroot = NULL, *origuser, *sess_ttyname;
+  char *ourname = NULL, *anonname = NULL, *anongroup = NULL, *ugroup = NULL;
+  char *xferlog = NULL;
   int aclp, i, res = 0, allow_chroot_symlinks = TRUE, showsymlinks;
   unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
 
@@ -892,11 +920,11 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   origuser = user;
   c = pr_auth_get_anon_config(p, &user, &ourname, &anonname);
-
-  if (c)
+  if (c != NULL) {
     session.anon_config = c;
+  }
 
-  if (!user) {
+  if (user == NULL) {
     pr_log_auth(PR_LOG_NOTICE, "USER %s: user is not a UserAlias from %s [%s] "
       "to %s:%i", origuser, session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr),
@@ -905,6 +933,18 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   }
 
   pw = pr_auth_getpwnam(p, user);
+  if (pw == NULL &&
+      c != NULL &&
+      ourname != NULL) {
+    /* If the client is authenticating using an alias (e.g. "AuthAliasOnly on"),
+     * then we need to try checking using the real username, too (Bug#4255).
+     */
+    pr_trace_msg("auth", 16,
+      "no user entry found for <Anonymous> alias '%s', using '%s'", user,
+      ourname);
+    pw = pr_auth_getpwnam(p, ourname);
+  }
+
   if (pw == NULL) {
     int auth_code = PR_AUTH_NOPWD;
 
@@ -950,7 +990,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   session.login_gid = pw->pw_gid;
 
   /* Check for any expandable variables in session.cwd. */
-  pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
+  pw->pw_dir = (char *) path_subst_uservar(p, (const char **) &pw->pw_dir);
 
   /* Before we check for supplemental groups, check to see if the locally
    * resolved name of the user, returned via auth_getpwnam(), is different
@@ -961,7 +1001,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
    * and session.groups lists are stale, and clear them out.
    */
   if (strcmp(pw->pw_name, user) != 0) {
-    pr_log_debug(DEBUG10, "local user name '%s' differs from client-sent "
+    pr_trace_msg("auth", 10, "local user name '%s' differs from client-sent "
       "user name '%s', clearing cached group data", pw->pw_name, user);
     session.gids = NULL;
     session.groups = NULL;
@@ -978,7 +1018,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
      */
      res = pr_auth_getgroups(p, pw->pw_name, &session.gids, &session.groups);
      if (res < 1) {
-       pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'",
+       pr_log_debug(DEBUG5, "no supplemental groups found for user '%s'",
          pw->pw_name);
      }
   }
@@ -992,7 +1032,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   /* If c != NULL from this point on, we have an anonymous login */
   aclp = login_check_limits(main_server->conf, FALSE, TRUE, &i);
 
-  if (c) {
+  if (c != NULL) {
     anongroup = get_param_ptr(c->subset, "GroupName", FALSE);
     if (anongroup == NULL) {
       anongroup = get_param_ptr(main_server->conf, "GroupName",FALSE);
@@ -1044,21 +1084,23 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     goto auth_failure;
   }
 
-  if (c) {
+  if (c != NULL) {
     anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
       FALSE);
   }
 
-  if (!c ||
-      (anon_require_passwd && *anon_require_passwd == TRUE)) {
+  if (c == NULL ||
+      (anon_require_passwd != NULL &&
+       *anon_require_passwd == TRUE)) {
     int auth_code;
-    char *user_name = user;
+    const char *user_name = user;
 
-    if (c &&
-        origuser &&
+    if (c != NULL &&
+        origuser != NULL &&
         strcasecmp(user, origuser) != 0) {
-      unsigned char *auth_using_alias = get_param_ptr(c->subset,
-        "AuthUsingAlias", FALSE);
+      unsigned char *auth_using_alias;
+
+      auth_using_alias = get_param_ptr(c->subset, "AuthUsingAlias", FALSE);
 
       /* If 'AuthUsingAlias' set and we're logging in under an alias,
        * then auth using that alias.
@@ -1074,10 +1116,10 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
     /* It is possible for the user to have already been authenticated during
      * the handling of the USER command, as by an RFC2228 mechanism.  If
-     * that had happened, we won't need to call _do_auth() here.
+     * that had happened, we won't need to call do_auth() here.
      */
     if (!authenticated_without_pass) {
-      auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name,
+      auth_code = do_auth(p, c ? c->subset : main_server->conf, user_name,
         pass);
 
     } else {
@@ -1091,7 +1133,7 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
        * passes
        */
 
-      c = _auth_group(p, user, &anongroup, &ourname, &anonname, pass);
+      c = auth_group(p, user, &anongroup, &ourname, &anonname, pass);
       if (c != NULL) {
         if (c->config_type != CONF_ANON) {
           c = NULL;
@@ -1213,7 +1255,8 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
   if (c) {
     struct group *grp = NULL;
     unsigned char *add_userdir = NULL;
-    char *u, *chroot_dir;
+    const char *u;
+    char *chroot_dir;
 
     u = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
     add_userdir = get_param_ptr(c->subset, "UserDirRoot", FALSE);
@@ -1229,8 +1272,10 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     PRIVS_ROOT
     res = set_groups(p, pw->pw_gid, session.gids);
     if (res < 0) {
-      pr_log_pri(PR_LOG_WARNING, "error: unable to set groups: %s",
-        strerror(errno));
+      if (errno != ENOSYS) {
+        pr_log_pri(PR_LOG_WARNING, "error: unable to set groups: %s",
+          strerror(errno));
+      }
     }
 
 #ifndef PR_DEVEL_COREDUMP
@@ -1349,8 +1394,10 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
     PRIVS_ROOT
     res = set_groups(p, daemon_gid, daemon_gids);
     if (res < 0) {
-      pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
-        strerror(errno));
+      if (errno != ENOSYS) {
+        pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+          strerror(errno));
+      }
     }
 
 #ifndef PR_DEVEL_COREDUMP
@@ -1453,9 +1500,9 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   /* Get default chdir (if any) */
   defchdir = get_default_chdir(p, (c ? c->subset : main_server->conf));
-
-  if (defchdir)
+  if (defchdir != NULL) {
     sstrncpy(session.cwd, defchdir, sizeof(session.cwd));
+  }
 
   /* Check limits again to make sure deny/allow directives still permit
    * access.
@@ -1557,8 +1604,10 @@ static int setup_env(pool *p, cmd_rec *cmd, char *user, char *pass) {
 
   res = set_groups(p, pw->pw_gid, session.gids);
   if (res < 0) {
-    pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
-      strerror(errno));
+    if (errno != ENOSYS) {
+      pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+        strerror(errno));
+    }
   }
 
   PRIVS_RELINQUISH
@@ -1929,7 +1978,7 @@ static int have_client_limits(cmd_rec *cmd) {
   return FALSE;
 }
 
-static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
+static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
   char *key;
   void *v;
   pr_scoreboard_entry_t *score = NULL;
@@ -1950,7 +1999,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, char *user) {
   (void) pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
   /* Gather our statistics. */
-  if (user) {
+  if (user != NULL) {
     char curr_server_addr[80] = {'\0'};
 
     snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
@@ -2241,7 +2290,7 @@ MODRET auth_pre_user(cmd_rec *cmd) {
 MODRET auth_user(cmd_rec *cmd) {
   int nopass = FALSE;
   config_rec *c;
-  char *denymsg = NULL, *user, *origuser;
+  const char *denymsg = NULL, *user, *origuser;
   int failnopwprompt = 0, aclp, i;
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
@@ -2418,7 +2467,8 @@ MODRET auth_user(cmd_rec *cmd) {
 
 /* Close the passwd and group databases, similar to auth_pre_user(). */
 MODRET auth_pre_pass(cmd_rec *cmd) {
-  char *displaylogin, *user;
+  const char *user;
+  char *displaylogin;
 
   pr_auth_endpwent(cmd->tmp_pool);
   pr_auth_endgrent(cmd->tmp_pool);
@@ -2431,7 +2481,7 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
     c = find_config(main_server->conf, CONF_PARAM, "AllowEmptyPasswords",
       FALSE);
     if (c == NULL) {
-      char *anon_user;
+      const char *anon_user;
       config_rec *anon_config;
 
       /* Since we have not authenticated yet, we cannot use the TOPLEVEL_CONF
@@ -2454,20 +2504,32 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
         size_t passwd_len = 0;
  
         if (cmd->argc > 1) {
-          passwd_len = strlen(cmd->arg);
+          if (cmd->arg != NULL) {
+            passwd_len = strlen(cmd->arg);
+          }
         }
 
+        /* Make sure to NOT enforce 'AllowEmptyPasswords off' if e.g.
+         * the AllowDotLogin TLSOption is in effect.
+         */
         if (cmd->argc == 1 ||
             passwd_len == 0) {
-          pr_log_debug(DEBUG5,
-            "Refusing empty password from user '%s' (AllowEmptyPasswords "
-            "false)", user);
-          pr_log_auth(PR_LOG_NOTICE,
-            "Refusing empty password from user '%s'", user);
 
-          pr_event_generate("mod_auth.empty-password", user);
-          pr_response_add_err(R_501, _("Login incorrect."));
-          return PR_ERROR(cmd);
+          if (session.auth_mech == NULL ||
+              strcmp(session.auth_mech, "mod_tls.c") != 0) {
+            pr_log_debug(DEBUG5,
+              "Refusing empty password from user '%s' (AllowEmptyPasswords "
+              "false)", user);
+            pr_log_auth(PR_LOG_NOTICE,
+              "Refusing empty password from user '%s'", user);
+
+            pr_event_generate("mod_auth.empty-password", user);
+            pr_response_add_err(R_501, _("Login incorrect."));
+            return PR_ERROR(cmd);
+          }
+
+          pr_log_debug(DEBUG9, "%s", "'AllowEmptyPasswords off' in effect, "
+            "BUT client authenticated via the AllowDotLogin TLSOption");
         }
       }
     }
@@ -2512,7 +2574,7 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
 }
 
 MODRET auth_pass(cmd_rec *cmd) {
-  char *user = NULL;
+  const char *user = NULL;
   int res = 0;
 
   if (logged_in) {
@@ -2573,7 +2635,7 @@ MODRET auth_pass(cmd_rec *cmd) {
 
   if (res == 0) {
     unsigned int max_logins, *max = NULL;
-    char *denymsg = NULL;
+    const char *denymsg = NULL;
 
     /* check for AccessDenyMsg */
     if ((denymsg = get_param_ptr((session.anon_config ?
@@ -2810,7 +2872,6 @@ MODRET auth_pre_retr(cmd_rec *cmd) {
 
     /* For all other FSIO callbacks, use the underlying FS. */
     robots_fs->rename = curr_fs->rename;
-    robots_fs->creat = curr_fs->creat;
     robots_fs->lseek = curr_fs->lseek;
     robots_fs->link = curr_fs->link;
     robots_fs->readlink = curr_fs->readlink;
@@ -3256,14 +3317,15 @@ MODRET set_createhome(cmd_rec *cmd) {
 MODRET add_defaultroot(cmd_rec *cmd) {
   config_rec *c;
   char *dir;
-  int argc;
+  unsigned int argc;
   void **argv;
   array_header *acl = NULL;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (cmd->argc < 2)
-    CONF_ERROR(cmd,"syntax: DefaultRoot <directory> [<group-expression>]");
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "syntax: DefaultRoot <directory> [<group-expression>]");
+  }
 
   argc = cmd->argc - 2;
   argv = cmd->argv;
@@ -3287,7 +3349,6 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
-
   c = add_config_param(cmd->argv[0], 0);
 
   c->argc = argc + 1;
@@ -3308,14 +3369,15 @@ MODRET add_defaultroot(cmd_rec *cmd) {
 MODRET add_defaultchdir(cmd_rec *cmd) {
   config_rec *c;
   char *dir;
-  int argc;
+  unsigned int argc;
   void **argv;
   array_header *acl = NULL;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if (cmd->argc < 2)
+  if (cmd->argc < 2) {
     CONF_ERROR(cmd, "syntax: DefaultChdir <directory> [<group-expression>]");
+  }
 
   argc = cmd->argc - 2;
   argv = cmd->argv;
@@ -3332,7 +3394,6 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, (char **) argv);
-
   c = add_config_param(cmd->argv[0], 0);
 
   c->argc = argc + 1;
@@ -3649,6 +3710,50 @@ MODRET set_maxloginattempts(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: MaxPasswordSize len */
+MODRET set_maxpasswordsize(cmd_rec *cmd) {
+  config_rec *c;
+  size_t password_len;
+  char *len, *ptr = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  len = cmd->argv[1];
+  if (*len == '-') {
+    CONF_ERROR(cmd, "badly formatted parameter");
+  }
+
+  password_len = strtoul(len, &ptr, 10);
+  if (ptr && *ptr) {
+    CONF_ERROR(cmd, "badly formatted parameter");
+  }
+
+/* XXX Applies to the following modules, which use crypt(3):
+ *
+ *  mod_ldap (ldap_auth_check; "check" authtab)
+ *    ldap_auth_auth ("auth" authtab) calls pr_auth_check()
+ *  mod_sql (sql_auth_crypt, via SQLAuthTypes; cmd_check "check" authtab dispatches here)
+ *    cmd_auth ("auth" authtab) calls pr_auth_check()
+ *  mod_auth_file (authfile_chkpass, "check" authtab)
+ *    authfile_auth ("auth" authtab) calls pr_auth_check()
+ *  mod_auth_unix (pw_check, "check" authtab)
+ *    pw_auth ("auth" authtab) calls pr_auth_check()
+ *
+ *  mod_sftp uses pr_auth_authenticate(), which will dispatch into above
+ *
+ *  mod_radius does NOT use either -- up to RADIUS server policy?
+ *
+ * Is there a common code path that all of the above go through?
+ */
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(size_t));
+  *((size_t *) c->argv[0]) = password_len;
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_requirevalidshell(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -3815,7 +3920,7 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
 
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
-    int argc;
+    unsigned int argc;
     void **argv;
 
     argc = cmd->argc - 3;
@@ -3913,21 +4018,27 @@ MODRET set_uselastlog(cmd_rec *cmd) {
 /* usage: UserAlias alias real-user */
 MODRET set_useralias(cmd_rec *cmd) {
   config_rec *c = NULL;
+  char *alias, *real_user;
 
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* Make sure that the given names differ. */
-  if (strcmp(cmd->argv[1], cmd->argv[2]) == 0)
-    CONF_ERROR(cmd, "alias and real user names must differ");
+  alias = cmd->argv[1];
+  real_user = cmd->argv[2];
 
-  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  if (strcmp(alias, real_user) == 0) {
+    CONF_ERROR(cmd, "alias and real user names must differ");
+  }
+
+  c = add_config_param_str(cmd->argv[0], 2, alias, real_user);
 
   /* Note: only merge this directive down if it is not appearing in an
    * <Anonymous> context.
    */
-  if (!check_context(cmd, CONF_ANON))
-    c->flags |= CF_MERGEDOWN;
+  if (!check_context(cmd, CONF_ANON)) {
+    c->flags |= CF_MERGEDOWN_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -3988,6 +4099,7 @@ static conftable auth_conftab[] = {
   { "MaxConnectionsPerHost",	set_maxconnectsperhost,		NULL },
   { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
+  { "MaxPasswordSize",		set_maxpasswordsize,		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "RewriteHome",		set_rewritehome,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },

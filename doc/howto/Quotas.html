@@ -1,15 +1,12 @@
-<!-- $Id: Quotas.html,v 1.8 2009-07-23 15:04:05 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Quotas.html,v $ -->
-
 <html>
 <head>
-<title>ProFTPD mini-HOWTO - Quotas</title>
+<title>ProFTPD: Quotas</title>
 </head>
 
 <body bgcolor=white>
 
 <hr>
-<center><h2><b>ProFTPD Quotas</b></h2></center>
+<center><h2><b>ProFTPD: Quotas</b></h2></center>
 <hr>
 
 <p>
@@ -53,20 +50,14 @@ quotas via file tables and SQL tables.  <b>This is an example only</b>.
     QuotaLog /var/log/ftpd/quota.log
 
     # For more information on using files for storing the limit and tally
-    # table quota data, please see the mod_quotatab_file documentation:
-    #
-    #   <a href="../contrib/mod_quotatab_file.html">http://www.castaglia.org/proftpd/modules/mod_quotatab_file.html</a>
-    #
+    # table quota data, please see the <a href="../contrib/mod_quotatab_file.html">mod_quotatab_file</a> documentation.
     &lt;IfModule mod_quotatab_file.c&gt;
       QuotaLimitTable file:/etc/ftpd/ftpquota.limittab
       QuotaTallyTable file:/etc/ftpd/ftpquota.tallytab
     &lt;/IfModule&gt;
 
     # For more information on using a SQL database for storing the limit and
-    # tally table quota data, please see the mod_quotatab_file documentation:
-    #
-    #   <a href="../contrib/mod_quotatab_sql.html">http://www.castaglia.org/proftpd/modules/mod_quotatab_sql.html</a>
-    #
+    # tally table quota data, please see the <a href="../contrib/mod_quotatab_sql.html">mod_quotatab_sql</a> documentation
     &lt;IfModule mod_quotatab_sql.c&gt;
       SQLNamedQuery get-quota-limit SELECT "* FROM quotalimits WHERE name = '%{0}' AND quota_type = '%{1}'"
       SQLNamedQuery get-quota-tally SELECT "* FROM quotatallies WHERE name = '%{0}' AND quota_type = '%{1}'"
@@ -185,7 +176,7 @@ covered in the <code>mod_quotatab</code> <a href="../contrib/mod_quotatab.html#Q
 
 <p><a name="QuotasCreatingFileTables" title="#QuotasCreatingFileTables"></a>
 <font color=red>Question</font>: How do I construct the limit and tally files for file-based quotas?<br>
-<font color=blue>Answer</font>: There is a Perl script called <a href="http://www.castaglia.org/proftpd/contrib/ftpquota.html"><code>ftpquota</code></a> which
+<font color=blue>Answer</font>: There is a Perl script called <a href="http://www.proftpd.org/docs/contrib/ftpquota.html"><code>ftpquota</code></a> which
 can create the necessary files.  This script can also be found under the
 <code>contrib/</code> directory of the <code>proftpd</code> source
 distribution.

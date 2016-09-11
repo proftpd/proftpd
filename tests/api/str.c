@@ -72,7 +72,7 @@ START_TEST (sstrncpy_test) {
   len = 1;
 
   res = sstrncpy(dst, ok, len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
     strlen(dst));
   fail_unless(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
@@ -81,7 +81,7 @@ START_TEST (sstrncpy_test) {
   len = 7;
 
   res = sstrncpy(dst, ok, len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
     strlen(dst));
   fail_unless(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
@@ -90,7 +90,7 @@ START_TEST (sstrncpy_test) {
   len = sz;
 
   res = sstrncpy(dst, ok, len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
     strlen(dst));
   fail_unless(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
@@ -99,7 +99,7 @@ START_TEST (sstrncpy_test) {
   len = sz;
 
   res = sstrncpy(dst, "", len);
-  fail_unless(res <= len, "Expected result %d, got %d", len, res);
+  fail_unless((size_t) res <= len, "Expected result %d, got %d", len, res);
   fail_unless(strlen(dst) == 0, "Expected len %u, got len %u", 0, strlen(dst));
   fail_unless(*dst == '\0', "Expected NUL, got '%c'", *dst);
 }
@@ -195,7 +195,8 @@ START_TEST (sstrcat_test) {
 END_TEST
 
 START_TEST (sreplace_test) {
-  char *fmt = NULL, *res, *ok;
+  const char *res;
+  char *fmt = NULL, *ok;
 
   res = sreplace(NULL, NULL, 0);
   fail_unless(res == NULL, "Failed to handle invalid arguments");
@@ -243,7 +244,8 @@ START_TEST (sreplace_test) {
 END_TEST
 
 START_TEST (sreplace_enospc_test) {
-  char *fmt = NULL, *res;
+  const char *res;
+  char *fmt = NULL;
   size_t bufsz = 8192;
 
   fmt = palloc(p, bufsz + 1);
@@ -259,7 +261,8 @@ START_TEST (sreplace_enospc_test) {
 END_TEST
 
 START_TEST (sreplace_bug3614_test) {
-  char *fmt = NULL, *res, *ok;
+  const char *res;
+  char *fmt = NULL, *ok;
 
   fmt = "%a %b %c %d %e %f %g %h %i %j %k %l %m "
         "%n %o %p %q %r %s %t %u %v %w %x %y %z "
@@ -319,7 +322,8 @@ START_TEST (sreplace_bug3614_test) {
 END_TEST
 
 START_TEST (str_replace_test) {
-  char *fmt = NULL, *res, *ok;
+  const char *res;
+  char *fmt = NULL, *ok;
   int max_replace = PR_STR_MAX_REPLACEMENTS;
 
   res = pr_str_replace(NULL, max_replace, NULL, 0);
@@ -500,7 +504,7 @@ START_TEST (pstrndup_test) {
 END_TEST
 
 START_TEST (strip_test) {
-  char *ok, *res, *str;
+  const char *ok, *res, *str;
 
   res = pr_str_strip(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -792,6 +796,7 @@ START_TEST (get_word_utf8_test) {
 
     nread = fread(str, sizeof(char), sz-1, fh);
     fail_if(ferror(fh), "Error reading '%s': %s", path, strerror(errno));
+    fail_unless(nread > 0, "Expected >0 bytes read, got 0");
 
     res = pr_str_get_word(&str, 0);
       fail_unless(res != NULL, "Failed to handle UTF8 argument: %s",
@@ -1255,30 +1260,30 @@ START_TEST (bin2hex_test) {
     strerror(errno), errno);
 
   /* Empty string. */
-  str = "foobar";
+  str = (const unsigned char *) "foobar";
   expected = "";
-  res = pr_str_bin2hex(p, str, 0, 0);
+  res = pr_str_bin2hex(p, (const unsigned char *) str, 0, 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* default (lowercase) */
   expected = "666f6f626172";
-  res = pr_str_bin2hex(p, str, strlen(str), 0);
+  res = pr_str_bin2hex(p, str, strlen((char *) str), 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* lowercase */
   expected = "666f6f626172";
-  res = pr_str_bin2hex(p, str, strlen(str), 0);
+  res = pr_str_bin2hex(p, str, strlen((char *) str), 0);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
 
   /* uppercase */
   expected = "666F6F626172";
-  res = pr_str_bin2hex(p, str, strlen(str), PR_STR_FL_HEX_USE_UC);
+  res = pr_str_bin2hex(p, str, strlen((char *) str), PR_STR_FL_HEX_USE_UC);
   fail_unless(res != NULL, "Failed to hexify '%s': %s", str, strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
     expected, res);
@@ -1287,7 +1292,7 @@ END_TEST
 
 START_TEST (hex2bin_test) {
   unsigned char *expected, *res;
-  const char *hex;
+  const unsigned char *hex;
   size_t expected_len, hex_len, len;
 
   res = pr_str_hex2bin(NULL, NULL, 0, NULL);
@@ -1301,23 +1306,23 @@ START_TEST (hex2bin_test) {
     strerror(errno), errno);
 
   /* Empty string. */
-  hex = "";
-  hex_len = strlen(hex);
-  expected = "";
+  hex = (const unsigned char *) "";
+  hex_len = strlen((char *) hex);
+  expected = (unsigned char *) "";
   res = pr_str_hex2bin(p, hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
-  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'",
-    expected, res);
+  fail_unless(strcmp((const char *) res, (const char *) expected) == 0,
+    "Expected '%s', got '%s'", expected, res);
 
-  hex = "112233";
-  hex_len = strlen(hex);
+  hex = (const unsigned char *) "112233";
+  hex_len = strlen((char *) hex);
   expected_len = 3;
   expected = palloc(p, expected_len);
   expected[0] = 17;
   expected[1] = 34;
   expected[2] = 51;
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1325,8 +1330,8 @@ START_TEST (hex2bin_test) {
     "Did not receive expected unhexified data");
 
   /* lowercase */
-  hex = "666f6f626172";
-  hex_len = strlen(hex);
+  hex = (const unsigned char *) "666f6f626172";
+  hex_len = strlen((char *) hex);
   expected_len = 6;
   expected = palloc(p, expected_len);
   expected[0] = 'f';
@@ -1336,7 +1341,7 @@ START_TEST (hex2bin_test) {
   expected[4] = 'a';
   expected[5] = 'r';
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1344,10 +1349,10 @@ START_TEST (hex2bin_test) {
     "Did not receive expected unhexified data");
 
   /* uppercase */
-  hex = "666F6F626172";
-  hex_len = strlen(hex);
+  hex = (const unsigned char *) "666F6F626172";
+  hex_len = strlen((char *) hex);
 
-  res = pr_str_hex2bin(p, hex, hex_len, &len);
+  res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   fail_unless(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   fail_unless(len == expected_len, "Expected len %lu, got %lu",
     (unsigned long) expected_len, len);
@@ -1355,13 +1360,12 @@ START_TEST (hex2bin_test) {
     "Did not receive expected unhexified data");
 
   /* Handle known not-hex data properly. */
-  hex = "Hello, World!\n";
-  hex_len = strlen(hex);
+  hex = (const unsigned char *) "Hello, World!\n";
+  hex_len = strlen((char *) hex);
   res = pr_str_hex2bin(p, hex, hex_len, &len);
   fail_unless(res == NULL, "Successfully unhexified '%s' unexpectedly", hex);
   fail_unless(errno == ERANGE, "Expected ERANGE (%d), got %s (%d)", ERANGE,
     strerror(errno), errno);
-
 }
 END_TEST
 
@@ -1400,6 +1404,36 @@ START_TEST (gid2str_test) {
 
   res = pr_gid2str(NULL, (gid_t) -1);
   fail_unless(strcmp(res, "-1") == 0);
+}
+END_TEST
+
+START_TEST (str_quote_test) {
+  const char *res;
+  char *expected, *path;
+
+  res = pr_str_quote(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_str_quote(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/tmp/";
+  expected = path;
+  res = pr_str_quote(p, path);
+  fail_unless(res != NULL, "Failed to quote '%s': %s", path, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  path = "/\"tmp\"/";
+  expected = "/\"\"tmp\"\"/";
+  res = pr_str_quote(p, path);
+  fail_unless(res != NULL, "Failed to quote '%s': %s", path, strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
 }
 END_TEST
 
@@ -1469,6 +1503,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, str2gid_test);
   tcase_add_test(testcase, uid2str_test);
   tcase_add_test(testcase, gid2str_test);
+  tcase_add_test(testcase, str_quote_test);
   tcase_add_test(testcase, quote_dir_test);
 
   suite_add_tcase(suite, testcase);

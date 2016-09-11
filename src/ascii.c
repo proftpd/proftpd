@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,7 +61,6 @@ int pr_ascii_ftp_from_crlf(pool *p, char *in, size_t inlen, char **out,
         /* copy, but save it for later */
         adj++;
         *dst++ = *src++;
-        (*outlen)++;
 
       } else {
         if (*(src+1) == '\n') {

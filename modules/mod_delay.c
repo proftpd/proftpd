@@ -126,8 +126,8 @@ struct {
 static unsigned int delay_engine = TRUE;
 static unsigned int delay_nuser = 0;
 static unsigned int delay_npass = 0;
-static long delay_user_delayed = 0L;
-static long delay_pass_delayed = 0L;
+static unsigned long delay_user_delayed = 0L;
+static unsigned long delay_pass_delayed = 0L;
 static pool *delay_pool = NULL;
 static struct timeval delay_tv;
 
@@ -153,7 +153,7 @@ static const char *trace_channel = "delay";
 static long delay_select_k(unsigned long k, array_header *values) {
   unsigned long l, ir, tmp = 0;
   long *elts = (long *) values->elts;
-  int nelts = values->nelts;
+  unsigned int nelts = values->nelts;
 
   /* This is from "Numeric Recipes in C", Ch. 8.5, as the select()
    * algorithm, an in-place sorting algorithm for finding the Kth
@@ -176,7 +176,7 @@ static long delay_select_k(unsigned long k, array_header *values) {
       return elts[k];
 
     } else {
-      unsigned long i, j;
+      unsigned int i, j;
       long p;
       unsigned long mid = (l + ir) >> 1;
 
@@ -216,11 +216,11 @@ static long delay_select_k(unsigned long k, array_header *values) {
       elts[l+1] = elts[j];
       elts[j] = p;
 
-      if (p >= k) {
+      if ((unsigned long) p >= k) {
         ir = j - 1;
       }
 
-      if (p <= k) {
+      if ((unsigned long) p <= k) {
         l = i;
       }
 
@@ -348,7 +348,7 @@ static void delay_signals_unblock(void) {
   }
 }
 
-static long delay_delay(long interval) {
+static unsigned long delay_delay(unsigned long interval) {
   struct timeval tv;
   int res, xerrno;
 
@@ -373,7 +373,7 @@ static long delay_delay(long interval) {
   return interval;
 }
 
-static long delay_delay_with_jitter(long interval) {
+static unsigned long delay_delay_with_jitter(long interval) {
   long rand_usec;
 
   /* Add an additional delay of a random number of usecs, with a
@@ -1517,7 +1517,7 @@ MODRET delay_log_pass(cmd_rec *cmd) {
   }
 
   if (delay_pass_min_delay > 0) {
-    long interval = 0L;
+    unsigned long interval = 0L;
 
     if (delay_pass_delayed < delay_pass_min_delay) {
       interval = delay_pass_min_delay - delay_pass_delayed;
@@ -1541,7 +1541,7 @@ MODRET delay_log_pass_err(cmd_rec *cmd) {
   
   if (delay_failed_login_min_delay > 0 ||
       delay_pass_min_delay > 0) {
-    long interval = 0L, min_delay;
+    unsigned long interval = 0L, min_delay;
 
     min_delay = delay_failed_login_min_delay;
     if (delay_pass_min_delay > min_delay) {

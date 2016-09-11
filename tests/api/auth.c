@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1810,7 +1810,7 @@ START_TEST (auth_is_valid_shell_test) {
 END_TEST
 
 START_TEST (auth_get_home_test) {
-  char *home, *res;
+  const char *home, *res;
 
   res = pr_auth_get_home(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -1826,6 +1826,30 @@ START_TEST (auth_get_home_test) {
   res = pr_auth_get_home(p, home);
   fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
   fail_unless(strcmp(home, res) == 0, "Expected '%s', got '%s'", home, res);  
+}
+END_TEST
+
+START_TEST (auth_set_max_password_len_test) {
+  int checked;
+  size_t res;
+
+  res = pr_auth_set_max_password_len(p, 1);
+  fail_unless(res == PR_TUNABLE_PASSWORD_MAX,
+    "Expected %lu, got %lu", (unsigned long) PR_TUNABLE_PASSWORD_MAX,
+    (unsigned long) res);
+
+  checked = pr_auth_check(p, NULL, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(checked < 0, "Failed to reject too-long password");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  res = pr_auth_set_max_password_len(p, 0);
+  fail_unless(res == 1, "Expected %lu, got %lu", 1, (unsigned long) res);
+
+  res = pr_auth_set_max_password_len(p, 0);
+  fail_unless(res == PR_TUNABLE_PASSWORD_MAX,
+    "Expected %lu, got %lu", (unsigned long) PR_TUNABLE_PASSWORD_MAX,
+    (unsigned long) res);
 }
 END_TEST
 
@@ -1884,6 +1908,7 @@ Suite *tests_get_auth_suite(void) {
   tcase_add_test(testcase, auth_banned_by_ftpusers_test);
   tcase_add_test(testcase, auth_is_valid_shell_test);
   tcase_add_test(testcase, auth_get_home_test);
+  tcase_add_test(testcase, auth_set_max_password_len_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

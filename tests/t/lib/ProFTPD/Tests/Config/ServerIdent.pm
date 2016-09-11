@@ -116,7 +116,7 @@ sub serverident_absent {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'ProFTPD \S+ Server \(ProFTPD\) \[\S+\]';
+      $expected = 'ProFTPD Server \(ProFTPD\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -272,7 +272,7 @@ sub serverident_on {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'ProFTPD \S+ Server \(ProFTPD\) \[\S+\]';
+      $expected = 'ProFTPD Server \(ProFTPD\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -354,7 +354,7 @@ sub serverident_on_with_servername {
         test_msg("Expected response code $expected, got $resp_code"));
 
       $server_name =~ s/\"//g;
-      $expected = 'ProFTPD \S+ Server \(' . $server_name . '\) \[\S+\]';
+      $expected = 'ProFTPD Server \(' . $server_name . '\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };

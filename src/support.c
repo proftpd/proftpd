@@ -268,12 +268,12 @@ char *dir_interpolate(pool *p, const char *path) {
 
     user = pstrdup(p, path + 1);
     ptr = strchr(user, '/');
-    if (ptr) {
+    if (ptr != NULL) {
       *ptr++ = '\0';
     }
 
     if (!*user) {
-      user = session.user;
+      user = (char *) session.user;
     }
 
     pw = pr_auth_getpwnam(p, user);
@@ -441,7 +441,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
   }
 
   if (len == 0 ||
-      len == bufsz) {
+      (size_t) len == bufsz) {
     /* If we read nothing in, OR if the given buffer was completely
      * filled WITHOUT terminating NUL, there's really nothing we can/should
      * be doing.
@@ -510,7 +510,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
   }
 
   if (is_abs_dst == TRUE &&
-      len < chroot_pathlen) {
+      (size_t) len < chroot_pathlen) {
     /* If the destination path length is shorter than the chroot path,
      * AND the destination path is absolute, then by definition it CANNOT
      * point within the chroot.
@@ -1169,5 +1169,135 @@ int pr_gettimeofday_millis(uint64_t *millis) {
   }
 
   return 0;
+}
+
+/* Substitute any appearance of the %u variable in the given string with
+ * the value.
+ */
+const char *path_subst_uservar(pool *path_pool, const char **path) {
+  const char *new_path = NULL, *substr_path = NULL;
+  char *substr = NULL;
+  size_t user_len = 0;
+
+  /* Sanity check. */
+  if (path_pool == NULL ||
+      path == NULL ||
+      !*path) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* If no %u string present, do nothing. */
+  if (strstr(*path, "%u") == NULL) {
+    return *path;
+  }
+
+  if (session.user != NULL) {
+    user_len = strlen(session.user);
+  }
+
+  /* First, deal with occurrences of "%u[index]" strings.  Note that
+   * with this syntax, the '[' and ']' characters become invalid in paths,
+   * but only if that '[' appears after a "%u" string -- certainly not
+   * a common phenomenon (I hope).  This means that in the future, an escape
+   * mechanism may be needed in this function.  Caveat emptor.
+   */
+
+  substr_path = *path;
+  substr = substr_path ? strstr(substr_path, "%u[") : NULL;
+  while (substr != NULL) {
+    long i = 0;
+    char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
+    char ref_char[2] = {'\0', '\0'};
+
+    pr_signals_handle();
+
+    /* Now, find the closing ']'. If not found, it is a syntax error;
+     * continue on without processing this occurrence.
+     */
+    substr_end = strchr(substr, ']');
+    if (substr_end == NULL) {
+      /* Just end here. */
+      break;
+    }
+
+    /* Make a copy of the entire substring. */
+    substr_dup = pstrdup(path_pool, substr);
+
+    /* The substr_end variable (used as an index) should work here, too
+     * (trying to obtain the entire substring).
+     */
+    substr_dup[substr_end - substr + 1] = '\0';
+
+    /* Advance the substring pointer by three characters, so that it is
+     * pointing at the character after the '['.
+     */
+    substr += 3;
+
+    /* If the closing ']' is the next character after the opening '[', it
+     * is a syntax error.
+     */
+    if (*substr == ']') {
+      substr_path = *path;
+      break;
+    }
+
+    /* Temporarily set the ']' to '\0', to make it easy for the string
+     * scanning below.
+     */
+    *substr_end = '\0';
+
+    /* Scan the index string into a number, watching for bad strings. */
+    i = strtol(substr, &endp, 10);
+    if (endp && *endp) {
+      *substr_end = ']';
+      pr_trace_msg("auth", 3,
+        "invalid index number syntax found in '%s', ignoring", substr);
+      return *path;
+    }
+
+    /* Make sure that index is within bounds. */
+    if (i < 0 ||
+        (size_t) i > user_len - 1) {
+
+      /* Put the closing ']' back. */
+      *substr_end = ']';
+
+      if (i < 0) {
+        pr_trace_msg("auth", 3,
+          "out-of-bounds index number (%ld) found in '%s', ignoring", i,
+          substr);
+
+      } else {
+        pr_trace_msg("auth", 3,
+          "out-of-bounds index number (%ld > %lu) found in '%s', ignoring", i,
+          (unsigned long) user_len-1, substr);
+      }
+
+      return *path;
+    }
+
+    ref_char[0] = session.user[i];
+
+    /* Put the closing ']' back. */
+    *substr_end = ']';
+
+    /* Now, to substitute the whole "%u[index]" substring with the
+     * referenced character/string.
+     */
+    substr_path = sreplace(path_pool, substr_path, substr_dup, ref_char, NULL);
+    substr = substr_path ? strstr(substr_path, "%u[") : NULL;
+  }
+
+  /* Check for any bare "%u", and handle those if present. */
+  if (substr_path &&
+      strstr(substr_path, "%u") != NULL) {
+    new_path = sreplace(path_pool, substr_path, "%u", session.user, NULL);
+
+  } else {
+    new_path = substr_path;
+  }
+
+  return new_path;
 }
 

@@ -264,7 +264,7 @@ hostbased authentication properly.
 RFC4716 format (see the <a href="#UsageRFC4716Format">Usage</a> section).
 This is done using OpenSSH's <code>ssh-keygen</code> tool:
 <pre>
-  # ssh-keygen -e -f /path/to/file
+  $ ssh-keygen -e -f /path/to/file
 </pre>
 The output from this command can then be added to the
 <code>SFTPAuthorizedHostKeys</code> file.
@@ -296,7 +296,7 @@ Example:
 RFC4716 format (see the <a href="#UsageRFC4716Format">Usage</a> section).
 This is done using OpenSSH's <code>ssh-keygen</code> tool:
 <pre>
-  # ssh-keygen -e -f ~/.ssh/id_rsa.pub
+  $ ssh-keygen -e -f ~/.ssh/id_rsa.pub
 </pre>
 The output from this command can then be added to the
 <code>SFTPAuthorizedUserKeys</code> file.
@@ -698,8 +698,10 @@ The extension names used for the <code>SFTPExtensions</code> directive are:
   <li>spaceAvailable
   <li>statvfs
   <li>hardlink
+  <li>xattr
 </ul>
-All extensions <i>except</i> <code>vendorID</code> are enabled by default.
+All extensions <i>except</i> <code>vendorID</code> <b>and</b>
+<code>xattr</code> are enabled by default.
 
 <p>
 To enable an extension, preface the extension name with a '+' (plus) character;
@@ -823,9 +825,12 @@ key exchange algorithms that <code>mod_sftp</code> should use.  The current list
 of supported key exchange algorithms is:
 <ul>
   <li>curve25519-sha256@libssh.org
-  <li>ecdh-sha2-nistp256
-  <li>ecdh-sha2-nistp384
   <li>ecdh-sha2-nistp521
+  <li>ecdh-sha2-nistp384
+  <li>ecdh-sha2-nistp256
+  <li>diffie-hellman-group18-sha512
+  <li>diffie-hellman-group16-sha512
+  <li>diffie-hellman-group14-sha256
   <li>diffie-hellman-group-exchange-sha256
   <li>diffie-hellman-group-exchange-sha1
   <li>diffie-hellman-group14-sha1
@@ -957,6 +962,21 @@ The currently implemented options are:
   </li>
 
   <p>
+  <li><code>IgnoreFIFOs</code>
+    <p>
+    By default, <code>mod_sftp</code> allows uploading and downloading of FIFOs,
+    just as if they were regular files.  However, in some cases this can lead
+    to "hangs" on the SFTP/SCP client end, especially when the FIFO
+    reader/writer processes are not running at the time.  Thus to tell
+    <code>mod_sftp</code> to ignore/reject requests to read from/write to FIFOs,
+    for both SFTP and SCP, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc3</code>.
+  </li>
+
+  <p>
   <li><code>IgnoreSCPUploadPerms</code><br>
     <p>
     When an SCP client uploads a file, the desired permissions on the file
@@ -976,6 +996,18 @@ The currently implemented options are:
     <p>
     <b>Note</b> that this option first appeared in
     <code>proftpd-1.3.5rc4</code>.
+  </li>
+
+  <p>
+  <li><code>IgnoreSFTPSetExtendedAttributes</code><br>
+    <p>
+    Use this option to have <code>mod_sftp</code> silently ignore any
+    extended attributes sent by SFTP clients via the <code>SETSTAT</code> or
+    <code>FSETSTAT</code> SFTP requests.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc3</code>.
   </li>
 
   <p>
@@ -1015,6 +1047,21 @@ The currently implemented options are:
     <p>
     <b>Note</b> that this option first appeared in
     <code>proftpd-1.3.4rc4</code>.
+  </li>
+
+  <p>
+  <li><code>IgnoreSFTPUploadExtendedAttributes</code><br>
+    <p>
+    When an SFTP client uploads a file or creates a directory, the desired
+    extended attributes ("xattrs") on the path are sent to the server as part
+    of the upload.  (This is different from FTP, which does <b>not</b> include
+    the file attributes in an upload.) If you need more FTP-like functionality
+    for any reason and wish to have <code>mod_sftp</code> silently ignore any
+    extended attributes sent by the SFTP client, use this option.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc3</code>.
   </li>
 
   <p>
@@ -1488,7 +1535,7 @@ This means that if you wish to use your OpenSSH public keys with the
 format to the RFC4716 format.  Fortunately, this is supported by
 OpenSSH's <code>ssh-keygen</code> utility, <i>e.g.</i>:
 <pre>
-  # ssh-keygen -e -f ~/.ssh/id_rsa.pub
+  $ ssh-keygen -e -f ~/.ssh/id_rsa.pub
 </pre>
 The output from this command can be added to the
 <code>SFTPAuthorizedUserKeys</code> used by <code>mod_sftp</code>.
@@ -1906,6 +1953,11 @@ configuration, listening on the address and port that you wish, <i>e.g.</i>:
     &lt;/VirtualHost&gt;
   &lt;/IfModule&gt;
 </pre>
+<b>Note</b> that if you use the above configuration, and you wish to handle
+<b><i>any</i></b> address requested by incoming connections, use
+<code>0.0.0.0</code> as the <i>a.b.c.d</i> IP address.  <code>0.0.0.0</code>
+is known as the "wildcard address", and indicates that ProFTPD wants to listen
+on any/all addresses, on those ports.
 
 <p><a name="SFTPOnly">
 <font color=red>Question</font>: How can I configure <code>proftpd</code>
@@ -1948,6 +2000,43 @@ filed for this issue.
 Chances are that the offending line in the RFC4716 key is a "Comment: " header
 that is too long.  Simply delete that "Comment: " line; the
 <code>mod_sftp</code> ignores this header.
+
+<p><a name="SFTPAuthorizedKeyFormat">
+<font color=red>Question</font>: I generated an SSH key using
+<code>ssh-keygen</code>, then added it to my <code>authorized_keys</code> file
+using:
+<pre>
+  $ cat id_rsa.pub >> authorized_keys
+</pre>
+But logging into <code>mod_sftp</code> still prompts me for my password.
+Why?<br>
+<font color=blue>Answer</font>:  The most likely culprit is that the format
+of your <code>authorized_keys</code> file is not what <code>mod_sftp</code>
+expects.
+
+Per the <a href="#SFTPAuthorizedUserKeys"><code>SFTPAuthorizedUserKeys</code></a> documentation, <code>mod_sftp</code> expects that the keys be in RFC 4716
+format.  If your <code>authorized_keys</code> file contains data that looks
+like this:
+<pre>
+  ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDN1tCK5uHUGl....
+</pre>
+rather than looking like this:
+<pre>
+  ---- BEGIN SSH2 PUBLIC KEY ----
+  AAAAB3NzaC1yc2EAAAADAQABAAABAQDN1tCK5uHUGlpxye+KEmB0EIr9zqvMmgyNdWvJBW
+  ...
+  PZ1+hOi5QECWQYD0BpiWvj
+  ---- END SSH2 PUBLIC KEY ----
+</pre>
+Then the format of some of the keys in your <code>authorized_keys</code> file
+is wrong.  Make sure that you convert your OpenSSH-generated keys to RFC 4716
+format using <code>ssh-keygen</code>, <em>before</em> adding it to your
+<code>authorized_keys</code> file, using something like this:
+<pre>
+  $ ssh-keygen -e -f ~/.ssh/id_rsa.pub >> authorized_keys
+</pre>
+See the <a href="#UsageRFC4716Format">Usage</a> documentation for more
+information.
 
 <p><a name="SFTPPCBCModeAttacks">
 <font color=red>Question</font>: Is it true that using CBC mode ciphers in

@@ -143,7 +143,9 @@ static struct cmd_entry smtp_ids[] = {
   { NULL,	0 }
 };
 
-cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) { 
+static const char *trace_channel = "command";
+
+cmd_rec *pr_cmd_alloc(pool *p, unsigned int argc, ...) {
   pool *newpool = NULL;
   cmd_rec *cmd = NULL;
   int *xerrno = NULL;
@@ -165,7 +167,7 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   cmd->tmp_pool = make_sub_pool(cmd->pool);
   pr_pool_tag(cmd->tmp_pool, "cmd_rec tmp pool");
 
-  if (argc) {
+  if (argc > 0) {
     register unsigned int i = 0;
 
     cmd->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
@@ -246,7 +248,7 @@ int pr_cmd_get_errno(cmd_rec *cmd) {
     return -1;
   }
 
-  v = pr_table_get(cmd->notes, "errno", NULL);
+  v = (void *) pr_table_get(cmd->notes, "errno", NULL);
   if (v == NULL) {
     errno = ENOENT;
     return -1;
@@ -265,7 +267,7 @@ int pr_cmd_set_errno(cmd_rec *cmd, int xerrno) {
     return -1;
   }
 
-  v = pr_table_get(cmd->notes, "errno", NULL);
+  v = (void *) pr_table_get(cmd->notes, "errno", NULL);
   if (v == NULL) {
     errno = ENOENT;
     return -1;
@@ -324,9 +326,9 @@ int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
   return strncmp(cmd->argv[0], cmd_name, cmd_namelen + 1);
 }
 
-char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
-  char *res;
-  int argc;
+const char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
+  const char *res;
+  unsigned int argc;
   void **argv;
   pool *p;
 
@@ -336,7 +338,7 @@ char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
   }
 
   res = pr_table_get(cmd->notes, "displayable-str", NULL);
-  if (res) {
+  if (res != NULL) {
     if (str_len != NULL) {
       *str_len = strlen(res);
     }
@@ -370,7 +372,7 @@ char *pr_cmd_get_displayable_str(cmd_rec *cmd, size_t *str_len) {
   if (pr_table_add(cmd->notes, pstrdup(cmd->pool, "displayable-str"),
       pstrdup(cmd->pool, res), 0) < 0) {
     if (errno != EEXIST) {
-      pr_log_debug(DEBUG0,
+      pr_trace_msg(trace_channel, 4,
         "error setting 'displayable-str' command note: %s", strerror(errno));
     }
   }

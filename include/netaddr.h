@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2015 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -213,7 +213,7 @@ int pr_inet_pton(int, const char *, void *);
 pr_netaddr_t *pr_netaddr_alloc(pool *);
 
 /* Duplicate a netaddr using the given pool. */
-pr_netaddr_t *pr_netaddr_dup(pool *, pr_netaddr_t *);
+pr_netaddr_t *pr_netaddr_dup(pool *, const pr_netaddr_t *);
 
 /* Initialize the given netaddr. */
 void pr_netaddr_clear(pr_netaddr_t *);
@@ -228,10 +228,10 @@ void pr_netaddr_clear(pr_netaddr_t *);
  * If there is a failure in resolving the given name to its address(es),
  * NULL will be return, and an error logged.
  */
-pr_netaddr_t *pr_netaddr_get_addr(pool *, const char *, array_header **);
+const pr_netaddr_t *pr_netaddr_get_addr(pool *, const char *, array_header **);
 
 /* Like pr_netaddr_get_addr(), with the ability to specify lookup flags. */
-pr_netaddr_t *pr_netaddr_get_addr2(pool *, const char *, array_header **,
+const pr_netaddr_t *pr_netaddr_get_addr2(pool *, const char *, array_header **,
   unsigned int);
 #define PR_NETADDR_GET_ADDR_FL_INCL_DEVICE	0x001
 #define PR_NETADDR_GET_ADDR_FL_EXCL_DNS		0x002
@@ -262,7 +262,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, unsigned int);
  * the netaddr or pattern are NULL.  Otherwise, TRUE is returned if the address
  * is matched by the pattern, or FALSE if is not matched.
  */
-int pr_netaddr_fnmatch(pr_netaddr_t *, const char *, int);
+int pr_netaddr_fnmatch(const pr_netaddr_t *, const char *, int);
 #define PR_NETADDR_MATCH_DNS		0x001
 #define PR_NETADDR_MATCH_IP		0x002
 
@@ -338,18 +338,18 @@ int pr_netaddr_set_reverse_dns(int);
  * lookups have been disabled, the returned string will be the IP address.
  * Returns NULL if there was an error.
  */
-const char *pr_netaddr_get_dnsstr(pr_netaddr_t *);
+const char *pr_netaddr_get_dnsstr(const pr_netaddr_t *);
 
 /* Returns the list of DNS names associated with the given pr_netaddr_t.
  * If DNS lookups have been disabled, an empty list will be returned.
  * NULL is returned if there is an error.
  */
-array_header *pr_netaddr_get_dnsstr_list(pool *, pr_netaddr_t *);
+array_header *pr_netaddr_get_dnsstr_list(pool *, const pr_netaddr_t *);
 
 /* Returns the IP address associated with the given pr_netaddr_t.  Returns
  * NULL if there was an error.
  */
-const char *pr_netaddr_get_ipstr(pr_netaddr_t *);
+const char *pr_netaddr_get_ipstr(const pr_netaddr_t *);
 
 /* Returns the name of the local host, as returned by gethostname(2).  The
  * returned string will be dup'd from the given pool, if any.
@@ -413,8 +413,8 @@ void pr_netaddr_enable_ipv6(void);
  * netaddr information for the sesssion.  DO NOT MODIFY the pointed-to
  * memory!  Returns NULL if no such session information exists.
  */
-pr_netaddr_t *pr_netaddr_get_sess_local_addr(void);
-pr_netaddr_t *pr_netaddr_get_sess_remote_addr(void);
+const pr_netaddr_t *pr_netaddr_get_sess_local_addr(void);
+const pr_netaddr_t *pr_netaddr_get_sess_remote_addr(void);
 const char *pr_netaddr_get_sess_remote_name(void);
 void pr_netaddr_set_sess_addrs(void);
 

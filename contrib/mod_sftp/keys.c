@@ -101,9 +101,9 @@ struct sftp_pkey_data {
  * refers to the size of the modulus.  The EC size refers to the minimum
  * order of the base point on the elliptic curve.
  */
-static unsigned int keys_rsa_min_nbits = 768;
-static unsigned int keys_dsa_min_nbits = 384;
-static unsigned int keys_ec_min_nbits = 160;
+static int keys_rsa_min_nbits = 768;
+static int keys_dsa_min_nbits = 384;
+static int keys_ec_min_nbits = 160;
 
 static const char *trace_channel = "ssh2";
 
@@ -652,6 +652,11 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
     return -1;
   }
 
+  /* As the file contains sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fp, NULL, _IONBF, 0);
+
   k->host_pkey = get_page(PEM_BUFSIZE, &k->host_pkey_ptr);
   if (k->host_pkey == NULL) {
     pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
@@ -838,6 +843,7 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
 
   if (strncmp(pkey_type, "ssh-rsa", 8) == 0) {
     RSA *rsa;
+    BIGNUM *rsa_e = NULL, *rsa_n = NULL;
 
     pkey = EVP_PKEY_new();
     if (pkey == NULL) {
@@ -854,8 +860,15 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
       return NULL;
     }
 
-    rsa->e = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
-    rsa->n = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+    rsa_e = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+    rsa_n = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    RSA_set0_key(rsa, rsa_n, rsa_e, NULL);
+#else
+    rsa->e = rsa_e;
+    rsa->n = rsa_n;
+#endif /* prior to OpenSSL-1.1.0 */
 
     if (EVP_PKEY_assign_RSA(pkey, rsa) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -868,6 +881,7 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
   } else if (strncmp(pkey_type, "ssh-dss", 8) == 0) {
 #if !defined(OPENSSL_NO_DSA)
     DSA *dsa;
+    BIGNUM *dsa_p, *dsa_q, *dsa_g, *dsa_pub_key;
 
     pkey = EVP_PKEY_new();
     if (pkey == NULL) {
@@ -884,10 +898,20 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
       return NULL;
     }
 
-    dsa->p = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
-    dsa->q = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
-    dsa->g = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
-    dsa->pub_key = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+    dsa_p = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+    dsa_q = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+    dsa_g = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+    dsa_pub_key = sftp_msg_read_mpint(p, &pkey_data, &pkey_datalen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    DSA_set0_pqg(dsa, dsa_p, dsa_q, dsa_g);
+    DSA_set0_key(dsa, dsa_pub_key, NULL);
+#else
+    dsa->p = dsa_p;
+    dsa->q = dsa_q;
+    dsa->g = dsa_g;
+    dsa->pub_key = dsa_pub_key;
+#endif /* prior to OpenSSL-1.1.0 */
 
     if (EVP_PKEY_assign_DSA(pkey, dsa) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1348,13 +1372,26 @@ static void debug_rsa_key(pool *p, const char *label, RSA *rsa) {
   datalen = BIO_get_mem_data(bio, &data);
   if (data != NULL &&
       datalen > 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", label);
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", data);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",label);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%.*s",
+      (int) datalen, data);
   }
 
   BIO_free(bio);
 }
 #endif
+
+static int get_pkey_type(EVP_PKEY *pkey) {
+  int pkey_type;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  pkey_type = EVP_PKEY_id(pkey);
+#else
+  pkey_type = EVP_PKEY_type(pkey->type);
+#endif /* OpenSSL 1.1.x and later */
+
+  return pkey_type;
+}
 
 /* Compare a "blob" of pubkey data sent by the client for authentication
  * with a local file pubkey (from an RFC4716 formatted file).  Returns -1 if
@@ -1388,10 +1425,12 @@ int sftp_keys_compare_keys(pool *p,
     return -1;
   }
 
-  if (EVP_PKEY_type(remote_pkey->type) == EVP_PKEY_type(local_pkey->type)) {
-    switch (EVP_PKEY_type(remote_pkey->type)) {
+  if (get_pkey_type(remote_pkey) == get_pkey_type(local_pkey)) {
+    switch (get_pkey_type(remote_pkey)) {
       case EVP_PKEY_RSA: {
-        RSA *remote_rsa, *local_rsa;
+        RSA *remote_rsa = NULL, *local_rsa = NULL;
+        BIGNUM *remote_rsa_e = NULL, *local_rsa_e = NULL;
+        BIGNUM *remote_rsa_n = NULL, *local_rsa_n = NULL;
 
         local_rsa = EVP_PKEY_get1_RSA(local_pkey);
         if (keys_rsa_min_nbits > 0) {
@@ -1416,18 +1455,28 @@ int sftp_keys_compare_keys(pool *p,
         remote_rsa = EVP_PKEY_get1_RSA(remote_pkey);
 
 #ifdef SFTP_DEBUG_KEYS
-        debug_rsa_key(p, "client-sent RSA key:", remote_rsa);
+        debug_rsa_key(p, "remote RSA key:", remote_rsa);
         debug_rsa_key(p, "local RSA key:", local_rsa);
 #endif
 
-        if (BN_cmp(remote_rsa->e, local_rsa->e) != 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        RSA_get0_key(remote_rsa, &remote_rsa_n, &remote_rsa_e, NULL);
+        RSA_get0_key(local_rsa, &local_rsa_n, &local_rsa_e, NULL);
+#else
+        remote_rsa_e = remote_rsa->e;
+        local_rsa_e = local_rsa->e;
+        remote_rsa_n = remote_rsa->n;
+        local_rsa_n = local_rsa->n;
+#endif /* prior to OpenSSL-1.1.0 */
+
+        if (BN_cmp(remote_rsa_e, local_rsa_e) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
             "RSA key mismatch: client-sent RSA key component 'e' does not "
             "match local RSA key component 'e'");
           res = FALSE;
 
         } else {
-          if (BN_cmp(remote_rsa->n, local_rsa->n) != 0) {
+          if (BN_cmp(remote_rsa_n, local_rsa_n) != 0) {
             pr_trace_msg(trace_channel, 17, "%s",
               "RSA key mismatch: client-sent RSA key component 'n' does not "
               "match local RSA key component 'n'");
@@ -1445,7 +1494,10 @@ int sftp_keys_compare_keys(pool *p,
 
 #if !defined(OPENSSL_NO_DSA)
       case EVP_PKEY_DSA: {
-        DSA *remote_dsa, *local_dsa;
+        DSA *remote_dsa = NULL, *local_dsa = NULL;
+        BIGNUM *remote_dsa_p, *remote_dsa_q, *remote_dsa_g;
+        BIGNUM *local_dsa_p, *local_dsa_q, *local_dsa_g;
+        BIGNUM *remote_dsa_pub_key, *local_dsa_pub_key;
 
         local_dsa = EVP_PKEY_get1_DSA(local_pkey);
         if (keys_dsa_min_nbits > 0) {
@@ -1469,28 +1521,44 @@ int sftp_keys_compare_keys(pool *p,
 
         remote_dsa = EVP_PKEY_get1_DSA(remote_pkey);
 
-        if (BN_cmp(remote_dsa->p, local_dsa->p) != 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        DSA_get0_pqg(remote_dsa, &remote_dsa_p, &remote_dsa_q, &remote_dsa_g);
+        DSA_get0_pqg(local_dsa, &local_dsa_p, &local_dsa_q, &local_dsa_g);
+        DSA_get0_key(remote_dsa, &remote_dsa_pub_key, NULL);
+        DSA_get0_key(local_dsa, &local_dsa_pub_key, NULL);
+#else
+        remote_dsa_p = remote_dsa->p;
+        remote_dsa_q = remote_dsa->q;
+        remote_dsa_g = remote_dsa->g;
+        remote_dsa_pub_key = remote_dsa->pub_key;
+        local_dsa_p = local_dsa->p;
+        local_dsa_q = local_dsa->q;
+        local_dsa_g = local_dsa->g;
+        local_dsa_pub_key = local_dsa->pub_key;
+#endif /* prior to OpenSSL-1.1.0 */
+
+        if (BN_cmp(remote_dsa_p, local_dsa_p) != 0) {
           pr_trace_msg(trace_channel, 17, "%s",
             "DSA key mismatch: client-sent DSA key parameter 'p' does not "
             "match local DSA key parameter 'p'");
           res = FALSE;
 
         } else {
-          if (BN_cmp(remote_dsa->q, local_dsa->q) != 0) {
+          if (BN_cmp(remote_dsa_q, local_dsa_q) != 0) {
             pr_trace_msg(trace_channel, 17, "%s",
               "DSA key mismatch: client-sent DSA key parameter 'q' does not "
               "match local DSA key parameter 'q'");
             res = FALSE;
 
           } else {
-            if (BN_cmp(remote_dsa->g, local_dsa->g) != 0) {
+            if (BN_cmp(remote_dsa_g, local_dsa_g) != 0) {
               pr_trace_msg(trace_channel, 17, "%s",
                 "DSA key mismatch: client-sent DSA key parameter 'g' does not "
                 "match local DSA key parameter 'g'");
               res = FALSE;
 
             } else {
-              if (BN_cmp(remote_dsa->pub_key, local_dsa->pub_key) != 0) {
+              if (BN_cmp(remote_dsa_pub_key, local_dsa_pub_key) != 0) {
                 pr_trace_msg(trace_channel, 17, "%s",
                   "DSA key mismatch: client-sent DSA key parameter 'pub_key' "
                   "does not match local DSA key parameter 'pub_key'");
@@ -1567,7 +1635,7 @@ int sftp_keys_compare_keys(pool *p,
       default:
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to compare %s keys: unsupported key type",
-          get_key_type_desc(EVP_PKEY_type(remote_pkey->type)));
+          get_key_type_desc(get_pkey_type(remote_pkey)));
         errno = ENOSYS;
         break;
     }
@@ -1576,8 +1644,8 @@ int sftp_keys_compare_keys(pool *p,
     if (pr_trace_get_level(trace_channel) >= 17) {
       const char *remote_key_desc, *local_key_desc;
 
-      remote_key_desc = get_key_type_desc(EVP_PKEY_type(remote_pkey->type));
-      local_key_desc = get_key_type_desc(EVP_PKEY_type(local_pkey->type));
+      remote_key_desc = get_key_type_desc(get_pkey_type(remote_pkey));
+      local_key_desc = get_key_type_desc(get_pkey_type(local_pkey));
 
       pr_trace_msg(trace_channel, 17, "key mismatch: cannot compare %s key "
         "(client-sent) with %s key (local)", remote_key_desc, local_key_desc);
@@ -1594,7 +1662,10 @@ int sftp_keys_compare_keys(pool *p,
 
 const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
     uint32_t key_datalen, int digest_algo) {
-  EVP_MD_CTX fp_ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_MD_CTX ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+  EVP_MD_CTX *pctx;
   const EVP_MD *digest;
   char *digest_name = "none", *fp;
   unsigned char *fp_data;
@@ -1626,46 +1697,65 @@ const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
       return NULL;
   }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  pctx = EVP_MD_CTX_new();
+#else
+  pctx = &ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+
   /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
    * int.  Without these ugly OpenSSL version preprocessor checks, the
    * compiler will error out with "void value not ignored as it ought to be".
    */
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestInit(&fp_ctx, digest) != 1) {
+  if (EVP_DigestInit(pctx, digest) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing %s digest: %s", digest_name,
       sftp_crypto_get_errors());
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    EVP_MD_CTX_free(pctx);
+# endif /* OpenSSL-1.1.0 and later */
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestInit(&fp_ctx, digest);
+  EVP_DigestInit(pctx, digest);
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestUpdate(&fp_ctx, key_data, key_datalen) != 1) {
+  if (EVP_DigestUpdate(pctx, key_data, key_datalen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating %s digest: %s", digest_name, sftp_crypto_get_errors());
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    EVP_MD_CTX_free(pctx);
+# endif /* OpenSSL-1.1.0 and later */
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestUpdate(&fp_ctx, key_data, key_datalen);
+  EVP_DigestUpdate(pctx, key_data, key_datalen);
 #endif
 
   fp_data = palloc(p, EVP_MAX_MD_SIZE);
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestFinal(&fp_ctx, fp_data, &fp_datalen) != 1) {
+  if (EVP_DigestFinal(pctx, fp_data, &fp_datalen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finishing %s digest: %s", digest_name, sftp_crypto_get_errors());
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    EVP_MD_CTX_free(pctx);
+# endif /* OpenSSL-1.1.0 and later */
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestFinal(&fp_ctx, fp_data, &fp_datalen);
+  EVP_DigestFinal(pctx, fp_data, &fp_datalen);
 #endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_MD_CTX_free(pctx);
+#endif /* OpenSSL-1.1.0 and later */
 
   /* Now encode that digest in fp_data as hex characters. */
   fp = "";
@@ -1766,7 +1856,7 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
     const unsigned char *key_data, uint32_t key_datalen,
     const char *file_path, const char *agent_path) {
 
-  switch (pkey->type) {
+  switch (get_pkey_type(pkey)) {
     case EVP_PKEY_RSA: {
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
       /* In OpenSSL-0.9.7a and later, RSA blinding is turned on by default.
@@ -1994,7 +2084,7 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
     default:
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "unknown private key type (%d), ignoring", pkey->type);
+        "unknown private key type (%d), ignoring", get_pkey_type(pkey));
       EVP_PKEY_free(pkey);
       return -1;
   }
@@ -2082,31 +2172,44 @@ static int load_file_hostkey(pool *p, const char *path) {
   if (fd < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error reading '%s': %s", path, strerror(xerrno));
+    errno = xerrno;
     return -1;
   }
 
   if (has_req_perms(fd, path) < 0) {
-    if (errno == EACCES) {
+    xerrno = errno;
+
+    if (xerrno == EACCES) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "'%s' is accessible by group or world, which is not allowed", path);
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error checking '%s' perms: %s", path, strerror(errno));
+        "error checking '%s' perms: %s", path, strerror(xerrno));
     }
 
-    close(fd);
+    (void) close(fd);
+    errno = xerrno;
     return -1;
   }
 
   /* OpenSSL's APIs prefer stdio file handles. */
   fp = fdopen(fd, "r");
   if (fp == NULL) {
+    xerrno = errno;
+
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error opening stdio fp on fd %d: %s", fd, strerror(errno));
-    close(fd);
+      "error opening stdio handle on fd %d: %s", fd, strerror(xerrno));
+    (void) close(fd);
+
+    errno = xerrno;
     return -1;
   }
+
+  /* As the file contains sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fp, NULL, _IONBF, 0);
 
   if (server_pkey == NULL) {
     server_pkey = lookup_pkey();
@@ -2164,6 +2267,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
   switch (key_type) {
     case SFTP_KEY_RSA: {
       RSA *rsa;
+      BIGNUM *rsa_n = NULL, *rsa_e = NULL;
 
       rsa = EVP_PKEY_get1_RSA(sftp_rsa_hostkey->pkey);
       if (rsa == NULL) {
@@ -2175,8 +2279,15 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       /* XXX Is this buffer large enough?  Too large? */
       ptr = buf = palloc(p, buflen);
       sftp_msg_write_string(&buf, &buflen, "ssh-rsa");
-      sftp_msg_write_mpint(&buf, &buflen, rsa->e);
-      sftp_msg_write_mpint(&buf, &buflen, rsa->n);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
+#else
+      rsa_e = rsa->e;
+      rsa_n = rsa->n;
+#endif /* prior to OpenSSL-1.1.0 */
+      sftp_msg_write_mpint(&buf, &buflen, rsa_e);
+      sftp_msg_write_mpint(&buf, &buflen, rsa_n);
 
       RSA_free(rsa);
       break;
@@ -2185,6 +2296,7 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
 #if !defined(OPENSSL_NO_DSA)
     case SFTP_KEY_DSA: {
       DSA *dsa;
+      BIGNUM *dsa_p = NULL, *dsa_q = NULL, *dsa_g = NULL, *dsa_pub_key = NULL;
 
       dsa = EVP_PKEY_get1_DSA(sftp_dsa_hostkey->pkey);
       if (dsa == NULL) {
@@ -2196,10 +2308,20 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       /* XXX Is this buffer large enough?  Too large? */
       ptr = buf = palloc(p, buflen);
       sftp_msg_write_string(&buf, &buflen, "ssh-dss");
-      sftp_msg_write_mpint(&buf, &buflen, dsa->p);
-      sftp_msg_write_mpint(&buf, &buflen, dsa->q);
-      sftp_msg_write_mpint(&buf, &buflen, dsa->g);
-      sftp_msg_write_mpint(&buf, &buflen, dsa->pub_key);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      DSA_get0_pqg(dsa, &dsa_p, &dsa_q, &dsa_g);
+      DSA_get0_key(dsa, &dsa_pub_key, NULL);
+#else
+      dsa_p = dsa->p;
+      dsa_q = dsa->q;
+      dsa_g = dsa->g;
+      dsa_pub_key = dsa->pub_key;;
+#endif /* prior to OpenSSL-1.1.0 */
+      sftp_msg_write_mpint(&buf, &buflen, dsa_p);
+      sftp_msg_write_mpint(&buf, &buflen, dsa_q);
+      sftp_msg_write_mpint(&buf, &buflen, dsa_g);
+      sftp_msg_write_mpint(&buf, &buflen, dsa_pub_key);
 
       DSA_free(dsa);
       break;
@@ -2470,7 +2592,10 @@ static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
 static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   RSA *rsa;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_MD_CTX ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+  EVP_MD_CTX *pctx;
   const EVP_MD *sha1 = EVP_sha1();
   unsigned char dgst[EVP_MAX_MD_SIZE], *sig_data;
   unsigned char *buf, *ptr;
@@ -2506,9 +2631,19 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
     }
   }
 
-  EVP_DigestInit(&ctx, sha1);
-  EVP_DigestUpdate(&ctx, data, datalen);
-  EVP_DigestFinal(&ctx, dgst, &dgstlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  pctx = EVP_MD_CTX_new();
+#else
+  pctx = &ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  EVP_DigestInit(pctx, sha1);
+  EVP_DigestUpdate(pctx, data, datalen);
+  EVP_DigestFinal(pctx, dgst, &dgstlen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_MD_CTX_free(pctx);
+#endif /* OpenSSL-1.1.0 and later */
 
   sig_rsalen = RSA_size(rsa);
   sig_data = pcalloc(p, sig_rsalen);
@@ -2558,7 +2693,11 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   DSA *dsa;
   DSA_SIG *sig;
+  BIGNUM *sig_r = NULL, *sig_s = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_MD_CTX ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+  EVP_MD_CTX *pctx;
   const EVP_MD *sha1 = EVP_sha1();
   unsigned char dgst[EVP_MAX_MD_SIZE], *sig_data;
   unsigned char *buf, *ptr;
@@ -2594,9 +2733,19 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
     }
   }
 
-  EVP_DigestInit(&ctx, sha1);
-  EVP_DigestUpdate(&ctx, data, datalen);
-  EVP_DigestFinal(&ctx, dgst, &dgstlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  pctx = EVP_MD_CTX_new();
+#else
+  pctx = &ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  EVP_DigestInit(pctx, sha1);
+  EVP_DigestUpdate(pctx, data, datalen);
+  EVP_DigestFinal(pctx, dgst, &dgstlen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_MD_CTX_free(pctx);
+#endif /* OpenSSL-1.1.0 and later */
 
   sig = DSA_do_sign(dgst, dgstlen, dsa);
   if (sig == NULL) {
@@ -2610,8 +2759,15 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
   /* Got the signature, no need for the digest memory. */
   pr_memscrub(dgst, dgstlen);
 
-  rlen = BN_num_bytes(sig->r);
-  slen = BN_num_bytes(sig->s);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  DSA_SIG_get0(&sig_r, &sig_s, sig);
+#else
+  sig_r = sig->r;
+  sig_s = sig->s;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  rlen = BN_num_bytes(sig_r);
+  slen = BN_num_bytes(sig_s);
 
   /* Make sure the values of R and S are big enough. */
   if (rlen > SFTP_DSA_INTEGER_LEN ||
@@ -2629,9 +2785,9 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
    * ensure the correct placement of the R and S values in the signature,
    * per RFC 4253 Section 6.6 requirements.
    */
-  BN_bn2bin(sig->r,
+  BN_bn2bin(sig_r,
     sig_data + SFTP_DSA_SIGNATURE_LEN - SFTP_DSA_INTEGER_LEN - rlen);
-  BN_bn2bin(sig->s, sig_data + SFTP_DSA_SIGNATURE_LEN - slen);
+  BN_bn2bin(sig_s, sig_data + SFTP_DSA_SIGNATURE_LEN - slen);
 
   /* Done with the signature. */
   DSA_SIG_free(sig);
@@ -2660,7 +2816,11 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
   EVP_PKEY *pkey = NULL;
   EC_KEY *ec = NULL;
   ECDSA_SIG *sig;
+  BIGNUM *sig_r = NULL, *sig_s = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_MD_CTX ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+  EVP_MD_CTX *pctx;
   const EVP_MD *md;
   unsigned char dgst[EVP_MAX_MD_SIZE];
   unsigned char *buf, *ptr, *sig_buf, *sig_ptr;
@@ -2745,9 +2905,19 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
   buflen = bufsz = SFTP_MAX_SIG_SZ;
   ptr = buf = sftp_msg_getbuf(p, bufsz);
 
-  EVP_DigestInit(&ctx, md);
-  EVP_DigestUpdate(&ctx, data, datalen);
-  EVP_DigestFinal(&ctx, dgst, &dgstlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  pctx = EVP_MD_CTX_new();
+#else
+  pctx = &ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  EVP_DigestInit(pctx, md);
+  EVP_DigestUpdate(pctx, data, datalen);
+  EVP_DigestFinal(pctx, dgst, &dgstlen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_MD_CTX_free(pctx);
+#endif /* OpenSSL-1.1.0 and later */
 
   sig = ECDSA_do_sign(dgst, dgstlen, ec);
   if (sig == NULL) {
@@ -2765,12 +2935,19 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
    * selected, so we do no sanity checking of their lengths.
    */
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  ECDSA_SIG_get0(&sig_r, &sig_s, sig);
+#else
+  sig_r = sig->r;
+  sig_s = sig->s;
+#endif /* prior to OpenSSL-1.1.0 */
+
   /* XXX Is this buffer large enough?  Too large? */
   sig_buflen = sig_bufsz = 256;
   sig_ptr = sig_buf = palloc(p, sig_bufsz);
 
-  sftp_msg_write_mpint(&sig_buf, &sig_buflen, sig->r);
-  sftp_msg_write_mpint(&sig_buf, &sig_buflen, sig->s);
+  sftp_msg_write_mpint(&sig_buf, &sig_buflen, sig_r);
+  sftp_msg_write_mpint(&sig_buf, &sig_buflen, sig_s);
 
   /* Done with the signature. */
   ECDSA_SIG_free(sig);
@@ -2875,18 +3052,18 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
 
   switch (pubkey_type) {
     case SFTP_KEY_RSA:
-      res = (EVP_PKEY_type(pkey->type) == EVP_PKEY_RSA); 
+      res = (get_pkey_type(pkey) == EVP_PKEY_RSA);
       break;
 
     case SFTP_KEY_DSA:
-      res = (EVP_PKEY_type(pkey->type) == EVP_PKEY_DSA); 
+      res = (get_pkey_type(pkey) == EVP_PKEY_DSA);
       break;
 
 #ifdef PR_USE_OPENSSL_ECC
     case SFTP_KEY_ECDSA_256:
     case SFTP_KEY_ECDSA_384:
     case SFTP_KEY_ECDSA_521:
-      if (EVP_PKEY_type(pkey->type) == EVP_PKEY_EC) {
+      if (get_pkey_type(pkey) == EVP_PKEY_EC) {
         EC_KEY *ec;
         int ec_nid;
 
@@ -2927,7 +3104,10 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     unsigned char *signature, uint32_t signaturelen,
     unsigned char *sig_data, size_t sig_datalen) {
   EVP_PKEY *pkey;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_MD_CTX ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+  EVP_MD_CTX *pctx;
   unsigned char *sig;
   uint32_t sig_len;
   unsigned char digest[EVP_MAX_MD_SIZE];
@@ -3030,9 +3210,19 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         sig_len = (uint32_t) modulus_len;
       }
 
-      EVP_DigestInit(&ctx, EVP_sha1());
-      EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
-      EVP_DigestFinal(&ctx, digest, &digestlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      pctx = EVP_MD_CTX_new();
+#else
+      pctx = &ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+
+      EVP_DigestInit(pctx, EVP_sha1());
+      EVP_DigestUpdate(pctx, sig_data, sig_datalen);
+      EVP_DigestFinal(pctx, digest, &digestlen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      EVP_MD_CTX_free(pctx);
+#endif /* OpenSSL-1.1.0 and later */
 
       ok = RSA_verify(NID_sha1, digest, digestlen, sig, sig_len, rsa);
       if (ok == 1) {
@@ -3067,6 +3257,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     if (sig != NULL) {
       DSA *dsa;
       DSA_SIG *dsa_sig;
+      BIGNUM *sig_r, *sig_s;
       int ok;
 
       dsa = EVP_PKEY_get1_DSA(pkey);
@@ -3087,10 +3278,15 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       }
 
       dsa_sig = DSA_SIG_new();
-      dsa_sig->r = BN_new();
-      dsa_sig->s = BN_new();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      DSA_SIG_get0(&sig_r, &sig_s, dsa_sig);
+#else
+      sig_r = dsa_sig->r;
+      sig_s = dsa_sig->s;
+#endif /* prior to OpenSSL-1.1.0 */
 
-      if (BN_bin2bn(sig, 20, dsa_sig->r) == NULL) {
+      sig_r = BN_bin2bn(sig, 20, sig_r);
+      if (sig_r == NULL) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error obtaining 'r' DSA signature component: %s",
           sftp_crypto_get_errors());
@@ -3099,18 +3295,41 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         return -1;
       }
 
-      if (BN_bin2bn(sig + 20, 20, dsa_sig->s) == NULL) {
+      sig_s = BN_bin2bn(sig + 20, 20, sig_s);
+      if (sig_s == NULL) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error obtaining 's' DSA signature component: %s",
           sftp_crypto_get_errors());
+        BN_clear_free(sig_r);
         DSA_free(dsa);
         DSA_SIG_free(dsa_sig);
         return -1;
       }
 
-      EVP_DigestInit(&ctx, EVP_sha1());
-      EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
-      EVP_DigestFinal(&ctx, digest, &digestlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      pctx = EVP_MD_CTX_new();
+#else
+      pctx = &ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+
+      EVP_DigestInit(pctx, EVP_sha1());
+      EVP_DigestUpdate(pctx, sig_data, sig_datalen);
+      EVP_DigestFinal(pctx, digest, &digestlen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      EVP_MD_CTX_free(pctx);
+#endif /* OpenSSL-1.1.0 and later */
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100006L
+      DSA_SIG_set0(dsa_sig, sig_r, sig_s);
+# else
+      /* XXX What to do here? */
+# endif /* prior to OpenSSL-1.1.0-pre6 */
+#else
+      dsa_sig->r = sig_r;
+      dsa_sig->s = sig_s;
+#endif /* prior to OpenSSL-1.1.0 */
 
       ok = DSA_do_verify(digest, digestlen, dsa_sig, dsa);
       if (ok == 1) {
@@ -3163,6 +3382,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     if (sig != NULL) {
       EC_KEY *ec;
       ECDSA_SIG *ecdsa_sig;
+      BIGNUM *sig_r, *sig_s;
       const EVP_MD *md = NULL;
       int ok;
 
@@ -3173,8 +3393,15 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         return -1;
       }
 
-      ecdsa_sig->r = sftp_msg_read_mpint(p, &sig, &sig_len);
-      if (ecdsa_sig->r == NULL) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      ECDSA_SIG_get0(&sig_r, &sig_s, ecdsa_sig);
+#else
+      sig_r = ecdsa_sig->r;
+      sig_s = ecdsa_sig->s;
+#endif /* prior to OpenSSL-1.1.0 */
+
+      sig_r = sftp_msg_read_mpint(p, &sig, &sig_len);
+      if (sig_r == NULL) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error reading 'r' ECDSA signature component: %s",
           sftp_crypto_get_errors());
@@ -3182,8 +3409,8 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         return -1;
       }
 
-      ecdsa_sig->s = sftp_msg_read_mpint(p, &sig, &sig_len);
-      if (ecdsa_sig->s == NULL) {
+      sig_s = sftp_msg_read_mpint(p, &sig, &sig_len);
+      if (sig_s == NULL) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error reading 's' ECDSA signature component: %s",
           sftp_crypto_get_errors());
@@ -3205,11 +3432,32 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         md = EVP_sha512();
       }
 
-      EVP_DigestInit(&ctx, md);
-      EVP_DigestUpdate(&ctx, sig_data, sig_datalen);
-      EVP_DigestFinal(&ctx, digest, &digestlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      pctx = EVP_MD_CTX_new();
+#else
+      pctx = &ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+
+      EVP_DigestInit(pctx, md);
+      EVP_DigestUpdate(pctx, sig_data, sig_datalen);
+      EVP_DigestFinal(pctx, digest, &digestlen);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      EVP_MD_CTX_free(pctx);
+#endif /* OpenSSL-1.1.0 and later */
 
       ec = EVP_PKEY_get1_EC_KEY(pkey);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100006L
+      ECDSA_SIG_set0(ecdsa_sig, sig_r, sig_s);
+# else
+      /* XXX What to do here? */
+# endif /* prior to OpenSSL-1.1.0-pre6 */
+#else
+      ecdsa_sig->r = sig_r;
+      ecdsa_sig->s = sig_s;
+#endif /* prior to OpenSSL-1.1.0 */
 
       ok = ECDSA_do_verify(digest, digestlen, ecdsa_sig, ec);
       if (ok == 1) {

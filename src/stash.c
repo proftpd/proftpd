@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2015 The ProFTPD Project team
+ * Copyright (c) 2010-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,10 @@
 /* Symbol table hashes */
 
 #include "conf.h"
+
+#ifndef PR_SYM_POOL_SIZE
+# define PR_SYM_POOL_SIZE		128
+#endif /* PR_SYM_POOL_SIZE */
 
 /* This local structure vastly speeds up symbol lookups. */
 struct stash {
@@ -68,9 +72,9 @@ static struct stash *sym_alloc(void) {
 
   /* XXX Use a smaller pool size, since there are lots of sub-pools allocated
    * for Stash symbols.  The default pool size (PR_TUNABLE_POOL_SIZE, 512
-   * by default) is a bit large for symbols.
+   * bytes by default) is a bit large for symbols.
    */
-  sub_pool = pr_pool_create_sz(symbol_pool, 128);
+  sub_pool = pr_pool_create_sz(symbol_pool, PR_SYM_POOL_SIZE);
 
   sym = pcalloc(sub_pool, sizeof(struct stash));
   sym->sym_pool = sub_pool; 
@@ -185,21 +189,21 @@ static unsigned int sym_type_hash(pr_stash_type_t sym_type, const char *name,
 
   } else {
     register unsigned int i;
-    char buf[1024];
-    size_t clearlen;
+    char *buf;
 
-    clearlen = namelen;
-    if (clearlen > sizeof(buf)) {
-      clearlen = sizeof(buf);
+    buf = malloc(namelen+1);
+    if (buf == NULL) {
+      pr_log_pri(PR_LOG_ALERT, "Out of memory!");
+      exit(1);
     }
 
-    memset(buf, '\0', clearlen);
-
+    buf[namelen] = '\0';
     for (i = 0; i < namelen; i++) {
       buf[i] = tolower((int) name[i]);
     }
 
     hash = symtab_hash(buf, namelen);
+    free(buf);
   }
 
   return hash;

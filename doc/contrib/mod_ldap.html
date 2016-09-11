@@ -375,6 +375,7 @@ The <code>gidNumber</code> filter template is:
   (&amp;(LDAPAttr_gidNumber=%v)(objectclass=posixGroup))
 </pre>
 and the <code>memberUid</code> filter template used is:
+<pre>
   (&amp;(LDAPAttr_memberUid=%v)(objectclass=posixGroup))
 </pre>
 Note that filter templates are only supported in <code>mod_ldap</code>
@@ -545,7 +546,7 @@ Follow the normal steps for using third-party modules in proftpd:
   make install
 </pre>
 You may need to specify the location of the OpenLDAP header and library files
-in your <code>configure</i> command, <i>e.g.</i>:
+in your <code>configure</code> command, <i>e.g.</i>:
 <pre>
  ./configure --with-modules=mod_ldap \
     --with-includes=/usr/local/openldap/include \

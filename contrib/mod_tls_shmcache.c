@@ -87,9 +87,9 @@ struct sesscache_entry {
 struct sesscache_large_entry {
   time_t expires;
   unsigned int sess_id_len;
-  unsigned char *sess_id;
+  const unsigned char *sess_id;
   unsigned int sess_datalen;
-  unsigned char *sess_data;
+  const unsigned char *sess_data;
 };
 
 /* The number of entries in the list is determined at run-time, based on
@@ -356,7 +356,7 @@ static int shmcache_lock_shm(pr_fh_t *fh, int lock_type) {
  *
  * Use Perl's hashing algorithm.
  */
-static unsigned int shmcache_hash(unsigned char *id, unsigned int len) {
+static unsigned int shmcache_hash(const unsigned char *id, unsigned int len) {
   unsigned int i = 0;
   size_t sz = len;
 
@@ -638,7 +638,7 @@ static unsigned int sess_cache_flush(void) {
       if (entry->expires > now) {
         /* This entry has expired; clear its slot. */
         entry->expires = 0;
-        pr_memscrub(entry->sess_data, entry->sess_datalen);
+        pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
       }
     }
   }
@@ -670,7 +670,7 @@ static unsigned int sess_cache_flush(void) {
       } else {
         /* This entry has expired; clear its slot. */
         entry->expires = 0;
-        pr_memscrub(entry->sess_data, entry->sess_datalen);
+        pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
 
         /* Don't forget to update the stats. */
         sesscache_data->nexpired++;
@@ -740,7 +740,7 @@ static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
         min_size = sizeof(struct sesscache_data) +
           sizeof(struct sesscache_entry);
 
-        if (size < min_size) {
+        if ((size_t) size < min_size) {
           pr_trace_msg(trace_channel, 1,
             "requested size (%lu bytes) smaller than minimum size "
             "(%lu bytes), ignoring", (unsigned long) size,
@@ -909,7 +909,7 @@ static int sess_cache_close(tls_sess_cache_t *cache) {
 
         entry = &(entries[i]);
         if (entry->expires > 0) {
-          pr_memscrub(entry->sess_data, entry->sess_datalen);
+          pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
         }
       }
 
@@ -944,7 +944,7 @@ static int sess_cache_close(tls_sess_cache_t *cache) {
 }
 
 static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
-    unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
+    const unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
     SSL_SESSION *sess, int sess_len) {
   struct sesscache_large_entry *entry = NULL;
 
@@ -956,7 +956,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
 
     if (shmcache_lock_shm(sesscache_fh, F_WRLCK) == 0) {
       sesscache_data->nexceeded++;
-      if (sess_len > sesscache_data->exceeded_maxsz) {
+      if ((size_t) sess_len > sesscache_data->exceeded_maxsz) {
         sesscache_data->exceeded_maxsz = sess_len;
       }
 
@@ -983,7 +983,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
       if (entry->expires > now) {
         /* This entry has expired; clear and reuse its slot. */
         entry->expires = 0;
-        pr_memscrub(entry->sess_data, entry->sess_datalen);
+        pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
 
         break;
       }
@@ -1004,15 +1004,15 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
   entry->expires = expires;
   entry->sess_id_len = sess_id_len;
   entry->sess_id = palloc(cache->cache_pool, sess_id_len);
-  memcpy(entry->sess_id, sess_id, sess_id_len);
+  memcpy((char *) entry->sess_id, sess_id, sess_id_len);
   entry->sess_datalen = sess_len;
   entry->sess_data = palloc(cache->cache_pool, sess_len);
-  i2d_SSL_SESSION(sess, &(entry->sess_data));
+  i2d_SSL_SESSION(sess, (unsigned char **) &(entry->sess_data));
 
   return 0;
 }
 
-static int sess_cache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
+static int sess_cache_add(tls_sess_cache_t *cache, const unsigned char *sess_id,
     unsigned int sess_id_len, time_t expires, SSL_SESSION *sess) {
   register unsigned int i;
   unsigned int h, idx, last;
@@ -1156,7 +1156,7 @@ static int sess_cache_add(tls_sess_cache_t *cache, unsigned char *sess_id,
 }
 
 static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
-    unsigned char *sess_id, unsigned int sess_id_len) {
+    const unsigned char *sess_id, unsigned int sess_id_len) {
   unsigned int h, idx;
   SSL_SESSION *sess = NULL;
 
@@ -1271,7 +1271,7 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
 }
 
 static int sess_cache_delete(tls_sess_cache_t *cache,
-    unsigned char *sess_id, unsigned int sess_id_len) {
+    const unsigned char *sess_id, unsigned int sess_id_len) {
   unsigned int h, idx;
   int res;
 
@@ -1291,7 +1291,7 @@ static int sess_cache_delete(tls_sess_cache_t *cache,
       if (entry->sess_id_len == sess_id_len &&
           memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
 
-        pr_memscrub(entry->sess_data, entry->sess_datalen);
+        pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
         entry->expires = 0;
         return 0;
       }
@@ -1318,7 +1318,7 @@ static int sess_cache_delete(tls_sess_cache_t *cache,
           memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
         time_t now;
 
-        pr_memscrub(entry->sess_data, entry->sess_datalen);
+        pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
 
         if (sesscache_data->sd_listlen > 0) {
           sesscache_data->sd_listlen--;
@@ -1383,7 +1383,7 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
 
       entry = &(entries[i]);
       entry->expires = 0;
-      pr_memscrub(entry->sess_data, entry->sess_datalen);
+      pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
     }
   }
 
@@ -1399,7 +1399,7 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
     entry = &(sesscache_data->sd_entries[i]);
 
     entry->expires = 0;
-    pr_memscrub(entry->sess_data, entry->sess_datalen);
+    pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
   }
 
   res = sesscache_data->sd_listlen; 
@@ -1547,6 +1547,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
         SSL_SESSION *sess;
         TLS_D2I_SSL_SESSION_CONST unsigned char *ptr;
         time_t ts;
+        int ssl_version;
 
         ptr = entry->sess_data;
         sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen); 
@@ -1559,6 +1560,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
 
         statusf(arg, "%s", "  -----BEGIN SSL SESSION PARAMETERS-----");
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
         /* XXX Directly accessing these fields cannot be a Good Thing. */
         if (sess->session_id_length > 0) {
           char *sess_id_str;
@@ -1578,7 +1580,16 @@ static int sess_cache_status(tls_sess_cache_t *cache,
           statusf(arg, "    Session ID Context: %s", sid_ctx_str);
         }
 
-        switch (sess->ssl_version) {
+        ssl_version = sess->ssl_version;
+#else
+# if OPENSSL_VERSION_NUMBER >= 0x10100006L
+        ssl_version = SSL_SESSION_get_protocol_version(sess);
+# else
+        ssl_version = 0;
+# endif /* prior to OpenSSL-1.1.0-pre5 */
+#endif /* prior to OpenSSL-1.1.x */
+
+        switch (ssl_version) {
           case SSL3_VERSION:
             statusf(arg, "    Protocol: %s", "SSLv3");
             break;
@@ -1586,6 +1597,16 @@ static int sess_cache_status(tls_sess_cache_t *cache,
           case TLS1_VERSION:
             statusf(arg, "    Protocol: %s", "TLSv1");
             break;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+          case TLS1_1_VERSION:
+            statusf(arg, "    Protocol: %s", "TLSv1.1");
+            break;
+
+          case TLS1_2_VERSION:
+            statusf(arg, "    Protocol: %s", "TLSv1.2");
+            break;
+#endif
 
           default:
             statusf(arg, "    Protocol: %s", "unknown");
@@ -1730,7 +1751,7 @@ static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
         min_size = sizeof(struct ocspcache_data) +
           sizeof(struct ocspcache_entry);
 
-        if (size < min_size) {
+        if ((size_t) size < min_size) {
           pr_trace_msg(trace_channel, 1,
             "requested size (%lu bytes) smaller than minimum size "
             "(%lu bytes), ignoring", (unsigned long) size,
@@ -1941,7 +1962,7 @@ static int ocsp_cache_add_large_resp(tls_ocsp_cache_t *cache,
 
     if (shmcache_lock_shm(ocspcache_fh, F_WRLCK) == 0) {
       ocspcache_data->nexceeded++;
-      if (resp_derlen > ocspcache_data->exceeded_maxsz) {
+      if ((size_t) resp_derlen > ocspcache_data->exceeded_maxsz) {
         ocspcache_data->exceeded_maxsz = resp_derlen;
       }
 

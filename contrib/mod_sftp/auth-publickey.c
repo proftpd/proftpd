@@ -83,7 +83,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     const char *orig_user, const char *user, const char *service,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
   register unsigned int i;
-  int have_signature, res;
+  int fp_algo_id = 0, have_signature, res;
   enum sftp_key_type_e pubkey_type;
   unsigned char *pubkey_data;
   char *pubkey_algo = NULL;
@@ -187,8 +187,6 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
 #ifdef OPENSSL_FIPS
   if (FIPS_mode()) {
-    int fp_algo_id;
-
 # if defined(HAVE_SHA256_OPENSSL)
     fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
     fp_algo = "SHA256";
@@ -212,8 +210,6 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   } else {
 #endif /* OPENSSL_FIPS */
-    int fp_algo_id;
-
 #if defined(HAVE_SHA256_OPENSSL)
     fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
     fp_algo = "SHA256";

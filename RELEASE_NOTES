@@ -9,16 +9,41 @@ ChangeLog files.
 1.3.6rc3
 ---------
 
+  + Support for OpenSSL 1.1.x API changes.
   + mod_sftp uses SHA256 for publickey fingerprints by default, rather than
     SHA1 or MD5.
+  + mod_sql_passwd supports Scrypt and Argon2 password hashing algorithms
+    when built using libsodium.
+  + mod_sftp now supports extended attributes (xattrs) via SFTP.
+  + Fixed bug in filesystem free space calculation causing ALLO to fail
+    unexpectedly.
+  + Default FTP/SSH2 banner changed to no longer include version information.
+  + New -X command-line option for disabling forking, to aid debugging.
+  + Logging of stacktraces now enabled by default; this also means that the
+    installed executables do not have symbols stripped at install time.
 
+
+  + Changed Modules:
+
+    mod_ctrls_admin: config set/remove
+  
 
   + New Configuration Directives:
 
+    CopyOptions NoDeleteOnFailure
+
+    FSOptions IgnoreExtendedAttributes
+
+    MaxPasswordSize (Issue#318)
+
     SFTPKeyLimits (Bug#4233)
+
+    SQLPasswordCost (Bug#4154)
 
 
   + Changed Configuration Directives:
+
+    GeoIPAllowFilter, GeoIPDenyFilter (Bug#4220)
 
     MasqueradeAddress
       The MasqueradeAddress directive is now allowed in <Global> sections,
@@ -27,6 +52,20 @@ ChangeLog files.
     SFTPKeyExchanges
       The mod_sftp module now supports the "curve25519-sha256@libssh.org"
       SSH key exchange algorithm, when compiled with the libsodium library.
+
+      In addition, the following key exchange algorithms are supported:
+
+        diffie-hellman-group14-sha256
+        diffie-hellman-group16-sha512
+        diffie-hellman-group18-sha512
+
+    SFTPOptions IgnoreFIFOs, IgnoreSFTPSetExtendedAttributes, IgnoreSFTPUploadExtendedAttributes
+
+
+  + API Changes
+
+    Many of the core API have been const-ified.  This will cause build
+    warnings in many existing third-party modules.
 
 
 1.3.6rc2

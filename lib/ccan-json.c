@@ -38,17 +38,21 @@
 # define FALSE	0
 #endif
 
-#define out_of_memory() do {                    \
-		fprintf(stderr, "Out of memory.\n");    \
-		exit(EXIT_FAILURE);                     \
-	} while (0)
+/* Out-of-memory error handling. */
+static void default_oom(void)
+{
+	fprintf(stderr, "%s", "Out of memory!\n");
+	exit(EXIT_FAILURE);
+}
+
+static void (*json_oom)(void) = default_oom;
 
 /* Sadly, strdup is not portable. */
 static char *json_strdup(const char *str)
 {
 	char *ret = (char*) malloc(strlen(str) + 1);
 	if (ret == NULL)
-		out_of_memory();
+		json_oom();
 	strcpy(ret, str);
 	return ret;
 }
@@ -66,7 +70,7 @@ static void sb_init(SB *sb)
 {
 	sb->start = (char*) malloc(17);
 	if (sb->start == NULL)
-		out_of_memory();
+		json_oom();
 	sb->cur = sb->start;
 	sb->end = sb->start + 16;
 }
@@ -88,7 +92,7 @@ static void sb_grow(SB *sb, int need)
 	
 	sb->start = (char*) realloc(sb->start, alloc + 1);
 	if (sb->start == NULL)
-		out_of_memory();
+		json_oom();
 	sb->cur = sb->start + length;
 	sb->end = sb->start + alloc;
 }
@@ -375,6 +379,10 @@ static void append_member(JsonNode *object, char *key, JsonNode *value);
 static int tag_is_valid(unsigned int tag);
 static int number_is_valid(const char *num);
 
+void json_set_oom(void (*oom)(void)) {
+	json_oom = (oom != NULL ? oom : default_oom);
+}
+
 JsonNode *json_decode(const char *json)
 {
 	const char *s = json;
@@ -504,7 +512,7 @@ static JsonNode *mknode(JsonTag tag)
 {
 	JsonNode *ret = (JsonNode*) calloc(1, sizeof(JsonNode));
 	if (ret == NULL)
-		out_of_memory();
+		json_oom();
 	ret->tag = tag;
 	return ret;
 }

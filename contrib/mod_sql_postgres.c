@@ -195,14 +195,15 @@ static void sql_check_cmd(cmd_rec *cmd, char *msg) {
  * This function makes assumptions about the db_conn_t members.
  */
 static int sql_timer_cb(CALLBACK_FRAME) {
-  conn_entry_t *entry = NULL;
-  int i = 0;
-  cmd_rec *cmd = NULL;
- 
-  for (i = 0; i < conn_cache->nelts; i++) {
-    entry = ((conn_entry_t **) conn_cache->elts)[i];
+  register unsigned int i;
 
-    if (entry->timer == p2) {
+  for (i = 0; i < conn_cache->nelts; i++) {
+    conn_entry_t *entry = NULL;
+
+    entry = ((conn_entry_t **) conn_cache->elts)[i];
+    if ((unsigned long) entry->timer == p2) {
+      cmd_rec *cmd = NULL;
+
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
       cmd = sql_make_cmd(conn_pool, 2, entry->name, "1");
       cmd_close(cmd);
@@ -215,7 +216,7 @@ static int sql_timer_cb(CALLBACK_FRAME) {
 }
 
 /* build_error: constructs a modret_t filled with error information;
- *  mod_sql_postgres calls this function and returns the resulting mod_ret_t
+ *  mod_sql_postgres calls this function and returns the resulting modret_t
  *  whenever a call to the database results in an error.
  */
 static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
@@ -224,7 +225,7 @@ static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
   }
 
   return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-    PQerrorMessage(conn->postgres));
+    pstrdup(cmd->pool, PQerrorMessage(conn->postgres)));
 }
 
 /* build_data: both cmd_select and cmd_procedure potentially
@@ -236,7 +237,8 @@ static modret_t *build_data(cmd_rec *cmd, db_conn_t *conn) {
   PGresult *result = NULL;
   sql_data_t *sd = NULL;
   char **data = NULL;
-  int idx = 0, row = 0;
+  int idx = 0;
+  unsigned long row;
 
   if (conn == NULL) {
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
@@ -252,7 +254,7 @@ static modret_t *build_data(cmd_rec *cmd, db_conn_t *conn) {
     ((sd->rnum * sd->fnum) + 1));
 
   for (row = 0; row < sd->rnum; row++) {
-    int field;
+    unsigned long field;
 
     for (field = 0; field < sd->fnum; field++) {
       data[idx++] = pstrdup(cmd->tmp_pool, PQgetvalue(result, row, field));
@@ -464,8 +466,18 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* make sure we have a new conn struct */
   conn->postgres = PQconnectdb(conn->connect_string);
   if (PQstatus(conn->postgres) == CONNECTION_BAD) {
+    modret_t *mr = NULL;
+
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-    return build_error(cmd, conn);
+    mr = build_error(cmd, conn);
+
+    /* Since we failed to connect here, avoid a memory leak by freeing up the
+     * postgres conn struct.
+     */
+    PQfinish(conn->postgres);
+    conn->postgres = NULL;
+
+    return mr;
   }
 
 #if defined(PG_VERSION_STR)
@@ -610,8 +622,10 @@ MODRET cmd_close(cmd_rec *cmd) {
    * timers.
    */
   if (((--entry->connections) == 0) || ((cmd->argc == 2) && (cmd->argv[1]))) {
-    PQfinish(conn->postgres);
-    conn->postgres = NULL;
+    if (conn->postgres != NULL) {
+      PQfinish(conn->postgres);
+      conn->postgres = NULL;
+    }
     entry->connections = 0;
 
     if (entry->timer) {
@@ -899,7 +913,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
-  int cnt = 0;
+  unsigned long cnt = 0;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_select");
@@ -949,8 +963,8 @@ MODRET cmd_select(cmd_rec *cmd) {
        * and put the query string together later once we know what they are.
        */
     
-      for (cnt=5; cnt < cmd->argc; cnt++) {
-	if ((cmd->argv[cnt]) && !strcasecmp("DISTINCT",cmd->argv[cnt])) {
+      for (cnt = 5; cnt < cmd->argc; cnt++) {
+	if ((cmd->argv[cnt]) && !strcasecmp("DISTINCT", cmd->argv[cnt])) {
 	  query = pstrcat(cmd->tmp_pool, "DISTINCT ", query, NULL);
 	}
       }

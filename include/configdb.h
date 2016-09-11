@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ struct config_struc {
   struct pool_rec *pool;	/* Memory pool for this object */
   xaset_t *set;			/* The set we are stored in */
   char *name;
-  int argc;
+  unsigned int argc;
   void **argv;
 
   long flags;			/* Flags */
@@ -87,11 +87,11 @@ struct config_struc {
 
 config_rec *add_config_set(xaset_t **, const char *);
 config_rec *add_config(struct server_struc *, const char *);
-config_rec *add_config_param(const char *, int, ...);
-config_rec *add_config_param_str(const char *, int, ...);
-config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
+config_rec *add_config_param(const char *, unsigned int, ...);
+config_rec *add_config_param_str(const char *, unsigned int, ...);
+config_rec *add_config_param_set(xaset_t **, const char *, unsigned int, ...);
 config_rec *pr_conf_add_server_config_param_str(struct server_struc *,
-  const char *, int, ...);
+  const char *, unsigned int, ...);
 
 /* Flags used when searching for specific config_recs in the in-memory
  * config database, particularly when 'recurse' is TRUE.
@@ -109,11 +109,13 @@ config_rec *find_config(xaset_t *, int, const char *, int);
 config_rec *find_config2(xaset_t *, int, const char *, int, unsigned long);
 void find_config_set_top(config_rec *);
 
-int remove_config(xaset_t *, const char *, int);
+int remove_config(xaset_t *set, const char *name, int recurse);
 
 #define PR_CONFIG_FL_INSERT_HEAD	0x001
+#define PR_CONFIG_FL_PRESERVE_ENTRY	0x002
 config_rec *pr_config_add_set(xaset_t **, const char *, int);
 config_rec *pr_config_add(struct server_struc *, const char *, int);
+int pr_config_remove(xaset_t *set, const char *name, int flags, int recurse);
 
 /* Returns the assigned ID for the provided directive name, or zero
  * if no ID mapping was found.

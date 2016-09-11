@@ -39,6 +39,12 @@ int pr_parser_prepare(pool *p, xaset_t **parsed_servers);
  */
 int pr_parser_cleanup(void);
 
+/* Called to push a "start-of-context" configuration marker onto the
+ * parser stack.  The name of the configuration context (.e.g "Directory"
+ * or "Anonymous") is provided by the name parameter.
+ */
+config_rec *pr_parser_config_ctxt_open(const char *name);
+
 /* Called to push an "end-of-context" configuration marker onto the
  * parser stack.  If the parser determines that the configuration
  * context being closed is empty, it will remove the entire context from
@@ -47,16 +53,16 @@ int pr_parser_cleanup(void);
  */
 config_rec *pr_parser_config_ctxt_close(int *isempty);
 
+/* Push the config_rec onto the parser stack directly.  This function can
+ * be used, instead of the open/close semantics, for cases where the config_rec
+ * is constructed by means other than file parsing.
+ */
+int pr_parser_config_ctxt_push(config_rec *c);
+
 /* Returns a pointer to the current configuration record on the parser
  * configuration stack.
  */
 config_rec *pr_parser_config_ctxt_get(void);
-
-/* Called to push a "start-of-context" configuration marker onto the
- * parser stack.  The name of the configuration context (.e.g "Directory"
- * or "Anonymous") is provided by the name parameter.
- */
-config_rec *pr_parser_config_ctxt_open(const char *name);
 
 /* Returns the line number of the configuration stream being parsed. */
 unsigned int pr_parser_get_lineno(void);
@@ -100,6 +106,13 @@ cmd_rec *pr_parser_parse_line(pool *p, const char *text, size_t text_len);
  */
 char *pr_parser_read_line(char *buf, size_t bufsz);
 
+/* Called to push a "start-of-server" configuration marker onto the
+ * parser stack.  The name of the server context, usually a string
+ * containing a DNS name or an IP address, is provided by the addrstr
+ * parameter.
+ */
+server_rec *pr_parser_server_ctxt_open(const char *addrstr);
+
 /* Called to push an "end-of-server" configuration record onto the
  * parser stack.  If the parser determines that the server context being
  * closed is empty, it will remove the entire context from the parser stacks:
@@ -107,17 +120,16 @@ char *pr_parser_read_line(char *buf, size_t bufsz);
  */
 server_rec *pr_parser_server_ctxt_close(void);
 
+/* Push the server_rec onto the parser stack directly.  This function can
+ * be used, instead of the open/close semantics, for cases where the server_rec
+ * is constructed by means other than file parsing.
+ */
+int pr_parser_server_ctxt_push(server_rec *s);
+
 /* Returns a pointer to the current server record on the parser server
  * stack.
  */
 server_rec *pr_parser_server_ctxt_get(void);
-
-/* Called to push a "start-of-server" configuration marker onto the
- * parser stack.  The name of the server context, usually a string
- * containing a DNS name or an IP address, is provided by the addrstr
- * parameter.
- */
-server_rec *pr_parser_server_ctxt_open(const char *addrstr);
 
 /* Configure optional Include behavior. Returns the previously set options. */
 unsigned long pr_parser_set_include_opts(unsigned long opts);

@@ -207,6 +207,9 @@ clean:
 
 distclean: clean
 	cd lib/ && $(MAKE) distclean
+	cd modules/ && $(MAKE) distclean
+	cd src/ && $(MAKE) distclean
+	cd utils/ && $(MAKE) distclean
 	rm -f Makefile Make.modules Make.rules \
 	      contrib/Makefile include/Makefile lib/Makefile \
 	      locale/Makefile modules/Makefile src/Makefile \

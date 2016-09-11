@@ -181,14 +181,14 @@ static int generate_code(pool *p, const char *key, size_t key_len) {
 
 static const char *generate_secret(pool *p) {
   int res;
-  unsigned char encoded[18], rand[32];
+  unsigned char encoded[18], rnd[32];
   size_t encoded_len;
   const char *secret;
   const unsigned char *ptr;
 
-  if (RAND_bytes(rand, sizeof(rand)) != 1) {
+  if (RAND_bytes(rnd, sizeof(rnd)) != 1) {
     fprintf(stderr, "Error obtaining %lu bytes of random data:\n",
-      (unsigned long) sizeof(rand));
+      (unsigned long) sizeof(rnd));
     ERR_print_errors_fp(stderr);
     errno = EPERM;
     return NULL;
@@ -196,7 +196,7 @@ static const char *generate_secret(pool *p) {
 
   encoded_len = sizeof(encoded);
   ptr = encoded;
-  res = auth_otp_base32_encode(p, rand, sizeof(rand), &ptr, &encoded_len);
+  res = auth_otp_base32_encode(p, rnd, sizeof(rnd), &ptr, &encoded_len);
   if (res < 0) {
     return NULL;
   }
@@ -247,7 +247,9 @@ int main(int argc, char **argv) {
 
   auth_otp_pool = make_sub_pool(NULL);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
   ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
 

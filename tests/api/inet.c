@@ -45,6 +45,10 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("inet", 0, 0);
+  }
+
   pr_inet_set_default_family(p, 0);
   pr_inet_clear();
 
@@ -52,11 +56,9 @@ static void tear_down(void) {
     destroy_pool(p);
     p = permanent_pool = NULL;
   } 
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_set_levels("inet", 0, 0);
-  }
 }
+
+/* Tests */
 
 START_TEST (inet_family_test) {
   int res;
@@ -496,7 +498,7 @@ END_TEST
 START_TEST (inet_connect_ipv4_test) {
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_inet_connect(NULL, NULL, NULL, port);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -556,7 +558,7 @@ START_TEST (inet_connect_ipv6_test) {
 #ifdef PR_USE_IPV6
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
   unsigned char use_ipv6;
 
   use_ipv6 = pr_netaddr_use_ipv6();
@@ -626,7 +628,7 @@ END_TEST
 START_TEST (inet_connect_nowait_test) {
   int sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_inet_connect_nowait(NULL, NULL, NULL, port);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -728,7 +730,7 @@ END_TEST
 START_TEST (inet_openrw_test) {
   int sockfd = -1, port = INPORT_ANY;
   conn_t *conn, *res;
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   res = pr_inet_openrw(NULL, NULL, NULL, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
   fail_unless(res == NULL, "Failed to handle null arguments");

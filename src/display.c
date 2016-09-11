@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2015 The ProFTPD Project team
+ * Copyright (c) 2004-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -142,23 +142,22 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
   struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   int len, res;
-  unsigned int *current_clients = NULL;
-  unsigned int *max_clients = NULL;
+  const unsigned int *current_clients = NULL;
+  const unsigned int *max_clients = NULL;
   off_t fs_size = 0;
   pool *p;
-  void *v;
+  const void *v;
   xaset_t *s;
   config_rec *c = NULL;
+  const char *mg_time, *outs = NULL, *rfc1413_ident = NULL, *user;
   const char *serverfqdn = main_server->ServerFQDN;
-  char *outs, mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
+  char mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
     mg_max[12] = "unlimited";
   char total_files_in[12] = {'\0'}, total_files_out[12] = {'\0'},
     total_files_xfer[12] = {'\0'};
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
     mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
-  char mg_xfer_units[12] = {'\0'}, *user;
-  const char *mg_time;
-  char *rfc1413_ident = NULL;
+  char mg_xfer_units[12] = {'\0'};
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
@@ -197,7 +196,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
 
   if (session.conn_class != NULL &&
       session.conn_class->cls_name != NULL) {
-    unsigned int *class_clients = NULL;
+    const unsigned int *class_clients = NULL;
     config_rec *maxc = NULL;
     unsigned int maxclients = 0;
 

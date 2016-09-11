@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
- *
  * Copyright (c) 2002-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
@@ -84,7 +83,7 @@ struct exec_event_data {
 
 /* Prototypes */
 static void exec_any_ev(const void *, void *);
-static char *exec_subst_var(pool *, char *, cmd_rec *);
+static const char *exec_subst_var(pool *, const char *, cmd_rec *);
 static int exec_log(const char *, ...)
 #ifdef __GNUC__
       __attribute__ ((format (printf, 1, 2)));
@@ -498,7 +497,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       /* Perform any required substitution on the command arguments. */
       for (i = 3; i < c->argc; i++) {
         pr_signals_handle();
-        c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
+        c->argv[i] = (void *) exec_subst_var(tmp_pool, c->argv[i], cmd);
       }
 
     } else {
@@ -638,7 +637,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       for (i = 3; i < c->argc && c->argv[i] != NULL; i++) {
         pr_signals_handle();
 
-        c->argv[i] = exec_subst_var(tmp_pool, c->argv[i], cmd);
+        c->argv[i] = (void *) exec_subst_var(tmp_pool, c->argv[i], cmd);
 
         /* Write the argument to stdin, terminated by a newline. */
         if (write(exec_stdin_pipe[1], c->argv[i], strlen(c->argv[i])) < 0) {
@@ -926,23 +925,26 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 }
 
 /* Perform any substitution of "magic cookie" values. */
-static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
+static const char *exec_subst_var(pool *tmp_pool, const char *varstr,
+    cmd_rec *cmd) {
   char *ptr = NULL;
 
-  if (!varstr)
+  if (varstr == NULL) {
     return NULL;
+  }
 
   ptr = strstr(varstr, "%a");
   if (ptr != NULL) {
-    pr_netaddr_t *remote_addr = pr_netaddr_get_sess_remote_addr();
+    const pr_netaddr_t *remote_addr;
 
-    varstr = sreplace(tmp_pool, varstr, "%a", remote_addr ?
-        pr_netaddr_get_ipstr(remote_addr) : "", NULL);
+    remote_addr = pr_netaddr_get_sess_remote_addr();
+    varstr = sreplace(tmp_pool, varstr, "%a",
+      remote_addr ? pr_netaddr_get_ipstr(remote_addr) : "", NULL);
   }
 
   ptr = strstr(varstr, "%A");
   if (ptr != NULL) {
-    char *anon_pass;
+    const char *anon_pass;
 
     anon_pass = pr_table_get(session.notes, "mod_auth.anon-passwd", NULL);
     if (anon_pass == NULL) {
@@ -1065,17 +1067,19 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
 
   ptr = strstr(varstr, "%h");
   if (ptr != NULL) {
-    const char *remote_name = pr_netaddr_get_sess_remote_name();
+    const char *remote_name;
 
-    varstr = sreplace(tmp_pool, varstr, "%h", 
+    remote_name = pr_netaddr_get_sess_remote_name();
+    varstr = sreplace(tmp_pool, varstr, "%h",
       remote_name ? remote_name : "", NULL);
   }
 
   ptr = strstr(varstr, "%l");
   if (ptr != NULL) {
-    char *rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
-      NULL);
+    const char *rfc1413_ident;
 
+    rfc1413_ident = pr_table_get(session.notes, "mod_ident.rfc1413-ident",
+      NULL);
     if (rfc1413_ident == NULL) {
       rfc1413_ident = "UNKNOWN";
     }
@@ -1103,10 +1107,9 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
 
   ptr = strstr(varstr, "%U");
   if (ptr != NULL) {
-    char *user;
+    const char *user;
 
     user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-
     varstr = sreplace(tmp_pool, varstr, "%U",
       user ? user : "", NULL);
   }
@@ -1132,12 +1135,13 @@ static char *exec_subst_var(pool *tmp_pool, char *varstr, cmd_rec *cmd) {
   ptr = strstr(varstr, "%w");
   if (ptr != NULL &&
       cmd != NULL) {
-    char *rnfr_path = "-";
+    const char *rnfr_path = "-";
 
     if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
-      if (rnfr_path == NULL)
+      if (rnfr_path == NULL) {
         rnfr_path = "-";
+      }
     }
 
     varstr = sreplace(tmp_pool, varstr, "%w", rnfr_path, NULL);

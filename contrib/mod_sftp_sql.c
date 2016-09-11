@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_sftp_sql -- SQL backend module for retrieving authorized keys
- *
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,10 +50,10 @@ struct sqlstore_data {
 
 static const char *trace_channel = "ssh2";
 
-static cmd_rec *sqlstore_cmd_create(pool *parent_pool, int argc, ...) {
+static cmd_rec *sqlstore_cmd_create(pool *parent_pool, unsigned int argc, ...) {
+  register unsigned int i = 0;
   pool *cmd_pool = NULL;
   cmd_rec *cmd = NULL;
-  register unsigned int i = 0;
   va_list argp;
 
   cmd_pool = make_sub_pool(parent_pool);

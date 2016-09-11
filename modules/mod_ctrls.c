@@ -297,7 +297,7 @@ static void ctrls_cls_read(void) {
       }
 
       if (ctrl->ctrls_cb_args) {
-        int reqargc = ctrl->ctrls_cb_args->nelts;
+        unsigned int reqargc = ctrl->ctrls_cb_args->nelts;
         char **reqargv = ctrl->ctrls_cb_args->elts;
 
         /* Reconstruct the original request string from the client for
@@ -379,7 +379,7 @@ static int ctrls_cls_write(void) {
 
       if (cl->cl_ctrls != NULL &&
           cl->cl_ctrls->nelts > 0) {
-        register int i = 0;
+        register unsigned int i = 0;
         pr_ctrls_t **ctrlv = NULL;
 
         ctrlv = (pr_ctrls_t **) cl->cl_ctrls->elts;
@@ -398,9 +398,9 @@ static int ctrls_cls_write(void) {
 
               } else {
                 /* For logging/accounting purposes */
-                register int j = 0;
+                register unsigned int j = 0;
                 int respval = (ctrlv[i])->ctrls_cb_retval;
-                int respargc = (ctrlv[i])->ctrls_cb_resps->nelts;
+                unsigned int respargc = (ctrlv[i])->ctrls_cb_resps->nelts;
                 char **respargv = (ctrlv[i])->ctrls_cb_resps->elts;
 
                 pr_ctrls_log(MOD_CTRLS_VERSION,

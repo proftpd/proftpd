@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
- *
  * Copyright (c) 2007-2016 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
@@ -443,7 +442,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
       len = dir_readlink(info->pool, path, link_path, link_pathsz-1,
         PR_DIR_READLINK_FL_HANDLE_REL_PATH);
       if (len > 0 &&
-          len < link_pathsz) {
+          (size_t) len < link_pathsz) {
         char *best_path;
 
         best_path = dir_best_path(info->pool, link_path);
@@ -516,7 +515,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
             return -1;
           }
 
-          if (targetlen >= sizeof(target)-1) {
+          if ((size_t) targetlen >= sizeof(target)-1) {
             targetlen = sizeof(target)-1;
           }
 

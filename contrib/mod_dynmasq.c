@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_dynmasq -- a module for dynamically updating MasqueradeAddress
  *                         configurations, as when DynDNS names are used
- *
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,7 +61,7 @@ static void dynmasq_refresh(void) {
     c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
       const char *masq_addr;
-      pr_netaddr_t *na;
+      const pr_netaddr_t *na;
 
       masq_addr = c->argv[1];
 
@@ -86,7 +85,7 @@ static void dynmasq_refresh(void) {
            * a minor memory leak, as there currently isn't a way to free
            * the memory used by a netaddr object.  Hrm.
            */
-          c->argv[0] = na;
+          c->argv[0] = (void *) na;
 
         } else {
           pr_log_debug(DEBUG2, MOD_DYNMASQ_VERSION

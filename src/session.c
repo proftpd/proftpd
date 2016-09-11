@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2015 The ProFTPD Project team
+ * Copyright (c) 2009-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -144,7 +144,7 @@ void pr_session_end(int flags) {
 #endif /* PR_DEVEL_PROFILE */
 }
 
-const char *pr_session_get_disconnect_reason(char **details) {
+const char *pr_session_get_disconnect_reason(const char **details) {
   const char *reason_str = NULL;
 
   switch (session.disconnect_reason) {
@@ -255,7 +255,7 @@ void pr_session_send_banner(server_rec *s, int flags) {
 
   masq = find_config(s->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
   if (masq != NULL) {
-    pr_netaddr_t *masq_addr = NULL;
+    const pr_netaddr_t *masq_addr = NULL;
 
     if (masq->argv[0] != NULL) {
       masq_addr = masq->argv[0];
@@ -276,7 +276,7 @@ void pr_session_send_banner(server_rec *s, int flags) {
         /* Stash the resolved pr_netaddr_t in the config_rec, so that other
          * code paths will find it (within this session process).
          */
-        masq->argv[0] = masq_addr;
+        masq->argv[0] = (void *) masq_addr;
 
       } else {
         pr_log_debug(DEBUG5, "unable to resolve '%s'", name);
@@ -297,7 +297,9 @@ void pr_session_send_banner(server_rec *s, int flags) {
 
     if (c &&
         c->argc > 1) {
-      char *server_ident = c->argv[1];
+      const char *server_ident;
+
+      server_ident = c->argv[1];
 
       if (strstr(server_ident, "%L") != NULL) {
         server_ident = sreplace(session.pool, server_ident, "%L",
@@ -330,22 +332,20 @@ void pr_session_send_banner(server_rec *s, int flags) {
                *defer_welcome == TRUE) {
 
       if (flags & PR_DISPLAY_FL_SEND_NOW) {
-        pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server ready.");
+        pr_response_send(R_220, _("ProFTPD Server ready."));
 
       } else {
-        pr_response_add(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server ready.");
+        pr_response_add(R_220, _("ProFTPD Server ready."));
       }
 
     } else {
       if (flags & PR_DISPLAY_FL_SEND_NOW) {
-        pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server (%s) [%s]", s->ServerName, serveraddress);
+        pr_response_send(R_220, _("ProFTPD Server (%s) [%s]"), s->ServerName,
+          serveraddress);
 
       } else {
-        pr_response_add(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-          " Server (%s) [%s]", s->ServerName, serveraddress);
+        pr_response_add(R_220, _("ProFTPD Server (%s) [%s]"), s->ServerName,
+          serveraddress);
       }
     }
 
@@ -360,7 +360,7 @@ void pr_session_send_banner(server_rec *s, int flags) {
 }
 
 int pr_session_set_idle(void) {
-  char *user = NULL;
+  const char *user = NULL;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_BEGIN_IDLE, time(NULL),

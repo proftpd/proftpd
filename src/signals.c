@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2015 The ProFTPD Project team
+ * Copyright (c) 2014-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,9 +44,7 @@ int have_dead_child = FALSE;
 volatile unsigned int recvd_signal_flags = 0;
 
 static RETSIGTYPE sig_terminate(int);
-#ifdef PR_DEVEL_STACK_TRACE
 static void install_stacktrace_handler(void);
-#endif /* PR_DEVEL_STACK_TRACE */
 
 /* Used to capture an "unknown" signal value that causes termination. */
 static int term_signo = 0;
@@ -159,12 +157,11 @@ static void handle_terminate_other(void) {
   finish_terminate();
 }
 
-#ifdef PR_DEVEL_STACK_TRACE
 static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
-  register unsigned i;
-# if defined(HAVE_UCONTEXT_H)
+  register int i;
+#if defined(HAVE_UCONTEXT_H)
   ucontext_t *uc = NULL;
-# endif /* !HAVE_UCONTEXT_H */
+#endif /* !HAVE_UCONTEXT_H */
   void *trace[PR_TUNABLE_CALLER_DEPTH];
   char **strings;
   int tracesz;
@@ -179,15 +176,15 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
     pr_log_pri(PR_LOG_ERR, "backtrace(3) error: %s", strerror(errno));
   }
 
-# if defined(HAVE_UCONTEXT_H)
+#if defined(HAVE_UCONTEXT_H)
   /* Overwrite sigaction with caller's address */
   uc = (ucontext_t *) ptr;
-#  if defined(REG_EIP)
+# if defined(REG_EIP)
   trace[1] = (void *) uc->uc_mcontext.gregs[REG_EIP];
-#  elif defined(REG_RIP)
+# elif defined(REG_RIP)
   trace[1] = (void *) uc->uc_mcontext.gregs[REG_RIP];
-#  endif
-# endif /* !HAVE_UCONTEXT_H */
+# endif
+#endif /* !HAVE_UCONTEXT_H */
 
   strings = backtrace_symbols(trace, tracesz);
   if (strings == NULL) {
@@ -204,7 +201,6 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   sig_terminate(signo);
   finish_terminate();
 }
-#endif /* PR_DEVEL_STACK_TRACE */
 
 static void handle_xcpu(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
@@ -317,9 +313,7 @@ static RETSIGTYPE sig_terminate(int signo) {
     pr_log_pri(PR_LOG_INFO, "%s session closed.",
       pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
 
-#ifdef PR_DEVEL_STACK_TRACE
     install_stacktrace_handler();
-#endif /* PR_DEVEL_STACK_TRACE */
 
   } else if (signo == SIGTERM) {
     recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
@@ -335,7 +329,6 @@ static RETSIGTYPE sig_terminate(int signo) {
   }
 }
 
-#ifdef PR_DEVEL_STACK_TRACE
 static void install_stacktrace_handler(void) {
   struct sigaction action;
 
@@ -348,20 +341,19 @@ static void install_stacktrace_handler(void) {
       "unable to install SIGSEGV stacktrace signal handler: %s",
       strerror(errno));
   }
-# ifdef SIGBUS
+#ifdef SIGBUS
   if (sigaction(SIGBUS, &action, NULL) < 0) {
     pr_log_pri(PR_LOG_NOTICE,
       "unable to install SIGBUS stacktrace signal handler: %s",
       strerror(errno));
   }
-# endif /* SIGBUS */
+#endif /* SIGBUS */
   if (sigaction(SIGXCPU, &action, NULL) < 0) {
     pr_log_pri(PR_LOG_NOTICE,
       "unable to install SIGXCPU stacktrace signal handler: %s",
       strerror(errno));
   }
 }
-#endif /* PR_DEVEL_STACK_TRACE */
 
 /* This function is to handle the dispatching of actions based on
  * signals received by the signal handlers, to avoid signal handler-based
@@ -598,30 +590,8 @@ int init_signals(void) {
       strerror(errno));
   }
 
-#ifdef PR_DEVEL_STACK_TRACE
   /* Installs stacktrace handlers for SIGSEGV, SIGXCPU, and SIGBUS. */
   install_stacktrace_handler();
-#else
-  if (signal(SIGSEGV, sig_terminate) == SIG_ERR) {
-    pr_log_pri(PR_LOG_NOTICE,
-      "unable to install SIGSEGV (signal %d) handler: %s", SIGSEGV,
-      strerror(errno));
-  }
-
-  if (signal(SIGXCPU, sig_terminate) == SIG_ERR) {
-    pr_log_pri(PR_LOG_NOTICE,
-      "unable to install SIGXCPU (signal %d) handler: %s", SIGXCPU,
-      strerror(errno));
-  }
-
-# ifdef SIGBUS
-  if (signal(SIGBUS, sig_terminate) == SIG_ERR) {
-    pr_log_pri(PR_LOG_NOTICE,
-      "unable to install SIGBUS (signal %d) handler: %s", SIGBUS,
-      strerror(errno));
-  }
-# endif /* SIGBUS */
-#endif /* PR_DEVEL_STACK_TRACE */
 
   /* Ignore SIGALRM; this will be changed when a timer is registered. But
    * this will prevent SIGALRMs from killing us if we don't currently have

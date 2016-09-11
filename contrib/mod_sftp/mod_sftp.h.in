@@ -43,9 +43,6 @@
 # define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
-/* Define if you have the <sodium.h> header.  */
-#undef HAVE_SODIUM_H
-
 /* Define if you have the <zlib.h> header.  */
 #undef HAVE_ZLIB_H
 
@@ -95,7 +92,11 @@
 #endif /* PR_USE_OPENSSL_ECC */
 
 #define SFTP_ID_PREFIX		"SSH-2.0-"
-#define SFTP_ID_DEFAULT_STRING	SFTP_ID_PREFIX MOD_SFTP_VERSION
+
+/* Omit the version information in the default banner.  Sites wishing to use
+ * or see that version information can configure it explicitly via ServerIdent.
+ */
+#define SFTP_ID_DEFAULT_STRING	SFTP_ID_PREFIX "mod_sftp"
 
 /* mod_sftp session state flags */
 #define SFTP_SESS_STATE_HAVE_KEX	0x00001
@@ -116,6 +117,9 @@
 #define SFTP_OPT_ALLOW_INSECURE_LOGIN		0x0200
 #define SFTP_OPT_INSECURE_HOSTKEY_PERMS		0x0400
 #define SFTP_OPT_ALLOW_WEAK_DH			0x0800
+#define SFTP_OPT_IGNORE_FIFOS			0x1000
+#define SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS	0x2000
+#define SFTP_OPT_IGNORE_SFTP_SET_XATTRS		0x2000
 
 /* mod_sftp service flags */
 #define SFTP_SERVICE_FL_SFTP		0x0001

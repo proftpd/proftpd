@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -89,12 +89,12 @@ static void ensure_open_passwd(pool *p) {
   pr_auth_getgrent(p);
 }
 
-static char *get_default_chdir(pool *p) {
+static const char *get_default_chdir(pool *p) {
   config_rec *c;
-  char *path = NULL;
+  const char *path = NULL;
 
   c = find_config(main_server->conf, CONF_PARAM, "DefaultChdir", FALSE);
-  while (c) {
+  while (c != NULL) {
     int res;
 
     pr_signals_handle();
@@ -119,16 +119,16 @@ static char *get_default_chdir(pool *p) {
     path = pdircat(p, session.cwd, path, NULL);
   }
 
-  if (path) {
+  if (path != NULL) {
     path = path_subst_uservar(p, &path);
   }
 
   return path;
 }
 
-static char *get_default_root(pool *p) {
+static const char *get_default_root(pool *p) {
   config_rec *c;
-  char *path = NULL;
+  const char *path = NULL;
 
   c = find_config(main_server->conf, CONF_PARAM, "DefaultRoot", FALSE);
   while (c) {
@@ -302,9 +302,9 @@ static void set_userauth_methods(void) {
 static int setup_env(pool *p, char *user) {
   struct passwd *pw;
   config_rec *c;
-  int login_acl, i, res, show_symlinks = FALSE, xerrno;
+  int login_acl, i, res, root_revoke = TRUE, show_symlinks = FALSE, xerrno;
   struct stat st;
-  char *default_chdir, *default_root, *home_dir;
+  const char *default_chdir, *default_root, *home_dir;
   const char *sess_ttyname = NULL, *xferlog = NULL;
   cmd_rec *cmd;
 
@@ -376,7 +376,7 @@ static int setup_env(pool *p, char *user) {
    * incorrect value (Bug#3421).
    */
 
-  pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
+  pw->pw_dir = (char *) path_subst_uservar(p, (const char **) &pw->pw_dir);
 
   if (session.gids == NULL &&
       session.groups == NULL) {
@@ -398,7 +398,7 @@ static int setup_env(pool *p, char *user) {
   home_dir = dir_realpath(p, pw->pw_dir);
   PRIVS_RELINQUISH
 
-  if (home_dir) {
+  if (home_dir != NULL) {
     sstrncpy(session.cwd, home_dir, sizeof(session.cwd));
 
   } else {
@@ -406,7 +406,7 @@ static int setup_env(pool *p, char *user) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "CreateHome", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (*((unsigned char *) c->argv[0]) == TRUE) {
       if (create_home(p, session.cwd, user, pw->pw_uid, pw->pw_gid) < 0) {
         return -1;
@@ -415,7 +415,7 @@ static int setup_env(pool *p, char *user) {
   }
 
   default_chdir = get_default_chdir(p);
-  if (default_chdir) {
+  if (default_chdir != NULL) {
     default_chdir = dir_abs_path(p, default_chdir, TRUE);
     sstrncpy(session.cwd, default_chdir, sizeof(session.cwd));
   }
@@ -505,8 +505,10 @@ static int setup_env(pool *p, char *user) {
   PRIVS_RELINQUISH
 
   if (res < 0) {
-    pr_log_pri(PR_LOG_WARNING, "unable to set process groups: %s",
-      strerror(xerrno));
+    if (xerrno != ENOSYS) {
+      pr_log_pri(PR_LOG_WARNING, "unable to set process groups: %s",
+        strerror(xerrno));
+    }
   }
 
   default_root = get_default_root(session.pool);
@@ -540,12 +542,27 @@ static int setup_env(pool *p, char *user) {
 
   /* Should we give up root privs completely here? */
   c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
-  if (c != NULL &&
-      *((int *) c->argv[0]) == FALSE) {
-    pr_log_debug(DEBUG8, MOD_SFTP_VERSION
-      ": retaining root privileges per RootRevoke setting");
+  if (c != NULL) {
+    root_revoke = *((int *) c->argv[0]);
+
+    if (root_revoke == FALSE) {
+      pr_log_debug(DEBUG8, MOD_SFTP_VERSION
+        ": retaining root privileges per RootRevoke setting");
+    }
 
   } else {
+    /* Do a recursive look for any UserOwner directives; honoring that
+     * configuration also requires root privs.
+     */
+    c = find_config(main_server->conf, CONF_PARAM, "UserOwner", TRUE);
+    if (c != NULL) {
+      pr_log_debug(DEBUG9, MOD_SFTP_VERSION
+        ": retaining root privileges per UserOwner setting");
+      root_revoke = FALSE;
+    }
+  }
+
+  if (root_revoke) {
     PRIVS_ROOT
     PRIVS_REVOKE
     session.disable_id_switching = TRUE;
@@ -1537,6 +1554,8 @@ struct sftp_auth_chain *sftp_auth_chain_alloc(pool *p) {
   }
 
   sub_pool = pr_pool_create_sz(p, 256);
+  pr_pool_tag(sub_pool, "SSH2 Auth Chain Pool");
+
   auth_chain = pcalloc(sub_pool, sizeof(struct sftp_auth_chain));
   auth_chain->pool = sub_pool;
   auth_chain->methods = make_array(sub_pool, 1,

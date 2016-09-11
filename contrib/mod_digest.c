@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_digest - File hashing/checksumming module
- *
  * Copyright (c) Mathias Berchtold <mb@smartftp.com>
  * Copyright (c) 2016 TJ Saunders <tj@castaglia.org>
  * 
@@ -844,7 +843,7 @@ static int can_digest_file(pool *p, const char *path, off_t start, size_t len,
   }
 
   if (len > 0) {
-    if (start + len > st->st_size) {
+    if (((off_t) (start + len)) > st->st_size) {
       pr_log_debug(DEBUG3, MOD_DIGEST_VERSION
         ": requested offset/length (offset %" PR_LU " bytes, length %lu bytes) "
         "for path '%s' exceeds file size (%lu bytes)", (pr_off_t) start,
@@ -988,7 +987,7 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
   buf = palloc(p, bufsz);
 
   readsz = bufsz;
-  if (readsz > len) {
+  if ((off_t) readsz > len) {
     readsz = len;
   }
 
@@ -1027,7 +1026,7 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
     }
 
     readsz = bufsz;
-    if (readsz > len) {
+    if ((off_t) readsz > len) {
       readsz = len;
     }
 
@@ -1401,7 +1400,7 @@ static char *get_cached_digest(pool *p, unsigned long algo, const char *path,
     time_t mtime, off_t start, size_t len) {
   const char *algo_name, *key;
   pr_table_t *cache;
-  void *val;
+  const void *val;
 
   if (digest_caching == FALSE) {
     errno = ENOENT;
@@ -2142,7 +2141,7 @@ MODRET digest_log_retr(cmd_rec *cmd) {
   } else {
     int res;
     struct stat st;
-    char *path;
+    const char *path;
 
     path = session.xfer.path;
     pr_fs_clear_cache2(path);
@@ -2351,7 +2350,7 @@ MODRET digest_log_stor(cmd_rec *cmd) {
   } else {
     int res;
     struct stat st;
-    char *path;
+    const char *path;
 
     path = session.xfer.path;
     pr_fs_clear_cache2(path);

@@ -140,6 +140,7 @@ if (scalar(@ARGV) > 0) {
     t/config/ifdefine.t
     t/config/include.t
     t/config/listoptions.t
+    t/config/loginpasswordprompt.t
     t/config/masqueradeaddress.t
     t/config/maxclients.t
     t/config/maxclientsperclass.t
@@ -149,6 +150,7 @@ if (scalar(@ARGV) > 0) {
     t/config/maxconnectionsperhost.t
     t/config/maxinstances.t
     t/config/maxloginattempts.t
+    t/config/maxpasswordsize.t
     t/config/maxretrievefilesize.t
     t/config/maxstorefilesize.t
     t/config/maxtransfersperhost.t
@@ -287,6 +289,11 @@ if (scalar(@ARGV) > 0) {
     't/modules/mod_geoip.t' => {
       order => ++$order,
       test_class => [qw(mod_geoip)],
+    },
+
+    't/modules/mod_geoip/sql.t' => {
+      order => ++$order,
+      test_class => [qw(mod_geoip mod_sql mod_sql_sqlite)],
     },
 
     't/modules/mod_ifversion.t' => {

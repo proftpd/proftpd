@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,20 +41,21 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_use_stderr(FALSE);
+  }
+
+  pr_response_set_pool(NULL);
+
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
-  }
-  pr_response_set_pool(NULL);
-
-  if (getenv("TEST_VERBOSE") != NULL) {
-    pr_trace_use_stderr(FALSE);
   }
 }
 
 START_TEST (help_add_response_test) {
   int res;
-  char *resp_code = NULL, *resp_msg = NULL;
+  const char *resp_code = NULL, *resp_msg = NULL;
   cmd_rec *cmd;
 
   res = pr_help_add_response(NULL, NULL);
@@ -130,7 +131,6 @@ START_TEST (help_add_response_test) {
   fail_unless(resp_msg != NULL, "Expected non-null response message");
   fail_unless(strcmp(resp_msg, "Syntax: BAR <path>") == 0,
     "Expected response message '%s', got '%s'", "Syntax: BAR <path>", resp_msg);
-
 }
 END_TEST
 

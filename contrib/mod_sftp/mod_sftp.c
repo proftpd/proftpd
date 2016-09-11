@@ -31,6 +31,7 @@
 #include "packet.h"
 #include "interop.h"
 #include "crypto.h"
+#include "cipher.h"
 #include "mac.h"
 #include "keys.h"
 #include "keystore.h"
@@ -1124,6 +1125,23 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
+    } else if (strncasecmp(ext, "xattr", 8) == 0) {
+#ifdef HAVE_SYS_XATTR_H
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_XATTR;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_XATTR;
+          break;
+      }
+#else
+      pr_log_debug(DEBUG0, "%s: xattr@proftpd.org extension not supported "
+        "on this system; requires extended attribute support",
+        (char *) cmd->argv[0]);
+#endif /* HAVE_SYS_XATTR_H */
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown extension: '",
         ext, "'", NULL)); 
@@ -1251,6 +1269,9 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
         strncmp(cmd->argv[i], "diffie-hellman-group14-sha1", 28) != 0 &&
 #if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
     (OPENSSL_VERSION_NUMBER > 0x000908000L)
+        strncmp(cmd->argv[i], "diffie-hellman-group14-sha256", 30) != 0 &&
+        strncmp(cmd->argv[i], "diffie-hellman-group16-sha512", 30) != 0 &&
+        strncmp(cmd->argv[i], "diffie-hellman-group18-sha512", 30) != 0 &&
         strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha256", 37) != 0 &&
 #endif
         strncmp(cmd->argv[i], "diffie-hellman-group-exchange-sha1", 35) != 0 &&
@@ -1419,14 +1440,24 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strncmp(cmd->argv[i], "MatchKeySubject", 16) == 0) {
       opts |= SFTP_OPT_MATCH_KEY_SUBJECT;
 
-    } else if (strcmp(cmd->argv[1], "AllowInsecureLogin") == 0) {
+    } else if (strcmp(cmd->argv[i], "AllowInsecureLogin") == 0) {
       opts |= SFTP_OPT_ALLOW_INSECURE_LOGIN;
 
-    } else if (strcmp(cmd->argv[1], "InsecureHostKeyPerms") == 0) {
+    } else if (strcmp(cmd->argv[i], "InsecureHostKeyPerms") == 0) {
       opts |= SFTP_OPT_INSECURE_HOSTKEY_PERMS;
 
-    } else if (strcmp(cmd->argv[1], "AllowWeakDH") == 0) {
+    } else if (strcmp(cmd->argv[i], "AllowWeakDH") == 0) {
       opts |= SFTP_OPT_ALLOW_WEAK_DH;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreFIFOs") == 0) {
+      opts |= SFTP_OPT_IGNORE_FIFOS;
+
+    } else if (strcmp(cmd->argv[i],
+               "IgnoreSFTPUploadExtendedAttributes") == 0) {
+      opts |= SFTP_OPT_IGNORE_SFTP_UPLOAD_XATTRS;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreSFTPSetExtendedAttributes") == 0) {
+      opts |= SFTP_OPT_IGNORE_SFTP_SET_XATTRS;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
@@ -1662,6 +1693,7 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
     sftp_interop_free();
     sftp_keystore_free();
     sftp_keys_free();
+    sftp_cipher_free();
     sftp_mac_free();
     pr_response_block(FALSE);
     sftp_utf8_free();
@@ -1683,7 +1715,9 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   server_rec *s;
 
   /* Initialize OpenSSL. */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
   ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
 
@@ -1779,6 +1813,7 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   sftp_interop_free();
   sftp_keystore_free();
   sftp_keys_free();
+  sftp_cipher_free();
   sftp_mac_free();
   sftp_utf8_free();
 
@@ -1831,11 +1866,11 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
   if (strncmp(proto, "SSH2", 5) == 0) {
-    char *msg;
+    const char *msg;
 
     msg = get_param_ptr(main_server->conf, "WrapDenyMsg", FALSE);
     if (msg != NULL) {
-      char *user;
+      const char *user;
 
       user = session.user;
       if (user == NULL) {
@@ -1934,6 +1969,7 @@ static int sftp_init(void) {
 #endif /* HAVE_SODIUM_H */
 
   sftp_keystore_init();
+  sftp_cipher_init();
   sftp_mac_init();
 
   pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);

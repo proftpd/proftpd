@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
- *
  * Copyright (c) 2001-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
@@ -153,7 +152,7 @@ typedef struct radius_server_obj {
   pool *pool;
 
   /* RADIUS server IP address */
-  pr_netaddr_t *addr;
+  const pr_netaddr_t *addr;
 
   /* RADIUS server port */
   unsigned short port;
@@ -1804,11 +1803,12 @@ static void radius_reset(void) {
 
 static unsigned char *radius_xor(unsigned char *p, unsigned char *q,
     size_t len) {
-  register int i = 0;
+  register size_t i = 0;
   unsigned char *tmp = p;
 
-  for (i = 0; i < len; i++)
+  for (i = 0; i < len; i++) {
     *(p++) ^= *(q++);
+  }
 
   return tmp;
 }
@@ -2594,7 +2594,7 @@ static void radius_build_packet(radius_packet_t *packet,
 
 #ifdef PR_USE_IPV6
   if (pr_netaddr_use_ipv6()) {
-    pr_netaddr_t *local_addr;
+    const pr_netaddr_t *local_addr;
     int family;
 
     local_addr = pr_netaddr_get_sess_local_addr();
@@ -3032,7 +3032,7 @@ static unsigned int radius_get_terminate_cause(void) {
       break;
 
     case PR_SESS_DISCONNECT_TIMEOUT: {
-      char *details = NULL;
+      const char *details = NULL;
 
       pr_session_get_disconnect_reason(&details);
       if (details != NULL) {
@@ -3504,7 +3504,8 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   radius_server_t *auth_server = NULL;
   unsigned char recvd_response = FALSE;
   unsigned int service;
-  char pid_str[16], *user;
+  const char *user;
+  char pid_str[16];
 
   /* Check to see whether RADIUS authentication should even be done. */
   if (radius_engine == FALSE ||
@@ -3513,7 +3514,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   }
 
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
-  if (!user) {
+  if (user == NULL) {
     (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
       "missing prerequisite USER command, declining to handle PASS");
     pr_response_add_err(R_503, _("Login with USER first"));
@@ -3711,7 +3712,7 @@ MODRET radius_post_pass(cmd_rec *cmd) {
 
   /* Fill in the username in the faked user info, if need be. */
   if (radius_have_user_info) {
-    radius_passwd.pw_name = session.user;
+    radius_passwd.pw_name = (char *) session.user;
   }
 
   if (radius_start_accting() < 0) {

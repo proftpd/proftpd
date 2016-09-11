@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_shaper -- a module implementing daemon-wide rate throttling
  *                        via IPC
- *
- * Copyright (c) 2004-2015 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1013,8 +1012,9 @@ static int shaper_table_sess_add(pid_t sess_pid, unsigned int prio,
     int downincr, int upincr) {
   struct shaper_sess *sess;
 
-  if (shaper_table_lock(LOCK_EX) < 0)
+  if (shaper_table_lock(LOCK_EX) < 0) {
     return -1;
+  }
 
   if (shaper_table_refresh() < 0) {
     int xerrno = errno;
@@ -1224,10 +1224,12 @@ static int shaper_table_sess_remove(pid_t sess_pid) {
  */
 static int shaper_handle_all(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i;
+  register int i;
   int send_tab = TRUE;
 
-  if (reqargc < 2 || reqargc > 14 || reqargc % 2 != 0) {
+  if (reqargc < 2 ||
+      reqargc > 14 ||
+      reqargc % 2 != 0) {
     pr_ctrls_add_response(ctrl, "wrong number of parameters");
     return -1;
   }
@@ -1507,11 +1509,13 @@ static int shaper_handle_info(pr_ctrls_t *ctrl, int reqargc,
  */
 static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  register unsigned int i;
+  register int i;
   int adjusted = FALSE, send_tab = TRUE;
   int prio = -1, downincr = 0, upincr = 0;
 
-  if (reqargc < 4 || reqargc > 6 || reqargc % 2 != 0) {
+  if (reqargc < 4 ||
+      reqargc > 6 ||
+      reqargc % 2 != 0) {
     pr_ctrls_add_response(ctrl, "wrong number of parameters");
     return -1;
   }
@@ -1650,10 +1654,10 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
   } else if (strcmp(reqargv[0], "host") == 0) {
     pr_scoreboard_entry_t *score;
     const char *addr;
-    pr_netaddr_t *na;
+    const pr_netaddr_t *na;
 
     na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[1], NULL);
-    if (!na) {
+    if (na == NULL) {
       pr_ctrls_add_response(ctrl, "error resolving '%s': %s", reqargv[1],
         strerror(errno));
       return -1;
@@ -1677,8 +1681,9 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
           pr_ctrls_add_response(ctrl, "error adjusting pid %u: %s",
             (unsigned int) score->sce_pid, strerror(errno));
 
-        } else
+        } else {
           adjusted = TRUE;
+        }
       }
     }
 
@@ -1704,8 +1709,9 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
           pr_ctrls_add_response(ctrl, "error adjusting pid %u: %s",
             (unsigned int) score->sce_pid, strerror(errno));
 
-        } else
+        } else {
           adjusted = TRUE;
+        }
       }
     }
 
@@ -1717,8 +1723,9 @@ static int shaper_handle_sess(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (adjusted)
+  if (adjusted) {
     pr_ctrls_add_response(ctrl, "sessions adjusted");
+  }
 
   return 0;
 }

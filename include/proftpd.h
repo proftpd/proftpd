@@ -109,7 +109,7 @@ typedef struct {
   uid_t fsuid;				/* Saved file UID */
   gid_t fsgid;				/* Saved file GID */
 
-  char *user, *group;			/* Username/groupname after login */
+  const char *user, *group;		/* Username/groupname after login */
   uid_t login_uid;                      /* UID after login, but before
                                          * session.uid is changed
                                          */
@@ -119,8 +119,8 @@ typedef struct {
 
   pr_table_t *notes;			/* Session notes table */
 
-  pr_class_t *conn_class;		/* Session class */
-  char *proc_prefix;			/* The "prefix" of our process name */
+  const pr_class_t *conn_class;		/* Session class */
+  const char *proc_prefix;		/* The "prefix" of our process name */
 
   int wtmp_log;				/* Are we logging to wtmp? */
   int multiline_rfc2228;		/* Are we using RFC2228-style multiline responses ? */
@@ -130,12 +130,12 @@ typedef struct {
 
   int hide_password;			/* Hide password in logs/ps listing */
 
-  char *chroot_path;			/* Chroot directory */
+  const char *chroot_path;		/* Chroot directory */
 
   struct config_struc *anon_config;	/* Anonymous FTP configuration */
-  char *anon_user;			/* E-mail address sent to us */
+  const char *anon_user;		/* Email address sent to us */
 
-  char *curr_cmd;                       /* Current FTP command */
+  const char *curr_cmd;			/* Current FTP command */
   int curr_cmd_id;			/* Current FTP command ID */
   struct cmd_struc *curr_cmd_rec;       /* Current command */
 
@@ -152,17 +152,17 @@ typedef struct {
 
     int xfer_type;     /* xfer session attributes, default/append/hidden */
     int direction;
-    char *filename;			/* As shown to user */
-    char *path;				/* As used in transfer */
-    char *path_hidden;			/* As used in hidden stor */
+    const char *filename;		/* As shown to user */
+    const char *path;			/* As used in transfer */
+    const char *path_hidden;		/* As used in hidden stor */
 
-    unsigned int bufsize,buflen;
+    unsigned int bufsize, buflen;
 
     struct timeval start_time;		/* Time current transfer started */
     off_t file_size;			/* Total size of file (if known) */
     off_t total_bytes;			/* Total bytes transfered */
 
-    char *bufstart,*buf;
+    char *bufstart, *buf;
   } xfer;
 
   /* Total number of bytes uploaded in this session. */

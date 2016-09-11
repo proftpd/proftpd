@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1113,7 +1113,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 #ifdef HAVE_GETGROUPLIST
     gid_t group_ids[NGROUPS_MAX];
     int ngroups = NGROUPS_MAX;
-    register unsigned int i;
+    register int i;
 
     pr_trace_msg("auth", 4,
       "using getgrouplist(3) to look up group membership");
