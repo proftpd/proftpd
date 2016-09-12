@@ -857,8 +857,8 @@ Examples:
 
 <p>
 <hr>
-<h2><a name="IncludeOptions">&lt;IncludeeOptions&gt;</a></h2>
-<strong>Syntax:</strong> &lt;IncludeOptions <em>opt1 ...</em>&gt;<br>
+<h2><a name="IncludeOptions">IncludeOptions</a></h2>
+<strong>Syntax:</strong> IncludeOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_core<br>
@@ -876,8 +876,27 @@ example:
 The currently implemented options are:
 <ul>
   <li><code>AllowSymlinks</code><br>
+    <p>
+    When the <code>Include</code> directive encounters symlinks, it will
+    <i>skip</i> them by default; use this option to handle symlinks.
+  </li>
+
+  <p>
   <li><code>IgnoreTempFiles</code><br>
+    <p>
+    Use this option to have the <code>Include</code> directive automatically
+    <i>skip</i> any files which have extensions identifying them as commonly
+    occurring temporary files.
+  </li>
+
+  <p>
   <li><code>IgnoreWildcards</code><br>
+    <p>
+    Use this option to have the <code>Include</code> directive automatically
+    <i>reject</i> any paths which include wildcards in the directory names.
+    This can be done, for example, to prevent other <code>Include</code>d files
+    from using wildcards without the administrator's consent.
+  </li>
 </ul>
 
 <p>
