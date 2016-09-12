@@ -345,8 +345,6 @@ static conftable parser_conftab[] = {
 };
 
 static int load_parser_module(void) {
-  int res;
-
   /* Load the module's config handlers. */
   memset(&parser_module, 0, sizeof(parser_module));
   parser_module.name = "parser";
@@ -409,13 +407,14 @@ START_TEST (parse_config_path_test) {
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
-  /* XXX See Bug#3849 */
+  include_opts = pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_IGNORE_WILDCARDS);
   mark_point();
   path = "/tmp*/foo.conf";
   res = parse_config_path2(p, path, 0);
   fail_unless(res < 0, "Failed to handle directory-only path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
+  (void) pr_parser_set_include_opts(include_opts);
 
   /* On Mac, `/tmp` is a symlink.  And currently, parse_config_path() does
    * not allow following of symlinked directories.  So this MIGHT fail, if
@@ -474,7 +473,7 @@ START_TEST (parse_config_path_test) {
   res = parse_config_path2(p, path, 0);
   fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
 
-  (void) pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS|PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES);
+  (void) pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS|PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES|PR_PARSER_INCLUDE_OPT_IGNORE_WILDCARDS);
 
   path = config_tmp_path;
   fh = pr_fsio_open(path, O_CREAT|O_EXCL|O_WRONLY);
@@ -495,6 +494,15 @@ START_TEST (parse_config_path_test) {
   mark_point();
   path = "/t*p/prt*.conf*";
   res = parse_config_path2(p, path, 0);
+  fail_unless(res < 0, "Failed to handle wildcard path '%s'", path);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS|PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES);
+
+  mark_point();
+  path = "/t*p/prt*.conf*";
+  res = parse_config_path2(p, path, 0);
   fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
 
   (void) pr_parser_server_ctxt_close();
@@ -508,11 +516,22 @@ START_TEST (parser_parse_file_test) {
   pr_fh_t *fh;
   char *text;
 
+  (void) unlink(config_path);
+
   mark_point();
   res = pr_parser_parse_file(NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
+
+  mark_point();
+  res = pr_parser_parse_file(p, config_path, NULL, 0);
+  fail_unless(res < 0, "Failed to handle invalid file");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  pr_parser_prepare(p, NULL);
+  pr_parser_server_ctxt_open("127.0.0.1");
 
   mark_point();
   res = pr_parser_parse_file(p, config_path, NULL, 0);
@@ -525,9 +544,6 @@ START_TEST (parser_parse_file_test) {
   fail_unless(res < 0, "Failed to handle directory");
   fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
     strerror(errno), errno);
-
-  pr_parser_prepare(p, NULL);
-  pr_parser_server_ctxt_open("127.0.0.1");
 
   fh = pr_fsio_open(config_path, O_CREAT|O_EXCL|O_WRONLY);
   fail_unless(fh != NULL, "Failed to open '%s': %s", config_path,
@@ -600,7 +616,6 @@ Suite *tests_get_parser_suite(void) {
   testcase = tcase_create("base");
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
-#if 0
   tcase_add_test(testcase, parser_prepare_test);
   tcase_add_test(testcase, parser_server_ctxt_test);
   tcase_add_test(testcase, parser_server_ctxt_push_test);
@@ -609,13 +624,9 @@ Suite *tests_get_parser_suite(void) {
   tcase_add_test(testcase, parser_get_lineno_test);
   tcase_add_test(testcase, parser_read_line_test);
   tcase_add_test(testcase, parser_parse_line_test);
-#endif
   tcase_add_test(testcase, parse_config_path_test);
-#if 0
   tcase_add_test(testcase, parser_parse_file_test);
-#endif
 
   suite_add_tcase(suite, testcase);
-
   return suite;
 }

@@ -395,11 +395,14 @@ MODRET set_includeoptions(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "AllowSylinks") == 0) {
+    if (strcmp(cmd->argv[i], "AllowSymlinks") == 0) {
       opts |= PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS;
 
     } else if (strcmp(cmd->argv[i], "IgnoreTempFiles") == 0) {
       opts |= PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreWildcards") == 0) {
+      opts |= PR_PARSER_INCLUDE_OPT_IGNORE_WILDCARDS;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown IncludeOption '",
