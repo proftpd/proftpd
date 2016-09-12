@@ -131,4 +131,14 @@ int pr_parser_server_ctxt_push(server_rec *s);
  */
 server_rec *pr_parser_server_ctxt_get(void);
 
+/* Configure optional Include behavior. Returns the previously set options. */
+unsigned long pr_parser_set_include_opts(unsigned long opts);
+#define PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS		0x0001
+#define PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES		0x0002
+#define PR_PARSER_INCLUDE_OPT_IGNORE_WILDCARDS		0x0004
+
+/* Internal use only */
+int parse_config_path(pool *p, const char *path);
+int parse_config_path2(pool *p, const char *path, unsigned int depth);
+
 #endif /* PR_PARSER_H */

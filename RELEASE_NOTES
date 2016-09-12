@@ -34,6 +34,8 @@ ChangeLog files.
 
     FSOptions IgnoreExtendedAttributes
 
+    IncludeOptions (Bug#3849)
+
     MaxPasswordSize (Issue#318)
 
     SFTPKeyLimits (Bug#4233)
@@ -44,6 +46,8 @@ ChangeLog files.
   + Changed Configuration Directives:
 
     GeoIPAllowFilter, GeoIPDenyFilter (Bug#4220)
+
+    Include (Bug#3849)
 
     MasqueradeAddress
       The MasqueradeAddress directive is now allowed in <Global> sections,
