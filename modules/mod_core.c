@@ -5607,10 +5607,10 @@ MODRET core_size(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  /* The PR_USE_ASCII_MODE_SIZE macro should ONLY be defined at compile time,
+  /* The PR_ALLOW_ASCII_MODE_SIZE macro should ONLY be defined at compile time,
    * e.g. using:
    *
-   *  $ ./configure CPPFLAGS=-DPR_USE_ASCII_MODE_SIZE ...
+   *  $ ./configure CPPFLAGS=-DPR_ALLOW_ASCII_MODE_SIZE ...
    *
    * Define this macro if you want proftpd to handle a SIZE command while in
    * ASCII mode.  Note, however, that ProFTPD will NOT properly calculate
@@ -5619,7 +5619,7 @@ MODRET core_size(cmd_rec *cmd) {
    * bytes transferred when that file is downloaded is different.  Thus this
    * behavior will not comply with RFC 3659, Section 4.  Caveat emptor.
    */
-#ifndef PR_USE_ASCII_MODE_SIZE
+#ifndef PR_ALLOW_ASCII_MODE_SIZE
   /* Refuse the command if we're in ASCII mode. */
   if (session.sf_flags & SF_ASCII) {
     pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", (char *) cmd->argv[0]);
@@ -5630,7 +5630,7 @@ MODRET core_size(cmd_rec *cmd) {
     errno = EPERM;
     return PR_ERROR(cmd);
   }
-#endif /* PR_USE_ASCII_MODE_SIZE */
+#endif /* PR_ALLOW_ASCII_MODE_SIZE */
 
   decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
     FSIO_DECODE_FL_TELL_ERRORS);
