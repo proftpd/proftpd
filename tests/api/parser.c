@@ -413,9 +413,14 @@ START_TEST (parse_config_path_test) {
   pr_parser_server_ctxt_open("127.0.0.1");
 
   res = parse_config_path2(p, path, 0);
-  fail_unless(res < 0, "Failed to handle directory-only path");
-  fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
-    strerror(errno), errno);
+  if (S_ISLNK(st.st_mode)) {
+    fail_unless(res < 0, "Failed to handle directory-only path");
+    fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
+      strerror(errno), errno);
+
+  } else if (S_ISDIR(st.st_mode)) {
+    fail_unless(res == 0, "Failed to handle empty directory");
+  }
 
   mark_point();
   path = config_path;
