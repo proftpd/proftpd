@@ -325,6 +325,7 @@ START_TEST (parser_parse_line_test) {
 
   mark_point();
   (void) pr_parser_server_ctxt_close();
+  (void) pr_parser_cleanup();
 }
 END_TEST
 
@@ -508,6 +509,7 @@ START_TEST (parse_config_path_test) {
   (void) pr_parser_server_ctxt_close();
   (void) pr_module_unload(&parser_module);
   (void) pr_parser_set_include_opts(include_opts);
+  (void) pr_parser_cleanup();
 }
 END_TEST
 
@@ -601,6 +603,7 @@ START_TEST (parser_parse_file_test) {
     strerror(errno), errno);
 
   (void) pr_parser_server_ctxt_close();
+  (void) pr_parser_cleanup();
   (void) pr_module_unload(&parser_module);
   (void) pr_fsio_unlink(config_path);
   (void) pr_fsio_unlink(config_path2);
