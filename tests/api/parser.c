@@ -52,7 +52,7 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
-  pr_parser_cleanup();
+  (void) pr_parser_cleanup();
 
   (void) unlink(config_path);
   (void) unlink(config_path2);
@@ -83,6 +83,8 @@ START_TEST (parser_prepare_test) {
 
   res = pr_parser_prepare(NULL, &parsed_servers);
   fail_unless(res == 0, "Failed to handle null pool: %s", strerror(errno));
+
+  (void) pr_parser_cleanup();
 }
 END_TEST
 
@@ -115,6 +117,7 @@ START_TEST (parser_server_ctxt_test) {
 
   mark_point();
   (void) pr_parser_server_ctxt_close();
+  (void) pr_parser_cleanup();
 }
 END_TEST
 
@@ -147,7 +150,7 @@ START_TEST (parser_server_ctxt_push_test) {
     strerror(errno));
   fail_unless(ctx2 == ctx, "Expected server context %p, got %p", ctx, ctx2);
 
-  pr_parser_cleanup();
+  (void) pr_parser_cleanup();
 }
 END_TEST
 
@@ -183,7 +186,8 @@ START_TEST (parser_config_ctxt_test) {
   (void) pr_parser_config_ctxt_close(&is_empty);
   fail_unless(is_empty == TRUE, "Expected config context to be empty");
 
-  pr_parser_server_ctxt_close();
+  (void) pr_parser_server_ctxt_close();
+  (void) pr_parser_cleanup();
 }
 END_TEST
 
@@ -216,7 +220,7 @@ START_TEST (parser_config_ctxt_push_test) {
     strerror(errno));
   fail_unless(ctx2 == ctx, "Expected config context %p, got %p", ctx, ctx2);
 
-  pr_parser_cleanup();
+  (void) pr_parser_cleanup();
 }
 END_TEST
 
@@ -507,9 +511,9 @@ START_TEST (parse_config_path_test) {
   fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
 
   (void) pr_parser_server_ctxt_close();
+  (void) pr_parser_cleanup();
   (void) pr_module_unload(&parser_module);
   (void) pr_parser_set_include_opts(include_opts);
-  (void) pr_parser_cleanup();
 }
 END_TEST
 
