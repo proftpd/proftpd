@@ -150,6 +150,7 @@ START_TEST (parser_server_ctxt_push_test) {
     strerror(errno));
   fail_unless(ctx2 == ctx, "Expected server context %p, got %p", ctx, ctx2);
 
+  (void) pr_parser_server_ctxt_close();
   (void) pr_parser_cleanup();
 }
 END_TEST
@@ -220,6 +221,7 @@ START_TEST (parser_config_ctxt_push_test) {
     strerror(errno));
   fail_unless(ctx2 == ctx, "Expected config context %p, got %p", ctx, ctx2);
 
+  (void) pr_parser_config_ctxt_close(NULL);
   (void) pr_parser_cleanup();
 }
 END_TEST
@@ -394,10 +396,18 @@ START_TEST (parse_config_path_test) {
     strerror(errno), errno);
 
   path = "/tmp";
+  res = lstat(path, &st);
+  fail_unless(res == 0, "Failed lstat(2) on '/tmp': %s", strerror(errno));
+
   res = parse_config_path2(p, path, 0);
-  fail_unless(res < 0, "Failed to handle uninitialized parser");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
-    strerror(errno), errno);
+  if (S_ISLNK(st.st_mode)) {
+    fail_unless(res < 0, "Failed to handle uninitialized parser");
+    fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+      strerror(errno), errno);
+
+  } else if (S_ISDIR(st.st_mode)) {
+    fail_unless(res == 0, "Failed to handle empty directory");
+  }
 
   pr_parser_prepare(p, NULL);
   pr_parser_server_ctxt_open("127.0.0.1");
