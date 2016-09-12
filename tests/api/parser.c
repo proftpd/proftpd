@@ -366,6 +366,8 @@ START_TEST (parse_config_path_test) {
   unsigned long include_opts;
   pr_fh_t *fh;
 
+  (void) pr_parser_cleanup();
+
   res = parse_config_path(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null pool");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
