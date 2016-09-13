@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2014 The ProFTPD Project team
+ * Copyright (c) 2006-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,6 +58,9 @@ int pr_encode_set_policy(unsigned long policy);
 
 /* Returns string describing the current charset being used. */
 const char *pr_encode_get_charset(void);
+
+/* Returns string describe the default local charset. */
+const char *pr_encode_get_default_charset(void);
 
 /* Returns string describing the local charset (as determined by environment
  * variables and such).

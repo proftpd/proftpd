@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2015 The ProFTPD Project team
+ * Copyright (c) 2006-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ static iconv_t decode_conv = (iconv_t) -1;
 static iconv_t encode_conv = (iconv_t) -1;
 
 static unsigned long encoding_policy = 0UL;
+static const char *default_charset = NULL;
 static const char *local_charset = NULL;
 static const char *encoding = "UTF-8";
 static int supports_telnet_iac = TRUE;
@@ -163,6 +164,8 @@ int encode_init(void) {
   if (local_charset == NULL) {
     local_charset = pr_encode_get_local_charset();
   }
+
+  default_charset = local_charset;
 
   pr_log_debug(DEBUG10, "using '%s' as local charset for %s conversion",
     local_charset, encoding);
@@ -429,6 +432,16 @@ const char *pr_encode_get_local_charset(void) {
 const char *pr_encode_get_charset(void) {
 #ifdef HAVE_ICONV_H
   return local_charset;
+
+#else
+  errno = ENOSYS;
+  return NULL;
+#endif /* !HAVE_ICONV_H */
+}
+
+const char *pr_encode_get_default_charset(void) {
+#ifdef HAVE_ICONV_H
+  return default_charset;
 
 #else
   errno = ENOSYS;

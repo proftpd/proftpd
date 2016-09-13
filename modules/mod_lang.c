@@ -437,7 +437,7 @@ MODRET set_langpath(cmd_rec *cmd) {
 MODRET set_useencoding(cmd_rec *cmd) {
   config_rec *c;
 
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   if (cmd->argc == 2) {
     int use_encoding = -1;
@@ -479,11 +479,128 @@ MODRET set_useencoding(cmd_rec *cmd) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
 
+  c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
 }
 
 /* Command handlers
  */
+
+MODRET lang_pre_any(cmd_rec *cmd) {
+  config_rec *c;
+
+  if (!lang_engine) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Handle any potentially <Anonymous>/<Directory>-specific UseEncoding
+   * directives.
+   *
+   * Note that this handler deliberately does NOT use process_encoding_config(),
+   * because its rules of when/how to apply the configured UseEncoding are
+   * different enough from what process_encoding_config() does.  That said,
+   * there MIGHT be room for refactoring there.
+   */
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, "UseEncoding", FALSE);
+  if (c == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Note that we use local variables for local/client charsets here
+   * deliberately; we don't necessarily want a per-directory configuration
+   * "leak" out as the default charsets to use for later cases.
+   */
+
+  if (c->argc == 1) {
+    int use_encoding;
+
+    use_encoding = *((int *) c->argv[0]);
+    if (use_encoding) {
+      const char *local_charset, *client_charset;
+
+      local_charset = pr_encode_get_default_charset();
+      client_charset = "UTF-8";
+
+      if ((lang_local_charset != NULL &&
+           strcasecmp(lang_local_charset, local_charset) == 0) &&
+          (lang_client_charset != NULL &&
+           strcasecmp(lang_client_charset, client_charset) == 0)) {
+        /* Matches current UseEncoding configuration, no need to change
+         * anything.
+         */
+        pr_trace_msg("encode", 15, MOD_LANG_VERSION
+          ": current UseEncoding charset '%s', encoding '%s' already in use",
+          local_charset, client_charset);
+        return PR_DECLINED(cmd);
+      }
+
+      if (pr_encode_set_charset_encoding(local_charset, client_charset) < 0) {
+        pr_trace_msg("encode", 2, MOD_LANG_VERSION
+          ": error setting local charset '%s', client charset '%s': %s",
+          local_charset, client_charset, strerror(errno));
+        pr_fs_use_encoding(FALSE);
+
+      } else {
+        pr_trace_msg("encode", 5, MOD_LANG_VERSION
+          ": using local charset '%s', client charset '%s' for path encoding",
+          local_charset, client_charset);
+        pr_fs_use_encoding(TRUE);
+
+        /* Make sure that gettext() uses the specified charset as well. */
+        if (bind_textdomain_codeset("proftpd", client_charset) == NULL) {
+          pr_trace_msg("encode", 2, MOD_LANG_VERSION
+            ": error setting client charset '%s' for localised messages: %s",
+            client_charset, strerror(errno));
+        }
+      }
+
+    } else {
+      pr_fs_use_encoding(FALSE);
+    }
+
+  } else {
+    const char *local_charset, *client_charset;
+
+    local_charset = c->argv[0];
+    client_charset = c->argv[1];
+
+    if ((lang_local_charset != NULL &&
+         strcasecmp(lang_local_charset, local_charset) == 0) &&
+        (lang_client_charset != NULL &&
+         strcasecmp(lang_client_charset, client_charset) == 0)) {
+      /* Matches current UseEncoding configuration, no need to change
+       * anything.
+       */
+      pr_trace_msg("encode", 15, MOD_LANG_VERSION
+        ": current UseEncoding charset '%s', encoding '%s' already in use",
+        local_charset, client_charset);
+      return PR_DECLINED(cmd);
+    }
+
+    if (pr_encode_set_charset_encoding(local_charset, client_charset) < 0) {
+      pr_trace_msg("encode", 2, MOD_LANG_VERSION
+        ": error setting local charset '%s', client charset '%s': %s",
+        local_charset, client_charset, strerror(errno));
+      pr_fs_use_encoding(FALSE);
+
+    } else {
+      pr_trace_msg("encode", 5, MOD_LANG_VERSION
+        ": using local charset '%s', client charset '%s' for path encoding",
+        local_charset, client_charset);
+      pr_fs_use_encoding(TRUE);
+
+      /* Make sure that gettext() uses the specified charset as well. */
+      if (bind_textdomain_codeset("proftpd", client_charset) == NULL) {
+        pr_trace_msg("encode", 2, MOD_LANG_VERSION
+          ": error setting client charset '%s' for localised messages: %s",
+          client_charset, strerror(errno));
+      }
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
 
 MODRET lang_lang(cmd_rec *cmd) {
   unsigned char *authenticated;
@@ -1086,6 +1203,7 @@ static conftable lang_conftab[] = {
 };
 
 static cmdtable lang_cmdtab[] = {
+  { PRE_CMD,	C_ANY,			G_NONE,	lang_pre_any,	FALSE,	FALSE },
   { CMD,	C_LANG,			G_NONE,	lang_lang,	FALSE,	FALSE },
   { CMD,	C_OPTS "_UTF8",		G_NONE,	lang_utf8,	FALSE,	FALSE },
   { POST_CMD,	C_PASS,			G_NONE,	lang_post_pass,	FALSE,	FALSE },
