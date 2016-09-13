@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -138,6 +138,10 @@ START_TEST (encode_charset_test) {
 
   charset = pr_encode_get_charset();
   fail_unless(charset != NULL, "Failed to get current charset: %s",
+    strerror(errno));
+
+  charset = pr_encode_get_default_charset();
+  fail_unless(charset != NULL, "Failed to get default charset: %s",
     strerror(errno));
 
   res = pr_encode_is_utf8(NULL);
