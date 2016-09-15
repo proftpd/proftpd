@@ -4569,7 +4569,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
-  res = pr_fs_copy_file(src, dst);
+  res = pr_fs_copy_file2(src, dst, 0, NULL);
   if (res < 0) {
     xerrno = errno;
 
@@ -5115,7 +5115,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
        */
       errno = 0;
 
-      res = pr_fs_copy_file(src, dst);
+      res = pr_fs_copy_file2(src, dst, 0, NULL);
       if (res < 0) {
         xerrno = errno;
 
@@ -11548,7 +11548,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
        * path to the destination path.
        */
       errno = 0;
-      if (pr_fs_copy_file(old_path, new_path) < 0) {
+      if (pr_fs_copy_file2(old_path, new_path, 0, NULL) < 0) {
         xerrno = errno;
 
         (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "

@@ -1641,14 +1641,21 @@ static int channel_write_data(pool *p, uint32_t channel_id,
 
   if (buflen > 0) {
     struct ssh2_channel_databuf *db;
+    const char *reason;
 
     db = get_databuf(channel_id, buflen);
 
     db->buflen = buflen;
     memcpy(db->buf, buf, buflen);
 
+    /* Why are we buffering these bytes? */
+    reason = "remote window size too small";
+    if (sftp_sess_state & SFTP_SESS_STATE_REKEYING) {
+      reason = "rekeying";
+    }
+
     pr_trace_msg(trace_channel, 8, "buffering %lu remaining bytes of "
-      "outgoing data", (unsigned long) buflen);
+      "outgoing data (%s)", (unsigned long) buflen, reason);
   }
 
   return 0;

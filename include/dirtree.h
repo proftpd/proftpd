@@ -197,7 +197,6 @@ unsigned char pr_define_exists(const char *);
 
 int fixup_servers(xaset_t *list);
 xaset_t *get_dir_ctxt(pool *, char *);
-int parse_config_path(pool *, const char *);
 
 /* Returns the buffer size to use for data transfers, regardless of IO
  * direction.

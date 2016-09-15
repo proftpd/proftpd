@@ -99,6 +99,7 @@
 # endif
 #endif
 
+
 int log_lastlog(uid_t uid, const char *user_name, const char *tty,
   const pr_netaddr_t *remote_addr);
 #endif /* PR_USE_LASTLOG */
@@ -215,5 +216,12 @@ int pr_log_event_generate(unsigned int log_type, int log_fd, int log_level,
  * otherwise.
  */
 int pr_log_event_listening(unsigned int log_type);
+
+/* Log a stacktrace, starting at the location of the calling function.
+ * Note that if fd is less than zero, OR if the given name is null, then the
+ * stacktrace will be logged using pr_log_pri(), otherwise the stacktrace will
+ * be written to the provided file descriptor.
+ */
+void pr_log_stacktrace(int fd, const char *name);
 
 #endif /* PR_LOG_H */

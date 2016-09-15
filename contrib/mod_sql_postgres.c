@@ -216,7 +216,7 @@ static int sql_timer_cb(CALLBACK_FRAME) {
 }
 
 /* build_error: constructs a modret_t filled with error information;
- *  mod_sql_postgres calls this function and returns the resulting mod_ret_t
+ *  mod_sql_postgres calls this function and returns the resulting modret_t
  *  whenever a call to the database results in an error.
  */
 static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
@@ -225,7 +225,7 @@ static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
   }
 
   return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-    PQerrorMessage(conn->postgres));
+    pstrdup(cmd->pool, PQerrorMessage(conn->postgres)));
 }
 
 /* build_data: both cmd_select and cmd_procedure potentially
@@ -466,8 +466,18 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* make sure we have a new conn struct */
   conn->postgres = PQconnectdb(conn->connect_string);
   if (PQstatus(conn->postgres) == CONNECTION_BAD) {
+    modret_t *mr = NULL;
+
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-    return build_error(cmd, conn);
+    mr = build_error(cmd, conn);
+
+    /* Since we failed to connect here, avoid a memory leak by freeing up the
+     * postgres conn struct.
+     */
+    PQfinish(conn->postgres);
+    conn->postgres = NULL;
+
+    return mr;
   }
 
 #if defined(PG_VERSION_STR)
@@ -612,8 +622,10 @@ MODRET cmd_close(cmd_rec *cmd) {
    * timers.
    */
   if (((--entry->connections) == 0) || ((cmd->argc == 2) && (cmd->argv[1]))) {
-    PQfinish(conn->postgres);
-    conn->postgres = NULL;
+    if (conn->postgres != NULL) {
+      PQfinish(conn->postgres);
+      conn->postgres = NULL;
+    }
     entry->connections = 0;
 
     if (entry->timer) {

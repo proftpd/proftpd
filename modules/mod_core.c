@@ -60,6 +60,7 @@ static const char *trace_log = NULL;
 #endif /* PR_USE_TRACE */
 
 /* Necessary prototypes. */
+static void core_exit_ev(const void *, void *);
 static int core_sess_init(void);
 static void reset_server_auth_order(void);
 
@@ -345,8 +346,9 @@ MODRET set_define(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET add_include(cmd_rec *cmd) {
-  int res;
+/* usage: Include path|pattern */
+MODRET set_include(cmd_rec *cmd) {
+  int res, xerrno;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
@@ -355,30 +357,60 @@ MODRET add_include(cmd_rec *cmd) {
 
   PRIVS_ROOT
   res = pr_fs_valid_path(cmd->argv[1]);
+  PRIVS_RELINQUISH
 
   if (res < 0) {
-    PRIVS_RELINQUISH
-
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "unable to use path for configuration file '", cmd->argv[1], "'", NULL));
   }
 
-  if (parse_config_path(cmd->tmp_pool, cmd->argv[1]) < 0) {
-    int xerrno = errno;
+  PRIVS_ROOT
+  res = parse_config_path(cmd->tmp_pool, cmd->argv[1]);
+  xerrno = errno;
+  PRIVS_RELINQUISH
 
+  if (res < 0) {
     if (xerrno != EINVAL) {
       pr_log_pri(PR_LOG_WARNING, "warning: unable to include '%s': %s",
         (char *) cmd->argv[1], strerror(xerrno));
 
     } else {
-      PRIVS_RELINQUISH
-
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '",
         (char *) cmd->argv[1], "': ", strerror(xerrno), NULL));
     }
   }
-  PRIVS_RELINQUISH
 
+  return PR_HANDLED(cmd);
+}
+
+/* usage: IncludeOptions opt1 ... */
+MODRET set_includeoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "AllowSymlinks") == 0) {
+      opts |= PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreTempFiles") == 0) {
+      opts |= PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreWildcards") == 0) {
+      opts |= PR_PARSER_INCLUDE_OPT_IGNORE_WILDCARDS;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown IncludeOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  (void) pr_parser_set_include_opts(opts);
   return PR_HANDLED(cmd);
 }
 
@@ -408,31 +440,33 @@ MODRET set_debuglevel(cmd_rec *cmd) {
 }
 
 MODRET set_defaultaddress(cmd_rec *cmd) {
+  const char *name, *main_ipstr;
   const pr_netaddr_t *main_addr = NULL;
   array_header *addrs = NULL;
   unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
   CHECK_CONF(cmd, CONF_ROOT);
 
-  main_addr = pr_netaddr_get_addr2(main_server->pool, cmd->argv[1], &addrs,
-    addr_flags);
+  name = cmd->argv[1];
+  main_addr = pr_netaddr_get_addr2(main_server->pool, name, &addrs, addr_flags);
   if (main_addr == NULL) {
-    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
-      (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve '", name, "'",
       NULL));
   }
 
   /* If the given name is a DNS name, automatically add a ServerAlias
    * directive.
    */
-  if (pr_netaddr_is_v4(cmd->argv[1]) == FALSE &&
-      pr_netaddr_is_v6(cmd->argv[1]) == FALSE) {
-    add_config_param_str("ServerAlias", 1, cmd->argv[1]);
+  if (pr_netaddr_is_v4(name) == FALSE &&
+      pr_netaddr_is_v6(name) == FALSE) {
+    add_config_param_str("ServerAlias", 1, name);
   }
 
-  main_server->ServerAddress = pr_netaddr_get_ipstr(main_addr);
+  main_server->ServerAddress = main_ipstr = pr_netaddr_get_ipstr(main_addr);
   main_server->addr = main_addr;
 
   if (addrs != NULL) {
@@ -441,7 +475,14 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
 
     /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++) {
-      const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
+      const char *ipstr;
+
+      ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+      /* Skip duplicate addresses. */
+      if (strcmp(main_ipstr, ipstr) == 0) {
+        continue;
+      }
 
 #ifdef PR_USE_IPV6
       if (pr_netaddr_use_ipv6()) {
@@ -471,6 +512,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     char *addrs_str = (char *) pr_netaddr_get_ipstr(main_addr);
 
     for (i = 2; i < cmd->argc; i++) {
+      const char *addr_ipstr;
       const pr_netaddr_t *addr;
       addrs = NULL;
 
@@ -481,7 +523,8 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
           cmd->argv[i], "': ", strerror(errno), NULL));
       }
 
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(addr));
+      addr_ipstr = pr_netaddr_get_ipstr(addr);
+      add_config_param_str("_bind_", 1, addr_ipstr);
 
       /* If the given name is a DNS name, automatically add a ServerAlias
        * directive.
@@ -491,8 +534,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
         add_config_param_str("ServerAlias", 1, cmd->argv[i]);
       }
 
-      addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ",
-        pr_netaddr_get_ipstr(addr), NULL);
+      addrs_str = pstrcat(cmd->tmp_pool, addrs_str, ", ", addr_ipstr, NULL);
 
       if (addrs != NULL) {
         register unsigned int j;
@@ -500,7 +542,16 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
 
         /* For every additional address, implicitly add a bind record. */
         for (j = 0; j < addrs->nelts; j++) {
-          add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[j]));
+          const char *ipstr;
+
+          ipstr = pr_netaddr_get_ipstr(elts[j]);
+
+          /* Skip duplicate addresses. */
+          if (strcmp(addr_ipstr, ipstr) == 0) {
+            continue;
+          }
+
+          add_config_param_str("_bind_", 1, ipstr);
         }
       }
     }
@@ -508,8 +559,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     pr_log_debug(DEBUG3, "setting default addresses to %s", addrs_str);
 
   } else {
-    pr_log_debug(DEBUG3, "setting default addresses to %s",
-      pr_netaddr_get_ipstr(main_addr));
+    pr_log_debug(DEBUG3, "setting default address to %s", main_ipstr);
   }
 
   return PR_HANDLED(cmd);
@@ -3188,6 +3238,7 @@ MODRET set_displayquit(cmd_rec *cmd) {
 }
 
 MODRET add_virtualhost(cmd_rec *cmd) {
+  const char *name, *addr_ipstr;
   server_rec *s = NULL;
   const pr_netaddr_t *addr = NULL;
   array_header *addrs = NULL;
@@ -3198,7 +3249,8 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   }
   CHECK_CONF(cmd, CONF_ROOT);
 
-  s = pr_parser_server_ctxt_open(cmd->argv[1]);
+  name = cmd->argv[1];
+  s = pr_parser_server_ctxt_open(name);
   if (s == NULL) {
     CONF_ERROR(cmd, "unable to create virtual server configuration");
   }
@@ -3209,19 +3261,21 @@ MODRET add_virtualhost(cmd_rec *cmd) {
    * are server_recs for each one.
    */
 
-  addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[1], &addrs, addr_flags);
+  addr = pr_netaddr_get_addr2(cmd->tmp_pool, name, &addrs, addr_flags);
   if (addr == NULL) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", cmd->argv[1],
-      "': ", strerror(errno), NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", name, "': ",
+      strerror(errno), NULL));
   }
 
   /* If the given name is a DNS name, automatically add a ServerAlias
    * directive.
    */
-  if (pr_netaddr_is_v4(cmd->argv[1]) == FALSE &&
-      pr_netaddr_is_v6(cmd->argv[1]) == FALSE) {
-    add_config_param_str("ServerAlias", 1, cmd->argv[1]);
+  if (pr_netaddr_is_v4(name) == FALSE &&
+      pr_netaddr_is_v6(name) == FALSE) {
+    add_config_param_str("ServerAlias", 1, name);
   }
+
+  addr_ipstr = pr_netaddr_get_ipstr(addr);
 
   if (addrs != NULL) {
     register unsigned int i;
@@ -3229,7 +3283,16 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 
     /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++) {
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[i]));
+      const char *ipstr;
+
+      ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+      /* Skip duplicate addresses. */
+      if (strcmp(addr_ipstr, ipstr) == 0) {
+        continue;
+      }
+
+      add_config_param_str("_bind_", 1, ipstr);
     }
   }
 
@@ -3243,30 +3306,40 @@ MODRET add_virtualhost(cmd_rec *cmd) {
     for (i = 2; i < cmd->argc; i++) {
       addrs = NULL;
 
-      addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
-        addr_flags);
+      name = cmd->argv[i];
+      addr = pr_netaddr_get_addr2(cmd->tmp_pool, name, &addrs, addr_flags);
       if (addr == NULL) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
-          cmd->argv[i], "': ", strerror(errno), NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '", name, "': ",
+          strerror(errno), NULL));
       }
 
       /* If the given name is a DNS name, automatically add a ServerAlias
        * directive.
        */
-      if (pr_netaddr_is_v4(cmd->argv[i]) == FALSE &&
-          pr_netaddr_is_v6(cmd->argv[i]) == FALSE) {
-        add_config_param_str("ServerAlias", 1, cmd->argv[i]);
+      if (pr_netaddr_is_v4(name) == FALSE &&
+          pr_netaddr_is_v6(name) == FALSE) {
+        add_config_param_str("ServerAlias", 1, name);
       }
 
-      add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(addr));
+      addr_ipstr = pr_netaddr_get_ipstr(addr);
+      add_config_param_str("_bind_", 1, addr_ipstr);
 
-      if (addrs) {
+      if (addrs != NULL) {
         register unsigned int j;
         pr_netaddr_t **elts = addrs->elts;
 
         /* For every additional address, implicitly add a bind record. */
         for (j = 0; j < addrs->nelts; j++) {
-          add_config_param_str("_bind_", 1, pr_netaddr_get_ipstr(elts[j]));
+          const char *ipstr;
+
+          ipstr = pr_netaddr_get_ipstr(elts[j]);
+
+          /* Skip duplicate addresses. */
+          if (strcmp(addr_ipstr, ipstr) == 0) {
+            continue;
+          }
+
+          add_config_param_str("_bind_", 1, ipstr);
         }
       }
     }
@@ -5534,6 +5607,19 @@ MODRET core_size(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
+  /* The PR_ALLOW_ASCII_MODE_SIZE macro should ONLY be defined at compile time,
+   * e.g. using:
+   *
+   *  $ ./configure CPPFLAGS=-DPR_ALLOW_ASCII_MODE_SIZE ...
+   *
+   * Define this macro if you want proftpd to handle a SIZE command while in
+   * ASCII mode.  Note, however, that ProFTPD will NOT properly calculate
+   * CRLF sequences EVEN if this macro is defined: ProFTPD will always return
+   * the number of bytes on disk for the requested file, even if the number of
+   * bytes transferred when that file is downloaded is different.  Thus this
+   * behavior will not comply with RFC 3659, Section 4.  Caveat emptor.
+   */
+#ifndef PR_ALLOW_ASCII_MODE_SIZE
   /* Refuse the command if we're in ASCII mode. */
   if (session.sf_flags & SF_ASCII) {
     pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", (char *) cmd->argv[0]);
@@ -5544,6 +5630,7 @@ MODRET core_size(cmd_rec *cmd) {
     errno = EPERM;
     return PR_ERROR(cmd);
   }
+#endif /* PR_ALLOW_ASCII_MODE_SIZE */
 
   decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
     FSIO_DECODE_FL_TELL_ERRORS);
@@ -6232,6 +6319,9 @@ MODRET core_post_pass(cmd_rec *cmd) {
       PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
   }
 
+  /* Register an exit handler here, for clearing the statcache. */
+  pr_event_register(&core_module, "core.exit", core_exit_ev, NULL);
+
   /* Note: we MUST return HANDLED here, not DECLINED, to indicate that at
    * least one POST_CMD handler of the PASS command succeeded.  Since
    * mod_core is always the last module to which commands are dispatched,
@@ -6298,6 +6388,10 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
 
 /* Event handlers
  */
+
+static void core_exit_ev(const void *event_data, void *user_data) {
+  pr_fs_statcache_reset();
+}
 
 static void core_restart_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_reset();
@@ -6859,7 +6953,8 @@ static conftable core_conftab[] = {
   { "HideNoAccess",		set_hidenoaccess,		NULL },
   { "HideUser",			set_hideuser,			NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
-  { "Include",			add_include,	 		NULL },
+  { "Include",			set_include,	 		NULL },
+  { "IncludeOptions",		set_includeoptions, 		NULL },
   { "MasqueradeAddress",	set_masqueradeaddress,		NULL },
   { "MaxCommandRate",		set_maxcommandrate,		NULL },
   { "MaxConnectionRate",	set_maxconnrate,		NULL },

@@ -3501,7 +3501,7 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
   query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", name, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, query, FALSE);
-  if (c) {
+  if (c != NULL) {
     size_t arglen, outs_remain = sizeof(outs)-1;
 
     conn_name = get_query_named_conn(c);
@@ -3517,16 +3517,18 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
       if (*tmp == '%') {
         if (*(++tmp) == '{') {
           char *tmp_query = NULL;
-	  
-          if (*tmp != '\0')
+
+          if (*tmp != '\0') {
             tmp_query = ++tmp;
+          }
 
           /* Find the full tag to use */
-          while (*tmp && *tmp != '}')
+          while (*tmp && *tmp != '}') {
             tmp++;
+          }
 
           tag = pstrndup(cmd->tmp_pool, tmp_query, (tmp - tmp_query));
-          if (tag) {
+          if (tag != NULL) {
             register unsigned int i;
             size_t taglen = strlen(tag);
             unsigned char is_numeric_tag = TRUE;
@@ -3601,8 +3603,9 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
             (unsigned long) SQL_MAX_STMT_LEN, (unsigned long) arglen, name);
         }
 
-        if (*tmp != '\0')
+        if (*tmp != '\0') {
           tmp++;
+        }
 
       } else {
         if (outs_remain > 0) {
@@ -3620,11 +3623,12 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
           break;
         }
 
-        if (*tmp != '\0')
+        if (*tmp != '\0') {
           tmp++;
+        }
       }
     }
-      
+
     *outsp = '\0';
 
     /* Construct our return data based on the type of query */
@@ -3646,6 +3650,29 @@ static modret_t *process_named_query(cmd_rec *cmd, char *name, int flags) {
     } else if (strcasecmp(c->argv[0], SQL_SELECT_C) == 0) {
       mr = sql_dispatch(sql_make_cmd(cmd->tmp_pool, 2, conn_name, outs),
         "sql_select");
+
+      if (MODRET_ISHANDLED(mr) &&
+          MODRET_HASDATA(mr) &&
+          pr_trace_get_level(trace_channel) >= 9) {
+        register unsigned long i, idx;
+        sql_data_t *sd;
+
+        sd = mr->data;
+
+        pr_trace_msg(trace_channel, 9, "SQLNamedQuery %s results:", name);
+        pr_trace_msg(trace_channel, 9, "  row count: %lu", sd->rnum);
+        pr_trace_msg(trace_channel, 9, "  col count: %lu", sd->fnum);
+
+        for (i = 0, idx = 0; i < sd->rnum; i++) {
+          register unsigned long j;
+
+          pr_trace_msg(trace_channel, 9, "    row #%lu:", i+1);
+          for (j = 0; j < sd->fnum; j++) {
+            pr_trace_msg(trace_channel, 9, "      col #%lu: '%s'", j+1,
+              sd->data[idx++]);
+          }
+        }
+      }
 
     } else {
       mr = PR_ERROR_MSG(cmd, MOD_SQL_VERSION, "unknown NamedQuery type");
@@ -6478,11 +6505,12 @@ static int sql_logfd = -1;
 static int sql_closelog(void) {
 
   /* sanity check */
-  if (sql_logfd != -1) {
-    close(sql_logfd);
-    sql_logfd = -1;
-    sql_logfile = NULL;
+  if (sql_logfd >= 0) {
+    (void) close(sql_logfd);
   }
+
+  sql_logfd = -1;
+  sql_logfile = NULL;
 
   return 0;
 }
@@ -6920,6 +6948,7 @@ static void sql_mod_unload_ev(const void *event_data, void *user_data) {
 
     close(sql_logfd);
     sql_logfd = -1;
+    sql_logfile = NULL;
   }
 }
 

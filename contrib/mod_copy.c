@@ -42,15 +42,6 @@ static int copy_engine = TRUE;
 static unsigned long copy_opts = 0UL;
 #define COPY_OPT_NO_DELETE_ON_FAILURE	0x0001
 
-static size_t copy_iter_count = 0;
-
-/* We will reset timers in the progress callback every Nth iteration of the
- * callback when copying a file.
- */
-#ifndef COPY_PROGRESS_NTH_ITER
-# define COPY_PROGRESS_NTH_ITER       50000
-#endif
-
 static const char *trace_channel = "copy";
 
 static int copy_sess_init(void);
@@ -164,41 +155,6 @@ static int create_path(pool *p, const char *path) {
   }
 
   return 0;
-}
-
-static void copy_reset_progress(void) {
-  copy_iter_count = 0;
-}
-
-static void copy_progress_cb(int nwritten) {
-  int res;
-
-  copy_iter_count++;
-  if ((copy_iter_count % COPY_PROGRESS_NTH_ITER) != 0) {
-    return;
-  }
-
-  /* Reset some of the Timeouts which might interfere, i.e. TimeoutIdle and
-   * TimeoutNoDataTransfer.
-   */
-
-  res = pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 14, "error resetting TimeoutIdle timer: %s",
-      strerror(errno));
-  }
-
-  res = pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 14,
-      "error resetting TimeoutNoTransfer timer: %s", strerror(errno));
-  }
-
-  res = pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 14,
-      "error resetting TimeoutStalled timer: %s", strerror(errno));
-  }
 }
 
 static int copy_symlink(pool *p, const char *src_path, const char *dst_path,
@@ -315,8 +271,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
         break;
 
       } else {
-        copy_reset_progress();
-        if (pr_fs_copy_file2(src_path, dst_path, flags, copy_progress_cb) < 0) {
+        if (pr_fs_copy_file2(src_path, dst_path, flags, NULL) < 0) {
           int xerrno = errno;
 
           pr_log_debug(DEBUG7, MOD_COPY_VERSION
@@ -444,8 +399,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
       }
     }
 
-    copy_reset_progress();
-    res = pr_fs_copy_file2(from, to, flags, copy_progress_cb);
+    res = pr_fs_copy_file2(from, to, flags, NULL);
     if (res < 0) {
       int xerrno = errno;
 

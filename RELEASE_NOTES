@@ -19,6 +19,8 @@ ChangeLog files.
     unexpectedly.
   + Default FTP/SSH2 banner changed to no longer include version information.
   + New -X command-line option for disabling forking, to aid debugging.
+  + Logging of stacktraces now enabled by default; this also means that the
+    installed executables do not have symbols stripped at install time.
 
 
   + Changed Modules:
@@ -32,6 +34,8 @@ ChangeLog files.
 
     FSOptions IgnoreExtendedAttributes
 
+    IncludeOptions (Bug#3849)
+
     MaxPasswordSize (Issue#318)
 
     SFTPKeyLimits (Bug#4233)
@@ -42,6 +46,8 @@ ChangeLog files.
   + Changed Configuration Directives:
 
     GeoIPAllowFilter, GeoIPDenyFilter (Bug#4220)
+
+    Include (Bug#3849)
 
     MasqueradeAddress
       The MasqueradeAddress directive is now allowed in <Global> sections,

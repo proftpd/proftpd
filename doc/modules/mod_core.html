@@ -38,6 +38,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#HideNoAccess">HideNoAccess</a>
   <li><a href="#HideUser">HideUser</a>
   <li><a href="#Include">Include</a>
+  <li><a href="#IncludeOptions">IncludeOptions</a>
   <li><a href="#Limit">&lt;Limit&gt;</a>
   <li><a href="#MasqueradeAddress">MasqueradeAddress</a>
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
@@ -853,6 +854,50 @@ Examples:
   Include /etc/proftpd/conf/tls.conf
   Include /etc/proftpd/conf/vhosts/*.conf
 </pre>
+
+<p>
+<hr>
+<h2><a name="IncludeOptions">IncludeOptions</a></h2>
+<strong>Syntax:</strong> IncludeOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>IncludeOptions</code> directive is used to configure various optional
+behavior of <a href="#Include"><code>Include</code></a> directive.  For
+example:
+<pre>
+  IncludeOptions IgnoreTempFiles
+</pre>
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>AllowSymlinks</code><br>
+    <p>
+    When the <code>Include</code> directive encounters symlinks, it will
+    <i>skip</i> them by default; use this option to handle symlinks.
+  </li>
+
+  <p>
+  <li><code>IgnoreTempFiles</code><br>
+    <p>
+    Use this option to have the <code>Include</code> directive automatically
+    <i>skip</i> any files which have extensions identifying them as commonly
+    occurring temporary files.
+  </li>
+
+  <p>
+  <li><code>IgnoreWildcards</code><br>
+    <p>
+    Use this option to have the <code>Include</code> directive automatically
+    <i>reject</i> any paths which include wildcards in the directory names.
+    This can be done, for example, to prevent other <code>Include</code>d files
+    from using wildcards without the administrator's consent.
+  </li>
+</ul>
 
 <p>
 <hr>

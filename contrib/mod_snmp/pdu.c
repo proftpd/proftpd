@@ -27,7 +27,6 @@
 #include "pdu.h"
 #include "smi.h"
 #include "asn1.h"
-#include "stacktrace.h"
 
 static const char *trace_channel = "snmp.pdu";
 

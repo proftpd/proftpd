@@ -26,6 +26,10 @@
 
 #include "conf.h"
 
+#ifndef PR_SYM_POOL_SIZE
+# define PR_SYM_POOL_SIZE		128
+#endif /* PR_SYM_POOL_SIZE */
+
 /* This local structure vastly speeds up symbol lookups. */
 struct stash {
   struct stash *next, *prev;
@@ -68,9 +72,9 @@ static struct stash *sym_alloc(void) {
 
   /* XXX Use a smaller pool size, since there are lots of sub-pools allocated
    * for Stash symbols.  The default pool size (PR_TUNABLE_POOL_SIZE, 512
-   * by default) is a bit large for symbols.
+   * bytes by default) is a bit large for symbols.
    */
-  sub_pool = pr_pool_create_sz(symbol_pool, 128);
+  sub_pool = pr_pool_create_sz(symbol_pool, PR_SYM_POOL_SIZE);
 
   sym = pcalloc(sub_pool, sizeof(struct stash));
   sym->sym_pool = sub_pool; 

@@ -53,6 +53,15 @@
 # include <acl/libacl.h>
 #endif
 
+/* We will reset timers in the progress callback every Nth iteration of the
+ * callback when copying a file.
+ */
+static size_t copy_iter_count = 0;
+
+#ifndef COPY_PROGRESS_NTH_ITER
+# define COPY_PROGRESS_NTH_ITER       50000
+#endif
+
 /* For determining whether a file is on an NFS filesystem.  Note that
  * this value is Linux specific.  See Bug#3874 for details.
  */
@@ -151,6 +160,38 @@ static int chroot_allow_path(const char *path) {
   }
 
   return res;
+}
+
+/* Builtin/default "progress" callback for long-running file copies. */
+static void copy_progress_cb(int nwritten) {
+  int res;
+
+  copy_iter_count++;
+  if ((copy_iter_count % COPY_PROGRESS_NTH_ITER) != 0) {
+    return;
+  }
+
+  /* Reset some of the Timeouts which might interfere, i.e. TimeoutIdle and
+   * TimeoutNoDataTransfer.
+   */
+
+  res = pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14, "error resetting TimeoutIdle timer: %s",
+      strerror(errno));
+  }
+
+  res = pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14,
+      "error resetting TimeoutNoTransfer timer: %s", strerror(errno));
+  }
+
+  res = pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14,
+      "error resetting TimeoutStalled timer: %s", strerror(errno));
+  }
 }
 
 /* The following static functions are simply wrappers for system functions
@@ -1640,6 +1681,10 @@ void pr_fs_statcache_reset(void) {
     lstat_statcache_tab = NULL;
   }
 
+  /* Note: we do not need to explicitly destroy each entry in the statcache
+   * tables, since ALL entries are allocated out of this statcache_pool.
+   * And we destroy this pool here.  Much easier cleanup that way.
+   */
   if (statcache_pool != NULL) {
     destroy_pool(statcache_pool);
     statcache_pool = make_sub_pool(permanent_pool);
@@ -1759,6 +1804,8 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
     errno = EINVAL;
     return -1;
   }
+
+  copy_iter_count = 0;
 
   /* Use a nonblocking open() for the path; it could be a FIFO, and we don't
    * want to block forever if the other end of the FIFO is not running.
@@ -1949,6 +1996,9 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
 
       if (progress_cb != NULL) {
         (progress_cb)(res);
+
+      } else {
+        copy_progress_cb(res);
       }
 
       if ((size_t) res == datalen) {
@@ -2095,6 +2145,9 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
 
   if (progress_cb != NULL) {
     (progress_cb)(0);
+
+  } else {
+    copy_progress_cb(0);
   }
 
   res = pr_fsio_close(dst_fh);

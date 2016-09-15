@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp MIB support
- * Copyright (c) 2008-2013 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 #include "mib.h"
 #include "smi.h"
 #include "db.h"
-#include "stacktrace.h"
 
 /* This table maps the OIDs in the PROFTPD-MIB to the database field where
  * that value is stored.
