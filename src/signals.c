@@ -158,44 +158,51 @@ static void handle_terminate_other(void) {
 }
 
 static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
+#ifdef HAVE_BACKTRACE
   register int i;
-#if defined(HAVE_UCONTEXT_H)
+# if defined(HAVE_UCONTEXT_H)
   ucontext_t *uc = NULL;
-#endif /* !HAVE_UCONTEXT_H */
+# endif /* !HAVE_UCONTEXT_H */
   void *trace[PR_TUNABLE_CALLER_DEPTH];
   char **strings;
   int tracesz;
+#endif /* HAVE_BACKTRACE */
 
   /* Call the "normal" signal handler. */
   table_handling_signal(TRUE);
 
   pr_log_pri(PR_LOG_ERR, "-----BEGIN STACK TRACE-----");
 
+#ifdef HAVE_BACKTRACE
   tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
   if (tracesz < 0) {
     pr_log_pri(PR_LOG_ERR, "backtrace(3) error: %s", strerror(errno));
   }
 
-#if defined(HAVE_UCONTEXT_H)
+# if defined(HAVE_UCONTEXT_H)
   /* Overwrite sigaction with caller's address */
   uc = (ucontext_t *) ptr;
-# if defined(REG_EIP)
+#  if defined(REG_EIP)
   trace[1] = (void *) uc->uc_mcontext.gregs[REG_EIP];
-# elif defined(REG_RIP)
+#  elif defined(REG_RIP)
   trace[1] = (void *) uc->uc_mcontext.gregs[REG_RIP];
-# endif
-#endif /* !HAVE_UCONTEXT_H */
+#  endif
+# endif /* !HAVE_UCONTEXT_H */
 
+# ifdef HAVE_BACKTRACE_SYMBOLS
   strings = backtrace_symbols(trace, tracesz);
   if (strings == NULL) {
     pr_log_pri(PR_LOG_ERR, "backtrace_symbols(3) error: %s", strerror(errno));
   }
+# endif /* HAVE_BACKTRACE_SYMBOLS */
 
   /* Skip first stack frame; it just points here. */
   for (i = 1; i < tracesz; ++i) {
     pr_log_pri(PR_LOG_ERR, "[%u] %s", i-1, strings[i]);
   }
-
+#else
+  pr_log_pri(PR_LOG_ERR, " backtrace(3) unavailable");
+#endif /* HAVE_BACKTRACE */
   pr_log_pri(PR_LOG_ERR, "-----END STACK TRACE-----");
 
   sig_terminate(signo);
