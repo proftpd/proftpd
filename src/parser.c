@@ -1059,7 +1059,7 @@ static int parse_wildcard_config_path(pool *p, const char *path,
     globbed_dir = ((const char **) globbed_dirs->elts)[i];
     res = parse_config_path2(p, globbed_dir, depth);
     if (res < 0) {
-      int xerrno = errno;
+      xerrno = errno;
 
       pr_trace_msg(trace_channel, 7, "error parsing wildcard path '%s': %s",
         globbed_dir, strerror(xerrno));
