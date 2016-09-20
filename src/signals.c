@@ -49,7 +49,9 @@ static void install_stacktrace_handler(void);
 /* Used to capture an "unknown" signal value that causes termination. */
 static int term_signo = 0;
 
-static void finish_terminate(void) {
+static void finish_terminate(int signo) {
+  int reason_code = PR_SESS_DISCONNECT_SIGNAL;
+
   if (is_master &&
       mpid == getpid()) {
     PRIVS_ROOT
@@ -91,12 +93,16 @@ static void finish_terminate(void) {
     }
   }
 
-  pr_session_disconnect(NULL, PR_SESS_DISCONNECT_SIGNAL, "Killed by signal");
+  if (signo == SIGSEGV) {
+    reason_code = PR_SESS_DISCONNECT_SEGFAULT;
+  }
+
+  pr_session_disconnect(NULL, reason_code, "Killed by signal");
 }
 
 static void handle_abort(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
-  finish_terminate();
+  finish_terminate(SIGABRT);
 }
 
 static void handle_chld(void) {
@@ -149,12 +155,12 @@ static void handle_terminate(void) {
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD killed (signal %d)", term_signo);
   }
 
-  finish_terminate();
+  finish_terminate(term_signo);
 }
 
 static void handle_terminate_other(void) {
   pr_log_pri(PR_LOG_WARNING, "ProFTPD terminating (signal %d)", term_signo);
-  finish_terminate();
+  finish_terminate(term_signo);
 }
 
 static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
@@ -206,12 +212,12 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   pr_log_pri(PR_LOG_ERR, "-----END STACK TRACE-----");
 
   sig_terminate(signo);
-  finish_terminate();
+  finish_terminate(signo);
 }
 
 static void handle_xcpu(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
-  finish_terminate();
+  finish_terminate(SIGXCPU);
 }
 
 static RETSIGTYPE sig_child(int signo) {

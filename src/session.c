@@ -93,6 +93,7 @@ static void sess_cleanup(int flags) {
 
 void pr_session_disconnect(module *m, int reason_code,
     const char *details) {
+  int flags = 0;
 
   session.disconnect_reason = reason_code;
   session.disconnect_module = m;
@@ -111,7 +112,11 @@ void pr_session_disconnect(module *m, int reason_code,
     }
   }
 
-  pr_session_end(0);
+  if (reason_code == PR_SESS_DISCONNECT_SEGFAULT) {
+    flags |= PR_SESS_END_FL_ERROR;
+  }
+
+  pr_session_end(flags);
 }
 
 void pr_session_end(int flags) {
@@ -121,6 +126,10 @@ void pr_session_end(int flags) {
 
   if (flags & PR_SESS_END_FL_NOEXIT) {
     return;
+  }
+
+  if (flags & PR_SESS_END_FL_ERROR) {
+    exitcode = 1;
   }
 
 #ifdef PR_USE_DEVEL

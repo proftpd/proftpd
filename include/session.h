@@ -72,6 +72,9 @@
 /* Disconnected due to wrong protocol used (e.g. HTTP/SMTP). */
 #define PR_SESS_DISCONNECT_BAD_PROTOCOL		14
 
+/* Disconnected due to segfault. */
+#define PR_SESS_DISCONNECT_SEGFAULT		15
+
 /* Returns a string describing the reason the client was disconnected or
  * the session ended.  If a pointer to a char * was provided, any extra
  * disconnect details will be provided.
@@ -99,6 +102,7 @@ void pr_session_disconnect(module *m, int reason_code, const char *details);
 void pr_session_end(int flags);
 #define PR_SESS_END_FL_NOEXIT		0x01
 #define PR_SESS_END_FL_SYNTAX_CHECK	0x02
+#define PR_SESS_END_FL_ERROR		0x04
 
 /* Returns a so-called "tty name" suitable for use via PAM, and in WtmpLog
  * logging.
