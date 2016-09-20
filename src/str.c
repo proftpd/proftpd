@@ -1107,8 +1107,9 @@ int pr_str_is_fnmatch(const char *str) {
 
       case '\\':
         /* If the next character is NUL, we've reached the end of the string. */
-        if (*(str+1) == '\0')
+        if (*(str+1) == '\0') {
           return FALSE;
+        }
 
         /* Skip past the escaped character, i.e. the next character. */
         str++;

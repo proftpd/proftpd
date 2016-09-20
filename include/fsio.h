@@ -200,6 +200,12 @@ struct fs_rec {
    * command to complete.
    */
   int allow_xdev_rename;
+
+  /* This flag determines whether the paths handled by this FS handler
+   * are standard, filesystem-based paths, and such use the standard
+   * path separator, glob semantics, etc.
+   */
+  int non_std_path;
 };
 
 struct fh_rec {

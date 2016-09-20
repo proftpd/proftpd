@@ -1388,35 +1388,40 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   memset(cleaned_path, '\0', sizeof(cleaned_path));
   memset(pathbuf, '\0', sizeof(pathbuf));
 
-  /* Use only absolute path names.  Construct them, if given a relative
-   * path, based on cwd.  This obviates the need for something like
-   * realpath(3), which only introduces more stat(2) system calls.
-   */
-  if (*path != '/') {
-    size_t pathbuf_len;
-
-    sstrcat(pathbuf, cwd, sizeof(pathbuf)-1);
-    pathbuf_len = cwd_len;
-
-    /* If the cwd is "/", we don't need to duplicate the path separator. 
-     * On some systems (e.g. Cygwin), this duplication can cause problems,
-     * as the path may then have different semantics.
+  if (fs->non_std_path == FALSE) {
+    /* Use only absolute path names.  Construct them, if given a relative
+     * path, based on cwd.  This obviates the need for something like
+     * realpath(3), which only introduces more stat(2) system calls.
      */
-    if (strncmp(cwd, "/", 2) != 0) {
-      sstrcat(pathbuf + pathbuf_len, "/", sizeof(pathbuf) - pathbuf_len - 1);
-      pathbuf_len++;
+    if (*path != '/') {
+      size_t pathbuf_len;
+
+      sstrcat(pathbuf, cwd, sizeof(pathbuf)-1);
+      pathbuf_len = cwd_len;
+
+      /* If the cwd is "/", we don't need to duplicate the path separator.
+       * On some systems (e.g. Cygwin), this duplication can cause problems,
+       * as the path may then have different semantics.
+       */
+      if (strncmp(cwd, "/", 2) != 0) {
+        sstrcat(pathbuf + pathbuf_len, "/", sizeof(pathbuf) - pathbuf_len - 1);
+        pathbuf_len++;
+      }
+
+      /* If the given directory is ".", then we don't need to append it. */
+      if (strncmp(path, ".", 2) != 0) {
+        sstrcat(pathbuf + pathbuf_len, path, sizeof(pathbuf)- pathbuf_len - 1);
+      }
+
+    } else {
+      sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
     }
 
-    /* If the given directory is ".", then we don't need to append it. */
-    if (strncmp(path, ".", 2) != 0) {
-      sstrcat(pathbuf + pathbuf_len, path, sizeof(pathbuf)- pathbuf_len - 1);
-    }
+    pr_fs_clean_path2(pathbuf, cleaned_path, sizeof(cleaned_path)-1, 0);
 
   } else {
-    sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
+    sstrncpy(cleaned_path, path, sizeof(cleaned_path)-1);
   }
-
-  pr_fs_clean_path2(pathbuf, cleaned_path, sizeof(cleaned_path)-1, 0);
 
   /* Determine which filesystem function to use, stat() or lstat() */
   if (op == FSIO_FILE_STAT) {

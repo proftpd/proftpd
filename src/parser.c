@@ -1090,12 +1090,22 @@ int parse_config_path2(pool *p, const char *path, unsigned int depth) {
     return -1;
   }
 
-  if (*path != '/') {
+  if (pr_fs_valid_path(path) < 0) {
     errno = EINVAL;
     return -1;
   }
 
   have_glob = pr_str_is_fnmatch(path);
+  if (have_glob) {
+    /* Even though the path may be valid, it also may not be a filesystem
+     * path; consider custom FSIO modules.  Thus if the path does not start
+     * with a slash, it should not be treated as having globs.
+     */
+    if (*path != '/') {
+      have_glob = FALSE;
+    }
+  }
+
   pr_fs_clear_cache2(path);
 
   if (have_glob) {
