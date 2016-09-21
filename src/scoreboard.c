@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1340,10 +1340,13 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         break;
 
       default:
+        va_end(ap);
         errno = ENOENT;
         return -1;
     }
   }
+
+  va_end(ap);
 
   /* Write-lock this entry */
   wlock_entry(scoreboard_fd);
