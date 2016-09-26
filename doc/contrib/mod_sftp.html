@@ -2298,6 +2298,30 @@ configure option is required to enable NLS support, which includes support
 for UTF8.  SFTP protocol versions 4-6 require UTF8 support, which is why
 the <code>--enable-nls</code> configure option is needed.
 
+<p><a name="SFTPExtraREADs">
+<font color=red>Question</font>: Why is my <code>SFTPLog</code> often spammed
+with lots of messages that look like:
+<pre>
+  requested read offset (20480 bytes) greater than size of '/some/path/to.file' (20307 bytes)
+</pre>
+Is there something wrong with my SFTP client, or my configuration?<br>
+<font color=blue>Answer</font>: The short answer is that these extraneous
+<code>READ</code> requests <i>are</i> normal, and do <i>not</i> indicate any
+problem or issue.
+
+<p>
+Many SFTP clients try to improve their download speed by issuing many
+concurrent <code>READ</code> requests, each request with a different
+<em>offset</em>. Thus the client can read multiple "chunks" simultaneously,
+and do the reassembly of the "chunks" into the file itself.  However, sometimes
+these SFTP clients do not necessarily know how <i>many</i> such
+<code>READ</code> requests are needed before the end-of-file is reached.  So
+the SFTP client sends more <code>READ</code>s that might be necessary; the
+server will reply with an error if the requested <em>offset</em> is beyond the
+end of the file.  When this "end of file" reply is received by the SFTP client,
+it will know that it is done downloading.  On the server side, though, this
+behavior results in the above log messages.
+
 <p><a name="SFTPNotUnderstood">
 <font color=red>Question</font>: When I use my SFTP client, I see something
 like this when I try to connect to <code>proftpd</code> with
