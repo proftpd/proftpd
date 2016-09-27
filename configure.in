@@ -1818,8 +1818,8 @@ AC_TRY_LINK(
   ]
 )
 
-AC_CHECK_FUNCS(getcwd getenv getgrouplist getgrset gethostbyname2 gethostname getnameinfo)
-AC_CHECK_FUNCS(gettimeofday hstrerror inet_aton inet_ntop inet_pton)
+AC_CHECK_FUNCS(getcwd getenv getgrouplist getgroups getgrset gethostbyname2 gethostname getnameinfo)
+AC_CHECK_FUNCS(gettimeofday hstrerror inet_aton inet_ntop inet_pton initgroups)
 AC_CHECK_FUNCS(loginrestrictions)
 AC_CHECK_FUNCS(memcpy mempcpy memset_s mkdir mkstemp mlock mlockall munlock munlockall)
 AC_CHECK_FUNCS(pathconf posix_fadvise putenv regcomp rmdir select setgroups socket statfs strchr strcoll strerror)
