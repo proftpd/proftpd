@@ -942,7 +942,7 @@ static void poll_ctrl(void) {
       /* Otherwise, EOF */
       pr_session_disconnect(NULL, PR_SESS_DISCONNECT_CLIENT_EOF, NULL);
 #else
-      return -1;
+      return;
 #endif /* PR_DEVEL_NO_DAEMON */
 
     } else if (cmd != NULL) {
