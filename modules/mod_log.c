@@ -2281,11 +2281,18 @@ static void find_extendedlogs(void) {
     logfmt_s = NULL;
 
     if (c->argc > 1) {
-      incl_classes = *((int *) c->argv[1]);
-      excl_classes = *((int *) c->argv[2]);
+      if (c->argv[1] != NULL) {
+        incl_classes = *((int *) c->argv[1]);
+      }
+
+      if (c->argv[2] != NULL) {
+        excl_classes = *((int *) c->argv[2]);
+      }
 
       if (c->argc > 3) {
-        logfmt_s = c->argv[3];
+        if (c->argv[3] != NULL) {
+          logfmt_s = c->argv[3];
+        }
       }
     }
 
