@@ -428,6 +428,7 @@ uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
     return sftp_msg_write_int(buf, buflen, 0);
   }
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090801fL
   if (BN_is_negative(mpint)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to write mpint (negative numbers not "
@@ -435,6 +436,7 @@ uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
     pr_log_stacktrace(sftp_logfd, MOD_SFTP_VERSION);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
+#endif /* OpenSSL-0.9.8a or later */
 
   datalen = BN_num_bytes(mpint) + 1;
 

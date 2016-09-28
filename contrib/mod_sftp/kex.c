@@ -778,12 +778,14 @@ static int have_good_dh(DH *dh, BIGNUM *pub_key) {
   unsigned int nbits = 0;
   BIGNUM *dh_p = NULL, *tmp;
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090801fL
   if (BN_is_negative(pub_key)) {
     pr_trace_msg(trace_channel, 10,
       "DH public keys cannot have negative numbers");
     errno = EINVAL;
     return -1;
   }
+#endif /* OpenSSL-0.9.8a or later */
 
   if (BN_cmp(pub_key, BN_value_one()) != 1) {
     pr_trace_msg(trace_channel, 10, "bad DH public key exponent (<= 1)");
@@ -1078,14 +1080,18 @@ static int create_dh(struct sftp_kex *kex, int type) {
     kex->dh = dh;
 
     switch (type) {
+#ifdef HAVE_SHA512_OPENSSL
       case SFTP_DH_GROUP16_SHA512:
       case SFTP_DH_GROUP18_SHA512:
         kex->hash = EVP_sha512();
         break;
+#endif /* HAVE_SHA512_OPENSSL */
 
+#ifdef HAVE_SHA256_OPENSSL
       case SFTP_DH_GROUP14_SHA256:
         kex->hash = EVP_sha256();
         break;
+#endif /* HAVE_SHA256_OPENSSL */
 
       default:
         kex->hash = EVP_sha1();
