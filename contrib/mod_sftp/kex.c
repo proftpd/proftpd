@@ -1152,8 +1152,9 @@ static int prepare_dh(struct sftp_kex *kex, int type) {
   if (type == SFTP_DH_GEX_SHA1) {
     kex->hash = EVP_sha1();
 
-#if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
-    (OPENSSL_VERSION_NUMBER > 0x000908000L)
+#if ((OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
+     (OPENSSL_VERSION_NUMBER > 0x000908000L)) && \
+     defined(HAVE_SHA256_OPENSSL)
   } else if (type == SFTP_DH_GEX_SHA256) {
     kex->hash = EVP_sha256();
 #endif
@@ -1298,12 +1299,13 @@ static int create_kexrsa(struct sftp_kex *kex, int type) {
 
     kex->hash = EVP_sha1();
 
-#if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
-    (OPENSSL_VERSION_NUMBER > 0x000908000L)
+#if ((OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
+     (OPENSSL_VERSION_NUMBER > 0x000908000L)) && \
+     defined(HAVE_SHA256_OPENSSL)
   } else if (type == SFTP_KEXRSA_SHA256) {
     BIGNUM *e = NULL;
 
-#if OPENSSL_VERSION_NUMBER > 0x000908000L
+# if OPENSSL_VERSION_NUMBER > 0x000908000L
     e = BN_new();
     if (e == NULL) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1319,10 +1321,10 @@ static int create_kexrsa(struct sftp_kex *kex, int type) {
     }
 
     if (RSA_generate_key_ex(rsa, SFTP_KEXRSA_SHA256_SIZE, e, NULL) != 1) {
-#else
+# else
     rsa = RSA_generate_key(SFTP_KEXRSA_SHA256_SIZE, 65537, NULL, NULL);
     if (rsa == NULL) {
-#endif /* OpenSSL version 0.9.8 and later */
+# endif /* OpenSSL version 0.9.8 and later */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error generating %u-bit RSA key: %s", SFTP_KEXRSA_SHA256_SIZE,
         sftp_crypto_get_errors());
@@ -1371,6 +1373,7 @@ static int create_ecdh(struct sftp_kex *kex, int type) {
   }
 
   switch (type) {
+# if defined(HAVE_SHA256_OPENSSL)
     case SFTP_ECDH_SHA256:
       curve_nid = NID_X9_62_prime256v1;
       curve_name = "NID_X9_62_prime256v1";
@@ -1382,12 +1385,15 @@ static int create_ecdh(struct sftp_kex *kex, int type) {
       curve_name = "NID_secp384r1";
       kex->hash = EVP_sha384();
       break;
+# endif /* HAVE_SHA256_OPENSSL */
 
+# if defined(HAVE_SHA512_OPENSSL)
     case SFTP_ECDH_SHA512:
       curve_nid = NID_secp521r1;
       curve_name = "NID_secp521r1";
       kex->hash = EVP_sha512();
       break;
+# endif /* HAVE_SHA512_OPENSSL */
   }
 
   ec = EC_KEY_new_by_curve_name(curve_nid);
@@ -1468,10 +1474,14 @@ static const char *kex_exchanges[] = {
 
 #if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
     (OPENSSL_VERSION_NUMBER > 0x000908000L)
+# if defined(HAVE_SHA512_OPENSSL)
   "diffie-hellman-group18-sha512",
   "diffie-hellman-group16-sha512",
+# endif /* HAVE_SHA512_OPENSSL */
+# if defined(HAVE_SHA256_OPENSSL)
   "diffie-hellman-group14-sha256",
   "diffie-hellman-group-exchange-sha256",
+# endif /* HAVE_SHA256_OPENSSL */
 #endif
   "diffie-hellman-group-exchange-sha1",
   "diffie-hellman-group14-sha1",
@@ -1482,8 +1492,9 @@ static const char *kex_exchanges[] = {
  * at present, which only allows EME-OAEP using SHA1.  v2.1 allows for
  * using other message digests, e.g. SHA256, for EME-OAEP.
  */
-#if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
-    (OPENSSL_VERSION_NUMBER > 0x000908000L)
+#if ((OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
+     (OPENSSL_VERSION_NUMBER > 0x000908000L)) && \
+     defined(HAVE_SHA256_OPENSSL)
   "rsa2048-sha256",
 #endif
 #endif
@@ -1802,8 +1813,9 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_kexrsa = TRUE;
     return 0;
 
-#if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
-    (OPENSSL_VERSION_NUMBER > 0x000908000L)
+#if ((OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
+     (OPENSSL_VERSION_NUMBER > 0x000908000L)) && \
+     defined(HAVE_SHA256_OPENSSL)
   } else if (strncmp(algo, "diffie-hellman-group-exchange-sha256", 37) == 0) {
     if (prepare_dh(kex, SFTP_DH_GEX_SHA256) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -3176,7 +3188,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   const unsigned char *h, *hostkey_data, *hsig;
   unsigned char *buf, *ptr;
   uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
-  size_t dhlen, hsiglen;
+  size_t dhlen, hsiglen = 0;
   BIGNUM *k = NULL, *dh_pub_key = NULL;
   int res;
 
