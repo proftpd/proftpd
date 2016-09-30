@@ -1415,13 +1415,18 @@ sub listoptions_sortednlst {
   my $setup = test_setup($tmpdir, 'config');
 
   my $test_files = [];
-  my $nfiles = 100;
+  my $nfiles = 1000;
   for (my $i = 0; $i < $nfiles; $i++) {
-    push(@$test_files, "$i.dat");
+    my $fileno = sprintf("%04d", $i);
+    push(@$test_files, "$fileno.dat");
   }
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# Writing out files..."
+  }
 
   my $count = scalar(@$test_files);
   foreach my $test_file (@$test_files) {
@@ -1435,6 +1440,10 @@ sub listoptions_sortednlst {
     } else {
       die("Can't open $path: $!");
     }
+  }
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "done\n";
   }
 
 #    ListOptions => '"" SortedNLST',
@@ -1485,8 +1494,16 @@ sub listoptions_sortednlst {
           $client->response_msg());
       }
 
-      my $buf;
-      $conn->read($buf, 16384, 25);
+      my ($buf, $tmp);
+      my $res = $conn->read($tmp, 8192, 5);
+      while ($res) {
+if ($ENV{TEST_VERBOSE}) {
+  print STDERR "# buf: $tmp\n";
+}
+        $buf .= $tmp;
+        $tmp = '';
+        $res = $conn->read($tmp, 8192, 5);
+      }
       eval { $conn->close() };
       sleep(2);
 
@@ -1527,7 +1544,7 @@ sub listoptions_sortednlst {
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh, 30) };
+    eval { server_wait($setup->{config_file}, $rfh, 180) };
     if ($@) {
       warn($@);
       exit 1;
