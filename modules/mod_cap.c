@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003-2013 The ProFTPD Project team
+ * Copyright (c) 2003-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -299,10 +299,20 @@ MODRET cap_post_host(cmd_rec *cmd) {
 MODRET cap_post_pass(cmd_rec *cmd) {
   int cap_root_revoke = TRUE, res;
   config_rec *c;
+  unsigned char *cap_engine = NULL;
   uid_t dst_uid = PR_ROOT_UID;
 
   if (!use_capabilities)
     return PR_DECLINED(cmd);
+
+  /* Check to see if we have been disabled via e.g. mod_ifsession. */
+  cap_engine = get_param_ptr(main_server->conf, "CapabilitiesEngine", FALSE);
+  if (cap_engine != NULL) {
+    use_capabilities = *cap_engine;
+    if (use_capabilities == FALSE) {
+      return PR_DECLINED(cmd);
+    }
+  }
 
   /* Check for which specific capabilities to include/exclude. */
   c = find_config(main_server->conf, CONF_PARAM, "CapabilitiesSet", FALSE);
