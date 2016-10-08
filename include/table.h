@@ -255,6 +255,11 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
  */
 int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz);
 
+/* Same as pr_table_next(), except that the size of the key is also provided.
+ * This function should be used if the lookup key is not a string.
+ */
+const void *pr_table_knext(pr_table_t *tab, size_t *key_datasz);
+
 /* Same as pr_table_get(), except that the key data to use is treated as
  * an opaque memory region of size key_datasz.  This function should be
  * used if the lookup key is not a string.

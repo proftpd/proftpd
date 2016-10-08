@@ -383,6 +383,7 @@ END_TEST
 START_TEST (table_next_test) {
   int ok;
   const char *res;
+  size_t sz = 0;
   pr_table_t *tab;
 
   res = pr_table_next(NULL);
@@ -404,6 +405,18 @@ START_TEST (table_next_test) {
     "Expected key '%s', got '%s'", "foo", res);
 
   res = pr_table_next(tab);
+  fail_unless(res == NULL, "Expected no more keys, got '%s'", res);
+
+  pr_table_rewind(tab);
+
+  res = pr_table_knext(tab, &sz);
+  fail_unless(res != NULL, "Failed to get next key: %s", strerror(errno));
+  fail_unless(sz == 4, "Expected 4, got %lu", (unsigned long) sz);
+  fail_unless(strcmp(res, "foo") == 0,
+    "Expected key '%s', got '%s'", "foo", res);
+
+  sz = 0;
+  res = pr_table_knext(tab, &sz);
   fail_unless(res == NULL, "Expected no more keys, got '%s'", res);
 }
 END_TEST

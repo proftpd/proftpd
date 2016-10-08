@@ -1000,7 +1000,7 @@ const void *pr_table_get(pr_table_t *tab, const char *key_data,
   return pr_table_kget(tab, key_data, key_datasz, value_datasz);
 }
 
-const void *pr_table_next(pr_table_t *tab) {
+const void *pr_table_knext(pr_table_t *tab, size_t *key_datasz) {
   pr_table_entry_t *ent, *prev;
 
   if (tab == NULL) {
@@ -1030,7 +1030,15 @@ const void *pr_table_next(pr_table_t *tab) {
     return NULL;
   }
 
+  if (key_datasz != NULL) {
+    *key_datasz = ent->key->key_datasz;
+  }
+
   return ent->key->key_data;
+}
+
+const void *pr_table_next(pr_table_t *tab) {
+  return pr_table_knext(tab, NULL);
 }
 
 const void *pr_table_remove(pr_table_t *tab, const char *key_data,
