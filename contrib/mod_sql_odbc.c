@@ -198,7 +198,7 @@ static void sqlodbc_escape_string(char *to, const char *from, size_t fromlen) {
         break;
 
       case '\'':
-        *to++ = '\\';
+        *to++ = '\'';
         *to++ = '\'';
         break;
 
