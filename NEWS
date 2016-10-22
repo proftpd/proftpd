@@ -14,6 +14,8 @@
 - Bug 4257 - Recursive SCP uploads of multiple directories not handled properly.
 - Bug 4259 - LIST returns different results for file, depending on path syntax.
 - Bug 4255 - "AuthAliasOnly on" in server config breaks anonymous logins.
+- Bug 4272 - CapabilitiesEngine directive not honored for <IfUser>/<IfGroup>
+  sections.
 
 1.3.5b - Released 10-Mar-2016
 --------------------------------
