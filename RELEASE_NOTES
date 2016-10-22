@@ -45,6 +45,8 @@ ChangeLog files.
 
   + Changed Configuration Directives:
 
+    CapabilitiesEngine (Bug#4272)
+
     GeoIPAllowFilter, GeoIPDenyFilter (Bug#4220)
 
     Include (Bug#3849)
