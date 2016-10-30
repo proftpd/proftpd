@@ -22,11 +22,11 @@
  * source distribution.
  */
 
-#include "mod_snmp.h"
-
 #ifndef MOD_SNMP_AGENTX_H
 #define MOD_SNMP_AGENTX_H
 
+#include "mod_snmp.h"
+
 /* See RFC2741 */
 
-#endif
+#endif /* MOD_SNMP_AGENTX_H */

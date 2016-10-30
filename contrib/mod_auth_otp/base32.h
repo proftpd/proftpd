@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_auth_otp.h"
-
 #ifndef MOD_AUTH_OTP_BASE32_H
 #define MOD_AUTH_OTP_BASE32_H
+
+#include "mod_auth_otp.h"
 
 int auth_otp_base32_encode(pool *p, const unsigned char *raw,
   size_t raw_len, const unsigned char **encoded, size_t *encoded_len);
@@ -33,4 +33,4 @@ int auth_otp_base32_encode(pool *p, const unsigned char *raw,
 int auth_otp_base32_decode(pool *p, const unsigned char *encoded,
   size_t encoded_len, const unsigned char **raw, size_t *raw_len);
 
-#endif
+#endif /* MOD_AUTH_OTP_BASE32_H */

@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_CRYPTO_H
 #define MOD_SFTP_CRYPTO_H
+
+#include "mod_sftp.h"
 
 void sftp_crypto_free(int);
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *, size_t *, size_t *);
@@ -36,4 +36,4 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *);
 
 size_t sftp_crypto_get_size(size_t, size_t);
 
-#endif
+#endif /* MOD_SFTP_CRYPTO_H */

@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_snmp.h"
-
 #ifndef MOD_SNMP_ASN1_H
 #define MOD_SNMP_ASN1_H
+
+#include "mod_snmp.h"
 
 typedef uint32_t oid_t;
 
@@ -118,4 +118,4 @@ int snmp_asn1_write_exception(pool *p, unsigned char **buf, size_t *buflen,
 
 /* XXX Need an snmp_asn1_write_sequence() function? */
 
-#endif
+#endif /* MOD_SNMP_ASN1_H */

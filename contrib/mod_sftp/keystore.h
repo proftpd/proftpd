@@ -23,10 +23,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_KEYSTORE_H
 #define MOD_SFTP_KEYSTORE_H
+
+#include "mod_sftp.h"
 
 int sftp_keystore_init(void);
 int sftp_keystore_free(void);
@@ -37,4 +37,4 @@ int sftp_keystore_verify_host_key(pool *, const char *, const char *,
 int sftp_keystore_verify_user_key(pool *, const char *, unsigned char *,
   uint32_t);
 
-#endif
+#endif /* MOD_SFTP_KEYSTORE_H */

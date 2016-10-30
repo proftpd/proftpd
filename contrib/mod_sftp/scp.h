@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_SCP_H
 #define MOD_SFTP_SCP_H
+
+#include "mod_sftp.h"
 
 int sftp_scp_handle_packet(pool *, void *, uint32_t, unsigned char *, uint32_t);
 
@@ -37,4 +37,4 @@ int sftp_scp_close_session(uint32_t);
  */
 int sftp_scp_set_params(pool *, uint32_t, array_header *);
 
-#endif
+#endif /* MOD_SFTP_SCP_H */

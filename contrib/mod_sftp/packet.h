@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_PACKET_H
 #define MOD_SFTP_PACKET_H
+
+#include "mod_sftp.h"
 
 /* From RFC 4253, Section 6 */
 struct ssh2_packet {
@@ -112,4 +112,4 @@ int sftp_ssh2_packet_set_version(const char *);
 
 int sftp_ssh2_packet_set_client_alive(unsigned int, unsigned int);
 
-#endif
+#endif /* MOD_SFTP_PACKET_H */

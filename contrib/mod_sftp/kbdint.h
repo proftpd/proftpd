@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp keyboard-interactive API
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_KBDINT_H
 #define MOD_SFTP_KBDINT_H
+
+#include "mod_sftp.h"
 
 /* Returns the registered driver by name, or NULL if no such driver has
  * been registered.
@@ -43,4 +43,4 @@ sftp_kbdint_driver_t *sftp_kbdint_first_driver(void);
  */
 sftp_kbdint_driver_t *sftp_kbdint_next_driver(void);
 
-#endif
+#endif /* MOD_SFTP_KBDINT_H */

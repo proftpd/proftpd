@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_MSG_H
 #define MOD_SFTP_MSG_H
+
+#include "mod_sftp.h"
 
 char sftp_msg_read_byte(pool *, unsigned char **, uint32_t *);
 int sftp_msg_read_bool(pool *, unsigned char **, uint32_t *);
@@ -57,4 +57,4 @@ uint32_t sftp_msg_write_string(unsigned char **, uint32_t *, const char *);
  */
 unsigned char *sftp_msg_getbuf(pool *, size_t);
 
-#endif
+#endif /* MOD_SFTP_MSG_H */

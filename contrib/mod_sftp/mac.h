@@ -22,11 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_MAC_H
 #define MOD_SFTP_MAC_H
 
+#include "mod_sftp.h"
 #include "packet.h"
 
 int sftp_mac_init(void);
@@ -50,4 +49,4 @@ int sftp_mac_set_write_key(pool *, const EVP_MD *, const BIGNUM *, const char *,
   uint32_t);
 int sftp_mac_write_data(struct ssh2_packet *);
 
-#endif
+#endif /* MOD_SFTP_MAC_H */

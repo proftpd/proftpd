@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_KEX_H
 #define MOD_SFTP_KEX_H
+
+#include "mod_sftp.h"
 
 int sftp_kex_handle(struct ssh2_packet *);
 int sftp_kex_init(const char *, const char *);
@@ -40,4 +40,4 @@ int sftp_kex_send_first_kexinit(void);
 #define SFTP_KEX_DH_GROUP_MIN	1024
 #define SFTP_KEX_DH_GROUP_MAX	8192
 
-#endif
+#endif /* MOD_SFTP_KEX_H */

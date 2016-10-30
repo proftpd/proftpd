@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_INTEROP_H
 #define MOD_SFTP_INTEROP_H
+
+#include "mod_sftp.h"
 
 /* For clients which do not support IGNORE packets */
 #define SFTP_SSH2_FEAT_IGNORE_MSG			0x0001
@@ -93,4 +93,4 @@ int sftp_interop_supports_feature(int);
 int sftp_interop_init(void);
 int sftp_interop_free(void);
 
-#endif
+#endif /* MOD_SFTP_INTEROP_H */

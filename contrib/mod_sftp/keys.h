@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_KEYS_H
 #define MOD_SFTP_KEYS_H
+
+#include "mod_sftp.h"
 
 enum sftp_key_type_e {
   SFTP_KEY_UNKNOWN = 0,
@@ -75,4 +75,4 @@ int sftp_keys_have_dsa_hostkey(void);
 int sftp_keys_have_ecdsa_hostkey(pool *, int **);
 int sftp_keys_have_rsa_hostkey(void);
 
-#endif
+#endif /* MOD_SFTP_KEYS_H */

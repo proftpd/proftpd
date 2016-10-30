@@ -22,12 +22,12 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_RFC4716_H
 #define MOD_SFTP_RFC4716_H
+
+#include "mod_sftp.h"
 
 int sftp_rfc4716_init(void);
 int sftp_rfc4716_free(void);
 
-#endif
+#endif /* MOD_SFTP_RFC4716_H */
