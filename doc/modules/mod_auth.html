@@ -144,7 +144,7 @@ given anonymous password matches the configured regular expression
 <p>
 Example:
 <pre>
-  # Reject all <Anonymous> logins that use "evil.org" as part of the password
+  # Reject all &lt;Anonymous&gt; logins that use "evil.org" as part of the password
   AnonRejectPasswords @evil\.org$
 </pre>
 
@@ -156,12 +156,12 @@ given regular expression; currently the supported flags are:
 </ul>
 Thus for a case-insensitive pattern, you would use:
 <pre>
-  # Reject all <Anonymous> logins that use "evil.org" as part of the password
+  # Reject all &lt;Anonymous&gt; logins that use "evil.org" as part of the password
   AnonRejectPasswords @evil\.org$ [NC]
 </pre>
 or:
 <pre>
-  # Reject all <Anonymous> logins that use "evil.org" as part of the password
+  # Reject all &lt;Anonymous&gt; logins that use "evil.org" as part of the password
   AnonRejectPasswords @evil\.org$ [nocase]
 </pre>
 
@@ -170,7 +170,7 @@ If you want to reject any anonymous passwords which do <b>not</b> match the
 pattern, then prefix your pattern with the <code>!</code> (exclamation point)
 character:
 <pre>
-  # Reject all <Anonymous> logins that do NOT use "good.org" as part of the password
+  # Reject all &lt;Anonymous&gt; logins that do NOT use "good.org" as part of the password
   AnonRejectPasswords !@good\.org$ [nocase]
 </pre>
 <b>Note</b> that this also allows you to use <code>AnonRejectPasswords</code>
@@ -844,7 +844,7 @@ Example configuration:
 The <code>mod_auth</code> module is compiled by default.
 
 <p>
-<hr><br>
+<hr>
 <font size=2><b><i>
 &copy; Copyright 2002-2016<br>
  All Rights Reserved<br>
