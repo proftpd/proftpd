@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_auth_otp.h"
-
 #ifndef MOD_AUTH_OTP_DB_H
 #define MOD_AUTH_OTP_DB_H
+
+#include "mod_auth_otp.h"
 
 struct auth_otp_db {
   pool *pool;

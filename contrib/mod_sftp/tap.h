@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_TAP_H
 #define MOD_SFTP_TAP_H
+
+#include "mod_sftp.h"
 
 int sftp_tap_have_policy(const char *);
 
@@ -63,4 +63,4 @@ int sftp_tap_send_packet(void);
  */
 int sftp_tap_set_policy(const char *);
 
-#endif
+#endif /* MOD_SFTP_TAP_H */

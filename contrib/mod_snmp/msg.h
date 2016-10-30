@@ -22,11 +22,11 @@
  * source distribution.
  */
 
-#include "mod_snmp.h"
-#include "pdu.h"
-
 #ifndef MOD_SNMP_MSG_H
 #define MOD_SNMP_MSG_H
+
+#include "mod_snmp.h"
+#include "pdu.h"
 
 const char *snmp_msg_get_versionstr(long snmp_version);
 
@@ -37,4 +37,4 @@ int snmp_msg_write(pool *p, unsigned char **buf, size_t *buflen,
   char *community, unsigned int community_len, long snmp_version,
   struct snmp_pdu *pdu);
 
-#endif
+#endif /* MOD_SNMP_MSG_H */

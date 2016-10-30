@@ -22,11 +22,11 @@
  * source distribution.
  */
 
-#include "mod_snmp.h"
-#include "pdu.h"
-
 #ifndef MOD_SNMP_PACKET_H
 #define MOD_SNMP_PACKET_H
+
+#include "mod_snmp.h"
+#include "pdu.h"
 
 /* SNMP packets shouldn't be larger than 4K, right? */
 #define SNMP_PACKET_MAX_LEN		4096
@@ -60,4 +60,4 @@ struct snmp_packet {
 struct snmp_packet *snmp_packet_create(pool *p);
 int snmp_packet_write(pool *p, int sockfd, struct snmp_packet *pkt);
 
-#endif
+#endif /* MOD_SNMP_PACKET_H */

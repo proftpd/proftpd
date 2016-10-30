@@ -24,11 +24,11 @@
 
 /* ProFTPD bindings support routines. */
 
-#include "conf.h"
-#include "pool.h"
-
 #ifndef PR_BINDINGS_H
 #define PR_BINDINGS_H
+
+#include "conf.h"
+#include "pool.h"
 
 /* NOTE: the is* members could possibly become a bitmasked number */
 

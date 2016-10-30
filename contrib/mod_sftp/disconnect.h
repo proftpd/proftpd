@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_DISCONNECT_H
 #define MOD_SFTP_DISCONNECT_H
+
+#include "mod_sftp.h"
 
 void sftp_disconnect_conn(uint32_t, const char *, const char *, int,
   const char *);
@@ -55,4 +55,4 @@ const char *sftp_disconnect_get_str(uint32_t);
 
 # endif
 
-#endif
+#endif /* MOD_SFTP_DISCONNECT_H */

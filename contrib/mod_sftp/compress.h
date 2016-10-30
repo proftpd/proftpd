@@ -22,11 +22,11 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-#include "packet.h"
-
 #ifndef MOD_SFTP_COMPRESS_H
 #define MOD_SFTP_COMPRESS_H
+
+#include "mod_sftp.h"
+#include "packet.h"
 
 #define SFTP_COMPRESS_FL_NEW_KEY		1
 #define SFTP_COMPRESS_FL_AUTHENTICATED		2
@@ -41,4 +41,4 @@ const char *sftp_compress_get_write_algo(void);
 int sftp_compress_set_write_algo(const char *);
 int sftp_compress_write_data(struct ssh2_packet *);
 
-#endif
+#endif /* MOD_SFTP_COMPRESS_H */

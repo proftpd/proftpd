@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SFTP
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -98,4 +98,4 @@ int sftp_fxp_set_utf8_protocol_version(unsigned int);
 
 void sftp_fxp_use_gmt(int);
 
-#endif
+#endif /* MOD_SFTP_FXP_H */

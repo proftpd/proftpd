@@ -22,11 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_CHANNEL_H
 #define MOD_SFTP_CHANNEL_H
 
+#include "mod_sftp.h"
 #include "packet.h"
 
 #define SFTP_SSH2_CHANNEL_OPEN_ADMINISTRATIVELY_PROHIBITED	1
@@ -89,4 +88,4 @@ int sftp_channel_write_ext_data_stderr(pool *, uint32_t, unsigned char *,
  */
 unsigned int sftp_channel_opened(uint32_t *);
 
-#endif
+#endif /* MOD_SFTP_CHANNEL_H */

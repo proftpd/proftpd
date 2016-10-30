@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_CIPHER_H
 #define MOD_SFTP_CIPHER_H
+
+#include "mod_sftp.h"
 
 int sftp_cipher_init(void);
 int sftp_cipher_free(void);
@@ -50,4 +50,4 @@ int sftp_cipher_set_write_key(pool *, const EVP_MD *, const BIGNUM *,
   const char *, uint32_t);
 int sftp_cipher_write_data(struct ssh2_packet *, unsigned char *, size_t *);
 
-#endif
+#endif /* MOD_SFTP_CIPHER_H */

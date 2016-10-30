@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_MISC_H
 #define MOD_SFTP_MISC_H
+
+#include "mod_sftp.h"
 
 int sftp_misc_chown_file(pool *, pr_fh_t *);
 int sftp_misc_chown_path(pool *, const char *);

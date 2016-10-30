@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_auth_otp misc crypto routines
- * Copyright (c) 2015 TJ Saunders
+ * Copyright (c) 2015-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_auth_otp.h"
-
 #ifndef MOD_AUTH_OTP_CRYPTO_H
 #define MOD_AUTH_OTP_CRYPTO_H
+
+#include "mod_auth_otp.h"
 
 int auth_otp_crypto_init(void);
 void auth_otp_crypto_free(int);
@@ -36,4 +36,4 @@ int auth_otp_hmac(const EVP_MD *md, const unsigned char *key, size_t key_len,
   const unsigned char *data, size_t data_len, unsigned char *mac,
   size_t *mac_len);
 
-#endif
+#endif /* MOD_AUTH_OTP_CRYPTO_H */

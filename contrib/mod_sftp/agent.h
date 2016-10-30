@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_AGENT_H
 #define MOD_SFTP_AGENT_H
+
+#include "mod_sftp.h"
 
 struct agent_key {
   unsigned char *key_data;
@@ -37,4 +37,4 @@ int sftp_agent_get_keys(pool *p, const char *, array_header *);
 const unsigned char *sftp_agent_sign_data(pool *, const char *,
   const unsigned char *, uint32_t, const unsigned char *, uint32_t, uint32_t *);
 
-#endif
+#endif /* MOD_SFTP_AGENT_H */

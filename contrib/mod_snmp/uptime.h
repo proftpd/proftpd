@@ -22,11 +22,11 @@
  * source distribution.
  */
 
-#include "mod_snmp.h"
-
 #ifndef MOD_SNMP_UPTIME_H
 #define MOD_SNMP_UPTIME_H
 
+#include "mod_snmp.h"
+
 int snmp_uptime_get(pool *p, struct timeval *tv);
 
-#endif
+#endif /* MOD_SNMP_UPTIME_H */

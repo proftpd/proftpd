@@ -22,11 +22,11 @@
  * source distribution.
  */
 
-#include "mod_snmp.h"
-#include "asn1.h"
-
 #ifndef MOD_SNMP_SMI_H
 #define MOD_SNMP_SMI_H
+
+#include "mod_snmp.h"
+#include "asn1.h"
 
 /* RFC1902 Structure of Management Information (SMI) for SNMPv2 */
 #define SNMP_SMI_INTEGER	SNMP_ASN1_TYPE_INTEGER
@@ -110,4 +110,4 @@ int snmp_smi_write_vars(pool *p, unsigned char **buf, size_t *buflen,
 unsigned int snmp_smi_util_add_list_var(struct snmp_var **head,
   struct snmp_var **tail, struct snmp_var *var);
 
-#endif
+#endif /* MOD_SNMP_SMI_H */

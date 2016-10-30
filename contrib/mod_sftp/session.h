@@ -22,12 +22,12 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_SESSION_H
 #define MOD_SFTP_SESSION_H
+
+#include "mod_sftp.h"
 
 uint32_t sftp_session_get_id(const unsigned char **);
 int sftp_session_set_id(const unsigned char *, uint32_t);
 
-#endif
+#endif /* MOD_SFTP_SESSION_H */

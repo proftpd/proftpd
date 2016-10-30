@@ -22,14 +22,13 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_SERVICE_H
 #define MOD_SFTP_SERVICE_H
 
+#include "mod_sftp.h"
 #include "packet.h"
 
 int sftp_service_handle(struct ssh2_packet *);
 int sftp_service_init(void);
 
-#endif
+#endif /* MOD_SFTP_SERVICE_H */

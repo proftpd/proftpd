@@ -22,10 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_DISPLAY_H
 #define MOD_SFTP_DISPLAY_H
+
+#include "mod_sftp.h"
 
 const char *sftp_display_fh_get_msg(pool *, pr_fh_t *);
 

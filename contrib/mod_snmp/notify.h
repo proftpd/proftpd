@@ -22,11 +22,11 @@
  * source distribution.
  */
 
-#include "mod_snmp.h"
-#include "asn1.h"
-
 #ifndef MOD_SNMP_NOTIFY_H
 #define MOD_SNMP_NOTIFY_H
+
+#include "mod_snmp.h"
+#include "asn1.h"
 
 /* ftp.notifications */
 #define SNMP_NOTIFY_DAEMON_MAX_INSTANCES	100
@@ -39,4 +39,4 @@ int snmp_notify_generate(pool *p, int sockfd, const char *community,
 long snmp_notify_get_request_id(void);
 void snmp_notify_poll_cond(void);
 
-#endif
+#endif /* MOD_SNMP_NOTIFY */

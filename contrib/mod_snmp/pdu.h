@@ -22,12 +22,12 @@
  * source distribution.
  */
 
+#ifndef MOD_SNMP_PDU_H
+#define MOD_SNMP_PDU_H
+
 #include "mod_snmp.h"
 #include "asn1.h"
 #include "smi.h"
-
-#ifndef MOD_SNMP_PDU_H
-#define MOD_SNMP_PDU_H
 
 /* RFC1905 SNMPv2 ResponsePDU error status codes */
 #define SNMP_ERR_NO_ERROR		0
@@ -117,4 +117,4 @@ int snmp_pdu_read(pool *p, unsigned char **buf, size_t *buflen,
 int snmp_pdu_write(pool *p, unsigned char **buf, size_t *buflen,
     struct snmp_pdu *pdu, long snmp_version);
 
-#endif
+#endif /* MOD_SNMP_PDU_H */

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication (auth)
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,11 +22,10 @@
  * source distribution.
  */
 
-#include "mod_sftp.h"
-
 #ifndef MOD_SFTP_AUTH_H
 #define MOD_SFTP_AUTH_H
 
+#include "mod_sftp.h"
 #include "packet.h"
 
 #define SFTP_AUTH_FL_METH_PUBLICKEY	0x001
@@ -104,4 +103,4 @@ int sftp_auth_publickey(struct ssh2_packet *, cmd_rec *,
   int *);
 int sftp_auth_publickey_init(pool *);
 
-#endif
+#endif /* MOD_SFTP_AUTH_H */
