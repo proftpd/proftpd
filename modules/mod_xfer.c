@@ -3871,8 +3871,13 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
         session.curr_cmd_id == PR_CMD_RETR_ID ||
         session.curr_cmd_id == PR_CMD_STOR_ID ||
         session.curr_cmd_id == PR_CMD_STOU_ID) {
-      pool *p = make_sub_pool(session.pool);
-      cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
+      pool *tmp_pool;
+      cmd_rec *cmd;
+
+      tmp_pool = make_sub_pool(session.pool);
+      pr_pool_tag(tmp_pool, "Data Transfer SIGUSR2 pool");
+
+      cmd = pr_cmd_alloc(tmp_pool, 1, session.curr_cmd);
 
       /* Rescan the config tree for TransferRates, picking up any possible
        * changes.
@@ -3880,7 +3885,7 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
       pr_log_debug(DEBUG2, "rechecking TransferRates");
       pr_throttle_init(cmd);
 
-      destroy_pool(p);
+      destroy_pool(tmp_pool);
     }
   }
 

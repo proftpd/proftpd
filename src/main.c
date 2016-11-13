@@ -797,7 +797,8 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
   }
 
   subpool = make_sub_pool(p);
-  cmd = (cmd_rec *) pcalloc(subpool, sizeof(cmd_rec));
+  pr_pool_tag(subpool, "make_ftp_cmd pool");
+  cmd = pcalloc(subpool, sizeof(cmd_rec));
   cmd->pool = subpool;
   cmd->tmp_pool = NULL;
   cmd->stash_index = -1;

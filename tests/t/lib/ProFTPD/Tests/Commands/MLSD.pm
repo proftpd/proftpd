@@ -122,6 +122,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  mlsd_wide_dir => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   # XXX Plenty of other tests needed: params, maxfiles, maxdirs, depth, etc
 };
 
@@ -3038,6 +3043,145 @@ sub mlsd_symlinked_dir_showsymlinks_off_bug3859 {
   }
 
   unlink($log_file);
+}
+
+sub mlsd_wide_dir {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  my $expected = {
+    '.' => 1,
+    '..' => 1,
+  };
+
+  my $max_nfiles = 500;
+  for (my $i = 0; $i < $max_nfiles; $i++) {
+    my $test_filename = 'SomeReallyLongAndObnoxiousTestFileNameTemplate' . $i;
+
+    # The expected hash is used later for verifying the results of the READDIR
+    $expected->{$test_filename} = 1;
+
+    my $test_path = File::Spec->rel2abs("$test_dir/$test_filename");
+
+    if (open(my $fh, "> $test_path")) {
+      close($fh);
+
+    } else {
+      die("Can't open $test_path: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'pool:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      for (my $i = 0; $i < 10; $i++) {
+        my $conn = $client->mlsd_raw($test_dir);
+        unless ($conn) {
+          die("Failed to MLSD: " . $client->response_code() . " " .
+            $client->response_msg());
+        }
+
+        my $buf;
+        my $tmp;
+        while ($conn->read($tmp, 16382, 25)) {
+          $buf .= $tmp;
+          $tmp = '';
+        }
+        eval { $conn->close() };
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "buf:\n$buf\n";
+        }
+
+        # We have to be careful of the fact that readdir returns directory
+        # entries in an unordered fashion.
+        my $res = {};
+        my $lines = [split(/\r\n/, $buf)];
+        foreach my $line (@$lines) {
+          if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+            $res->{$1} = 1;
+          }
+        }
+
+        my $ok = 1;
+        my $mismatch;
+        foreach my $name (keys(%$res)) {
+          unless (defined($expected->{$name})) {
+            $mismatch = $name;
+            $ok = 0;
+            last;
+          }
+        }
+
+        unless ($ok) {
+          die("Unexpected name '$mismatch' appeared in MLSD data")
+        }
+      }
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

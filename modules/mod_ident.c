@@ -361,6 +361,7 @@ static int ident_sess_init(void) {
   }
 
   tmp_pool = make_sub_pool(session.pool);
+  pr_pool_tag(tmp_pool, "IdentLookup pool");
 
   /* Perform the RFC1413 lookup */
   pr_log_debug(DEBUG6, MOD_IDENT_VERSION ": performing ident lookup");

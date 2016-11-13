@@ -334,6 +334,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
  * channel, wherease MLSD's output is sent via a data transfer, much like
  * LIST or NLST.
  */
+static pool *mlinfo_pool = NULL;
 static char *mlinfo_buf = NULL, *mlinfo_bufptr = NULL;
 static size_t mlinfo_bufsz = 0;
 static size_t mlinfo_buflen = 0;
@@ -341,7 +342,15 @@ static size_t mlinfo_buflen = 0;
 static void facts_mlinfobuf_init(void) {
   if (mlinfo_buf == NULL) {
     mlinfo_bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
-    mlinfo_buf = palloc(session.pool, mlinfo_bufsz);
+
+    if (mlinfo_pool != NULL) {
+      destroy_pool(mlinfo_pool);
+    }
+
+    mlinfo_pool = make_sub_pool(session.pool);
+    pr_pool_tag(mlinfo_pool, "Facts MLSD Buffer Pool");
+
+    mlinfo_buf = palloc(mlinfo_pool, mlinfo_bufsz);
     pr_trace_msg("data", 8, "allocated facts buffer of %lu bytes",
       (unsigned long) mlinfo_bufsz);
   }
@@ -1226,7 +1235,7 @@ MODRET facts_mfmt(cmd_rec *cmd) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
-    errno = xerrno; 
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1508,7 +1517,8 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
     memset(&info, 0, sizeof(struct mlinfo));
 
-    info.pool = cmd->tmp_pool;
+    info.pool = make_sub_pool(cmd->tmp_pool);
+    pr_pool_tag(info.pool, "MLSD facts pool");
     if (facts_mlinfo_get(&info, rel_path, dent->d_name, flags,
         fake_uid, fake_gid, fake_mode) < 0) {
       pr_log_debug(DEBUG3, MOD_FACTS_VERSION
@@ -1519,9 +1529,12 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     /* As per RFC3659, the directory being listed should not appear as a
      * component in the paths of the directory contents.
      */
-    info.path = pr_fs_encode_path(cmd->tmp_pool, dent->d_name);
+    info.path = pr_fs_encode_path(info.pool, dent->d_name);
 
     facts_mlinfobuf_add(&info, FACTS_MLINFO_FL_APPEND_CRLF);
+
+    destroy_pool(info.pool);
+    info.pool = NULL;
 
     if (XFER_ABORTED) {
       pr_data_abort(0, 0);

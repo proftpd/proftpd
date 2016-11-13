@@ -95,7 +95,7 @@ static void data_new_xfer(char *filename, int direction) {
   pr_data_clear_xfer_pool();
 
   session.xfer.p = make_sub_pool(session.pool);
-  pr_pool_tag(session.xfer.p, "data transfer pool");
+  pr_pool_tag(session.xfer.p, "Data Transfer pool");
 
   session.xfer.filename = pstrdup(session.xfer.p, filename);
   session.xfer.direction = direction;
