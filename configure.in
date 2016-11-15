@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2014 The ProFTPD Project team
+dnl Copyright (c) 2001-2016 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -40,8 +40,10 @@ if test "$OSTYPE" = "$OSREL" ; then
   platform="\"$ostype\""
 fi
 
-AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, "`echo "$ac_configure_args"`")
-AC_DEFINE_UNQUOTED(PR_PLATFORM, $platform)
+BUILD_OPTS=`echo "$ac_configure_args"`
+AC_DEFINE_UNQUOTED(PR_BUILD_OPTS, "$BUILD_OPTS", [Define the build options])
+AC_DEFINE_UNQUOTED(PR_PLATFORM, $platform, [Define the build platform])
+AC_SUBST(BUILD_OPTS)
 AC_SUBST(OSREL)
 AC_SUBST(OSTYPE)
 
@@ -279,7 +281,7 @@ AC_ARG_WITH(lastlog,
       fi
 
       if test -n "$pr_lastlog_path" ; then
-        AC_DEFINE_UNQUOTED(PR_LASTLOG_PATH, "`eval echo "$pr_lastlog_path"`")
+        AC_DEFINE_UNQUOTED(PR_LASTLOG_PATH, "`eval echo "$pr_lastlog_path"`", [Define the lastlog path])
       fi
     fi
   ])
@@ -1078,9 +1080,9 @@ AC_ARG_ENABLE(scoreboard-updates,
   [
     if test x"$enableval" = xyes || test x"$enableval" = xno ; then
       AC_MSG_WARN(scoreboard updates defaulting to 10)
-      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, 10)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, 10, [Define the scoreboard update count])
     else
-      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, $enableval)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, $enableval, [Define the scoreboard update count])
     fi
   ])
 
@@ -1316,15 +1318,11 @@ if test x"$force_shadow" != xno ; then
         AC_DEFINE(PR_USE_SHADOW, 1, [Define if using shadow password support.])
 
         AC_CHECK_MEMBER(struct spwd.sp_warn,
-          [AC_DEFINE(HAVE_SPWD_SP_WARN)],,
-          [#include <shadow.h>])
+          [AC_DEFINE(HAVE_SPWD_SP_WARN, 1, [Define if struct spwd has sp_warn])],, [#include <shadow.h>])
         AC_CHECK_MEMBER(struct spwd.sp_inact,
-          [AC_DEFINE(HAVE_SPWD_SP_INACT)],,
-          [#include <shadow.h>])
+          [AC_DEFINE(HAVE_SPWD_SP_INACT, 1, [Define if struct spwd has sp_inact])],, [#include <shadow.h>])
         AC_CHECK_MEMBER(struct spwd.sp_expire,
-          [AC_DEFINE(HAVE_SPWD_SP_EXPIRE)],,
-          [#include <shadow.h>])
-
+          [AC_DEFINE(HAVE_SPWD_SP_EXPIRE, 1, [Define if struct spwd has sp_expire])],, [#include <shadow.h>])
       fi ])
 fi
 
@@ -1552,7 +1550,7 @@ AC_CHECK_SIZEOF(void *, 0)
 dnl Check for generic typedefs
 AC_CHECK_TYPE(mode_t, mode_t)
 AC_CHECK_TYPE(ino_t, ino_t)
-AC_CHECK_TYPE(intptr_t, AC_DEFINE(HAVE_INTPTR_T),, [
+AC_CHECK_TYPE(intptr_t, AC_DEFINE(HAVE_INTPTR_T, 1, [Define if have intpr_t type]),, [
   #if HAVE_INTTYPES_H
   # include <inttypes.h>
   #endif
@@ -2996,19 +2994,19 @@ pr_saved_exec_prefix="$exec_prefix"
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 
-AC_DEFINE_UNQUOTED(PR_CONFIG_DIR, "`eval echo "${sysconfdir}"`")
-AC_DEFINE_UNQUOTED(PR_INCLUDE_DIR, "`eval echo "${includedir}"`")
-AC_DEFINE_UNQUOTED(PR_LIBEXEC_DIR, "`eval echo "${libexecdir}"`")
+AC_DEFINE_UNQUOTED(PR_CONFIG_DIR, "`eval echo "${sysconfdir}"`", [Define the config directory])
+AC_DEFINE_UNQUOTED(PR_INCLUDE_DIR, "`eval echo "${includedir}"`", [Define the include directory])
+AC_DEFINE_UNQUOTED(PR_LIBEXEC_DIR, "`eval echo "${libexecdir}"`", [Define the libexec directory])
 
 dnl We evaluate the string twice.  Once to go from $datadir to $prefix/share,
 dnl and once more to substitute in the $prefix value.  What a pain.
 locale_dir="`eval echo ${localedir}`"
 locale_dir="`eval echo ${locale_dir}`"
-AC_DEFINE_UNQUOTED(PR_LOCALE_DIR, "`eval echo "${locale_dir}"`")
+AC_DEFINE_UNQUOTED(PR_LOCALE_DIR, "`eval echo "${locale_dir}"`", [Define the locale directory])
 
-AC_DEFINE_UNQUOTED(PR_RUN_DIR, "`eval echo "${localstatedir}"`")
-AC_DEFINE_UNQUOTED(PR_CONFIG_FILE_PATH, "`eval echo "${sysconfdir}/proftpd.conf"`")
-AC_DEFINE_UNQUOTED(PR_PID_FILE_PATH, "`eval echo "${localstatedir}/proftpd.pid"`")
+AC_DEFINE_UNQUOTED(PR_RUN_DIR, "`eval echo "${localstatedir}"`", [Define the run directory])
+AC_DEFINE_UNQUOTED(PR_CONFIG_FILE_PATH, "`eval echo "${sysconfdir}/proftpd.conf"`", [Define the configuration file path])
+AC_DEFINE_UNQUOTED(PR_PID_FILE_PATH, "`eval echo "${localstatedir}/proftpd.pid"`", [Define the PID file path])
 
 prefix="$pr_saved_prefix"
 exec_prefix="$pr_saved_exec_prefix"
@@ -3068,11 +3066,11 @@ if test "$OSTYPE" = "-DDARWIN6" -o "$OSTYPE" = "-DDARWIN7" -o "$OSTYPE" = "-DDAR
 fi
 
 my_cflags="\"$CFLAGS\""
-AC_DEFINE_UNQUOTED(PR_BUILD_CFLAGS, $my_cflags)
+AC_DEFINE_UNQUOTED(PR_BUILD_CFLAGS, $my_cflags, [Define the build CFLAGS])
 my_ldflags="\"$LDFLAGS $LIBDIRS\""
-AC_DEFINE_UNQUOTED(PR_BUILD_LDFLAGS, $my_ldflags)
+AC_DEFINE_UNQUOTED(PR_BUILD_LDFLAGS, $my_ldflags, [Define the build LDFLAGS])
 my_libs="\"$LIBRARIES $LIBS\""
-AC_DEFINE_UNQUOTED(PR_BUILD_LIBS, $my_libs)
+AC_DEFINE_UNQUOTED(PR_BUILD_LIBS, $my_libs, [Define the build LIBS])
 
 dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(ENABLE_NLS)
