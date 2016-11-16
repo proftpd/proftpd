@@ -141,45 +141,15 @@ sub list_tests {
 sub mlsd_ok_raw_active {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -188,7 +158,7 @@ sub mlsd_ok_raw_active {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},     $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -205,8 +175,8 @@ sub mlsd_ok_raw_active {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       my $conn = $client->mlsd_raw();
@@ -219,6 +189,10 @@ sub mlsd_ok_raw_active {
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
 
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Response:\n$buf\n";
+      }
+
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
@@ -227,7 +201,7 @@ sub mlsd_ok_raw_active {
         test_msg("Expected several MLSD lines, got " . scalar(@$lines)));
 
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
@@ -266,7 +240,7 @@ sub mlsd_ok_raw_active {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -276,18 +250,10 @@ sub mlsd_ok_raw_active {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub mlsd_ok_raw_passive {
@@ -375,7 +341,7 @@ sub mlsd_ok_raw_passive {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
@@ -645,7 +611,7 @@ sub mlsd_ok_cwd_dir {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
       }
@@ -787,7 +753,7 @@ sub mlsd_ok_other_dir_bug4198 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
       }
@@ -906,7 +872,7 @@ sub mlsd_ok_chrooted_dir {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
@@ -1027,7 +993,7 @@ sub mlsd_ok_empty_dir {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
       }
@@ -1167,7 +1133,7 @@ sub mlsd_ok_no_path {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
@@ -1789,7 +1755,7 @@ sub mlsd_ok_hidden_file {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
@@ -1923,7 +1889,7 @@ sub mlsd_ok_path_with_spaces {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
@@ -2053,7 +2019,7 @@ sub mlsd_nonascii_chars_bug3032 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
       }
@@ -2199,7 +2165,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
       }
@@ -2344,7 +2310,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2500,7 +2466,7 @@ sub mlsd_symlink_showsymlinks_on_chrooted_bug4219 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2657,7 +2623,7 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2818,7 +2784,7 @@ sub mlsd_symlinked_dir_bug3859 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2986,7 +2952,7 @@ sub mlsd_symlinked_dir_showsymlinks_off_bug3859 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -3137,7 +3103,7 @@ sub mlsd_wide_dir {
         my $res = {};
         my $lines = [split(/\r\n/, $buf)];
         foreach my $line (@$lines) {
-          if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+          if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
             $res->{$1} = 1;
           }
         }
