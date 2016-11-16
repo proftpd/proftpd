@@ -116,6 +116,20 @@ The currently implemented options are:
     <b>Note</b> that this option first appeared in
     <code>proftpd-1.3.6rc2</code>.
   </li>
+
+  <p>
+  <li><code>NoNames</code><br>
+    <p>
+    By default, <code>mod_facts</code> will automatically use the newer
+    <code>UNIX.ownername</code> and <code>UNIX.groupname</code> facts in its
+    <code>MLSD</code>/<code>MLST</code> responses.  But some FTP clients may
+    not react well to the presence of these facts.  Use this option to disable
+    to use of these facts.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.6rc3</code>.
+  </li>
 </ul>
 
 <p><a name="FAQ">
