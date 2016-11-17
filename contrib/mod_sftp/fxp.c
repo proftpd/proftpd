@@ -2616,7 +2616,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
      */
     pr_signals_handle();
 
-    RAND_pseudo_bytes(data, data_len);
+    RAND_bytes(data, data_len);
 
     /* Encode the data as hex to create the handle ID. */
     for (i = 0; i < data_len; i++) {

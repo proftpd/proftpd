@@ -1438,10 +1438,13 @@ static int shmcache_status(tls_sess_cache_t *cache,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
         /* XXX Directly accessing these fields cannot be a Good Thing. */
         if (sess->session_id_length > 0) {
+          register unsigned int j;
           char *sess_id_str;
 
-          sess_id_str = pr_str_bin2hex(tmp_pool, sess->session_id,
-            sess->session_id_length, PR_STR_FL_HEX_USE_UC);
+          sess_id_str = pcalloc(tmp_pool, (sess->session_id_length * 2) + 1);
+          for (j = 0; j < sess->session_id_length; j++) {
+            sprintf((char *) &(sess_id_str[j*2]), "%02X", sess->session_id[j]);
+          }
 
           statusf(arg, "    Session ID: %s", sess_id_str);
         }
