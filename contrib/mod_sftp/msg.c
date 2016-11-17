@@ -32,7 +32,6 @@
 # include <execinfo.h>
 #endif
 
-
 #ifdef PR_USE_OPENSSL_ECC
 /* Max GFp field length = 528 bits.  SEC1 uncompressed encoding uses 2
  * bitstring points.  SEC1 specifies a 1 byte point type header.
@@ -454,13 +453,15 @@ uint32_t sftp_msg_write_mpint(unsigned char **buf, uint32_t *buflen,
     return sftp_msg_write_int(buf, buflen, 0);
   }
 
-  if (mpint->neg) {
+#if OPENSSL_VERSION_NUMBER >= 0x0090801fL
+  if (BN_is_negative(mpint)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to write mpint (negative numbers not "
       "supported)");
     log_stacktrace();
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
+#endif /* OpenSSL-0.9.8a or later */
 
   datalen = BN_num_bytes(mpint) + 1;
 

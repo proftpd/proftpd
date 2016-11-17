@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2015 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "packet.h"
 #include "interop.h"
 #include "crypto.h"
+#include "cipher.h"
 #include "mac.h"
 #include "keys.h"
 #include "keystore.h"
@@ -1451,6 +1452,7 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
     sftp_interop_free();
     sftp_keystore_free();
     sftp_keys_free();
+    sftp_cipher_free();
     sftp_mac_free();
     pr_response_block(FALSE);
     sftp_utf8_free();
@@ -1504,6 +1506,7 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   sftp_interop_free();
   sftp_keystore_free();
   sftp_keys_free();
+  sftp_cipher_free();
   sftp_mac_free();
   sftp_utf8_free();
 
@@ -1610,6 +1613,7 @@ static int sftp_init(void) {
   pr_log_debug(DEBUG2, MOD_SFTP_VERSION ": using " OPENSSL_VERSION_TEXT);
 
   sftp_keystore_init();
+  sftp_cipher_init();
   sftp_mac_init();
 
   pr_event_register(&sftp_module, "mod_ban.ban-class", sftp_ban_class_ev, NULL);
