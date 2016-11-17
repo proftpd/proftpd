@@ -1450,10 +1450,13 @@ static int shmcache_status(tls_sess_cache_t *cache,
         }
 
         if (sess->sid_ctx_length > 0) {
+          register unsigned int j;
           char *sid_ctx_str;
 
-          sid_ctx_str = pr_str_bin2hex(tmp_pool, sess->sid_ctx,
-            sess->sid_ctx_length, PR_STR_FL_HEX_USE_UC);
+          sid_ctx_str = pcalloc(tmp_pool, (sess->sid_ctx_length * 2) + 1);
+          for (j = 0; j < sess->sid_ctx_length; j++) {
+            sprintf((char *) &(sid_ctx_str[j*2]), "%02X", sess->sid_ctx[j]);
+          }
 
           statusf(arg, "    Session ID Context: %s", sid_ctx_str);
         }
