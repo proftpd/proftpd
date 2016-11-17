@@ -810,9 +810,9 @@ static const EVP_MD *get_umac_digest(void) {
   umac_digest.pkey_type = NID_undef;
   umac_digest.md_size = 8;
   umac_digest.flags = 0UL;
-  umac_digest.update = update_umac64;
-  umac_digest.final = final_umac64;
-  umac_digest.cleanup = delete_umac64;
+  umac_digest.update = update_umac;
+  umac_digest.final = final_umac;
+  umac_digest.cleanup = delete_umac;
   umac_digest.block_size = 32;
 
   md = &umac_digest;
