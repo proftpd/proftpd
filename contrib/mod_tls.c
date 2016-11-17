@@ -6557,16 +6557,12 @@ static void tls_cleanup(int flags) {
     ERR_free_strings();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    ERR_remove_thread_state();
-# else
     /* The ERR_remove_state(0) usage is deprecated due to thread ID
      * differences among platforms; see the OpenSSL-1.0.0 CHANGES file
      * for details.  So for new enough OpenSSL installations, use the
      * proper way to clear the error queue state.
      */
     ERR_remove_thread_state(NULL);
-# endif /* OpenSSL-1.1.x and later */
 #else
     ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */
@@ -6590,16 +6586,12 @@ static void tls_cleanup(int flags) {
       ERR_free_strings();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      ERR_remove_thread_state();
-# else
       /* The ERR_remove_state(0) usage is deprecated due to thread ID
        * differences among platforms; see the OpenSSL-1.0.0c CHANGES file
        * for details.  So for new enough OpenSSL installations, use the
        * proper way to clear the error queue state.
        */
       ERR_remove_thread_state(NULL);
-# endif /* OpenSSL-1.1.x and later */
 #else
       ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */
@@ -6995,7 +6987,7 @@ static int tls_dotlogin_allow(const char *user) {
   (void) setvbuf(fp, NULL, _IONBF, 0);
 
   while ((file_cert = PEM_read_X509(fp, NULL, NULL, NULL))) {
-    ASN1_BIT_STRING *client_sig = NULL, *file_sig = NULL;
+    const ASN1_BIT_STRING *client_sig = NULL, *file_sig = NULL;
 
     pr_signals_handle();
 
@@ -8032,7 +8024,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   X509_STORE_CTX_init(store_ctx, tls_crl_store, NULL, NULL);
 #endif
 
-  crls = X509_STORE_get1_crls(store_ctx, subject);
+  crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
   if (crls != NULL) {
     for (i = 0; i < sk_X509_CRL_num(crls); i++) {
       X509_CRL *crl = NULL;
@@ -8123,7 +8115,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to check for revocation.
    */
 
-  crls = X509_STORE_get1_crls(store_ctx, issuer);
+  crls = X509_STORE_CTX_get1_crls(store_ctx, issuer);
   if (crls != NULL) {
     for (i = 0; i < sk_X509_CRL_num(crls); i++) {
       register int j;

@@ -1370,16 +1370,12 @@ void sftp_crypto_free(int flags) {
     ERR_free_strings();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    ERR_remove_thread_state();
-# else
     /* The ERR_remove_state(0) usage is deprecated due to thread ID
      * differences among platforms; see the OpenSSL-1.0.0c CHANGES file
      * for details.  So for new enough OpenSSL installations, use the
      * proper way to clear the error queue state.
      */
     ERR_remove_thread_state(NULL);
-# endif /* prior to OpenSSL-1.1.0 */
 #else
     ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */

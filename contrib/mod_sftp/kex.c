@@ -288,7 +288,7 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
-  BIGNUM *dh_pub_key = NULL;
+  const BIGNUM *dh_pub_key = NULL;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
@@ -333,9 +333,9 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, k);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
-    pctx = EVP_MD_CTX_new();
+  pctx = EVP_MD_CTX_new();
 #else
-    pctx = &ctx;
+  pctx = &ctx;
 #endif /* OpenSSL-1.1.0 and later */
 
   /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
@@ -410,7 +410,7 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
-  BIGNUM *dh_p = NULL, *dh_g = NULL, *dh_pub_key = NULL;
+  const BIGNUM *dh_p = NULL, *dh_g = NULL, *dh_pub_key = NULL;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
@@ -476,9 +476,9 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, k);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
-    pctx = EVP_MD_CTX_new();
+  pctx = EVP_MD_CTX_new();
 #else
-    pctx = &ctx;
+  pctx = &ctx;
 #endif /* OpenSSL-1.1.0 and later */
 
   /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
@@ -592,9 +592,9 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, k);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
-    pctx = EVP_MD_CTX_new();
+  pctx = EVP_MD_CTX_new();
 #else
-    pctx = &ctx;
+  pctx = &ctx;
 #endif /* OpenSSL-1.1.0 and later */
 
   /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
@@ -703,9 +703,9 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, k);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
-    pctx = EVP_MD_CTX_new();
+  pctx = EVP_MD_CTX_new();
 #else
-    pctx = &ctx;
+  pctx = &ctx;
 #endif /* OpenSSL-1.1.0 and later */
 
   /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
@@ -776,7 +776,8 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
 static int have_good_dh(DH *dh, BIGNUM *pub_key) {
   register int i;
   unsigned int nbits = 0;
-  BIGNUM *dh_p = NULL, *tmp;
+  const BIGNUM *dh_p = NULL;
+  BIGNUM *tmp;
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090801fL
   if (BN_is_negative(pub_key)) {
@@ -1225,7 +1226,7 @@ static int finish_dh(struct sftp_kex *kex) {
       } 
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      /* Per the docs, this is a no-no -- but its the only want to actually
+      /* Per the docs, this is a no-no -- but its the only way to actually
        * set the public DH key to null.
        */
       dh_pub_key = dh_priv_key = NULL;
@@ -3039,7 +3040,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 #endif /* prior to OpenSSL-1.1.0 */
 
         dup_p = BN_dup(dh_p);
-        if (dh_p == NULL) {
+        if (dup_p == NULL) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error copying selected DH P: %s", sftp_crypto_get_errors());
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
