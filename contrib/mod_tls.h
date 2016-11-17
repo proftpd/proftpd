@@ -80,7 +80,7 @@ typedef struct sess_cache_st {
   /* Add a new session entry to the cache.  The provided sess_id is effectively
    * the cache lookup key.
    */
-  int (*add)(struct sess_cache_st *cache, unsigned char *sess_id,
+  int (*add)(struct sess_cache_st *cache, const unsigned char *sess_id,
     unsigned int sess_id_len, time_t expires, SSL_SESSION *sess);
 
   /* Retrieve a session from the cache, using the provided sess_id key. */

@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2014 TJ Saunders
+ * Copyright (c) 2009-2016 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
- *
- * $Id: mod_sql_passwd.c,v 1.22 2014-05-05 16:15:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -199,7 +197,6 @@ static int get_pbkdf2_config(char *algo, const EVP_MD **md,
 }
 
 static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
-  EVP_ENCODE_CTX base64_ctxt;
   char *buf;
 
   /* According to RATS, the output buffer for EVP_EncodeBlock() needs to be
@@ -211,7 +208,6 @@ static char *sql_passwd_encode(pool *p, unsigned char *data, size_t data_len) {
 
   switch (sql_passwd_encoding) {
     case SQL_PASSWD_USE_BASE64:
-      EVP_EncodeInit(&base64_ctxt);
       EVP_EncodeBlock((unsigned char *) buf, data, (int) data_len);
       break;
 
@@ -254,7 +250,7 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
     unsigned char *suffix, size_t suffix_len,
     unsigned int *hash_len) {
 
-  EVP_MD_CTX md_ctx;
+  EVP_MD_CTX *md_ctx;
   unsigned char *hash;
 
   hash = palloc(p, EVP_MAX_MD_SIZE);
@@ -264,69 +260,76 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
    * compiler will error out with "void value not ignored as it ought to be".
    */
 
+  md_ctx = EVP_MD_CTX_create();
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestInit(&md_ctx, md) != 1) {
+  if (EVP_DigestInit(md_ctx, md) != 1) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": error initializing '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
       get_crypto_errors());
+    EVP_MD_CTX_destroy(md_ctx);
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestInit(&md_ctx, md);
+  EVP_DigestInit(md_ctx, md);
 #endif
 
   if (prefix != NULL) {
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-    if (EVP_DigestUpdate(&md_ctx, prefix, prefix_len) != 1) {
+    if (EVP_DigestUpdate(md_ctx, prefix, prefix_len) != 1) {
       sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
         ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
         get_crypto_errors());
+      EVP_MD_CTX_destroy(md_ctx);
       errno = EPERM;
       return NULL;
     }
 #else
-    EVP_DigestUpdate(&md_ctx, prefix, prefix_len);
+    EVP_DigestUpdate(md_ctx, prefix, prefix_len);
 #endif
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestUpdate(&md_ctx, data, data_len) != 1) {
+  if (EVP_DigestUpdate(md_ctx, data, data_len) != 1) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
       get_crypto_errors());
+    EVP_MD_CTX_destroy(md_ctx);
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestUpdate(&md_ctx, data, data_len);
+  EVP_DigestUpdate(md_ctx, data, data_len);
 #endif
 
   if (suffix != NULL) {
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-    if (EVP_DigestUpdate(&md_ctx, suffix, suffix_len) != 1) {
+    if (EVP_DigestUpdate(md_ctx, suffix, suffix_len) != 1) {
       sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
         ": error updating '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
         get_crypto_errors());
+      EVP_MD_CTX_destroy(md_ctx);
       errno = EPERM;
       return NULL;
     }
 #else
-    EVP_DigestUpdate(&md_ctx, suffix, suffix_len);
+    EVP_DigestUpdate(md_ctx, suffix, suffix_len);
 #endif
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestFinal(&md_ctx, hash, hash_len) != 1) {
+  if (EVP_DigestFinal(md_ctx, hash, hash_len) != 1) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": error finishing '%s' digest: %s", OBJ_nid2ln(EVP_MD_type(md)),
       get_crypto_errors());
+    EVP_MD_CTX_destroy(md_ctx);
     errno = EPERM;
     return NULL;
   }
 #else
-  EVP_DigestFinal(&md_ctx, hash, hash_len);
+  EVP_DigestFinal(md_ctx, hash, hash_len);
 #endif
+  EVP_MD_CTX_destroy(md_ctx);
 
   return hash;
 }

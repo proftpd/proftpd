@@ -2,7 +2,7 @@
  * ProFTPD: mod_tls_shmcache -- a module which provides a shared SSL session
  *                              cache using SysV shared memory
  *
- * Copyright (c) 2009-2013 TJ Saunders
+ * Copyright (c) 2009-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  *  --- DO NOT DELETE BELOW THIS LINE ----
- *  $Id: mod_tls_shmcache.c,v 1.15 2013-11-05 21:37:16 castaglia Exp $
  *  $Libraries: -lssl -lcrypto$
  */
 
@@ -1423,6 +1422,7 @@ static int shmcache_status(tls_sess_cache_t *cache,
         SSL_SESSION *sess;
         TLS_D2I_SSL_SESSION_CONST unsigned char *ptr;
         time_t ts;
+        int ssl_version;
 
         ptr = entry->sess_data;
         sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen); 
@@ -1435,34 +1435,36 @@ static int shmcache_status(tls_sess_cache_t *cache,
 
         statusf(arg, "%s", "  -----BEGIN SSL SESSION PARAMETERS-----");
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
         /* XXX Directly accessing these fields cannot be a Good Thing. */
         if (sess->session_id_length > 0) {
-          register unsigned int j;
           char *sess_id_str;
 
-          sess_id_str = pcalloc(tmp_pool, (sess->session_id_length * 2) + 1);
-
-          for (j = 0; j < sess->session_id_length; j++) {
-            sprintf((char *) &(sess_id_str[j*2]), "%02X", sess->session_id[j]);
-          }
+          sess_id_str = pr_str_bin2hex(tmp_pool, sess->session_id,
+            sess->session_id_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID: %s", sess_id_str);
         }
 
         if (sess->sid_ctx_length > 0) {
-          register unsigned int j;
           char *sid_ctx_str;
 
-          sid_ctx_str = pcalloc(tmp_pool, (sess->sid_ctx_length * 2) + 1);
-
-          for (j = 0; j < sess->sid_ctx_length; j++) {
-            sprintf((char *) &(sid_ctx_str[j*2]), "%02X", sess->sid_ctx[j]);
-          }
+          sid_ctx_str = pr_str_bin2hex(tmp_pool, sess->sid_ctx,
+            sess->sid_ctx_length, PR_STR_FL_HEX_USE_UC);
 
           statusf(arg, "    Session ID Context: %s", sid_ctx_str);
         }
 
-        switch (sess->ssl_version) {
+        ssl_version = sess->ssl_version;
+#else
+# if OPENSSL_VERSION_NUMBER >= 0x10100006L
+        ssl_version = SSL_SESSION_get_protocol_version(sess);
+# else
+        ssl_version = 0;
+# endif /* prior to OpenSSL-1.1.0-pre5 */
+#endif /* prior to OpenSSL-1.1.x */
+
+        switch (ssl_version) {
           case SSL3_VERSION:
             statusf(arg, "    Protocol: %s", "SSLv3");
             break;

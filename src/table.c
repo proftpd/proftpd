@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2012 The ProFTPD Project team
+ * Copyright (c) 2004-2016 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@
  * OpenSSL in the source distribution.
  */
 
-/* Table API implementation
- * $Id: table.c,v 1.32 2012-02-24 01:37:27 castaglia Exp $
- */
+/* Table API implementation */
 
 #include "conf.h"
 
@@ -369,9 +367,7 @@ static unsigned int tab_get_seed(void) {
 #endif /* Not PR_USE_OPENSSL */
 
 #ifdef PR_USE_OPENSSL
-  if (RAND_bytes((unsigned char *) &seed, sizeof(seed)) != 1) {
-    RAND_pseudo_bytes((unsigned char *) &seed, sizeof(seed));
-  }
+  RAND_bytes((unsigned char *) &seed, sizeof(seed));
 #else
   /* Try reading from /dev/urandom, if present */
   fp = fopen("/dev/urandom", "rb");

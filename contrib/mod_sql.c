@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2014 TJ Saunders
+ * Copyright (c) 2004-2016 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
  * holders give permission to link this program with OpenSSL, and distribute
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
- *
- * $Id: mod_sql.c,v 1.247 2014-02-15 08:31:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -751,8 +749,7 @@ static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
    * the form "{digest}hash".
    */
 
-  EVP_MD_CTX md_ctxt;
-  EVP_ENCODE_CTX base64_ctxt;
+  EVP_MD_CTX *md_ctx;
   const EVP_MD *md;
 
   /* According to RATS, the output buffer (buf) for EVP_EncodeBlock() needs to
@@ -793,12 +790,13 @@ static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  EVP_DigestInit(&md_ctxt, md);
-  EVP_DigestUpdate(&md_ctxt, plaintext, strlen(plaintext));
-  EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
+  md_ctx = EVP_MD_CTX_create();
+  EVP_DigestInit(md_ctx, md);
+  EVP_DigestUpdate(md_ctx, plaintext, strlen(plaintext));
+  EVP_DigestFinal(md_ctx, mdval, &mdlen);
+  EVP_MD_CTX_destroy(md_ctx);
 
   memset(buf, '\0', sizeof(buf));
-  EVP_EncodeInit(&base64_ctxt);
   EVP_EncodeBlock(buf, mdval, (int) mdlen);
 
   if (strcmp((char *) buf, hashvalue) == 0) {

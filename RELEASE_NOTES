@@ -9,6 +9,7 @@ ChangeLog files.
 1.3.5c
 ---------
 
+  + Support for OpenSSL 1.1.x API changes.
   + Fixed handling of CapabilitiesEngine in <IfUser>/<IfGroup> sections.
 
 

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2014 TJ Saunders
+ * Copyright (c) 2008-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
- *
- * $Id: cipher.c,v 1.18 2014-03-02 06:07:43 castaglia Exp $
  */
 
 #include "mod_sftp.h"
@@ -56,13 +54,13 @@ static struct sftp_cipher read_ciphers[2] = {
   { NULL, NULL, NULL, 0, NULL, 0, 0 },
   { NULL, NULL, NULL, 0, NULL, 0, 0 }
 };
-static EVP_CIPHER_CTX read_ctxs[2]; 
+static EVP_CIPHER_CTX *read_ctxs[2]; 
 
 static struct sftp_cipher write_ciphers[2] = {
   { NULL, NULL, NULL, 0, NULL, 0, 0 },
   { NULL, NULL, NULL, 0, NULL, 0, 0 }
 };
-static EVP_CIPHER_CTX write_ctxs[2];
+static EVP_CIPHER_CTX *write_ctxs[2];
 
 #define SFTP_CIPHER_DEFAULT_BLOCK_SZ		8
 static size_t cipher_blockszs[2] = {
@@ -96,7 +94,7 @@ static void switch_read_cipher(void) {
   /* First, clear the context of the existing read cipher, if any. */
   if (read_ciphers[read_cipher_idx].key) {
     clear_cipher(&(read_ciphers[read_cipher_idx]));
-    if (EVP_CIPHER_CTX_cleanup(&(read_ctxs[read_cipher_idx])) != 1) {
+    if (EVP_CIPHER_CTX_cleanup(read_ctxs[read_cipher_idx]) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error clearing cipher context: %s", sftp_crypto_get_errors());
     }
@@ -117,7 +115,7 @@ static void switch_write_cipher(void) {
   /* First, clear the context of the existing read cipher, if any. */
   if (write_ciphers[write_cipher_idx].key) {
     clear_cipher(&(write_ciphers[write_cipher_idx]));
-    if (EVP_CIPHER_CTX_cleanup(&(write_ctxs[write_cipher_idx])) != 1) {
+    if (EVP_CIPHER_CTX_cleanup(write_ctxs[write_cipher_idx]) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error clearing cipher context: %s", sftp_crypto_get_errors());
     }
@@ -156,8 +154,7 @@ static void clear_cipher(struct sftp_cipher *cipher) {
 static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
     const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
     char *letter, const unsigned char *id, uint32_t id_len) {
-
-  EVP_MD_CTX ctx;
+  EVP_MD_CTX *ctx;
   unsigned char *iv = NULL;
   size_t cipher_iv_len = 0, iv_sz = 0;
   uint32_t iv_len = 0;
@@ -191,14 +188,16 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
     _exit(1);
   }
 
-  EVP_DigestInit(&ctx, hash);
+  ctx = EVP_MD_CTX_create();
+  EVP_DigestInit(ctx, hash);
   if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_CIPHER_USE_K)) {
-    EVP_DigestUpdate(&ctx, k, klen);
+    EVP_DigestUpdate(ctx, k, klen);
   }
-  EVP_DigestUpdate(&ctx, h, hlen);
-  EVP_DigestUpdate(&ctx, letter, sizeof(char));
-  EVP_DigestUpdate(&ctx, (char *) id, id_len);
-  EVP_DigestFinal(&ctx, iv, &iv_len);
+  EVP_DigestUpdate(ctx, h, hlen);
+  EVP_DigestUpdate(ctx, letter, sizeof(char));
+  EVP_DigestUpdate(ctx, (char *) id, id_len);
+  EVP_DigestFinal(ctx, iv, &iv_len);
+  EVP_MD_CTX_destroy(ctx);
 
   /* If we need more, keep hashing, as per RFC, until we have enough
    * material.
@@ -208,13 +207,15 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 
     pr_signals_handle();
 
-    EVP_DigestInit(&ctx, hash);
+    ctx = EVP_MD_CTX_create();
+    EVP_DigestInit(ctx, hash);
     if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_CIPHER_USE_K)) {
-      EVP_DigestUpdate(&ctx, k, klen);
+      EVP_DigestUpdate(ctx, k, klen);
     }
-    EVP_DigestUpdate(&ctx, h, hlen);
-    EVP_DigestUpdate(&ctx, iv, len);
-    EVP_DigestFinal(&ctx, iv + len, &len);
+    EVP_DigestUpdate(ctx, h, hlen);
+    EVP_DigestUpdate(ctx, iv, len);
+    EVP_DigestFinal(ctx, iv + len, &len);
+    EVP_MD_CTX_destroy(ctx);
 
     iv_len += len;
   }
@@ -228,8 +229,7 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
     const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
     char *letter, const unsigned char *id, uint32_t id_len) {
-
-  EVP_MD_CTX ctx;
+  EVP_MD_CTX *ctx;
   unsigned char *key = NULL;
   size_t key_sz = 0;
   uint32_t key_len = 0;
@@ -258,12 +258,14 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
     _exit(1);
   }
 
-  EVP_DigestInit(&ctx, hash);
-  EVP_DigestUpdate(&ctx, k, klen);
-  EVP_DigestUpdate(&ctx, h, hlen);
-  EVP_DigestUpdate(&ctx, letter, sizeof(char));
-  EVP_DigestUpdate(&ctx, (char *) id, id_len);
-  EVP_DigestFinal(&ctx, key, &key_len);
+  ctx = EVP_MD_CTX_create();
+  EVP_DigestInit(ctx, hash);
+  EVP_DigestUpdate(ctx, k, klen);
+  EVP_DigestUpdate(ctx, h, hlen);
+  EVP_DigestUpdate(ctx, letter, sizeof(char));
+  EVP_DigestUpdate(ctx, (char *) id, id_len);
+  EVP_DigestFinal(ctx, key, &key_len);
+  EVP_MD_CTX_destroy(ctx);
 
   /* If we need more, keep hashing, as per RFC, until we have enough
    * material.
@@ -273,11 +275,13 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
 
     pr_signals_handle();
 
-    EVP_DigestInit(&ctx, hash);
-    EVP_DigestUpdate(&ctx, k, klen);
-    EVP_DigestUpdate(&ctx, h, hlen);
-    EVP_DigestUpdate(&ctx, key, len);
-    EVP_DigestFinal(&ctx, key + len, &len);
+    ctx = EVP_MD_CTX_create();
+    EVP_DigestInit(ctx, hash);
+    EVP_DigestUpdate(ctx, k, klen);
+    EVP_DigestUpdate(ctx, h, hlen);
+    EVP_DigestUpdate(ctx, key, len);
+    EVP_DigestFinal(ctx, key + len, &len);
+    EVP_MD_CTX_destroy(ctx);
 
     key_len += len;
   }
@@ -381,7 +385,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   switch_read_cipher();
 
   cipher = &(read_ciphers[read_cipher_idx]);
-  cipher_ctx = &(read_ctxs[read_cipher_idx]);
+  cipher_ctx = read_ctxs[read_cipher_idx];
 
   /* XXX EVP_CIPHER_CTX_init() first appeared in OpenSSL 0.9.7.  What to do
    * for older OpenSSL installations?
@@ -460,7 +464,7 @@ int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
   size_t cipher_blocksz;
 
   cipher = &(read_ciphers[read_cipher_idx]);
-  cipher_ctx = &(read_ctxs[read_cipher_idx]);
+  cipher_ctx = read_ctxs[read_cipher_idx];
   cipher_blocksz = cipher_blockszs[read_cipher_idx];
 
   if (cipher->key) {
@@ -544,7 +548,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   switch_write_cipher();
 
   cipher = &(write_ciphers[write_cipher_idx]);
-  cipher_ctx = &(write_ctxs[write_cipher_idx]);
+  cipher_ctx = write_ctxs[write_cipher_idx];
 
   /* XXX EVP_CIPHER_CTX_init() first appeared in OpenSSL 0.9.7.  What to do
    * for older OpenSSL installations?
@@ -621,7 +625,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
   EVP_CIPHER_CTX *cipher_ctx;
 
   cipher = &(write_ciphers[write_cipher_idx]);
-  cipher_ctx = &(write_ctxs[write_cipher_idx]);
+  cipher_ctx = write_ctxs[write_cipher_idx];
 
   if (cipher->key) {
     int res;
@@ -671,3 +675,38 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
   *buflen = 0;
   return 0;
 }
+
+#if OPENSSL_VERSION_NUMBER < 0x1000000fL
+/* In older versions of OpenSSL, there was not a way to dynamically allocate
+ * an EVP_CIPHER_CTX object.  Thus we have these static objects for those
+ * older versions.
+ */
+static EVP_CIPHER_CTX read_ctx1, read_ctx2;
+static EVP_CIPHER_CTX write_ctx1, write_ctx2;
+#endif /* prior to OpenSSL-1.0.0 */
+
+int sftp_cipher_init(void) {
+#if OPENSSL_VERSION_NUMBER < 0x1000000fL
+  read_ctxs[0] = &read_ctx1;
+  read_ctxs[1] = &read_ctx2;
+  write_ctxs[0] = &write_ctx1;
+  write_ctxs[1] = &write_ctx2;
+#else
+  read_ctxs[0] = EVP_CIPHER_CTX_new();
+  read_ctxs[1] = EVP_CIPHER_CTX_new();
+  write_ctxs[0] = EVP_CIPHER_CTX_new();
+  write_ctxs[1] = EVP_CIPHER_CTX_new();
+#endif /* OpenSSL-1.0.0 and later */
+  return 0;
+}
+
+int sftp_cipher_free(void) {
+#if OPENSSL_VERSION_NUMBER >= 0x1000000fL
+  EVP_CIPHER_CTX_free(read_ctxs[0]);
+  EVP_CIPHER_CTX_free(read_ctxs[1]);
+  EVP_CIPHER_CTX_free(write_ctxs[0]);
+  EVP_CIPHER_CTX_free(write_ctxs[1]);
+#endif /* OpenSSL-1.0.0 and later */
+  return 0;
+}
+
