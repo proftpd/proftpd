@@ -5882,7 +5882,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   X509_STORE_CTX_init(store_ctx, tls_crl_store, NULL, NULL);
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
+#else
+  crls = X509_STORE_get1_crls(store_ctx, subject);
+#endif /* OpenSSL-1.1.x and later */
   if (crls != NULL) {
     for (i = 0; i < sk_X509_CRL_num(crls); i++) {
       X509_CRL *crl = NULL;
@@ -5972,7 +5976,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to check for revocation.
    */
 
-  crls = X509_STORE_CTX_get1_crls(store_ctx, issuer);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
+#else
+  crls = X509_STORE_get1_crls(store_ctx, subject);
+#endif /* OpenSSL-1.1.x and later */
   if (crls != NULL) {
     for (i = 0; i < sk_X509_CRL_num(crls); i++) {
       register int j;
