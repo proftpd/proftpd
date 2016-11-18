@@ -5884,8 +5884,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
-#else
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
   crls = X509_STORE_get1_crls(store_ctx, subject);
+#else
+  /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
+  crls = NULL;
 #endif /* OpenSSL-1.1.x and later */
   if (crls != NULL) {
     for (i = 0; i < sk_X509_CRL_num(crls); i++) {
@@ -5978,8 +5981,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
-#else
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
   crls = X509_STORE_get1_crls(store_ctx, subject);
+#else
+  /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
+  crls = NULL;
 #endif /* OpenSSL-1.1.x and later */
   if (crls != NULL) {
     for (i = 0; i < sk_X509_CRL_num(crls); i++) {
