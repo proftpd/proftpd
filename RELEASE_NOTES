@@ -22,6 +22,9 @@ ChangeLog files.
   + Logging of stacktraces now enabled by default; this also means that the
     installed executables do not have symbols stripped at install time.
   + Support for UNIX.ownername and UNIX.groupname MLSD/MLST facts.
+  + Use initgroups(3) for group membership discovery by default, as it is
+    faster/more performant on most systems.  For the previous behavior, use
+    the NoInitgroups AuthUnixOption.
 
 
   + Changed Modules:
@@ -45,6 +48,8 @@ ChangeLog files.
 
 
   + Changed Configuration Directives:
+
+    AuthUnixOption NoInitgroups (Issue#338)
 
     CapabilitiesEngine (Bug#4272)
 
