@@ -110,7 +110,7 @@ and neither directive affects permissions, real ownership or access control
 <p>
 <hr>
 <h2><a name="ListOptions">ListOptions</a></h2>
-<strong>Syntax:</strong> ListOptions <em>options [strict [maxdepth depth] [maxfiles count] [maxdirs count] [LISTOnly] [NLSTOnly] [NoErrorIfAbsent] [NoAdjustedSymlinks]</em><br>
+<strong>Syntax:</strong> ListOptions <em>options [strict [maxdepth depth] [maxfiles count] [maxdirs count] [LISTOnly] [NLSTOnly] [NoErrorIfAbsent] [NoAdjustedSymlinks] [SortedNLST]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
 <strong>Module:</strong> mod_ls<br>
@@ -162,6 +162,21 @@ The currently supported <em>flags</em> are:
     <p>
     <b>Note</b> that this <em>flag</em> first appeared in
     <code>proftpd-1.3.6rc2</code>.
+  </li>
+
+  <p>
+  <li><code>SortedNLST</code><br>
+    <p>
+    By default, <code>mod_ls</code> returns <code>NLST</code> results
+    in an <em>unordered</em> list, <i>i.e.</i> the sort order used by the
+    underlying filesystem and the <code>readdir(3)</code> library function.
+    Some FTP clients, however, may want/expect to have <code>NLST</code>
+    results sorted alphabetically.  Use this flag to achieve that sorted
+    <code>NLST</code> behavior.
+
+    <p>
+    <b>Note</b> that this <em>flag</em> first appeared in
+    <code>proftpd-1.3.6rc3</code>.
   </li>
 </ul>
 
