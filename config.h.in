@@ -336,6 +336,9 @@
 /* Define if you have the getgrouplist function.  */
 #undef HAVE_GETGROUPLIST
 
+/* Define if you have the getgroups function.  */
+#undef HAVE_GETGROUPS
+
 /* Define if you have the getgrset function.  */
 #undef HAVE_GETGRSET
 
@@ -389,6 +392,9 @@
 
 /* Define if you have the inet_pton function.  */
 #undef HAVE_INET_PTON
+
+/* Define if you have the initgroups function.  */
+#undef HAVE_INITGROUPS
 
 /* Define if you have the lgetxattr function.  */
 #undef HAVE_LGETXATTR
