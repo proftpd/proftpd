@@ -56,7 +56,8 @@ static int sendline(int flags, char *fmt, ...)
 #define LS_FL_LIST_ONLY			0x0002
 #define LS_FL_NLST_ONLY			0x0004
 #define LS_FL_NO_ADJUSTED_SYMLINKS	0x0008
-static unsigned long list_flags = 0;
+#define LS_FL_SORTED_NLST		0x0010
+static unsigned long list_flags = 0UL;
 
 /* Maximum size of the "dsize" directory block we'll allocate for all of the
  * entries in a directory (Bug#4247).
@@ -2341,7 +2342,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   char cwd_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   pool *workp;
   unsigned char symhold;
-  int curdir = FALSE, i, j, count = 0, hidden = 0;
+  int curdir = FALSE, i, j, count = 0, hidden = 0, use_sorting = FALSE;
   mode_t mode;
   config_rec *c = NULL;
   unsigned char ignore_hidden = FALSE;
@@ -2394,7 +2395,11 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     }
   }
 
-  PR_DEVEL_CLOCK(list = sreaddir(".", FALSE));
+  if (list_flags & LS_FL_SORTED_NLST) {
+    use_sorting = TRUE;
+  }
+
+  PR_DEVEL_CLOCK(list = sreaddir(".", use_sorting));
   if (list == NULL) {
     pr_trace_msg("fsio", 9,
       "sreaddir() error on '.': %s", strerror(errno));
@@ -2561,14 +2566,16 @@ MODRET genericlist(cmd_rec *cmd) {
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
   while (c != NULL) {
+    unsigned long flags;
+
     pr_signals_handle();
 
-    list_flags = *((unsigned long *) c->argv[5]);
+    flags = *((unsigned long *) c->argv[5]);
 
     /* Make sure that this ListOptions can be applied to the LIST command.
      * If not, keep looking for other applicable ListOptions.
      */
-    if (list_flags & LS_FL_NLST_ONLY) {
+    if (flags & LS_FL_NLST_ONLY) {
       pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions",
         (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
@@ -2591,6 +2598,7 @@ MODRET genericlist(cmd_rec *cmd) {
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
+    list_flags = *((unsigned long *) c->argv[5]);
 
     break;
   }
@@ -2768,21 +2776,23 @@ MODRET ls_stat(cmd_rec *cmd) {
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
   while (c != NULL) {
+    unsigned long flags;
+
     pr_signals_handle();
 
-    list_flags = *((unsigned long *) c->argv[5]);
+    flags = *((unsigned long *) c->argv[5]);
 
     /* Make sure that this ListOptions can be applied to the STAT command.
      * If not, keep looking for other applicable ListOptions.
      */
-    if (list_flags & LS_FL_LIST_ONLY) {
+    if (flags & LS_FL_LIST_ONLY) {
       pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions",
         (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
       continue;
     }
 
-    if (list_flags & LS_FL_NLST_ONLY) {
+    if (flags & LS_FL_NLST_ONLY) {
       pr_log_debug(DEBUG10, "%s: skipping NLSTOnly ListOptions",
         (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
@@ -2806,6 +2816,7 @@ MODRET ls_stat(cmd_rec *cmd) {
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
+    list_flags = *((unsigned long *) c->argv[5]);
 
     break;
   }
@@ -2924,14 +2935,16 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
   while (c != NULL) {
+    unsigned long flags;
+
     pr_signals_handle();
 
-    list_flags = *((unsigned long *) c->argv[5]);
+    flags = *((unsigned long *) c->argv[5]);
     
     /* Make sure that this ListOptions can be applied to the NLST command.
      * If not, keep looking for other applicable ListOptions.
      */
-    if (list_flags & LS_FL_LIST_ONLY) {
+    if (flags & LS_FL_LIST_ONLY) {
       pr_log_debug(DEBUG10, "%s: skipping LISTOnly ListOptions",
         (char *) cmd->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "ListOptions", FALSE);
@@ -2955,7 +2968,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     list_nfiles.max = *((unsigned int *) c->argv[3]);
     list_ndirs.max = *((unsigned int *) c->argv[4]);
-
     list_flags = *((unsigned long *) c->argv[5]);
 
     break;
@@ -3554,6 +3566,9 @@ MODRET set_listoptions(cmd_rec *cmd) {
 
       } else if (strcasecmp(cmd->argv[i], "NoAdjustedSymlinks") == 0) {
         flags |= LS_FL_NO_ADJUSTED_SYMLINKS;
+
+      } else if (strcasecmp(cmd->argv[i], "SortedNLST") == 0) {
+        flags |= LS_FL_SORTED_NLST;
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown keyword: '",
