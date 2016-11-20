@@ -54,6 +54,8 @@ ChangeLog files.
 
     Include (Bug#3849)
 
+    ListOptions SortedNLST (Bug#4267)
+
     MasqueradeAddress
       The MasqueradeAddress directive is now allowed in <Global> sections,
       to ease configuration for name-based virtual hosts.
