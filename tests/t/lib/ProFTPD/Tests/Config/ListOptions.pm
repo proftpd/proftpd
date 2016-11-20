@@ -51,7 +51,7 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  listoptions_sortednlst => {
+  listoptions_sortednlst_bug4267 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -68,10 +68,7 @@ sub new {
 }
 
 sub list_tests {
-#  return testsuite_get_runnable_tests($TESTS);
-  return qw(
-    listoptions_sortednlst
-  );
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub listoptions_opt_t {
@@ -1409,7 +1406,7 @@ sub listoptions_nlstonly {
   unlink($log_file);
 }
 
-sub listoptions_sortednlst {
+sub listoptions_sortednlst_bug4267 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'config');
@@ -1446,8 +1443,6 @@ sub listoptions_sortednlst {
     print STDERR "done\n";
   }
 
-#    ListOptions => '"" SortedNLST',
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1456,6 +1451,8 @@ sub listoptions_sortednlst {
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     TimeoutLinger => 1,
+
+    ListOptions => '"" SortedNLST',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1497,9 +1494,6 @@ sub listoptions_sortednlst {
       my ($buf, $tmp);
       my $res = $conn->read($tmp, 8192, 5);
       while ($res) {
-if ($ENV{TEST_VERBOSE}) {
-  print STDERR "# buf: $tmp\n";
-}
         $buf .= $tmp;
         $tmp = '';
         $res = $conn->read($tmp, 8192, 5);
