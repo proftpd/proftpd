@@ -303,7 +303,7 @@ static void facts_mlinfobuf_init(void) {
     }
 
     mlinfo_pool = make_sub_pool(session.pool);
-    pr_pool_tag(mlinfo_ool, "Facts MLSD Buffer Pool");
+    pr_pool_tag(mlinfo_pool, "Facts MLSD Buffer Pool");
 
     mlinfo_buf = palloc(mlinfo_pool, mlinfo_bufsz);
     pr_trace_msg("data", 8, "allocated facts buffer of %lu bytes",
