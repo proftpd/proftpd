@@ -1439,16 +1439,16 @@ MODRET set_authunixoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "AIXNoRLogin") == 0) {
+    if (strcasecmp(cmd->argv[i], "AIXNoRLogin") == 0) {
       opts |= AUTH_UNIX_OPT_AIX_NO_RLOGIN;
 
-    } else if (strcmp(cmd->argv[i], "NoGetgrouplist") == 0) {
+    } else if (strcasecmp(cmd->argv[i], "NoGetgrouplist") == 0) {
       opts |= AUTH_UNIX_OPT_NO_GETGROUPLIST;
 
-    } else if (strcmp(cmd->argv[i], "NoInitgroups") == 0) {
+    } else if (strcasecmp(cmd->argv[i], "NoInitgroups") == 0) {
       opts |= AUTH_UNIX_OPT_NO_INITGROUPS;
 
-    } else if (strcmp(cmd->argv[i], "MagicTokenChroot") == 0) {
+    } else if (strcasecmp(cmd->argv[i], "MagicTokenChroot") == 0) {
       opts |= AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT;
 
     } else {
