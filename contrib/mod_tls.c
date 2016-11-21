@@ -2660,6 +2660,30 @@ static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
   return 0;
 }
 
+static void tls_remove_pkey(tls_pkey_t *k) {
+  if (tls_pkey_list != k) {
+    tls_pkey_t *ki, *prev;
+
+    prev = tls_pkey_list;
+    for (ki = tls_pkey_list->next; ki; ki = ki->next) {
+      if (ki == k) {
+        prev->next = k->next;
+        break;
+      }
+
+      prev = ki;
+    }
+
+  } else {
+    /* We are the head of the list. */
+    tls_pkey_list = k->next;
+  }
+
+  if (tls_npkeys > 0) {
+    tls_npkeys--;
+  }
+}
+
 static void tls_scrub_pkey(tls_pkey_t *k) {
   if (k->rsa_pkey != NULL) {
     pr_memscrub(k->rsa_pkey, k->pkeysz);
@@ -2744,6 +2768,59 @@ static void tls_scrub_pkeys(void) {
 
   tls_pkey_list = NULL;
   tls_npkeys = 0;
+}
+
+static void tls_clean_pkeys(void) {
+  register unsigned int i;
+  tls_pkey_t *k;
+  pool *tmp_pool;
+  array_header *dead_keys, *valid_sids;
+  server_rec *s;
+
+  /* We scan the tls_pkey_list for any keys belonging to vhosts (by SID) which
+   * no longer appear in our configuration.
+   */
+
+  if (tls_pkey_list == NULL) {
+    return;
+  }
+
+  tmp_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(tmp_pool, "TLS Passphrase Cleaning");
+
+  dead_keys = make_array(tmp_pool, 0, sizeof(tls_pkey_t *));
+  valid_sids = make_array(tmp_pool, 0, sizeof(unsigned int));
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    *((unsigned int *) push_array(valid_sids)) = s->sid;
+  }
+
+  for (k = tls_pkey_list; k; k = k->next) {
+    int dead_key = TRUE;
+
+    for (i = 0; i < valid_sids->nelts; i++) {
+      unsigned int sid;
+
+      sid = ((unsigned int *) valid_sids->elts)[i];
+      if (k->sid == sid) {
+        dead_key = FALSE;
+        break;
+      }
+    }
+
+    if (dead_key) {
+      *((tls_pkey_t **) push_array(dead_keys)) = k;
+    }
+  }
+
+  for (i = 0; i < dead_keys->nelts; i++) {
+    k = ((tls_pkey_t **) dead_keys->elts)[i];
+    tls_remove_pkey(k);
+    tls_scrub_pkey(k);
+  }
+
+  destroy_pool(tmp_pool);
+  return;
 }
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -12823,30 +12900,6 @@ static tls_pkey_t *tls_find_pkey(server_rec *s, int flags) {
   return pkey;
 }
 
-static void tls_remove_pkey(tls_pkey_t *k) {
-  if (tls_pkey_list != k) {
-    tls_pkey_t *ki, *prev;
-
-    prev = tls_pkey_list;
-    for (ki = tls_pkey_list->next; ki; ki = ki->next) {
-      if (ki == k) {
-        prev->next = k->next;
-        break;
-      }
-
-      prev = ki;
-    }
-
-  } else {
-    /* We are the head of the list. */
-    tls_pkey_list = k->next;
-  }
-
-  if (tls_npkeys > 0) {
-    tls_npkeys--;
-  }
-}
-
 static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
     int flags) {
   int res, *pass_len;
@@ -13180,6 +13233,9 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
    * initialized.
    */
   tls_get_passphrases();
+
+  /* Clean up the pkey list, scrubbing any stale/irrelevant keys. */
+  tls_clean_pkeys();
 
   /* Install our control channel NetIO handlers.  This is done here
    * specifically because we need to cache a pointer to the nstrm that
