@@ -10573,11 +10573,11 @@ sub tls_restart_protected_certs_bug4260 {
 
   # Start the server
   server_start($setup->{config_file});
-  sleep(2);
+  sleep(4);
 
   # Restart the server
   server_restart($setup->{pid_file});
-  sleep(2);
+  sleep(4);
 
   # Stop server
   unless (server_stop($setup->{pid_file})) {
@@ -10585,7 +10585,6 @@ sub tls_restart_protected_certs_bug4260 {
   }
 
   unlink($lock_file);
-
   test_cleanup($setup->{log_file}, $ex);
 }
 
