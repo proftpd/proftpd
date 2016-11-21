@@ -770,6 +770,7 @@ parameter can use the same set of variables as supported by the
 This directive is used to log information to a database table. Multiple
 <code>SQLLog</code> directives can be in effect for any command; for example,
 a user changing directories can trigger multiple logging statements.
+<b>Note</b> that this logging occurs <em>at the end of command processing</em>.
 
 <p>
 The first parameter to <code>SQLLog</code>, the <em>cmd-set</em>, is a
@@ -1517,7 +1518,7 @@ only, and should be removed from any production configuration.
 <hr><br>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2015 The ProFTPD Project<br>
+&copy; Copyright 2000-2016 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
