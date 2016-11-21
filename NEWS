@@ -43,6 +43,8 @@
   sections.
 - Bug 4267 - NLST should allow for sorted output.  The ListOptions directive
   now supports a SortedNLST flag for such use cases.
+- Bug 4260 - Restarting server fails when using password-protected SSL
+  certificates and no TLSPassPhraseProvider.
 
 1.3.6rc2 - Released 10-Mar-2016
 --------------------------------
