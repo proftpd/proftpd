@@ -349,6 +349,11 @@ my $TESTS = {
     test_class => [qw(bug forking inprogress)],
   },
 
+  tls_restart_protected_certs_bug4260 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -10518,6 +10523,68 @@ sub tls_session_tickets_on_bug4176 {
   server_stop($setup->{pid_file});
 
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_restart_protected_certs_bug4260 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert-passwd.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+  my $passphrase_provider = File::Spec->rel2abs('t/etc/modules/mod_tls/tls-get-passphrase-once.pl');
+
+  # Note: This lock file path MUST be kept in sync with the path used by
+  # the TLSPassPhraseProvider script used in this test.
+  my $lock_file = "/tmp/tls-passphrase.lock";
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+
+        TLSPassPhraseProvider => $passphrase_provider,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # Start the server
+  server_start($setup->{config_file});
+  sleep(2);
+
+  # Restart the server
+  server_restart($setup->{pid_file});
+  sleep(2);
+
+  # Stop server
+  unless (server_stop($setup->{pid_file})) {
+    $ex = "Error stopping server";
+  }
+
+  unlink($lock_file);
 
   test_cleanup($setup->{log_file}, $ex);
 }
