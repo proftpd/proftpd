@@ -862,11 +862,13 @@ sub feature_have_module_loaded {
       my $alt_module = $module;
       $alt_module =~ s/\.c$/\//g;
 
+      my $res = 0;
       if (grep { /^($module$|$alt_module)/ } @$mod_list) {
-        return 1;
+        $res = 1;
       }
 
-      return 0;
+      close($cmdh);
+      return $res;
     }
 
     close($cmdh);
@@ -904,13 +906,18 @@ sub server_signal {
   }
 
   my @output = `$cmd`;
+  if ($? != 0) {
+    return undef;
+  }
+
+  return 1;
 }
 
 sub server_restart {
   my $pid_file = shift;
   croak("Missing PID file argument") unless $pid_file;
 
-  server_signal($pid_file, 'HUP');
+  return server_signal($pid_file, 'HUP');
 }
 
 sub server_start {
@@ -1017,6 +1024,9 @@ sub server_stop {
   }
 
   my @output = `$cmd`;
+  unless ($? == 0) {
+    return undef;
+  }
 
   unless ($nowait) {
     # Wait until the PidFile has been deleted by the shutting-down server.
@@ -1030,6 +1040,8 @@ sub server_stop {
       select(undef, undef, undef, 0.5);
     }
   }
+
+  return 1;
 }
 
 my $server_wait_timeout = 0;
