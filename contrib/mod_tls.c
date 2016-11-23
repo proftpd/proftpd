@@ -3107,6 +3107,10 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
 
     /* If we have already stashed an SNI, it means this is probably a data
      * connection.
+     *
+     * For data connections where an SNI is provided, we MIGHT be able to
+     * validate that SNI (assuming it is an IP address) against our IP address,
+     * at least.
      */
     sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
 
