@@ -3082,7 +3082,7 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
 
   server_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (server_name != NULL) {
-    const char *host = NULL;
+    const char *host = NULL, *sni;
 
     pr_trace_msg(trace_channel, 5, "received SNI '%s'", server_name);
 
@@ -3097,10 +3097,21 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
      * on to recommend using HOST before AUTH, in general, unless the SNI
      * extension will be used, in which case, clients should use AUTH TLS
      * before HOST.  We need to be ready for either case.
+     *
+     * Note that this SNI/HOST check can only really happen for control
+     * connections, not data connections.  FTPS clients do not receive/use
+     * DNS hostnames for data connections, only IP addresses.
      */
 
     host = pr_table_get(session.notes, "mod_core.host", NULL);
-    if (host != NULL) {
+
+    /* If we have already stashed an SNI, it means this is probably a data
+     * connection.
+     */
+    sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
+
+    if (host != NULL &&
+        sni == NULL) {
       /* If the requested HOST does not match the SNI, it's a fatal error.
        *
        * Bear in mind, however, that the HOST command might have used an
@@ -3119,7 +3130,7 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
           *alert_desc = SSL_AD_ACCESS_DENIED;
           return SSL_TLSEXT_ERR_ALERT_FATAL;
         }
-     }
+      }
     }
 
     if (pr_table_add_dup(session.notes, "mod_tls.sni",
