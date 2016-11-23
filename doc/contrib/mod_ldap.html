@@ -436,7 +436,7 @@ value is determined by your LDAP API.
 <hr>
 <h2><a name="LDAPSearchScope">LDAPSearchScope</a></h2>
 <strong>Syntax:</strong> LDAPSearchScope <em>onelevel|subtree</em><br>
-<strong>Default:</strong> None<br>
+<strong>Default:</strong> subtree<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ldap<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
@@ -537,7 +537,7 @@ authenticate users; <code>mod_ldap</code> will <b>not</b> fall back to an
 unsecure connection.
 
 <p>
-<hr><br>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 Follow the normal steps for using third-party modules in proftpd: 
 <pre>
@@ -554,7 +554,7 @@ in your <code>configure</code> command, <i>e.g.</i>:
 </pre>
 
 <p>
-<hr><br>
+<hr>
 <h2><a name="Usage">Usage</a></h2>
 
 <p>
@@ -604,13 +604,11 @@ This trace logging can generate large files; it is intended for debugging use
 only, and should be removed from any production configuration.
 
 <p>
-<br><hr>
-
+<hr>
 <font size=2><b><i>
-&copy; Copyright 2013-2015 TJ Saunders<br>
+&copy; Copyright 2013-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 </body>
 </html>
