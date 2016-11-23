@@ -10937,7 +10937,6 @@ MODRET tls_prot(cmd_rec *cmd) {
    * Thus we've relaxed our PBSZ requirements, by acting as if PBSZ has been
    * sent already, even if it has not.  For now.
    */
-  tls_flags |= TLS_SESS_PBSZ_OK;
 
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
@@ -11022,6 +11021,7 @@ MODRET tls_prot(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  tls_flags |= TLS_SESS_PBSZ_OK;
   return PR_HANDLED(cmd);
 }
 
