@@ -68,4 +68,4 @@ after_success:
   # debug before upload
   - lcov --list coverage.info
   # upload coverage info to coveralls
-  - coveralls-lcov --repo-token AQqbgCW8kiFf9Wavusk36Xwf22BKdlZzK coverage.info
+  - coveralls-lcov coverage.info
