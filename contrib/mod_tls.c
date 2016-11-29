@@ -616,8 +616,8 @@ static int tls_sess_cache_remove(void);
 static int tls_sess_cache_status(pr_ctrls_t *, int);
 #endif /* PR_USE_CTRLS */
 static int tls_sess_cache_add_sess_cb(SSL *, SSL_SESSION *);
-static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, const unsigned char *,
-  int, int *);
+static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, unsigned char *, int,
+  int *);
 static void tls_sess_cache_delete_sess_cb(SSL_CTX *, SSL_SESSION *);
 
 /* OCSP response cache API */
@@ -9624,9 +9624,12 @@ static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
   return 0;
 }
 
-static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl,
-    const unsigned char *sess_id, int sess_id_len, int *do_copy) {
+static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl, unsigned char *id,
+    int sess_id_len, int *do_copy) {
   SSL_SESSION *sess;
+  const unsigned char *sess_id;
+
+  sess_id = id;
 
   /* Indicate to OpenSSL that the ref count should not be incremented
    * by setting the do_copy pointer to zero.
