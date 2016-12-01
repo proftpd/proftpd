@@ -34,7 +34,7 @@ extern module sftp_module;
 /* By default, each client is assumed to support all of the features in
  * which we are interested.
  */
-static unsigned int interop_flags =
+static unsigned int default_flags =
   SFTP_SSH2_FEAT_IGNORE_MSG |
   SFTP_SSH2_FEAT_MAC_LEN |
   SFTP_SSH2_FEAT_CIPHER_USE_K |
@@ -43,11 +43,12 @@ static unsigned int interop_flags =
   SFTP_SSH2_FEAT_HAVE_PUBKEY_ALGO |
   SFTP_SSH2_FEAT_SERVICE_IN_HOST_SIG |
   SFTP_SSH2_FEAT_SERVICE_IN_PUBKEY_SIG |
-  SFTP_SSH2_FEAT_HAVE_PUBKEY_ALGO_IN_DSA_SIG;
+  SFTP_SSH2_FEAT_HAVE_PUBKEY_ALGO_IN_DSA_SIG |
+  SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING;
 
 struct sftp_version_pattern {
   const char *pattern;
-  int interop_flags;
+  int disabled_flags;
   pr_regex_t *pre;
 };
 
@@ -115,6 +116,10 @@ static struct sftp_version_pattern known_versions[] = {
     "^1\\.2\\.22.*|"
     "^1\\.3\\.2.*|"		
     "^3\\.2\\.9.*",		SFTP_SSH2_FEAT_IGNORE_MSG,		NULL },
+
+  { ".*PuTTY.*|"
+    ".*PUTTY.*|"
+    ".*WinSCP.*",		SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING,	NULL },
 
   { ".*SSH_Version_Mapper.*",	SFTP_SSH2_FEAT_SCANNER,			NULL },
 
@@ -212,13 +217,13 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
         known_versions[i].pattern);
 
       /* We have a match. */
-      interop_flags &= ~(known_versions[i].interop_flags);
+      default_flags &= ~(known_versions[i].disabled_flags);
 
-      if (known_versions[i].interop_flags == SFTP_SSH2_FEAT_PROBE) {
+      if (known_versions[i].disabled_flags == SFTP_SSH2_FEAT_PROBE) {
         is_probe = TRUE;
       }
 
-      if (known_versions[i].interop_flags == SFTP_SSH2_FEAT_SCANNER) {
+      if (known_versions[i].disabled_flags == SFTP_SSH2_FEAT_SCANNER) {
         is_scan = TRUE;
       }
 
@@ -327,7 +332,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
           pessimistic_newkeys ? "true" : "false");
 
         if (pessimistic_newkeys) {
-          interop_flags |= SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS;
+          default_flags |= SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS;
         } 
       }
 
@@ -391,8 +396,9 @@ int sftp_interop_supports_feature(int feat_flag) {
       return FALSE;
 
     default:
-      if (!(interop_flags & feat_flag))
+      if (!(default_flags & feat_flag)) {
         return FALSE;
+      }
   }
 
   return TRUE;

@@ -790,6 +790,11 @@ my $TESTS = {
     test_class => [qw(forking sftp ssh2)],
   },
 
+  sftp_download_server_rekey => {
+    order => ++$order,
+    test_class => [qw(forking sftp ssh2)],
+  },
+
   # TODO: sftp_ext_download_client_rekey
   # The issues I found with this test are:
   #   1. Net::SSH2 does not support client-initiated rekeying
@@ -25749,6 +25754,170 @@ sub sftp_ext_download_rekey_rsa1024_hostkey_bug4097 {
   # Stop server
   server_stop($setup->{pid_file});
 
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub sftp_download_server_rekey {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  # Calculate the MD5 checksum of this file, for comparison with the downloaded
+  # file.
+  my $ctx = Digest::MD5->new();
+  my $expected_md5;
+
+  my $src_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $src_file")) {
+    my $max = 100;
+    for (my $i = 0; $i < $max; $i++) {
+      my $chunk = 'AbCdEfGh' x 16382;
+      print $fh $chunk;
+      $ctx->add($chunk);
+    }
+
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  $expected_md5 = $ctx->hexdigest();
+  my $expected_sz = (stat($src_file))[7];
+
+  my $timeout_idle = 10;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPRekey required 5 1",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $fh = $sftp->open('test.dat', O_RDONLY);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open test.dat: [$err_name] ($err_code)");
+      }
+
+      $ctx->reset();
+      my $buf = '';
+      my $size = 0;
+      my $md5;
+
+      my $res = $fh->read($buf, 8192);
+      while ($res) {
+        $size += $res;
+        $ctx->add($buf);
+
+        $buf = '';
+        $res = $fh->read($buf, 8192);
+      }
+
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
+      $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
+
+      $ssh2->disconnect();
+
+      $self->assert($expected_sz == $size,
+        test_msg("Expected $expected_sz, got $size"));
+
+      $md5 = $ctx->hexdigest();
+      $self->assert($expected_md5 eq $md5,
+        test_msg("Expected '$expected_md5', got '$md5'"));
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);

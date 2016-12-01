@@ -4760,7 +4760,15 @@ int sftp_kex_rekey(void) {
 
   pr_trace_msg(trace_channel, 17, "sending rekey KEXINIT");
 
-  sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
+  /* Some SSH2 clients are very particular about rekeying, and do NOT want
+   * other data while they are rekeying.  Other clients are more forgiving.
+   * For the strict clients, we set the REKEYING flag here, such that the
+   * Channel API will buffer up its responses until the rekeying completes.
+   */
+  if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING)) {
+    sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
+  }
+
   sftp_kex_init(NULL, NULL);
 
   kex_rekey_kex = create_kex(kex_pool);

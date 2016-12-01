@@ -74,6 +74,11 @@
  */
 #define SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS		0x0200
 
+/* For clients which cannot/do not tolerate non-kex related packets after a
+ * server has requested rekeying.
+ */
+#define SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING		0x0400
+
 /* For scanners. */
 #define SFTP_SSH2_FEAT_SCANNER				0xfffe
 

@@ -811,6 +811,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
   size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0;
 
   pr_session_set_idle();
+  pr_alarms_block();
 
   while (1) {
     uint32_t req_blocksz;
@@ -828,6 +829,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     if (read_packet_len(sockfd, pkt, buf, &offset, &buflen, bufsz) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no data to be read from socket %d", sockfd);
+      pr_alarms_unblock();
       return -1;
     }
 
@@ -852,6 +854,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         bufsz) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no data to be read from socket %d", sockfd);
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
@@ -870,6 +873,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     if (read_packet_payload(sockfd, pkt, buf, &offset, &buflen, bufsz) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to read payload from socket %d", sockfd);
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
@@ -883,6 +887,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     if (read_packet_mac(sockfd, pkt, buf) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to read MAC from socket %d", sockfd);
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
@@ -896,6 +901,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
        * random amount of more data from the network before closing
        * the connection.
        */
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
@@ -907,8 +913,10 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
 
     if (pkt->packet_len < 5) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "packet length too long (%lu), less than minimum packet length (5)",
+        "packet length too short (%lu), less than minimum packet length (5)",
         (unsigned long) pkt->packet_len);
+      pr_alarms_unblock();
+      read_packet_discard(sockfd);
       return -1;
     }
 
@@ -916,6 +924,8 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "packet length too long (%lu), exceeds maximum packet length (%lu)",
         (unsigned long) pkt->packet_len, (unsigned long) SFTP_MAX_PACKET_LEN);
+      pr_alarms_unblock();
+      read_packet_discard(sockfd);
       return -1;
     }
 
@@ -927,6 +937,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "padding length too short (%u), less than minimum padding length (%u)",
         (unsigned int) pkt->padding_len, (unsigned int) SFTP_MIN_PADDING_LEN);
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
@@ -935,6 +946,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "padding length too long (%u), exceeds packet length (%lu)",
         (unsigned int) pkt->padding_len, (unsigned long) pkt->packet_len);
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
@@ -959,6 +971,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         "packet length (%lu) not a multiple of the required block size (%lu)",
         (unsigned long) pkt->packet_len + sizeof(uint32_t),
         (unsigned long) req_blocksz);
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
@@ -973,12 +986,14 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         "(packet len %lu, padding len %u)", (unsigned long) pkt->payload_len,
         (unsigned long) SFTP_MAX_PACKET_LEN, (unsigned long) pkt->packet_len,
         (unsigned int) pkt->padding_len);
+      pr_alarms_unblock();
       read_packet_discard(sockfd);
       return -1;
     }
 
     /* Sanity checks passed; move on to the reading the packet payload. */
     if (sftp_compress_read_data(pkt) < 0) {
+      pr_alarms_unblock();
       return -1;
     }
 
@@ -997,6 +1012,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       break;
     }
 
+    pr_alarms_unblock();
     break;
   }
 
@@ -1077,6 +1093,14 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   uint32_t packet_len = 0;
   int res, write_len = 0;
 
+  /* No interruptions, please.  If, for example, we are interrupted here
+   * by the SFTPRekey timer, that timer will cause this same function to
+   * be called -- but the packet_iov/packet_niov values will be different.
+   * Which in turn leads to malformed packets, and thus badness (Bug#4216).
+   */
+
+  pr_alarms_block();
+
   /* Clear the iovec array before sending the data, if possible. */
   if (packet_niov == 0) {
     memset(packet_iov, 0, sizeof(packet_iov));
@@ -1085,10 +1109,18 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   mesg_type = peek_mesg_type(pkt);
 
   if (sftp_compress_write_data(pkt) < 0) {
+    int xerrno = errno;
+
+    pr_alarms_unblock();
+    errno = xerrno;
     return -1;
   }
 
   if (write_packet_padding(pkt) < 0) {
+    int xerrno = errno;
+
+    pr_alarms_unblock();
+    errno = xerrno;
     return -1;
   }
 
@@ -1099,6 +1131,10 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   pkt->seqno = packet_server_seqno;
 
   if (sftp_mac_write_data(pkt) < 0) {
+    int xerrno = errno;
+
+    pr_alarms_unblock();
+    errno = xerrno;
     return -1;
   }
 
@@ -1106,6 +1142,11 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   buflen = bufsz;
 
   if (sftp_cipher_write_data(pkt, buf, &buflen) < 0) {
+    int xerrno = errno;
+
+    pr_alarms_unblock();
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1181,6 +1222,7 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
     memset(packet_iov, 0, sizeof(packet_iov));
     packet_niov = 0;
 
+    pr_alarms_unblock();
     errno = xerrno;
     return -1;
   }
@@ -1223,6 +1265,7 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
     memset(packet_iov, 0, sizeof(packet_iov));
     packet_niov = 0;
 
+    pr_alarms_unblock();
     errno = xerrno;
     return -1;
   }
@@ -1243,6 +1286,12 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
 
   packet_server_seqno++;
 
+  pr_trace_msg(trace_channel, 3, "sent %s (%d) packet (%d bytes)",
+    sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type, res);
+
+  /* Now that we've written out the packet, we can be interrupted again. */
+  pr_alarms_unblock();
+
   if (rekey_size > 0) {
     rekey_server_len += pkt->packet_len;
 
@@ -1262,9 +1311,6 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
     sftp_kex_rekey();
   }
 
-  pr_trace_msg(trace_channel, 3, "sent %s (%d) packet (%d bytes)",
-    sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type, res);
- 
   return 0;
 }
 
@@ -1458,12 +1504,7 @@ int sftp_ssh2_packet_handle(void) {
       }
 
       /* The client might be initiating a rekey; watch for this. */
-      if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
-        sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
-
-      } else {
-        /* First key exchange. */
-
+      if (!(sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX)) {
         if (pr_trace_get_level(timing_channel)) {
           unsigned long elapsed_ms;
           uint64_t finish_ms;
@@ -1476,6 +1517,8 @@ int sftp_ssh2_packet_handle(void) {
         }
       }
  
+      sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
+
       /* Clear any current "have KEX" state. */
       sftp_sess_state &= ~SFTP_SESS_STATE_HAVE_KEX;
 
