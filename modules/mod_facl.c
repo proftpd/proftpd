@@ -264,7 +264,7 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
     ae_type = ACL_USER_OBJ;
     have_access_entry = TRUE;
 
-    pr_trace_msg(trace_channel, 10, "user ID %S matches ACL owner user ID",
+    pr_trace_msg(trace_channel, 10, "user ID %s matches ACL owner user ID",
       pr_uid2str(NULL, uid));
   }
 
