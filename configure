@@ -35791,32 +35791,31 @@ fi
 
 done
 
-{ echo "$as_me:$LINENO: checking which POSIX ACL implementation to use" >&5
-echo $ECHO_N "checking which POSIX ACL implementation to use... $ECHO_C" >&6; }
-if test "${pr_cv_func_facl+set}" = set; then
+{ echo "$as_me:$LINENO: checking for perm_copy_fd in -lacl" >&5
+echo $ECHO_N "checking for perm_copy_fd in -lacl... $ECHO_C" >&6; }
+if test "${ac_cv_lib_acl_perm_copy_fd+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  pr_cv_func_facl="none"
-
-    if test "$pr_cv_func_facl" = "none"; then
-    cat >conftest.$ac_ext <<_ACEOF
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lacl  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
- #include <sys/types.h>
-        #ifdef HAVE_SYS_ACL_H
-        # include <sys/acl.h>
-        #endif
 
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char perm_copy_fd ();
 int
 main ()
 {
- acl_entry_t ae;
-        acl_perm_t p = ACL_READ_DATA;
-        (void)acl_get_qualifier(ae);
-
+return perm_copy_fd ();
   ;
   return 0;
 }
@@ -35839,17 +35838,35 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest$ac_exeext &&
        $as_test_x conftest$ac_exeext; then
-  pr_cv_func_facl="MacOSX"
+  ac_cv_lib_acl_perm_copy_fd=yes
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-
+	ac_cv_lib_acl_perm_copy_fd=no
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
-  fi
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_acl_perm_copy_fd" >&5
+echo "${ECHO_T}$ac_cv_lib_acl_perm_copy_fd" >&6; }
+if test $ac_cv_lib_acl_perm_copy_fd = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_LIBACL 1
+_ACEOF
+
+
+fi
+
+{ echo "$as_me:$LINENO: checking which POSIX ACL implementation to use" >&5
+echo $ECHO_N "checking which POSIX ACL implementation to use... $ECHO_C" >&6; }
+if test "${pr_cv_func_facl+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  pr_cv_func_facl="none"
 
     if test "$pr_cv_func_facl" = "none"; then
     cat >conftest.$ac_ext <<_ACEOF
@@ -35862,12 +35879,21 @@ cat >>conftest.$ac_ext <<_ACEOF
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
         #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
+        #endif
 
 int
 main ()
 {
- acl_entry_t ae;
-        (void)acl_get_qualifier(ae);
+ acl_permset_t permset;
+        /* On BSD, ACL_READ_DATA is a #define. */
+        #ifdef ACL_READ_DATA
+        acl_perm_t perm = ACL_READ_DATA;
+        #else
+        # error "ACL_READ_DATA not #defined on this platform"
+        #endif /* ACL_READ_DATA */
+        (void)acl_get_perm_np(permset, perm);
 
   ;
   return 0;
@@ -35905,7 +35931,10 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
 
     if test "$pr_cv_func_facl" = "none"; then
     old_ldflags=$LDFLAGS
-    LDFLAGS="-lacl $LDFLAGS"
+    old_libs=$LIBS
+    new_ldflags=`echo "$LDFLAGS" | sed -e 's/-L\$(top_srcdir)\/lib//g'`
+    LDFLAGS="$new_ldflags"
+    LIBS="-lacl $LIBS"
     cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -35916,12 +35945,16 @@ cat >>conftest.$ac_ext <<_ACEOF
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
         #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
+        #endif
 
 int
 main ()
 {
- acl_entry_t ae;
-        (void)acl_get_qualifier(ae);
+ acl_permset_t permset;
+        acl_perm_t perm;
+        (void)acl_get_perm(permset, perm);
 
   ;
   return 0;
@@ -35956,6 +35989,64 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
     LDFLAGS=$old_ldflags
+    LIBS=$old_libs
+  fi
+
+    if test "$pr_cv_func_facl" = "none"; then
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+ #include <sys/types.h>
+        #ifdef HAVE_SYS_ACL_H
+        # include <sys/acl.h>
+        #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
+        #endif
+
+int
+main ()
+{
+ acl_entry_t ae;
+        /* On Mac, ACL_READ_DATA is an enum value. */
+        acl_perm_t perm = ACL_READ_DATA;
+        (void)acl_get_qualifier(ae);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  pr_cv_func_facl="MacOSX"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
   fi
 
     if test "$pr_cv_func_facl" = "none"; then
@@ -35978,6 +36069,9 @@ cat >>conftest.$ac_ext <<_ACEOF
         #endif
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
+        #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
         #endif
 
 int
@@ -36044,82 +36138,8 @@ _ACEOF
     "Linux")
 
 cat >>confdefs.h <<\_ACEOF
-#define HAVE_LIBACL 1
-_ACEOF
-
-
-cat >>confdefs.h <<\_ACEOF
 #define HAVE_LINUX_POSIX_ACL 1
 _ACEOF
-
-      { echo "$as_me:$LINENO: checking for perm_copy_fd in -lacl" >&5
-echo $ECHO_N "checking for perm_copy_fd in -lacl... $ECHO_C" >&6; }
-if test "${ac_cv_lib_acl_perm_copy_fd+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lacl  $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char perm_copy_fd ();
-int
-main ()
-{
-return perm_copy_fd ();
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_link") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext &&
-       $as_test_x conftest$ac_exeext; then
-  ac_cv_lib_acl_perm_copy_fd=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_lib_acl_perm_copy_fd=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
-      conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_lib_acl_perm_copy_fd" >&5
-echo "${ECHO_T}$ac_cv_lib_acl_perm_copy_fd" >&6; }
-if test $ac_cv_lib_acl_perm_copy_fd = yes; then
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_PERM_COPY_FD 1
-_ACEOF
-
-fi
 
       ;;
 

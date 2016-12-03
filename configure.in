@@ -1973,24 +1973,13 @@ PR_CHECK_SS_LEN
 dnl POSIX ACL checks.  Always perform these, in case the administrator
 dnl wants to use mod_facl.
 AC_CHECK_HEADERS(sys/acl.h acl/libacl.h)
+AC_CHECK_LIB(acl, perm_copy_fd,
+  [AC_DEFINE(HAVE_LIBACL, 1, [Define if you have libacl])]
+)
 AC_CACHE_CHECK(
   [which POSIX ACL implementation to use],
   pr_cv_func_facl,
   pr_cv_func_facl="none"
-
-  dnl MacOSX.
-  if test "$pr_cv_func_facl" = "none"; then
-    AC_TRY_LINK(
-      [ #include <sys/types.h>
-        #ifdef HAVE_SYS_ACL_H
-        # include <sys/acl.h>
-        #endif
-      ],
-      [ acl_entry_t ae;
-        acl_perm_t p = ACL_READ_DATA;
-        (void)acl_get_qualifier(ae);
-      ], pr_cv_func_facl="MacOSX")
-  fi
 
   dnl BSD.
   if test "$pr_cv_func_facl" = "none"; then
@@ -1999,26 +1988,61 @@ AC_CACHE_CHECK(
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
         #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
+        #endif
       ],
-      [ acl_entry_t ae;
-        (void)acl_get_qualifier(ae);
+      [ acl_permset_t permset;
+        /* On BSD, ACL_READ_DATA is a #define. */
+        #ifdef ACL_READ_DATA
+        acl_perm_t perm = ACL_READ_DATA;
+        #else
+        # error "ACL_READ_DATA not #defined on this platform"
+        #endif /* ACL_READ_DATA */
+        (void)acl_get_perm_np(permset, perm);
       ], pr_cv_func_facl="BSD")
   fi
 
   dnl Linux.
   if test "$pr_cv_func_facl" = "none"; then
     old_ldflags=$LDFLAGS
-    LDFLAGS="-lacl $LDFLAGS"
+    old_libs=$LIBS
+    new_ldflags=`echo "$LDFLAGS" | sed -e 's/-L\$(top_srcdir)\/lib//g'`
+    LDFLAGS="$new_ldflags"
+    LIBS="-lacl $LIBS"
     AC_TRY_LINK(
       [ #include <sys/types.h>
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
         #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
+        #endif
       ],
-      [ acl_entry_t ae;
-        (void)acl_get_qualifier(ae);
+      [ acl_permset_t permset;
+        acl_perm_t perm;
+        (void)acl_get_perm(permset, perm);
       ], pr_cv_func_facl="Linux")
     LDFLAGS=$old_ldflags
+    LIBS=$old_libs
+  fi
+
+  dnl MacOSX.
+  if test "$pr_cv_func_facl" = "none"; then
+    AC_TRY_LINK(
+      [ #include <sys/types.h>
+        #ifdef HAVE_SYS_ACL_H
+        # include <sys/acl.h>
+        #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
+        #endif
+      ],
+      [ acl_entry_t ae;
+        /* On Mac, ACL_READ_DATA is an enum value. */
+        acl_perm_t perm = ACL_READ_DATA;
+        (void)acl_get_qualifier(ae);
+      ], pr_cv_func_facl="MacOSX")
   fi
 
   dnl Solaris.
@@ -2037,6 +2061,9 @@ AC_CACHE_CHECK(
         #endif
         #ifdef HAVE_SYS_ACL_H
         # include <sys/acl.h>
+        #endif
+        #ifdef HAVE_ACL_LIBACL_H
+        # include <acl/libacl.h>
         #endif
       ],
       [ aclent_t ae;
@@ -2057,11 +2084,8 @@ if test "$pr_cv_func_facl" != "none"; then
       ;;
 
     "Linux")
-      AC_DEFINE(HAVE_LIBACL, 1, [Define if you have libacl])
       AC_DEFINE(HAVE_LINUX_POSIX_ACL, 1,
         [Define if you have Linux-flavoured POSIX ACL support])
-      AC_CHECK_LIB(acl, perm_copy_fd,
-        [AC_DEFINE(HAVE_PERM_COPY_FD, 1, [Define if you have perm_copy_fd])])
       ;;
 
     "MacOSX")
