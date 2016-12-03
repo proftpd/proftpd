@@ -1350,17 +1350,14 @@ static void facl_mod_unload_ev(const void *event_data, void *user_data) {
 }
 #endif /* !PR_SHARED_MODULE */
 
-/* Initialization routines
- */
-
-static int facl_init(void) {
+static void facl_postparse_ev(const void *event_data, void *user_data) {
 #if defined(PR_USE_FACL) && \
     defined(HAVE_POSIX_ACL)
   pr_fs_t *fs;
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
 
   if (facl_engine == FALSE) {
-    return 0;
+    return;
   }
 
 #if defined(PR_USE_FACL) && \
@@ -1371,21 +1368,29 @@ static int facl_init(void) {
 
     pr_log_pri(PR_LOG_WARNING,
       MOD_FACL_VERSION ": error registering 'facl' FS: %s", strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
+    pr_session_disconnect(&facl_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      NULL);
   }
   pr_log_debug(DEBUG6, MOD_FACL_VERSION ": registered 'facl' FS");
 
   /* Ensure that our ACL-checking handlers are used. */
   fs->access = facl_fsio_access;
   fs->faccess = facl_fsio_faccess;
+#endif /* PR_USE_FACL and HAVE_POSIX_ACL */
+}
 
+/* Initialization routines
+ */
+
+static int facl_init(void) {
+#if defined(PR_USE_FACL) && \
+    defined(HAVE_POSIX_ACL)
 # if defined(PR_SHARED_MODULE)
   pr_event_register(&facl_module, "core.module-unload", facl_mod_unload_ev,
     NULL);
 # endif /* !PR_SHARED_MODULE */
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
+  pr_event_register(&facl_module, "core.postparse", facl_postparse_ev, NULL);
 
   return 0;
 }
