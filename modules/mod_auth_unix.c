@@ -1243,7 +1243,7 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
   int res;
 #if defined(HAVE_INITGROUPS) && defined(HAVE_GETGROUPS)
   gid_t group_ids[NGROUPS_MAX+1];
-  int ngroups, use_initgroups = TRUE;
+  int ngroups, use_initgroups = TRUE, xerrno;
   register int i;
 
   /* On Mac OSX, the getgroups(2) man page has this unsettling tidbit:
@@ -1280,9 +1280,12 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
   pr_trace_msg("auth", 4,
     "using initgroups(3) to look up group membership");
 
-  if (initgroups(user, primary_gid) < 0) {
-    int xerrno = errno;
+  PRIVS_ROOT
+  res = initgroups(user, primary_gid);
+  xerrno = errno;
+  PRIVS_RELINQUISH
 
+  if (res < 0) {
     pr_log_pri(PR_LOG_WARNING, "initgroups(3) error: %s", strerror(xerrno));
 
     errno = xerrno;
@@ -1291,7 +1294,7 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
 
   ngroups = getgroups(NGROUPS_MAX+1, group_ids);
   if (ngroups < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING, "getgroups(2) error: %s", strerror(xerrno));
 
