@@ -176,10 +176,10 @@ static struct pam_conv pam_conv = {
 static void auth_pam_exit_ev(const void *event_data, void *user_data) {
   int res = 0, disable_id_switching;
 
-  /* Sanity check.
-   */
-  if (pamh == NULL)
+  /* Sanity check. */
+  if (pamh == NULL) {
     return;
+  }
 
   /* We need privileges to be able to write to things like lastlog and
    * friends.
@@ -207,20 +207,24 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
 #endif /* !PAM_CRED_DELETE */
   if (res != PAM_SUCCESS) {
     pr_trace_msg(trace_channel, 1,
-      "error setting PAM_DELETE_CRED credential: %s",
-      pam_strerror(pamh, res));
+      "error setting PAM_DELETE_CRED credential: %s", pam_strerror(pamh, res));
   }
 
+  pr_trace_msg(trace_channel, 17, "closing PAM session");
   res = pam_close_session(pamh, PAM_SILENT);
   if (res != PAM_SUCCESS) {
     pr_trace_msg(trace_channel, 1, "error closing PAM session: %s",
       pam_strerror(pamh, res));
   }
 
-#ifndef SOLARIS2
-  pam_end(pamh, 0);
+  pr_trace_msg(trace_channel, 17, "freeing PAM handle");
+  res = pam_end(pamh, 0);
+  if (res != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1, "error freeing PAM handle: %s",
+      pam_strerror(pamh, res));
+  }
+
   pamh = NULL;
-#endif
 
   PRIVS_RELINQUISH
   pr_signals_unblock();
@@ -352,20 +356,32 @@ MODRET pam_auth(cmd_rec *cmd) {
    * pam_open_session()
    * pam_setcred()
    */
+  pr_trace_msg(trace_channel, 17, "initializing PAM handle");
   res = pam_start(pamconfig, pam_user, &pam_conv, &pamh);
   if (res != PAM_SUCCESS) {
     goto done;
   }
 
-  pam_set_item(pamh, PAM_RUSER, pam_user);
+  pr_trace_msg(trace_channel, 9, "setting PAM_RUSER to '%s'", pam_user);
+  res = pam_set_item(pamh, PAM_RUSER, pam_user);
+  if (res != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1, "pam_set_item() error for PAM_RUSER: %s",
+      pam_strerror(pamh, res));
+  }
 
-  /* Set our host environment for PAM modules that check host information.
-   */
+  /* Set our host environment for PAM modules that check host information. */
   if (session.c != NULL) {
-    pam_set_item(pamh, PAM_RHOST, session.c->remote_name);
+    pr_trace_msg(trace_channel, 9,
+      "setting PAM_RHOST to '%s'", session.c->remote_name);
+    res = pam_set_item(pamh, PAM_RHOST, session.c->remote_name);
 
   } else {
-    pam_set_item(pamh, PAM_RHOST, "IHaveNoIdeaHowIGotHere");
+    res = pam_set_item(pamh, PAM_RHOST, "IHaveNoIdeaHowIGotHere");
+  }
+
+  if (res != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1, "pam_set_item() error for PAM_RHOST: %s",
+      pam_strerror(pamh, res));
   }
 
   if (!(auth_pam_opts & AUTH_PAM_OPT_NO_TTY)) {
@@ -375,7 +391,11 @@ MODRET pam_auth(cmd_rec *cmd) {
     ttyentry[sizeof(ttyentry)-1] = '\0';
 
     pr_trace_msg(trace_channel, 9, "setting PAM_TTY to '%s'", ttyentry);
-    pam_set_item(pamh, PAM_TTY, ttyentry);
+    res = pam_set_item(pamh, PAM_TTY, ttyentry);
+    if (res != PAM_SUCCESS) {
+      pr_trace_msg(trace_channel, 1, "pam_set_item() error for PAM_TTY: %s",
+        pam_strerror(pamh, res));
+    }
   }
 
   /* Authenticate, and get any credentials as needed. */
@@ -469,8 +489,12 @@ MODRET pam_auth(cmd_rec *cmd) {
   }
 
   /* Open the session. */
+  pr_trace_msg(trace_channel, 17, "opening PAM session");
   res = pam_open_session(pamh, PAM_SILENT);
   if (res != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1,
+      "pam_open_session() failed: %s", pam_strerror(pamh, res));
+
     switch (res) {
       case PAM_SESSION_ERR:
         retval = PR_AUTH_INIT_ERROR;
@@ -534,19 +558,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   success++;
 
  done:
-
   /* And we're done.  Clean up and relinquish our root privs.  */
-
-#if defined(SOLARIS2) || defined(HPUX10) || defined(HPUX11)
-  if (success) {
-    res = pam_close_session(pamh, 0);
-  }
-
-  if (pamh) {
-    pam_end(pamh, res);
-  }
-  pamh = NULL;
-#endif
 
   if (pam_pass != NULL) {
     pr_memscrub(pam_pass, pam_pass_len);
@@ -567,12 +579,11 @@ MODRET pam_auth(cmd_rec *cmd) {
     }
 
     return pam_authoritative ? PR_ERROR_INT(cmd, retval) : PR_DECLINED(cmd);
-
-  } else {
-    session.auth_mech = "mod_auth_pam.c";
-    pr_event_register(&auth_pam_module, "core.exit", auth_pam_exit_ev, NULL);
-    return PR_HANDLED(cmd);
   }
+
+  session.auth_mech = "mod_auth_pam.c";
+  pr_event_register(&auth_pam_module, "core.exit", auth_pam_exit_ev, NULL);
+  return PR_HANDLED(cmd);
 }
 
 /* Configuration handlers
