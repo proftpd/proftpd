@@ -10,6 +10,7 @@ ChangeLog files.
 ---------
 
   + Support for OpenSSL 1.1.x API changes.
+  + Fixed memory leak when mod_facl is used.
   + Fixed handling of CapabilitiesEngine in <IfUser>/<IfGroup> sections.
 
 
