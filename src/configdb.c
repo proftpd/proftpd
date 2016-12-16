@@ -894,8 +894,15 @@ unsigned int pr_config_set_id(const char *name) {
       id = pr_config_get_id(name);
 
     } else {
-      pr_log_debug(DEBUG0, "error adding '%s' to config ID table: %s",
-        name, strerror(errno));
+      if (errno == ENOSPC) {
+        pr_log_debug(DEBUG9,
+         "error adding '%s' to config ID table: table is full", name);
+
+      } else {
+        pr_log_debug(DEBUG9, "error adding '%s' to config ID table: %s",
+          name, strerror(errno));
+      }
+
       return 0;
     }
 
@@ -907,6 +914,7 @@ unsigned int pr_config_set_id(const char *name) {
 }
 
 void init_config(void) {
+  unsigned int maxents;
 
   /* Make sure global_config_pool is destroyed */
   if (global_config_pool) {
@@ -941,6 +949,16 @@ void init_config(void) {
     config_tab_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(config_tab_pool, "Config Table Pool");
     config_tab = pr_table_alloc(config_tab_pool, 0);
+  }
+
+  /* Increase the max "size" of the table; some configurations can lead
+   * to a large number of configuration directives.
+   */
+  maxents = 32768;
+
+  if (pr_table_ctl(config_tab, PR_TABLE_CTL_SET_MAX_ENTS, &maxents) < 0) {
+    pr_log_debug(DEBUG2, "error setting config ID table max size to %u: %s",
+      maxents, strerror(errno));
   }
 
   return;
