@@ -21,7 +21,7 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  copy_file_no_login => {
+  copy_file_no_login_bug4169 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -91,7 +91,7 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  copy_cpfr_cpto_no_login => {
+  copy_cpfr_cpto_no_login_bug4169 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -283,7 +283,7 @@ sub copy_file {
   unlink($log_file);
 }
 
-sub copy_file_no_login {
+sub copy_file_no_login_bug4169 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -2757,7 +2757,7 @@ sub copy_cpfr_cpto {
   unlink($log_file);
 }
 
-sub copy_cpfr_cpto_no_login {
+sub copy_cpfr_cpto_no_login_bug4169 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
