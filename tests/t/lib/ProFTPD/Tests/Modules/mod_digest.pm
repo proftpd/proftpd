@@ -11,6 +11,7 @@ use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
 use IO::Socket::INET;
+use POSIX qw(:fcntl_h);
 use Time::HiRes qw(gettimeofday tv_interval usleep);
 
 use ProFTPD::TestSuite::FTP;
@@ -306,9 +307,24 @@ my $TESTS = {
     test_class => [qw(forking mod_ifsession)],
   },
 
-  digest_sqllog_transfer_cache => {
+  digest_sqllog_retr_transfer_cache => {
     order => ++$order,
     test_class => [qw(forking mod_sql mod_sql_sqlite)],
+  },
+
+  digest_sqllog_stor_transfer_cache => {
+    order => ++$order,
+    test_class => [qw(forking mod_sql mod_sql_sqlite)],
+  },
+
+  digest_sqllog_retr_sftp_transfer_cache => {
+    order => ++$order,
+    test_class => [qw(forking mod_sftp mod_sql mod_sql_sqlite)],
+  },
+
+  digest_sqllog_stor_sftp_transfer_cache => {
+    order => ++$order,
+    test_class => [qw(forking mod_sftp mod_sql mod_sql_sqlite)],
   },
 
 };
@@ -346,6 +362,21 @@ sub list_tests {
   }
 
   return testsuite_get_runnable_tests($TESTS);
+}
+
+sub set_up {
+  my $self = shift;
+  $self->SUPER::set_up(@_);
+
+  # Make sure that mod_sftp does not complain about permissions on the hostkey
+  # files.
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
+    die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
+  }
 }
 
 sub digest_hash_feat {
@@ -7760,7 +7791,193 @@ sub get_checksums {
   return split(/\|/, $res);
 }
 
-sub digest_sqllog_transfer_cache {
+sub digest_sqllog_retr_transfer_cache {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'digest');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpchecksums (
+  user TEXT PRIMARY KEY,
+  file TEXT,
+  checksum TEXT,
+  algo TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script);
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    my $buf = 'AbCdEfGh' x 100;
+    my $count = 8192;
+    for (my $i = 0; $i < $count; $i++) {
+      print $fh $buf;
+    }
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'digest:20 event:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    UseSendfile => 'off',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_digest.c' => {
+        DigestEngine => 'on',
+      },
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+        SQLNamedQuery => 'log-download-checksum FREEFORM "INSERT INTO ftpchecksums (user, file, checksum, algo) VALUES (\'%u\', \'%f\', \'%{note:mod_digest.digest}\', \'%{note:mod_digest.algo}\')"',
+        SQLLog => 'RETR log-download-checksum',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow server to start up
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('binary');
+
+      my $conn = $client->retr_raw('test.dat');
+      unless ($conn) {
+        die("RETR failed: " . $client->response_code() . ' ' .
+          $client->response_msg());
+      }
+
+      my $buf;
+      while ($conn->read($buf, 16384, 10)) {
+      }
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_cleanup($setup->{log_file}, $ex);
+  }
+
+  eval {
+    my ($login, $file, $cksum, $algo) = get_checksums($db_file, "user = \'$setup->{user}\'");
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login,
+      test_msg("Expected user '$expected', got '$login'"));
+
+    $expected = File::Spec->rel2abs("$tmpdir/test.dat");
+    if ($^O eq 'darwin') {
+      # MacOSX hack
+      $expected = '/private' . $expected;
+    }
+
+    $self->assert($expected eq $file,
+      test_msg("Expected file '$expected', got '$file'"));
+
+    $expected = '57130f21b51e0a397d9fef5422b5cd5defa96e25';
+    $self->assert($expected eq $cksum,
+      test_msg("Expected checksum '$expected', got '$cksum'"));
+
+    $expected = 'SHA1';
+    $self->assert($expected eq $algo,
+      test_msg("Expected algorithm '$expected', got '$algo'"));
+  };
+
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub digest_sqllog_stor_transfer_cache {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
@@ -7804,7 +8021,7 @@ EOS
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'digest:20',
+    Trace => 'digest:20 event:10',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -7860,8 +8077,8 @@ EOS
           $client->response_msg());
       }
 
-      my $buf = 'AbCdEfGh' x 8192;
-      my $count = 100;
+      my $buf = 'AbCdEfGh' x 100;
+      my $count = 8192;
       for (my $i = 0; $i < $count; $i++) {
         $conn->write($buf, length($buf), 10);
       }
@@ -7882,7 +8099,423 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_cleanup($setup->{log_file}, $ex);
+  }
+
+  eval {
+    my ($login, $file, $cksum, $algo) = get_checksums($db_file, "user = \'$setup->{user}\'");
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login,
+      test_msg("Expected user '$expected', got '$login'"));
+
+    $expected = File::Spec->rel2abs("$tmpdir/test.dat");
+    if ($^O eq 'darwin') {
+      # MacOSX hack
+      $expected = '/private' . $expected;
+    }
+
+    $self->assert($expected eq $file,
+      test_msg("Expected file '$expected', got '$file'"));
+
+    $expected = '57130f21b51e0a397d9fef5422b5cd5defa96e25';
+    $self->assert($expected eq $cksum,
+      test_msg("Expected checksum '$expected', got '$cksum'"));
+
+    $expected = 'SHA1';
+    $self->assert($expected eq $algo,
+      test_msg("Expected algorithm '$expected', got '$algo'"));
+  };
+
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub digest_sqllog_retr_sftp_transfer_cache {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'digest');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpchecksums (
+  user TEXT PRIMARY KEY,
+  file TEXT,
+  checksum TEXT,
+  algo TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script);
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    my $buf = 'AbCdEfGh' x 100;
+    my $count = 8192;
+    for (my $i = 0; $i < $count; $i++) {
+      print $fh $buf;
+    }
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'digest:20 event:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_digest.c' => {
+        DigestEngine => 'on',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+        SQLNamedQuery => 'log-download-checksum FREEFORM "INSERT INTO ftpchecksums (user, file, checksum, algo) VALUES (\'%u\', \'%f\', \'%{note:mod_digest.digest}\', \'%{note:mod_digest.algo}\')"',
+        SQLLog => 'RETR log-download-checksum',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow server to start up
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $path = 'test.dat';
+
+      my $fh = $sftp->open($path, O_RDONLY);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open $path: [$err_name] ($err_code)");
+      }
+
+      my $buf;
+
+      my $res = $fh->read($buf, 16384);
+      while ($res) {
+        $res = $fh->read($buf, 16384);
+      }
+
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
+      $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
+
+      $ssh2->disconnect();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_cleanup($setup->{log_file}, $ex);
+  }
+
+  eval {
+    my ($login, $file, $cksum, $algo) = get_checksums($db_file, "user = \'$setup->{user}\'");
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login,
+      test_msg("Expected user '$expected', got '$login'"));
+
+    $expected = File::Spec->rel2abs("$tmpdir/test.dat");
+    if ($^O eq 'darwin') {
+      # MacOSX hack
+      $expected = '/private' . $expected;
+    }
+
+    $self->assert($expected eq $file,
+      test_msg("Expected file '$expected', got '$file'"));
+
+    $expected = '57130f21b51e0a397d9fef5422b5cd5defa96e25';
+    $self->assert($expected eq $cksum,
+      test_msg("Expected checksum '$expected', got '$cksum'"));
+
+    $expected = 'SHA1';
+    $self->assert($expected eq $algo,
+      test_msg("Expected algorithm '$expected', got '$algo'"));
+  };
+
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub digest_sqllog_stor_sftp_transfer_cache {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'digest');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpchecksums (
+  user TEXT PRIMARY KEY,
+  file TEXT,
+  checksum TEXT,
+  algo TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script);
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'digest:20 event:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_digest.c' => {
+        DigestEngine => 'on',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+        SQLNamedQuery => 'log-upload-checksum FREEFORM "INSERT INTO ftpchecksums (user, file, checksum, algo) VALUES (\'%u\', \'%f\', \'%{note:mod_digest.digest}\', \'%{note:mod_digest.algo}\')"',
+        SQLLog => 'STOR log-upload-checksum',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow server to start up
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $path = 'test.dat';
+
+      my $fh = $sftp->open($path, O_WRONLY|O_CREAT);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open $path: [$err_name] ($err_code)");
+      }
+
+      my $buf = 'AbCdEfGh' x 100;
+      my $count = 8192;
+      for (my $i = 0; $i < $count; $i++) {
+        unless ($fh->write($buf)) {
+          my ($err_code, $err_name) = $sftp->error();
+          die("Can't write $path: [$err_name] ($err_code)");
+        }
+      }
+
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
+      $fh = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
+
+      $ssh2->disconnect();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;

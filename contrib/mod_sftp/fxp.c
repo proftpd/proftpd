@@ -9672,6 +9672,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
+  pr_buffer_t *pbuf;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   offset = sftp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
@@ -9954,6 +9955,13 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
   pr_trace_msg(trace_channel, 8, "sending response: DATA (%lu bytes)",
     (unsigned long) res);
+
+  pbuf = pcalloc(fxp->pool, sizeof(pr_buffer_t));
+  pbuf->buf = (char *) data;
+  pbuf->buflen = res;
+  pbuf->current = pbuf->buf;
+  pbuf->remaining = 0;
+  pr_event_generate("mod_sftp.sftp.data-write", pbuf);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_DATA);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
@@ -12601,6 +12609,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd, *cmd2;
+  pr_buffer_t *pbuf;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   offset = sftp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
@@ -12808,6 +12817,13 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   } else {
     cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, NULL);
   }
+
+  pbuf = pcalloc(fxp->pool, sizeof(pr_buffer_t));
+  pbuf->buf = (char *) data;
+  pbuf->buflen = datalen;
+  pbuf->current = pbuf->buf;
+  pbuf->remaining = 0;
+  pr_event_generate("mod_sftp.sftp.data-read", pbuf);
 
   pr_throttle_init(cmd2);
   

@@ -2064,7 +2064,7 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
 
 MODRET digest_pre_retr(cmd_rec *cmd) {
   config_rec *c;
-  unsigned char use_sendfile = TRUE;
+  const char *proto;
 
   if (digest_engine == FALSE) {
     return PR_DECLINED(cmd);
@@ -2095,19 +2095,25 @@ MODRET digest_pre_retr(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  /* If UseSendfile is in effect, then we cannot watch the outbound traffic.
-   * Note that UseSendfile is enabled by default.
-   */
-  c = find_config(CURRENT_CONF, CONF_PARAM, "UseSendfile", FALSE);
-  if (c != NULL) {
-    use_sendfile = *((unsigned char *) c->argv[0]);
-  }
+  proto = pr_session_get_protocol(0);
+  if (strcasecmp(proto, "ftp") == 0 ||
+      strcasecmp(proto, "ftps") == 0) {
+    unsigned char use_sendfile = TRUE;
 
-  if (use_sendfile) {
-    pr_trace_msg(trace_channel, 12,
-      "UseSendfile in effect, declining to compute digest for %s transfer",
-      (char *) cmd->argv[0]);
-    return PR_DECLINED(cmd);
+    /* If UseSendfile is in effect, then we cannot watch the outbound traffic.
+     * Note that UseSendfile is enabled by default.
+     */
+    c = find_config(CURRENT_CONF, CONF_PARAM, "UseSendfile", FALSE);
+    if (c != NULL) {
+      use_sendfile = *((unsigned char *) c->argv[0]);
+    }
+
+    if (use_sendfile) {
+      pr_trace_msg(trace_channel, 12,
+        "UseSendfile in effect, declining to compute digest for %s transfer",
+        (char *) cmd->argv[0]);
+      return PR_DECLINED(cmd);
+    }
   }
 
   digest_cache_xfer_ctx = EVP_MD_CTX_create();
@@ -2121,12 +2127,14 @@ MODRET digest_pre_retr(cmd_rec *cmd) {
   } else {
     pr_event_register(&digest_module, "core.data-write", digest_data_xfer_ev,
       digest_cache_xfer_ctx);
+    pr_event_register(&digest_module, "mod_sftp.sftp.data-write",
+      digest_data_xfer_ev, digest_cache_xfer_ctx);
   }
 
   return PR_DECLINED(cmd);
 }
 
-MODRET digest_log_retr(cmd_rec *cmd) {
+MODRET digest_log(cmd_rec *cmd) {
   const char *algo_name;
   unsigned char *digest;
   unsigned int digest_len;
@@ -2135,7 +2143,16 @@ MODRET digest_log_retr(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) != 0) {
+  if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
+    pr_event_unregister(&digest_module, "core.data-write", NULL);
+    pr_event_unregister(&digest_module, "mod_sftp.sftp.data-write", NULL);
+
+  } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+             pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+    pr_event_unregister(&digest_module, "core.data-read", NULL);
+    pr_event_unregister(&digest_module, "mod_sftp.sftp.data-read", NULL);
+
+  } else {
     /* Not interested in this command. */
     return PR_DECLINED(cmd);
   }
@@ -2146,7 +2163,6 @@ MODRET digest_log_retr(cmd_rec *cmd) {
   }
 
   if (digest_cache_xfer_ctx == NULL) {
-    /* Not sure how this would happen...? */
     return PR_DECLINED(cmd);
   }
 
@@ -2193,19 +2209,27 @@ MODRET digest_log_retr(cmd_rec *cmd) {
     }
   }
 
-  pr_event_unregister(&digest_module, "core.data-write", NULL);
   EVP_MD_CTX_destroy(digest_cache_xfer_ctx);
   digest_cache_xfer_ctx = NULL;
 
   return PR_DECLINED(cmd);
 }
 
-MODRET digest_log_retr_err(cmd_rec *cmd) {
+MODRET digest_log_err(cmd_rec *cmd) {
   if (digest_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
-  if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) != 0) {
+  if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0) {
+    pr_event_unregister(&digest_module, "core.data-write", NULL);
+    pr_event_unregister(&digest_module, "mod_sftp.sftp.data-write", NULL);
+
+  } else if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+             pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+    pr_event_unregister(&digest_module, "core.data-read", NULL);
+    pr_event_unregister(&digest_module, "mod_sftp.sftp.data-read", NULL);
+
+  } else {
     /* Not interested in this command. */
     return PR_DECLINED(cmd);
   }
@@ -2215,7 +2239,6 @@ MODRET digest_log_retr_err(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  pr_event_unregister(&digest_module, "core.data-write", NULL);
   if (digest_cache_xfer_ctx != NULL) {
     EVP_MD_CTX_destroy(digest_cache_xfer_ctx);
     digest_cache_xfer_ctx = NULL;
@@ -2294,6 +2317,8 @@ MODRET digest_pre_appe(cmd_rec *cmd) {
   } else {
     pr_event_register(&digest_module, "core.data-read", digest_data_xfer_ev,
       digest_cache_xfer_ctx);
+    pr_event_register(&digest_module, "mod_sftp.sftp.data-read",
+      digest_data_xfer_ev, digest_cache_xfer_ctx);
   }
 
   return PR_DECLINED(cmd);
@@ -2340,106 +2365,8 @@ MODRET digest_pre_stor(cmd_rec *cmd) {
   } else {
     pr_event_register(&digest_module, "core.data-read", digest_data_xfer_ev,
       digest_cache_xfer_ctx);
-  }
-
-  return PR_DECLINED(cmd);
-}
-
-MODRET digest_log_stor(cmd_rec *cmd) {
-  const char *algo_name;
-  unsigned char *digest;
-  unsigned int digest_len;
-
-  if (digest_engine == FALSE) {
-    return PR_DECLINED(cmd);
-  }
-
-  if (pr_cmd_cmp(cmd, PR_CMD_STOR_ID) != 0 &&
-      pr_cmd_cmp(cmd, PR_CMD_APPE_ID) != 0) {
-    /* Not interested in this command. */
-    return PR_DECLINED(cmd);
-  }
-
-  if (digest_caching == FALSE ||
-      (digest_opts & DIGEST_OPT_NO_TRANSFER_CACHE)) {
-    return PR_DECLINED(cmd);
-  }
-
-  if (digest_cache_xfer_ctx == NULL) {
-    /* Not sure how this would happen...? */
-    return PR_DECLINED(cmd);
-  }
-
-  algo_name = get_algo_name(digest_hash_algo, 0);
-  digest_len = EVP_MD_size(digest_hash_md);
-  digest = palloc(cmd->tmp_pool, digest_len);
-
-  if (EVP_DigestFinal_ex(digest_cache_xfer_ctx, digest, &digest_len) != 1) {
-    pr_trace_msg(trace_channel, 1,
-      "error finishing %s digest for %s: %s", algo_name, (char *) cmd->argv[0],
-      get_errors());
-
-  } else {
-    int res;
-    struct stat st;
-    const char *path;
-
-    path = session.xfer.path;
-    pr_fs_clear_cache2(path);
-    res = pr_fsio_stat(path, &st);
-    if (res == 0) {
-      char *hex_digest;
-      off_t start, len;
-      time_t mtime;
-
-      hex_digest = pr_str_bin2hex(cmd->tmp_pool, digest, digest_len,
-        PR_STR_FL_HEX_USE_LC);
-
-      mtime = st.st_mtime;
-      start = 0;
-      len = session.xfer.total_bytes;
-
-      if (add_cached_digest(cmd->pool, cmd, digest_hash_algo, path, mtime,
-          start, len, hex_digest) < 0) {
-        pr_trace_msg(trace_channel, 8,
-          "error caching %s digest for path '%s': %s", algo_name, path,
-          strerror(errno));
-      }
-
-    } else {
-      pr_trace_msg(trace_channel, 7,
-        "error checking '%s' post-%s: %s", path, (char *) cmd->argv[0],
-        strerror(errno));
-    }
-  }
-
-  pr_event_unregister(&digest_module, "core.data-read", NULL);
-  EVP_MD_CTX_destroy(digest_cache_xfer_ctx);
-  digest_cache_xfer_ctx = NULL;
-
-  return PR_DECLINED(cmd);
-}
-
-MODRET digest_log_stor_err(cmd_rec *cmd) {
-  if (digest_engine == FALSE) {
-    return PR_DECLINED(cmd);
-  }
-
-  if (pr_cmd_cmp(cmd, PR_CMD_STOR_ID) != 0 &&
-      pr_cmd_cmp(cmd, PR_CMD_APPE_ID) != 0) {
-    /* Not interested in this command. */
-    return PR_DECLINED(cmd);
-  }
-
-  if (digest_caching == FALSE ||
-      (digest_opts & DIGEST_OPT_NO_TRANSFER_CACHE)) {
-    return PR_DECLINED(cmd);
-  }
-
-  pr_event_unregister(&digest_module, "core.data-read", NULL);
-  if (digest_cache_xfer_ctx != NULL) {
-    EVP_MD_CTX_destroy(digest_cache_xfer_ctx);
-    digest_cache_xfer_ctx = NULL;
+    pr_event_register(&digest_module, "mod_sftp.sftp.data-read",
+      digest_data_xfer_ev, digest_cache_xfer_ctx);
   }
 
   return PR_DECLINED(cmd);
@@ -2699,8 +2626,8 @@ static void digest_data_xfer_ev(const void *event_data, void *user_data) {
   const pr_buffer_t *pbuf;
   EVP_MD_CTX *md_ctx;
 
-  pbuf = event_data;
   md_ctx = user_data;
+  pbuf = event_data;
 
   if (EVP_DigestUpdate(md_ctx, pbuf->buf, pbuf->buflen) != 1) {
     pr_trace_msg(trace_channel, 3,
@@ -2868,14 +2795,10 @@ static cmdtable digest_cmdtab[] = {
    * mod_log/mod_sql, due to command dispatching precedence rules.
    */
   { PRE_CMD,	C_APPE, G_NONE, digest_pre_appe,	TRUE,	FALSE },
-  { LOG_CMD,	C_ANY, 	G_NONE, digest_log_stor,	FALSE,	FALSE },
-  { LOG_CMD_ERR,C_APPE, G_NONE, digest_log_stor_err,	FALSE,	FALSE },
   { PRE_CMD,	C_RETR, G_NONE, digest_pre_retr,	TRUE,	FALSE },
-  { LOG_CMD,	C_ANY, 	G_NONE, digest_log_retr,	FALSE,	FALSE },
-  { LOG_CMD_ERR,C_ANY,	G_NONE, digest_log_retr_err,	FALSE,	FALSE },
   { PRE_CMD,	C_STOR,	G_NONE, digest_pre_stor,	TRUE,	FALSE },
-  { LOG_CMD,	C_ANY, 	G_NONE, digest_log_stor,	FALSE,	FALSE },
-  { LOG_CMD_ERR,C_ANY,	G_NONE, digest_log_stor_err,	FALSE,	FALSE },
+  { LOG_CMD,	C_ANY, 	G_NONE, digest_log,		FALSE,	FALSE },
+  { LOG_CMD_ERR,C_ANY,	G_NONE, digest_log_err,		FALSE,	FALSE },
 
   { 0, NULL }
 };
