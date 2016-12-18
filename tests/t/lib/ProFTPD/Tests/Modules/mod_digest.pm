@@ -4,6 +4,7 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
+use Carp;
 use Cwd;
 use File::Copy;
 use File::Path qw(mkpath);
@@ -303,6 +304,11 @@ my $TESTS = {
   digest_config_max_size_per_user => {
     order => ++$order,
     test_class => [qw(forking mod_ifsession)],
+  },
+
+  digest_sqllog_transfer_cache => {
+    order => ++$order,
+    test_class => [qw(forking mod_sql mod_sql_sqlite)],
   },
 
 };
@@ -7701,6 +7707,225 @@ EOC
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub build_db {
+  my $cmd = shift;
+  my $db_script = shift;
+  my $check_exit_status = shift;
+  $check_exit_status = 0 unless defined $check_exit_status;
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  my $exit_status = $?;
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  if ($check_exit_status) {
+    if ($? != 0) {
+      croak("'$cmd' failed");
+    }
+  }
+
+  unlink($db_script);
+  return 1;
+}
+
+sub get_checksums {
+  my $db_file = shift;
+  my $where = shift;
+
+  my $sql = "SELECT user, file, checksum, algo FROM ftpchecksums";
+  if ($where) {
+    $sql .= " WHERE $where";
+  }
+
+  my $cmd = "sqlite3 $db_file \"$sql\"";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my $res = join('', `$cmd`);
+  chomp($res);
+
+  # The default sqlite3 delimiter is '|'
+  return split(/\|/, $res);
+}
+
+sub digest_sqllog_transfer_cache {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'digest');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpchecksums (
+  user TEXT PRIMARY KEY,
+  file TEXT,
+  checksum TEXT,
+  algo TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script);
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'digest:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_digest.c' => {
+        DigestEngine => 'on',
+      },
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+        SQLNamedQuery => 'log-upload-checksum FREEFORM "INSERT INTO ftpchecksums (user, file, checksum, algo) VALUES (\'%u\', \'%f\', \'%{note:mod_digest.digest}\', \'%{note:mod_digest.algo}\')"',
+        SQLLog => 'STOR log-upload-checksum',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow server to start up
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('binary');
+
+      my $conn = $client->stor_raw('test.dat');
+      unless ($conn) {
+        die("STOR failed: " . $client->response_code() . ' ' .
+          $client->response_msg());
+      }
+
+      my $buf = 'AbCdEfGh' x 8192;
+      my $count = 100;
+      for (my $i = 0; $i < $count; $i++) {
+        $conn->write($buf, length($buf), 10);
+      }
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_cleanup($setup->{log_file}, $ex);
+  }
+
+  eval {
+    my ($login, $file, $cksum, $algo) = get_checksums($db_file, "user = \'$setup->{user}\'");
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login,
+      test_msg("Expected user '$expected', got '$login'"));
+
+    $expected = File::Spec->rel2abs("$tmpdir/test.dat");
+    if ($^O eq 'darwin') {
+      # MacOSX hack
+      $expected = '/private' . $expected;
+    }
+
+    $self->assert($expected eq $file,
+      test_msg("Expected file '$expected', got '$file'"));
+
+    $expected = '57130f21b51e0a397d9fef5422b5cd5defa96e25';
+    $self->assert($expected eq $cksum,
+      test_msg("Expected checksum '$expected', got '$cksum'"));
+
+    $expected = 'SHA1';
+    $self->assert($expected eq $algo,
+      test_msg("Expected algorithm '$expected', got '$algo'"));
+  };
+
+  if ($@) {
+    $ex = $@;
+  }
 
   test_cleanup($setup->{log_file}, $ex);
 }

@@ -1369,11 +1369,13 @@ static int remove_cached_digest(pool *p, unsigned long algo, const char *path,
   return 0;
 }
 
-static int add_cached_digest(pool *p, unsigned long algo, const char *path,
-    time_t mtime, off_t start, size_t len, const char *hex_digest) {
+static int add_cached_digest(pool *p, cmd_rec *cmd, unsigned long algo,
+    const char *path, time_t mtime, off_t start, size_t len,
+    const char *hex_digest) {
   int res;
   struct digest_cache_key *cache_key;
   pr_table_t *cache;
+  const char *algo_name;
 
   if (digest_caching == FALSE) {
     return 0;
@@ -1385,6 +1387,20 @@ static int add_cached_digest(pool *p, unsigned long algo, const char *path,
   }
 
   cache_key = create_cache_key(p, algo, path, mtime, start, len, hex_digest);
+
+  /* Stash the algorith name, and digest, as notes. */
+  algo_name = get_algo_name(algo, 0);
+  if (pr_table_add(cmd->notes, "mod_digest.algo",
+      pstrdup(cmd->pool, algo_name), 0) <  0) {
+    pr_trace_msg(trace_channel, 3,
+      "error adding 'mod_digest.algo' note: %s", strerror(errno));
+  }
+
+  if (pr_table_add(cmd->notes, "mod_digest.digest",
+      pstrdup(cmd->pool, hex_digest), 0) < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error adding 'mod_digest.digest' note: %s", strerror(errno));
+  }
 
   res = pr_table_add(cache, cache_key->key, (void *) cache_key->hex_digest, 0);
   if (res == 0) {
@@ -1590,7 +1606,7 @@ static char *get_digest(cmd_rec *cmd, unsigned long algo, const char *path,
   hex_digest = pr_str_bin2hex(cmd->tmp_pool, digest, digest_len,
     PR_STR_FL_HEX_USE_LC);
 
-  if (add_cached_digest(cmd->tmp_pool, algo, path, mtime, start, len,
+  if (add_cached_digest(cmd->pool, cmd, algo, path, mtime, start, len,
       hex_digest) < 0) {
     pr_trace_msg(trace_channel, 8,
       "error caching %s digest for path '%s': %s", get_algo_name(algo, 0),
@@ -2119,6 +2135,11 @@ MODRET digest_log_retr(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) != 0) {
+    /* Not interested in this command. */
+    return PR_DECLINED(cmd);
+  }
+
   if (digest_caching == FALSE ||
       (digest_opts & DIGEST_OPT_NO_TRANSFER_CACHE)) {
     return PR_DECLINED(cmd);
@@ -2158,7 +2179,7 @@ MODRET digest_log_retr(cmd_rec *cmd) {
       start = 0;
       len = st.st_size;
 
-      if (add_cached_digest(cmd->tmp_pool, digest_hash_algo, path, mtime,
+      if (add_cached_digest(cmd->pool, cmd, digest_hash_algo, path, mtime,
           start, len, hex_digest) < 0) {
         pr_trace_msg(trace_channel, 8,
           "error caching %s digest for path '%s': %s", algo_name, path,
@@ -2181,6 +2202,11 @@ MODRET digest_log_retr(cmd_rec *cmd) {
 
 MODRET digest_log_retr_err(cmd_rec *cmd) {
   if (digest_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) != 0) {
+    /* Not interested in this command. */
     return PR_DECLINED(cmd);
   }
 
@@ -2328,6 +2354,12 @@ MODRET digest_log_stor(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  if (pr_cmd_cmp(cmd, PR_CMD_STOR_ID) != 0 &&
+      pr_cmd_cmp(cmd, PR_CMD_APPE_ID) != 0) {
+    /* Not interested in this command. */
+    return PR_DECLINED(cmd);
+  }
+
   if (digest_caching == FALSE ||
       (digest_opts & DIGEST_OPT_NO_TRANSFER_CACHE)) {
     return PR_DECLINED(cmd);
@@ -2367,7 +2399,7 @@ MODRET digest_log_stor(cmd_rec *cmd) {
       start = 0;
       len = session.xfer.total_bytes;
 
-      if (add_cached_digest(cmd->tmp_pool, digest_hash_algo, path, mtime,
+      if (add_cached_digest(cmd->pool, cmd, digest_hash_algo, path, mtime,
           start, len, hex_digest) < 0) {
         pr_trace_msg(trace_channel, 8,
           "error caching %s digest for path '%s': %s", algo_name, path,
@@ -2390,6 +2422,12 @@ MODRET digest_log_stor(cmd_rec *cmd) {
 
 MODRET digest_log_stor_err(cmd_rec *cmd) {
   if (digest_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (pr_cmd_cmp(cmd, PR_CMD_STOR_ID) != 0 &&
+      pr_cmd_cmp(cmd, PR_CMD_APPE_ID) != 0) {
+    /* Not interested in this command. */
     return PR_DECLINED(cmd);
   }
 
@@ -2825,16 +2863,19 @@ static cmdtable digest_cmdtab[] = {
 
   { POST_CMD,	C_PASS, G_NONE,	digest_post_pass, TRUE, FALSE },
 
-  /* Command handlers for opportunistic digest computation/caching. */
-  { PRE_CMD,	C_APPE, G_NONE, digest_pre_appe,	TRUE, FALSE },
-  { LOG_CMD,	C_APPE, G_NONE, digest_log_stor,	TRUE, FALSE },
-  { LOG_CMD_ERR,C_APPE, G_NONE, digest_log_stor_err,	TRUE, FALSE },
-  { PRE_CMD,	C_RETR, G_NONE, digest_pre_retr,	TRUE, FALSE },
-  { LOG_CMD,	C_RETR, G_NONE, digest_log_retr,	TRUE, FALSE },
-  { LOG_CMD_ERR,C_RETR, G_NONE, digest_log_retr_err,	TRUE, FALSE },
-  { PRE_CMD,	C_STOR, G_NONE, digest_pre_stor,	TRUE, FALSE },
-  { LOG_CMD,	C_STOR, G_NONE, digest_log_stor,	TRUE, FALSE },
-  { LOG_CMD_ERR,C_STOR, G_NONE, digest_log_stor_err,	TRUE, FALSE },
+  /* Command handlers for opportunistic digest computation/caching.
+   * Note that we use C_ANY for better interoperability with e.g.
+   * mod_log/mod_sql, due to command dispatching precedence rules.
+   */
+  { PRE_CMD,	C_APPE, G_NONE, digest_pre_appe,	TRUE,	FALSE },
+  { LOG_CMD,	C_ANY, 	G_NONE, digest_log_stor,	FALSE,	FALSE },
+  { LOG_CMD_ERR,C_APPE, G_NONE, digest_log_stor_err,	FALSE,	FALSE },
+  { PRE_CMD,	C_RETR, G_NONE, digest_pre_retr,	TRUE,	FALSE },
+  { LOG_CMD,	C_ANY, 	G_NONE, digest_log_retr,	FALSE,	FALSE },
+  { LOG_CMD_ERR,C_ANY,	G_NONE, digest_log_retr_err,	FALSE,	FALSE },
+  { PRE_CMD,	C_STOR,	G_NONE, digest_pre_stor,	TRUE,	FALSE },
+  { LOG_CMD,	C_ANY, 	G_NONE, digest_log_stor,	FALSE,	FALSE },
+  { LOG_CMD_ERR,C_ANY,	G_NONE, digest_log_stor_err,	FALSE,	FALSE },
 
   { 0, NULL }
 };
