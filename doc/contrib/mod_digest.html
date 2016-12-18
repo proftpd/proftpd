@@ -264,6 +264,69 @@ Example Configuration
   &lt;/IfModule&gt;
 </pre>
 
+<p>
+<b>Recording Uploaded/Downloaded File Checksums</b><br>
+One particular use case that comes up is whether the <code>mod_digest</code>
+can be used to record the digests ("checksums") of uploaded/downloaded files
+in <i>e.g.</i> a SQL database.  The answer is "yes", with some caveats.
+
+<p>
+First, here is a configuration excerpt showing show such functionality might
+be implemented, using <code>mod_digest</code> and <code>mod_sql</code>:
+<pre>
+  &lt;IfModule mod_digest.c&gt;
+  &lt;/IfModule&gt;
+
+  &lt;IfModule mod_sql.c&gt;
+    ...
+    SQLNamedQuery log-file-checksum FREEFORM "INSERT INTO file_checksums (user, file, algo, checksum) VALUES ('%u', '%f', '%{note:mod_digest.algo}', '%{note:mod_digest.digest}')"
+    SQLLog RETR,STOR log-file-checksum
+    ...
+  &lt;/IfModule&gt;
+</pre>
+As you can see, this makes use of the <code>%{note:...}</code> syntax of
+the <code>SQLLog</code> directive; the same syntax <em>also</em> works for
+<code>LogFormat</code> definitions as well.  The <code>mod_digest</code> module
+uses the following notes:
+<ul>
+  <li><em>mod_digest.algo</em>
+    <p>
+    Name of the digest algorithm used, <i>e.g.</i> "SHA1".
+  </li>
+
+  <p>
+  <li><em>mod_digest.digest</em>
+    <p>
+    Calculated digest of the file as a hex-encoded string.
+  </li>
+</ul>
+
+<p>
+Now, the caveats with this technique:
+<ul>
+  <li>Does <b>not</b> work if the <code>NoTransferCache</code> <a href="#DigestOption">DigestOption</a> is used.
+  <li>Only works for binary, not ASCII, FTP uploads/downloads currently.
+  <li>Only works for uploads (<code>STOR</code) and downloads (<code>RETR</code), but not for appends (<code>APPE</code>) <b>or</b> resumed uploads/downloads (<code>REST</code> + <code>RETR/STOR</code>).
+  <li>Does <b>not</b> work for FTP downloads if <code>UseSendfile</code> is in effect.
+  <li>Default algorithm is SHA1, and is currently not configurable.
+</ul>
+In addition, the order in which the <code>mod_digest</code> and
+<code>mod_sql</code> appear in your build command is important;
+<code>mod_digest</code> <em>must come <b>after</b></em> <code>mod_sql</code>,
+otherwise the note values will <b>not</b> be populated properly in the
+<code>SQLLog</code> statement.  Thus, if you are building static modules,
+your <code>--with-modules</code> parameter would look something like:
+<pre>
+  $ ./configure --with-modules=mod_sql:mod_sql_mysql:mod_digest ...
+</pre>
+Or, if you are using shared modules, then your <code>LoadModule</code>
+directives must look like:
+<pre>
+  LoadModule mod_sql.c
+  LoadModule mod_sql_mysql.c
+  LoadModule mod_digest.c
+</pre>
+
 <!--
 Why?
 
