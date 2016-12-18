@@ -304,6 +304,7 @@ uses the following notes:
 <p>
 Now, the caveats with this technique:
 <ul>
+  <li>Does <b>not</b> work if the <code>NoTransferCache</code> <a href="#DigestOption">DigestOption</a> is used.
   <li>Only works for FTP, not SFTP uploads/downloads currently.
   <li>Only works for binary, not ASCII, uploads/downloads currently.
   <li>Only works for uploads (<code>STOR</code) and downloads (<code>RETR</code), but not for appends (<code>APPE</code>) <b>or</b> resumed uploads/downloads (<code>REST</code> + <code>RETR/STOR</code>).
