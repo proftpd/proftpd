@@ -680,6 +680,60 @@ MODRET set_digestcache(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: DigestDefaultAlgorithm algo */
+MODRET set_digestdefaultalgo(cmd_rec *cmd) {
+  config_rec *c;
+  const char *algo_name;
+  unsigned long algo = 0UL;
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+
+  algo_name = cmd->argv[1];
+
+  if (strcasecmp(algo_name, "crc32") == 0) {
+    algo = DIGEST_ALGO_CRC32;
+
+  } else if (strcasecmp(algo_name, "md5") == 0) {
+#ifndef OPENSSL_NO_MD5
+    algo = DIGEST_ALGO_MD5;
+#else
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
+#endif /* OPENSSL_NO_MD5 */
+
+  } else if (strcasecmp(algo_name, "sha1") == 0) {
+#ifndef OPENSSL_NO_SHA
+    algo = DIGEST_ALGO_SHA1;
+#else
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
+#endif /* OPENSSL_NO_SHA */
+
+  } else if (strcasecmp(algo_name, "sha256") == 0) {
+#ifndef OPENSSL_NO_SHA256
+    algo = DIGEST_ALGO_SHA256;
+#else
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
+#endif /* OPENSSL_NO_SHA256 */
+
+  } else if (strcasecmp(algo_name, "sha512") == 0) {
+#ifndef OPENSSL_NO_SHA512
+    algo = DIGEST_ALGO_SHA512;
+#else
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
+#endif /* OPENSSL_NO_SHA512 */
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "unknown/unsupported DigestAlgorithm: ", algo_name, NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = algo;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: DigestEnable on|off */
 MODRET set_digestenable(cmd_rec *cmd) {
   int enable = -1;
@@ -2733,6 +2787,28 @@ static int digest_sess_init(void) {
     digest_hash_algo = DIGEST_ALGO_CRC32;
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "DigestDefaultAlgorithm",
+    FALSE);
+  if (c != NULL) {
+    unsigned long algo;
+
+    algo = *((unsigned long *) c->argv[0]);
+
+    /* It is possible that the the configured default algorithm does NOT
+     * appear in the algorithms list.  Assume that the algorithms list takes
+     * precedence, and ignore the default algo if it is not in the list.
+     */
+
+    if (digest_algos & algo) {
+      digest_hash_algo = algo;
+
+    } else {
+      pr_log_debug(DEBUG5, MOD_DIGEST_VERSION
+        ": DigestDefaultAlgorithm %s not allowed by DigestAlgorithms, ignoring",
+        get_algo_name(algo, 0));
+    }
+  }
+
   digest_hash_md = get_algo_md(digest_hash_algo);
 
   c = find_config(main_server->conf, CONF_PARAM, "DigestCache", FALSE);
@@ -2804,12 +2880,13 @@ static cmdtable digest_cmdtab[] = {
 };
 
 static conftable digest_conftab[] = {
-  { "DigestAlgorithms",	set_digestalgorithms,	NULL },
-  { "DigestCache",	set_digestcache,	NULL },
-  { "DigestEnable",	set_digestenable,	NULL },
-  { "DigestEngine",	set_digestengine,	NULL },
-  { "DigestMaxSize",	set_digestmaxsize,	NULL },
-  { "DigestOptions",	set_digestoptions,	NULL },
+  { "DigestAlgorithms",		set_digestalgorithms,	NULL },
+  { "DigestCache",		set_digestcache,	NULL },
+  { "DigestDefaultAlgorithm",	set_digestdefaultalgo,	NULL },
+  { "DigestEnable",		set_digestenable,	NULL },
+  { "DigestEngine",		set_digestengine,	NULL },
+  { "DigestMaxSize",		set_digestmaxsize,	NULL },
+  { "DigestOptions",		set_digestoptions,	NULL },
 
   { NULL }
 };

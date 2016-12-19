@@ -277,6 +277,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  digest_config_default_algo => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   digest_config_engine => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -6861,6 +6866,114 @@ sub digest_config_algorithms {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub digest_config_default_algo {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'digest');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'digest:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_digest.c' => {
+        DigestEngine => 'on',
+        DigestDefaultAlgorithm => 'md5',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow server to start up
+      sleep(1);
+
+      my $algo = 'MD5';
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+
+      my ($resp_code, $resp_msg) = $client->opts('HASH');
+
+      my $expected = 200;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = $algo;
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->feat();
+      $resp_code = $client->response_code();
+      my $resp_msgs = $client->response_msgs();
+
+      $expected = 211;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      my $expected_feat = ' HASH CRC32;MD5*;SHA-1;SHA-256;SHA-512;';
+
+      my $found = 0;
+      my $nfeat = scalar(@$resp_msgs);
+      for (my $i = 0; $i < $nfeat; $i++) {
+        if ($resp_msgs->[$i] eq $expected_feat) {
+          $found = 1;
+          last;
+        }
+      }
+
+      $self->assert($found, test_msg("Did not see expected '$expected_feat'"));
       $client->quit();
     };
 
