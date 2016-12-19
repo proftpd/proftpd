@@ -44,6 +44,11 @@ ChangeLog files.
       particular behaviors such as how to handle copy failures.  See the
       documentation at doc/contrib/mod_copy.html#CopyOptions for details.
 
+    DigestDefaultAlgorithm
+      The mod_digest module uses the SHA1 algorithm for digests by default.
+      Use the DigestDefaultAlgorithm to change this default as needed; see
+      doc/contrib/mod_digest.html#DigestDefaultAlgorithm.
+
     FSOptions
       The --enable-xattr compile option enables support for extended attributes.
       There will be cases where this support needs to be disabled at runtime;
