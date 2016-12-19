@@ -6,6 +6,13 @@
     http://bugs.proftpd.org/show_bug.cgi?id=N
 
   where `N' is the bug number.
+
+  If the issue listed below mentions "Issue" instead of "Bug", the number
+  there references a GitHub issue, which can be found using a URL like:
+
+    https://github.com/proftpd/proftpd/issues/N
+
+  where `N' is the issue number.
 -----------------------------------------------------------------------------
 
 1.3.6rc3
