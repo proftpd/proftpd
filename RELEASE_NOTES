@@ -13,7 +13,7 @@ ChangeLog files.
   + mod_sftp uses SHA256 for publickey fingerprints by default, rather than
     SHA1 or MD5.
   + mod_sql_passwd supports Scrypt and Argon2 password hashing algorithms
-    when built using libsodium.
+    when libsodium is detected in the header/library directories.
   + mod_sftp now supports extended attributes (xattrs) via SFTP.
   + Fixed bug in filesystem free space calculation causing ALLO to fail
     unexpectedly.
@@ -30,37 +30,104 @@ ChangeLog files.
 
   + Changed Modules:
 
-    mod_ctrls_admin: config set/remove
+    mod_ctrls_admin
+      The mod_ctrls_admin module supports a new "config" ftpdctl action, which
+      can be used to dynamically change configuration directives in the
+      running daemon.  See doc/contrib/mod_ctrls_admin.html#config for more
+      details.
   
 
   + New Configuration Directives:
 
-    CopyOptions NoDeleteOnFailure
+    CopyOptions
+      The mod_copy module now supports a CopyOptions directive, for tweaking
+      particular behaviors such as how to handle copy failures.  See the
+      documentation at doc/contrib/mod_copy.html#CopyOptions for details.
 
-    FSOptions IgnoreExtendedAttributes
+    FSOptions
+      The --enable-xattr compile option enables support for extended attributes.
+      There will be cases where this support needs to be disabled at runtime;
+      use this option for doing so.  See doc/modules/mod_core.html#FSOptions
+      for more information.
 
-    IncludeOptions (Bug#3849)
+    IncludeOptions
+      The Include directive now supports wildcarded directory names.  However,
+      this behavior may not be desirable or have other consequences.  Use
+      the new IncludeOptions directive for altering this behavior, such as
+      ignoring temporary files:
 
-    MaxPasswordSize (Issue#318)
+        IncludeOptions IgnoreTempFiles
 
-    SFTPKeyLimits (Bug#4233)
+      For other options, see the documentation at
+      doc/modules/mod_core.html#IncludeOptions.
 
-    SQLPasswordCost (Bug#4154)
+    MaxPasswordSize
+      A denial-of-service attack can be mounted by causing excessive CPU
+      usage via very long passwords processed via the crypt(3) function.
+      To mitigate such resource consumption attacks, ProFTPD now imposes
+      a maximum limit on the password length; that limit can be configured
+      via this directive, documented at
+      doc/modules/mod_auth.html#MaxPasswordSize.
+
+    SFTPKeyLimits
+      As cryptographic attacks grow more sophisticated, shorter keys become
+      more at risk of compromise.  The SFTPKeyLimits directive provides the
+      administrator a way to set stronger policies by imposing a minimum key
+      length for the various types of keys: RSA, DSA, ECC.  For more
+      information, see doc/contrib/mod_sftp.html#SFTPKeyLimits.
+
+    SQLPasswordCost
+      When libsodium support is detected by the build system, memory-hard
+      algorithms such as scrypt and Argon2 are supported by the mod_sql_passwd
+      module.  These algorithms have tunable "costs"; the new SQLPasswordCost
+      directive is for such tunings; see
+      doc/contrib/mod_sql_passwd.html#SQLPasswordCost.
 
 
   + Changed Configuration Directives:
 
-    AuthUnixOption NoInitgroups (Issue#338)
+    AuthUnixOption
+      ProFTPD will now try to use the initgroups(3) library function for
+      group discovery by default.  If this change of behavior leads to
+      issues, the previous behavior can be restored using this new
+      NoInitgroups AuthUnixOption.  See
+      doc/modules/mod_auth_unix.html#AuthUnixOptions for details.
 
-    CapabilitiesEngine (Bug#4272)
+    CapabilitiesEngine
+      The CapabilitiesEngine directive of the mod_cap module was not being
+      properly honored when used within <IfUser> or <IfGroup> sections; this
+      has now been fixed.
 
-    FactsOptions NoNames (Issue#347)
+    FactsOptions
+      The MLSD/MLST responses now include the UNIX.ownername and UNIX.groupname
+      facts, for providing the textual labels.  Some FTP clients may not
+      handle these facts; use this new NoNames FactsOption value to have
+      these new name facts not included in the MLSD/MLST responses by default.
+      The documentation at doc/modules/mod_facts.html#FactsOptions contains
+      more information.
 
-    GeoIPAllowFilter, GeoIPDenyFilter (Bug#4220)
+    GeoIPAllowFilter, GeoIPDenyFilter
+      The GeoIPAllowFilter and GeoIPDenyFilter directives of the mod_geoip
+      module now support reading the filter data on a per-user basis, and
+      support reading the filter data from SQL databases via a SQLNamedQuery.
+      See the doc/contrib/mod_geoip.html#GeoIPAllowFilter documentation for
+      details and examples.
 
-    Include (Bug#3849)
+    Include
+      The Include directive now supported wildcarded directory names, e.g.:
 
-    ListOptions SortedNLST (Bug#4267)
+        Include /path/to/sites/*/proftpd.conf
+
+      Previously wildcards were only allowed as part of the filename.  For
+      more details, see doc/modules/mod_core.html#Include.
+
+    ListOptions
+      The mod_ls module returns file names for the NLST command in the order
+      in which the names are provided by the underlying filesystem via the
+      readdir(2) function.  For many filesystems, the names are not ordered.
+      However, some legacy FTP applications may assume/expect that the NLST
+      names are orded.  For such cases, use the new SortedNLST ListOption; see
+      doc/modules/mod_ls.html#ListOptions.
 
     MasqueradeAddress
       The MasqueradeAddress directive is now allowed in <Global> sections,
@@ -76,7 +143,15 @@ ChangeLog files.
         diffie-hellman-group16-sha512
         diffie-hellman-group18-sha512
 
-    SFTPOptions IgnoreFIFOs, IgnoreSFTPSetExtendedAttributes, IgnoreSFTPUploadExtendedAttributes
+    SFTPOptions
+      There are several new SFTPOptions supported:
+
+        IgnoreFIFOs
+        IgnoreSFTPSetExtendedAttributes
+        IgnoreSFTPUploadExtendedAttributes
+
+      The doc/contrib/mod_sftp.html#SFTPOptions documentation covers these
+      new options in greater detail.
 
 
   + API Changes
