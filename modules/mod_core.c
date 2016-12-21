@@ -6390,7 +6390,7 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
  */
 
 static void core_exit_ev(const void *event_data, void *user_data) {
-  pr_fs_statcache_reset();
+  pr_fs_statcache_free();
 }
 
 static void core_restart_ev(const void *event_data, void *user_data) {

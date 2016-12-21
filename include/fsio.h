@@ -343,6 +343,9 @@ int pr_fs_clear_cache2(const char *path);
  */
 void pr_fs_statcache_dump(void);
 
+/* Clears the entire statcache. */
+void pr_fs_statcache_free(void);
+
 /* Clears the entire statcache and re-creates the memory pool. */
 void pr_fs_statcache_reset(void);
 

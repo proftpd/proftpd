@@ -1349,7 +1349,7 @@ static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
     }
   }
 
-  sc_pool = pr_pool_create_sz(statcache_pool, 10 * 1024);
+  sc_pool = make_sub_pool(statcache_pool);
   pr_pool_tag(sc_pool, "FS statcache entry pool");
   sc = pcalloc(sc_pool, sizeof(struct fs_statcache));
   sc->sc_pool = sc_pool;
@@ -1661,7 +1661,7 @@ void pr_fs_statcache_dump(void) {
   pr_table_dump(statcache_dumpf, lstat_statcache_tab);
 }
 
-void pr_fs_statcache_reset(void) {
+void pr_fs_statcache_free(void) {
   if (stat_statcache_tab != NULL) {
     int size;
 
@@ -1692,6 +1692,14 @@ void pr_fs_statcache_reset(void) {
    */
   if (statcache_pool != NULL) {
     destroy_pool(statcache_pool);
+    statcache_pool = NULL;
+  }
+}
+
+void pr_fs_statcache_reset(void) {
+  pr_fs_statcache_free();
+
+  if (statcache_pool == NULL) {
     statcache_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(statcache_pool, "FS Statcache Pool");
   }
