@@ -173,8 +173,6 @@ static int init_mac(pool *p, struct sftp_mac *mac, HMAC_CTX *hmac_ctx,
   HMAC_Init(hmac_ctx, NULL, 0, NULL);
 #endif
 
-  umac_reset(umac_ctx);
-
   if (mac->algo_type == SFTP_MAC_ALGO_TYPE_HMAC) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 # if OPENSSL_VERSION_NUMBER >= 0x10000001L
@@ -195,6 +193,7 @@ static int init_mac(pool *p, struct sftp_mac *mac, HMAC_CTX *hmac_ctx,
 #endif
 
   } else if (mac->algo_type == SFTP_MAC_ALGO_TYPE_UMAC64) {
+    umac_reset(umac_ctx);
     umac_init(umac_ctx, mac->key);
   }
 
@@ -830,6 +829,12 @@ int sftp_mac_init(void) {
   hmac_write_ctxs[0] = HMAC_CTX_new();
   hmac_write_ctxs[1] = HMAC_CTX_new();
 #endif /* OpenSSL-1.1.0 and later */
+
+  umac_read_ctxs[0] = NULL;
+  umac_read_ctxs[1] = NULL;
+  umac_write_ctxs[0] = NULL;
+  umac_write_ctxs[1] = NULL;
+
   return 0;
 }
 
