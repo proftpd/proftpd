@@ -721,6 +721,8 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path) {
   }
 
   fingerprint = tls_get_fingerprint(p, cert);
+  X509_free(cert);
+
   return fingerprint;
 }
 
