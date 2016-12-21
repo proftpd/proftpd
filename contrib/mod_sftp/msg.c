@@ -248,9 +248,11 @@ char *sftp_msg_read_string(pool *p, unsigned char **buf, uint32_t *buflen) {
 
   str = palloc(p, len + 1);
 
-  memcpy(str, *buf, len);
-  (*buf) += len;
-  (*buflen) -= len;
+  if (len > 0) {
+    memcpy(str, *buf, len);
+    (*buf) += len;
+    (*buflen) -= len;
+  }
   str[len] = '\0';
 
   return str;

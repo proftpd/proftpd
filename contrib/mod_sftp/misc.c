@@ -314,7 +314,13 @@ static array_header *parse_namelist(pool *p, const char *names) {
 
     *((const char **) push_array(list)) = elt;
     names = ++ptr;
-    names_len -= elt_len;
+
+    /* Include one byte for the comma character being skipped over. */
+    names_len = names_len - elt_len - 1;
+
+    if (names_len == 0) {
+      break;
+    }
 
     ptr = memchr(names, ',', names_len);
   }
