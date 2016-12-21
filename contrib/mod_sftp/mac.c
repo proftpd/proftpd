@@ -895,6 +895,12 @@ int sftp_mac_init(void) {
   hmac_write_ctxs[0] = HMAC_CTX_new();
   hmac_write_ctxs[1] = HMAC_CTX_new();
 #endif /* OpenSSL-1.1.0 and later */
+
+  umac_read_ctxs[0] = NULL;
+  umac_read_ctxs[1] = NULL;
+  umac_write_ctxs[0] = NULL;
+  umac_write_ctxs[1] = NULL;
+
   return 0;
 }
 
