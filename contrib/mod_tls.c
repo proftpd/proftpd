@@ -12829,6 +12829,11 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
     tls_log("[stat]: SSL session cache size exceeded: %ld", res);
   }
 
+  if (tls_pky != NULL) {
+    tls_scrub_pkey(tls_pkey);
+    tls_pkey = NULL;
+  }
+
   /* OpenSSL cleanup */
   tls_cleanup(0);
 
