@@ -2497,8 +2497,30 @@ static int read_dh_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   return 0;
 }
 
+/* Only set the given environment variable/value IFF it is not already
+ * present.
+ */
+static void set_env_var(pool *p, const char *k, const char *v) {
+  const char *val;
+  int have_val = FALSE;
+
+  val = pr_env_get(p, k);
+  if (val != NULL) {
+    if (strcmp(val, v) == 0) {
+      have_val = TRUE;
+    }
+  }
+
+  if (have_val == FALSE) {
+    k = pstrdup(p, k);
+    v = pstrdup(p, v);
+    pr_env_unset(p, k);
+    pr_env_set(p, k, v);
+  }
+}
+
 static int set_session_keys(struct sftp_kex *kex) {
-  const char *k, *v;
+  const char *k;
   int comp_read_flags, comp_write_flags;
 
   if (sftp_cipher_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
@@ -2548,40 +2570,20 @@ static int set_session_keys(struct sftp_kex *kex) {
     return -1;
   }
 
-  k = pstrdup(session.pool, "SFTP_CLIENT_CIPHER_ALGO");
-  v = pstrdup(session.pool, sftp_cipher_get_read_algo());
-  pr_env_unset(session.pool, k);
-  pr_env_set(session.pool, k, v);
-
-  k = pstrdup(session.pool, "SFTP_SERVER_CIPHER_ALGO");
-  v = pstrdup(session.pool, sftp_cipher_get_write_algo());
-  pr_env_unset(session.pool, k);
-  pr_env_set(session.pool, k, v);
-
-  k = pstrdup(session.pool, "SFTP_CLIENT_MAC_ALGO");
-  v = pstrdup(session.pool, sftp_mac_get_read_algo());
-  pr_env_unset(session.pool, k);
-  pr_env_set(session.pool, k, v);
-
-  k = pstrdup(session.pool, "SFTP_SERVER_MAC_ALGO");
-  v = pstrdup(session.pool, sftp_mac_get_write_algo());
-  pr_env_unset(session.pool, k);
-  pr_env_set(session.pool, k, v);
-
-  k = pstrdup(session.pool, "SFTP_CLIENT_COMPRESSION_ALGO");
-  v = pstrdup(session.pool, sftp_compress_get_read_algo());
-  pr_env_unset(session.pool, k);
-  pr_env_set(session.pool, k, v);
-
-  k = pstrdup(session.pool, "SFTP_SERVER_COMPRESSION_ALGO");
-  v = pstrdup(session.pool, sftp_compress_get_write_algo());
-  pr_env_unset(session.pool, k);
-  pr_env_set(session.pool, k, v);
-
-  k = pstrdup(session.pool, "SFTP_KEX_ALGO");
-  v = pstrdup(session.pool, kex->session_names->kex_algo);
-  pr_env_unset(session.pool, k);
-  pr_env_set(session.pool, k, v);
+  set_env_var(session.pool, "SFTP_CLIENT_CIPHER_ALGO",
+    sftp_cipher_get_read_algo());
+  set_env_var(session.pool, "SFTP_SERVER_CIPHER_ALGO",
+    sftp_cipher_get_write_algo());
+  set_env_var(session.pool, "SFTP_CLIENT_MAC_ALGO",
+    sftp_mac_get_read_algo());
+  set_env_var(session.pool, "SFTP_SERVER_MAC_ALGO",
+    sftp_mac_get_write_algo());
+  set_env_var(session.pool, "SFTP_CLIENT_COMPRESSION_ALGO",
+    sftp_compress_get_read_algo());
+  set_env_var(session.pool, "SFTP_SERVER_COMPRESSION_ALGO",
+    sftp_compress_get_write_algo());
+  set_env_var(session.pool, "SFTP_KEX_ALGO",
+    kex->session_names->kex_algo);
 
   if (kex_rekey_interval > 0 &&
       kex_rekey_timerno == -1) {
