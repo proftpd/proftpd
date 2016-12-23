@@ -126,12 +126,12 @@ but I would rather not do that if possible.)
 <b>Integration Tests</b><br>
 The current integration tests are written in Perl, and rely on the
 <code>Test-Unit</code> Perl package.  Specifically, you <b>must</b> use
-<code>Test-Unit-0.14</code>, <b>not</b> <code>Test-Unit-0.25</code>.  Not sure
+<code>Test-Unit-0.25</code>, <b>not</b> <code>Test-Unit-0.14</code>.  Not sure
 which version of <code>Test-Unit</code> you have, if at all?  Run the following
 command:
 <pre>
-  $ perl -MTest::Unit -e 'print $Test::Unit::VERSION, "\n";'
-  0.14
+  $ perl -MTest::Unit -e 'print $Test::Unit::VERSION; print "\n";'
+  0.25
 </pre>
 
 <p>
