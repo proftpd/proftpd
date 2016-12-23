@@ -728,7 +728,7 @@ sub dele_symlink_bug3754 {
     }
 
     unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
-      die("Can't set owner of $home_dir to $setup->{uid}/$setup->{gid}: $!");
+      die("Can't set owner of $setup->{home_dir} to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 

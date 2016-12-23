@@ -6,7 +6,6 @@ use strict;
 
 use File::Spec;
 use IO::Handle;
-use Sys::HostAddr;
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
@@ -894,11 +893,34 @@ sub host_known_ipv6_same_host_ok {
   test_cleanup($setup->{log_file}, $ex);
 }
 
+sub have_sys_hostaddr {
+  my $required = [qw(
+    Sys::HostAddr
+  )];
+
+  foreach my $req (@$required) {
+    eval "use $req";
+    if ($@) {
+      print STDERR "\nWARNING:\n + Module '$req' not found, skipping test\n";
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Unable to load $req: $@\n";
+      }
+
+      return undef;
+    }
+  }
+
+  return 1;
+}
+
 sub host_known_ipv4_different_host_fails {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+
+  return unless have_sys_hostaddr();
   my $setup = test_setup($tmpdir, 'cmds');
 
+  require Sys::HostAddr;
   my $ipv4_addr = Sys::HostAddr->new();
   my $v4_addrs = $ipv4_addr->addresses();
 
@@ -1013,8 +1035,11 @@ EOC
 sub host_known_ipv6_different_host_fails {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+
+  return unless have_sys_hostaddr();
   my $setup = test_setup($tmpdir, 'cmds');
 
+  require Sys::HostAddr;
   my $ipv6_addr = Sys::HostAddr->new(ipv => 6);
   my $v6_addrs = $ipv6_addr->addresses();
 
