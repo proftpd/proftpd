@@ -1,9 +1,18 @@
-env: TRAVIS_CI=true
+env:
+  global:
+    TRAVIS_CI=true
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    # via the "travis encrypt" command using the project repo's public key
+    - secure: "cn1+7McUqDa+GLXnLqD/+LHQt1rgCaKUMuVsj//m5fMHf6xaYyWiit3nnhbg0iyhlcjX3+J2Fl3XnH6HRsZTlU53NLL2A1K2Ge9deMo/ZBp9IN+OhkjFFaSU5bAL9ttllkDOnzZmLf/dZJgBvRNXma3j0GeFEnSb66PXsDXjxQY="
+
 language: c
 
 compiler:
   - gcc
   - clang
+
+before_install:
+  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
 
 install:
   # Need to add other repos for e.g. libsodium
@@ -45,27 +54,12 @@ install:
   - sudo apt-get install -y lcov
   - gem install coveralls-lcov
 
-before_script:
-  - cd ${TRAVIS_BUILD_DIR}
-  - lcov --directory . --zerocounters
-
-script:
-  # - find . -type f -name "*.c" -print | grep -v tests | xargs cppcheck 2>&1
-  # - find . -type f -name "*.c" -print | grep -v tests | xargs rats --language=c
-  - ./configure --enable-devel=coverage --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-modules=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_ifsession
-  - make
-  - make TEST_VERBOSE=1 check-api
-  - make clean
-  - ./configure --enable-devel --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_ifsession
-  - make
-
-after_success:
-  - cd ${TRAVIS_BUILD_DIR}
-  # capture the test coverage info
-  - lcov --ignore-errors gcov,source --directory . --capture --output-file coverage.info
-  # filter out system and test code
-  - lcov --remove coverage.info 'lib/glibc-glob.*' 'lib/pr_fnmatch_loop.*' 'tests/*' '/usr/*' --output-file coverage.info
-  # debug before upload
-  - lcov --list coverage.info
-  # upload coverage info to coveralls
-  - coveralls-lcov coverage.info
+addons:
+  coverity_scan:
+    project:
+      name: "proftpd/proftpd"
+      description: "Build submitted via Travis CI"
+    notification_email: tj@castaglia.org
+    build_command_prepend: "./configure --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --with-modules=mod_sql:mod_sql_mysql:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_ifsession; make clean"
+    build_command: "make"
+    branch_patten: coverity-travis
