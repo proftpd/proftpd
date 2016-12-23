@@ -1154,6 +1154,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     char *buf = session.xfer.buf;
     pr_buffer_t *pbuf;
+    pool *tmp_pool;
 
     if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
       int adjlen, buflen;
@@ -1186,10 +1187,13 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         }
 
         /* Before we process the data read from the client, generate an event
-         * for any listeners which may want to examine this data.
+         * for any listeners which may want to examine this data.  Use a
+         * temporary pool, so that we don't exhaust the transfer pool for
+         * long/large transfers (Bug#4277).
          */
 
-        pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
+        tmp_pool = make_sub_pool(session.xfer.p);
+        pbuf = pcalloc(tmp_pool, sizeof(pr_buffer_t));
         pbuf->buf = buf;
         pbuf->buflen = len;
         pbuf->current = pbuf->buf;
@@ -1200,6 +1204,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         /* The event listeners may have changed the data to write out. */
         buf = pbuf->buf;
         len = pbuf->buflen - pbuf->remaining;
+        destroy_pool(tmp_pool);
 
         if (len > 0) {
           buflen += len;
@@ -1289,10 +1294,13 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 
       if (len > 0) {
         /* Before we process the data read from the client, generate an event
-         * for any listeners which may want to examine this data.
+         * for any listeners which may want to examine this data.  Use a
+         * temporary pool, so that we don't exhaust the transfer pool for
+         * long/large transfers (Bug#4277).
          */
 
-        pbuf = pcalloc(session.xfer.p, sizeof(pr_buffer_t));
+        tmp_pool = make_sub_pool(session.xfer.p);
+        pbuf = pcalloc(tmp_pool, sizeof(pr_buffer_t));
         pbuf->buf = buf;
         pbuf->buflen = len;
         pbuf->current = pbuf->buf;
@@ -1303,6 +1311,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         /* The event listeners may have changed the data to write out. */
         buf = pbuf->buf;
         len = pbuf->buflen - pbuf->remaining;
+        destroy_pool(tmp_pool);
 
         /* Non-ASCII mode doesn't need to use session.xfer.buf */
         if (timeout_stalled) {
