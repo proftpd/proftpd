@@ -1,6 +1,5 @@
 env:
   global:
-    TRAVIS_CI=true
     # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
     # via the "travis encrypt" command using the project repo's public key
     - secure: "cn1+7McUqDa+GLXnLqD/+LHQt1rgCaKUMuVsj//m5fMHf6xaYyWiit3nnhbg0iyhlcjX3+J2Fl3XnH6HRsZTlU53NLL2A1K2Ge9deMo/ZBp9IN+OhkjFFaSU5bAL9ttllkDOnzZmLf/dZJgBvRNXma3j0GeFEnSb66PXsDXjxQY="
