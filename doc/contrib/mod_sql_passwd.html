@@ -352,10 +352,12 @@ optional second parameter to <code>SQLPasswordUserSalt</code> controls how
 this module will use the salt:
 <pre>
   SQLPasswordUserSalt name Prepend
+  SQLPasswordUserSalt sql:/get-user-salt Prepend
 </pre>
 tells <code>mod_sql_passwd</code> to prepend the salt as a prefix, and:
 <pre>
   SQLPasswordUserSalt name Append
+  SQLPasswordUserSalt sql:/get-user-salt Append
 </pre>
 will cause the salt to be appended as a sufix.  <b>Note</b> that the default
 behavior is to <i>append</i> the salt as a suffix.
