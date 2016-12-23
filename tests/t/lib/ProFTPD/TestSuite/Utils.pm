@@ -382,7 +382,9 @@ sub config_write {
     $port = $config->{Port};
 
     unless (defined($config->{User})) {
-      $config->{User} = $user_name;
+      # Handle User names that may contain embedded backslashes and spaces
+      $user_name =~ s/\\/\\\\/g;
+      $config->{User} = "\"$user_name\"";
 
       if ($< == 0) {
         $config->{User} = 'root';
@@ -390,7 +392,9 @@ sub config_write {
     }
 
     unless (defined($config->{Group})) {
-      $config->{Group} = $group_name;
+      # Handle Group names that may contain embedded backslashes and spaces
+      $group_name =~ s/\\/\\\\/g;
+      $config->{Group} = "\"$group_name\"";
     }
 
     unless ($opts->{NoAllowOverride}) {
