@@ -9,6 +9,7 @@ DESTDIR=
 include ./Make.rules
 
 DIRS=@ADDL_DIRS@
+ENABLE_UNIT_TESTS=@ENABLE_UNIT_TESTS@
 EXEEXT=@EXEEXT@
 INSTALL_DEPS=@INSTALL_DEPS@
 LIBTOOL_DEPS=@LIBTOOL_DEPS@
@@ -75,31 +76,31 @@ ftpwho$(EXEEXT): lib utils
 
 # Run the API tests
 check-api: proftpd$(EXEEXT)
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-api)
+	test -z "$(ENABLE_UNIT_TESTS)" || (cd tests/ && $(MAKE) api-tests)
 
 # Run the FTP command testsuite
-check-commands: proftpd$(EXEEXT)
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-commands)
+check-commands: proftpd$(EXEEXT) dummy
+	test -z "$(ENABLE_INTEGRATION_TESTS)" || (cd tests/ && $(MAKE) check-commands)
 
 # Run the FTP configuration testsuite
-check-configs: proftpd$(EXEEXT)
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-configs)
+check-configs: proftpd$(EXEEXT) dummy
+	test -z "$(ENABLE_INTEGRATION_TESTS)" || (cd tests/ && $(MAKE) check-configs)
 
 # Run the FTP logging testsuite
-check-logging: proftpd$(EXEEXT)
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-logging)
+check-logging: proftpd$(EXEEXT) dummy
+	test -z "$(ENABLE_INTEGRATION_TESTS)" || (cd tests/ && $(MAKE) check-logging)
 
 # Run the FTP module testsuite
-check-modules: proftpd$(EXEEXT)
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-modules)
+check-modules: proftpd$(EXEEXT) dummy
+	test -z "$(ENABLE_INTEGRATION_TESTS)" || (cd tests/ && $(MAKE) check-modules)
 
 # Run the FTP utils testsuite
-check-utils: proftpd$(EXEEXT)
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check-utils)
+check-utils: proftpd$(EXEEXT) dummy
+	test -z "$(ENABLE_INTEGRATION_TESTS)" || (cd tests/ && $(MAKE) check-utils)
 
 # Run the entire testsuite
-check: proftpd$(EXEEXT)
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) check)
+check: proftpd$(EXEEXT) dummy
+	test -z "$(ENABLE_INTEGRATION_TESTS)" || (cd tests/ && $(MAKE) integration-tests)
 
 # BSD install -d doesn't work, so ...
 $(DESTDIR)$(localedir) $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libdir) $(DESTDIR)$(pkgconfigdir) $(DESTDIR)$(libdir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
@@ -195,7 +196,7 @@ clean:
 	cd src/     && $(MAKE) clean
 	cd tests/   && $(MAKE) clean
 	cd utils/   && $(MAKE) clean
-	test -z "$(ENABLE_TESTS)" || (cd tests/ && $(MAKE) clean)
+	test -z "$(ENABLE_UNIT_TESTS)" || (cd tests/ && $(MAKE) clean)
 
 	@dirs="$(DIRS)"; \
 	for dir in $$dirs; do \

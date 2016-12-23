@@ -883,7 +883,7 @@ install_group
 ALLOCA
 pkgconfigdir
 ENABLE_NLS
-ENABLE_TESTS
+ENABLE_UNIT_TESTS
 GLUE_MODULE_OBJS
 INSTALL_STRIP
 INSTALL_DEPS
@@ -20377,7 +20377,7 @@ _ACEOF
 fi
 
 
-ENABLE_TESTS="\"\""
+ENABLE_UNIT_TESTS="\"\""
 # Check whether --enable-tests was given.
 if test "${enable_tests+set}" = set; then
   enableval=$enable_tests;  if test x"$enableval" = x"yes" ; then
@@ -20589,7 +20589,7 @@ cat >>confdefs.h <<\_ACEOF
 #define HAVE_LIBCHECK 1
 _ACEOF
 
-         ENABLE_TESTS="1"
+         ENABLE_UNIT_TESTS="1"
 
 cat >>confdefs.h <<\_ACEOF
 #define PR_USE_TESTS 1
@@ -42883,7 +42883,7 @@ install_group!$install_group$ac_delim
 ALLOCA!$ALLOCA$ac_delim
 pkgconfigdir!$pkgconfigdir$ac_delim
 ENABLE_NLS!$ENABLE_NLS$ac_delim
-ENABLE_TESTS!$ENABLE_TESTS$ac_delim
+ENABLE_UNIT_TESTS!$ENABLE_UNIT_TESTS$ac_delim
 GLUE_MODULE_OBJS!$GLUE_MODULE_OBJS$ac_delim
 INSTALL_STRIP!$INSTALL_STRIP$ac_delim
 INSTALL_DEPS!$INSTALL_DEPS$ac_delim

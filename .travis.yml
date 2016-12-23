@@ -43,7 +43,7 @@ install:
   - sudo apt-get install -y cppcheck rats
   # for integration/regression tests
   - sudo apt-get install -y libtest-unit-perl
-  - sudo apt-get install -y libwww-perl
+  - sudo apt-get install -y libwww-perl libnet-telnet-perl
   - sudo apt-get install -y libssh2-1-dev libnet-ssh2-perl
   # for test code coverage
   - sudo apt-get install -y lcov

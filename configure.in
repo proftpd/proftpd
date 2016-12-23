@@ -953,7 +953,7 @@ AC_ARG_ENABLE(sia,
   ])
 
 dnl Test support
-ENABLE_TESTS="\"\""
+ENABLE_UNIT_TESTS="\"\""
 AC_ARG_ENABLE(tests,
   [AC_HELP_STRING(
     [--enable-tests],
@@ -964,7 +964,7 @@ AC_ARG_ENABLE(tests,
 
       AC_CHECK_LIB(check, tcase_create,
         [AC_DEFINE(HAVE_LIBCHECK, 1, [Define if libcheck is present.])
-         ENABLE_TESTS="1"
+         ENABLE_UNIT_TESTS="1"
          AC_DEFINE(PR_USE_TESTS, 1, [Define if testsuite support is enabled.])
         ],
         [
@@ -3772,7 +3772,7 @@ AC_DEFINE_UNQUOTED(PR_BUILD_LIBS, $my_libs, [Define the build LIBS])
 
 dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(ENABLE_NLS)
-AC_SUBST(ENABLE_TESTS)
+AC_SUBST(ENABLE_UNIT_TESTS)
 AC_SUBST(GLUE_MODULE_OBJS)
 AC_SUBST(INSTALL_STRIP)
 AC_SUBST(INSTALL_DEPS)
