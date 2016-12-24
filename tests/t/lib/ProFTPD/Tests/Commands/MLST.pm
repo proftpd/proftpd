@@ -465,7 +465,7 @@ sub mlst_dir_cwd_bug4198 {
 
       # Note that, per Bug#4198, we do NOT expect to see a type fact of
       # "cdir" here, just "dir".
-      $expected = ' modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+:UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*$';
+      $expected = ' modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
