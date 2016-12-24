@@ -103,7 +103,7 @@ sub ssh2_session {
       $client->close();
 
       chomp($resp);
-      my $expected = 'Protocol mismatch.';
+      my $expected = '';
       $self->assert(qr/$expected/, $resp,
         test_msg("Expected response '$expected', got '$resp'"));
     };

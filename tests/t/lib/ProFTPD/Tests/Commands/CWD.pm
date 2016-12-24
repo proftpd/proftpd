@@ -794,8 +794,8 @@ sub cwd_fails_eperm {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$sub_dir: No such file or directory";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$sub_dir: (No such file or directory|Permission denied)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
     if ($@) {

@@ -1070,7 +1070,7 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
     *((char **) push_array(groups)) = pstrdup(session.pool, grp->gr_name);
   }
 
-  af_setgrent(cmd->tmp_pool);
+  (void) af_setgrent(cmd->tmp_pool);
 
   /* This is where things get slow, expensive, and ugly.  Loop through
    * everything, checking to make sure we haven't already added it.

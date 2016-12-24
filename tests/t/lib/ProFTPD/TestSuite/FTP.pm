@@ -12,7 +12,7 @@ sub new {
   my $class = shift;
   my ($addr, $port, $use_port, $conn_timeout, $cmd_timeout) = @_;
   $use_port = 0 unless defined($use_port);
-  $conn_timeout = 10 unless defined($conn_timeout);
+  $conn_timeout = 2 unless defined($conn_timeout);
  
   my $ftp;
 
