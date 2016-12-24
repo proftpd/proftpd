@@ -341,25 +341,19 @@ sub new {
 sub list_tests {
   # Check for the required Perl modules:
   #
-  #  Digest-CRC
   #  Digest-MD5
-  #  Digest-SHA1
-  #  Digest-SHA256
 
   my $required = [qw(
-    Digest::CRC
     Digest::MD5
-    Digest::SHA1
-    Digest::SHA256
   )];
 
   foreach my $req (@$required) {
     eval "use $req";
     if ($@) {
-      print STDERR "\nWARNING:\n + Module '$req' not found, skipping all tests\n";
+      print STDERR " + WARNING: Module '$req' not found, skipping all tests\n";
 
       if ($ENV{TEST_VERBOSE}) {
-        print STDERR "Unable to load $req: $@\n";
+        print STDERR "# Unable to load $req: $@\n";
       }
 
       return qw(testsuite_empty_test);
@@ -382,6 +376,21 @@ sub set_up {
   unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
     die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
   }
+}
+
+sub have_digest {
+  my $module_name = shift;
+
+  eval { require $module_name };
+  if ($@) {
+    if ($ENV{TEST_VERBOSE}) {
+      print STDOUT "# Missing $module_name, skipping test\n";
+    }
+
+    return undef;
+  }
+
+  return 1;
 }
 
 sub digest_hash_feat {
@@ -431,7 +440,7 @@ sub digest_hash_feat {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->feat();
 
       my $resp_code = $client->response_code();
@@ -528,7 +537,7 @@ sub digest_hash_opts {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->opts('HASH');
@@ -633,11 +642,11 @@ sub digest_hash_opts {
 }
 
 sub digest_hash_crc32 {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -704,7 +713,7 @@ sub digest_hash_crc32 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -759,11 +768,11 @@ sub digest_hash_crc32 {
 }
 
 sub digest_hash_crc32_abs_symlink {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -855,7 +864,7 @@ sub digest_hash_crc32_abs_symlink {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -910,11 +919,11 @@ sub digest_hash_crc32_abs_symlink {
 }
 
 sub digest_hash_crc32_abs_symlink_chrooted_bug4219 {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -1008,7 +1017,7 @@ sub digest_hash_crc32_abs_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -1063,11 +1072,11 @@ sub digest_hash_crc32_abs_symlink_chrooted_bug4219 {
 }
 
 sub digest_hash_crc32_rel_symlink {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -1163,7 +1172,7 @@ sub digest_hash_crc32_rel_symlink {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -1218,11 +1227,11 @@ sub digest_hash_crc32_rel_symlink {
 }
 
 sub digest_hash_crc32_rel_symlink_chrooted_bug4219 {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -1320,7 +1329,7 @@ sub digest_hash_crc32_rel_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -1375,11 +1384,11 @@ sub digest_hash_crc32_rel_symlink_chrooted_bug4219 {
 }
 
 sub digest_hash_md5 {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::MD5;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1446,7 +1455,7 @@ sub digest_hash_md5 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'MD5';
@@ -1501,11 +1510,11 @@ sub digest_hash_md5 {
 }
 
 sub digest_hash_sha1 {
+  return unless have_digest('Digest::SHA1');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA1;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1572,7 +1581,7 @@ sub digest_hash_sha1 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'SHA-1';
@@ -1627,11 +1636,11 @@ sub digest_hash_sha1 {
 }
 
 sub digest_hash_sha256 {
+  return unless have_digest('Digest::SHA256');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA256;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1700,7 +1709,7 @@ sub digest_hash_sha256 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'SHA-256';
@@ -1755,11 +1764,11 @@ sub digest_hash_sha256 {
 }
 
 sub digest_hash_sha512 {
+  return unless have_digest('Digest::SHA256');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA256;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1828,7 +1837,7 @@ sub digest_hash_sha512 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'SHA-512';
@@ -1931,7 +1940,7 @@ sub digest_hash_failed_not_logged_in {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
@@ -2038,7 +2047,7 @@ sub digest_hash_failed_enoent {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2147,7 +2156,7 @@ sub digest_hash_failed_not_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2271,7 +2280,7 @@ sub digest_hash_failed_config_limit {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2386,7 +2395,7 @@ sub digest_hash_failed_blacklisted_files {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2450,11 +2459,11 @@ sub digest_hash_failed_blacklisted_files {
 }
 
 sub digest_xcrc {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -2521,7 +2530,7 @@ sub digest_xcrc {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
       $client->quit();
@@ -2562,11 +2571,11 @@ sub digest_xcrc {
 }
 
 sub digest_xcrc_abs_symlink {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -2658,7 +2667,7 @@ sub digest_xcrc_abs_symlink {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -2698,11 +2707,11 @@ sub digest_xcrc_abs_symlink {
 }
 
 sub digest_xcrc_abs_symlink_chrooted_bug4219 {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -2796,7 +2805,7 @@ sub digest_xcrc_abs_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -2836,11 +2845,11 @@ sub digest_xcrc_abs_symlink_chrooted_bug4219 {
 }
 
 sub digest_xcrc_rel_symlink {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -2936,7 +2945,7 @@ sub digest_xcrc_rel_symlink {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -2976,11 +2985,11 @@ sub digest_xcrc_rel_symlink {
 }
 
 sub digest_xcrc_rel_symlink_chrooted_bug4219 {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
@@ -3078,7 +3087,7 @@ sub digest_xcrc_rel_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -3118,11 +3127,11 @@ sub digest_xcrc_rel_symlink_chrooted_bug4219 {
 }
 
 sub digest_xcrc_2gb {
+  return unless have_digest('Digest::CRC');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
   if (open(my $fh, "> $test_file")) {
@@ -3215,7 +3224,7 @@ sub digest_xcrc_2gb {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quote('XCRC', 'test.dat');
 
@@ -3261,11 +3270,11 @@ sub digest_xcrc_2gb {
 }
 
 sub digest_md5 {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::MD5;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3332,7 +3341,7 @@ sub digest_md5 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $file = 'test.txt';
@@ -3424,7 +3433,7 @@ sub digest_md5_failed_not_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $file = 'test.d';
@@ -3474,11 +3483,11 @@ sub digest_md5_failed_not_file {
 }
 
 sub digest_xmd5 {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::MD5;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3545,7 +3554,7 @@ sub digest_xmd5 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       $client->quit();
@@ -3586,11 +3595,11 @@ sub digest_xmd5 {
 }
 
 sub digest_xsha {
+  return unless have_digest('Digest::SHA1');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA1;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3657,7 +3666,7 @@ sub digest_xsha {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA', 'test.txt');
       $client->quit();
@@ -3698,11 +3707,11 @@ sub digest_xsha {
 }
 
 sub digest_xsha1 {
+  return unless have_digest('Digest::SHA1');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA1;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3769,7 +3778,7 @@ sub digest_xsha1 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA1', 'test.txt');
       $client->quit();
@@ -3810,11 +3819,11 @@ sub digest_xsha1 {
 }
 
 sub digest_xsha256 {
+  return unless have_digest('Digest::SHA256');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA256;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3883,7 +3892,7 @@ sub digest_xsha256 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA256', 'test.txt');
       $client->quit();
@@ -3924,11 +3933,11 @@ sub digest_xsha256 {
 }
 
 sub digest_xsha512 {
+  return unless have_digest('Digest::SHA256');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA256;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3997,7 +4006,7 @@ sub digest_xsha512 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA512', 'test.txt');
       $client->quit();
@@ -4038,11 +4047,11 @@ sub digest_xsha512 {
 }
 
 sub digest_host {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA1;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -4058,7 +4067,7 @@ sub digest_host {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::SHA1->new();
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest = $ctx->hexdigest;
     close($fh);
@@ -4143,21 +4152,21 @@ EOC
       sleep(1);
 
       my $algo = 'SHA-1';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       my ($resp_code, $resp_msg) = $client->host($host);
 
       my $expected = 220;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       ($resp_code, $resp_msg) = $client->opts('HASH');
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->feat();
       $resp_code = $client->response_code();
@@ -4165,7 +4174,7 @@ EOC
 
       $expected = 211;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $expected_feat = ' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;';
 
@@ -4178,28 +4187,30 @@ EOC
         }
       }
 
-      $self->assert($found, test_msg("Did not see '$expected_feat'"));
+      $self->assert($found, "Did not see expected FEAT '$expected_feat'");
 
       $client->login($setup->{user}, $setup->{passwd});
 
+      $algo = 'MD5';
+      $client->opts('HASH', $algo);
       ($resp_code, $resp_msg) = $client->quote('HASH', 'test.txt');
       $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $filesz = -s $test_file;
       $expected = "$algo 0-$filesz $expected_digest test.txt";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
-      ($resp_code, $resp_msg) = $client->quote('XSHA1', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = uc($expected_digest);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -4229,11 +4240,11 @@ EOC
 }
 
 sub digest_path_offset_length {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -4249,14 +4260,8 @@ sub digest_path_offset_length {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
-
-    my $buf;
-    unless (read($fh, $buf, 5)) {
-      die("Can't read $test_file: $!");
-    }
-
-    $ctx->add($buf);
+    my $ctx = Digest::MD5->new();
+    $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     close($fh);
 
@@ -4306,20 +4311,20 @@ sub digest_path_offset_length {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
-      my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt', '0', '5');
+      my ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt', '0', '5');
       $client->quit();
 
       my $expected;
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -4347,11 +4352,11 @@ sub digest_path_offset_length {
 }
 
 sub digest_path_with_spaces {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test file.txt");
   if (open(my $fh, "> $test_file")) {
@@ -4367,7 +4372,7 @@ sub digest_path_with_spaces {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     close($fh);
@@ -4418,20 +4423,20 @@ sub digest_path_with_spaces {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
-      my ($resp_code, $resp_msg) = $client->quote('XCRC', '"test file.txt"');
+      my ($resp_code, $resp_msg) = $client->quote('XMD5', '"test file.txt"');
       $client->quit();
 
       my $expected;
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -4459,11 +4464,11 @@ sub digest_path_with_spaces {
 }
 
 sub digest_path_with_spaces_offset_length {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test file.txt");
   if (open(my $fh, "> $test_file")) {
@@ -4479,126 +4484,7 @@ sub digest_path_with_spaces_offset_length {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
-
-    my $buf;
-    unless (read($fh, $buf, 5)) {
-      die("Can't read $test_file: $!");
-    }
-
-    $ctx->add($buf);
-    $expected_digest = uc($ctx->hexdigest);
-    close($fh);
-
-  } else {
-    die("Can't read $test_file: $!");
-  }
-
-  my $config = {
-    PidFile => $setup->{pid_file},
-    ScoreboardFile => $setup->{scoreboard_file},
-    SystemLog => $setup->{log_file},
-    TraceLog => $setup->{log_file},
-    Trace => 'digest:20',
-
-    AuthUserFile => $setup->{auth_user_file},
-    AuthGroupFile => $setup->{auth_group_file},
-
-    IfModules => {
-      'mod_delay.c' => {
-        DelayEngine => 'off',
-      },
-
-      'mod_digest.c' => {
-        DigestEngine => 'on',
-      },
-    },
-  };
-
-  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
-    $config);
-
-  # Open pipes, for use between the parent and child processes.  Specifically,
-  # the child will indicate when it's done with its test by writing a message
-  # to the parent.
-  my ($rfh, $wfh);
-  unless (pipe($rfh, $wfh)) {
-    die("Can't open pipe: $!");
-  }
-
-  my $ex;
-
-  # Fork child
-  $self->handle_sigchld();
-  defined(my $pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      # Allow server to start up
-      sleep(1);
-
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
-      $client->login($setup->{user}, $setup->{passwd});
-      my ($resp_code, $resp_msg) = $client->quote('XCRC', '"test file.txt"',
-        '0', '5');
-      $client->quit();
-
-      my $expected;
-
-      $expected = 250;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
-
-      $expected = $expected_digest;
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($setup->{config_file}, $rfh) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
-  }
-
-  # Stop server
-  server_stop($setup->{pid_file});
-  $self->assert_child_ok($pid);
-
-  test_cleanup($setup->{log_file}, $ex);
-}
-
-sub digest_caching {
-  my $self = shift;
-  my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
-
-  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
-  if (open(my $fh, "> $test_file")) {
-    print $fh "Hello, World!\n";
-    unless (close($fh)) {
-      die("Can't write $test_file: $!");
-    }
-
-  } else {
-    die("Can't open $test_file: $!");
-  }
-
-  my $expected_digest;
-
-  if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     close($fh);
@@ -4649,26 +4535,139 @@ sub digest_caching {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
-
-      # We deliberately do this multiple times, to test the in-memory
-      # caching of results.
-      my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
+      my ($resp_code, $resp_msg) = $client->quote('XMD5', '"test file.txt"',
+        '0', '5');
       $client->quit();
 
       my $expected;
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub digest_caching {
+  return unless have_digest('Digest::MD5');
+
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'digest');
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $expected_digest;
+
+  if (open(my $fh, "< $test_file")) {
+    my $ctx = Digest::MD5->new();
+    $ctx->addfile($fh);
+    $expected_digest = uc($ctx->hexdigest);
+    close($fh);
+
+  } else {
+    die("Can't read $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'digest:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_digest.c' => {
+        DigestEngine => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow server to start up
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      # We deliberately do this multiple times, to test the in-memory
+      # caching of results.
+      my ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
+      $client->quit();
+
+      my $expected;
+
+      $expected = 250;
+      $self->assert($expected == $resp_code,
+        "Expected response code $expected, got $resp_code");
+
+      $expected = $expected_digest;
+      $self->assert($expected eq $resp_msg,
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -4696,11 +4695,11 @@ sub digest_caching {
 }
 
 sub digest_caching_max_size {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -4716,7 +4715,7 @@ sub digest_caching_max_size {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     close($fh);
@@ -4768,20 +4767,20 @@ sub digest_caching_max_size {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We deliberately do this multiple times, to test the in-memory
       # caching of results.  After each command, we "touch" the file to
       # change its mtime, meaning a new cache entry.
-      my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
+      my ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my ($atime, $mtime);
       sleep(1);
@@ -4790,14 +4789,14 @@ sub digest_caching_max_size {
         die("Can't update timestamps on $test_file: $!");
       }
 
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       sleep(1);
       $atime = $mtime = time();
@@ -4806,9 +4805,9 @@ sub digest_caching_max_size {
       }
 
       # Now we should have reach the max cache size
-      eval { $client->quote('XCRC', 'test.txt') };
+      eval { $client->quote('XMD5', 'test.txt') };
       unless ($@) {
-        die("XCRC test.txt succeeded unexpectedly");
+        die("XMD5 test.txt succeeded unexpectedly");
       }
 
       $resp_code = $client->response_code();
@@ -4816,7 +4815,7 @@ sub digest_caching_max_size {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       sleep(1);
       $atime = $mtime = time();
@@ -4824,9 +4823,9 @@ sub digest_caching_max_size {
         die("Can't update timestamps on $test_file: $!");
       }
 
-      eval { $client->quote('XCRC', 'test.txt') };
+      eval { $client->quote('XMD5', 'test.txt') };
       unless ($@) {
-        die("XCRC test.txt succeeded unexpectedly");
+        die("XMD5 test.txt succeeded unexpectedly");
       }
 
       $resp_code = $client->response_code();
@@ -4836,11 +4835,11 @@ sub digest_caching_max_size {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = 'Resource busy';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected response '$expected', got '$resp_msg'"));
+        "Expected response '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -4868,11 +4867,11 @@ sub digest_caching_max_size {
 }
 
 sub digest_caching_max_age_same_file {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -4888,7 +4887,7 @@ sub digest_caching_max_age_same_file {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     close($fh);
@@ -4940,54 +4939,54 @@ sub digest_caching_max_age_same_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We deliberately do this multiple times, to test the in-memory
       # caching of results.
-      my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
+      my ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       sleep(1);
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       sleep(1);
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
 
       $client->quit();
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -5015,11 +5014,11 @@ sub digest_caching_max_age_same_file {
 }
 
 sub digest_caching_max_age_different_file {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file1 = File::Spec->rel2abs("$tmpdir/test1.txt");
   if (open(my $fh, "> $test_file1")) {
@@ -5035,7 +5034,7 @@ sub digest_caching_max_age_different_file {
   my $expected_digest1;
 
   if (open(my $fh, "< $test_file1")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest1 = uc($ctx->hexdigest);
     close($fh);
@@ -5058,7 +5057,7 @@ sub digest_caching_max_age_different_file {
   my $expected_digest2;
 
   if (open(my $fh, "< $test_file2")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest2 = uc($ctx->hexdigest);
     close($fh);
@@ -5110,23 +5109,23 @@ sub digest_caching_max_age_different_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We deliberately do this multiple times, to test the in-memory
       # caching of results.
-      my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test1.txt');
+      my ($resp_code, $resp_msg) = $client->quote('XMD5', 'test1.txt');
       my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest1;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
-      eval { $client->quote('XCRC', 'test2.txt') };
+      eval { $client->quote('XMD5', 'test2.txt') };
       unless ($@) {
-        die("XCRC test2.txt succeeded unexpectedly");
+        die("XMD5 test2.txt succeeded unexpectedly");
       }
 
       $resp_code = $client->response_code();
@@ -5134,11 +5133,11 @@ sub digest_caching_max_age_different_file {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "test2.txt: Resource busy";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       # Now wait for longer than 5 secs, for the expiry timer to kick in.
       my $delay = 6;
@@ -5147,30 +5146,30 @@ sub digest_caching_max_age_different_file {
       }
       sleep($delay);
 
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test2.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test2.txt');
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest2;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       sleep(1);
-      ($resp_code, $resp_msg) = $client->quote('XCRC', 'test2.txt');
+      ($resp_code, $resp_msg) = $client->quote('XMD5', 'test2.txt');
 
       $client->quit();
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $expected_digest2;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -5198,11 +5197,11 @@ sub digest_caching_max_age_different_file {
 }
 
 sub digest_caching_retr {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -5218,7 +5217,7 @@ sub digest_caching_retr {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest = lc($ctx->hexdigest);
     close($fh);
@@ -5270,22 +5269,22 @@ sub digest_caching_retr {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      my $algo = 'CRC32';
+      my $algo = 'MD5';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
       my $expected;
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $file = 'test.txt';
 
@@ -5309,12 +5308,12 @@ sub digest_caching_retr {
 
       $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $filesz = -s $test_file;
       $expected = "$algo 0-$filesz $expected_digest $file";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -5344,11 +5343,11 @@ sub digest_caching_retr {
 }
 
 sub digest_caching_rest_retr {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -5364,7 +5363,7 @@ sub digest_caching_rest_retr {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::CRC->new(type => 'crc32');
+    my $ctx = Digest::MD5->new();
     $ctx->addfile($fh);
     $expected_digest = lc($ctx->hexdigest);
     close($fh);
@@ -5416,22 +5415,22 @@ sub digest_caching_rest_retr {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      my $algo = 'CRC32';
+      my $algo = 'MD5';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
       my $expected;
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $file = 'test.txt';
 
@@ -5439,11 +5438,11 @@ sub digest_caching_rest_retr {
 
       $expected = 350;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "Restarting at 0. Send STORE or RETRIEVE to initiate transfer";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       # Now we download the file, and see whether mod_digest can
       # opportunistically generate and cache the digest.
@@ -5465,12 +5464,12 @@ sub digest_caching_rest_retr {
 
       $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $filesz = -s $test_file;
       $expected = "$algo 0-$filesz $expected_digest $file";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -5500,16 +5499,16 @@ sub digest_caching_rest_retr {
 }
 
 sub digest_caching_stor {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::CRC;
-
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   my $test_data = "Hello, World!\n";
 
-  my $ctx = Digest::CRC->new(type => 'crc32');
+  my $ctx = Digest::MD5->new();
   $ctx->add($test_data);
   my $expected_digest = lc($ctx->hexdigest);
 
@@ -5555,22 +5554,22 @@ sub digest_caching_stor {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      my $algo = 'CRC32';
+      my $algo = 'MD5';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
       my $expected;
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $file = 'test.txt';
 
@@ -5593,12 +5592,12 @@ sub digest_caching_stor {
 
       $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $filesz = -s $test_file;
       $expected = "$algo 0-$filesz $expected_digest $file";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -5628,16 +5627,16 @@ sub digest_caching_stor {
 }
 
 sub digest_caching_rest_stor {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::CRC;
-
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   my $test_data = "Hello, World!\n";
 
-  my $ctx = Digest::CRC->new(type => 'crc32');
+  my $ctx = Digest::MD5->new();
   $ctx->add($test_data);
   my $expected_digest = lc($ctx->hexdigest);
 
@@ -5683,22 +5682,22 @@ sub digest_caching_rest_stor {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      my $algo = 'CRC32';
+      my $algo = 'MD5';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
       my $expected;
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $file = 'test.txt';
 
@@ -5706,11 +5705,11 @@ sub digest_caching_rest_stor {
 
       $expected = 350;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "Restarting at 0. Send STORE or RETRIEVE to initiate transfer";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       # Now we upload the file, and see whether mod_digest can
       # opportunistically generate and cache the digest.
@@ -5731,12 +5730,12 @@ sub digest_caching_rest_stor {
 
       $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $filesz = -s $test_file;
       $expected = "$algo 0-$filesz $expected_digest $file";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -5766,16 +5765,16 @@ sub digest_caching_rest_stor {
 }
 
 sub digest_caching_appe {
+  return unless have_digest('Digest::MD5');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::CRC;
-
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   my $test_data = "Hello, World!\n";
 
-  my $ctx = Digest::CRC->new(type => 'crc32');
+  my $ctx = Digest::MD5->new();
   $ctx->add($test_data);
   my $expected_digest = lc($ctx->hexdigest);
 
@@ -5821,22 +5820,22 @@ sub digest_caching_appe {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      my $algo = 'CRC32';
+      my $algo = 'MD5';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
       my $expected;
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $file = 'test.txt';
 
@@ -5859,12 +5858,12 @@ sub digest_caching_appe {
 
       $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $filesz = -s $test_file;
       $expected = "$algo 0-$filesz $expected_digest $file";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -5940,7 +5939,7 @@ sub digest_failed_not_logged_in {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       eval { $client->quote('XCRC', 'test.txt') };
       unless ($@) {
         die("XCRC test.txt succeeded unexpectedly");
@@ -6032,7 +6031,7 @@ sub digest_failed_enoent {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       eval { $client->quote('XCRC', 'test.txt') };
       unless ($@) {
@@ -6128,7 +6127,7 @@ sub digest_failed_not_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       eval { $client->quote('XCRC', 'test.d') };
       unless ($@) {
@@ -6229,7 +6228,7 @@ sub digest_failed_blacklisted_files {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       foreach my $test_file (@$test_files) {
@@ -6338,7 +6337,7 @@ sub digest_failed_start_pos_invalid_number {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('XCRC', $test_file, 'a', '5') };
@@ -6443,7 +6442,7 @@ sub digest_failed_end_pos_invalid_number {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('XCRC', $test_file, '1', 'a') };
@@ -6548,7 +6547,7 @@ sub digest_failed_end_pos_too_large {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('XCRC', $test_file, '0', '1000') };
@@ -6653,7 +6652,7 @@ sub digest_failed_start_pos_after_end_pos {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $start_pos = 10;
@@ -6721,11 +6720,11 @@ sub digest_failed_start_pos_after_end_pos {
 }
 
 sub digest_config_algorithms {
+  return unless have_digest('Digest::SHA256');
+
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::SHA256;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -6796,7 +6795,7 @@ sub digest_config_algorithms {
       sleep(1);
 
       my $algo = 'SHA-256';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my ($resp_code, $resp_msg) = $client->opts('HASH');
 
@@ -6942,7 +6941,7 @@ sub digest_config_default_algo {
       sleep(1);
 
       my $algo = 'MD5';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my ($resp_code, $resp_msg) = $client->opts('HASH');
 
@@ -7049,7 +7048,7 @@ sub digest_config_engine {
       sleep(1);
 
       my $algo = 'SHA-256';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       eval { $client->opts('HASH') };
       unless ($@) {
@@ -7209,7 +7208,7 @@ EOC
       sleep(1);
 
       my $algo = 'SHA-1';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       # We have not logged in yet, thus the per-user setting hasn't taken
       # effect.
@@ -7371,7 +7370,7 @@ sub digest_config_enable {
 
       my $file = 'test.txt';
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('HASH', $file) };
@@ -7507,7 +7506,7 @@ EOC
 
       my $file = 'test.txt';
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('HASH', $file) };
@@ -7574,8 +7573,6 @@ sub digest_config_max_size {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::CRC;
-
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
@@ -7630,21 +7627,21 @@ sub digest_config_max_size {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $algo = 'CRC32';
+      my $algo = 'MD5';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
       my $expected;
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       eval { $client->quote('HASH', 'test.txt') };
       unless ($@) {
@@ -7660,7 +7657,7 @@ sub digest_config_max_size {
 
       $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       eval { $client->quote('XCRC', 'test.txt') };
       unless ($@) {
@@ -7672,11 +7669,11 @@ sub digest_config_max_size {
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -7709,8 +7706,6 @@ sub digest_config_max_size_per_user {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
-
-  require Digest::CRC;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -7780,21 +7775,21 @@ EOC
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $algo = 'CRC32';
+      my $algo = 'MD5';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
       my $expected;
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = $algo;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       eval { $client->quote('HASH', 'test.txt') };
       unless ($@) {
@@ -7806,11 +7801,11 @@ EOC
 
       $expected = 556;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       eval { $client->quote('XCRC', 'test.txt') };
       unless ($@) {
@@ -7822,11 +7817,11 @@ EOC
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -8012,7 +8007,7 @@ EOS
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -8180,7 +8175,7 @@ EOS
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
