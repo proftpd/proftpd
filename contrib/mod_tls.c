@@ -6952,7 +6952,7 @@ static char *tls_get_page(size_t sz, void **ptr) {
   d = calloc(1, sz + (pagesz-1));
   if (d == NULL) {
     pr_log_pri(PR_LOG_ALERT, MOD_TLS_VERSION ": Out of memory!");
-    pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_NOMEM, NULL);
+    exit(1);
   }
 
   *ptr = d;
