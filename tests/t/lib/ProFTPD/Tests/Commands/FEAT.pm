@@ -71,6 +71,11 @@ sub feat_ok {
     $expected_nfeat += 1;
   }
 
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    $expected_nfeat += 8;
+  }
+
   my ($port, $config_user, $config_group) = config_write($setup->{config_file},
     $config);
 
@@ -112,7 +117,7 @@ sub feat_ok {
         ' MFMT' => 1,
         ' TVFS' => 1,
         ' MFF modify;UNIX.group;UNIX.mode;' => 1,
-        ' MLST modify*;perm*;size*;type*;unique*;UNIX.group*;UNIX.groupname*;UNIX.mode*;UNIX.owner*;UNIX.ownername*' => 1,
+        ' MLST modify*;perm*;size*;type*;unique*;UNIX.group*;UNIX.groupname*;UNIX.mode*;UNIX.owner*;UNIX.ownername*;' => 1,
         ' REST STREAM' => 1,
         ' SIZE' => 1,
         'End' => 1,
@@ -140,6 +145,17 @@ sub feat_ok {
 
       if ($have_copy) {
         $feats->{' SITE COPY'} = 1;
+      }
+
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
       }
 
       for (my $i = 0; $i < $nfeat; $i++) {
