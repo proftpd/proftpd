@@ -5,7 +5,7 @@ use strict;
 use Cwd qw(abs_path);
 use File::Spec;
 use Getopt::Long;
-use Test::Harness qw(&runtests $verbose);
+use TAP::Harness;
 
 my $opts = {};
 GetOptions($opts, 'h|help', 'C|class=s@', 'K|keep-tmpfiles', 'F|file-pattern=s',
@@ -21,7 +21,6 @@ if ($opts->{K}) {
 
 if ($opts->{V}) {
   $ENV{TEST_VERBOSE} = 1;
-  $verbose = 1;
 }
 
 # We use this, rather than use(), since use() is equivalent to a BEGIN
@@ -527,7 +526,23 @@ if (defined($opts->{F})) {
   $test_files = $filtered_files;
 }
 
-runtests(@$test_files) if scalar(@$test_files) > 0;
+if (scalar(@$test_files) > 0) {
+  my $tap_opts = {
+    color => 1,
+    errors => 1,
+    ignore_exit => 1,
+    merge => 0,
+    show_count => 1,
+    trap => 1,
+    verbosity => 1,
+  };
+
+  my $harness = TAP::Harness->new($tap_opts);
+  my $results = $harness->runtests(@$test_files);
+
+} else {
+  print STDOUT "No eligible tests found!\n";
+}
 
 exit 0;
 
