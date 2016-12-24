@@ -1375,27 +1375,23 @@ sub testsuite_get_runnable_tests {
   }
 
   if (defined($ENV{PROFTPD_TEST_DISABLE_CLASS})) {
-    my $test_classes = [split(':', $ENV{PROFTPD_TEST_DISABLE_CLASS})];
+    my $skip_classes = [split(':', $ENV{PROFTPD_TEST_DISABLE_CLASS})];
     my $new_runnables = [];
 
     foreach my $test (@$runnables) {
       my $skip_test = 0;
 
-      foreach my $test_class (@$test_classes) {
-        foreach my $class (@{ $tests->{$test}->{test_class} }) {
-          if ($class eq $test_class) {
+      foreach my $skip_class (@$skip_classes) {
+        foreach my $test_class (@{ $tests->{$test}->{test_class} }) {
+          if ($test_class eq $skip_class) {
             $skip_test = 1;
             last;
           }
-
-          if ($skip_test) {
-            last;
-          }
         }
+      }
 
-        unless ($skip_test) {
-          push(@$new_runnables, $test);
-        }
+      unless ($skip_test) {
+        push(@$new_runnables, $test);
       }
     }
 
