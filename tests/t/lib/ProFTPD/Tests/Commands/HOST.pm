@@ -901,9 +901,9 @@ sub have_sys_hostaddr {
   foreach my $req (@$required) {
     eval "use $req";
     if ($@) {
-      print STDERR "\nWARNING:\n + Module '$req' not found, skipping test\n";
+      print STDERR " + warning: Module '$req' not found, skipping test\n";
       if ($ENV{TEST_VERBOSE}) {
-        print STDERR "Unable to load $req: $@\n";
+        print STDERR " + unable to load $req: $@\n";
       }
 
       return undef;
