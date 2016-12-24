@@ -356,7 +356,7 @@ int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg, size_t ctrls_arglen) {
 
   /* Scan for non-printable characters. */
   for (i = 0; i < ctrls_arglen; i++) {
-    if (!isprint((int) ctrls_arg[i])) {
+    if (!PR_ISPRINT((int) ctrls_arg[i])) {
       errno = EPERM;
       return -1;
     }
@@ -365,18 +365,18 @@ int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg, size_t ctrls_arglen) {
   /* Make sure the pr_ctrls_t has a temporary pool, from which the args will
    * be allocated.
    */
-  if (!ctrl->ctrls_tmp_pool) {
+  if (ctrl->ctrls_tmp_pool == NULL) {
     ctrl->ctrls_tmp_pool = make_sub_pool(ctrls_pool);
     pr_pool_tag(ctrl->ctrls_tmp_pool, "ctrls tmp pool");
   }
 
-  if (!ctrl->ctrls_cb_args) {
+  if (ctrl->ctrls_cb_args == NULL) {
     ctrl->ctrls_cb_args = make_array(ctrl->ctrls_tmp_pool, 0, sizeof(char *));
   }
 
   /* Add the given argument */
-  *((char **) push_array(ctrl->ctrls_cb_args)) = pstrdup(ctrl->ctrls_tmp_pool,
-    ctrls_arg);
+  *((char **) push_array(ctrl->ctrls_cb_args)) = pstrndup(ctrl->ctrls_tmp_pool,
+    ctrls_arg, ctrls_arglen);
 
   return 0;
 }
