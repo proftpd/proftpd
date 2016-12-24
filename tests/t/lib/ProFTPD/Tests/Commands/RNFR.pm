@@ -1375,7 +1375,7 @@ sub rnfr_during_xfer_bug3492 {
       while ($conn->read($tmp, 32768, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      eval { $conn->close() };
 
       $client->quit();
     };

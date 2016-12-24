@@ -148,7 +148,7 @@ sub rmd_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->rmd($test_dir);
@@ -156,11 +156,11 @@ sub rmd_ok {
 
       my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "RMD command successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
     if ($@) {
       $ex = $@;
@@ -252,7 +252,7 @@ sub rmd_abs_symlink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -261,11 +261,11 @@ sub rmd_abs_symlink {
 
       my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "RMD command successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $self->assert(!-d $test_dir,
         test_msg("Directory $test_dir exists unexpectedly"));
@@ -362,7 +362,7 @@ sub rmd_abs_symlink_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -371,14 +371,13 @@ sub rmd_abs_symlink_chrooted_bug4219 {
 
       my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "RMD command successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
-      $self->assert(!-d $test_dir,
-        test_msg("Directory $test_dir exists unexpectedly"));
+      $self->assert(!-d $test_dir, "Directory $test_dir exists unexpectedly");
     };
     if ($@) {
       $ex = $@;
@@ -474,7 +473,7 @@ sub rmd_rel_symlink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -588,7 +587,7 @@ sub rmd_rel_symlink_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -670,7 +669,7 @@ sub rmd_fails_enoent {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->rmd($test_dir) };
@@ -755,7 +754,7 @@ sub rmd_fails_eperm {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # Make it such that perms on the parent dir do not allow writes
@@ -854,7 +853,7 @@ sub rmd_fails_enotdir {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->rmd($test_dir) };
@@ -947,7 +946,7 @@ sub rmd_fails_enotempty {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->rmd($test_dir) };
@@ -1042,7 +1041,7 @@ sub rmd_fails_eloop {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->rmd($test_dir) };
@@ -1150,7 +1149,7 @@ sub rmd_fails_abs_symlink_enoent {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -1261,7 +1260,7 @@ sub rmd_fails_abs_symlink_enoent_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -1375,7 +1374,7 @@ sub rmd_fails_rel_symlink_enoent {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -1491,7 +1490,7 @@ sub rmd_fails_rel_symlink_enoent_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'sub.d/test.d';
@@ -1577,7 +1576,7 @@ sub xrmd_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->xrmd($test_dir);
@@ -1656,7 +1655,7 @@ sub rmd_with_spaces {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $dir = 'foo bar baz';

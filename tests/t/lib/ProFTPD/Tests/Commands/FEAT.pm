@@ -112,7 +112,7 @@ sub feat_ok {
         ' MFMT' => 1,
         ' TVFS' => 1,
         ' MFF modify;UNIX.group;UNIX.mode;' => 1,
-        ' MLST modify*;perm*;size*;type*;unique*;UNIX.group*;UNIX.mode*;UNIX.owner*;' => 1,
+        ' MLST modify*;perm*;size*;type*;unique*;UNIX.group*;UNIX.groupname*;UNIX.mode*;UNIX.owner*;UNIX.ownername*' => 1,
         ' REST STREAM' => 1,
         ' SIZE' => 1,
         'End' => 1,

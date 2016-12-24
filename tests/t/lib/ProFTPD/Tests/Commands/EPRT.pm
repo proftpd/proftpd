@@ -1150,7 +1150,7 @@ sub eprt_during_xfer_bug3487 {
       while ($conn->read($tmp, 32768, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
