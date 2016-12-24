@@ -1272,6 +1272,11 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
     use_initgroups = FALSE;
   }
 
+  /* If we are not root, then initgroups(3) will most likely fail. */
+  if (geteuid() != PR_ROOT_UID) {
+    use_initgroups = FALSE;
+  }
+
   if (use_initgroups == FALSE) {
     errno = ENOSYS;
     return -1;
