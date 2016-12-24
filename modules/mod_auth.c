@@ -651,8 +651,7 @@ static config_rec *auth_group(pool *p, const char *user, char **group,
   c = find_config(main_server->conf, CONF_PARAM, "GroupPassword", TRUE);
   if (c) do {
     grp = pr_auth_getgrnam(p, c->argv[0]);
-
-    if (grp != NULL) {
+    if (grp == NULL) {
       continue;
     }
 
