@@ -168,7 +168,6 @@ sub deflate_opts_modez_level {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg) = $client->opts("MODE Z LEVEL 7");
@@ -177,11 +176,11 @@ sub deflate_opts_modez_level {
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = 'OPTS MODE Z OK';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -290,7 +289,6 @@ sub deflate_feat {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->feat();
  
       my $resp_code = $client->response_code();
@@ -300,7 +298,7 @@ sub deflate_feat {
 
       $expected = 211;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $nfeat = scalar(@$resp_msgs);
 
@@ -431,7 +429,6 @@ sub deflate_list {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->mode('Z');
 
@@ -446,7 +443,7 @@ sub deflate_list {
       while ($conn->read($data, 32768, 30)) {
         $buf .= $data;
       }
-      $conn->close();
+      eval { $conn->close() };
 
       my $inflated = uncompress($buf);
 
@@ -599,7 +596,6 @@ sub deflate_list_alternating_modes {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       # Get a directory listing in alternating modes; first MODE Z, then
@@ -671,7 +667,7 @@ sub deflate_list_alternating_modes {
           die("Unexpected name '$mismatch' appeared in LIST data")
         }
 
-        $conn->close();
+        eval { $conn->close() };
       }
 
       $client->quit();
@@ -786,7 +782,6 @@ sub deflate_rest {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->mode('Z');
 
@@ -796,11 +791,11 @@ sub deflate_rest {
 
       $expected = 350;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "Restarting at 0. Send STORE or RETRIEVE to initiate transfer";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
@@ -938,7 +933,6 @@ sub deflate_retr {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->mode('Z');
 
@@ -964,9 +958,9 @@ sub deflate_retr {
       $md5 = $ctx->hexdigest();
 
       $self->assert($expected_md5 eq $md5,
-        test_msg("Expected '$expected_md5', got '$md5'"));
+        "Expected MD5 '$expected_md5', got '$md5'");
 
-      $conn->close();
+      eval { $conn->close() };
       $client->quit();
     };
 
@@ -1118,7 +1112,6 @@ sub deflate_rest_retr {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
       $client->mode('Z');
@@ -1135,8 +1128,7 @@ sub deflate_rest_retr {
       while ($conn->read($data, 32768, 30)) {
         $buf .= $data;
       }
-
-      $conn->close();
+      eval { $conn->close() };
 
       $client->quit();
 
@@ -1169,8 +1161,7 @@ sub deflate_rest_retr {
       }
 
       $self->assert($expected_md5 eq $md5,
-        test_msg("Expected '$expected_md5', got '$md5'"));
-
+        "Expected MD5 '$expected_md5', got '$md5'");
     };
 
     if ($@) {
@@ -1290,7 +1281,6 @@ sub deflate_stor {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->mode('Z');
 
@@ -1303,7 +1293,7 @@ sub deflate_stor {
       my $buf = "Ab" x 8192;
       my $deflated = compress($buf); 
       $conn->write($deflated, length($deflated));
-      $conn->close();
+      eval { $conn->close() };
 
       $client->quit();
 
@@ -1322,7 +1312,7 @@ sub deflate_stor {
       }
 
       $self->assert($expected_md5 eq $md5,
-        test_msg("Expected '$expected_md5', got '$md5'"));
+        "Expected MD5 '$expected_md5', got '$md5'");
     };
 
     if ($@) {
@@ -1475,7 +1465,6 @@ sub deflate_rest_stor {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
       $client->mode('Z');
@@ -1490,7 +1479,7 @@ sub deflate_rest_stor {
       my $buf = "Ab" x 4096;
       my $deflated = compress($buf);
       $conn->write($deflated, length($deflated));
-      $conn->close();
+      eval { $conn->close() };
 
       $client->quit();
 
@@ -1509,8 +1498,7 @@ sub deflate_rest_stor {
       }
 
       $self->assert($expected_md5 eq $md5,
-        test_msg("Expected '$expected_md5', got '$md5'"));
-
+        "Expected MD5 '$expected_md5', got '$md5'");
     };
 
     if ($@) {
@@ -1641,7 +1629,6 @@ sub deflate_stor_64kb_binary {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
       $client->mode('Z');
@@ -1654,11 +1641,11 @@ sub deflate_stor_64kb_binary {
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = 'OPTS MODE Z OK';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $conn = $client->stor_raw('zmode.pdf');
       unless ($conn) {
@@ -1743,11 +1730,11 @@ sub deflate_stor_64kb_binary {
 
       $expected = 226;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "Transfer complete";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
 
@@ -1766,7 +1753,7 @@ sub deflate_stor_64kb_binary {
       }
 
       $self->assert($expected_md5 eq $md5,
-        test_msg("Expected '$expected_md5', got '$md5'"));
+        "Expected MD5 '$expected_md5', got '$md5'");
     };
 
     if ($@) {
@@ -1897,7 +1884,6 @@ sub deflate_stor_64kb_binary_chunks {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
       $client->mode('Z');
@@ -1910,11 +1896,11 @@ sub deflate_stor_64kb_binary_chunks {
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = 'OPTS MODE Z OK';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $conn = $client->stor_raw('zmode.pdf');
       unless ($conn) {
@@ -2024,11 +2010,11 @@ sub deflate_stor_64kb_binary_chunks {
 
       $expected = 226;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "Transfer complete";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
 
@@ -2047,7 +2033,7 @@ sub deflate_stor_64kb_binary_chunks {
       }
 
       $self->assert($expected_md5 eq $md5,
-        test_msg("Expected '$expected_md5', got '$md5'"));
+        "Expected MD5 '$expected_md5', got '$md5'");
     };
 
     if ($@) {
@@ -2192,7 +2178,7 @@ sub deflate_mode_z_tls {
 
       $expected = '504 Unable to handle MODE Z at this time';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -2303,7 +2289,7 @@ sub deflate_netio_close_bad_cmd_sequence_bug3828 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
       eval { $client->mlsd("DoesNotExist") };
