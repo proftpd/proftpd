@@ -1947,7 +1947,9 @@ sub list_bug2821 {
   my $test_file_prefix = File::Spec->rel2abs("$tmpdir/test_");
 
   my $count = 110000;
-  print STDOUT "# Creating $count files in $tmpdir\n";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Creating $count files in $tmpdir\n";
+  }
   for (my $i = 1; $i <= $count; $i++) {
     my $test_file = 'test_' . sprintf("%07s", $i);
     my $test_path = "$home_dir/$test_file";
@@ -2123,7 +2125,9 @@ sub list_unsorted_buffering_bug4060 {
   mkpath($test_dir);
 
   my $count = 100000;
-  print STDOUT "# Creating $count files in $test_dir\n";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Creating $count files in $test_dir\n";
+  }
   for (my $i = 1; $i <= $count; $i++) {
     my $test_file = 'test_' . sprintf("%07s", $i);
     my $test_path = "$test_dir/$test_file";
@@ -2294,7 +2298,9 @@ sub list_opt_C {
   my $test_file_prefix = File::Spec->rel2abs($tmpdir);
 
   my $count = 100;
-  print STDOUT "# Creating $count files in $tmpdir\n";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Creating $count files in $tmpdir\n";
+  }
   for (my $i = 1; $i <= $count; $i++) {
     my $test_file = sprintf("%04s", $i);
     my $test_path = "$home_dir/$test_file";
@@ -5350,14 +5356,18 @@ sub list_opt_R {
   my $dir_count = 10;
   my $file_count = 10;
 
-  print STDOUT "# Creating $dir_count directories in $tmpdir\n";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDOUT "# Creating $dir_count directories in $tmpdir\n";
+  }
   for (my $i = 1; $i <= $dir_count; $i++) {
     my $test_dir = sprintf("%04s", $i);
     my $dir_path = "$home_dir/$test_dir";
 
     mkpath($dir_path);
 
-    print STDOUT "# Creating $file_count files in $dir_path\n";
+    if ($ENV{TEST_VERBOSE}) {
+      print STDOUT "# Creating $file_count files in $dir_path\n";
+    }
     for (my $j = 1; $j <= $file_count; $j++) {
       my $test_file = sprintf("%02s%02s", $i, $j);
       my $file_path = "$dir_path/$test_file";

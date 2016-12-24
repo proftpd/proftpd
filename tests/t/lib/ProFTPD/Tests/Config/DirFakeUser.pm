@@ -491,11 +491,11 @@ sub dirfakeuser_mlst_bug3604 {
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=(\d+); (.*?)\/config\.conf$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=(\d+);UNIX.ownername=\S+; (.*?)\/config\.conf$';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
 
@@ -503,7 +503,7 @@ sub dirfakeuser_mlst_bug3604 {
       my $file_uid = $2;
 
       $self->assert($file_uid == $fake_uid,
-        test_msg("Expected $fake_uid, got $file_uid"));
+        "Expected UID $fake_uid, got $file_uid");
     };
 
     if ($@) {
@@ -972,11 +972,11 @@ sub dirfakeuser_off_mlst_bug3734 {
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=(\d+); (.*?)\/config\.conf$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=(\d+);UNIX.ownername=\S+; (.*?)\/config\.conf$';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {

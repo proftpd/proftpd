@@ -9,7 +9,7 @@ use TAP::Harness;
 
 my $opts = {};
 GetOptions($opts, 'h|help', 'C|class=s@', 'K|keep-tmpfiles', 'F|file-pattern=s',
-  'V|verbose');
+  'V|verbose', 'quiet');
 
 if ($opts->{h}) {
   usage();
@@ -527,14 +527,22 @@ if (defined($opts->{F})) {
 }
 
 if (scalar(@$test_files) > 0) {
+  my $show_count = 1;
+  my $verbosity = 1;
+
+  if ($opts->{quiet}) {
+    $show_count = 0;
+    $verbosity = 0;
+  }
+
   my $tap_opts = {
     color => 1,
     errors => 1,
     ignore_exit => 1,
     merge => 0,
-    show_count => 1,
+    show_count => $show_count,
     trap => 1,
-    verbosity => 1,
+    verbosity => $verbosity,
   };
 
   my $harness = TAP::Harness->new($tap_opts);

@@ -178,7 +178,7 @@ sub factsoptions_use_slink_mlsd_rel_symlinked_file {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -347,7 +347,7 @@ sub factsoptions_use_slink_mlsd_rel_symlinked_dir {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -519,16 +519,16 @@ sub factsoptions_use_slink_mlst_rel_symlinked_file {
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       if ($^O eq 'darwin') {
         # MacOSX-specific hack, due to how it handles tmp files
         $test_symlink = ('/private' . $test_symlink);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS\.unix=slink:(\S+);unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS\.unix=slink:(\S+);unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_symlink . '$';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -822,16 +822,16 @@ sub factsoptions_use_slink_mlst_rel_symlinked_dir {
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        "Expected $expected, got $resp_code");
 
       if ($^O eq 'darwin') {
         # MacOSX-specific hack, due to how it handles tmp files
         $test_symlink = ('/private' . $test_symlink);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=slink:(\S+);unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=slink:(\S+);unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_symlink . '$';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        "Expected '$expected', got '$resp_msg'");
     };
 
     if ($@) {

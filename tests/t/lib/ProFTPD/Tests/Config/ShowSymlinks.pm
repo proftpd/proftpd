@@ -1700,7 +1700,7 @@ sub showsymlinks_off_mlsd_rel_symlinked_file {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
       }
@@ -1867,7 +1867,7 @@ sub showsymlinks_on_mlsd_rel_symlinked_file {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2033,7 +2033,7 @@ sub showsymlinks_off_mlsd_rel_symlinked_dir {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
       }
@@ -2192,7 +2192,7 @@ sub showsymlinks_on_mlsd_rel_symlinked_dir {
       my $res = {};
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2368,7 +2368,7 @@ sub showsymlinks_off_mlst_rel_symlinked_file {
         $test_symlink = ('/private' . $test_symlink);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_symlink . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -2675,7 +2675,7 @@ sub showsymlinks_on_mlst_rel_symlinked_file {
         $test_file = ('/private' . $test_file);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_file . '$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_file . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -2974,7 +2974,7 @@ sub showsymlinks_off_mlst_rel_symlinked_dir {
         $test_symlink = ('/private' . $test_symlink);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=dir;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=dir;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_symlink . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -3265,7 +3265,7 @@ sub showsymlinks_on_mlst_rel_symlinked_dir {
         $test_dir = ('/private' . $test_dir);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_dir . '$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_dir . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -3720,7 +3720,7 @@ sub showsymlinks_on_stat_rel_symlinked_file {
 
       $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       unless ($resp_msg =~ /^\s+(\S+)\s+\d+\s+\S+\s+\S+\s+.*?\s+\d{2}:\d{2}\s+(.*)?$/) {
         die("Response '$resp_msg' does not match expected pattern");
@@ -3739,17 +3739,8 @@ sub showsymlinks_on_stat_rel_symlinked_file {
       $self->assert($expected eq $info,
         test_msg("Expected '$expected', got '$info'"));
 
-      # XXX Possible bug; this should look like:
-      #
-      #  foo/test.lnk -> foo/test.txt
-      #
-      # instead of:
-      #
-      #  foo/test.lnk -> test.txt
-
-      $expected = "$name -> test.txt";
-      $self->assert($expected eq $path,
-        test_msg("Expected '$expected', got '$path'"));
+      $expected = "$name -> foo/test.txt";
+      $self->assert($expected eq $path, "Expected '$expected', got '$path'");
     };
 
     if ($@) {

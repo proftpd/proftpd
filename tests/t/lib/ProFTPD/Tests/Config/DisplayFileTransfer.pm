@@ -120,7 +120,6 @@ sub displayfilexfer_abs_path {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->retr_raw('config.conf');
@@ -258,22 +257,20 @@ sub displayfilexfer_rel_path {
 
       my $buf;
       $conn->read($buf, 32768, 30);
-      $conn->close();
+      eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg(1);
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg(1);
 
       my $expected;
 
       $expected = 226;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "Hello user!";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -408,22 +405,20 @@ sub displayfilexfer_chrooted {
 
       my $buf;
       $conn->read($buf, 32768, 30);
-      $conn->close();
+      eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg(1);
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg(1);
 
       my $expected;
 
       $expected = 226;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = "Hello user!";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -523,7 +518,6 @@ sub displayfilexfer_multiline {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->retr_raw('config.conf');
@@ -534,22 +528,20 @@ sub displayfilexfer_multiline {
 
       my $buf;
       $conn->read($buf, 32768, 30);
-      $conn->close();
+      eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg(3);
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg(3);
 
       my $expected;
 
       $expected = 226;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = " Hello user!";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -625,7 +617,7 @@ sub displayfilexfer_non_path {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw('config.conf');
@@ -643,7 +635,7 @@ sub displayfilexfer_non_path {
 
       my $expected = 226;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
     };
 
     if ($@) {

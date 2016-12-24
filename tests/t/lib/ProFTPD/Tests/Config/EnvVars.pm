@@ -117,21 +117,19 @@ sub envvar_bug2048 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $client->quit();
 
       my $expected;
 
       $expected = 220;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
-      $expected = 'ProFTPD \S+ Server \(' . $server_name . '\) \[\S+\]';
+      $expected = 'ProFTPD Server \(' . $server_name . '\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -243,22 +241,20 @@ sub envvar_bug3502 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $client->quit();
 
       my $expected;
 
       $expected = 220;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $expected_server_name = 'Green Goat';
-      $expected = 'ProFTPD \S+ Server \(' . $expected_server_name . '\) \[\S+\]';
+      $expected = 'ProFTPD Server \(' . $expected_server_name . '\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
@@ -385,22 +381,20 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $vhost_port);
-
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $client->quit();
 
       my $expected;
 
       $expected = 220;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       my $server_name = 'Green Goat';
-      $expected = 'ProFTPD \S+ Server \(' . $server_name . '\) \[\S+\]';
+      $expected = 'ProFTPD Server \(' . $server_name . '\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {

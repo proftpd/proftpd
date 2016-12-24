@@ -233,7 +233,7 @@ sub deferwelcome_off_serverident_on {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'ProFTPD \S+ Server \(ProFTPD\) \[\S+\]';
+      $expected = 'ProFTPD Server \(ProFTPD\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -409,11 +409,11 @@ sub deferwelcome_on_serverident_on {
       my $expected;
       $expected = 220;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
-      $expected = 'ProFTPD \S+ Server ready\.';
+      $expected = 'ProFTPD Server ready\.';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
     };
 
     if ($@) {
