@@ -128,7 +128,6 @@ sub rest_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -339,7 +338,6 @@ sub rest_fails_negative_offset {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -463,7 +461,6 @@ sub rest_fails_bad_offset {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -587,7 +584,6 @@ sub rest_fails_offset_and_ascii {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('ascii');
 
@@ -743,7 +739,6 @@ sub rest_2gb_last_byte {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
@@ -756,11 +751,11 @@ sub rest_2gb_last_byte {
 
       $expected = 350;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Restarting at $rest_len. Send STORE or RETRIEVE to initiate transfer";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now attempt a download; we expect to get just one byte.
       my $conn = $client->retr_raw($test_file);
@@ -771,18 +766,12 @@ sub rest_2gb_last_byte {
 
       my $buf;
       $conn->read($buf, 1024, 30);
-      $conn->close();
+      sleep(1);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       my $buflen = length($buf);
       $expected = 1;
@@ -921,7 +910,6 @@ sub rest_4gb_last_byte {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->type('binary');
 
@@ -934,11 +922,11 @@ sub rest_4gb_last_byte {
 
       $expected = 350;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Restarting at $rest_len. Send STORE or RETRIEVE to initiate transfer";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now attempt a download; we expect to get just one byte.
       my $conn = $client->retr_raw($test_file);
@@ -949,18 +937,12 @@ sub rest_4gb_last_byte {
 
       my $buf;
       $conn->read($buf, 1024, 30);
-      $conn->close();
+      sleep(1);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       my $buflen = length($buf);
       $expected = 1;
