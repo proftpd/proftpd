@@ -350,7 +350,6 @@ sub port_fails_bad_format {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -1224,21 +1223,13 @@ EOC
 
       my $expected = 425;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'Unable to build data connection: Address already in use';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      ($resp_code, $resp_msg) = $client->quit();
-
-      $expected = 221;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Goodbye.';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
 
     if ($@) {
