@@ -8835,9 +8835,8 @@ sub sql_sqllog_vars_H_L_default_server_bug3620 {
 
   eval { require Sys::HostAddr };
   if ($@) {
-    print STDERR "warning: module Sys::HostAddr unavailable, skipping test\n";
     if ($ENV{TEST_VERBOSE}) {
-      print STDERR "# unable to load Sys::HostAddr: $@\n";
+      print STDERR "# warning: module Sys::HostAddr unavailable, skipping test\n";
     }
     return;
   }
@@ -8906,7 +8905,7 @@ EOS
         SQLEngine => 'log',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => ${log_file},
+        SQLLogFile => $setup->{log_file},
         SQLNamedQuery => 'session_start FREEFORM "INSERT INTO ftpsessions (user, ip_addr, rename_from) VALUES (\'%u\', \'%L\', \'%H\')"',
         SQLLog => 'PASS session_start',
       },
@@ -8929,7 +8928,7 @@ EOS
   my $real_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $vhost_addr = '0.0.0.0';
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 
 <VirtualHost $vhost_addr>
@@ -8937,8 +8936,8 @@ EOS
   Port $real_port
   DefaultServer on
 
-  AuthUserFile $auth_user_file
-  AuthGroupFile $auth_group_file
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
   RequireValidShell off
   WtmpLog off
 
@@ -8946,18 +8945,18 @@ EOS
     SQLEngine log
     SQLBackend sqlite3
     SQLConnectInfo $db_file
-    SQLLogFile $log_file
+    SQLLogFile $setup->{log_file}
     SQLNamedQuery session_start FREEFORM "INSERT INTO ftpsessions (user, ip_addr, rename_from) VALUES (\'%u\', \'%L\', \'%H\')"
     SQLLog PASS session_start
   </IfModule>
 </VirtualHost>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -8976,7 +8975,7 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new($real_addr, $real_port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
 
@@ -8988,7 +8987,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -8998,34 +8997,32 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
+    test_cleanup($setup->{log_file}, $ex);
   }
 
-  my ($login, $ip_addr, $sess_addr) = get_renames($db_file, "user = \'$user\'");
+  eval {
+    my ($login, $ip_addr, $sess_addr) = get_renames($db_file, "user = \'$setup->{user}\'");
 
-  my $expected;
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login, "Expected '$expected', got '$login'");
 
-  $expected = $user;
-  $self->assert($expected eq $login,
-    test_msg("Expected '$expected', got '$login'"));
+    $expected = $real_addr;
+    $self->assert($expected eq $ip_addr,
+      "Expected '$expected', got '$ip_addr'");
 
-  $expected = $real_addr;
-  $self->assert($expected eq $ip_addr,
-    test_msg("Expected '$expected', got '$ip_addr'"));
+    $expected = $vhost_addr;
+    $self->assert($expected eq $sess_addr,
+      "Expected '$expected', got '$sess_addr'");
+  };
+  if ($@) {
+    $ex = $@;
+  }
 
-  $expected = $vhost_addr;
-  $self->assert($expected eq $sess_addr,
-    test_msg("Expected '$expected', got '$sess_addr'"));
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sql_sqllog_exit_ifuser {
@@ -10771,6 +10768,10 @@ EOS
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
+    # Note: If this file size is too small, then the client's download may
+    # actual read all of the bytes (depending on the socket buffer size)
+    # BEFORE the ABOR command is sent.  That should be handled as a 'cancelled'
+    # status as well; we need to have tests for that, too.
     print $fh "ABCDefgh" x 327680;
 
     unless (close($fh)) {
@@ -10839,7 +10840,6 @@ EOS
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
       $self->assert_transfer_ok($resp_code, $resp_msg, 1);
 
       $client->quit();
@@ -10853,7 +10853,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, 15) };
     if ($@) {
       warn($@);
       exit 1;
@@ -10864,7 +10864,6 @@ EOS
 
   # Stop server
   server_stop($pid_file);
-
   $self->assert_child_ok($pid);
 
   if ($ex) {
