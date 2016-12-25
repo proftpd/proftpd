@@ -80,6 +80,10 @@ int pr_cmd_dispatch(cmd_rec *cmd) {
   return 0;
 }
 
+int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
+  return 0;
+}
+
 int pr_cmd_read(cmd_rec **cmd) {
   if (next_cmd != NULL) {
     *cmd = next_cmd;
