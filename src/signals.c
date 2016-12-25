@@ -170,7 +170,7 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   ucontext_t *uc = NULL;
 # endif /* !HAVE_UCONTEXT_H */
   void *trace[PR_TUNABLE_CALLER_DEPTH];
-  char **strings;
+  char **strings = NULL;
   int tracesz;
 #endif /* HAVE_BACKTRACE */
 
@@ -202,9 +202,11 @@ static void handle_stacktrace_signal(int signo, siginfo_t *info, void *ptr) {
   }
 # endif /* HAVE_BACKTRACE_SYMBOLS */
 
-  /* Skip first stack frame; it just points here. */
-  for (i = 1; i < tracesz; ++i) {
-    pr_log_pri(PR_LOG_ERR, "[%u] %s", i-1, strings[i]);
+  if (strings != NULL) {
+    /* Skip first stack frame; it just points here. */
+    for (i = 1; i < tracesz; ++i) {
+      pr_log_pri(PR_LOG_ERR, "[%u] %s", i-1, strings[i]);
+    }
   }
 #else
   pr_log_pri(PR_LOG_ERR, " backtrace(3) unavailable");

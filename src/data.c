@@ -148,7 +148,7 @@ static int data_passive_open(const char *reason, off_t size) {
 
   if (c && c->mode != CM_ERROR) {
     pr_inet_close(session.pool, session.d);
-    pr_inet_set_nonblock(session.pool, c);
+    (void) pr_inet_set_nonblock(session.pool, c);
     session.d = c;
 
     pr_log_debug(DEBUG4, "passive data connection opened - local  : %s:%d",
@@ -388,7 +388,7 @@ static int data_active_open(const char *reason, off_t size) {
     }
 
     pr_inet_close(session.pool, session.d);
-    pr_inet_set_nonblock(session.pool, session.d);
+    (void) pr_inet_set_nonblock(session.pool, session.d);
     session.d = c;
     return 0;
   }

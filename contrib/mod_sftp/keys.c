@@ -513,7 +513,7 @@ static char *get_page(size_t sz, void **ptr) {
   void *d;
   long pagesz = get_pagesz(), p;
 
-  d = malloc(sz + (pagesz-1));
+  d = calloc(1, sz + (pagesz-1));
   if (d == NULL) {
     pr_log_pri(PR_LOG_ALERT, MOD_SFTP_VERSION ": Out of memory!");
     exit(1);

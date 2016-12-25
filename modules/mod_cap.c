@@ -108,7 +108,7 @@ static void lp_debug(void) {
   }
 
   pr_log_debug(DEBUG1, MOD_CAP_VERSION ": capabilities '%s'", res);
-  cap_free(res);
+  (void) cap_free(res);
 
   if (cap_free(caps) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
