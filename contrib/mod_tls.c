@@ -12930,8 +12930,8 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
   int res, *pass_len;
   tls_pkey_t *k = NULL;
   const char *key_type = "unsupported";
-  char buf[256], **key_data;
-  void **key_ptr;
+  char buf[256], **key_data = NULL;
+  void **key_ptr = NULL;
 
   switch (flags) {
     case TLS_PASSPHRASE_FL_RSA_KEY:
@@ -12951,7 +12951,8 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
       break;
 
     default:
-      break;
+      errno = EINVAL;
+      return NULL;
   }
 
   pr_trace_msg(trace_channel, 14,
@@ -13013,6 +13014,10 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
       key_ptr = &(k->pkcs12_passwd_ptr);
       pass_len = &(k->pkcs12_passlen);
       break;
+
+    default:
+      errno = EINVAL;
+      return NULL;
   }
 
   res = snprintf(buf, sizeof(buf)-1, "%s %s for the %s#%d (%s) server: ",
