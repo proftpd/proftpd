@@ -991,6 +991,7 @@ static void poll_ctrl(void) {
         pr_response_add_err(R_450, _("%s: data transfer in progress"),
           (char *) cmd->argv[0]);
 
+        pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
         pr_response_flush(&resp_err_list);
 
         destroy_pool(cmd->pool);
@@ -1017,6 +1018,7 @@ static void poll_ctrl(void) {
         pr_response_add(R_200, _("%s: data transfer in progress"),
           (char *) cmd->argv[0]);
 
+        pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
         pr_response_flush(&resp_list);
 
         destroy_pool(cmd->pool);
