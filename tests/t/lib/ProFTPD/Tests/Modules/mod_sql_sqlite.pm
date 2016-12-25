@@ -4421,7 +4421,10 @@ EOS
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
-      eval { $client->quote('CLNT', 'NcFTP 3.2.2 linux-x86_64-glibc2.3') };
+
+      # Now that the CLNT command IS handled by ProFTPD, we deliberately
+      # change this.
+      eval { $client->quote('XCLNT', 'NcFTP 3.2.2 linux-x86_64-glibc2.3') };
       $client->quit();
     };
 
@@ -4467,7 +4470,7 @@ EOS
   $self->assert($expected eq $ip_addr,
     test_msg("Expected '$expected', got '$ip_addr'"));
 
-  $expected = 'CLNT not understood';
+  $expected = 'XCLNT not understood';
   $self->assert($expected eq $resp_mesg,
     test_msg("Expected '$expected', got '$resp_mesg'"));
 
@@ -8828,38 +8831,16 @@ EOS
 sub sql_sqllog_vars_H_L_default_server_bug3620 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sqlite');
 
-  my $config_file = "$tmpdir/sqlite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+  eval { require Sys::HostAddr };
+  if ($@) {
+    print STDERR "warning: module Sys::HostAddr unavailable, skipping test\n";
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# unable to load Sys::HostAddr: $@\n";
     }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
+    return;
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -8905,12 +8886,12 @@ EOS
   my $dst_file = File::Spec->rel2abs("$tmpdir/foo.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     DefaultServer => 'off',
     SocketBindTight => 'off',
@@ -8925,19 +8906,26 @@ EOS
         SQLEngine => 'log',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
+        SQLLogFile => ${log_file},
         SQLNamedQuery => 'session_start FREEFORM "INSERT INTO ftpsessions (user, ip_addr, rename_from) VALUES (\'%u\', \'%L\', \'%H\')"',
         SQLLog => 'PASS session_start',
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  # NOTE: this real_addr value may need to be tweaked as necessary.  Or
-  # maybe find a Perl module which can list the interfaces currently configured
-  # for the machine; all we really want is a non-127.0.0.1 address.
   my $real_addr = '192.168.0.101';
+  my $sysaddr = Sys::HostAddr->new();
+  my $addrs = sysaddr->addresses();
+  foreach my $addr (@$addrs) {
+    if ($addr ne '127.0.0.1') {
+      $real_addr = $addr;
+      last;
+    }
+  }
+
   my $real_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $vhost_addr = '0.0.0.0';
 
@@ -10783,7 +10771,7 @@ EOS
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
-    print $fh "ABCDefgh" x 32768;
+    print $fh "ABCDefgh" x 327680;
 
     unless (close($fh)) {
       die("Can't write $test_file: $!");
