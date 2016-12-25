@@ -393,23 +393,16 @@ sub delay_extra_user_cmd_bug3622 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      eval { $client->user($user) };
-      unless ($@) {
-        die("Second USER command succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-
+      my ($resp_code, $resp_msg) = $client->user($user);
       my $expected;
 
-      $expected = 500;
+      $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
-      $expected = 'Bad sequence of commands';
+      $expected = "User $user logged in";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };
