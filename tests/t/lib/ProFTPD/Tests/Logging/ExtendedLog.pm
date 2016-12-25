@@ -4858,19 +4858,21 @@ sub extlog_ftp_deflate_raw_bytes_bug3554 {
         # Only watch for the QUIT command, to get the session total.
         next unless $cmd eq 'QUIT';
 
-        my $expected = 100;
-        $self->assert($expected == $bytes_in,
-          test_msg("Expected $expected, got $bytes_in"));
-
-        # Why would this number vary so widely?  It's because of the notation
+        # Why would these numbers vary so widely?  It's because of the notation
         # used to express the port number in a PASV response.  That port
         # number is ephemeral, chosen by the kernel.
 
-        my $expected_min = 221;
-        my $expected_max = 225;
+        my $expected_min = 70;
+        my $epxected_max = 100;
+        $self->assert($expected_min <= $bytes_in &&
+                      $expected_max >= $bytes_in,
+          "Expected received bytes $expected_min-$expected_max, got $bytes_in");
+
+        $expected_min = 221;
+        $expected_max = 225;
         $self->assert($expected_min <= $bytes_out &&
                       $expected_max >= $bytes_out,
-          test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
+          "Expected sent bytes $expected_min-$expected_max, got $bytes_out");
       }
     }
 
