@@ -338,49 +338,18 @@ sub deleteabortedstores_cmd_abort_ok {
 sub deleteabortedstores_conn_aborted_bug3917 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     DefaultChdir => '~',
 
     HiddenStores => 'on',
@@ -392,7 +361,8 @@ sub deleteabortedstores_conn_aborted_bug3917 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -410,7 +380,7 @@ sub deleteabortedstores_conn_aborted_bug3917 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -433,13 +403,8 @@ sub deleteabortedstores_conn_aborted_bug3917 {
 
       $client->quit();
 
-      if (-f $test_file) {
-        die("File $test_file exists unexpectedly");
-      }
-
-      if (-f $hidden_file) {
-        die("File $hidden_file exists unexpectedly");
-      }
+      $self->assert(!-f $test_file, "File $test_file exists unexpectedly");
+      $self->assert(!-f $hidden_file, "File $hidden_file exists unexpectedly");
     };
 
     if ($@) {
@@ -450,7 +415,7 @@ sub deleteabortedstores_conn_aborted_bug3917 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -460,18 +425,10 @@ sub deleteabortedstores_conn_aborted_bug3917 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub deleteabortedstores_timeout_idle_bug4035 {
@@ -579,15 +536,25 @@ sub deleteabortedstores_timeout_idle_bug4035 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($resp_code != 426) {
+        $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      } else {
+        my $expected = 426;
+
+        $self->assert($expected == $resp_code,
+          "Expected response code $expected, got $resp_code");
+
+        $expected = 'Transfer aborted';
+        $self->assert(qr/$expected/, $resp_msg,
+          "Expected response message '$expected', got '$resp_msg'");
+      }
 
       $client->quit();
 
-      $self->assert(-f $test_file,
-        test_msg("File $test_file does not exist as expected"));
-
-      $self->assert(!-f $hidden_file,
-        test_msg("File $hidden_file exists unexpectedly"));
+      $self->assert(!-f $test_file, "File $test_file exists unexpectedly");
+      $self->assert(!-f $hidden_file, "File $hidden_file exists unexpectedly");
     };
 
     if ($@) {
