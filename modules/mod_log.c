@@ -1502,11 +1502,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
           len = snprintf(argp, sizeof(arg), "%0.3f", transfer_secs);
 
         } else {
-          len = sstrncpy(argp, "-", sizeof(arg));
+          len = sstrncpy(argp, "0.0", sizeof(arg));
         }
 
       } else {
-        len = sstrncpy(argp, "-", sizeof(arg));
+        len = sstrncpy(argp, "0.0", sizeof(arg));
       }
 
       m++;

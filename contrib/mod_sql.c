@@ -3389,7 +3389,7 @@ static char *resolve_short_tag(cmd_rec *cmd, char tag) {
         len = snprintf(argp, sizeof(arg), "%0.3f", transfer_secs);
 
       } else {
-        len = sstrncpy(argp, "-", sizeof(arg));
+        len = sstrncpy(argp, "0.0", sizeof(arg));
       }
       break;
 
