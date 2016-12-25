@@ -51,8 +51,10 @@ static void (*json_oom)(void) = default_oom;
 static char *json_strdup(const char *str)
 {
 	char *ret = (char*) malloc(strlen(str) + 1);
-	if (ret == NULL)
+	if (ret == NULL) {
 		json_oom();
+		return NULL;
+	}
 	strcpy(ret, str);
 	return ret;
 }
@@ -511,8 +513,10 @@ JsonNode *json_first_child(const JsonNode *node)
 static JsonNode *mknode(JsonTag tag)
 {
 	JsonNode *ret = (JsonNode*) calloc(1, sizeof(JsonNode));
-	if (ret == NULL)
+	if (ret == NULL) {
 		json_oom();
+		return NULL;
+	}
 	ret->tag = tag;
 	return ret;
 }
