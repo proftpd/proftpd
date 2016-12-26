@@ -1729,7 +1729,10 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, const pr_netaddr_t *addr,
     }
 
   } else {
-    rfd = dup(fd);
+    /* dup(2) cannot take a negative value. */
+    if (fd >= 0) {
+      rfd = dup(fd);
+    }
   }
 
   if (wfd > -1) {
@@ -1745,7 +1748,10 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, const pr_netaddr_t *addr,
     }
 
   } else {
-    wfd = dup(fd);
+    /* dup(2) cannot take a negative value. */
+    if (fd >= 0) {
+      wfd = dup(fd);
+    }
   }
 
   /* Now discard the original socket */
