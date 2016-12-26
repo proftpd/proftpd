@@ -96,10 +96,10 @@ sub fxp_denied {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -242,10 +242,10 @@ sub fxp_allowed {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -344,6 +344,7 @@ sub fxp_allowed_2gb {
   }
 
   my $dst_file = File::Spec->rel2abs("$tmpdir/dst.txt");
+  my $timeout_idle = 30;
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -354,6 +355,7 @@ sub fxp_allowed_2gb {
     AuthGroupFile => $setup->{auth_group_file},
 
     AllowForeignAddress => 'on',
+    TimeoutIdle => $timeout_idle,
 
     IfModules => {
       'mod_delay.c' => {
@@ -380,10 +382,10 @@ sub fxp_allowed_2gb {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -392,11 +394,11 @@ sub fxp_allowed_2gb {
 
       my $expected = 227;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = '^Entering Passive Mode \(\d+,\d+,\d+,\d+,\d+,\d+\)';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       # This will actually work, since both our connections are
       # from 127.0.0.1, which means we shouldn't run afoul of the
@@ -408,11 +410,11 @@ sub fxp_allowed_2gb {
 
       $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+        "Expected response code $expected, got $resp_code");
 
       $expected = 'PORT command successful';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+        "Expected response message '$expected', got '$resp_msg'");
 
       my $tmpfile = 'tmpfile.bin';
       ($resp_code, $resp_msg) = $client1->stor($src_file, $tmpfile);
@@ -424,13 +426,12 @@ sub fxp_allowed_2gb {
       $client1->quit();
       $client2->quit();
 
-      $self->assert(-f $dst_file,
-        test_msg("File $dst_file does not exist as expected"));
+      $self->assert(-f $dst_file, "File $dst_file does not exist as expected");
 
       my $dst_size = -s $dst_file;
       my $expected = -s $src_file;
       $self->assert($expected == $dst_size,
-        test_msg("Expected file size $expected, got $dst_size"));
+        "Expected file size $expected, got $dst_size");
     };
     if ($@) {
       $ex = $@;
