@@ -1997,7 +1997,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
   /* Determine how many users are currently connected. */
 
   /* We use this call to get the possibly-changed user name. */
-  (void) pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
+  c = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
   /* Gather our statistics. */
   if (user != NULL) {
@@ -2020,19 +2020,23 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       /* Make sure it matches our current server. */
       if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
 
-        if ((c && c->config_type == CONF_ANON &&
-            !strcmp(score->sce_user, user)) || !c) {
+        if ((c != NULL && c->config_type == CONF_ANON &&
+            !strcmp(score->sce_user, user)) || c == NULL) {
 
           /* This small hack makes sure that cur is incremented properly
            * when dealing with anonymous logins (the timing of anonymous
            * login updates to the scoreboard makes this...odd).
            */
-          if (c && c->config_type == CONF_ANON && cur == 0)
+          if (c != NULL &&
+              c->config_type == CONF_ANON &&
+              cur == 0) {
               cur = 1;
+          }
 
           /* Only count authenticated clients, as per the documentation. */
-          if (strncmp(score->sce_user, "(none)", 7) == 0)
+          if (strncmp(score->sce_user, "(none)", 7) == 0) {
             continue;
+          }
 
           cur++;
 
@@ -2046,8 +2050,11 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
              * when dealing with anonymous logins (the timing of anonymous
              * login updates to the scoreboard makes this...odd).
              */
-            if (c && c->config_type == CONF_ANON && hcur == 0)
+            if (c != NULL &&
+                c->config_type == CONF_ANON &&
+                hcur == 0) {
               hcur = 1;
+            }
 
             hcur++;
           }
@@ -2057,8 +2064,9 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
             usersessions++;
 
             /* Count up unique hosts. */
-            if (!same_host)
+            if (!same_host) {
               hostsperuser++;
+            }
           }
         }
 
@@ -2116,8 +2124,9 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       continue;
     }
 
-    if (maxc->argc > 2)
+    if (maxc->argc > 2) {
       maxstr = maxc->argv[2];
+    }
 
     if (*max &&
         ccur > *max) {
@@ -2147,8 +2156,9 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       "are already connected.";
     unsigned int *max = maxc->argv[0];
 
-    if (maxc->argc > 1)
+    if (maxc->argc > 1) {
       maxstr = maxc->argv[1];
+    }
 
     if (*max && hcur > *max) {
       char maxn[20] = {'\0'};
@@ -2174,8 +2184,9 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       "are already connected.";
     unsigned int *max = maxc->argv[0];
 
-    if (maxc->argc > 1)
+    if (maxc->argc > 1) {
       maxstr = maxc->argv[1];
+    }
 
     if (*max && usersessions > *max) {
       char maxn[20] = {'\0'};
@@ -2200,8 +2211,9 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       "already connected.";
     unsigned int *max = maxc->argv[0];
 
-    if (maxc->argc > 1)
+    if (maxc->argc > 1) {
       maxstr = maxc->argv[1];
+    }
 
     if (*max && cur > *max) {
       char maxn[20] = {'\0'};
@@ -2225,8 +2237,9 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       "already connected.";
     unsigned int *max = maxc->argv[0];
 
-    if (maxc->argc > 1)
+    if (maxc->argc > 1) {
       maxstr = maxc->argv[1];
+    }
 
     if (*max && hostsperuser > *max) {
       char maxn[20] = {'\0'};
