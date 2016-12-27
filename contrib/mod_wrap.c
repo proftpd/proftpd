@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
- *
  * Copyright (c) 2000-2016 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
@@ -60,7 +59,7 @@ static int wrap_eval_expression(char **config_expr,
     array_header *session_expr) {
 
   unsigned char found = FALSE;
-  int i = 0;
+  unsigned int i = 0;
   char *elem = NULL, **list = NULL;
 
   /* sanity check */
@@ -401,7 +400,7 @@ MODRET set_tcpaccessfiles(cmd_rec *cmd) {
 }
 
 MODRET set_tcpgroupaccessfiles(cmd_rec *cmd) {
-  int group_argc = 1;
+  unsigned int group_argc = 1;
   char *expr, **group_argv = NULL;
   array_header *group_acl = NULL;
   config_rec *c = NULL;
@@ -518,7 +517,7 @@ MODRET set_tcpgroupaccessfiles(cmd_rec *cmd) {
 }
 
 MODRET set_tcpuseraccessfiles(cmd_rec *cmd) {
-  int user_argc = 1;
+  unsigned int user_argc = 1;
   char *expr, **user_argv = NULL;
   array_header *user_acl = NULL;
   config_rec *c = NULL;
@@ -732,7 +731,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
    */
   struct request_info request;
 
-  char *user = NULL;
+  const char *user = NULL;
   config_rec *conf = NULL, *access_conf = NULL, *syslog_conf = NULL;
   hosts_allow_table = NULL;
   hosts_deny_table = NULL;
@@ -749,8 +748,9 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
    * handler, so it won't be protected from this case; we'll need to do
    * it manually.
    */
-  if (!user)
+  if (user == NULL) {
     return PR_DECLINED(cmd);
+  }
 
   /* Use mod_auth's _auth_resolve_user() [imported for use here] to get the
    * right configuration set, since the user may be logging in anonymously,
@@ -957,14 +957,16 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     pr_event_generate("mod_wrap.connection-denied", NULL);
 
     /* check for AccessDenyMsg */
-    if ((denymsg = (char *) get_param_ptr(TOPLEVEL_CONF, "AccessDenyMsg",
-        FALSE)) != NULL)
-      denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
+    denymsg = (char *) get_param_ptr(TOPLEVEL_CONF, "AccessDenyMsg", FALSE);
+    if (denymsg != NULL) {
+      denymsg = (char *) sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
+    }
 
-    if (denymsg)
+    if (denymsg != NULL) {
       return PR_ERROR_MSG(cmd, R_530, denymsg);
-    else
-      return PR_ERROR_MSG(cmd, R_530, _("Access denied"));
+    }
+
+    return PR_ERROR_MSG(cmd, R_530, _("Access denied"));
   }
 
   /* If request is allowable, return DECLINED (for engine to act as if this
