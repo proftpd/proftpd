@@ -41,11 +41,11 @@ module wrap_module;
 
 /* Necessary prototypes */
 static int wrap_eval_expression(char **, array_header *);
-static char *wrap_get_user_table(cmd_rec *, char *, char *);
-static int wrap_is_usable_file(char *);
+static const char *wrap_get_user_table(cmd_rec *, const char *, char *);
+static int wrap_is_usable_file(const char *);
 static void wrap_log_request_allowed(int, struct request_info *);
 static void wrap_log_request_denied(int, struct request_info *);
-static config_rec *wrap_resolve_user(pool *, char **);
+static config_rec *wrap_resolve_user(pool *, const char **);
 static int wrap_sess_init(void);
 
 static char *wrap_service_name = "proftpd";
@@ -97,12 +97,9 @@ static int wrap_eval_expression(char **config_expr,
   return FALSE;
 }
 
-/* Determine logging-in user's access table locations.  This function was
- * "borrowed" (ie plagiarized/copied/whatever) liberally from modules/
- * mod_auth.c -- the _true_ author is MacGuyver <macguyver@tos.net>.
- */
-static char *wrap_get_user_table(cmd_rec *cmd, char *user,
+static const char *wrap_get_user_table(cmd_rec *cmd, const char *user,
     char *path) {
+  int xerrno = 0;
 
   char *real_path = NULL;
   struct passwd *pw = NULL;
@@ -122,21 +119,25 @@ static char *wrap_get_user_table(cmd_rec *cmd, char *user,
 
   PRIVS_USER
   real_path = dir_realpath(cmd->pool, path);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
-  if (real_path)
+  if (real_path) {
     path = real_path;
+  }
 
+  errno = xerrno;
   return path;
 }
 
-static int wrap_is_usable_file(char *filename) {
+static int wrap_is_usable_file(const char *filename) {
   struct stat st;
   pr_fh_t *fh = NULL;
 
   /* check the easy case first */
-  if (filename == NULL)
+  if (filename == NULL) {
     return FALSE;
+  }
 
   /* Make sure that the current process can _read_ the file. */
   fh = pr_fsio_open(filename, O_RDONLY);
@@ -204,12 +205,7 @@ static void wrap_log_request_denied(int severity,
   return;
 }
 
-/* yet more plagiarizing...this one raided from mod_auth's _auth_resolve_user()
- * function [in case you haven't noticed yet, I'm quite the hack, in the
- * _true_ sense of the world]. =) hmmm...I wonder if it'd be feasible
- * to make some of mod_auth's functions visible from src/auth.c?
- */
-static config_rec *wrap_resolve_user(pool *p, char **user) {
+static config_rec *wrap_resolve_user(pool *p, const char **user) {
   config_rec *conf = NULL, *top_conf;
   char *ourname = NULL, *anonname = NULL;
   unsigned char is_alias = FALSE, force_anon = FALSE;
@@ -250,26 +246,30 @@ static config_rec *wrap_resolve_user(pool *p, char **user) {
       is_alias = TRUE;
   }
 
-  if (conf) {
+  if (conf != NULL) {
     *user = conf->argv[1];
 
     /* If the alias is applied inside an <Anonymous> context, we have found
      * our anon block
      */
-    if (conf->parent && conf->parent->config_type == CONF_ANON)
+    if (conf->parent &&
+        conf->parent->config_type == CONF_ANON) {
       conf = conf->parent;
-    else
+
+    } else {
       conf = NULL;
+    }
   }
 
   /* Next, search for an anonymous entry */
-  if (!conf)
+  if (conf == NULL) {
     conf = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
 
-  else
+  } else {
     find_config_set_top(conf);
+  }
 
-  if (conf) do {
+  if (conf != NULL) do {
     anonname = (char*) get_param_ptr(conf->subset, "UserName", FALSE);
 
     if (!anonname)
@@ -288,15 +288,18 @@ static config_rec *wrap_resolve_user(pool *p, char **user) {
     if (find_config((conf ? conf->subset :
         main_server->conf), CONF_PARAM, "AuthAliasOnly", FALSE)) {
 
-      if (conf && conf->config_type == CONF_ANON)
+      if (conf != NULL &&
+          conf->config_type == CONF_ANON) {
         conf = NULL;
 
-      else
+      } else {
         *user = NULL;
+      }
 
-      if (*user && find_config(main_server->conf, CONF_PARAM, "AuthAliasOnly",
-          FALSE))
+      if (*user != NULL &&
+          find_config(main_server->conf, CONF_PARAM, "AuthAliasOnly", FALSE)) {
         *user = NULL;
+      }
     }
   }
 
@@ -848,7 +851,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
    */
   if (hosts_allow_table != NULL && hosts_allow_table[0] == '~' &&
       hosts_allow_table[1] == '/') {
-    char *allow_real_table = NULL;
+    const char *allow_real_table = NULL;
 
     allow_real_table = wrap_get_user_table(cmd, user, hosts_allow_table);
 
