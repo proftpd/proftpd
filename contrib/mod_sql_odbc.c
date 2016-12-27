@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_sql_odbc -- Support for connecting to databases via ODBC
- *
  * Copyright (c) 2003-2016 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
@@ -1570,7 +1569,6 @@ MODRET sqlodbc_query(cmd_rec *cmd) {
 
 MODRET sqlodbc_quote(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
-  db_conn_t *conn = NULL;
   modret_t *mr = NULL;
   char *unescaped = NULL;
   char *escaped = NULL;
@@ -1596,8 +1594,6 @@ MODRET sqlodbc_quote(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_escapestring");
     return mr;
   }
-
-  conn = (db_conn_t *) entry->data;
 
   unescaped = cmd->argv[1];
   escaped = (char *) pcalloc(cmd->tmp_pool, sizeof(char) * 
