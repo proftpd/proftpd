@@ -1192,9 +1192,12 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
     return *path;
   }
 
-  if (session.user != NULL) {
-    user_len = strlen(session.user);
+  /* Same if there is no user set yet. */
+  if (session.user == NULL) {
+    return *path;
   }
+
+  user_len = strlen(session.user);
 
   /* First, deal with occurrences of "%u[index]" strings.  Note that
    * with this syntax, the '[' and ']' characters become invalid in paths,
