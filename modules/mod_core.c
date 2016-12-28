@@ -6487,6 +6487,7 @@ static int core_init(void) {
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
    */
+  pr_feat_add(C_CLNT);
   pr_feat_add(C_EPRT);
   pr_feat_add(C_EPSV);
   pr_feat_add(C_MDTM);
