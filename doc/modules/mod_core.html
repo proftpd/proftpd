@@ -44,6 +44,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#MaxCommandRate">MaxCommandRate</a>
   <li><a href="#MaxConnectionRate">MaxConnectionRate</a>
   <li><a href="#MaxInstances">MaxInstances</a>
+  <li><a href="#MultilineRFC2228">MultilineRFC2228</a>
   <li><a href="#PassivePorts">PassivePorts</a>
   <li><a href="#PathAllowFilter">PathAllowFilter</a>
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
@@ -1041,6 +1042,42 @@ to cause <code>proftpd</code> to repeatedly fork new processes, creating a
 "fork-bomb").   By default, no limit is placed on the number of child
 processes that may run at one time; it is <b>highly recommended</b> that a
 maximum number, suitable to your sites traffic, be configured.
+
+<p>
+<hr>
+<h2><a name="MultilineRFC2228">MultilineRFC2228</a></h2>
+<strong>Syntax:</strong> MultilineRFC2228 <em>on|off</em><br>
+<strong>Default:</strong> MultilineRFC2228 off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0pre3 and later
+
+<p>
+By default, ProFTPD sends multi-line responses as per
+<a href="https://tools.ietf.org/html/rfc959">RFC 959</a>, <i>i.e.</i>:
+<pre>
+  200-First line
+   More lines...
+  200 Last line
+</pre>
+
+<p>
+<a href="https://tools.ietf.org/html/rfc2228">RFC 2228</a> specifies that "6xy"
+responses will be sent as follows:
+<pre>
+  600-First line
+  600-More lines...
+  600 Last line
+</pre>
+Note that RFC 2228 <b>only</b> specifies this format for response codes
+starting with '6'.
+
+<p>
+Enabling the <code>MultilineRFC2228</code> directive causes <b>all</b>
+multiline responses to be sent in this format, which <i>may</i> be more
+compatible with certain web browsers and clients.  Using this format
+multiline responses is more likely to be compatible with all clients, although
+it is not strictly RFC compliant, and is thus not enabled by default.
 
 <p>
 <hr>
@@ -2262,6 +2299,29 @@ The <code>SocketBindTight</code> directive tells <code>proftpd</code> to
 listen <b>only</b> on that 'localhost' IP address, rather than on all
 addresses.
 
+<p><a name="FileZillaNonASCII">
+<font color=red>Question</font>: When I connect to ProFTPD using FileZilla,
+I see FileZilla log the following warning:
+<pre>
+  Status: Server does not support non-ASCII characters.
+</pre>
+even though I used the <code>--enable-nls</code> build option, and my ProFTPD
+supports UTF8.  What is wrong?<br>
+<font color=blue>Answer</font>: FileZilla parses the <code>FEAT</code> response
+to determine whether the FTP server supports the UTF-8 encoding.  However, the
+<i>format</i> of the <code>FEAT</code> response can confuse FileZilla's
+detection code.  For example, if your <code>proftpd.conf</code> uses:
+<pre>
+  MultilineRFC2228 on
+</pre>
+this causes ProFTPD's <code>FEAT</code> response format to be different than
+FileZilla expects, which can lead to the above "does not support non-ASCII
+characters" message.
+
+<p>
+The solution is to use "MultilineRFC2228 off" in your <code>proftpd.conf</code>
+(or simply remove that directive entirely).
+
 <p>
 <hr>
 <font size=2><b><i>
@@ -2272,4 +2332,3 @@ addresses.
 
 </body>
 </html>
-
