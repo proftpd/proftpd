@@ -1027,7 +1027,14 @@ static int shaper_table_sess_add(pid_t sess_pid, unsigned int prio,
   shaper_tab.nsessions++;
   sess = push_array(shaper_tab.sess_list);
   sess->sess_pid = sess_pid;
-  sess->sess_prio = (prio != (unsigned int) -1) ? prio : shaper_tab.def_prio;
+
+  if (prio != (unsigned int) -1) {
+    sess->sess_prio = prio;
+
+  } else {
+    sess->sess_prio = shaper_tab.def_prio;
+  }
+
   sess->sess_downincr = downincr;
   sess->sess_downrate = 0.0;
   sess->sess_upincr = upincr;
@@ -2019,7 +2026,7 @@ MODRET set_shapersession(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = prio;
+  *((unsigned int *) c->argv[0]) = (unsigned int) prio;
   c->argv[1] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = downshares;
   c->argv[2] = pcalloc(c->pool, sizeof(int));
@@ -2071,11 +2078,11 @@ MODRET shaper_post_pass(cmd_rec *cmd) {
   unsigned int prio = -1;
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "ShaperEngine", FALSE);
-  if (c && *((unsigned char *) c->argv[0]) == TRUE)
+  if (c != NULL &&
+      *((unsigned char *) c->argv[0]) == TRUE) {
     shaper_engine = TRUE;
 
-  else {
-
+  } else {
     /* Don't need the ShaperTable open anymore. */
     close(shaper_tabfd);
     shaper_tabfd = -1;
@@ -2116,9 +2123,10 @@ MODRET shaper_post_pass(cmd_rec *cmd) {
   }
 
   /* Update the ShaperTable, adding a new entry for the current session. */
-  if (shaper_table_sess_add(getpid(), prio, downincr, upincr) < 0)
+  if (shaper_table_sess_add(getpid(), prio, downincr, upincr) < 0) {
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
       "error adding session to ShaperTable: %s", strerror(errno));
+  }
 
   return PR_DECLINED(cmd);
 }

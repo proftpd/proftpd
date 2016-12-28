@@ -174,6 +174,9 @@ static int af_check_file(pool *p, const char *name, const char *path,
        * we need to make sure that we get an absolute path (Bug#4145).
        */
       path = dir_abs_path(p, buf, FALSE);
+      if (path != NULL) {
+        orig_path = path;
+      }
     }
 
     res = stat(orig_path, &st);
