@@ -16,6 +16,9 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#Allow">Allow</a>
+  <li><a href="#AllowAll">AllowAll</a>
+  <li><a href="#AllowClass">AllowClass</a>
   <li><a href="#AllowFilter">AllowFilter</a>
   <li><a href="#AllowForeignAddress">AllowForeignAddress</a>
   <li><a href="#AllowOverride">AllowOverride</a>
@@ -24,6 +27,9 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DefaultAddress">DefaultAddress</a>
   <li><a href="#DefaultServer">DefaultServer</a>
+  <li><a href="#Deny">Deny</a>
+  <li><a href="#DenyAll">DenyAll</a>
+  <li><a href="#DenyClass">DenyClass</a>
   <li><a href="#DenyFilter">DenyFilter</a>
   <li><a href="#Directory">&lt;Directory&gt;</a>
   <li><a href="#DisplayChdir">DisplayChdir</a>
@@ -45,6 +51,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#MaxConnectionRate">MaxConnectionRate</a>
   <li><a href="#MaxInstances">MaxInstances</a>
   <li><a href="#MultilineRFC2228">MultilineRFC2228</a>
+  <li><a href="#Order">Order</a>
   <li><a href="#PassivePorts">PassivePorts</a>
   <li><a href="#PathAllowFilter">PathAllowFilter</a>
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
@@ -78,11 +85,136 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 
 <p>
 <hr>
+<h2><a name="Allow">Allow</a></h2>
+<strong>Syntax:</strong> Allow <em>[from] "all"|"none"|host|network|...]</em><br>
+<strong>Default:</strong> Allow from all<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0p16 and later
+
+<p>
+The <code>AllowFilter</code> directive is used inside a
+<code>&lt;Limit&gt;</code> section to explicitly specify which hosts and/or
+networks have access to the commands or operations being limited.
+<code>Allow</code> is typically used in conjunction with the
+<a href="#Order"><code>Order</code></a> and
+<a href="#Deny"><code>Deny</code></a> directives in order to create
+sophisticated access control rules.
+
+<p>
+<code>Allow</code> takes an optional first parameter: the keyword "from".
+Using "from" is purely cosmetic.  The remaining parameters are expected to be a
+list of hosts and/or networks which will be explicitly granted access.  The
+keyword "all" can be used to indicate that <b>all</b> hosts will explicitly be
+granted access; this "all" keyword is analogous to the
+<a href="#AllowAll"><code>AllowAll</code></a> directive, except with a lower
+priority.  In addition, the keyword "none" can be used to indicate that
+<b>no</b> hosts or networks will be explicitly granted access.  Note, though,
+that using "none" does <b>not</b> prevent the hosts/networks from being
+<i>implicitly</i> granted access.  If the "all" or "none" keywords are used,
+no other hosts or networks can be supplied.
+
+<p>
+Host and network addresses can be specified by name <i>or</i> by numeric
+address.  For security reasons, it is recommended that all address information
+be supplied using IP addresses.  Relying solely on DNS names causes access
+controls to depend heavily upon DNS servers which themselves may be vulnerable
+to attack or spoofing.  IP addresses which specify an entire network should
+end in a trailing period (<i>i.e.</i> "10.0.0." for the entire 10.0.0 subnet).
+DNS names which specify an entire network should begin with a leading period
+(<i>i.e.</i> ".proftpd.org" for the entire proftpd.org domain).
+
+<p>
+Examples:
+<pre>
+  &lt;Limit LOGIN&gt;
+    Order allow,deny
+    Allow from 128.44.26. 128.44.27. myhost.mydomain.edu .trusted-domain.org
+    Deny from all
+  &lt;/Limit&gt;
+</pre>
+
+<p>
+See also: <a href="#Deny"><code>Deny</code></a>,
+<a href="#Limit"><code>&lt;Limit&gt;</code></a>,
+<a href="#Order"><code>Order</code></a><br>
+
+<p>
+<hr>
+<h2><a name="AllowAll">AllowAllow</a></h2>
+<strong>Syntax:</strong> AllowAll<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Anonymous&gt;</code>, <code>&lt;Limit&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>AllowAll</code> directive <i>explicitly</i> allows access to its
+parent <code>&lt;Anonymous&gt;</code>, <code>&lt;Limit&gt;</code>, or
+<code>&lt;Directory&gt;</code> configuration section. 
+
+<p>
+The default ProFTPD behavior is to <i>implicitly</i> allow access, which has a
+low priority.  The <code>AllowAll</code> directive creates an <em>explicit</em>
+allow rule, overriding any higher level <code>Deny</code> directives.
+
+<p>
+See also: <a href="#DenyAll"><code>DenyAll</code></a>
+
+<p>
+<hr>
+<h2><a name="AllowClass">AllowClass</a></h2>
+<strong>Syntax:</strong> AllowClass <em>["AND"|"OR"|"regex"] expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.10rc1 and later
+
+<p>
+The <code>AllowClass</code> directive specifies an <em>expression</em> of
+<a href="../howto/Classes.html">classes</a> that are permitted access within
+the parent <code>&lt;Limit&gt;</code> configuration section.  The
+<em>expression</em> parameter has a similar syntax as that used in
+<a href="#AllowGroup"><code>AllowGroup</code></a>, in that the parameter should
+contain a comma delimited list of class names (or "not" class names, by
+prefixing a class name with the <code>!</code> character) that are to be
+allowed access in that configuration section.
+
+<p>
+By default, the <em>expression</em> is parsed as a Boolean "OR" list, meaning
+that <b>any</b> elements of the <em>expression</em> must evaluate to logically
+true in order for the explicit allow rule to apply, <i>e.g.</i> "this name
+<b>or</b> that name <b>or</b> this other name...".  In order to treat the
+<em>expression</em> as a Boolean "AND" list, meaning that <b>all</b> of the
+elements must evaluate to logically true (<i>e.g.</i> "this name <b>and</b> not that name..."), use the optional <em>AND</em> keyword. Similarly, to treat the
+<em>expression</em> as a regular expression, use the <em>regex</em> keyword.
+
+<p>
+Examples:
+<pre>
+  # An OR-evaluated AllowClass directive
+  AllowClass OR known,good,trusted
+
+  # An AND-evaluated AllowClass directive
+  AllowClass AND good,!scanner
+
+  # A regular expression AllowClass directive
+  AllowClass regex ^known
+</pre>
+
+<p>
+See also: <a href="#AllowUser"><code>AllowUser</code></a>,
+<a href="#AllowGroup"><code>AllowGroup</code></a>,
+<a href="#DenyClass"><code>DenyClass</code></a>,
+<a href="#DenyGroup"><code>DenyGroup</code></a>,
+<a href="#DenyUser"><code>DenyUser</code></a>
+
+<p>
+<hr>
 <h2><a name="AllowFilter">AllowFilter</a></h2>
 <strong>Syntax:</strong> AllowFilter <em>pattern [flags]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>,
-<code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.0pre7 and later
 
@@ -384,6 +516,109 @@ Only a single server configuration can be set as the <code>DefaultServer</code>.
 
 <p>
 <hr>
+<h2><a name="Deny">Deny</a></h2>
+<strong>Syntax:</strong> Deny <em>[from] "all"|"none"|host|network...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0p16 and later
+
+<p>
+The <code>Deny</code> directive is used to create a list of hosts and/or
+networks which will explicitly be denied access to a given
+<code>&lt;Limit&gt;</code> section.  The keywords "all" and "none" can be used
+to indicate that <b>all</b> hosts are denied access, or that <b>no</b> hosts
+are explicitly denied, respectively.  For more information on the syntax and
+usage of the <code>Deny</code> directive, see the
+<a href="#Allow"><code>Allow</code></a> description.
+
+<p>
+Examples:
+<pre>
+  &lt;Limit LOGIN&gt;
+    Order deny,allow
+    Deny from 128.44.26.,128.44.27.,.evil-domain.com
+    Allow from all
+  &lt;/Limit&gt;
+</pre>
+
+<p>
+See also: <a href="#Allow"><code>Allow</code></a>,
+<a href="#Limit"><code>&lt;Limit&gt;</code></a>,
+<a href="#Order"><code>Order</code></a>
+
+<p>
+<hr>
+<h2><a name="DenyAll">DenyAll</a></h2>
+<strong>Syntax:</strong> DenyAll<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Anonymous&gt;</code>, <code>&lt;Limit&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>DenyAll</code> directive <i>explicitly</i> denies access to its
+parent <code>&lt;Anonymous&gt;</code>, <code>&lt;Limit&gt;</code>, or
+<code>&lt;Directory&gt;</code> configuration section.
+
+<p>
+The default ProFTPD behavior is to <i>implicitly</i> allow access, which has a
+low priority.  The <code>DenyAll</code> directive creates an <em>explicit</em>
+deny rule, overriding any higher level <code>Allow</code> directives.
+
+<p>
+See also: <a href="#AllowAll"><code>AllowAll</code></a>
+
+<p>
+<hr>
+<h2><a name="DenyClass">DenyClass</a></h2>
+<strong>Syntax:</strong> DenyClass <em>["AND"|"OR"|"regex"] expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.10rc1 and later
+
+<p>
+The <code>DenyClass</code> directive specifies an <em>expression</em> of
+<a href="../howto/Classes.html">classes</a> that are <b>denied</b> access within
+the parent <code>&lt;Limit&gt;</code> configuration section.  The
+<em>expression</em> parameter has a similar syntax as that used in
+<a href="#AllowGroup"><code>AllowGroup</code></a>, in that the parameter should
+contain a comma delimited list of class names (or "not" class names, by
+prefixing a class name with the <code>!</code> character) that are to be
+denied access in that configuration section.
+
+<p>
+By default, the <em>expression</em> is parsed as a Boolean "OR" list, meaning
+that <b>any</b> elements of the <em>expression</em> must evaluate to logically
+true in order for the explicit deny rule to apply, <i>e.g.</i> "this name
+<b>or</b> that name <b>or</b> this other name...".  In order to treat the
+<em>expression</em> as a Boolean "AND" list, meaning that <b>all</b> of the
+elements must evaluate to logically true (<i>e.g.</i> "this name <b>and</b> not that name..."), use the optional <em>AND</em> keyword. Similarly, to treat the
+<em>expression</em> as a regular expression, use the <em>regex</em> keyword.
+
+<p>
+Examples:
+<pre>
+  # An OR-evaluated DenyClass directive
+  DenyClass OR bad,scanner,spammer
+
+  # An AND-evaluated DenyClass directive
+  DenyClass AND bad,!known
+
+  # A regular expression DenyClass directive
+  DenyClass regex ^spam
+</pre>
+
+<p>
+See also: <a href="#AllowUser"><code>AllowUser</code></a>,
+<a href="#AllowClass"><code>AllowClass</code></a>,
+<a href="#AllowGroup"><code>AllowGroup</code></a>,
+<a href="#DenyGroup"><code>DenyGroup</code></a>,
+<a href="#DenyUser"><code>DenyUser</code></a>
+
+<p>
+<hr>
 <h2><a name="DenyFilter">DenyFilter</a></h2>
 <strong>Syntax:</strong> DenyFilter <em>pattern [flags]</em><br>
 <strong>Default:</strong> None<br>
@@ -392,12 +627,12 @@ Only a single server configuration can be set as the <code>DefaultServer</code>.
 <strong>Compatibility:</strong> 1.2.0pre7 and later
 
 <p>
-The <code>DenyFilter</code> directive, like the <code>AllowFilter</code>
-directive, specifies a regular expression <em>pattern</em> which must not
-match any of the command arguments.  If the <em>pattern</em> does match, a
-"Forbidden command" error is returned to the client.  This can be especially
-useful for forbidding certain command argument combinations from ever reaching
-ProFTPD.
+The <code>DenyFilter</code> directive, like the
+<a href="AllowFilter"><code>AllowFilter</code></a> directive, specifies a
+regular expression <em>pattern</em> which must not match any of the command
+arguments.  If the <em>pattern</em> does match, a "Forbidden command" error is
+returned to the client.  This can be especially useful for forbidding certain
+command parameter combinations from ever reaching ProFTPD.
 
 <p>
 Note that the <code>PASV</code> SFTP command <b>cannot</b> be blocked using
@@ -1078,6 +1313,66 @@ multiline responses to be sent in this format, which <i>may</i> be more
 compatible with certain web browsers and clients.  Using this format
 multiline responses is more likely to be compatible with all clients, although
 it is not strictly RFC compliant, and is thus not enabled by default.
+
+<p>
+<hr>
+<h2><a name="Order">Order</a></h2>
+<strong>Syntax:</strong> Order <em>"allow,deny"|"deny,allow"</em><br>
+<strong>Default:</strong> Order allow,deny<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0p16 and later
+
+<p>
+The <code>Order</code> directive configures the order in which
+<a href="#Allow"><code>Allow</code></a> and
+<a href="#Deny"><code>Deny</code></a> directives are checked inside of a
+<code>&lt;Limit&gt;</code> configuration section.
+
+<p>
+<code>Allow</code> directives are permissive, and <code>Deny</code> directives
+restrictive, thus the <em>order</em> in which they are examined can
+significantly alter the way access control functions.  If the default setting
+of <em>allow,deny</em> is used, then "allowed" access permissions are checked
+<em>first</em>.  If an <code>Allow</code> directive explicitly allows access to
+the <code>&lt;Limit&gt;</code> section, access is granted, and any
+<code>Deny</code> directives are never checked.  However, if <code>Allow</code>
+directives do not explicitly permit access, <code>Deny</code> directives are
+checked.  And if any <code>Deny</code> directive applies, access is explicitly
+denied.  Otherwise, access is granted.
+
+<p>
+When <em>deny,allow</em> is used, <code>Deny</code> directive access
+restrictions are checked first.  If any restriction applies, access is denied
+immediately.  If nothing is denied, then <code>Allow</code> permissions are
+checked.  If an <code>Allow</code> directive explicitly permits access, access
+is permitted; otherwise access is implicitly denied.
+
+<p>
+For clarification, the following illustrates the steps used when checking
+<code>Allow</code>/<code>Deny</code> access:
+<ul>
+  <li><em>Order allow,deny</em><br>
+    <ul>
+      <li>Check <code>Allow</code> directives; if one or more apply, <b>allow</b>
+      <li>Check <code>Deny</code> directives; if one or more apply, <b>deny</b>
+      <li>Otherwise, <b>allow</b>
+    </ul>
+  </li>
+
+  <p>
+  <li><em>Order deny,allow</em><br>
+    <ul>
+      <li>Check <code>Deny</code> directives; if one or more apply, <b>deny</b>
+      <li>Check <code>Allow</code> directives; if one or more apply, <b>allow</b>
+      <li>Otherwise, <b>deny</b>
+    </ul>
+  </li>
+</ul>
+
+<p>
+See also: <a href="#Allow"><code>Allow</code></a>,
+<a href="#Deny"><code>Deny</code></a>, <a href="#Limit"><code>&lt;Limit&gt;</code></a><br>
 
 <p>
 <hr>
