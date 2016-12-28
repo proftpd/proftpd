@@ -234,7 +234,7 @@ static int af_check_file(pool *p, const char *name, const char *path,
   /* Check the parent directory of this file.  If the parent directory
    * is world-writable, that too is insecure.
    */
-  res = af_check_parent_dir(p, name, path);
+  res = af_check_parent_dir(p, name, orig_path);
   if (res < 0) {
     return -1;
   }
