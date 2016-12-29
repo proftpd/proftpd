@@ -86,6 +86,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TransferLog">TransferLog</a>
   <li><a href="#Umask">Umask</a>
   <li><a href="#UnsetEnv">UnsetEnv</a>
+  <li><a href="#UseIPv6">UseIPv6</a>
   <li><a href="#User">User</a>
   <li><a href="#UseReverseDNS">UseReverseDNS</a>
   <li><a href="#UserOwner">UserOwner</a>
@@ -222,7 +223,7 @@ See also: <a href="#AllowUser"><code>AllowUser</code></a>,
 <h2><a name="AllowFilter">AllowFilter</a></h2>
 <strong>Syntax:</strong> AllowFilter <em>pattern [flags]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.0pre7 and later
 
@@ -270,7 +271,7 @@ See also: <a href="#DenyFilter"><code>DenyFilter</code></a>, <a href="#PathAllow
 <h2><a name="AllowForeignAddress">AllowForeignAddress</a></h2>
 <strong>Syntax:</strong> AllowForeignAddress <em>on|off</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.1.7 and later
 
@@ -347,7 +348,7 @@ See also: <a href="#AllowUser"><code>AllowUser</code></a>,
 <h2><a name="AllowOverride">AllowOverride</a></h2>
 <strong>Syntax:</strong> AllowOverride <em>on|off</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
@@ -481,7 +482,7 @@ The following is an example of a typical anonymous FTP configuration:
 <h2><a name="AuthOrder">AuthOrder</a></h2>
 <strong>Syntax:</strong> AuthOrder <em>module-name1 ...</em><br>
 <strong>Default:</strong> mod_auth_file.c mod_auth_unix.c<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.8rc1 and later
 
@@ -530,7 +531,7 @@ to ensure that the login fails if the PAM check fails.
 <h2><a name="CommandBufferSize">CommandBufferSize</a></h2>
 <strong>Syntax:</strong> CommandBufferSize <em>size</em><br>
 <strong>Default:</strong> CommandBufferSize 512<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.0pre7 and later
 
@@ -546,7 +547,7 @@ attacks.
 <h2><a name="DebugLevel">DebugLevel</a></h2>
 <strong>Syntax:</strong> DebugLevel <em>level</em><br>
 <strong>Default:</strong> DebugLevel 0<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.8rc1 and later
 
@@ -565,7 +566,7 @@ greater detail.
 <h2><a name="DefaultAddress">DefaultAddress</a></h2>
 <strong>Syntax:</strong> DefaultAddress <em>ip-address|dns-name</em> <em>[ip-address|dns-name ...]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
@@ -613,7 +614,7 @@ See also: <a href="VirtualHost"><code>&lt;VirtualHost&gt;</code></a>
 <h2><a name="DefaultServer">DefaultServer</a></h2>
 <strong>Syntax:</strong> DefaultServer <em>on|off</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
 
@@ -742,7 +743,7 @@ See also: <a href="#AllowUser"><code>AllowUser</code></a>,
 <h2><a name="DenyFilter">DenyFilter</a></h2>
 <strong>Syntax:</strong> DenyFilter <em>pattern [flags]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>,<code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>,<code>&lt;Directory&gt;</code>, .ftpaccess<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.0pre7 and later
 
@@ -886,7 +887,7 @@ See also: <a href="#AllowGroup"><code>AllowGroup</code></a>,
 <h2><a name="Directory">&lt;Directory&gt;</a></h2>
 <strong>Syntax:</strong> &lt;Directory <em>path</em>&gt;<br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
 
@@ -950,7 +951,7 @@ examples, can be found in the
 <h2><a name="DisplayChdir">DisplayChdir</a></h2>
 <strong>Syntax:</strong> DisplayChdir <em>filename ["on"|"off"]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.3.1rc1 and later
 
@@ -982,7 +983,7 @@ See also: <a href="#DisplayConnect"><code>DisplayConnect</code></a>, <a href="#D
 <h2><a name="DisplayConnect">DisplayConnect</a></h2>
 <strong>Syntax:</strong> DisplayConnect <em>filename</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.0pre2 and later
 
@@ -1009,7 +1010,7 @@ See also: <a href="#DisplayChdir"><code>DisplayChdir</code></a>,
 <h2><a name="DisplayQuit">DisplayQuit</a></h2>
 <strong>Syntax:</strong> DisplayQuit <em>filename</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.0pre8 and later
 
@@ -2136,7 +2137,7 @@ dedicated to processing all requests from the newly connected client.
 <h2><a name="SetEnv">SetEnv</a></h2>
 <strong>Syntax:</strong> SetEnv <em>name value</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;Virtual&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;Virtual&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.10rc1 and later
 
@@ -2645,7 +2646,7 @@ See the <a href="../howto/Tracing.html">Tracing</a> howto for more information.
 <h2><a name="TraceOptions">TraceOptions</a></h2>
 <strong>Syntax:</strong> TraceOptions <em>opt1 ... optN</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.3.4rc2 and later
 
@@ -2676,7 +2677,7 @@ to disable the option, use a '-' (minus) character prefix.  For example:
 <h2><a name="TransferLog">TransferLog</a></h2>
 <strong>Syntax:</strong> TransferLog <em>path</em>|"none"<br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;<br>
+<strong>Context:</strong> server config;, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.1.4 and later
 
@@ -2698,7 +2699,7 @@ See also: <a href="mod_log.html#ExtendedLog"><code>ExtendedLog</code></a>,
 <h2><a name="Umask">Umask</a></h2>
 <strong>Syntax:</strong> Umask <em>file-umask [dir-umask]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;, .ftpaccess<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;, .ftpaccess<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
 
@@ -2732,7 +2733,7 @@ umasks in greater detail.
 <h2><a name="UnsetEnv">UnsetEnv</a></h2>
 <strong>Syntax:</strong> UnsetEnv <em>name</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;Virtual&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;Virtual&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.10rc1 and later
 
@@ -2756,10 +2757,37 @@ See also: <a href="#SetEnv"><code>SetEnv</code></a>
 
 <p>
 <hr>
+<h2><a name="UseIPv6">UseIPv6</a></h2>
+<strong>Syntax:</strong> UseIPv6 <em>on|off</em><br>
+<strong>Default:</strong> UseIPv6 on<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>UseIPv6</code> directive enables/disables the use of IPv6.
+
+<p>
+IPv6 support can also be controlled via command-line options:
+<ul>
+  <li><em><code>-4</code>, <code>--ipv4</code></em><br>
+    <p>
+    Use/support IPv4 functionality only
+  </li>
+
+  <p>
+  <li><em><code>-6</code>, <code>--ipv6</code></em><br>
+    <p>
+    Use/support IPv4 <b>and</b> IPv6 functionality
+  </li>
+</ul>
+
+<p>
+<hr>
 <h2><a name="User">User</a></h2>
 <strong>Syntax:</strong> User <em>name</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
 
@@ -2791,7 +2819,7 @@ the corresponding UID/GID after authentication.
 <h2><a name="UseReverseDNS">UseReverseDNS</a></h2>
 <strong>Syntax:</strong> UseReverseDNS <em>on|off</em><br>
 <strong>Default:</strong> UseReverseDNS on<br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.1.7 and later
 
@@ -2851,7 +2879,7 @@ See also: <a href="#GroupOwner"><code>GroupOwner</code></a>
 <h2><a name="VirtualHost">&lt;VirtualHost&gt;</a></h2>
 <strong>Syntax:</strong> &lt;VirtualHost <em>ip-address|dns-name [ip-address|dns-name ...]</em>&gt;<br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
 
