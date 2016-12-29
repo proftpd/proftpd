@@ -45,9 +45,11 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#Global">&lt;Global&gt;</a>
   <li><a href="#Group">Group</a>
   <li><a href="#GroupOwner">GroupOwner</a>
+  <li><a href="#HideFiles">HideFiles</a>
   <li><a href="#HideGroup">HideGroup</a>
   <li><a href="#HideNoAccess">HideNoAccess</a>
   <li><a href="#HideUser">HideUser</a>
+  <li><a href="#IgnoreHidden">IgnoreHidden</a>
   <li><a href="#Include">Include</a>
   <li><a href="#IncludeOptions">IncludeOptions</a>
   <li><a href="#Limit">&lt;Limit&gt;</a>
@@ -1168,6 +1170,51 @@ of the newly created file to be that of the logged-in user, use:
 <p>
 See also: <a href="#UserOwner"><code>UserOwner</code></a>
 
+<p>
+<hr>
+<h2><a name="HideFiles">HideFiles</a></h2>
+<strong>Syntax:</strong> HideFiles <em>[!]regex|"none"]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Directory&gt;</code>, .ftpaccess<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+The <code>HideFiles</code> directive configures a <code>&lt;Directory&gt;</code>
+section to hide all directory entries, <i>e.g.</i> its files and
+sub-directories, that match the given <em>regex</em>.  These files can still
+be operated on by other FTP commands (<code>DELE</code>, <code>RETR</code>,
+<i>etc</i>), as constrained by any applicable <code>&lt;Limit&gt;</code>
+sections; this can be modified using the <code>IgnoreHidden</code> directive.
+
+<p>
+Since <code>&lt;Directory&gt;</code> configurations are inherited by
+sub-directories, the <em>none</em> keyword can be used to disable any
+inherited file hiding within a sub-directory.  This usually occurs through the
+use of a <code>.ftpaccess</code> file.
+
+<p>
+Examples:
+<pre>
+  &lt;Directory /&gt;
+    # Hide configuration and passwd files from view
+    HideFiles &quot;(\\.conf|passwd)$&quot;
+
+    # ...or the same regex, without the quotes
+    HideFiles (\.conf|passwd)$
+
+    # Using the ! prefix to "invert" the regular expression matching,
+    # allow <b>only</b> .txt and .html files to be seen
+    HideFiles !(\.txt|\.html)$
+  &lt;/Directory&gt;
+</pre>
+
+<p>
+See also: <a href="#HideGroup"><code>HideGroup</code></a>,
+<a href="#HideNoAccess"><code>HideNoAccess</code></a>,
+<a href="#HideUser"><code>HideUser</code></a>
+
+<p>
 <hr>
 <h2><a name="HideGroup">HideGroup</a></h2>
 <strong>Syntax:</strong> HideGroup <em>group-name</em><br>
@@ -1275,6 +1322,54 @@ Examples:
 <p>
 See also: <a href="#HideGroup"><code>HideGroup</code></a>, <a href="#HideNoAccess"><code>HideNoAccess</code></a>, <a href="#IgnoreHidden"><code>IgnoreHidden</code></a>
 
+<p>
+<hr>
+<h2><a name="IgnoreHidden">IgnoreHidden</a></h2>
+<strong>Syntax:</strong> IgnoreHidden <em>on|off</em><br>
+<strong>Default:</strong> IgnoreHidden off<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>IgnoreHidden</code> directive tells ProFTPD to <em>ignore</em>
+files/directories that are hidden by other directives, such as
+<code>HideFiles</code>, <code>HideUser</code>, and <code>HideGroup</code>.
+
+<p>
+Normally, files marked as "hidden" by <code>HideFiles</code>,
+<code>HideUser</code> or <code>HideGroup</code> <i>can</i> be operated on by
+all FTP commands (assuming Unix file permissions allow access); these files
+simplly do not appear in directory listings.  Additionally, even when normal
+file system permissions <i>deny</i> access, ProFTPD returns a
+"Permission denied" error to the client, indicating that the requested
+file/directory <i>does</i> exist, even if the client cannot use it.  The
+<code>IgnoreHidden</code> directive configures a <code>&lt;Limit&gt;</code>
+section so as to completely <em>ignore</em> any hidden directory entries for
+the set of FTP commands encompassed by the <code>&lt;Limit&gt;</code>.  This
+has the effect of returning an error similar to "No such file or directory"
+when the client attempts to use the command upon a hidden directory or file.
+
+<p>
+Example:
+<pre>
+  &lt;Directory /&gt;
+    # Hide files/directories owned by root
+    HideUser root
+
+    &lt;Limit DIRS&gt;
+      # Return "No such file or directory" for hidden files/directories
+      IgnoreHidden on
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+
+<p>
+See also: <a href="#HideFiles"><code>HideFiles</code></a>,
+<a href="#HideGroup"><code>HideGroup</code></a>,
+<a href="#HideUser"><code>HideUser</code></a>
+
+<p>
 <hr>
 <h2><a name="Include">Include</a></h2>
 <strong>Syntax:</strong> Include <em>path|pattern</em><br>
