@@ -11,6 +11,7 @@
 </center>
 <hr><br>
 
+<p>
 This module is contained in the <code>mod_ctrls.c</code> and
 <code>mod_ctrls.h</code> files for ProFTPD 1.2, and is not compiled by default.
 Installation instructions are discussed <a href="#Installation">here</a>.
@@ -62,7 +63,7 @@ questions, concerns, or suggestions regarding this module.
 
 <p>
 <hr>
-<h2><a name="ControlsACLs">ControlsACLs</a></h2>
+<h3><a name="ControlsACLs">ControlsACLs</a></h3>
 <strong>Syntax:</strong> ControlsACLs <em>actions|all allow|deny user|group list</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -86,7 +87,7 @@ ACLs for different control actions, and for both users and groups.
 
 <p>
 <hr>
-<h2><a name="ControlsAuthFreshness">ControlsAuthFreshness</a></h2>
+<h3><a name="ControlsAuthFreshness">ControlsAuthFreshness</a></h3>
 <strong>Syntax:</strong> ControlsAuthFreshness <em>seconds</em><br>
 <strong>Default:</strong> ControlsAuthFreshness 10<br>
 <strong>Context:</strong> server config<br>
@@ -100,7 +101,7 @@ is older than the configured age, the connection is denied.
 
 <p>
 <hr>
-<h2><a name="ControlsEngine">ControlsEngine</a></h2>
+<h3><a name="ControlsEngine">ControlsEngine</a></h3>
 <strong>Syntax:</strong> ControlsEngine <em>on|off</em><br>
 <strong>Default:</strong> ControlsEngine on<br>
 <strong>Context:</strong> server config<br>
@@ -114,7 +115,7 @@ requests.
 
 <p>
 <hr>
-<h2><a name="ControlsInterval">ControlsInterval</a></h2>
+<h3><a name="ControlsInterval">ControlsInterval</a></h3>
 <strong>Syntax:</strong> ControlsInterval <em>seconds</em><br>
 <strong>Default:</strong> ControlsInterval 10<br>
 <strong>Context:</strong> server config<br>
@@ -129,7 +130,7 @@ must be a positive number.
 
 <p>
 <hr>
-<h2><a name="ControlsLog">ControlsLog</a></h2>
+<h3><a name="ControlsLog">ControlsLog</a></h3>
 <strong>Syntax:</strong> ControlsLog <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -143,7 +144,7 @@ configured <em>file</em> must be an absolute path.
 
 <p>
 <hr>
-<h2><a name="ControlsMaxClients">ControlsMaxClients</a></h2>
+<h3><a name="ControlsMaxClients">ControlsMaxClients</a></h3>
 <strong>Syntax:</strong> ControlsMaxClients <em>number</em><br>
 <strong>Default:</strong> ControlsMaxClients 5<br>
 <strong>Context:</strong> server config<br>
@@ -157,7 +158,7 @@ checks the socket.  <em>number</em> must be a positive number.
 
 <p>
 <hr>
-<h2><a name="ControlsSocket">ControlsSocket</a></h2>
+<h3><a name="ControlsSocket">ControlsSocket</a></h3>
 <strong>Syntax:</strong> ControlsSocket <em>file</em><br>
 <strong>Default:</strong> ControlsSocket var/run/proftpd.sock<br>
 <strong>Context:</strong> server config<br>
@@ -172,7 +173,7 @@ option will also need to be used.
 
 <p>
 <hr>
-<h2><a name="ControlsSocketACL">ControlsSocketACL</a></h2>
+<h3><a name="ControlsSocketACL">ControlsSocketACL</a></h3>
 <strong>Syntax:</strong> ControlsSocketACL <em>allow|deny user|group list</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -196,7 +197,7 @@ and one using &quot;group&quot; may be used simultaneously.
 
 <p>
 <hr>
-<h2><a name="ControlsSocketOwner">ControlsSocketOwner</a></h2>
+<h3><a name="ControlsSocketOwner">ControlsSocketOwner</a></h3>
 <strong>Syntax:</strong> ControlsSocketOwner <em>user group</em><br>
 <strong>Default:</strong> ControlsSocketOwner <em>root root</em><br>
 <strong>Context:</strong> server config<br>
@@ -215,7 +216,7 @@ access control.
 
 <p>
 <hr>
-<h2><a name="help"><code>help</code></a></h2>
+<h3><a name="help"><code>help</code></a></h3>
 <strong>Syntax:</strong> ftpdctl help<br>
 <strong>Purpose:</strong> Display a sorted list of active controls and their descriptions
 
@@ -225,7 +226,7 @@ active control actions, and their descriptions.
 
 <p>
 <hr>
-<h2><a name="insctrl"><code>insctrl</code></a></h2>
+<h3><a name="insctrl"><code>insctrl</code></a></h3>
 <strong>Syntax:</strong> ftpdctl insctrl <em>action|all [module]</em><br>
 <strong>Purpose:</strong> Enable control actions
 
@@ -245,7 +246,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="lsctrl"><code>lsctrl</code></a></h2>
+<h3><a name="lsctrl"><code>lsctrl</code></a></h3>
 <strong>Syntax:</strong> ftpdctl lsctrl<br>
 <strong>Purpose:</strong> Display a sorted list of all active control actions
 
@@ -256,7 +257,7 @@ the module that implements that action.
 
 <p>
 <hr>
-<h2><a name="rmctrl"><code>rmctrl</code></a></h2>
+<h3><a name="rmctrl"><code>rmctrl</code></a></h3>
 <strong>Syntax:</strong> ftpdctl rmctrl <em>action|all [module]</em><br>
 <strong>Purpose:</strong> Disable control actions
 

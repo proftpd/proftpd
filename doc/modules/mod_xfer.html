@@ -39,7 +39,7 @@ file transfers.
 
 <p>
 <hr>
-<h2><a name="AllowOverwrite">AllowOverwrite</a></h2>
+<h3><a name="AllowOverwrite">AllowOverwrite</a></h3>
 <strong>Syntax:</strong> AllowOverwrite <em>on|off</em><br>
 <strong>Default:</strong> <code>AllowOverwrite off</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -53,7 +53,7 @@ existing files.
 
 <p>
 <hr>
-<h2><a name="AllowRetrieveRestart">AllowRetrieveRestart</a></h2>
+<h3><a name="AllowRetrieveRestart">AllowRetrieveRestart</a></h3>
 <strong>Syntax:</strong> AllowRetrieveRestart <em>on|off</em><br>
 <strong>Default:</strong> <code>AllowRetrieveRestart on</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -72,7 +72,7 @@ See also: <a href="#AllowStoreRestart"><code>AllowStoreRestart</code></a>
 
 <p>
 <hr>
-<h2><a name="AllowStoreRestart">AllowStoreRestart</a></h2>
+<h3><a name="AllowStoreRestart">AllowStoreRestart</a></h3>
 <strong>Syntax:</strong> AllowStoreRestart <em>on|off</em><br>
 <strong>Default:</strong> <code>AllowStoreRestart on</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -99,7 +99,7 @@ See also: <a href="#AllowRetrieveRestart"><code>AllowRetrieveRestart</code></a>,
 
 <p>
 <hr>
-<h2><a name="DefaultTransferMode">DefaultTransferMode</a></h2>
+<h3><a name="DefaultTransferMode">DefaultTransferMode</a></h3>
 <strong>Syntax:</strong> DefaultTransferMode <em>ascii|binary</em><br>
 <strong>Default:</strong> <code>DefaultTransferMode ascii</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -116,7 +116,7 @@ and <code>LF</code> translated to <code>CRLF</code> in <em>downloaded</em> data.
 
 <p>
 <hr>
-<h2><a name="DeleteAbortedStores">DeleteAbortedStores</a></h2>
+<h3><a name="DeleteAbortedStores">DeleteAbortedStores</a></h3>
 <strong>Syntax:</strong> DeleteAbortedStores <em>on|off</em><br>
 <strong>Default:</strong> <code>DeleteAbortedStores off</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -138,7 +138,7 @@ See also: <a href="#HiddenStores"><code>HiddenStores</code></a>
 
 <p>
 <hr>
-<h2><a name="HiddenStores">HiddenStores</a></h2>
+<h3><a name="HiddenStores">HiddenStores</a></h3>
 <strong>Syntax:</strong> HiddenStores <em>on|off|prefix [suffix]</em><br>
 <strong>Default:</strong> <code>HiddenStores off</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
@@ -217,7 +217,7 @@ See also: <a href="#AllowStoreRestart"><code>AllowStoreRestart</code></a>,
 
 <p>
 <hr>
-<h2><a name="MaxRetrieveFileSize">MaxRetrieveFileSize</a></h2>
+<h3><a name="MaxRetrieveFileSize">MaxRetrieveFileSize</a></h3>
 <strong>Syntax:</strong> MaxRetrieveFileSize <em>[number|"*" units ["user"|"group"|"class" expression]]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -265,7 +265,7 @@ See also: <a href="#MaxStoreFileSize"><code>MaxStoreFileSize</code></a>
 
 <p>
 <hr>
-<h2><a name="MaxStoreFileSize">MaxStoreFileSize</a></h2>
+<h3><a name="MaxStoreFileSize">MaxStoreFileSize</a></h3>
 <strong>Syntax:</strong> MaxStoreFileSize <em>[number|"*" units ["user"|"group"|"class" expression]]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -321,7 +321,7 @@ See also: <a href="#MaxRetrieveFileSize"><code>MaxRetrieveFileSize</code></a>
 
 <p>
 <hr>
-<h2><a name="MaxTransfersPerHost">MaxTransfersPerHost</a></h2>
+<h3><a name="MaxTransfersPerHost">MaxTransfersPerHost</a></h3>
 <strong>Syntax:</strong> MaxTransfersPerHost <em>cmd-list count [message]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -360,7 +360,7 @@ See also: <a href="#MaxTransfersPerUser"><code>MaxTransfersPerUser</code></a>
 
 <p>
 <hr>
-<h2><a name="MaxTransfersPerUser">MaxTransfersPerUser</a></h2>
+<h3><a name="MaxTransfersPerUser">MaxTransfersPerUser</a></h3>
 <strong>Syntax:</strong> MaxTransfersPerUser <em>cmd-list count [message]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -399,7 +399,7 @@ See also: <a href="#MaxTransfersPerHost"><code>MaxTransfersPerHost</code></a>
 
 <p>
 <hr>
-<h2><a name="StoreUniquePrefix">StoreUniquePrefix</a></h2>
+<h3><a name="StoreUniquePrefix">StoreUniquePrefix</a></h3>
 <strong>Syntax:</strong> StoreUniquePrefix <em>prefix</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, <code>.ftpaccess</code><br>
@@ -415,7 +415,7 @@ value.
 
 <p>
 <hr>
-<h2><a name="TimeoutNoTransfer">TimeoutNoTransfer</a></h2>
+<h3><a name="TimeoutNoTransfer">TimeoutNoTransfer</a></h3>
 <strong>Syntax:</strong> TimeoutNoTransfer <em>seconds</em><br>
 <strong>Default:</strong> 300 seconds<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -436,7 +436,7 @@ See also: <a href="mod_core.html#TimeoutIdle"><code>TimeoutIdle</code></a>,
 
 <p>
 <hr>
-<h2><a name="TimeoutStalled">TimeoutStalled</a></h2>
+<h3><a name="TimeoutStalled">TimeoutStalled</a></h3>
 <strong>Syntax:</strong> TimeoutStalled <em>seconds</em><br>
 <strong>Default:</strong> 3600 seconds<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -453,7 +453,7 @@ The maximum allowed <em>seconds</em> value is 65535 (108 minutes).
 
 <p>
 <hr>
-<h2><a name="TransferOptions">TransferOptions</a></h2>
+<h3><a name="TransferOptions">TransferOptions</a></h3>
 <strong>Syntax:</strong> TransferOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -483,7 +483,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="TransferPriority">TransferPriority</a></h2>
+<h3><a name="TransferPriority">TransferPriority</a></h3>
 <strong>Syntax:</strong> TransferPriority <em>cmd-list "low"|"medium"|"high"|number</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -517,7 +517,7 @@ fine:
 
 <p>
 <hr>
-<h2><a name="TransferRate">TransferRate</a></h2>
+<h3><a name="TransferRate">TransferRate</a></h3>
 <strong>Syntax:</strong> TransferRate <em>cmd-list kbytes-per-sec[:free-bytes]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
@@ -565,7 +565,7 @@ Here are some examples:
 
 <p>
 <hr>
-<h2><a name="UseSendfile">UseSendfile</a></h2>
+<h3><a name="UseSendfile">UseSendfile</a></h3>
 <strong>Syntax:</strong> UseSendfile <em>on|off|len units|percentage</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>

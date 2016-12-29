@@ -11,6 +11,7 @@
 </center>
 <hr><br>
 
+<p>
 This module is contained in the <code>mod_log.c</code> file for
 ProFTPD 1.3.<i>x</i>, and is compiled by default.
 
@@ -24,7 +25,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 </ul>
 
 <hr>
-<h2><a name="AllowLogSymlinks">AllowLogSymlinks</a></h2>
+<h3><a name="AllowLogSymlinks">AllowLogSymlinks</a></h3>
 <strong>Syntax:</strong> AllowLogSymlinks <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -49,7 +50,7 @@ warned.</i>
 
 <p>
 <hr>
-<h2><a name="ExtendedLog">ExtendedLog</a></h2>
+<h3><a name="ExtendedLog">ExtendedLog</a></h3>
 <strong>Syntax:</strong> ExtendedLog <em>path [cmd-classes [format-nickname]]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -179,7 +180,7 @@ See also: <a href="#AllowLogSymlinks"><code>AllowLogSymlinks</code></a>,
 
 <p>
 <hr>
-<h2><a name="LogFormat">LogFormat</a></h2>
+<h3><a name="LogFormat">LogFormat</a></h3>
 <strong>Syntax:</strong> LogFormat <em>format-nickname format-string</em><br>
 <strong>Default:</strong> LogFormat default "%h %l %u %t \"%r\" %s %b"<br>
 <strong>Context:</strong> server config<br>
@@ -467,7 +468,7 @@ See also: <a href="#ExtendedLog"><code>ExtendedLog</code></a>,
 
 <p>
 <hr>
-<h2><a name="ServerLog">ServerLog</a></h2>
+<h3><a name="ServerLog">ServerLog</a></h3>
 <strong>Syntax:</strong> ServerLog <em>path</em>|"none"<br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -486,7 +487,7 @@ this can be used to override a global <code>ServerLog</code> setting.
 
 <p>
 <hr>
-<h2><a name="SystemLog">SystemLog</a></h2>
+<h3><a name="SystemLog">SystemLog</a></h3>
 <strong>Syntax:</strong> SystemLog <em>path</em>|"none"<br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
