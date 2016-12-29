@@ -56,7 +56,7 @@ questions, concerns, or suggestions regarding this module.
 
 <p>
 <hr>
-<h2><a name="AdminControlsACLs">AdminControlsACLs</a></h2>
+<h3><a name="AdminControlsACLs">AdminControlsACLs</a></h3>
 <strong>Syntax:</strong> AdminControlsACLs <em>actions|all allow|deny user|group list</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -80,7 +80,7 @@ configure ACLs for different control actions, and for both users and groups.
 
 <p>
 <hr>
-<h2><a name="AdminControlsEngine">AdminControlsEngine</a></h2>
+<h3><a name="AdminControlsEngine">AdminControlsEngine</a></h3>
 <strong>Syntax:</strong> AdminControlsEngine <em>on|off|actions</em><br>
 <strong>Default:</strong> None<br> 
 <strong>Context:</strong> server config<br>
@@ -105,7 +105,7 @@ the module's control actions are registered.
 
 <p>
 <hr>
-<h2><a name="config"><code>config</code></a></h2>
+<h3><a name="config"><code>config</code></a></h3>
 <strong>Syntax:</strong> ftpdctl config set|remove <em>ip-address|dns-name[:port] directive ...</em><br>
 <strong>Purpose:</strong> Update configuration of a virtual server
 
@@ -148,7 +148,7 @@ name is needed:
 
 <p>
 <hr>
-<h2><a name="debug"><code>debug</code></a></h2>
+<h3><a name="debug"><code>debug</code></a></h3>
 <strong>Syntax:</strong> ftpdctl debug <em>[level [number]]|memory|config</em><br>
 <strong>Purpose:</strong> Obtain debug information from the running daemon
 
@@ -192,7 +192,7 @@ this control action.
 
 <p>
 <hr>
-<h2><a name="dns"><code>dns</code></a></h2>
+<h3><a name="dns"><code>dns</code></a></h3>
 <strong>Syntax:</strong> ftpdctl dns <em>on|off</em><br>
 <strong>Purpose:</strong> DNS configuration
 
@@ -216,7 +216,7 @@ clearing any cached DNS lookup information:
 
 <p>
 <hr>
-<h2><a name="down"><code>down</code></a></h2>
+<h3><a name="down"><code>down</code></a></h3>
 <strong>Syntax:</strong> ftpdctl down <em>ip-address|dns-name[#port]|&quot;all&quot;</em><br>
 <strong>Purpose:</strong> Turn down a virtual server
 
@@ -238,7 +238,7 @@ Current sessions are not affected.
 
 <p>
 <hr>
-<h2><a name="get"><code>get</code></a></h2>
+<h3><a name="get"><code>get</code></a></h3>
 <strong>Syntax:</strong> ftpdctl get <em>&quot;config&quot;|&quot;directives&quot;</em><br>
 <strong>Purpose:</strong> Obtain configuration information
 
@@ -259,7 +259,7 @@ which handles the corresponding directive.
 
 <p>
 <hr>
-<h2><a name="kick"><code>kick</code></a></h2>
+<h3><a name="kick"><code>kick</code></a></h3>
 <strong>Syntax:</strong> ftpdctl kick <em>[class name]|[host dns-name|ip-address][user name]</em><br>
 <strong>Purpose:</strong> Kick a currently connected class, host or user from the daemon
 
@@ -293,7 +293,7 @@ rather than kicking all of them off.  To do this, use:
 
 <p>
 <hr>
-<h2><a name="restart"><code>restart</code></a></h2>
+<h3><a name="restart"><code>restart</code></a></h3>
 <strong>Syntax:</strong> ftpdctl restart<br>
 <strong>Purpose:</strong> Restart the daemon
 
@@ -317,7 +317,7 @@ how many times it has been restarted:
 
 <p>
 <hr>
-<h2><a name="scoreboard"><code>scoreboard</code></a></h2>
+<h3><a name="scoreboard"><code>scoreboard</code></a></h3>
 <strong>Syntax:</strong> ftpdctl scoreboard scrub<br>
 <strong>Purpose:</strong> Scrubs the ScoreboardFile for dead processes
 
@@ -334,7 +334,7 @@ processes which may not have exited cleanly.
 
 <p>
 <hr>
-<h2><a name="shutdown"><code>shutdown</code></a></h2>
+<h3><a name="shutdown"><code>shutdown</code></a></h3>
 <strong>Syntax:</strong> ftpdctl shutdown <em>[&quot;graceful&quot; seconds]</em><br>
 <strong>Purpose:</strong> Stop the daemon
 
@@ -358,7 +358,7 @@ sessions to end before shutting down completely.
 
 <p>
 <hr>
-<h2><a name="status"><code>status</code></a></h2>
+<h3><a name="status"><code>status</code></a></h3>
 <strong>Syntax:</strong> ftpdctl status <em>ip-address|dns-name[#port]|&quot;all&quot;</em><br>
 <strong>Purpose:</strong> Display the status of virtual servers
 
@@ -375,7 +375,7 @@ displayed.
 
 <p>
 <hr>
-<h2><a name="trace"><code>trace</code></a></h2>
+<h3><a name="trace"><code>trace</code></a></h3>
 <strong>Syntax:</strong> ftpdctl trace <em>channel:level|&quot;info&quot;</em><br>
 <strong>Purpose:</strong> Configure trace channel log levels
 
@@ -424,7 +424,7 @@ the list of current trace channels and their log levels, <i>e.g.</i>:
 
 <p>
 <hr>
-<h2><a name="up"><code>up</code></a></h2>
+<h3><a name="up"><code>up</code></a></h3>
 <strong>Syntax:</strong> ftpdctl up <em>ip-address|dns-name[#port]</em><br>
 <strong>Purpose:</strong> Turn up a &quot;downed&quot; virtual server
 
@@ -475,4 +475,3 @@ your existing server:
 
 </body>
 </html>
-

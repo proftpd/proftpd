@@ -83,7 +83,7 @@ One of these ODBC libraries must be installed prior to using
 <code>mod_sql_odbc</code>.
 
 <p>
-Follow the usual steps for using contrib modules in proftpd, making sure to
+Follow the usual steps for using contrib modules in ProFTPD, making sure to
 list <code>mod_sql</code>.  Note that you will need to use the
 <code>LIBS</code> environment variable for indicating which ODBC library
 to link against.
@@ -91,23 +91,23 @@ to link against.
 <p>
 For example, if you wish to use the unixODBC library, you would use:
 <pre>
-  ./configure LIBS=-lodbc --with-modules=mod_sql:mod_sql_odbc ...
-  make
-  make install
+  $ ./configure LIBS=-lodbc --with-modules=mod_sql:mod_sql_odbc ...
+  $ make
+  $ make install
 </pre>
 On the other hand, for using the iODBC library, the invocation is slightly
 different, specifying a different library name:
 <pre>
-  ./configure LIBS=-liodbc --with-modules=mod_sql:mod_sql_odbc ...
-  make
-  make install
+  $ ./configure LIBS=-liodbc --with-modules=mod_sql:mod_sql_odbc ...
+  $ make
+  $ make install
 </pre>
 
 <p>
 You may need to specify the location of the ODBC header and library files in
 your <code>configure</code> command, <i>e.g.</i>:
 <pre>
-  ./configure \
+  $ ./configure \
     LD_LIBRARY_PATH=/usr/local/odbc/lib \
     LDFLAGS=-L/usr/local/odbc/lib \
     LIBS=-lodbc \
@@ -270,6 +270,7 @@ configuration directives to set the environment variables directly in
 the <code>proftpd.conf</code> file, which makes configuration more
 centralized.
 
+<p>
 Example configuration using <code>SetEnv</code>:
 <pre>
   &lt;IfModule mod_sql_odbc.c&gt;
@@ -277,7 +278,6 @@ Example configuration using <code>SetEnv</code>:
     SetEnv ODBCINI <i>/path/to/</i><code>odbc.ini</code></i>
   &lt;/IfModule&gt;
 </pre>
-
 Please contact the author directly with any questions or comments.
 
 <p>
@@ -286,8 +286,7 @@ Please contact the author directly with any questions or comments.
 &copy; Copyright 2003-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
 <hr>
+
 </body>
 </html>
-

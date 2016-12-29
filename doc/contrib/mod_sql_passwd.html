@@ -72,10 +72,10 @@ questions, concerns, or suggestions regarding this module.
 </ul>
 
 <hr>
-<h2><a name="SQLPasswordCost">SQLPasswordCost</a></h2>
+<h3><a name="SQLPasswordCost">SQLPasswordCost</a></h3>
 <strong>Syntax:</strong> SQLPasswordCost <em>interactive|sensitive</em><br>
 <strong>Default:</strong> <em>interactive</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><em></em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.6rc3 and later
 
@@ -114,10 +114,10 @@ cost values are:
 </ul>
 
 <hr>
-<h2><a name="SQLPasswordEncoding">SQLPasswordEncoding</a></h2>
+<h3><a name="SQLPasswordEncoding">SQLPasswordEncoding</a></h3>
 <strong>Syntax:</strong> SQLPasswordEncoding <em>encoding</em><br>
 <strong>Default:</strong> <em>hex</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><em></em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.3rc2 and later
 
@@ -139,10 +139,10 @@ If no <code>SQLPasswordEncoding</code> directive is configured,
 <code>mod_sql_passwd</code> will use "hex" by default.
 
 <hr>
-<h2><a name="SQLPasswordEngine">SQLPasswordEngine</a></h2>
+<h3><a name="SQLPasswordEngine">SQLPasswordEngine</a></h3>
 <strong>Syntax:</strong> SQLPasswordEngine <em>on|off</em><br>
 <strong>Default:</strong> <em>off</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.3rc2 and later
 
@@ -151,10 +151,10 @@ The <code>SQLPasswordEngine</code> directive enables or disables the module's
 registered <code>SQLAuthType</code> handlers.
 
 <hr>
-<h2><a name="SQLPasswordOptions">SQLPasswordOptions</a></h2>
+<h3><a name="SQLPasswordOptions">SQLPasswordOptions</a></h3>
 <strong>Syntax:</strong> SQLPasswordOptions <em>opts</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><em></em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.4rc2 and later
 
@@ -186,10 +186,10 @@ description of how <code>mod_sql_passwd</code> operates on the password and
 salt data.
 
 <hr>
-<h2><a name="SQLPasswordPBKDF2">SQLPasswordPBKDF2</a></h2>
+<h3><a name="SQLPasswordPBKDF2">SQLPasswordPBKDF2</a></h3>
 <strong>Syntax:</strong> SQLPasswordPBKDF2 <em>digest</em> <em>iterations</em> <em>length</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><em></em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.5rc3 and later
 
@@ -241,10 +241,10 @@ iteration count, and output length <i>on a per-user basis</i>.  For example:
 </pre>
 
 <hr>
-<h2><a name="SQLPasswordRounds">SQLPasswordRounds</a></h2>
+<h3><a name="SQLPasswordRounds">SQLPasswordRounds</a></h3>
 <strong>Syntax:</strong> SQLPasswordRounds <em>count</em><br>
 <strong>Default:</strong> <em>1</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.4rc2 and later
 
@@ -259,10 +259,10 @@ description of how <code>mod_sql_passwd</code> operates on the password and
 salt data.
 
 <hr>
-<h2><a name="SQLPasswordSaltEncoding">SQLPasswordSaltEncoding</a></h2>
+<h3><a name="SQLPasswordSaltEncoding">SQLPasswordSaltEncoding</a></h3>
 <strong>Syntax:</strong> SQLPasswordSaltEncoding <em>encoding</em><br>
 <strong>Default:</strong> <em>none</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><em></em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.6rc1 and later
 
@@ -285,10 +285,10 @@ If no <code>SQLPasswordSaltEncoding</code> directive is configured,
 <code>mod_sql_passwd</code> will use "none" by default.
 
 <hr>
-<h2><a name="SQLPasswordSaltFile">SQLPasswordSaltFile</a></h2>
+<h3><a name="SQLPasswordSaltFile">SQLPasswordSaltFile</a></h3>
 <strong>Syntax:</strong> SQLPasswordSaltFile <em>path|"none" ["Prepend"|"Append"]</em><br>
 <strong>Default:</strong> <em>none</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.3rc2 and later
 
@@ -323,10 +323,10 @@ behavior is to <i>append</i> the salt as a suffix.
 If no <code>SQLPasswordSaltFile</code> is configured, then no salting is done.
 
 <hr>
-<h2><a name="SQLPasswordUserSalt">SQLPasswordUserSalt</a></h2>
+<h3><a name="SQLPasswordUserSalt">SQLPasswordUserSalt</a></h3>
 <strong>Syntax:</strong> SQLPasswordUserSalt <em>"name"|source ["Prepend"|"Append"]</em><br>
 <strong>Default:</strong> <em>none</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.3 and later
 
@@ -698,4 +698,3 @@ values can be supported by the <code>mod_sql_passwd</code> module.
 
 </body>
 </html>
-

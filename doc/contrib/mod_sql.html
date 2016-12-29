@@ -11,12 +11,6 @@
 </center>
 <hr><br>
 
-This module is contained in the <code>contrib/mod_sql.c</code>,
-<code>contrib/mod_sql.h</code>, <code>contrib/mod_sql_mysql.c</code>, and
-<code>contrib/mod_sql_postgres.c</code> files for ProFTPD 1.3.<i>x</i>, and is
-not compiled by default.  Installation instructions are discussed
-<a href="#Installation">here</a>.
-
 <p>
 The <code>mod_sql</code> module is an authentication and logging module
 for ProFTPD.  It is comprised of a front end module (<code>mod_sql</code>)
@@ -24,6 +18,10 @@ and backend database-specific modules (<code>mod_sql_mysql</code>,
 <code>mod_sql_postgres</code>, <code>mod_sql_sqlite</code>, <i>etc</i>).  The
 front end module leaves the specifics of handling database connections to the
 backend modules.
+
+<p>
+The <code>mod_sql</code> module is not compiled by default.  Installation
+instructions are discussed <a href="#Installation">here</a>.
 
 <p>
 This product includes software developed by the OpenSSL Project for use in the
@@ -81,7 +79,7 @@ The most current version of <code>mod_sql</code> is distributed with ProFTPD.
 </ul>
 
 <hr>
-<h2><a name="SQLAuthenticate">SQLAuthenticate</a></h2>
+<h3><a name="SQLAuthenticate">SQLAuthenticate</a></h3>
 <strong>Syntax:</strong> SQLAuthenticate <em>on|off</em> <i>or</i><br>
 <strong>Syntax:</strong> SQLAuthenticate <em>[users] [groups] [userset[fast]] [groupset[fast]]</em><br>
 <strong>Default:</strong> on<br>
@@ -208,7 +206,7 @@ entries are structured like the last example.
 
 <p>
 <hr>
-<h2><a name="SQLAuthTypes">SQLAuthTypes</a></h2>
+<h3><a name="SQLAuthTypes">SQLAuthTypes</a></h3>
 <strong>Syntax:</strong> SQLAuthTypes <em>[&quot;Backend&quot | &quot;Crypt&quot; | &quot;Empty&quot; | &quot;OpenSSL&quot; | &quot;Plaintext&quot;] ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -285,7 +283,7 @@ module also provides other <code>SQLAuthTypes</code> values.
 
 <p>
 <hr>
-<h2><a name="SQLBackend">SQLBackend</a></h2>
+<h3><a name="SQLBackend">SQLBackend</a></h3>
 <strong>Syntax:</strong> SQLBackend <em>backend</em><br>
 <strong>Default:</strong> Depends<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -332,7 +330,7 @@ Use &quot;mysql&quot; for the <code>mod_sql_mysql</code> module, and
 
 <p>
 <hr>
-<h2><a name="SQLConnectInfo">SQLConnectInfo</a></h2>
+<h3><a name="SQLConnectInfo">SQLConnectInfo</a></h3>
 <strong>Syntax:</strong> SQLConnectInfo <em>connection-info [username] [password] [policy] [ssl-ca:&lt;path&gt;] [ssl-cert:&lt;path&gt;] [ssl-key:&gt;path&lt;] [ssl-ciphers:&lt;list&gt;]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -501,7 +499,7 @@ field; check your backend module for more detailed information.
 
 <p>
 <hr>
-<h2><a name="SQLDefaultGID">SQLDefaultGID</a></h2>
+<h3><a name="SQLDefaultGID">SQLDefaultGID</a></h3>
 <strong>Syntax:</strong> SQLDefaultGID <em>default-gid</em><br>
 <strong>Default:</strong> 65533<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -517,7 +515,7 @@ See also: <a href="#SQLMinUserGID"><code>SQLMinUserGID</code></a>
 
 <p>
 <hr>
-<h2><a name="SQLDefaultHomedir">SQLDefaultHomedir</a></h2>
+<h3><a name="SQLDefaultHomedir">SQLDefaultHomedir</a></h3>
 <strong>Syntax:</strong> SQLDefaultHomedir <em>path</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -538,7 +536,7 @@ See also: <a href="#SQLUserInfo">SQLUserInfo</a>
 
 <p>
 <hr>
-<h2><a name="SQLDefaultUID">SQLDefaultUID</a></h2>
+<h3><a name="SQLDefaultUID">SQLDefaultUID</a></h3>
 <strong>Syntax:</strong> SQLDefaultUID <em>default-uid</em><br>
 <strong>Default:</strong> 65533<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -554,7 +552,7 @@ See also: <a href="#SQLMinUserUID"><code>SQLMinUserUID</code></a>
 
 <p>
 <hr>
-<h2><a name="SQLEngine">SQLEngine</a></h2>
+<h3><a name="SQLEngine">SQLEngine</a></h3>
 <strong>Syntax:</strong> SQLEngine <em>on|off|auth|log</em><br>
 <strong>Default:</strong> SQLEngine on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -588,7 +586,7 @@ that do not use <code>mod_sql</code>, <i>e.g.</i>:
 
 <p>
 <hr>
-<h2><a name="SQLGroupInfo">SQLGroupInfo</a></h2>
+<h3><a name="SQLGroupInfo">SQLGroupInfo</a></h3>
 <strong>Syntax:</strong> SQLGroupInfo <em>group-table group-name gid members</em><br>
 <strong>Default:</strong> &quot;groups groupname gid members&quot;<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br
@@ -703,7 +701,7 @@ supporting the old, inefficient comma-delimited format for the members column.)
 
 <p>
 <hr>
-<h2><a name="SQLGroupPrimaryKey">SQLGroupPrimaryKey</a></h2>
+<h3><a name="SQLGroupPrimaryKey">SQLGroupPrimaryKey</a></h3>
 <strong>Syntax:</strong> SQLGroupPrimaryKey <em>column | &quot;custom:/&quot;named-query</em><br>
 <strong>Default:</strong> gid<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br
@@ -722,7 +720,7 @@ See also: <a href="#SQLUserPrimaryKey"><code>SQLUserPrimaryKey</code></a>
 
 <p>
 <hr>
-<h2><a name="SQLGroupWhereClause">SQLGroupWhereClause</a></h2>
+<h3><a name="SQLGroupWhereClause">SQLGroupWhereClause</a></h3>
 <strong>Syntax:</strong> SQLGroupWhereClause <em>where-clause</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -759,7 +757,7 @@ parameter can use the same set of variables as supported by the
 
 <p>
 <hr>
-<h2><a name="SQLLog">SQLLog</a></h2>
+<h3><a name="SQLLog">SQLLog</a></h3>
 <strong>Syntax:</strong> SQLLog <em>cmd-set query-name [&quot;IGNORE_ERRORS&quot;]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -849,7 +847,7 @@ transferred, the user and host doing the transfer, and the time of transfer
 
 <p>
 <hr>
-<h2><a name="SQLLogFile">SQLLogFile</a></h2>
+<h3><a name="SQLLogFile">SQLLogFile</a></h3>
 <strong>Syntax:</strong> SQLLogFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -872,7 +870,7 @@ a <code>&lt;Global&gt;</code> context.
 
 <p>
 <hr>
-<h2><a name="SQLMinID">SQLMinID</a></h2>
+<h3><a name="SQLMinID">SQLMinID</a></h3>
 <strong>Syntax:</strong> SQLMinID <em>minimum-id</em><br>
 <strong>Default:</strong> 999<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -890,7 +888,7 @@ See also: <a href="#SQLMinUserGID"><code>SQLMinUserGID</code></a>,
 
 <p>
 <hr>
-<h2><a name="SQLMinUserGID">SQLMinUserGID</a></h2>
+<h3><a name="SQLMinUserGID">SQLMinUserGID</a></h3>
 <strong>Syntax:</strong> SQLMinUserGID <em>minimum-gid</em><br>
 <strong>Default:</strong> 999<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -907,7 +905,7 @@ See also: <a href="#SQLDefaultGID"><code>SQLDefaultGID</code></a>
 
 <p>
 <hr>
-<h2><a name="SQLMinUserUID">SQLMinUserUID</a></h2>
+<h3><a name="SQLMinUserUID">SQLMinUserUID</a></h3>
 <strong>Syntax:</strong> SQLMinUserUID <em>minimum-uid</em><br>
 <strong>Default:</strong> 999<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -924,7 +922,7 @@ See also: <a href="#SQLDefaultUID"><code>SQLDefaultUID</code></a>
 
 <p>
 <hr>
-<h2><a name="SQLNamedConnectInfo">SQLNamedConnectInfo</a></h2>
+<h3><a name="SQLNamedConnectInfo">SQLNamedConnectInfo</a></h3>
 <strong>Syntax:</strong> SQLConnectInfo <em>connection-name</em> <em>sql-backend</em> <em>connection-info [username] [password] [policy] [ssl-ca:&lt;path&gt;] [ssl-cert:&lt;path&gt;] [ssl-key:&gt;path&lt;] [ssl-ciphers:&lt;list&gt;]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -957,7 +955,7 @@ See also: <a href="#SQLBackend"><code>SQLBackend</code></a>,
 
 <p>
 <hr>
-<h2><a name="SQLNamedQuery">SQLNamedQuery</a></h2>
+<h3><a name="SQLNamedQuery">SQLNamedQuery</a></h3>
 <strong>Syntax:</strong> SQLNamedQuery <em>name type query-string [table] [connection-name]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1095,7 +1093,7 @@ user &quot;tilda&quot;.
 
 <p>
 <hr>
-<h2><a name="SQLNegativeCache">SQLNegativeCache</a></h2>
+<h3><a name="SQLNegativeCache">SQLNegativeCache</a></h3>
 <strong>Syntax:</strong> SQLNegativeCache <em>on|off</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1115,7 +1113,7 @@ SQL database.
 
 <p>
 <hr>
-<h2><a name="SQLOptions">SQLOptions</a></h2>
+<h3><a name="SQLOptions">SQLOptions</a></h3>
 <strong>Syntax:</strong> SQLOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1189,7 +1187,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="SQLRatios">SQLRatios</a></h2>
+<h3><a name="SQLRatios">SQLRatios</a></h3>
 <strong>Syntax:</strong>  <em> </em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> <br>
@@ -1198,7 +1196,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="SQLRatioStats">SQLRatioStats</a></h2>
+<h3><a name="SQLRatioStats">SQLRatioStats</a></h3>
 <strong>Syntax:</strong>  <em> </em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> <br>
@@ -1207,7 +1205,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="SQLShowInfo">SQLShowInfo</a></h2>
+<h3><a name="SQLShowInfo">SQLShowInfo</a></h3>
 <strong>Syntax:</strong> SQLShowInfo <em>cmd-set numeric query-string</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1276,7 +1274,7 @@ been accepted and the session has started.
 
 <p>
 <hr>
-<h2><a name="SQLUserInfo">SQLUserInfo</a></h2>
+<h3><a name="SQLUserInfo">SQLUserInfo</a></h3>
 <strong>Syntax:</strong> SQLUserInfo <em>user-table user-name passwd uid gid home-dir shell</em><br>
 <strong>Default:</strong> &quot;users userid passwd uid gid homedir shell&quot;<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1413,7 +1411,7 @@ work as expected.
 
 <p>
 <hr>
-<h2><a name="SQLUserPrimaryKey">SQLUserPrimaryKey</a></h2>
+<h3><a name="SQLUserPrimaryKey">SQLUserPrimaryKey</a></h3>
 <strong>Syntax:</strong> SQLUserPrimaryKey <em>column | &quot;custom:/&quot;named-query</em><br>
 <strong>Default:</strong> uid<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br
@@ -1432,7 +1430,7 @@ See also: <a href="#SQLGroupPrimaryKey"><code>SQLGroupPrimaryKey</code></a>
 
 <p>
 <hr>
-<h2><a name="SQLUserWhereClause">SQLUserWhereClause</a></h2>
+<h3><a name="SQLUserWhereClause">SQLUserWhereClause</a></h3>
 <strong>Syntax:</strong> SQLUserWhereClause <em>where-clause </em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1471,9 +1469,9 @@ parameter can use the same set of variables as supported by the
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_sql</code> module is distributed with ProFTPD.  Simply
-follow the normal steps for using third-party modules in proftpd:
+follow the normal steps for using third-party modules in ProFTPD:
 <pre>
-  ./configure --with-modules=<i>sql-module-opts</i>
+  $ ./configure --with-modules=<i>sql-module-opts</i>
 </pre>
 where the specific <i>sql-module-opts</i> depend on your database needs.  For
 example, if using MySQL, <i>sql-module-opts</i> would be
@@ -1487,7 +1485,7 @@ database of choice, <i>sql-module-opts</i> would be
 You will also need to tell <code>configure</code> how to find the
 database-specific libraries and header files:
 <pre>
-  ./configure --with-modules=<i>sql-module-opts</i> \
+  $ ./configure --with-modules=<i>sql-module-opts</i> \
     --with-includes=<i>/path/to/db/header/file/dir</i> \
     --with-libraries=<i>/path/to/db/library/file/dir</i>
 </pre>
@@ -1495,8 +1493,8 @@ database-specific libraries and header files:
 <p>
 Complete the build with the following standard commands:
 <pre>
-  make
-  make install
+  $ make
+  $ make install
 </pre>
 
 <p>
@@ -1515,15 +1513,12 @@ This trace logging can generate large files; it is intended for debugging use
 only, and should be removed from any production configuration.
 
 <p>
-<hr><br>
-
+<hr>
 <font size=2><b><i>
 &copy; Copyright 2000-2016 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
-

@@ -62,7 +62,7 @@ questions, concerns, or suggestions regarding this module.
 
 <p>
 <hr>
-<h2><a name="AuthOTPAlgorithm">AuthOTPAlgorithm</a></h2>
+<h3><a name="AuthOTPAlgorithm">AuthOTPAlgorithm</a></h3>
 <strong>Syntax:</strong> AuthOTPAlgorithm <em>hotp|totp</em><br>
 <strong>Default:</strong> AuthOTPAlgorithm totp<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -86,7 +86,7 @@ The default algorithm is "totp".
 
 <p>
 <hr>
-<h2><a name="AuthOTPEngine">AuthOTPEngine</a></h2>
+<h3><a name="AuthOTPEngine">AuthOTPEngine</a></h3>
 <strong>Syntax:</strong> AuthOTPEngine <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -100,7 +100,7 @@ sessions.  By default, use of one-time passwords is disabled.
 
 <p>
 <hr>
-<h2><a name="AuthOTPLog">AuthOTPLog</a></h2>
+<h3><a name="AuthOTPLog">AuthOTPLog</a></h3>
 <strong>Syntax:</strong> AuthOTPLog <em>path|"none"</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -119,7 +119,7 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 
 <p>
 <hr>
-<h2><a name="AuthOTPOptions">AuthOTPOptions</a></h2>
+<h3><a name="AuthOTPOptions">AuthOTPOptions</a></h3>
 <strong>Syntax:</strong> AuthOTPOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -192,7 +192,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="AuthOTPTable">AuthOTPTable</a></h2>
+<h3><a name="AuthOTPTable">AuthOTPTable</a></h3>
 <strong>Syntax:</strong> AuthOTPTable <em>table-info</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -223,7 +223,7 @@ See the <a href="#Usage">usage</a> section for a more detailed example.
 
 <p>
 <hr>
-<h2><a name="AuthOTPTableLock">AuthOTPTableLock</a></h2>
+<h3><a name="AuthOTPTableLock">AuthOTPTableLock</a></h3>
 <strong>Syntax:</strong> AuthOTPTableLock <em>path</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -440,13 +440,8 @@ according to need, demand, inclination, and time:
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-To install <code>mod_auth_otp</code>, go to the third-party module area in
-the proftpd source code and unpack the <code>mod_auth_otp</code> source tarball:
-<pre>
-  $ cd <i>proftpd-dir</i>/contrib/
-  $ tar zxvf /path/to/mod_auth_otp-<i>version</i>.tar.gz
-</pre>
-after unpacking the latest proftpd-1.3.<i>x</i> source code.  For including
+The <code>mod_auth_otp</code> module is distributed with ProFTPD.  Simply follow
+the normal steps for using third-party modules in ProFTPD.  For including
 <code>mod_auth_otp</code> as a staticly linked module:
 <pre>
   $ ./configure --enable-openssl --with-modules=mod_sql:mod_sql_sqlite:mod_auth_otp:...
@@ -463,12 +458,11 @@ Then follow the usual steps:
 
 <p>
 <hr>
-
 <font size=2><b><i>
 &copy; Copyright 2015-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
 <hr>
+
 </body>
 </html>

@@ -65,20 +65,20 @@ only, and should be removed from any production configuration.
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_tls_fscache</code> module is distributed with the ProFTPD
 source code.  Simply follow the normal steps for using third-party modules
-in proftpd, being sure to include the <code>mod_tls</code> module (on which
+in ProFTPD, being sure to include the <code>mod_tls</code> module (on which
 <code>mod_tls_fscache</code> depends):
 <pre>
-  ./configure --with-modules=mod_tls:mod_tls_fscache
-  make
-  make install
+  $ ./configure --with-modules=mod_tls:mod_tls_fscache
+  $ make
+  $ make install
 </pre>
 
 <p>
-Alternatively, if your proftpd was compiled with DSO support, you can
-use the <code>prxs</code> tool to build <code>mod_tls_fscache</code> as
+Alternatively, if your <code>proftpd</code> was compiled with DSO support, you
+can use the <code>prxs</code> tool to build <code>mod_tls_fscache</code> as
 a shared module:
 <pre>
-  prxs -c -i -d mod_tls_fscache.c
+  $ prxs -c -i -d mod_tls_fscache.c
 </pre>
 
 <p>
@@ -87,8 +87,7 @@ a shared module:
 &copy; Copyright 2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>

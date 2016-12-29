@@ -51,7 +51,7 @@ questions, concerns, or suggestions regarding this module.
 </ul>
 
 <hr>
-<h2><a name="LDAPAliasDereference">LDAPAliasDereference</a></h2>
+<h3><a name="LDAPAliasDereference">LDAPAliasDereference</a></h3>
 <strong>Syntax:</strong> LDAPAliasDereference <em>never|always|search|find</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -96,7 +96,7 @@ The default is "never", <i>e.g.</i>:
 
 <p>
 <hr>
-<h2><a name="LDAPAttr">LDAPAttr</a></h2>
+<h3><a name="LDAPAttr">LDAPAttr</a></h3>
 <strong>Syntax:</strong> LDAPAttr <em>old-attr-name new-attr-name</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -126,7 +126,7 @@ The following LDAP attributes can be renamed in this manner:
 
 <p>
 <hr>
-<h2><a name="LDAPAuthBinds">LDAPAuthBinds</a></h2>
+<h3><a name="LDAPAuthBinds">LDAPAuthBinds</a></h3>
 <strong>Syntax:</strong> LDAPAuthBinds <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -153,7 +153,7 @@ the default value for <code>LDAPAuthBinds</code> is <em>on</em>.
 
 <p>
 <hr>
-<h2><a name="LDAPBindDN">LDAPBindDN</a></h2>
+<h3><a name="LDAPBindDN">LDAPBindDN</a></h3>
 <strong>Syntax:</strong> LDAPBindDN <em>dn password</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -180,7 +180,7 @@ See also: <a href="#LDAPServer"><code>LDAPServer</code></a>
 
 <p>
 <hr>
-<h2><a name="LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a></h2>
+<h3><a name="LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a></h3>
 <strong>Syntax:</strong> LDAPDefaultAuthScheme <em>crypt|clear</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -202,7 +202,7 @@ The default value is <em>crypt</em>.
 
 <p>
 <hr>
-<h2><a name="LDAPDefaultGID">LDAPDefaultGID</a></h2>
+<h3><a name="LDAPDefaultGID">LDAPDefaultGID</a></h3>
 <strong>Syntax:</strong> LDAPDefaultGID <em>gid</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -226,7 +226,7 @@ See also: <a href="#LDAPDefaultUID"><code>LDAPDefaultUID</code></a>
 
 <p>
 <hr>
-<h2><a name="LDAPDefaultQuota">LDAPDefaultQuota</a></h2>
+<h3><a name="LDAPDefaultQuota">LDAPDefaultQuota</a></h3>
 <strong>Syntax:</strong> LDAPDefaultQuota <em>default-quota</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -240,7 +240,7 @@ parameter is formatted the same way as the <code>ftpQuota</code> LDAP attribute.
 
 <p>
 <hr>
-<h2><a name="LDAPDefaultUID">LDAPDefaultUID</a></h2>
+<h3><a name="LDAPDefaultUID">LDAPDefaultUID</a></h3>
 <strong>Syntax:</strong> LDAPDefaultUID <em>uid</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -277,7 +277,7 @@ See also: <a href="#LDAPAttr"><code>LDAPAttr</code></a>
 
 <p>
 <hr>
-<h2><a name="LDAPForceDefaultGID">LDAPForceDefaultGID</a></h2>
+<h3><a name="LDAPForceDefaultGID">LDAPForceDefaultGID</a></h3>
 <strong>Syntax:</strong> LDAPForceDefaultGID <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -294,7 +294,7 @@ overridden by <code>gidNumber</code> attributes.
 
 <p>
 <hr>
-<h2><a name="LDAPForceDefaultUID">LDAPForceDefaultUID</a></h2>
+<h3><a name="LDAPForceDefaultUID">LDAPForceDefaultUID</a></h3>
 <strong>Syntax:</strong> LDAPForceDefaultUID <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -311,7 +311,7 @@ overridden by <code>uidNumber</code> attributes.
 
 <p>
 <hr>
-<h2><a name="LDAPForceGeneratedHomedir">LDAPForceGeneratedHomedir</a></h2>
+<h3><a name="LDAPForceGeneratedHomedir">LDAPForceGeneratedHomedir</a></h3>
 <strong>Syntax:</strong> LDAPForceGeneratedHomedir <em>off|on directory-mode</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code
@@ -324,7 +324,7 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 
 <p>
 <hr>
-<h2><a name="LDAPGenerateHomedir">LDAPGenerateHomedir</a></h2>
+<h3><a name="LDAPGenerateHomedir">LDAPGenerateHomedir</a></h3>
 <strong>Syntax:</strong> LDAPGenerateHomedir <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -333,7 +333,7 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 
 <p>
 <hr>
-<h2><a name="LDAPGenerateHomedirPrefix">LDAPGenerateHomedirPrefix</a></h2>
+<h3><a name="LDAPGenerateHomedirPrefix">LDAPGenerateHomedirPrefix</a></h3>
 <strong>Syntax:</strong> LDAPGenerateHomedirPrefix <em>prefix</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -342,7 +342,7 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 
 <p>
 <hr>
-<h2><a name="LDAPGenerateHomedirPrefixNoUsername">LDAPGenerateHomedirPrefixNoUsername</a></h2>
+<h3><a name="LDAPGenerateHomedirPrefixNoUsername">LDAPGenerateHomedirPrefixNoUsername</a></h3>
 <strong>Syntax:</strong> LDAPGenerateHomedirPrefixNoUsername <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -351,7 +351,7 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 
 <p>
 <hr>
-<h2><a name="LDAPGroups">LDAPGroups</a></h2>
+<h3><a name="LDAPGroups">LDAPGroups</a></h3>
 <strong>Syntax:</strong> LDAPGroups <em>base-dn cn-filter-template gid-number-filter-template member-uid-filter-template</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -387,7 +387,7 @@ The attribute names used in the default search filters are taken from the
 
 <p>
 <hr>
-<h2><a name="LDAPLog">LDAPLog</a></h2>
+<h3><a name="LDAPLog">LDAPLog</a></h3>
 <strong>Syntax:</strong> LDAPLog <em>file|"none"</em><br>
 <strong>Default:</strong> <em>None</em><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -406,7 +406,7 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 
 <p>
 <hr>
-<h2><a name="LDAPProtocolVersion">LDAPProtocolVersion</a></h2>
+<h3><a name="LDAPProtocolVersion">LDAPProtocolVersion</a></h3>
 <strong>Syntax:</strong> LDAPProtocolVersion <em>2|3</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -420,7 +420,7 @@ LDAP servers.  The default protocol version used is <em>3</em>.
 
 <p>
 <hr>
-<h2><a name="LDAPQueryTimeout">LDAPQueryTimeout</a></h2>
+<h3><a name="LDAPQueryTimeout">LDAPQueryTimeout</a></h3>
 <strong>Syntax:</strong> LDAPQueryTimeout <em>secs</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -434,7 +434,7 @@ value is determined by your LDAP API.
 
 <p>
 <hr>
-<h2><a name="LDAPSearchScope">LDAPSearchScope</a></h2>
+<h3><a name="LDAPSearchScope">LDAPSearchScope</a></h3>
 <strong>Syntax:</strong> LDAPSearchScope <em>onelevel|subtree</em><br>
 <strong>Default:</strong> subtree<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -449,7 +449,7 @@ in the tree from the current level down.  Setting this directive to
 
 <p>
 <hr>
-<h2><a name="LDAPServer">LDAPServer</a></h2>
+<h3><a name="LDAPServer">LDAPServer</a></h3>
 <strong>Syntax:</strong> LDAPServer <em>&quot;host1:port1 host2:port2&quot;</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -485,7 +485,7 @@ to tell <code>mod_ldap</code> to use LDAP's <a href="https://en.wikipedia.org/wi
 
 <p>
 <hr>
-<h2><a name="LDAPUsers">LDAPUsers</a></h2>
+<h3><a name="LDAPUsers">LDAPUsers</a></h3>
 <strong>Syntax:</strong> LDAPUsers <em>base-dn [name-filter-template [uid-filter-template]]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -517,7 +517,7 @@ version 2.7 and later.
 
 <p>
 <hr>
-<h2><a name="LDAPUseTLS">LDAPUseTLS</a></h2>
+<h3><a name="LDAPUseTLS">LDAPUseTLS</a></h3>
 <strong>Syntax:</strong> LDAPUseTLS <em>on|off</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -539,16 +539,16 @@ unsecure connection.
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-Follow the normal steps for using third-party modules in proftpd: 
+Follow the normal steps for using third-party modules in ProFTPD: 
 <pre>
-  ./configure --with-modules=mod_ldap
-  make
-  make install
+  $ ./configure --with-modules=mod_ldap
+  $ make
+  $ make install
 </pre>
 You may need to specify the location of the OpenLDAP header and library files
 in your <code>configure</code> command, <i>e.g.</i>:
 <pre>
- ./configure --with-modules=mod_ldap \
+ $ ./configure --with-modules=mod_ldap \
     --with-includes=/usr/local/openldap/include \
     --with-libraries=/usr/local/openldap/lib
 </pre>
@@ -610,5 +610,6 @@ only, and should be removed from any production configuration.
  All Rights Reserved<br>
 </i></b></font>
 <hr>
+
 </body>
 </html>

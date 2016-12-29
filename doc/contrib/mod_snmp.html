@@ -58,10 +58,10 @@ functionality, and providing OpenNMS support/examples.
 
 <p>
 <hr>
-<h2><a name="SNMPAgent">SNMPAgent</a></h2>
+<h3><a name="SNMPAgent">SNMPAgent</a></h3>
 <strong>Syntax:</strong> SNMPAgent master|agentx <em>address[:port] ...</em><br>
 <strong>Default:</strong> <em>None</em><br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_snmp<br>
 <strong>Compatibility:</strong> 1.3.4rc3 and later
 
@@ -96,10 +96,10 @@ Note that the <code>SNMPAgent</code> directive is <b>required</b>.
 
 <p>
 <hr>
-<h2><a name="SNMPCommunity">SNMPCommunity</a></h2>
+<h3><a name="SNMPCommunity">SNMPCommunity</a></h3>
 <strong>Syntax:</strong> SNMPCommunity <em>community</em><br>
 <strong>Default:</strong> <em>None</em><br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_snmp<br>
 <strong>Compatibility:</strong> 1.3.4rc3 and later
 
@@ -113,10 +113,10 @@ Note that the <code>SNMPCommunity</code> directive is <b>required</b>.
 
 <p>
 <hr>
-<h2><a name="SNMPEngine">SNMPEngine</a></h2>
+<h3><a name="SNMPEngine">SNMPEngine</a></h3>
 <strong>Syntax:</strong> SNMPEngine <em>on|off</em><br>
 <strong>Default:</strong> <em>off</em><br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_snmp<br>
 <strong>Compatibility:</strong> 1.3.4rc3 and later
 
@@ -126,10 +126,10 @@ will run as an SNMP agent, and handle SNMP messages.
 
 <p>
 <hr>
-<h2><a name="SNMPLog">SNMPLog</a></h2>
+<h3><a name="SNMPLog">SNMPLog</a></h3>
 <strong>Syntax:</strong> SNMPLog <em>file|"none"</em><br>
 <strong>Default:</strong> <em>None</em><br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_snmp<br>
 <strong>Compatibility:</strong> 1.3.4rc3 and later
 
@@ -145,10 +145,10 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 
 <p>
 <hr>
-<h2><a name="SNMPNotify">SNMPNotify</a></h2>
+<h3><a name="SNMPNotify">SNMPNotify</a></h3>
 <strong>Syntax:</strong> SNMPNotify <em>address[:port]</em><br>
 <strong>Default:</strong> <em>None</em><br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_snmp<br>
 <strong>Compatibility:</strong> 1.3.4rc3 and later
 
@@ -171,10 +171,10 @@ Multiple <code>SNMPNotify</code> directives can be configured;
 
 <p>
 <hr>
-<h2><a name="SNMPOptions">SNMPOptions</a></h2>
+<h3><a name="SNMPOptions">SNMPOptions</a></h3>
 <strong>Syntax:</strong> SNMPOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> <em>None</em><br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_snmp<br>
 <strong>Compatibility:</strong> 1.3.4rc3 and later
 
@@ -200,10 +200,10 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="SNMPTables">SNMPTables</a></h2>
+<h3><a name="SNMPTables">SNMPTables</a></h3>
 <strong>Syntax:</strong> SNMPTables <em>path</em><br>
 <strong>Default:</strong> <em>None</em><br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_snmp<br>
 <strong>Compatibility:</strong> 1.3.4rc3 and later
 
@@ -215,31 +215,24 @@ are used for tracking the various statistics reported via SNMP.
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-To install <code>mod_snmp</code>, go to the third-party module area in
-the proftpd source code and unpack the <code>mod_snmp</code> source tarball:
+The <code>mod_snmp</code> module is distributed with ProFTPD.  For including
+<code>mod_snmp</code> as a staticly linked module, use:
 <pre>
-  cd <i>proftpd-dir</i>/contrib/
-  tar zxvf /path/to/mod_snmp-<i>version</i>.tar.gz
-</pre>
-after unpacking the latest proftpd-1.3.4 (or later) source code.  For including
-<code>mod_snmp</code> as a staticly linked module:
-<pre>
-  ./configure --with-modules=mod_snmp ...
+  $ ./configure --with-modules=mod_snmp ...
 </pre>
 Alternatively, <code>mod_snmp</code> can be built as a DSO module:
 <pre>
-  ./configure --enable-dso --with-shared=mod_snmp ...
+  $ ./configure --enable-dso --with-shared=mod_snmp ...
 </pre>
 Then follow the usual steps:
 <pre>
-  make
-  make install
+  $ make
+  $ make install
 </pre>
 
 <p>
 <hr>
 <h2><a name="Usage">Usage</a></h2>
-<p>
 
 <p>
 <b>Important Security Considerations</b><br>
@@ -1348,15 +1341,12 @@ counters/gauges, such as the <code>ftp.dataTransfers</code> and
 to get <i>just</i> a directory listing; the protocol only transfers files.
 
 <p>
-<hr><br>
-
+<hr>
 <font size=2><b><i>
 &copy; Copyright 2011-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
-

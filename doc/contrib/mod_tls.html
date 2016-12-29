@@ -11,6 +11,10 @@
 </center>
 <hr><br>
 
+<p>
+The <code>mod_tls</code> module implements FTP over SSL/TLS, known as FTPS.
+
+<p>
 This module is contained in the <code>mod_tls.c</code> file for ProFTPD
 1.3.<i>x</i>, and is not compiled by default.  Installation
 instructions are discussed <a href="#Installation">here</a>.
@@ -95,7 +99,7 @@ is based.  His module can be found here:
 </ul>
 
 <hr>
-<h2><a name="TLSCACertificateFile">TLSCACertificateFile</a></h2>
+<h3><a name="TLSCACertificateFile">TLSCACertificateFile</a></h3>
 <strong>Syntax:</strong> TLSCACertificateFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -135,7 +139,7 @@ See also: <a href="#TLSCACertificatePath"><code>TLSCACertificatePath</code></a>
 
 <p>
 <hr>
-<h2><a name="TLSCACertificatePath">TLSCACertificatePath</a></h2>
+<h3><a name="TLSCACertificatePath">TLSCACertificatePath</a></h3>
 <strong>Syntax:</strong> TLSCACertificatePath <em>directory</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -177,7 +181,7 @@ See also: <a href="#TLSCACertificateFile"><code>TLSCACertificateFile</code></a>
 
 <p>
 <hr>
-<h2><a name="TLSCARevocationFile">TLSCARevocationFile</a></h2>
+<h3><a name="TLSCARevocationFile">TLSCARevocationFile</a></h3>
 <strong>Syntax:</strong> TLSCARevocationFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -203,7 +207,7 @@ See also: <a href="#TLSCARevocationPath"><code>TLSCARevocationPath</code></a>
 
 <p>
 <hr>
-<h2><a name="TLSCARevocationPath">TLSCARevocationPath</a></h2>
+<h3><a name="TLSCARevocationPath">TLSCARevocationPath</a></h3>
 <strong>Syntax:</strong> TLSCARevocationPath <em>directory</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -235,7 +239,7 @@ See also: <a href="#TLSCARevocationFile"><code>TLSCARevocationFile</code></a>
 
 <p>
 <hr>
-<h2><a name="TLSCertificateChainFile">TLSCertificateChainFile</a></h2>
+<h3><a name="TLSCertificateChainFile">TLSCertificateChainFile</a></h3>
 <strong>Syntax:</strong> TLSCertificateChainFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -282,7 +286,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSCipherSuite">TLSCipherSuite</a></h2>
+<h3><a name="TLSCipherSuite">TLSCipherSuite</a></h3>
 <strong>Syntax:</strong> TLSCipherSuite <em>cipher-list</em><br>
 <strong>Default:</strong> DEFAULT:!ADH:!EXPORT:!DES<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -379,7 +383,7 @@ may be used to list all of the ciphers and the order described by a specific
 
 <p>
 <hr>
-<h2><a name="TLSControlsACLs">TLSControlsACLs</a></h2>
+<h3><a name="TLSControlsACLs">TLSControlsACLs</a></h3>
 <strong>Syntax:</strong> TLSControlsACLs <em>actions|&quot;all&quot; &quot;allow&quot;|&quot;deny&quot; &quot;user&quot;|&quot;group&quot; list</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -415,7 +419,7 @@ Examples:
 
 <p>
 <hr>
-<h2><a name="TLSCryptoDevice">TLSCryptoDevice</a></h2>
+<h3><a name="TLSCryptoDevice">TLSCryptoDevice</a></h3>
 <strong>Syntax:</strong> TLSCryptoDevice <em>driver|"all"|"none"</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -450,7 +454,7 @@ may be used to list all of the engine drivers supported by OpenSSL.
 
 <p>
 <hr>
-<h2><a name="TLSDHParamFile">TLSDHParamFile</a></h2>
+<h3><a name="TLSDHParamFile">TLSDHParamFile</a></h3>
 <strong>Syntax:</strong> TLSDHParamFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -490,7 +494,7 @@ clients.
 
 <p>
 <hr>
-<h2><a name="TLSDSACertficateFile">TLSDSACertficateFile</a></h2>
+<h3><a name="TLSDSACertficateFile">TLSDSACertficateFile</a></h3>
 <strong>Syntax:</strong> TLSDSACertificateFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -516,7 +520,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSDSACertificateKeyFile">TLSDSACertificateKeyFile</a></h2>
+<h3><a name="TLSDSACertificateKeyFile">TLSDSACertificateKeyFile</a></h3>
 <strong>Syntax:</strong> TLSDSACertificateKeyFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -546,7 +550,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSECCertficateFile">TLSECCertficateFile</a></h2>
+<h3><a name="TLSECCertficateFile">TLSECCertficateFile</a></h3>
 <strong>Syntax:</strong> TLSECCertificateFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -572,7 +576,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSECCertificateKeyFile">TLSECCertificateKeyFile</a></h2>
+<h3><a name="TLSECCertificateKeyFile">TLSECCertificateKeyFile</a></h3>
 <strong>Syntax:</strong> TLSECCertificateKeyFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -602,7 +606,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSECDHCurve">TLSECDHCurve</a></h2>
+<h3><a name="TLSECDHCurve">TLSECDHCurve</a></h3>
 <strong>Syntax:</strong> TLSECDHCurve <em>curve</em><br>
 <strong>Default:</strong> TLSECDHCurve prime256v1<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -619,7 +623,7 @@ library, use:
 
 <p>
 <hr>
-<h2><a name="TLSEngine">TLSEngine</a></h2>
+<h3><a name="TLSEngine">TLSEngine</a></h3>
 <strong>Syntax:</strong> TLSEngine <em>on|off</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -635,7 +639,7 @@ the main server and all configured virtual hosts.
 
 <p>
 <hr>
-<h2><a name="TLSLog">TLSLog</a></h2>
+<h3><a name="TLSLog">TLSLog</a></h3>
 <strong>Syntax:</strong> TLSLog <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -654,7 +658,7 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 
 <p>
 <hr>
-<h2><a name="TLSMasqueradeAddress">TLSMasqueradeAddress</a></h2>
+<h3><a name="TLSMasqueradeAddress">TLSMasqueradeAddress</a></h3>
 <strong>Syntax:</strong> TLSMasqueradeAddress <em>ip-address|dns-name|device-name</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
@@ -714,7 +718,7 @@ but only for FTPS sessions.
 
 <p>
 <hr>
-<h2><a name="TLSNextProtocol">TLSNextProtocol</a></h2>
+<h3><a name="TLSNextProtocol">TLSNextProtocol</a></h3>
 <strong>Syntax:</strong> TLSNextProtocol <em>on|off</em><br>
 <strong>Default:</strong> TLSNextProtocol on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -737,7 +741,7 @@ the TLS False Start optimization for ALPN/NPN-enabled SSL/TLS servers.
 
 <p>
 <hr>
-<h2><a name="TLSOptions">TLSOptions</a></h2>
+<h3><a name="TLSOptions">TLSOptions</a></h3>
 <strong>Syntax:</strong> TLSOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1163,7 +1167,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="TLSPKCS12File">TLSPKCS12File</a></h2>
+<h3><a name="TLSPKCS12File">TLSPKCS12File</a></h3>
 <strong>Syntax:</strong> TLSPKCS12File <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1188,7 +1192,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSPassPhraseProvider">TLSPassPhraseProvider</a></h2>
+<h3><a name="TLSPassPhraseProvider">TLSPassPhraseProvider</a></h3>
 <strong>Syntax:</strong> TLSPassPhraseProvider <em>path</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -1224,7 +1228,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSPreSharedKey">TLSPreSharedKey</a></h2>
+<h3><a name="TLSPreSharedKey">TLSPreSharedKey</a></h3>
 <strong>Syntax:</strong> TLSPreSharedKey <em>identity</em> <em>key-info</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1269,7 +1273,7 @@ different PSKs for different identity names.
 
 <p>
 <hr>
-<h2><a name="TLSProtocol">TLSProtocol</a></h2>
+<h3><a name="TLSProtocol">TLSProtocol</a></h3>
 <strong>Syntax:</strong> TLSProtocol <em>protocol1</em> ... <em>protocolN</em><br>
 <strong>Default:</strong> TLSv1<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1342,7 +1346,7 @@ always be expanded to all of the supported SSL/TLS protocols known by
 
 <p>
 <hr>
-<h2><a name="TLSRandomSeed">TLSRandomSeed</a></h2>
+<h3><a name="TLSRandomSeed">TLSRandomSeed</a></h3>
 <strong>Syntax:</strong> TLSRandomSeed <em>seed</em><br>
 <strong>Default:</strong> <i>openssl-dir</i><code>/.rnd</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1374,7 +1378,7 @@ speed up entropy gathering when the daemon starts up again.
 
 <p>
 <hr>
-<h2><a name="TLSRenegotiate">TLSRenegotiate</a></h2>
+<h3><a name="TLSRenegotiate">TLSRenegotiate</a></h3>
 <strong>Syntax:</strong> TLSRenegotiate <em>[&quot;ctrl&quot; secs] [&quot;data&quot; Kbytes] [&quot;timeout&quot; secs]|[&quot;required&quot; on|off]|&quot;none&quot;</em><br>
 <strong>Default:</strong> ctrl 14400 data 25165824 required true <i>(for OpenSSL 0.9.7 or greater)</i><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1437,7 +1441,7 @@ Examples:
 
 <p>
 <hr>
-<h2><a name="TLSRequired">TLSRequired</a></h2>
+<h3><a name="TLSRequired">TLSRequired</a></h3>
 <strong>Syntax:</strong> TLSRequired <em>on|off|ctrl|[!]data|auth|auth+[!]data</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -1513,7 +1517,7 @@ the following:
 
 <p>
 <hr>
-<h2><a name="TLSRSACertificateFile">TLSRSACertificateFile</a></h2>
+<h3><a name="TLSRSACertificateFile">TLSRSACertificateFile</a></h3>
 <strong>Syntax:</strong> TLSRSACertificateFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1539,7 +1543,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSRSACertificateKeyFile">TLSRSACertificateKeyFile</a></h2>
+<h3><a name="TLSRSACertificateKeyFile">TLSRSACertificateKeyFile</a></h3>
 <strong>Syntax:</strong> TLSRSACertificateKeyFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1569,7 +1573,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSServerCipherPreference">TLSServerCipherPreference</a></h2>
+<h3><a name="TLSServerCipherPreference">TLSServerCipherPreference</a></h3>
 <strong>Syntax:</strong> TLSServerCipherPreference <em>on|off</em><br>
 <strong>Default:</strong> Off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1590,7 +1594,7 @@ For example:
 
 <p>
 <hr>
-<h2><a name="TLSServerInfoFile">TLSServerInfoFile</a></h2>
+<h3><a name="TLSServerInfoFile">TLSServerInfoFile</a></h3>
 <strong>Syntax:</strong> TLSServerInfoFile <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1603,7 +1607,7 @@ as custom TLS extensions.  See the OpenSSL documentation for the <a href="https:
 
 <p>
 <hr>
-<h2><a name="TLSSessionCache">TLSSessionCache</a></h2>
+<h3><a name="TLSSessionCache">TLSSessionCache</a></h3>
 <strong>Syntax:</strong> TLSSessionCache <em>"off"|type:/info [timeout]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -1665,7 +1669,7 @@ Use of SSL session caching can be disabled entirely by using:
 
 <p>
 <hr>
-<h2><a name="TLSSessionTicketKeys">TLSSessionTicketKeys</a></h2>
+<h3><a name="TLSSessionTicketKeys">TLSSessionTicketKeys</a></h3>
 <strong>Syntax:</strong> TLSSessionTicketKeys [age <em>secs</em>] [count <em>number</em>]<br>
 <strong>Default:</strong> TLSSessionTicketKeys age 12h count 25<br>
 <strong>Context:</strong> server config</br>
@@ -1692,7 +1696,7 @@ is a configuration error.
 
 <p>
 <hr>
-<h2><a name="TLSSessionTickets">TLSSessionTickets</a></h2>
+<h3><a name="TLSSessionTickets">TLSSessionTickets</a></h3>
 <strong>Syntax:</strong> TLSSessionTickets <em>on|off</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1725,7 +1729,7 @@ directive.
 
 <p>
 <hr>
-<h2><a name="TLSStapling">TLSStapling</a></h2>
+<h3><a name="TLSStapling">TLSStapling</a></h3>
 <strong>Syntax:</strong> TLStapling <em>on|off</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1754,7 +1758,7 @@ See also: <a href="#TLSStaplingCache"><code>TLSStaplingCache</code></a>,
 
 <p>
 <hr>
-<h2><a name="TLSStaplingCache">TLSStaplingCache</a></h2>
+<h3><a name="TLSStaplingCache">TLSStaplingCache</a></h3>
 <strong>Syntax:</strong> TLStaplingCache <em>type:/info</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
@@ -1780,7 +1784,7 @@ memcached servers as an OCSP response cache.
 
 <p>
 <hr>
-<h2><a name="TLSStaplingOptions">TLSStaplingOptions</a></h2>
+<h3><a name="TLSStaplingOptions">TLSStaplingOptions</a></h3>
 <strong>Syntax:</strong> TLStaplingOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1812,7 +1816,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="TLSStaplingResponder">TLSStaplingResponder</a></h2>
+<h3><a name="TLSStaplingResponder">TLSStaplingResponder</a></h3>
 <strong>Syntax:</strong> TLStaplingResponder <em>url<br>
 <strong>Default:</strong> none<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1832,7 +1836,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSStaplingTimeout">TLSStaplingTimeout</a></h2>
+<h3><a name="TLSStaplingTimeout">TLSStaplingTimeout</a></h3>
 <strong>Syntax:</strong> TLStaplingTimeout <em>secs</em><br>
 <strong>Default:</strong> 10s<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1846,7 +1850,7 @@ to OCSP responders when <code>TLSStapling</code> is enabled, and
 
 <p>
 <hr>
-<h2><a name="TLSTimeoutHandshake">TLSTimeoutHandshake</a></h2>
+<h3><a name="TLSTimeoutHandshake">TLSTimeoutHandshake</a></h3>
 <strong>Syntax:</strong> TLSTimeoutHandshake <em>seconds</em><br>
 <strong>Default:</strong> 300<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1861,7 +1865,7 @@ default is 300 seconds (five minutes).
 
 <p>
 <hr>
-<h2><a name="TLSUserName">TLSUserName</a></h2>
+<h3><a name="TLSUserName">TLSUserName</a></h3>
 <strong>Syntax:</strong> TLSUserName <em>attribute</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1911,7 +1915,7 @@ See also: <a href="#TLSVerifyClient"><code>TLSVerifyClient</code></a>
 
 <p>
 <hr>
-<h2><a name="TLSVerifyClient">TLSVerifyClient</a></h2>
+<h3><a name="TLSVerifyClient">TLSVerifyClient</a></h3>
 <strong>Syntax:</strong> TLSVerifyClient <em>on|off|optional</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1933,7 +1937,7 @@ See also: <a href="#TLSOptions"><code>TLSOptions</code></a>
 
 <p>
 <hr>
-<h2><a name="TLSVerifyDepth">TLSVerifyDepth</a></h2>
+<h3><a name="TLSVerifyDepth">TLSVerifyDepth</a></h3>
 <strong>Syntax:</strong> TLSVerifyDepth <em>depth</em><br>
 <strong>Default:</strong> 9<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -1959,7 +1963,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="TLSVerifyOrder">TLSVerifyOrder</a></h2>
+<h3><a name="TLSVerifyOrder">TLSVerifyOrder</a></h3>
 <strong>Syntax:</strong> TLSVerifyOrder <em>crl|ocsp</em><br>
 <strong>Default:</strong> crl<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -2005,7 +2009,7 @@ See also: <a href="#TLSCARevocationFile"><code>TLSCARevocationFile</code></a>,
 
 <p>
 <hr>
-<h2><a name="TLSVerifyServer">TLSVerifyServer</a></h2>
+<h3><a name="TLSVerifyServer">TLSVerifyServer</a></h3>
 <strong>Syntax:</strong> TLSVerifyServer <em>on|off|NoReverseDNS</em><br>
 <strong>Default:</strong> on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -2210,27 +2214,27 @@ Then tell <code>mod_tls</code> to use that DH parameter:
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_tls</code> module is distributed with ProFTPD.  Simply follow
-the normal steps for using third-party modules in proftpd: 
+the normal steps for using third-party modules in ProFTPD: 
 <pre>
-  ./configure --with-modules=mod_tls
-  make
-  make install
+  $ ./configure --with-modules=mod_tls
+  $ make
+  $ make install
 </pre>
 Alternatively, <code>mod_tls</code> can be built as a DSO module:
 <pre>
-  ./configure --enable-dso --with-shared=mod_tls ...
+  $ ./configure --enable-dso --with-shared=mod_tls ...
 </pre>
 Then follow the usual steps:
 <pre>
-  make
-  make install
+  $ make
+  $ make install
 </pre>
 
 <p>
 You may need to specify the location of the OpenSSL header and library files
 in your <code>configure</i> command, <i>e.g.</i>:
 <pre>
- ./configure --with-modules=mod_tls \
+ $ ./configure --with-modules=mod_tls \
     --with-includes=/usr/local/openssl \
     --with-libraries=/usr/local/openssl
 </pre>
@@ -2241,9 +2245,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 &copy; Copyright 2002-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
-

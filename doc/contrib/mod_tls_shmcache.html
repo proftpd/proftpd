@@ -117,20 +117,20 @@ Use a smaller shared memory size, and a shorter timeout:
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_tls_shmcache</code> module is distributed with the ProFTPD
 source code.  Simply follow the normal steps for using third-party modules
-in proftpd, being sure to include the <code>mod_tls</code> module (on which
+in ProFTPD, being sure to include the <code>mod_tls</code> module (on which
 <code>mod_tls_shmcache</code> depends):
 <pre>
-  ./configure --with-modules=mod_tls:mod_tls_shmcache
-  make
-  make install
+  $ ./configure --with-modules=mod_tls:mod_tls_shmcache
+  $ make
+  $ make install
 </pre>
 
 <p>
-Alternatively, if your proftpd was compiled with DSO support, you can
-use the <code>prxs</code> tool to build <code>mod_tls_shmcache</code> as
+Alternatively, if your <code>proftpd</code> was compiled with DSO support, you
+can use the <code>prxs</code> tool to build <code>mod_tls_shmcache</code> as
 a shared module:
 <pre>
-  prxs -c -i -d mod_tls_shmcache.c
+  $ prxs -c -i -d mod_tls_shmcache.c
 </pre>
 
 <p>
@@ -199,8 +199,7 @@ your config looks something like this:
 &copy; Copyright 2009-2015 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
-<hr><br>
+<hr>
 
 </body>
 </html>
