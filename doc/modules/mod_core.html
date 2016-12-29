@@ -21,7 +21,9 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#AllowClass">AllowClass</a>
   <li><a href="#AllowFilter">AllowFilter</a>
   <li><a href="#AllowForeignAddress">AllowForeignAddress</a>
+  <li><a href="#AllowGroup">AllowGroup</a>
   <li><a href="#AllowOverride">AllowOverride</a>
+  <li><a href="#AllowUser">AllowUser</a>
   <li><a href="#Anonymous">&lt;Anonymous&gt;</a>
   <li><a href="#AuthOrder">AuthOrder</a>
   <li><a href="#DebugLevel">DebugLevel</a>
@@ -31,6 +33,8 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#DenyAll">DenyAll</a>
   <li><a href="#DenyClass">DenyClass</a>
   <li><a href="#DenyFilter">DenyFilter</a>
+  <li><a href="#DenyGroup">DenyGroup</a>
+  <li><a href="#DenyUser">DenyUser</a>
   <li><a href="#Directory">&lt;Directory&gt;</a>
   <li><a href="#DisplayChdir">DisplayChdir</a>
   <li><a href="#DisplayConnect">DisplayConnect</a>
@@ -93,11 +97,10 @@ The <code>mod_core</code> module handles most of the core FTP commands.
 <strong>Compatibility:</strong> 0.99.0p16 and later
 
 <p>
-The <code>AllowFilter</code> directive is used inside a
-<code>&lt;Limit&gt;</code> section to explicitly specify which hosts and/or
-networks have access to the commands or operations being limited.
-<code>Allow</code> is typically used in conjunction with the
-<a href="#Order"><code>Order</code></a> and
+The <code>Allow</code> directive is used inside a <code>&lt;Limit&gt;</code>
+section to explicitly specify which hosts and/or networks have access to the
+commands or operations being limited.  <code>Allow</code> is typically used in
+conjunction with the <a href="#Order"><code>Order</code></a> and
 <a href="#Deny"><code>Deny</code></a> directives in order to create
 sophisticated access control rules.
 
@@ -288,6 +291,54 @@ its <code>PORT</code> or <code>EPRT</code> command.
 
 <p>
 <hr>
+<h2><a name="AllowGroup">AllowGroup</a></h2>
+<strong>Syntax:</strong> AllowGroup <em>["AND"|"OR"|"regex"] expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.1 and later
+
+<p>
+The <code>AllowGroup</code> directive configures an <em>expression</em> that is
+specifically <i>permitted</i> within the context of the containing
+<code>&lt;Limit&gt;</code> section. The <em>expression</em> parameter should
+contain a comma separated list of group names, or "not" groups (by prefixing a
+group name with the <code>!</code> character), that are to be allowed access
+to the section.
+
+<p>
+By default, the <em>expression</em> is evaluated as a Boolean <em>AND</em> list,
+meaning that <b>all</b> elements of the expression must evaluate to logically
+true (<i>i.e.</i> "this group <b>and</b> this group <b>and</b> that group...")
+in order to the explicit allow rule to apply.  To evaluate the
+<em>expression</em> as a Boolean <em>OR</em> list, meaning that <b>any</b> of
+the elements must evaluate to logically true (<i>i.e.</i> "this group <b>or</b>
+this group <b>or</b> that group..."), use the optional <em>OR</em> keyword.
+Similarly, to evalulate the <em>expression</em> as a regular expression, use
+the <em>regex</em> keyword.
+
+<p>
+Examples:
+<pre>
+  &lt;Limit LOGIN&gt;
+    # Allow logins from users in the the www OR doc groups
+    AllowGroup OR www,doc
+
+    # Allow logins from users in the ftp group and not in the admin group
+    AllowGroup AND ftp,!admin
+
+    # Deny logins from any group starting with "sys"
+    DenyGroup regex ^sys
+  &lt;/Limit&gt;
+</pre>
+
+<p>
+See also: <a href="#AllowUser"><code>AllowUser</code></a>,
+<a href="#DenyGroup"><code>DenyGroup</code></a>,
+<a href="#DenyUser"><code>DenyUser</code></a>
+
+<p>
+<hr>
 <h2><a name="AllowOverride">AllowOverride</a></h2>
 <strong>Syntax:</strong> AllowOverride <em>on|off</em><br>
 <strong>Default:</strong> None<br>
@@ -301,6 +352,54 @@ named <code>.ftpaccess</code> in the encountered directories.  These files
 provide functionality similar to Apache's <code>.htaccess</code> files --
 mini-configuration files.  This <code>AllowOverride</code> directive controls
 when/if these <code>.ftpaccess</code> files will be parsed.
+
+<p>
+<hr>
+<h2><a name="AllowUser">AllowUser</a></h2>
+<strong>Syntax:</strong> AllowUser <em>["AND"|"OR"|"regex"] expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+The <code>AllowUser</code> directive configures an <em>expression</em> that is
+specifically <i>permitted</i> within the context of the containing
+<code>&lt;Limit&gt;</code> section. The <em>expression</em> parameter should
+contain a comma separated list of user names, or "not" users (by prefixing a
+user name with the <code>!</code> character), that are to be allowed access
+to the section.
+
+<p>
+Now, <b>unlike</b> <code>AllowGroup</code>, the <code>AllowUser</code>
+<em>expression</em> is evaluated as a Boolean <em>OR</em> list by default,
+meaning that <b>any</b> elements of the expression must evaluate to logically
+true (<i>i.e.</i> "this user <b>or</b> this user <b>or</b> that user...")
+in order to the explicit allow rule to apply.  To evaluate the
+<em>expression</em> as a Boolean <em>AND</em> list, meaning that <b>all</b> of
+the elements must evaluate to logically true (<i>i.e.</i> "this user <b>and</b>
+this user <b>and</b> that user..."), use the optional <em>AND</em> keyword.
+(Note that a single user <b>cannot</b> be "this user <b>and</b> that user" at
+the same time, thus the value of <em>AND</em> lists for users is debatable.)
+Similarly, to evalulate the <em>expression</em> as a regular expression, use
+the <em>regex</em> keyword.
+
+<p>
+Examples:
+<pre>
+  &lt;Limit RETR&gt;
+    # Allow these users to download
+    AllowUser OR alice,bob,chuck
+
+    # Or these users, based on our regex
+    AllowUser regex ^ftp_
+  &lt;/Limit&gt;
+</pre>
+
+<p>
+See also: <a href="#AllowGroup"><code>AllowGroup</code></a>,
+<a href="#DenyGroup"><code>DenyGroup</code></a>,
+<a href="#DenyUser"><code>DenyUser</code></a>
 
 <p>
 <hr>
@@ -661,8 +760,107 @@ The <a href="../howto/Filters.html">Filters</a> howto covers filtering in
 greater detail.
 
 <p>
-See also: <a href="#AllowFilter"><code>AllowFilter</code></a>, <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>, <a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
+See also: <a href="#AllowFilter"><code>AllowFilter</code></a>,
+<a href="#PathAllowFilter"><code>PathAllowFilter</code></a>,
+<a href="#PathDenyFilter"><code>PathDenyFilter</code></a>
 
+<p>
+<hr>
+<h2><a name="DenyGroup">DenyGroup</a></h2>
+<strong>Syntax:</strong> DenyGroup <em>["AND"|"OR"|"regex"] expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.1 and later
+
+<p>
+The <code>DenyGroup</code> directive configures an <em>expression</em> that is
+specifically <i>permitted</i> within the context of the containing
+<code>&lt;Limit&gt;</code> section. The <em>expression</em> parameter should
+contain a comma separated list of group names, or "not" groups (by prefixing a
+group name with the <code>!</code> character), that are to be denied access
+to the section.
+
+<p>
+By default, the <em>expression</em> is evaluated as a Boolean <em>AND</em> list,
+meaning that <b>all</b> elements of the expression must evaluate to logically
+true (<i>i.e.</i> "this group <b>and</b> this group <b>and</b> that group...")
+in order to the explicit deny rule to apply.  To evaluate the
+<em>expression</em> as a Boolean <em>OR</em> list, meaning that <b>any</b> of
+the elements must evaluate to logically true (<i>i.e.</i> "this group <b>or</b>
+this group <b>or</b> that group..."), use the optional <em>OR</em> keyword.
+Similarly, to evalulate the <em>expression</em> as a regular expression, use
+the <em>regex</em> keyword.
+
+<p>
+Examples:
+<pre>
+  &lt;Limit LOGIN&gt;
+    # Deny logins from users in the the www OR doc groups
+    DenyGroup OR www,doc
+
+    # Deny logins from users in the ftp group and not in the admin group
+    DenyGroup AND ftp,!admin
+
+    # Allow logins from any group starting with "sys"
+    AllowGroup regex ^sys
+  &lt;/Limit&gt;
+</pre>
+
+<p>
+See also: <a href="#AllowGroup"><code>AllowGroup</code></a>,
+<a href="#AllowUser"><code>AllowUser</code></a>,
+<a href="#DenyUser"><code>DenyUser</code></a>
+
+<p>
+<hr>
+<h2><a name="DenyUser">DenyUser</a></h2>
+<strong>Syntax:</strong> DenyUser <em>["AND"|"OR"|"regex"] expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Limit&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+The <code>DenyUser</code> directive configures an <em>expression</em> that is
+specifically <i>denied</i> within the context of the containing
+<code>&lt;Limit&gt;</code> section. The <em>expression</em> parameter should
+contain a comma separated list of user names, or "not" users (by prefixing a
+user name with the <code>!</code> character), that are to be denied access
+to the section.
+
+<p>
+Now, <b>unlike</b> <code>AllowGroup</code>, the <code>DenyUser</code>
+<em>expression</em> is evaluated as a Boolean <em>OR</em> list by default,
+meaning that <b>any</b> elements of the expression must evaluate to logically
+true (<i>i.e.</i> "this user <b>or</b> this user <b>or</b> that user...")
+in order to the explicit deny rule to apply.  To evaluate the
+<em>expression</em> as a Boolean <em>AND</em> list, meaning that <b>all</b> of
+the elements must evaluate to logically true (<i>i.e.</i> "this user <b>and</b>
+this user <b>and</b> that user..."), use the optional <em>AND</em> keyword.
+(Note that a single user <b>cannot</b> be "this user <b>and</b> that user" at
+the same time, thus the value of <em>AND</em> lists for users is debatable.)
+Similarly, to evalulate the <em>expression</em> as a regular expression, use
+the <em>regex</em> keyword.
+
+<p>
+Examples:
+<pre>
+  &lt;Limit RETR&gt;
+    # Deny to these users downloading
+    DenyUser OR alice,bob,chuck
+
+    # Or these users, based on our regex
+    DenyUser regex ^ftp_
+  &lt;/Limit&gt;
+</pre>
+
+<p>
+See also: <a href="#AllowGroup"><code>AllowGroup</code></a>,
+<a href="#AllowUser"><code>AllowUser</code></a>,
+<a href="#DenyGroup"><code>DenyGroup</code></a>
+
+<p>
 <hr>
 <h2><a name="Directory">&lt;Directory&gt;</a></h2>
 <strong>Syntax:</strong> &lt;Directory <em>path</em>&gt;<br>
