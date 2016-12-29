@@ -71,6 +71,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#ServerIdent">ServerIdent</a>
   <li><a href="#ServerName">ServerName</a>
   <li><a href="#ServerType">ServerType</a>
+  <li><a href="#SetEnv">SetEnv</a>
   <li><a href="#SocketBindTight">SocketBindTight</a>
   <li><a href="#SocketOptions">SocketOptions</a>
   <li><a href="#SyslogFacility">SyslogFacility</a>
@@ -84,6 +85,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#TraceOptions">TraceOptions</a>
   <li><a href="#TransferLog">TransferLog</a>
   <li><a href="#Umask">Umask</a>
+  <li><a href="#UnsetEnv">UnsetEnv</a>
   <li><a href="#User">User</a>
   <li><a href="#UseReverseDNS">UseReverseDNS</a>
   <li><a href="#UserOwner">UserOwner</a>
@@ -2131,6 +2133,32 @@ dedicated to processing all requests from the newly connected client.
 
 <p>
 <hr>
+<h2><a name="SetEnv">SetEnv</a></h2>
+<strong>Syntax:</strong> SetEnv <em>name value</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;Virtual&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.10rc1 and later
+
+<p>
+The <code>SetEnv</code> directive is used to set the environment variable
+<em>name</em> to <em>value</em> in session processes.  Note that if
+<code>SetEnv</code> is used in the &quot;server config&quot; configuration
+context, the configured environment value will be set for the ProFTPD daemon
+process as well.
+
+<p>
+Examples:
+<pre>
+  # Set the TZ environment variable
+  SetEnv TZ GMT
+</pre>
+
+<p>
+See also: <a href="#UnsetEnv"><code>UnsetEnv</code></a>
+
+<p>
+<hr>
 <h2><a name="SocketBindTight">SocketBindTight</a></h2>
 <strong>Syntax:</strong> SocketBindTight <em>on|off</em><br>
 <strong>Default:</strong> <em>off</em><br>
@@ -2698,6 +2726,33 @@ uploaded file can be changed by issuing a <code>SITE CHMOD</code> command,
 <p>
 The <code>Umask</code> <a href="../howto/Umask.html">howto</a> also talks about
 umasks in greater detail.
+
+<p>
+<hr>
+<h2><a name="UnsetEnv">UnsetEnv</a></h2>
+<strong>Syntax:</strong> UnsetEnv <em>name</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;Virtual&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.10rc1 and later
+
+<p>
+The <code>UnsetEnv</code> directive is used to unset/remove the <em>name</em>
+environment variable from the environment for sessions.  Note that if the
+<code>UnsetEnv</code> directive is used in the &quot;server config&quot;
+configuration context, the <em>name</em> variable is removed from the
+environment for the ProFTPD daemon process as well.
+
+<p>
+Examples:
+<pre>
+  # Unset the USER and HOME environment variables for sessions
+  UnsetEnv USER
+  UnsetEnv HOME
+</pre>
+
+<p>
+See also: <a href="#SetEnv"><code>SetEnv</code></a>
 
 <p>
 <hr>

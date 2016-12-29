@@ -600,7 +600,7 @@ MODRET set_setenv(cmd_rec *cmd) {
   add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
 
   /* In addition, if this is the "server config" context, set the
-   * environ variable now.  If there was a <Daemon> context, that would
+   * environment variable now.  If there was a <Daemon> context, that would
    * be a more appropriate place for configuring parse-time environ
    * variables.
    */
@@ -610,7 +610,7 @@ MODRET set_setenv(cmd_rec *cmd) {
 
   if (ctxt_type == CONF_ROOT) {
     if (pr_env_set(cmd->server->pool, cmd->argv[1], cmd->argv[2]) < 0) {
-      pr_log_debug(DEBUG1, "%s: unable to set environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "%s: unable to set environment variable '%s': %s",
         (char *) cmd->argv[0], (char *) cmd->argv[1], strerror(errno));
 
     } else {
@@ -1760,8 +1760,8 @@ MODRET set_unsetenv(cmd_rec *cmd) {
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
 
   /* In addition, if this is the "server config" context, unset the
-   * environ variable now.  If there was a <Daemon> context, that would
-   * be a more appropriate place for configuring parse-time environ
+   * environment variable now.  If there was a <Daemon> context, that would
+   * be a more appropriate place for configuring parse-time environment
    * variables.
    */
   ctxt_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
@@ -1770,7 +1770,7 @@ MODRET set_unsetenv(cmd_rec *cmd) {
 
   if (ctxt_type == CONF_ROOT) {
     if (pr_env_unset(cmd->server->pool, cmd->argv[1]) < 0) {
-      pr_log_debug(DEBUG1, "%s: unable to unset environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "%s: unable to unset environment variable '%s': %s",
         (char *) cmd->argv[0], (char *) cmd->argv[1], strerror(errno));
 
     } else {
@@ -4948,7 +4948,7 @@ MODRET core_post_host(cmd_rec *cmd) {
       pr_signals_handle();
 
       if (pr_env_unset(session.pool, c->argv[0]) < 0) {
-        pr_log_debug(DEBUG0, "unable to unset environ variable '%s': %s",
+        pr_log_debug(DEBUG0, "unable to unset environment variable '%s': %s",
           (char *) c->argv[0], strerror(errno));
       }
 
@@ -6669,7 +6669,7 @@ static int core_sess_init(void) {
 
   while (c) {
     if (pr_env_set(session.pool, c->argv[0], c->argv[1]) < 0) {
-      pr_log_debug(DEBUG1, "unable to set environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "unable to set environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
 
     } else {
@@ -6684,7 +6684,7 @@ static int core_sess_init(void) {
 
   while (c) {
     if (pr_env_unset(session.pool, c->argv[0]) < 0) {
-      pr_log_debug(DEBUG1, "unable to unset environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "unable to unset environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
 
     } else {
