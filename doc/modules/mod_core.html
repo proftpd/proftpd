@@ -26,6 +26,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#AllowUser">AllowUser</a>
   <li><a href="#Anonymous">&lt;Anonymous&gt;</a>
   <li><a href="#AuthOrder">AuthOrder</a>
+  <li><a href="#CommandBufferSize">CommandBufferSize</a>
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DefaultAddress">DefaultAddress</a>
   <li><a href="#DefaultServer">DefaultServer</a>
@@ -519,6 +520,22 @@ to ensure that the login fails if the PAM check fails.
   # authoritative about accepting or rejecting the login
   AuthOrder mod_auth_pam.c* mod_auth_unix.c
 </pre>
+
+<p>
+<hr>
+<h2><a name="CommandBufferSize">CommandBufferSize</a></h2>
+<strong>Syntax:</strong> CommandBufferSize <em>size</em><br>
+<strong>Default:</strong> CommandBufferSize 512<br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0pre7 and later
+
+<p>
+The <code>CommandBufferSize</code> directive controls the maximum command
+<em>size</em> (in bytes) permitted to be sent to the server.  This allows you
+to effectively control the longest command the server may accept, and can help
+protect the server from various Denial of Service or resource-consumption
+attacks.
 
 <p>
 <hr>
