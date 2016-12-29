@@ -1,6 +1,3 @@
-<!-- $Id: mod_memcache.html,v 1.7 2013-05-07 05:11:40 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_memcache.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_memcache</title>
@@ -133,9 +130,9 @@ The <code>mod_memcache</code> module is distributed with ProFTPD.  To enable
 support and use of the memcache protocol in your <code>proftpd</code> daemon,
 use the <code>--enable-memcache</code> configure option:
 <pre>
-  # ./configure --enable-memcache ...
-  # make
-  # make install
+  $ ./configure --enable-memcache ...
+  $ make
+  $ make install
 </pre>
 This option causes the <code>mod_memcache</code> module to be compiled into
 <code>proftpd</code>.
@@ -144,25 +141,19 @@ This option causes the <code>mod_memcache</code> module to be compiled into
 You may also need to tell <code>configure</code> how to find the
 <code>libmemcached</code> header and library files:
 <pre>
-  # ./configure --enable-memcache \
+  $ ./configure --enable-memcache \
     --with-includes=<i>/path/to/libmemcached/include</i> \
     --with-libraries=<i>/path/to/libmemcached/lib</i>
 </pre>
 
 <p>
-<hr><br>
-
-Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2013-05-07 05:11:40 $</i><br>
-
-<br><hr>
-
+<hr>
 <font size=2><b><i>
 &copy; Copyright 2011-2013 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
+<hr>
 
-<hr><br>
 </body>
 </html>
 
