@@ -633,30 +633,6 @@ MODRET add_transferlog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_wtmplog(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if (strcasecmp(cmd->argv[1], "NONE") == 0)
-    bool = 0;
-  else
-    bool = get_boolean(cmd, 1);
-
-  if (bool != -1) {
-    c = add_config_param(cmd->argv[0], 1, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = bool;
-    c->flags |= CF_MERGEDOWN;
-
-  } else
-    CONF_ERROR(cmd, "expected boolean argument, or \"NONE\"");
-
-  return PR_HANDLED(cmd);
-}
-
 MODRET set_serveradmin(cmd_rec *cmd) {
   server_rec *s = cmd->server;
 
@@ -6997,7 +6973,6 @@ static conftable core_conftab[] = {
   { "UseReverseDNS",		set_usereversedns,		NULL },
   { "User",			set_user,			NULL },
   { "UserOwner",		add_userowner,			NULL },
-  { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
 

@@ -41,6 +41,7 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#UseFtpUsers">UseFtpUsers</a>
   <li><a href="#UserAlias">UserAlias</a>
   <li><a href="#UserPassword">UserPassword</a>
+  <li><a href="#WtmpLog">WtmpLog</a>
 </ul>
 
 <hr>
@@ -823,7 +824,7 @@ cleartext password</b>.  To obtain this <em>encrypted-password</em> value,
 you can use the <a href="../utils/ftpasswd.html"><code>ftpasswd</code></a>
 script's <code>--hash</code> option, <i>e.g.</i>:
 <pre>
-  # ftpasswd --hash
+  $ ftpasswd --hash
 
   Password: 
   Re-type password: 
@@ -837,6 +838,21 @@ Example configuration:
   # Override user bob's password with a hash version of "password"
   UserPassword bob $1$EsnXxyD6$tsO2YwTAT/Tl5u1NYPHIw1
 </pre>
+
+<p>
+<hr>
+<h2><a name="WtmpLog">WtmpLog</a></h2>
+<strong>Syntax:</strong> WtmpLog <em>on|off</em><br>
+<strong>Default:</strong> WtmpLog on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+The <code>WtmpLog</code> directive controls the logging of connections to the
+host system <a href="https://en.wikipedia.org/wiki/Utmp"><code>wtmp</code></a>
+file, which used by such commands as <code>last</code>.  By default, <b>all</b>
+connections are logged via <code>wtmp</code>.
 
 <p>
 <hr>
