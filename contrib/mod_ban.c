@@ -1512,6 +1512,7 @@ static int ban_list_exists(pool *p, unsigned int type, unsigned int sid,
 
       if (use_entry == TRUE) {
         if (mesg != NULL &&
+            bme.be_mesg != NULL &&
             strlen(bme.be_mesg) > 0) {
           *mesg = bme.be_mesg;
         }
