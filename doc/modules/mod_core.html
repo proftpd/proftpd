@@ -62,6 +62,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#PassivePorts">PassivePorts</a>
   <li><a href="#PathAllowFilter">PathAllowFilter</a>
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
+  <li><a href="#PidFile>PidFile</a>
   <li><a href="#Port">Port</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
@@ -1818,6 +1819,28 @@ greater detail.
 
 <p>
 See also: <a href="#PathAllowFilter"><code>PathAllowFilter</code></a>
+
+<p>
+<hr>
+<h3><a name="PidFile">PidFile</a></h3>
+<strong>Syntax:</strong> PidFile <em>path</em><br>
+<strong>Default:</strong> PidFile <em>$prefix</em>/var/proftpd.pid<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0rc2 and later
+
+<p>
+The <code>PidFile</code> directive configures the <em>path</em> to which the
+daemon process records its process ID (PID).  The <em>path</em> must be an
+absolute path, <i>e.g.</i> <code>/var/run/proftpd/proftpd.pid</code>.  The
+<code>PidFile</code> is only used in <a href="#ServerType">standalone</a> mode.
+
+<p>
+It is often useful to be able to send the daemon a signal, so that it closes
+and then reopens its log files (<i>e.g.</i> ExtendedLog, TransferLog), and
+re-reads its configuration files.  This is done by sending the
+<code>SIGHUP</code> signal to the PID contained in the <code>PidFile</code> --
+the PID of the daemon process.
 
 <p>
 <hr>
