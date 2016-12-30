@@ -1073,6 +1073,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
   int len = 0;
   int total = 0;
   int res = 0;
+  pool *tmp_pool = NULL;
 
   if (cl_buf == NULL ||
       cl_size == 0) {
@@ -1111,7 +1112,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
   }
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    char *buf = session.xfer.buf;
+    char *buf;
+
+    buf = session.xfer.buf;
 
     /* We use ASCII translation if:
      *
@@ -1145,6 +1148,8 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
             continue;
           }
 
+          destroy_pool(tmp_pool);
+          errno = xerrno;
           return -1;
         }
 
@@ -1192,8 +1197,14 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
               buflen > 1) {
             size_t outlen = 0;
 
-            res = pr_ascii_ftp_from_crlf(session.xfer.p, buf, buflen, &buf,
-              &outlen);
+            /* Use a temporary pool for the CRLF conversion, lest the
+             * session.xfer.p pool grow quite large while downloading a large
+             * file for ASCII conversion (Bug#4277).
+             */
+            tmp_pool = make_sub_pool(session.xfer.p);
+            pr_pool_tag(tmp_pool, "ASCII download");
+
+            res = pr_ascii_ftp_from_crlf(tmp_pool, buf, buflen, &buf, &outlen);
             if (res < 0) {
               pr_trace_msg(trace_channel, 3, "error reading ASCII data: %s",
                 strerror(errno));
@@ -1315,12 +1326,19 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         char *out = NULL;
         size_t outlen = 0;
 
+        /* Use a temporary pool for the CRLF conversion, lest the
+         * session.xfer.p pool grow quite large while downloading a large
+         * file for ASCII conversion (Bug#4277).
+         */
+        tmp_pool = make_sub_pool(session.xfer.p);
+        pr_pool_tag(tmp_pool, "ASCII upload");
+
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in
          * the internal buffer, including any added CRs.
          */
-        res = pr_ascii_ftp_to_crlf(session.xfer.p, session.xfer.buf, xferbuflen,
+        res = pr_ascii_ftp_to_crlf(tmp_pool, session.xfer.buf, xferbuflen,
           &out, &outlen);
         if (res < 0) {
           pr_trace_msg(trace_channel, 1, "error writing ASCII data: %s",
@@ -1349,6 +1367,8 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
           continue;
         }
 
+        destroy_pool(tmp_pool);
+        errno = xerrno;
         return -1;
       }
 
@@ -1395,6 +1415,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
     session.total_bytes_out += total;
   }
 
+  destroy_pool(tmp_pool);
   return (len < 0 ? -1 : len);
 }
 
