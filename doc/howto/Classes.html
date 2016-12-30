@@ -149,11 +149,12 @@ main directives to use, for example in <code>&lt;Limit&gt;</code> sections:
 </pre>
 
 <p>
-The <a href="http://www.castaglia.org/proftpd/modules/mod_ifsession.html"><code>mod_ifsession</code></a> module also makes use of classes with its
-<code>&lt;IfClass&gt;</code> configuration section.  Using classes and
-<code>mod_ifsession</code>, you can write a <code>proftpd.conf</code> that
-has specific configurations for specific classes of clients.  Here's an
-example snippet demonstrating use of <code>&lt;IfClass&gt;</code>:
+The <a href="../contrib/mod_ifsession.html"><code>mod_ifsession</code></a>
+module also makes use of classes with its <code>&lt;IfClass&gt;</code>
+configuration section.  Using classes and <code>mod_ifsession</code>, you can
+write a <code>proftpd.conf</code> that has specific configurations for specific
+classes of clients.  Here's an example snippet demonstrating use of
+<code>&lt;IfClass&gt;</code>:
 <pre>
   &lt;IfClass internal&gt;
     MaxClients 100
@@ -169,8 +170,5 @@ This allows clients from class &quot;internal&quot; to see an effective
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2008-06-10 16:29:07 $</i><br>
-<hr>
-
 </body>
 </html>

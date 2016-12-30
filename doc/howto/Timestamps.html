@@ -125,12 +125,17 @@ process.  See below for a common follow-up question.
 Why not?  For several reasons:
 <ul>
   <li>The <code>MDTM</code> command is <b>not</b> one of the commands
-      mandated by <a href="http://www.faqs.org/rfcs/rfc959.html">RFC959</a>.
+      mandated by <a href="http://www.faqs.org/rfcs/rfc959.html">RFC 959</a>.
+  </li>
+  
   <li>Some FTP clients use <code>MDTM</code> for <i>retrieving</i> the
       modification time, others try to use it to <i>set</i> the modification
       time, and still others do both.
+  </li>
+
   <li>Among those FTP clients that do use <code>MDTM</code>, there is no
       consistent format of the timestamp used.
+  </li>
 </ul>
 In short, it is a royal mess.  ProFTPD supports <code>MDTM</code> for
 retrieving the modification time, in GMT.  Period.

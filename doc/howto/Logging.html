@@ -380,10 +380,10 @@ logging".  This form of logging is covered in greater detail
 <b>Pid File</b><br>
 On startup, <code>proftpd</code> saves the process ID of the parent daemon
 process to the file <code>var/proftpd/proftpd.pid</code>. This filename can be
-changed with the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_PidFile.html">PidFile</a> directive. The process ID (<i>aka</i> PID) is for
-use by the administrator in restarting and terminating the daemon by sending
-signals to the parent process.  For more information see the
-<a href="Stopping.html">stopping and starting</a> page.
+changed with the <a href="../modules/mod_core.html#PidFile"><code>PidFile</code></a> directive. The process ID (<i>aka</i> PID) is for use by the administrator
+in restarting and terminating the daemon by sending signals to the parent
+process.  For more information see the <a href="Stopping.html">stopping and
+starting</a> page.
 
 <p>
 <b>Scoreboard File</b><br>
@@ -392,7 +392,7 @@ scoreboard is binary-formatted file the server uses to store information
 about each session; it is this file that is read by <code>ftptop</code>,
 <code>ftpwho</code> and <code>ftpcount</code>.  The location for the
 scoreboard file is determined by the
-<a href="http://www.proftpd.org/docs/directives/linked/config_ref_ScoreboardFile.html"><code>ScoreboardFile</code></a> directive.
+<a href="../modules/mod_core.html#ScoreboardFile"><code>ScoreboardFile</code></a> directive.
 
 <p><a name="FAQ"></a>
 <b>Frequently Asked Questions</b><br>
@@ -510,7 +510,9 @@ please find their related man pages.
 
 <p>
 Now to make the "No such file or directory" log message go away, simply tell
-<code>proftpd</code> to stop trying to use <code>wtmp</code> logging by using:
+<code>proftpd</code> to stop trying to use <code>wtmp</code> logging by using
+the <a href="../modules/mod_auth.html#WtmpLog"><code>WtmpLog</code></a>
+directive:
 <pre>
   WtmpLog off
 </pre>

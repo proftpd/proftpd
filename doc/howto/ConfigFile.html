@@ -265,12 +265,13 @@ Authentication and the login process is discussed
 <a href="Authentication.html">here</a> in more detail.
 
 <p>
-For setting up anonymous logins, there is the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_Anonymous.html"><code>&lt;Anonymous&gt;</code></a> configuration context.  If there are no <code>&lt;Anonymous&gt;</code>
-sections in your <code>proftpd.conf</code>, then no anonymous logins will be
-allowed - simple.  As mentioned in the description, the <code>User</code>
-directive in an <code>&lt;Anonymous&gt;</code> context determines what username
-is treated as an anonymous login.  The main other thing to know about
-anonymous logins is that ProFTPD automatically chroots anonymous logins.
+For setting up anonymous logins, there is the <a href="../modules/mod_core.html#Anonymous"><code>&lt;Anonymous&gt;</code></a> configuration context.  If there
+are no <code>&lt;Anonymous&gt;</code> sections in your
+<code>proftpd.conf</code>, then no anonymous logins will be allowed - simple.
+As mentioned in the description, the <code>User</code> directive in an
+<code>&lt;Anonymous&gt;</code> context determines what username is treated as
+an anonymous login.  The main other thing to know about anonymous logins is
+that ProFTPD automatically chroots anonymous logins.
 
 <p><a name="Jailing">
 For normal, non-anonymous logins, jails/chroots are configured using the
