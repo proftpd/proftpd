@@ -574,8 +574,6 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
                 msg = pstrcat(tmp_pool, msg, "\n\t", names[0], NULL);
 
               } else {
-                register unsigned int i;
-
                 for (i = 0; i < nelts; i++) {
                   msg = pstrcat(tmp_pool, msg, "\n\t", names[i], NULL);
                 }

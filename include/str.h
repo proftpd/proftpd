@@ -94,8 +94,7 @@ unsigned char *pr_str_hex2bin(pool *p, const unsigned char *hex, size_t hex_len,
  * operations (swap, substitution, insertion, deletion) can be weighted.
  */
 int pr_str_levenshtein(pool *p, const char *a, const char *b,
-  unsigned int swap_cost, unsigned int subst_cost, unsigned int insert_cost,
-  unsigned int del_cost, int flags);
+  int swap_cost, int subst_cost, int insert_cost, int del_cost, int flags);
 
 /* Given a string and a list of possibly similar candidates, return an
  * array of the candidates, sorted in order of Levenshtein distance (ascending).

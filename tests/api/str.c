@@ -1454,7 +1454,7 @@ START_TEST (similars_test) {
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
-  *((const char **) push_array(candidates)) = pstrdup(p, "food");
+  *((const char **) push_array(candidates)) = pstrdup(p, "fools");
   *((const char **) push_array(candidates)) = pstrdup(p, "odd");
   *((const char **) push_array(candidates)) = pstrdup(p, "bar");
   *((const char **) push_array(candidates)) = pstrdup(p, "FOO");
@@ -1472,7 +1472,7 @@ START_TEST (similars_test) {
   fail_unless(strcmp(similars[0], expected) == 0,
     "Expected similar '%s', got '%s'", expected, similars[0]);
 
-  expected = "food";
+  expected = "fools";
   fail_unless(strcmp(similars[1], expected) == 0,
     "Expected similar '%s', got '%s'", expected, similars[1]);
 
@@ -1493,7 +1493,7 @@ START_TEST (similars_test) {
   fail_unless(strcmp(similars[0], expected) == 0,
     "Expected similar '%s', got '%s'", expected, similars[0]);
 
-  expected = "food";
+  expected = "fools";
   fail_unless(strcmp(similars[1], expected) == 0,
     "Expected similar '%s', got '%s'", expected, similars[1]);
 

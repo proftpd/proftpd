@@ -628,9 +628,8 @@ unsigned char *pr_str_hex2bin(pool *p, const unsigned char *hex, size_t hex_len,
  * This implementation borrows from the git implementation; see
  * git/src/levenshtein.c.
  */
-int pr_str_levenshtein(pool *p, const char *a, const char *b,
-    unsigned int swap_cost, unsigned int subst_cost,
-    unsigned int insert_cost, unsigned int del_cost, int flags) {
+int pr_str_levenshtein(pool *p, const char *a, const char *b, int swap_cost,
+    int subst_cost, int insert_cost, int del_cost, int flags) {
   size_t alen, blen;
   unsigned int i, j;
   int *row0, *row1, *row2, res;
