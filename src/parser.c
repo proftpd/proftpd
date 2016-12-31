@@ -341,6 +341,34 @@ unsigned int pr_parser_get_lineno(void) {
   return parser_curr_lineno;
 }
 
+/* Return an array of all supported/known configuration directives. */
+static array_header *get_all_directives(pool *p) {
+  array_header *names;
+  conftable *tab;
+  int idx;
+  unsigned int hash;
+
+  names = make_array(p, 1, sizeof(const char *));
+
+  idx = -1;
+  hash = 0;
+  tab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, NULL, &idx, &hash);
+  while (idx != -1) {
+    pr_signals_handle();
+
+    if (tab != NULL) {
+      *((const char **) push_array(names)) = pstrdup(p, tab->directive);
+
+    } else {
+      idx++;
+    }
+
+    tab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, tab, &idx, &hash);
+  }
+
+  return names;
+}
+
 int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
     int flags) {
   pr_fh_t *fh;
@@ -522,6 +550,39 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
           if (non_ascii) {
             pr_log_pri(PR_LOG_WARNING, "fatal: malformed directive name "
               "'%s' (contains non-ASCII characters)", name);
+
+          } else {
+            array_header *directives, *similars;
+
+            directives = get_all_directives(tmp_pool);
+            similars = pr_str_get_similars(tmp_pool, name, directives, 0,
+              PR_STR_FL_IGNORE_CASE);
+            if (similars != NULL &&
+                similars->nelts > 0) {
+              unsigned int nelts;
+              const char **names, *msg;
+
+              names = similars->elts;
+              nelts = similars->nelts;
+              if (nelts > 4) {
+                nelts = 4;
+              }
+
+              msg = "fatal: Did you mean:";
+
+              if (nelts == 1) {
+                msg = pstrcat(tmp_pool, msg, "\n\t", names[0], NULL);
+
+              } else {
+                register unsigned int i;
+
+                for (i = 0; i < nelts; i++) {
+                  msg = pstrcat(tmp_pool, msg, "\n\t", names[i], NULL);
+                }
+              }
+
+              pr_log_pri(PR_LOG_WARNING, "%s", msg);
+            }
           }
 
           destroy_pool(tmp_pool);

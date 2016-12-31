@@ -624,6 +624,214 @@ unsigned char *pr_str_hex2bin(pool *p, const unsigned char *hex, size_t hex_len,
   return data;
 }
 
+/* Calculate the Damerau-Levenshtein distance between strings `a' and `b'.
+ * This implementation borrows from the git implementation; see
+ * git/src/levenshtein.c.
+ */
+int pr_str_levenshtein(pool *p, const char *a, const char *b,
+    unsigned int swap_cost, unsigned int subst_cost,
+    unsigned int insert_cost, unsigned int del_cost, int flags) {
+  size_t alen, blen;
+  unsigned int i, j;
+  int *row0, *row1, *row2, res;
+  pool *tmp_pool;
+
+  if (p == NULL ||
+      a == NULL ||
+      b == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  alen = strlen(a);
+  blen = strlen(b);
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "Levenshtein Distance pool");
+
+  if (flags & PR_STR_FL_IGNORE_CASE) {
+    char *a2, *b2;
+
+    a2 = pstrdup(tmp_pool, a);
+    for (i = 0; i < alen; i++) {
+      a2[i] = tolower((int) a[i]);
+    }
+
+    b2 = pstrdup(tmp_pool, b);
+    for (i = 0; i < blen; i++) {
+      b2[i] = tolower((int) b[i]);
+    }
+
+    a = a2;
+    b = b2;
+  }
+
+  row0 = pcalloc(tmp_pool, sizeof(int) * (blen + 1));
+  row1 = pcalloc(tmp_pool, sizeof(int) * (blen + 1));
+  row2 = pcalloc(tmp_pool, sizeof(int) * (blen + 1));
+
+  for (j = 0; j <= blen; j++) {
+    row1[j] = j * insert_cost;
+  }
+
+  for (i = 0; i < alen; i++) {
+    int *ptr;
+
+    row2[0] = (i + 1) * del_cost;
+    for (j = 0; j < blen; j++) {
+      /* Substitution */
+      row2[j + 1] = row1[j] + (subst_cost * (a[i] != b[j]));
+
+      /* Swap */
+      if (i > 0 &&
+          j > 0 &&
+          a[i-1] == b[j] &&
+          a[i] == b[j-1] &&
+          row2[j+1] > (row0[j-1] + swap_cost)) {
+        row2[j+1] = row0[j-1] + swap_cost;
+      }
+
+      /* Deletion */
+      if (row2[j+1] > (row1[j+1] + del_cost)) {
+        row2[j+1] = row1[j+1] + del_cost;
+      }
+
+      /* Insertion */
+      if (row2[j+1] > (row2[j] + insert_cost)) {
+        row2[j+1] = row2[j] + insert_cost;
+      }
+    }
+
+    ptr = row0;
+    row0 = row1;
+    row1 = row2;
+    row2 = ptr;
+  }
+
+  res = row2[blen];
+
+  destroy_pool(tmp_pool);
+  return res;
+}
+
+/* For tracking the Levenshtein distance for a string. */
+struct candidate {
+  const char *s;
+  int distance;
+  int flags;
+};
+
+static int distance_cmp(const void *a, const void *b) {
+  const struct candidate *cand1, *cand2;
+  const char *s1, *s2;
+  int distance1, distance2;
+
+  cand1 = a;
+  s1 = cand1->s;
+  distance1 = cand1->distance;
+
+  cand2 = b;
+  s2 = cand2->s;
+  distance2 = cand2->distance;
+
+  if (distance1 != distance2) {
+    return distance1 - distance2;
+  }
+
+  if (cand1->flags & PR_STR_FL_IGNORE_CASE) {
+    return strcasecmp(s1, s2);
+  }
+
+  return strcmp(s1, s2);
+}
+
+array_header *pr_str_get_similars(pool *p, const char *s,
+    array_header *candidates, int max_distance, int flags) {
+  register unsigned int i;
+  size_t len;
+  array_header *similars;
+  struct candidate **distances;
+  pool *tmp_pool;
+
+  if (p == NULL ||
+      s == NULL ||
+      candidates == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (candidates->nelts == 0) {
+    errno = ENOENT;
+    return NULL;
+  }
+
+  if (max_distance <= 0) {
+    max_distance = PR_STR_DEFAULT_MAX_EDIT_DISTANCE;
+  }
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "Similar Strings pool");
+
+  /* In order to use qsort(3), we need a contiguous block of memory, not
+   * one of our array_headers.
+   */
+
+  distances = pcalloc(tmp_pool, candidates->nelts * sizeof(struct candidate *));
+
+  len = strlen(s);
+  for (i = 0; i < candidates->nelts; i++) {
+    const char *c;
+    struct candidate *cand;
+    int prefix_match = FALSE;
+
+    c = ((const char **) candidates->elts)[i];
+    cand = pcalloc(tmp_pool, sizeof(struct candidate));
+    cand->s = c;
+    cand->flags = flags;
+
+    /* Give prefix matches a higher score */
+    if (flags & PR_STR_FL_IGNORE_CASE) {
+      if (strncasecmp(c, s, len) == 0) {
+        prefix_match = TRUE;
+      }
+
+    } else {
+      if (strncmp(c, s, len) == 0) {
+        prefix_match = TRUE;
+      }
+    }
+
+    if (prefix_match == TRUE) {
+      cand->distance = 0;
+
+    } else {
+      /* Note: We arbitrarily add one to the edit distance, in order to
+       * distinguish a distance of zero from our prefix match "distances" of
+       * zero above.
+       */
+      cand->distance = pr_str_levenshtein(tmp_pool, s, c, 0, 2, 1, 3,
+        flags) + 1;
+    }
+
+    distances[i] = cand;
+  }
+
+  qsort(distances, candidates->nelts, sizeof(struct candidate *), distance_cmp);
+
+  similars = make_array(p, candidates->nelts, sizeof(const char *));
+  for (i = 0; i < candidates->nelts; i++) {
+    struct candidate *cand;
+
+    cand = distances[i];
+    if (cand->distance <= max_distance) {
+      *((const char **) push_array(similars)) = cand->s;
+    }
+  }
+
+  destroy_pool(tmp_pool);
+  return similars;
+}
+
 int pr_str2uid(const char *val, uid_t *uid) {
 #ifdef HAVE_STRTOULL
   unsigned long long ull = 0ULL;
