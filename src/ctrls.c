@@ -663,6 +663,8 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   ctrl = ctrls_lookup_action(NULL, reqaction, TRUE);
   if (ctrl == NULL) {
     pr_signals_unblock();
+
+    /* XXX This is where we could also add "did you mean" functionality. */
     errno = EINVAL;
     return -1;
   }

@@ -90,6 +90,22 @@ char *pr_str_bin2hex(pool *p, const unsigned char *buf, size_t len, int flags);
 unsigned char *pr_str_hex2bin(pool *p, const unsigned char *hex, size_t hex_len,
   size_t *len);
 
+/* Obtain the Levenshtein distance between the two strings.  The various
+ * operations (swap, substitution, insertion, deletion) can be weighted.
+ */
+int pr_str_levenshtein(pool *p, const char *a, const char *b,
+  int swap_cost, int subst_cost, int insert_cost, int del_cost, int flags);
+
+/* Given a string and a list of possibly similar candidates, return an
+ * array of the candidates, sorted in order of Levenshtein distance (ascending).
+ * A maximum edit distance can be used to return the most relevant subset of
+ * the candidates; if a max distance of zero is used, the default max distance
+ * value will be used.
+ */
+array_header *pr_str_get_similars(pool *p, const char *s,
+  array_header *candidates, int max_distance, int flags);
+#define PR_STR_DEFAULT_MAX_EDIT_DISTANCE		7
+
 /* Converts a string to a uid_t/gid_t, respectively. */
 int pr_str2uid(const char *, uid_t *);
 int pr_str2gid(const char *, gid_t *);
