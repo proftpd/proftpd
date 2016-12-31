@@ -1489,10 +1489,6 @@ START_TEST (similars_test) {
   fail_unless(strcmp(similars[1], expected) == 0,
     "Expected similar '%s', got '%s'", expected, similars[1]);
 
-  expected = "odd";
-  fail_unless(strcmp(similars[2], expected) == 0,
-    "Expected similar '%s', got '%s'", expected, similars[2]);
-
   mark_point();
   res = pr_str_get_similars(p, s, candidates, 0, PR_STR_FL_IGNORE_CASE);
   fail_unless(res != NULL, "Failed to find similar strings to '%s': %s", s,
@@ -1518,10 +1514,6 @@ START_TEST (similars_test) {
 
   fail_unless(strcmp(similars[1], expected) == 0,
     "Expected similar '%s', got '%s'", expected, similars[1]);
-
-  expected = "odd";
-  fail_unless(strcmp(similars[2], expected) == 0,
-    "Expected similar '%s', got '%s'", expected, similars[2]);
 }
 END_TEST
 
