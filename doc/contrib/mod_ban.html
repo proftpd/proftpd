@@ -482,26 +482,21 @@ See also: <a href="#ban"><code>ban</code></a>
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-To install <code>mod_ban</code>, copy the <code>mod_ban.c</code> file
-into:
+The <code>mod_ban</code> module is distributed with ProFTPD.  Simply follow
+the normal steps for using third-party modules in ProFTPD, making sure to
+include the <code>--enable-ctrls</code> configure option, which
+<code>mod_ban</code> requires:
 <pre>
-  <i>proftpd-dir</i>/contrib/
-</pre>
-after unpacking the latest proftpd-1.2.<i>x</i> source code.  Then follow the
-usual steps for using third-party modules in proftpd, making sure to include
-the <code>--enable-ctrls</code> configure option, which <code>mod_ban</code>
-requires:
-<pre>
-  ./configure --enable-ctrls --with-modules=mod_ban
+  $ ./configure --enable-ctrls --with-modules=mod_ban
 </pre>
 To build <code>mod_ban</code> as a DSO module:
 <pre>
-  ./configure --enable-ctrls --enable-dso --with-shared=mod_ban
+  $ ./configure --enable-ctrls --enable-dso --with-shared=mod_ban
 </pre>
 Then follow the usual steps:
 <pre>
-  make
-  make install
+  $ make
+  $ make install
 </pre>
 
 <p>
@@ -509,7 +504,7 @@ For those with an existing ProFTPD installation, you can use the
 <code>prxs</code> tool to add <code>mod_ban</code>, as a DSO module, to
 your existing server:
 <pre>
-  # prxs -c -i -d mod_ban.c
+  $ prxs -c -i -d mod_ban.c
 </pre>
 
 <p>

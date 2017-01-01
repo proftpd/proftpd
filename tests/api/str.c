@@ -1369,6 +1369,154 @@ START_TEST (hex2bin_test) {
 }
 END_TEST
 
+START_TEST (levenshtein_test) {
+  int res, expected, flags = 0;
+  const char *a, *b;
+
+  mark_point();
+  res = pr_str_levenshtein(NULL, NULL, NULL, 0, 0, 0, 0, flags);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_str_levenshtein(p, NULL, NULL, 0, 0, 0, 0, flags);
+  fail_unless(res < 0, "Failed to handle null a string");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  a = "foo";
+
+  mark_point();
+  res = pr_str_levenshtein(p, a, NULL, 0, 0, 0, 0, flags);
+  fail_unless(res < 0, "Failed to handle null b string");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  expected = 0;
+  b = "Foo";
+
+  mark_point();
+  res = pr_str_levenshtein(p, a, b, 0, 0, 0, 0, flags);
+  fail_if(res < 0,
+    "Failed to compute Levenshtein distance from '%s' to '%s': %s", a, b,
+    strerror(errno));
+  fail_unless(expected == res, "Expected distance %d, got %d", expected, res);
+
+  expected = 3;
+  b = "Foo";
+  res = pr_str_levenshtein(p, a, b, 0, 1, 1, 1, flags);
+  fail_if(res < 0,
+    "Failed to compute Levenshtein distance from '%s' to '%s': %s", a, b,
+    strerror(errno));
+  fail_unless(expected == res, "Expected distance %d, got %d", expected, res);
+
+  flags = PR_STR_FL_IGNORE_CASE;
+  expected = 2;
+  b = "Foo";
+  res = pr_str_levenshtein(p, a, b, 0, 1, 1, 1, flags);
+  fail_if(res < 0,
+    "Failed to compute Levenshtein distance from '%s' to '%s': %s", a, b,
+    strerror(errno));
+  fail_unless(expected == res, "Expected distance %d, got %d", expected, res);
+}
+END_TEST
+
+START_TEST (similars_test) {
+  array_header *res, *candidates;
+  const char *s, **similars, *expected;
+
+  mark_point();
+  res = pr_str_get_similars(NULL, NULL, NULL, 0, 0);
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_str_get_similars(p, NULL, NULL, 0, 0);
+  fail_unless(res == NULL, "Failed to handle null string");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  s = "foo";
+
+  mark_point();
+  res = pr_str_get_similars(p, s, NULL, 0, 0);
+  fail_unless(res == NULL, "Failed to handle null candidates");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  candidates = make_array(p, 5, sizeof(const char *));
+
+  mark_point();
+  res = pr_str_get_similars(p, s, candidates, 0, 0);
+  fail_unless(res == NULL, "Failed to handle empty candidates");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  *((const char **) push_array(candidates)) = pstrdup(p, "fools");
+  *((const char **) push_array(candidates)) = pstrdup(p, "odd");
+  *((const char **) push_array(candidates)) = pstrdup(p, "bar");
+  *((const char **) push_array(candidates)) = pstrdup(p, "FOO");
+
+  mark_point();
+  res = pr_str_get_similars(p, s, candidates, 0, 0);
+  fail_unless(res != NULL, "Failed to find similar strings to '%s': %s", s,
+    strerror(errno));
+  fail_unless(res->nelts > 0, "Expected >0 similar strings, got %u",
+    res->nelts);
+
+  mark_point();
+  similars = (const char **) res->elts;
+
+  /* Note: We see different results here due to (I think) different
+   * qsort(3) implementations.
+   */
+
+  expected = "FOO";
+  if (strcmp(similars[0], expected) != 0) {
+    expected = "fools";
+  }
+
+  fail_unless(strcmp(similars[0], expected) == 0,
+    "Expected similar '%s', got '%s'", expected, similars[0]);
+
+  expected = "fools";
+  if (strcmp(similars[1], expected) != 0) {
+    expected = "FOO";
+  }
+
+  fail_unless(strcmp(similars[1], expected) == 0,
+    "Expected similar '%s', got '%s'", expected, similars[1]);
+
+  mark_point();
+  res = pr_str_get_similars(p, s, candidates, 0, PR_STR_FL_IGNORE_CASE);
+  fail_unless(res != NULL, "Failed to find similar strings to '%s': %s", s,
+    strerror(errno));
+  fail_unless(res->nelts > 0, "Expected >0 similar strings, got %u",
+    res->nelts);
+
+  mark_point();
+  similars = (const char **) res->elts;
+
+  expected = "FOO";
+  if (strcmp(similars[0], expected) != 0) {
+    expected = "fools";
+  }
+
+  fail_unless(strcmp(similars[0], expected) == 0,
+    "Expected similar '%s', got '%s'", expected, similars[0]);
+
+  expected = "fools";
+  if (strcmp(similars[1], expected) != 0) {
+    expected = "FOO";
+  }
+
+  fail_unless(strcmp(similars[1], expected) == 0,
+    "Expected similar '%s', got '%s'", expected, similars[1]);
+}
+END_TEST
+
 START_TEST (str2uid_test) {
   int res;
 
@@ -1498,6 +1646,8 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, get_duration_test);
   tcase_add_test(testcase, bin2hex_test);
   tcase_add_test(testcase, hex2bin_test);
+  tcase_add_test(testcase, levenshtein_test);
+  tcase_add_test(testcase, similars_test);
   tcase_add_test(testcase, strnrstr_test);
   tcase_add_test(testcase, str2uid_test);
   tcase_add_test(testcase, str2gid_test);

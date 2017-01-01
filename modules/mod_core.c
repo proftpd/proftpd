@@ -600,7 +600,7 @@ MODRET set_setenv(cmd_rec *cmd) {
   add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
 
   /* In addition, if this is the "server config" context, set the
-   * environ variable now.  If there was a <Daemon> context, that would
+   * environment variable now.  If there was a <Daemon> context, that would
    * be a more appropriate place for configuring parse-time environ
    * variables.
    */
@@ -610,7 +610,7 @@ MODRET set_setenv(cmd_rec *cmd) {
 
   if (ctxt_type == CONF_ROOT) {
     if (pr_env_set(cmd->server->pool, cmd->argv[1], cmd->argv[2]) < 0) {
-      pr_log_debug(DEBUG1, "%s: unable to set environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "%s: unable to set environment variable '%s': %s",
         (char *) cmd->argv[0], (char *) cmd->argv[1], strerror(errno));
 
     } else {
@@ -629,30 +629,6 @@ MODRET add_transferlog(cmd_rec *cmd) {
 
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
-
-  return PR_HANDLED(cmd);
-}
-
-MODRET set_wtmplog(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if (strcasecmp(cmd->argv[1], "NONE") == 0)
-    bool = 0;
-  else
-    bool = get_boolean(cmd, 1);
-
-  if (bool != -1) {
-    c = add_config_param(cmd->argv[0], 1, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = bool;
-    c->flags |= CF_MERGEDOWN;
-
-  } else
-    CONF_ERROR(cmd, "expected boolean argument, or \"NONE\"");
 
   return PR_HANDLED(cmd);
 }
@@ -1784,8 +1760,8 @@ MODRET set_unsetenv(cmd_rec *cmd) {
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
 
   /* In addition, if this is the "server config" context, unset the
-   * environ variable now.  If there was a <Daemon> context, that would
-   * be a more appropriate place for configuring parse-time environ
+   * environment variable now.  If there was a <Daemon> context, that would
+   * be a more appropriate place for configuring parse-time environment
    * variables.
    */
   ctxt_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
@@ -1794,7 +1770,7 @@ MODRET set_unsetenv(cmd_rec *cmd) {
 
   if (ctxt_type == CONF_ROOT) {
     if (pr_env_unset(cmd->server->pool, cmd->argv[1]) < 0) {
-      pr_log_debug(DEBUG1, "%s: unable to unset environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "%s: unable to unset environment variable '%s': %s",
         (char *) cmd->argv[0], (char *) cmd->argv[1], strerror(errno));
 
     } else {
@@ -4972,7 +4948,7 @@ MODRET core_post_host(cmd_rec *cmd) {
       pr_signals_handle();
 
       if (pr_env_unset(session.pool, c->argv[0]) < 0) {
-        pr_log_debug(DEBUG0, "unable to unset environ variable '%s': %s",
+        pr_log_debug(DEBUG0, "unable to unset environment variable '%s': %s",
           (char *) c->argv[0], strerror(errno));
       }
 
@@ -6693,7 +6669,7 @@ static int core_sess_init(void) {
 
   while (c) {
     if (pr_env_set(session.pool, c->argv[0], c->argv[1]) < 0) {
-      pr_log_debug(DEBUG1, "unable to set environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "unable to set environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
 
     } else {
@@ -6708,7 +6684,7 @@ static int core_sess_init(void) {
 
   while (c) {
     if (pr_env_unset(session.pool, c->argv[0]) < 0) {
-      pr_log_debug(DEBUG1, "unable to unset environ variable '%s': %s",
+      pr_log_debug(DEBUG1, "unable to unset environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
 
     } else {
@@ -6997,7 +6973,6 @@ static conftable core_conftab[] = {
   { "UseReverseDNS",		set_usereversedns,		NULL },
   { "User",			set_user,			NULL },
   { "UserOwner",		add_userowner,			NULL },
-  { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
 

@@ -1,6 +1,3 @@
-<!-- $Id: mod_lang.html,v 1.12 2012-10-10 01:26:33 castaglia Exp $ -->
-<!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_lang.html,v $ -->
-
 <html>
 <head>
 <title>ProFTPD module mod_lang</title>
@@ -30,10 +27,7 @@ be seen <a href="#Usage">here</a>.
 
 <p>
 The most current version of <code>mod_lang</code> can be found in the
-ProFTPD source distribution:
-<pre>
-  <a href="http://www.proftpd.org/">http://www.proftpd.org/</a>
-</pre>
+ProFTPD source distribution.
 
 <h2>Directives</h2>
 <ul>
@@ -46,10 +40,10 @@ ProFTPD source distribution:
 
 <p>
 <hr>
-<h2><a name="LangDefault">LangDefault</a></h2>
+<h3><a name="LangDefault">LangDefault</a></h3>
 <strong>Syntax:</strong> LangDefault <em>language</em><br>
 <strong>Default:</strong> LangDefault en_US<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_lang<br>
 <strong>Compatibility:</strong> 1.3.1rc1
 
@@ -72,10 +66,10 @@ Example:
 
 <p>
 <hr>
-<h2><a name="LangEngine">LangEngine</a></h2>
+<h3><a name="LangEngine">LangEngine</a></h3>
 <strong>Syntax:</strong> LangEngine <em>on|off</em><br>
 <strong>Default:</strong> LangEngine on<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_lang<br>
 <strong>Compatibility:</strong> 1.3.1rc1
 
@@ -94,7 +88,7 @@ and not <code>UseUTF8</code>, which controls the appearance of "UTF8".
 
 <p>
 <hr>
-<h2><a name="LangOptions">LangOptions</a></h2>
+<h3><a name="LangOptions">LangOptions</a></h3>
 <strong>Syntax:</strong> LangOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -135,10 +129,10 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="LangPath">LangPath</a></h2>
+<h3><a name="LangPath">LangPath</a></h3>
 <strong>Syntax:</strong> LangPath <em>path</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;<br>
+<strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_lang<br>
 <strong>Compatibility:</strong> 1.3.1rc1
 
@@ -166,10 +160,10 @@ Example:
 
 <p>
 <hr>
-<h2><a name="UseEncoding">UseEncoding</a></h2>
+<h3><a name="UseEncoding">UseEncoding</a></h3>
 <strong>Syntax:</strong> UseEncoding <em>on|off|local-charset client-charset</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_lang<br>
 <strong>Compatibility:</strong> 1.3.2rc1
 
@@ -223,9 +217,9 @@ The <code>mod_lang</code> module is distributed with ProFTPD.  To enable use
 of NLS (Natural Language Support) in your <code>proftpd</code> daemon, use the
 <code>--enable-nls</code> configure option:
 <pre>
-  ./configure --enable-nls
-  make
-  make install
+  $ ./configure --enable-nls
+  $ make
+  $ make install
 </pre>
 This option causes <code>mod_lang</code> to be compiled into
 <code>proftpd</code>.
@@ -340,13 +334,13 @@ error like this:
 Both of these conditions <b>must</b> be true, otherwise you will see the
 "not a supported language" error.
 
+<hr>
 <font size=2><b><i>
-&copy; Copyright 2006-2014 TJ Saunders<br>
+&copy; Copyright 2006-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
-<hr><br>
-
+<hr>
 </body>
 </html>
 

@@ -42,20 +42,15 @@ questions, concerns, or suggestions regarding this module.
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-To install <code>mod_sftp_sql</code>, copy the <code>mod_sftp_sql.c</code> file
-into:
-<pre>
-  <i>proftpd-dir</i>/contrib/
-</pre>
-after unpacking the latest proftpd-1.3.<i>x</i> source code.  Then follow the
-usual steps for using third-party modules in proftpd, making sure to include
-the <code>mod_sftp</code> and <code>mod_sql</code> modules, which
+To build <code>mod_sftp_sql</code>, follow the usual steps for using
+third-party modules in ProFTPD, making sure to include the
+<code>mod_sftp</code> and <code>mod_sql</code> modules, which
 <code>mod_sftp_sql</code> requires.  For example, if you use MySQL as your
 SQL database, then you might use:
 <pre>
-  ./configure --with-modules=mod_sql:mod_sql_mysql:mod_sftp:mod_sftp_sql ...
-  make
-  make install
+  $ ./configure --with-modules=mod_sql:mod_sql_mysql:mod_sftp:mod_sftp_sql ...
+  $ make
+  $ make install
 </pre>
 
 <p>

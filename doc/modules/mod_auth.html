@@ -11,6 +11,7 @@
 </center>
 <hr><br>
 
+<p>
 This module is contained in the <code>mod_auth.c</code> file for
 ProFTPD 1.3.<i>x</i>, and is compiled by default.
 
@@ -41,10 +42,11 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#UseFtpUsers">UseFtpUsers</a>
   <li><a href="#UserAlias">UserAlias</a>
   <li><a href="#UserPassword">UserPassword</a>
+  <li><a href="#WtmpLog">WtmpLog</a>
 </ul>
 
 <hr>
-<h2><a name="AllowChrootSymlinks">AllowChrootSymlinks</a></h2>
+<h3><a name="AllowChrootSymlinks">AllowChrootSymlinks</a></h3>
 <strong>Syntax:</strong> AllowChrootSymlinks <em>on|off</em><br>
 <strong>Default:</strong> AllowChrootSymlinks on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -72,7 +74,7 @@ users to run their untrusted webapps (<i>e.g.</i> PHP, Perl, Ruby, Python,
 
 <p>
 <hr>
-<h2><a name="AllowEmptyPasswords">AllowEmptyPasswords</a></h2>
+<h3><a name="AllowEmptyPasswords">AllowEmptyPasswords</a></h3>
 <strong>Syntax:</strong> AllowEmptyPasswords <em>on|off</em><br>
 <strong>Default:</strong> AllowEmptyPasswords on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -90,7 +92,7 @@ as well.
 
 <p>
 <hr>
-<h2><a name="AnonAllowRobots">AnonAllowRobots</a></h2>
+<h3><a name="AnonAllowRobots">AnonAllowRobots</a></h3>
 <strong>Syntax:</strong> AnonAllowRobots <em>on|off</em><br>
 <strong>Default:</strong> AnonAllowRobots off<br>
 <strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
@@ -128,7 +130,7 @@ expected.  Alternatively, you can disable this behavior using:
 
 <p>
 <hr>
-<h2><a name="AnonRejectPasswords">AnonRejectPasswords</a></h2>
+<h3><a name="AnonRejectPasswords">AnonRejectPasswords</a></h3>
 <strong>Syntax:</strong> AnonRejectPasswords <em>pattern [flags]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
@@ -180,8 +182,10 @@ to <b>require</b> that your anonymous logins use email-like passwords:
   #  <a href="http://www.regular-expressions.info/email.html">http://www.regular-expressions.info/email.html</a>
   AnonRejectPasswords !^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$ [NC]
 </pre>
-=======
-<h2><a name="AnonRequirePassword">AnonRequirePassword</a></h2>
+
+<p>
+<hr>
+<h3><a name="AnonRequirePassword">AnonRequirePassword</a></h3>
 <strong>Syntax:</strong> AnonRequirePassword <em>off|on</em><br>
 <strong>Default:</strong> AnonRequirePassword off<br>
 <strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
@@ -207,7 +211,7 @@ See also: <a href="#AuthUsingAlias"><code>AuthUsingAlias</code></a>, <a href="#U
 
 <p>
 <hr>
-<h2><a name="AuthAliasOnly">AuthAliasOnly</a></h2>
+<h3><a name="AuthAliasOnly">AuthAliasOnly</a></h3>
 <strong>Syntax:</strong> AuthAliasOnly <em>off|on</em><br>
 <strong>Default:</strong> AuthAliasOnly off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -227,7 +231,7 @@ See also: <a href="#AuthUsingAlias"><code>AuthUsingAlias</code></a>, <a href="#U
 
 <p>
 <hr>
-<h2><a name="AuthUsingAlias">AuthUsingAlias</a></h2>
+<h3><a name="AuthUsingAlias">AuthUsingAlias</a></h3>
 <strong>Syntax:</strong> AuthUsingAlias <em>off|on</em><br>
 <strong>Default:</strong> AuthUsingAlias off<br>
 <strong>Context:</strong> <code>&lt;Anonymous&gt;</code><br>
@@ -279,7 +283,7 @@ See also: <a href="#AnonRequirePassword"><code>AnonRequirePassword</code></a>, <
 
 <p>
 <hr>
-<h2><a name="CreateHome">CreateHome</a></h2>
+<h3><a name="CreateHome">CreateHome</a></h3>
 <strong>Syntax:</strong> CreateHome <em>off|on [mode] [skel path] [dirmode mode]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -335,7 +339,7 @@ with more examples, can be read <a href="../howto/CreateHome.html">here</a>.
 
 <p>
 <hr>
-<h2><a name="DefaultRoot">DefaultRoot</a></h2>
+<h3><a name="DefaultRoot">DefaultRoot</a></h3>
 <strong>Syntax:</strong> DefaultRoot <em>path [group-expression]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -349,7 +353,7 @@ found in the <a href="../howto/Chroot.html">Chroot</a> howto.
 
 <p>
 <hr>
-<h2><a name="MaxClients">MaxClients</a></h2>
+<h3><a name="MaxClients">MaxClients</a></h3>
 <strong>Syntax:</strong> MaxClients <em>count|"none" [message]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -392,7 +396,7 @@ See also: <a href="#MaxClientsPerClass">MaxClientsPerClass</code></a>,
 
 <p>
 <hr>
-<h2><a name="MaxClientsPerClass">MaxClientsPerClass</a></h2>
+<h3><a name="MaxClientsPerClass">MaxClientsPerClass</a></h3>
 <strong>Syntax:</strong> MaxClientsPerClass <em>class count|"none" [message]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -428,7 +432,7 @@ See also: <a href="#MaxClients"><code>MaxClients</code></a>,
 
 <p>
 <hr>
-<h2><a name="MaxClientsPerHost">MaxClientsPerHost</a></h2>
+<h3><a name="MaxClientsPerHost">MaxClientsPerHost</a></h3>
 <strong>Syntax:</strong> MaxClientsPerHost <em>count|"none" [message]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -463,7 +467,7 @@ See also: <a href="#MaxClients"><code>MaxClients</code></a>,
 
 <p>
 <hr>
-<h2><a name="MaxClientsPerUser">MaxClientsPerUser</a></h2>
+<h3><a name="MaxClientsPerUser">MaxClientsPerUser</a></h3>
 <strong>Syntax:</strong> MaxClientsPerUser <em>count|"none" [message]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -498,7 +502,7 @@ See also: <a href="#MaxClients"><code>MaxClients</code></a>,
 
 <p>
 <hr>
-<h2><a name="MaxHostsPerUser">MaxHostsPerUser</a></h2>
+<h3><a name="MaxHostsPerUser">MaxHostsPerUser</a></h3>
 <strong>Syntax:</strong> MaxHostsPerUser <em>count|"none" [message]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -531,7 +535,7 @@ See also: <a href="#MaxClients"><code>MaxClients</code></a>, <a href="#MaxClient
 
 <p>
 <hr>
-<h2><a name="MaxLoginAttempts">MaxLoginAttempts</a></h2>
+<h3><a name="MaxLoginAttempts">MaxLoginAttempts</a></h3>
 <strong>Syntax:</strong> MaxLoginAttempts <em>count</em><br>
 <strong>Default:</strong> 3<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -547,7 +551,7 @@ logged.
 
 <p>
 <hr>
-<h2><a name="MaxPasswordSize">MaxPasswordSize</a></h2>
+<h3><a name="MaxPasswordSize">MaxPasswordSize</a></h3>
 <strong>Syntax:</strong> MaxPasswordSize <em>length</em><br>
 <strong>Default:</strong> 1024<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -566,7 +570,7 @@ the <code>crypt(3)</code> function.
 
 <p>
 <hr>
-<h2><a name="RequireValidShell">RequireValidShell</a></h2>
+<h3><a name="RequireValidShell">RequireValidShell</a></h3>
 <strong>Syntax:</strong> RequireValidShell <em>on|off</em><br>
 <strong>Default:</strong> RequireValidShell on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -583,7 +587,7 @@ default shells are assumed to be valid.
 
 <p>
 <hr>
-<h2><a name="RewriteHome">RewriteHome</a></h2>
+<h3><a name="RewriteHome">RewriteHome</a></h3>
 <strong>Syntax:</strong> RewriteHome <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -621,7 +625,7 @@ home directories is "REWRITE_HOME".  Thus would you use:
 
 <p>
 <hr>
-<h2><a name="RootLogin">RootLogin</a></h2>
+<h3><a name="RootLogin">RootLogin</a></h3>
 <strong>Syntax:</strong> RootLogin <em>on|off</em><br>
 <strong>Default:</strong> RootLogin off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -651,7 +655,7 @@ in the <code>&lt;Anonymous&gt;</code> section is set to 'root'.
 
 <p>
 <hr>
-<h2><a name="RootRevoke">RootRevoke</a></h2>
+<h3><a name="RootRevoke">RootRevoke</a></h3>
 <strong>Syntax:</strong> RootRevoke <em>on|off|UseNonCompliantActiveTransfers</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -710,7 +714,7 @@ have been dropped completely.
 
 <p>
 <hr>
-<h2><a name="TimeoutLogin">TimeoutLogin</a></h2>
+<h3><a name="TimeoutLogin">TimeoutLogin</a></h3>
 <strong>Syntax:</strong> TimeoutLogin <em>seconds</em><br>
 <strong>Default:</strong> 300 seconds<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -733,7 +737,7 @@ See also: <a href="mod_core.html#TimeoutIdle"><code>TimeoutIdle</code></a>,
 
 <p>
 <hr>
-<h2><a name="TimeoutSession">TimeoutSession</a></h2>
+<h3><a name="TimeoutSession">TimeoutSession</a></h3>
 <strong>Syntax:</strong> TimeoutSessions <em>seconds</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -750,7 +754,7 @@ indefinitely; this is the default.  There is no maxium value for the
 
 <p>
 <hr>
-<h2><a name="UseFtpUsers">UseFtpUsers</a></h2>
+<h3><a name="UseFtpUsers">UseFtpUsers</a></h3>
 <strong>Syntax:</strong> UseFtpUsers <em>on|off</em><br>
 <strong>Default:</strong> UseFtpUsers on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -771,7 +775,7 @@ using the <code>UseFtpUsers</code> directive, <i>e.g.</i>:
 
 <p>
 <hr>
-<h2><a name="UserAlias">UserAlias</a></h2>
+<h3><a name="UserAlias">UserAlias</a></h3>
 <strong>Syntax:</strong> UserAlias <em>alias real-user</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -802,7 +806,7 @@ by using the following in the config file:
 
 <p>
 <hr>
-<h2><a name="UserPassword">UserPassword</a></h2>
+<h3><a name="UserPassword">UserPassword</a></h3>
 <strong>Syntax:</strong> UserPassword <em>user encrypted-password</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -823,7 +827,7 @@ cleartext password</b>.  To obtain this <em>encrypted-password</em> value,
 you can use the <a href="../utils/ftpasswd.html"><code>ftpasswd</code></a>
 script's <code>--hash</code> option, <i>e.g.</i>:
 <pre>
-  # ftpasswd --hash
+  $ ftpasswd --hash
 
   Password: 
   Re-type password: 
@@ -837,6 +841,21 @@ Example configuration:
   # Override user bob's password with a hash version of "password"
   UserPassword bob $1$EsnXxyD6$tsO2YwTAT/Tl5u1NYPHIw1
 </pre>
+
+<p>
+<hr>
+<h3><a name="WtmpLog">WtmpLog</a></h3>
+<strong>Syntax:</strong> WtmpLog <em>on|off</em><br>
+<strong>Default:</strong> WtmpLog on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.1.7 and later
+
+<p>
+The <code>WtmpLog</code> directive controls the logging of connections to the
+host system <a href="https://en.wikipedia.org/wiki/Utmp"><code>wtmp</code></a>
+file, which used by such commands as <code>last</code>.  By default, <b>all</b>
+connections are logged via <code>wtmp</code>.
 
 <p>
 <hr>

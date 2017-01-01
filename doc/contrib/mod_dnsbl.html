@@ -49,7 +49,7 @@ questions, concerns, or suggestions regarding this module.
 </ul>
 
 <hr>
-<h2><a name="DNSBLDomain">DNSBLDomain</a></h2>
+<h3><a name="DNSBLDomain">DNSBLDomain</a></h3>
 <strong>Syntax:</strong> DNSBLDomain <em>domain</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -74,7 +74,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="DNSBLEngine">DNSBLEngine</a></h2>
+<h3><a name="DNSBLEngine">DNSBLEngine</a></h3>
 <strong>Syntax:</strong> DNSBLEngine <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -91,7 +91,7 @@ virtual hosts.
 
 <p>
 <hr>
-<h2><a name="DNSBLLog">DNSBLLog</a></h2>
+<h3><a name="DNSBLLog">DNSBLLog</a></h3>
 <strong>Syntax:</strong> DNSBLLog <em>file</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -110,7 +110,7 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 
 <p>
 <hr>
-<h2><a name="DNSBLPolicy">DNSBLPolicy</a></h2>
+<h3><a name="DNSBLPolicy">DNSBLPolicy</a></h3>
 <strong>Syntax:</strong> DNSBLPolicy <em>"allow,deny"|"deny,allow"</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -138,7 +138,7 @@ the <code>mod_dnsbl</code> module will <b>not</b> allow the connection,
 <hr><br>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_dnsbl</code> module is distributed with ProFTPD.  Simply follow
-the normal steps for using third-party modules in proftpd:
+the normal steps for using third-party modules in ProFTPD:
 <pre>
   $ ./configure --with-modules=mod_dnsbl
   $ make
@@ -152,23 +152,6 @@ Then follow the usual steps:
 <pre>
   $ make
   $ make install
-</pre>
-
-<p>
-Next:
-<pre>
-  cd /path/to/proftpd/contrib/mod_dnsbl/
-  ./configure
-</pre>
-This step is also necessary.  If not done, then the proftpd build system
-will not pick up the correct linker flags for the resolver library.
-
-<p>
-Then follow the normal steps for using third-party modules in proftpd:
-<pre>
-  ./configure --with-modules=mod_dnsbl
-  make
-  make install
 </pre>
 
 <p>

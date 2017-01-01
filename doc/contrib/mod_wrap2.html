@@ -11,6 +11,7 @@
 </center>
 <hr>
 
+<p>
 The <code>mod_wrap2</code> package allows the <code>proftpd</code> daemon to
 provide <code>tcpwrapper</code>-like access control rules while running
 in standalone mode.  It also allows for those access rules to be stored
@@ -70,7 +71,7 @@ the module code.
 </ul>
 
 <hr>
-<h2><a name="WrapAllowMsg">WrapAllowMsg</a></h2>
+<h3><a name="WrapAllowMsg">WrapAllowMsg</a></h3>
 <strong>Syntax:</strong> WrapAllowMsg <em>mesg</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -92,7 +93,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="WrapDenyMsg">WrapDenyMsg</a></h2>
+<h3><a name="WrapDenyMsg">WrapDenyMsg</a></h3>
 <strong>Syntax:</strong> WrapDenyMsg <em>mesg</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -114,7 +115,7 @@ Example:
 
 <p>
 <hr>
-<h2><a name="WrapEngine">WrapEngine</a></h2>
+<h3><a name="WrapEngine">WrapEngine</a></h3>
 <strong>Syntax:</strong> WrapEngine <em>on|off</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -129,7 +130,7 @@ commenting out all <code>mod_wrap2</code> directives.
 
 <p>
 <hr>
-<h2><a name="WrapGroupTables">WrapGroupTables</a></h2>
+<h3><a name="WrapGroupTables">WrapGroupTables</a></h3>
 <strong>Syntax:</strong> WrapGroupTables <em>group-AND-expression source-type:allow-source-info source-type:deny-source-info [source-type:options-source-info]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -167,7 +168,7 @@ See also:
 
 <p>
 <hr>
-<h2><a name="WrapLog">WrapLog</a></h2>
+<h3><a name="WrapLog">WrapLog</a></h3>
 <strong>Syntax:</strong>  WrapLog <em>file|&quot;none&quot;</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -190,7 +191,7 @@ a <code>&lt;Global&gt;</code> context.
 
 <p>
 <hr>
-<h2><a name="WrapOptions">WrapOptions</a></h2>
+<h3><a name="WrapOptions">WrapOptions</a></h3>
 <strong>Syntax:</strong> WrapOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -267,7 +268,7 @@ The currently implemented options are:
 
 <p>
 <hr>
-<h2><a name="WrapServiceName">WrapServiceName</a></h2>
+<h3><a name="WrapServiceName">WrapServiceName</a></h3>
 <strong>Syntax:</strong> WrapServiceName <em>name</em><br>
 <strong>Default:</strong> <code>WrapServiceName proftpd</code><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
@@ -284,7 +285,7 @@ using the configured <em>name</em> is <b>case-sensitive</b>.
 
 <p>
 <hr>
-<h2><a name="WrapTables">WrapTables</a></h2>
+<h3><a name="WrapTables">WrapTables</a></h3>
 <strong>Syntax:</strong> WrapTables <em>source-type:allow-source-info source-info:deny-source-info</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -316,7 +317,7 @@ See also:
 
 <p>
 <hr>
-<h2><a name="WrapUserTables">WrapUserTables</a></h2>
+<h3><a name="WrapUserTables">WrapUserTables</a></h3>
 <strong>Syntax:</strong> WrapUserTables <em>user-OR-expression source-type:allow-source-info source-type:deny-source-info [source-type:option-source-info]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
@@ -610,8 +611,7 @@ When a syntax error is found in an options list, the error is reported in the
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-After unpacking the latest proftpd-1.3.<i>x</i> source code, follow the usual
-steps for using third-party modules in <code>proftpd</code>:
+Follow the usual steps for using third-party modules in ProFTPD:
 <pre>
   $ ./configure --with-modules=<em>wrap-modules</em>
   $ make
@@ -641,13 +641,11 @@ documentation for installation instructions for that module.
 
 <p>
 <hr>
-
 <font size=2><b><i>
 &copy; Copyright 2000-2016 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
-
 <hr>
+
 </body>
 </html>
-
