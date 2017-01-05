@@ -571,11 +571,11 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
               msg = "fatal: Did you mean:";
 
               if (nelts == 1) {
-                msg = pstrcat(tmp_pool, msg, "  \t", names[0], NULL);
+                msg = pstrcat(tmp_pool, msg, " ", names[0], NULL);
 
               } else {
                 for (i = 0; i < nelts; i++) {
-                  msg = pstrcat(tmp_pool, msg, "  \t", names[i], NULL);
+                  msg = pstrcat(tmp_pool, msg, "\n  ", names[i], NULL);
                 }
               }
 
