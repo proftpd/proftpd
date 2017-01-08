@@ -410,8 +410,7 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
           ldap_search_scope = url->lud_scope;
           if (ldap_search_scope == LDAP_SCOPE_BASE) {
             pr_log_debug(DEBUG0, MOD_LDAP_VERSION
-              ": WARNING: LDAP URL search scopes default to 'base' (not 'sub') "
-              "and may not be what you want");
+              ": WARNING: LDAP URL search scopes default to 'base', not 'subtree', and may not be what you want (see LDAPSearchScope)");
           }
         }
 
