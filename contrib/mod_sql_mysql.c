@@ -121,11 +121,10 @@
  * file.  If anything is unclear, please contact the author.  
  */
 
-/* 
- * Internal define used for debug and logging.  All backends are encouraged
+/* Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.0.8"
+#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.0.9"
 
 #define _MYSQL_PORT "3306"
 
@@ -205,6 +204,8 @@ typedef struct conn_entry_struct conn_entry_t;
 
 static pool *conn_pool = NULL;
 static array_header *conn_cache = NULL;
+
+static const char *trace_channel = "sql.mysql";
 
 /*  sql_get_connection: walks the connection cache looking for the named
  *   connection.  Returns NULL if unsuccessful, a pointer to the conn_entry_t
@@ -543,6 +544,36 @@ MODRET cmd_open(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "MySQL client version: %s", mysql_get_client_info());
   sql_log(DEBUG_FUNC, "MySQL server version: %s",
     mysql_get_server_info(conn->mysql));
+
+# if MYSQL_VERSION_ID >= 50703
+  /* Log the configured authentication plugin, if any.  For example, it
+   * might be set in the my.cnf file using:
+   *
+   *   [client]
+   *   default-auth = mysql_native_password
+   *
+   * Note: the mysql_get_option() function appeared in MySQL 5.7.3, as per:
+   *
+   *  https://dev.mysql.com/doc/refman/5.7/en/mysql-get-option.html
+   *
+   * The MYSQL_DEFAULT_AUTH value is an enum, not a #define, so we cannot
+   * use a simple #ifdef here.
+   */
+  {
+    const char *auth_plugin = NULL;
+
+    if (mysql_get_option(conn->mysql, MYSQL_DEFAULT_AUTH, &auth_plugin) == 0) {
+      /* There may not have been a default auth plugin explicitly configured,
+       * and the MySQL internals themselves may not set one.  So it is not
+       * surprising if the pointer remains null.
+       */
+      if (auth_plugin != NULL) {
+        sql_log(DEBUG_FUNC, "MySQL client default authentication plugin: %s",
+          auth_plugin);
+      }
+    }
+  }
+#endif /* MySQL 5.7.3 and later */
 
 #if defined(HAVE_MYSQL_MYSQL_GET_SSL_CIPHER)
   ssl_cipher = mysql_get_ssl_cipher(conn->mysql);
@@ -1540,12 +1571,12 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
 
 /*
  * cmd_checkauth: some backend databases may provide backend-specific
- *  methods to check passwords.  This function takes a cleartext password
+ *  methods to check passwords.  This function takes a plaintext password
  *  and a hashed password and checks to see if they are the same.
  *
  * Inputs:
  *  cmd->argv[0]: connection name
- *  cmd->argv[1]: cleartext string
+ *  cmd->argv[1]: plaintext string
  *  cmd->argv[2]: hashed string
  *
  * Returns:
@@ -1560,11 +1591,146 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
  *  If this backend does not provide this functionality, this cmd *must*
  *  return ERROR.
  */
+
+/* Per the MySQL docs for the PASSWORD function, MySQL pre-4.1 passwords
+ * are always 16 bytes; MySQL 4.1 passwords are 41 bytes AND start with '*'.
+ * See:
+ *   http://dev.mysql.com/doc/refman/5.7/en/encryption-functions.html#function_password
+ */
+
+#define MYSQL_PASSWD_FMT_UNKNOWN	-1
+#define MYSQL_PASSWD_FMT_PRE41		1
+#define MYSQL_PASSWD_FMT_41		2
+#define MYSQL_PASSWD_FMT_SHA256		3
+
+static int get_mysql_passwd_fmt(const char *txt, size_t txt_len) {
+  if (txt_len == 16) {
+    return MYSQL_PASSWD_FMT_PRE41;
+  }
+
+  if (txt_len == 41 &&
+      txt[0] == '*') {
+    return MYSQL_PASSWD_FMT_41;
+  }
+
+  if (txt_len > 3 &&
+      txt[0] == '$' &&
+      txt[1] == '5' &&
+      txt[2] == '$') {
+    return MYSQL_PASSWD_FMT_SHA256;
+  }
+
+  return MYSQL_PASSWD_FMT_UNKNOWN;
+}
+
+static int match_mysql_passwds(const char *hashed, size_t hashed_len,
+    const char *scrambled, size_t scrambled_len, const char *scramble_func) {
+  int hashed_fmt = 0, scrambled_fmt = 0, matched = FALSE;
+
+  if (pr_trace_get_level(trace_channel) >= 7) {
+    const char *hashed_fmt_name, *scrambled_fmt_name;
+
+    hashed_fmt = get_mysql_passwd_fmt(hashed, hashed_len);
+    scrambled_fmt = get_mysql_passwd_fmt(scrambled, scrambled_len);
+
+    switch (hashed_fmt) {
+      case MYSQL_PASSWD_FMT_PRE41:
+        hashed_fmt_name = "pre-4.1";
+        break;
+
+      case MYSQL_PASSWD_FMT_41:
+        hashed_fmt_name = "4.1";
+        break;
+
+      case MYSQL_PASSWD_FMT_SHA256:
+        hashed_fmt_name = "SHA256";
+        break;
+
+      default:
+        hashed_fmt_name = "unknown";
+        break;
+    }
+
+    switch (scrambled_fmt) {
+      case MYSQL_PASSWD_FMT_PRE41:
+        scrambled_fmt_name = "pre-4.1";
+        break;
+
+      case MYSQL_PASSWD_FMT_41:
+        scrambled_fmt_name = "4.1";
+        break;
+
+      case MYSQL_PASSWD_FMT_SHA256:
+        scrambled_fmt_name = "SHA256";
+        break;
+
+      default:
+        scrambled_fmt_name = "unknown";
+        break;
+    }
+
+    pr_trace_msg(trace_channel, 7,
+      "SQLAuthType Backend: database password format = %s, "
+      "client library password format = %s", hashed_fmt_name,
+      scrambled_fmt_name);
+  }
+
+  /* Note here that if the scrambled value has a different length than our
+   * expected hash, it might be a completely different format (i.e. not the
+   * 4.1 or whatever format provided by the db).  Log if this the case!
+   *
+   * Consider that using PASSWORD() on the server might make a 4.1 format
+   * value, but the client lib might make a SHA256 format value.  Or
+   * vice versa.
+   */
+  if (scrambled_len == hashed_len) {
+    matched = (strncmp(scrambled, hashed, hashed_len) == 0);
+  }
+
+  if (matched == FALSE) {
+    if (hashed_fmt == 0) {
+      hashed_fmt = get_mysql_passwd_fmt(hashed, hashed_len);
+    }
+
+    if (scrambled_fmt == 0) {
+      scrambled_fmt = get_mysql_passwd_fmt(scrambled, scrambled_len);
+    }
+
+    if (hashed_fmt != scrambled_fmt) {
+      if (scrambled_fmt == MYSQL_PASSWD_FMT_SHA256) {
+        sql_log(DEBUG_FUNC, "MySQL client library used MySQL SHA256 password format, and Backend SQLAuthType cannot succeed; consider using MD5/SHA1/SHA256 SQLAuthType using mod_sql_passwd");
+        switch (hashed_fmt) {
+          case MYSQL_PASSWD_FMT_PRE41:
+            sql_log(DEBUG_FUNC, "MySQL server used MySQL pre-4.1 password format for PASSWORD() value");
+            break;
+
+          case MYSQL_PASSWD_FMT_41:
+            sql_log(DEBUG_FUNC, "MySQL server used MySQL 4.1 password format for PASSWORD() value");
+            break;
+
+          default:
+            pr_trace_msg(trace_channel, 19,
+              "unknown MySQL PASSWORD() format used on server");
+            break;
+        }
+      }
+    }
+
+    pr_trace_msg(trace_channel, 9,
+      "expected '%.*s' (%lu), got '%.*s' (%lu) using MySQL %s()",
+      (int) hashed_len, hashed, (unsigned long) hashed_len,
+      (int) scrambled_len, scrambled, (unsigned long) scrambled_len,
+      scramble_func);
+  }
+
+  return matched;
+}
+
 MODRET cmd_checkauth(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
-  char scrambled[256]={'\0'};
-  char *c_clear = NULL;
-  char *c_hash = NULL;
+  char scrambled[256] = {'\0'};
+  char *plaintxt = NULL, *hashed = NULL;
+  size_t plaintxt_len = 0, hashed_len = 0, scrambled_len = 0;
   int success = 0;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_checkauth");
@@ -1588,8 +1754,10 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
   }
 
-  c_clear = cmd->argv[1];
-  c_hash = cmd->argv[2];
+  plaintxt = cmd->argv[1];
+  plaintxt_len = strlen(plaintxt);
+  hashed = cmd->argv[2];
+  hashed_len = strlen(hashed);
 
   /* Checking order (damn MySQL API changes):
    *
@@ -1598,12 +1766,16 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
    *  make_scrambled_password (if available)
    *  make_scrammbed_password_323 (if available)
    */
+
 #if defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD)
   if (success == FALSE) {
     memset(scrambled, '\0', sizeof(scrambled));
 
-    my_make_scrambled_password(scrambled, c_clear, strlen(c_clear));
-    success = (strcmp(scrambled, c_hash) == 0);
+    my_make_scrambled_password(scrambled, plaintxt, plaintxt_len);
+    scrambled_len = strlen(scrambled);
+
+    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
+      "my_make_scrambled_password");
   }
 #endif /* HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD */
 
@@ -1616,8 +1788,11 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s",
       "warning: support for this legacy MySQ-3.xL password algorithm will be dropped from MySQL in the future");
 
-    my_make_scrambled_password_323(scrambled, c_clear, strlen(c_clear));
-    success = (strcmp(scrambled, c_hash) == 0);
+    my_make_scrambled_password_323(scrambled, plaintxt, plaintxt_len);
+    scrambled_len = strlen(scrambled);
+
+    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
+      "my_make_scrambled_password_323");
   }
 #endif /* HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD_323 */
 
@@ -1626,11 +1801,14 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     memset(scrambled, '\0', sizeof(scrambled));
 
 # if MYSQL_VERSION_ID >= 40100 && MYSQL_VERSION_ID < 40101
-    make_scrambled_password(scrambled, c_clear, 1, NULL);
+    make_scrambled_password(scrambled, plaintxt, 1, NULL);
 # else
-    make_scrambled_password(scrambled, c_clear);
+    make_scrambled_password(scrambled, plaintxt);
 # endif
-    success = (strcmp(scrambled, c_hash) == 0);
+    scrambled_len = strlen(scrambled);
+
+    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
+      "make_scrambled_password");
   }
 #endif /* HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD */
 
@@ -1643,8 +1821,11 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s",
       "warning: support for this legacy MySQ-3.xL password algorithm will be dropped from MySQL in the future");
 
-    make_scrambled_password_323(scrambled, c_clear);
-    success = (strcmp(scrambled, c_hash) == 0);
+    make_scrambled_password_323(scrambled, plaintxt);
+    scrambled_len = strlen(scrambled);
+
+    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
+      "make_scrambled_password_323");
   }
 #endif /* HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323 */
 
