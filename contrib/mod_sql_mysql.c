@@ -1671,8 +1671,8 @@ static int match_mysql_passwds(const char *hashed, size_t hashed_len,
 
     pr_trace_msg(trace_channel, 7,
       "SQLAuthType Backend: database password format = %s, "
-      "client library password format = %s", hashed_fmt_name,
-      scrambled_fmt_name);
+      "client library password format = %s (using %s())", hashed_fmt_name,
+      scrambled_fmt_name, scramble_func);
   }
 
   /* Note here that if the scrambled value has a different length than our
