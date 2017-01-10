@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2013-2016 The ProFTPD Project team
+ * Copyright (c) 2013-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,14 @@
 #include "privs.h"
 
 #define MOD_RLIMIT_VERSION		"mod_rlimit/1.0"
+
+#ifdef HAVE_SYS_PRCTL_H
+# include <sys/prctl.h>
+#endif
+
+#ifdef HAVE_LINUX_PRCTL_H
+# include <linux/prctl.h>
+#endif
 
 module rlimit_module;
 
@@ -551,6 +559,26 @@ static int rlimit_set_core(int scope) {
     pr_log_debug(DEBUG2, "set core resource limits for daemon");
   }
 
+#if defined(PR_DEVEL_COREDUMP) && \
+    defined(HAVE_PRCTL) && \
+    defined(PR_SET_DUMPABLE)
+  if (max == 0) {
+    /* Really, no core dumps please. On Linux, there are exceptions made
+     * even when setting RLIMIT_CORE = 0; see:
+     *
+     *  https://lkml.org/lkml/2011/8/24/136
+     *
+     * so when possible, use PR_SET_DUMPABLE to ensure that no coredumps
+     * happen.
+     */
+    if (prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) < 0) {
+      pr_log_pri(PR_LOG_ERR, "error setting PR_SET_DUMPABLE to false: %s",
+        strerror(errno));
+    }
+  }
+#endif /* --enable-devel=coredump and HAVE_PRCTL and PR_SET_DUMPABLE */
+
+  errno = xerrno;
   return res;
 }
 

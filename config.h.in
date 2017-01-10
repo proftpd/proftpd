@@ -483,6 +483,9 @@
 /* Define if you have the Postgres PQinitOpenSSL function.  */
 #undef HAVE_POSTGRES_PQINITOPENSSL
 
+/* Define if you have the prctl function.  */
+#undef HAVE_PRCTL
+
 /* Define if you have the pstat function.  */
 #undef HAVE_PSTAT
 
@@ -662,6 +665,9 @@
 
 /* Define if you have the <linux/capability.h> header file.  */
 #undef HAVE_LINUX_CAPABILITY_H
+
+/* Define if you have the <linux/prctl.h> header file.  */
+#undef HAVE_LINUX_PRCTL_H
 
 /* Define if you have the <locale.h> header file.  */
 #undef HAVE_LOCALE_H
