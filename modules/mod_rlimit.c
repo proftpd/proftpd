@@ -559,7 +559,7 @@ static int rlimit_set_core(int scope) {
     pr_log_debug(DEBUG2, "set core resource limits for daemon");
   }
 
-#if defined(PR_DEVEL_COREDUMP) && \
+#if !defined(PR_DEVEL_COREDUMP) && \
     defined(HAVE_PRCTL) && \
     defined(PR_SET_DUMPABLE)
   if (max == 0) {
@@ -576,7 +576,7 @@ static int rlimit_set_core(int scope) {
         strerror(errno));
     }
   }
-#endif /* --enable-devel=coredump and HAVE_PRCTL and PR_SET_DUMPABLE */
+#endif /* no --enable-devel=coredump and HAVE_PRCTL and PR_SET_DUMPABLE */
 
   errno = xerrno;
   return res;
