@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2016 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2017 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -6811,14 +6811,14 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
       switch (err_code) {
         case SSL_ERROR_WANT_READ:
           tls_log("SSL_shutdown error: WANT_READ");
-          pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown error: WANT_READ");
           break;
 
         case SSL_ERROR_WANT_WRITE:
           tls_log("SSL_shutdown error: WANT_WRITE");
-          pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown error: WANT_WRITE");
+          break;
+
+        case SSL_ERROR_SSL:
+          tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
           break;
 
         case SSL_ERROR_ZERO_RETURN:
@@ -6858,6 +6858,10 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
          * handling these error codes for older OpenSSL versions won't break
          * things.
          */
+        break;
+
+      case SSL_ERROR_SSL:
+        tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
         break;
 
       case SSL_ERROR_SYSCALL:
