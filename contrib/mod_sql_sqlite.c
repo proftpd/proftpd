@@ -336,6 +336,10 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION, errstr);
   }
 
+  if (pr_trace_get_level(trace_channel) >= SQLITE_TRACE_LEVEL) {
+    sqlite3_trace(conn->dbh, db_trace, NULL);
+  }
+
   /* Tell SQLite to only use in-memory journals.  This is necessary for
    * mod_sql_sqlite to work properly, for SQLLog statements, when a chroot
    * is used.  Note that the MEMORY journal mode of SQLite is supported
@@ -372,10 +376,6 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
   if (res != SQLITE_OK) {
     sql_log(DEBUG_FUNC, "error setting MEMORY journal mode: %s",
       sqlite3_errmsg(conn->dbh));
-  }
-
-  if (pr_trace_get_level(trace_channel) >= SQLITE_TRACE_LEVEL) {
-    sqlite3_trace(conn->dbh, db_trace, NULL);
   }
 
   /* Add some SQLite information to the logs. */
