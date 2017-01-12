@@ -441,6 +441,9 @@
 /* Define if you have the munlockall function.  */
 #undef HAVE_MUNLOCKALL
 
+/* Define if you have the mysql_get_option function.  */
+#undef HAVE_MYSQL_GET_OPTION
+
 /* Define if you have the MySQL make_scrambled_password function.  */
 #undef HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD
 

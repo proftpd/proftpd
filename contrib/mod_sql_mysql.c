@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2016 TJ Saunders
+ * Copyright (c) 2004-2017 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -545,7 +545,7 @@ MODRET cmd_open(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "MySQL server version: %s",
     mysql_get_server_info(conn->mysql));
 
-# if MYSQL_VERSION_ID >= 50703
+# if MYSQL_VERSION_ID >= 50703 && defined(HAVE_MYSQL_GET_OPTION)
   /* Log the configured authentication plugin, if any.  For example, it
    * might be set in the my.cnf file using:
    *

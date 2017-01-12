@@ -2893,6 +2893,31 @@ if test x"$pr_use_mysql" = xyes; then
   LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lm -lmysqlclient -lz"
 
+  AC_MSG_CHECKING([for mysql_get_option])
+  AC_TRY_LINK(
+    [ #ifdef HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #ifdef HAVE_STDLIB_H
+      # include <stdlib.h>
+      #endif
+      #ifdef HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #include <mysql.h>
+    ],
+    [
+      (void) mysql_get_option(NULL, 0, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_MYSQL_GET_OPTION, 1, [Define if you have the mysql_get_option function])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+
   dnl For Bug#3669, we need to check for make_scrambled_password_323.
   dnl While we're at it, check for other variants as well.
 
