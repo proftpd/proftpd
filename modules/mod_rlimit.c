@@ -29,11 +29,17 @@
 
 #define MOD_RLIMIT_VERSION		"mod_rlimit/1.0"
 
-#ifdef HAVE_SYS_PRCTL_H
+/* On some platforms, including both sys/prctl.h and linux/prctl.h will cause
+ * build errors similar to this one:
+ *
+ *  https://github.com/dvarrazzo/py-setproctitle/issues/44
+ *
+ * So try to work around this behavior by including sys/prctrl.h if available,
+ * and if not, try linux/prctl.h.
+ */
+#if defined(HAVE_SYS_PRCTL_H)
 # include <sys/prctl.h>
-#endif
-
-#ifdef HAVE_LINUX_PRCTL_H
+#elif defined(HAVE_LINUX_PRCTL_H)
 # include <linux/prctl.h>
 #endif
 
