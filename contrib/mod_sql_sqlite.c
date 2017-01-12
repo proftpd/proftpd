@@ -70,7 +70,18 @@ typedef struct conn_entry_struct {
 static pool *conn_pool = NULL;
 static array_header *conn_cache = NULL;
 
+#define SQLITE_TRACE_LEVEL	12
+static const char *trace_channel = "sql.sqlite";
+
 MODRET sql_sqlite_close(cmd_rec *);
+
+static void db_err(void *user_data, int err_code, const char *err_msg) {
+  pr_trace_msg(trace_channel, 1, "(sqlite3): [error %d] %s", err_code, err_msg);
+}
+
+static void db_trace(void *user_data, const char *trace_msg) {
+  pr_trace_msg(trace_channel, SQLITE_TRACE_LEVEL, "(sqlite3): %s", trace_msg);
+}
 
 static conn_entry_t *sql_sqlite_get_conn(char *name) {
   register unsigned int i = 0;
@@ -272,7 +283,9 @@ static modret_t *sql_sqlite_get_data(cmd_rec *cmd) {
 MODRET sql_sqlite_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  const char *stmt = NULL;
   int res;
+  unsigned int nretries = 0;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_open");
 
@@ -326,11 +339,41 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
    * is used.  Note that the MEMORY journal mode of SQLite is supported
    * only for SQLite-3.6.5 and later.
    */
-  res = sqlite3_exec(conn->dbh, "PRAGMA journal_mode = MEMORY;", NULL, NULL,
-    NULL);
+  stmt = "PRAGMA journal_mode = MEMORY;";
+  res = sqlite3_exec(conn->dbh, stmt, NULL, NULL, NULL);
+
+  /* Make sure we handle contention here, just like any other statement
+   * (Issue#385).
+   */
+  while (res != SQLITE_OK) {
+    if (res == SQLITE_BUSY) {
+      struct timeval tv;
+
+      nretries++;
+      sql_log(DEBUG_FUNC, "attempt #%u, database busy, trying '%s' again",
+        nretries, stmt);
+
+      /* Sleep for short bit, then try again. */
+      tv.tv_sec = 0;
+      tv.tv_usec = 500000L;
+
+      if (select(0, NULL, NULL, NULL, &tv) < 0) {
+        if (errno == EINTR) {
+          pr_signals_handle();
+        }
+      }
+
+      res = sqlite3_exec(conn->dbh, stmt, NULL, NULL, NULL);
+    }
+  }
+
   if (res != SQLITE_OK) {
     sql_log(DEBUG_FUNC, "error setting MEMORY journal mode: %s",
       sqlite3_errmsg(conn->dbh));
+  }
+
+  if (pr_trace_get_level(trace_channel) >= SQLITE_TRACE_LEVEL) {
+    sqlite3_trace(conn->dbh, db_trace, NULL);
   }
 
   /* Add some SQLite information to the logs. */
@@ -1051,6 +1094,10 @@ static int sql_sqlite_init(void) {
     sql_sqlite_mod_load_ev, NULL);
   pr_event_register(&sql_sqlite_module, "core.module-unload",
     sql_sqlite_mod_unload_ev, NULL);
+
+#if defined(SQLITE_CONFIG_LOG)
+  sqlite3_config(SQLITE_CONFIG_LOG, db_err, NULL);
+#endif /* SQLite_CONFIG_LOG */
 
   /* Check that the SQLite headers used match the version of the SQLite
    * library used.
