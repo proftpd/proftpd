@@ -447,6 +447,8 @@ AC_ARG_WITH(shared,
         for amodule in $ac_shared_modules; do
           ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
         done
+
+        PR_CHECK_CC_OPT(Werror=implicit-function-declaration)
       fi
     fi
   ])
@@ -1006,6 +1008,7 @@ AC_ARG_ENABLE(devel,
       # selectively choose which warnings to enable.
       PR_CHECK_CC_OPT(Wdangling-else)
       PR_CHECK_CC_OPT(Wextra)
+      PR_CHECK_CC_OPT(Werror=implicit-function-declaration)
       PR_CHECK_CC_OPT(Winit-self)
       PR_CHECK_CC_OPT(Wno-missing-field-initializers)
       PR_CHECK_CC_OPT(Wno-unused-parameter)
