@@ -190,7 +190,7 @@ static void sess_redis_cleanup(void *data) {
 }
 
 pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
-  int res, xerrno;
+  int uses_ip = TRUE, res, xerrno;
   pr_redis_t *redis;
   pool *sub_pool;
   redisContext *ctx;
@@ -209,7 +209,18 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
   }
 
   millis2timeval(&tv, redis_connect_millis); 
-  ctx = redisConnectWithTimeout(redis_server, redis_port, tv);
+
+  /* If the given redis "server" string starts with a '/' character, assume
+   * that it is a Unix socket path.
+   */
+  if (*redis_server == '/') {
+    uses_ip = FALSE;
+    ctx = redisConnectUnixWithTimeout(redis_server, tv);
+
+  } else {
+    ctx = redisConnectWithTimeout(redis_server, redis_port, tv);
+  }
+
   xerrno = errno;
 
   if (ctx == NULL) {
@@ -252,9 +263,16 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
         break;
     }
 
-    pr_trace_msg(trace_channel, 3,
-      "error connecting to %s#%d: [%s] %s", redis_server, redis_port, err_type,
-      err_msg);
+    if (uses_ip == TRUE) {
+      pr_trace_msg(trace_channel, 3,
+        "error connecting to %s#%d: [%s] %s", redis_server, redis_port,
+        err_type, err_msg);
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+        "error connecting to '%s': [%s] %s", redis_server, err_type, err_msg);
+    }
+
     redisFree(ctx);
     errno = EIO;
     return NULL;
