@@ -1,0 +1,127 @@
+<html>
+<head>
+<title>ProFTPD module mod_redis</title>
+</head>
+
+<body bgcolor=white>
+
+<hr>
+<center>
+<h2><b>ProFTPD module <code>mod_redis</code></b></h2>
+</center>
+<hr><br>
+
+<p>
+The <code>mod_redis</code> module enables ProFTPD support for caching data in
+<a href="https://redis.io">Redis</a> servers, using the
+<a href="https://github.com/redis/hiredis">hiredis</a> client library.
+
+<h2>Directives</h2>
+<ul>
+  <li><a href="#RedisEngine">RedisEngine</a>
+  <li><a href="#RedisLog">RedisLog</a>
+  <li><a href="#RedisServers">RedisServer</a>
+  <li><a href="#RedisTimeouts">RedisTimeouts</a>
+</ul>
+
+<hr>
+<h3><a name="RedisEngine">RedisEngine</a></h3>
+<strong>Syntax:</strong> RedisEngine <em>on|off</em><br>
+<strong>Default:</strong> RedisEngine off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_redis<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>RedisEngine</code> directive enables or disables the
+<code>mod_redis</code> module, and thus the configuration of Redis support for
+the <code>proftpd</code> daemon.
+
+<p>
+<hr>
+<h3><a name="RedisLog">RedisLog</a></h3>
+<strong>Syntax:</strong> RedisLog <em>path|"none"</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_redis<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>RedisLog</code> directive is used to specify a log file for
+<code>mod_redis</code>'s reporting on a per-server basis.  The
+<em>file</em> parameter given must be the full path to the file to use for
+logging.
+
+<p>
+Note that this path must <b>not</b> be to a world-writable directory and,
+unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
+(generally a bad idea), the path must <b>not</b> be a symbolic link.
+
+<p>
+<hr>
+<h3><a name="RedisServer">RedisServer</a></h3>
+<strong>Syntax:</strong> RedisServer <em>server</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_redis<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+The <code>RedisServer</code> directive is used to configure the IP address/port
+of the Redis server that the <code>mod_redis</code> module is to use.  For
+example:
+<pre>
+  RedisServer 1.2.3.4:6379
+</pre>
+
+<p>
+Alternatively, you can configure a Unix domain socket path using <i>e.g.</i>:
+<pre>
+  RedisServer /var/run/redis.sock
+</pre>
+
+<p>
+<hr>
+<h3><a name="RedisTimeouts">RedisTimeouts</a></h3>
+<strong>Syntax:</strong> RedisTimeouts <em>connect IO</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_redis<br>
+<strong>Compatibility:</strong> 1.3.6rc3 and later
+
+<p>
+<em>Experimental feature</em>
+
+<p>
+<hr>
+<h2><a name="Installation">Installation</a></h2>
+The <code>mod_redis</code> module is distributed with ProFTPD.  To enable
+support and use of the Redis protocol in your <code>proftpd</code> daemon,
+use the <code>--enable-redis</code> configure option:
+<pre>
+  $ ./configure --enable-redis ...
+  $ make
+  $ make install
+</pre>
+This option causes the <code>mod_redis</code> module to be compiled into
+<code>proftpd</code>.
+
+<p>
+You may also need to tell <code>configure</code> how to find the
+<code>hiredis</code> header and library files:
+<pre>
+  $ ./configure --enable-redis \
+    --with-includes=<i>/path/to/hiredis/include</i> \
+    --with-libraries=<i>/path/to/hiredis/lib</i>
+</pre>
+
+<p>
+<hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
+</body>
+</html>
