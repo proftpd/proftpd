@@ -1102,7 +1102,7 @@ int redis_init(void) {
 
 #else
 
-pr_redis_t *pr_redis_conn_get(void) {
+pr_redis_t *pr_redis_conn_get(pool *p) {
   errno = ENOSYS;
   return NULL;
 }
@@ -1203,8 +1203,7 @@ int redis_set_server(const char *server, int port) {
   return -1;
 }
 
-int redis_set_timeouts(unsigned long conn_millis, unsigned long read_millis,
-    unsigned long write_millis) {
+int redis_set_timeouts(unsigned long conn_millis, unsigned long io_millis) {
   errno = ENOSYS;
   return -1;
 }
