@@ -170,6 +170,8 @@ static int set_conn_options(pr_redis_t *redis, unsigned long flags) {
       redis_strerror(tmp_pool, redis, xerrno));
   }
 
+#if HIREDIS_MAJOR >= 0 &&
+    HIREDIS_MINOR >= 12
   res = redisEnableKeepAlive(redis->ctx);
   if (res == REDIS_ERR) {
     xerrno = errno;
@@ -177,6 +179,7 @@ static int set_conn_options(pr_redis_t *redis, unsigned long flags) {
     pr_trace_msg(trace_channel, 4,
       "error setting keepalive: %s", redis_strerror(tmp_pool, redis, xerrno));
   }
+#endif /* HiRedis 0.12.0 and later */
 
   destroy_pool(tmp_pool);
   return 0;
