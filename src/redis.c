@@ -170,7 +170,7 @@ static int set_conn_options(pr_redis_t *redis, unsigned long flags) {
       redis_strerror(tmp_pool, redis, xerrno));
   }
 
-#if HIREDIS_MAJOR >= 0 &&
+#if HIREDIS_MAJOR >= 0 && \
     HIREDIS_MINOR >= 12
   res = redisEnableKeepAlive(redis->ctx);
   if (res == REDIS_ERR) {
