@@ -379,8 +379,8 @@ int pr_redis_conn_destroy(pr_redis_t *redis) {
 }
 
 int pr_redis_conn_clone(pool *p, pr_redis_t *redis) {
-  errno = ENOSYS;
-  return -1;
+  /* This is a no-op, for now. */
+  return 0;
 }
 
 static int modptr_cmp_cb(const void *k1, size_t ksz1, const void *k2,
@@ -650,6 +650,57 @@ int pr_redis_set(pr_redis_t *redis, module *m, const char *key, void *value,
     pr_trace_msg(trace_channel, 2,
       "error setting key '%s', value (%lu bytes): %s", key,
       (unsigned long) valuesz, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+int pr_redis_list_append(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz) {
+  int res;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_kappend(redis, m, key, strlen(key), value, valuesz);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error appending to list using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
+  int res;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_kremove(redis, m, key, strlen(key));
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error removing list using key '%s': %s", key, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -1118,6 +1169,72 @@ int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   return 0;
 }
 
+int pr_redis_list_kappend(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz) {
+  int xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL, *namespace_prefix;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis RPUSH pool");
+
+  namespace_prefix = get_namespace_prefix(redis, m);
+  if (namespace_prefix != NULL) {
+    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
+  }
+
+  cmd = "RPUSH";
+  reply = redisCommand(redis->ctx, "%s %b %b", cmd, key, keysz, value, valuesz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error appending to list using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_INTEGER) {
+    pr_trace_msg(trace_channel, 2,
+      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %lld", cmd, reply->integer);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
+int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz) {
+
+  /* Note: We can actually use just DEL here. */
+  return pr_redis_kremove(redis, m, key, keysz);
+}
+
 int redis_set_server(const char *server, int port) {
   if (server == NULL ||
       port < 1) {
@@ -1223,6 +1340,17 @@ int pr_redis_set(pr_redis_t *redis, module *m, const char *key, void *value,
   return -1;
 }
 
+int pr_redis_list_append(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_kadd(pr_redis_t *redis, module *m, const char *key, size_t keysz,
     void *value, size_t valuesz, time_t expires) {
   errno = ENOSYS;
@@ -1249,6 +1377,18 @@ int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
     void *value, size_t valuesz, time_t expires) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_kappend(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz) {
   errno = ENOSYS;
   return -1;
 }

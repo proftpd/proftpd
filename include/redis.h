@@ -70,6 +70,11 @@ int pr_redis_remove(pr_redis_t *redis, module *m, const char *key);
 int pr_redis_set(pr_redis_t *redis, module *m, const char *key, void *value,
   size_t valuesz, time_t expires);
 
+/* List operations */
+int pr_redis_list_append(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz);
+int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key);
+
 /* Variants of the above, where the key values are arbitrary bits rather
  * than being assumed to be strings.
  */
@@ -87,6 +92,11 @@ int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
 int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   void *value, size_t valuesz, time_t expires);
+
+int pr_redis_list_kappend(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz);
+int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz);
 
 /* For internal use only */
 
