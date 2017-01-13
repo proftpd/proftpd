@@ -71,6 +71,7 @@ START_TEST (redis_conn_destroy_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 }
+END_TEST
 
 START_TEST (redis_conn_close_test) {
   int res;
