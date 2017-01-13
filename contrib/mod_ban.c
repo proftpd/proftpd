@@ -3741,6 +3741,7 @@ static int ban_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "BanCache", FALSE);
   if (c != NULL) {
+    int supported_driver = FALSE;
     char *driver;
 
     driver = c->argv[0];
@@ -3766,6 +3767,9 @@ static int ban_sess_init(void) {
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
           "error setting memcache namespace prefix: %s", strerror(errno));
       }
+
+      supported_driver = TRUE;
+    }
 #endif /* PR_USE_MEMCACHE */
 
 #if defined(PR_USE_REDIS)
@@ -3796,9 +3800,12 @@ static int ban_sess_init(void) {
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
           "error setting Redis namespace prefix: %s", strerror(errno));
       }
+
+      supported_driver = TRUE;
+    }
 #endif /* PR_USE_MEMCACHE */
 
-    } else {
+    if (supported_driver == FALSE) {
       (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
         "unsupported BanCache driver '%s' configured, ignoring", driver);
     }
