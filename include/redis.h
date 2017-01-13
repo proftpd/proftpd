@@ -39,6 +39,7 @@ typedef struct redis_rec pr_redis_t;
 pr_redis_t *pr_redis_conn_get(pool *p);
 pr_redis_t *pr_redis_conn_new(pool *p, module *owner, unsigned long flags);
 int pr_redis_conn_close(pr_redis_t *redis);
+int pr_redis_conn_destroy(pr_redis_t *redis);
 
 /* Given an existing handle, quit that handle, and clone the internal
  * structures.  This is to be used by modules which need to get their own

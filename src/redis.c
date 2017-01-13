@@ -185,6 +185,10 @@ static int set_conn_options(pr_redis_t *redis, unsigned long flags) {
   return 0;
 }
 
+static void sess_redis_cleanup(void *data) {
+  sess_redis = NULL;
+}
+
 pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
   int res, xerrno;
   pr_redis_t *redis;
@@ -275,7 +279,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
   if (res < 0) {
     xerrno = errno;
 
-    pr_redis_conn_close(redis);
+    pr_redis_conn_destroy(redis);
     errno = xerrno;
     return NULL;    
   }
@@ -284,7 +288,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
   if (res < 0) {
     xerrno = errno;
 
-    pr_redis_conn_close(redis);
+    pr_redis_conn_destroy(redis);
     errno = xerrno;
     return NULL;
   }
@@ -296,13 +300,18 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
   if (res < 0) {
     xerrno = errno;
 
-    pr_redis_conn_close(redis);
+    pr_redis_conn_destroy(redis);
     errno = xerrno;
     return NULL;    
   }
 
   if (sess_redis == NULL) {
     sess_redis = redis;
+
+    /* Register a cleanup on this redis, so that when it is destroyed, we
+     * clear this sess_redis pointer, lest it remaining dangling.
+     */
+    register_cleanup(redis->pool, NULL, sess_redis_cleanup, NULL);
   }
 
   return redis;
@@ -314,17 +323,37 @@ int pr_redis_conn_close(pr_redis_t *redis) {
     return -1;
   }
 
-  redis->refcount--;
+  if (redis->refcount > 0) {
+    redis->refcount--;
+  }
 
   if (redis->refcount == 0) {
-    redisFree(redis->ctx);
-    redis->ctx = NULL;
+    if (redis->ctx != NULL) {
+      redisFree(redis->ctx);
+      redis->ctx = NULL;
+    }
 
     if (redis->namespace_tab != NULL) {
       (void) pr_table_empty(redis->namespace_tab);
       (void) pr_table_free(redis->namespace_tab);
       redis->namespace_tab = NULL;
     }
+  }
+
+  return 0;
+}
+
+int pr_redis_conn_destroy(pr_redis_t *redis) {
+  int res;
+
+  if (redis == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_conn_close(redis);
+  if (res < 0) {
+    return -1;
   }
 
   destroy_pool(redis->pool);
@@ -1092,7 +1121,7 @@ int redis_set_timeouts(unsigned long connect_millis, unsigned long io_millis) {
 
 int redis_clear(void) {
   if (sess_redis != NULL) {
-    pr_redis_conn_close(sess_redis);
+    pr_redis_conn_destroy(sess_redis);
     sess_redis = NULL;
   }
 
@@ -1116,6 +1145,11 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
 }
 
 int pr_redis_conn_close(pr_redis_t *redis) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_conn_destroy(pr_redis_t *redis) {
   errno = ENOSYS;
   return -1;
 }

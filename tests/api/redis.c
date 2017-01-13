@@ -62,6 +62,16 @@ static void tear_down(void) {
 
 /* Tests */
 
+START_TEST (redis_conn_destroy_test) {
+  int res;
+
+  mark_point();
+  res = pr_redis_conn_destroy(NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+}
+
 START_TEST (redis_conn_close_test) {
   int res;
 
@@ -89,7 +99,7 @@ START_TEST (redis_conn_new_test) {
     strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -133,7 +143,7 @@ START_TEST (redis_conn_set_namespace_test) {
     strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -176,7 +186,7 @@ START_TEST (redis_remove_test) {
     strerror(errno), errno);
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -246,7 +256,7 @@ START_TEST (redis_add_test) {
   fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -292,7 +302,7 @@ START_TEST (redis_add_with_namespace_test) {
     strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -380,7 +390,7 @@ START_TEST (redis_get_test) {
     strerror(errno), errno);
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -459,7 +469,7 @@ START_TEST (redis_get_str_test) {
     strerror(errno), errno);
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -563,7 +573,7 @@ START_TEST (redis_incr_test) {
   (void) pr_redis_remove(redis, &m, key);
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -667,7 +677,7 @@ START_TEST (redis_decr_test) {
   (void) pr_redis_remove(redis, &m, key);
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -737,7 +747,7 @@ START_TEST (redis_set_test) {
   fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_close(redis);
+  res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
@@ -754,6 +764,7 @@ Suite *tests_get_redis_suite(void) {
 #ifdef PR_USE_REDIS
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
+  tcase_add_test(testcase, redis_conn_destroy_test);
   tcase_add_test(testcase, redis_conn_close_test);
   tcase_add_test(testcase, redis_conn_new_test);
   tcase_add_test(testcase, redis_conn_set_namespace_test);
