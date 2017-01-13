@@ -5,6 +5,9 @@ compiler:
   - gcc
   - clang
 
+services:
+  - redis-server
+
 install:
   # Need to add other repos for e.g. libsodium
   - sudo add-apt-repository -y ppa:chris-lea/libsodium

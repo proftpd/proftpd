@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,6 +77,7 @@ Suite *tests_get_encode_suite(void);
 Suite *tests_get_privs_suite(void);
 Suite *tests_get_display_suite(void);
 Suite *tests_get_misc_suite(void);
+Suite *tests_get_redis_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.
