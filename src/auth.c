@@ -1488,7 +1488,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 /* This is one messy function.  Yuck.  Yay legacy code. */
 config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
     char **real_user, char **anon_name) {
-  config_rec *c = NULL, *topc = NULL;
+  config_rec *c = NULL, *alias_config = NULL, *anon_config = NULL;
   char *config_user_name = NULL, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
   unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
@@ -1528,8 +1528,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
       alias = c->argv[0];
       if (strncmp(alias, "*", 2) == 0 ||
           strcmp(alias, *login_user) == 0) {
-        is_alias = TRUE;
-        topc = c;
+        alias_config = c;
         break;
       }
 
@@ -1538,7 +1537,9 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
   }
 
   /* This is where things get messy, rapidly. */
-  c = topc;
+  if (is_alias == TRUE) {
+    c = alias_config;
+  }
 
   while (c != NULL &&
          c->parent != NULL &&
@@ -1562,7 +1563,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
 
     is_alias = FALSE;
 
-    find_config_set_top(topc);
+    find_config_set_top(alias_config);
     c = find_config_next2(c, c->next, CONF_PARAM, "UserAlias", TRUE,
       config_flags);
 
@@ -1570,6 +1571,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
         (strncmp(c->argv[0], "*", 2) == 0 ||
          strcmp(c->argv[0], *login_user) == 0)) {
       is_alias = TRUE;
+      alias_config = c;
     }
   }
 
@@ -1581,11 +1583,11 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
     *login_user = c->argv[1];
 
     /* If the alias is applied inside an <Anonymous> context, we have found
-     * our anon block.
+     * our <Anonymous> section.
      */
     if (c->parent &&
         c->parent->config_type == CONF_ANON) {
-      c = c->parent;
+      anon_config = c->parent;
 
     } else {
       c = NULL;
@@ -1593,14 +1595,17 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
   }
 
   /* Next, search for an anonymous entry. */
-
-  if (c == NULL) {
+  if (anon_config == NULL) {
     c = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
 
   } else {
-    find_config_set_top(c);
+    find_config_set_top(anon_config);
+    c = anon_config;
   }
 
+  /* If anon_config is null here but c is not null, then we may have found
+   * a candidate <Anonymous> section.  Let's examine it more closely.
+   */
   if (c != NULL) {
     config_rec *starting_c;
 
@@ -1615,6 +1620,10 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
 
       if (config_anon_name != NULL &&
           strcmp(config_anon_name, *login_user) == 0) {
+
+        /* We found our <Anonymous> section. */
+        anon_config = c;
+
         if (anon_name != NULL) {
           *anon_name = config_anon_name;
         }
@@ -1650,20 +1659,42 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
           FALSE);
       }
 
-      if (*login_user &&
-          auth_alias_only &&
+      if (login_user != NULL &&
+          auth_alias_only != NULL &&
           *auth_alias_only == TRUE) {
         *login_user = NULL;
       }
 
-      if ((!login_user || !c) &&
-          anon_name) {
+      if ((login_user == NULL || anon_config == NULL) &&
+          anon_name != NULL) {
         *anon_name = NULL;
+      }
+    }
+
+  } else {
+    config_rec *alias_parent_config = NULL;
+
+    /* We have found a matching UserAlias for the USER name sent by the client.
+     * But we need to properly handle any AuthAliasOnly directives in that
+     * config as well (Bug#2070).
+     */
+    if (alias_config != NULL) {
+      alias_parent_config = alias_config->parent;
+    }
+
+    auth_alias_only = get_param_ptr(alias_parent_config ?
+      alias_parent_config->subset : main_server->conf, "AuthAliasOnly", FALSE);
+
+    if (auth_alias_only != NULL &&
+        *auth_alias_only == TRUE) {
+      if (alias_parent_config != NULL &&
+          alias_parent_config->config_type == CONF_ANON) {
+        anon_config = alias_parent_config;
       }
     }
   }
 
-  return c;
+  return anon_config;
 }
 
 int pr_auth_banned_by_ftpusers(xaset_t *ctx, const char *user) {
