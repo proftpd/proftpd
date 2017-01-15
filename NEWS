@@ -8,7 +8,7 @@
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-1.3.5c
+1.3.5c - Released 14-Jan-2017
 --------------------------------
 - Bug 4254 - SSH rekey during authentication can cause issues with clients.
 - Bug 4257 - Recursive SCP uploads of multiple directories not handled properly.
