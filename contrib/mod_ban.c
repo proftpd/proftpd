@@ -28,8 +28,8 @@
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
-#include "ccan-json.h"
 #include "hanson-tpl.h"
+#include "json.h"
 
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -287,20 +287,19 @@ static int ban_cache_get_tpl_key(pool *p, unsigned int type, const char *name,
 
 static int ban_cache_get_json_key(pool *p, unsigned int type, const char *name,
     void **key, size_t *keysz) {
-  JsonNode *json;
-  char *json_str;
+  pr_json_object_t *json;
+  char *json_text;
 
-  json = json_mkobject();
-  json_append_member(json, "ban_type_id", json_mknumber((double) type));
-  json_append_member(json, "ban_name", json_mkstring(name));
+  json = pr_json_object_alloc(p);
+  (void) pr_json_object_set_number(p, json, "ban_type_id", (double) type);
+  (void) pr_json_object_set_string(p, json, "ban_name", name);
 
-  json_str = json_stringify(json, "");
+  json_text = pr_json_object_to_text(p, json, "");
 
   /* Include the terminating NUL in the key. */
-  *keysz = strlen(json_str) + 1;
-  *key = pstrndup(p, json_str, *keysz - 1);
-  free(json_str);
-  json_delete(json);
+  *keysz = strlen(json_text) + 1;
+  *key = pstrndup(p, json_text, *keysz - 1);
+  pr_json_object_free(json);
 
   return 0;
 }
@@ -413,297 +412,177 @@ static int ban_cache_entry_decode_tpl(pool *p, void *value, size_t valuesz,
   return 0;
 }
 
-static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
-    struct ban_cache_entry *bce) {
-  JsonNode *field, *json;
-  const char *json_str, *key;
-
-  json_str = value;
-  if (json_validate(json_str) == FALSE) {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "unable to decode invalid JSON cache entry: '%s'", json_str);
-    errno = EINVAL;
-    return -1;
-  }
-
-  json = json_decode(json_str);
-
-  key = BAN_CACHE_JSON_KEY_VERSION;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      bce->version = (int) field->number_;
+static int entry_get_json_number(pool *p, pr_json_object_t *json,
+    const char *key, double *val, const char *text) {
+  if (pr_json_object_get_number(p, json, key, val) < 0) {
+    if (errno == EEXIST) {
+      pr_trace_msg(trace_channel, 3,
+       "ignoring non-number '%s' JSON field in '%s'", key, text);
 
     } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "missing required '%s' JSON field in '%s'", key, text);
     }
 
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
+    pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
+
+  return 0;
+}
+
+static int entry_get_json_string(pool *p, pr_json_object_t *json,
+    const char *key, char **val, const char *text) {
+  if (pr_json_object_get_string(p, json, key, val) < 0) {
+    if (errno == EEXIST) {
+      pr_trace_msg(trace_channel, 3,
+       "ignoring non-string '%s' JSON field in '%s'", key, text);
+
+    } else {
+      (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+        "missing required '%s' JSON field in '%s'", key, text);
+    }
+
+    pr_json_object_free(json);
+    errno = EINVAL;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
+    struct ban_cache_entry *bce) {
+  int res;
+  pr_json_object_t *json;
+  const char *key;
+  char *entry, *text;
+  double number;
+
+  entry = value;
+  if (pr_json_text_validate(p, entry) == FALSE) {
+    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
+      "unable to decode invalid JSON cache entry: '%s'", entry);
+    errno = EINVAL;
+    return -1;
+  }
+
+  json = pr_json_object_from_text(p, entry);
+
+  key = BAN_CACHE_JSON_KEY_VERSION;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
+    return -1;
+  }
+  bce->version = (int) number;
 
   if (bce->version != BAN_CACHE_VALUE_VERSION) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "unsupported/unknown version value '%d' in cached JSON value, rejecting",
       bce->version);
-    json_delete(json);
+    pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
 
   key = BAN_CACHE_JSON_KEY_UPDATE_TS;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      bce->update_ts = (uint32_t) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  bce->update_ts = (uint32_t) number;
 
   key = BAN_CACHE_JSON_KEY_IP_ADDR;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_STRING) {
-      bce->ip_addr = pstrdup(p, field->string_);
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_string(p, json, key, &text, entry);
+  if (res < 0) {
     return -1;
   }
-
-  if (bce->ip_addr == NULL) {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required IP address value in cached JSON value, rejecting");
-    json_delete(json);
-    errno = EINVAL;
-    return -1;
-  }
+  bce->ip_addr = text;
 
   key = BAN_CACHE_JSON_KEY_PORT;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      bce->port = (unsigned int) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  bce->port = (unsigned int) number;
 
   if (bce->port == 0 ||
       bce->port > 65535) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "invalid port number %u in cached JSON value, rejecting", bce->port);
-    json_delete(json);
+    pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
 
   key = BAN_CACHE_JSON_KEY_TYPE;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_STRING) {
-      char *ban_type;
+  res = entry_get_json_string(p, json, key, &text, entry);
+  if (res < 0) {
+    return -1;
+  }
 
-      ban_type = field->string_;
-      if (ban_type != NULL) {
-        if (strcmp(ban_type, BAN_CACHE_JSON_TYPE_USER_TEXT) == 0) {
-          bce->be_type = BAN_TYPE_USER;
+  if (strcmp(text, BAN_CACHE_JSON_TYPE_USER_TEXT) == 0) {
+    bce->be_type = BAN_TYPE_USER;
 
-        } else if (strcmp(ban_type, BAN_CACHE_JSON_TYPE_HOST_TEXT) == 0) {
-          bce->be_type = BAN_TYPE_HOST;
+  } else if (strcmp(text, BAN_CACHE_JSON_TYPE_HOST_TEXT) == 0) {
+    bce->be_type = BAN_TYPE_HOST;
 
-        } else if (strcmp(ban_type, BAN_CACHE_JSON_TYPE_CLASS_TEXT) == 0) {
-          bce->be_type = BAN_TYPE_CLASS;
-
-        } else {
-          pr_trace_msg(trace_channel, 3,
-            "ignoring unknown/unsupported '%s' JSON field value: %s", key,
-            ban_type);
-          json_delete(json);
-          errno = EINVAL;
-          return -1;
-        }
-      }
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
+  } else if (strcmp(text, BAN_CACHE_JSON_TYPE_CLASS_TEXT) == 0) {
+    bce->be_type = BAN_TYPE_CLASS;
 
   } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
+    pr_trace_msg(trace_channel, 3,
+      "ignoring unknown/unsupported '%s' JSON field value: %s", key, text);
+    pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
 
   key = BAN_CACHE_JSON_KEY_NAME;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_STRING) {
-      bce->be_name = pstrdup(p, field->string_);
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_string(p, json, key, &text, entry);
+  if (res < 0) {
     return -1;
   }
+  bce->be_name = text;
 
   key = BAN_CACHE_JSON_KEY_REASON;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_STRING) {
-      bce->be_reason = pstrdup(p, field->string_);
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_string(p, json, key, &text, entry);
+  if (res < 0) {
     return -1;
   }
+  bce->be_reason = text;
 
   key = BAN_CACHE_JSON_KEY_MESSAGE;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_STRING) {
-      bce->be_mesg = pstrdup(p, field->string_);
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_string(p, json, key, &text, entry);
+  if (res < 0) {
     return -1;
   }
+  bce->be_mesg = text;
 
   key = BAN_CACHE_JSON_KEY_EXPIRES_TS;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      bce->be_expires = (uint32_t) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  bce->be_expires = (uint32_t) number;
 
   key = BAN_CACHE_JSON_KEY_SERVER_ID;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      bce->be_sid = (int) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
-      "missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  bce->be_sid = (int) number;
 
   if (bce->be_sid <= 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "invalid server ID %d in cached JSON value, rejecting", bce->be_sid);
-    json_delete(json);
+    pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
 
-  json_delete(json);
+  pr_json_object_free(json);
   return 0;
 }
 
@@ -800,20 +679,20 @@ static int ban_cache_entry_encode_tpl(pool *p, void **value, size_t *valuesz,
 
 static int ban_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
     struct ban_cache_entry *bce) {
-  JsonNode *json;
+  pr_json_object_t *json;
   const char *ban_type = "unknown";
-  char *json_str;
+  char *json_text;
 
-  json = json_mkobject();
+  json = pr_json_object_alloc(p);
 
-  json_append_member(json, BAN_CACHE_JSON_KEY_VERSION,
-    json_mknumber((double) bce->version));
-  json_append_member(json, BAN_CACHE_JSON_KEY_UPDATE_TS,
-    json_mknumber((double) bce->update_ts));
-  json_append_member(json, BAN_CACHE_JSON_KEY_IP_ADDR,
-    json_mkstring(bce->ip_addr));
-  json_append_member(json, BAN_CACHE_JSON_KEY_PORT,
-    json_mknumber((double) bce->port));
+  (void) pr_json_object_set_number(p, json, BAN_CACHE_JSON_KEY_VERSION,
+    (double) bce->version);
+  (void) pr_json_object_set_number(p, json, BAN_CACHE_JSON_KEY_UPDATE_TS,
+    (double) bce->update_ts);
+  (void) pr_json_object_set_string(p, json, BAN_CACHE_JSON_KEY_IP_ADDR,
+    bce->ip_addr);
+  (void) pr_json_object_set_number(p, json, BAN_CACHE_JSON_KEY_PORT,
+    (double) bce->port);
 
   /* Textify the ban type, for better inoperability. */
   switch (bce->be_type) {
@@ -830,27 +709,26 @@ static int ban_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
       break;
   }
 
-  json_append_member(json, BAN_CACHE_JSON_KEY_TYPE, json_mkstring(ban_type));
+  (void) pr_json_object_set_string(p, json, BAN_CACHE_JSON_KEY_TYPE,
+    ban_type);
+  (void) pr_json_object_set_string(p, json, BAN_CACHE_JSON_KEY_NAME,
+    bce->be_name);
+  (void) pr_json_object_set_string(p, json, BAN_CACHE_JSON_KEY_REASON,
+    bce->be_reason);
+  (void) pr_json_object_set_string(p, json, BAN_CACHE_JSON_KEY_MESSAGE,
+    bce->be_mesg);
+  (void) pr_json_object_set_number(p, json, BAN_CACHE_JSON_KEY_EXPIRES_TS,
+    (double) bce->be_expires);
+  (void) pr_json_object_set_number(p, json, BAN_CACHE_JSON_KEY_SERVER_ID,
+    (double) bce->be_sid);
 
-  json_append_member(json, BAN_CACHE_JSON_KEY_NAME,
-    json_mkstring(bce->be_name));
-  json_append_member(json, BAN_CACHE_JSON_KEY_REASON,
-    json_mkstring(bce->be_reason));
-  json_append_member(json, BAN_CACHE_JSON_KEY_MESSAGE,
-    json_mkstring(bce->be_mesg));
-  json_append_member(json, BAN_CACHE_JSON_KEY_EXPIRES_TS,
-    json_mknumber((double) bce->be_expires));
-  json_append_member(json, BAN_CACHE_JSON_KEY_SERVER_ID,
-    json_mknumber((double) bce->be_sid));
-
-  json_str = json_stringify(json, "");
+  json_text = pr_json_object_to_text(p, json, "");
 
   /* Include the terminating NUL in the value. */
-  *valuesz = strlen(json_str) + 1;
-  *value = pstrndup(p, json_str, *valuesz - 1);
-  free(json_str);
-  json_delete(json);
+  *valuesz = strlen(json_text) + 1;
+  *value = pstrndup(p, json_text, *valuesz - 1);
 
+  pr_json_object_free(json);
   return 0;
 }
 

@@ -260,6 +260,12 @@ static int get_val_from_node(pool *p, JsonNode *node, JsonTag tag, void *val) {
       break;
 
     case JSON_STRING:
+      /* Fortunately, valid JSON does not allow an empty element, or
+       * a member without a value.  Thus checking for NULL string_ here
+       * would be superfluous.  The only way for that to happen is if the
+       * caller were using the CCAN JSON API directly, in which case, they
+       * get what they paid for.
+       */
       *((char **) val) = pstrdup(p, node->string_);
       break;
 

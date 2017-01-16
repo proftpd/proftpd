@@ -651,6 +651,19 @@ START_TEST(json_object_get_string_test) {
   fail_unless(strcmp(val, "baz") == 0, "Expected 'baz', got '%s'", val);
  
   (void) pr_json_object_free(json);
+
+  text = "{\"foo\":\"\"}";
+  json = pr_json_object_from_text(p, text);
+
+  key = "foo";
+
+  mark_point();
+  res = pr_json_object_get_string(p, json, key, (char **) &val);
+  fail_unless(res == 0, "Failed to handle existing key '%s': %s", key,
+    strerror(errno));
+  fail_unless(strcmp(val, "") == 0, "Expected '', got '%s'", val);
+
+  (void) pr_json_object_free(json);
 }
 END_TEST
 
