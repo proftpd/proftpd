@@ -400,18 +400,12 @@ static int groupcache_get(const char *name, gid_t *gid) {
  * subsequently destroyed easily; this function's cmd_rec's will be destroyed
  * when the given pool is destroyed.
  */
-static cmd_rec *make_cmd(pool *cp, int argc, ...) {
+static cmd_rec *make_cmd(pool *cp, unsigned int argc, ...) {
   va_list args;
   cmd_rec *c;
   pool *sub_pool;
 
-  if (argc < 0) {
-    errno = EINVAL;
-    return NULL;
-  }
-
   c = pcalloc(cp, sizeof(cmd_rec));
-
   c->argc = argc;
   c->stash_index = -1;
   c->stash_hash = 0;
