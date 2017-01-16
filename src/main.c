@@ -2444,6 +2444,7 @@ int main(int argc, char *argv[], char **envp) {
   init_config();
   init_dirtree();
   init_stash();
+  init_json();
 
 #ifdef PR_USE_CTRLS
   init_ctrls();

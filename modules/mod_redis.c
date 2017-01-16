@@ -28,7 +28,7 @@
 #include "conf.h"
 #include "privs.h"
 #include "mod_log.h"
-#include "ccan-json.h"
+#include "json.h"
 
 #define MOD_REDIS_VERSION		"mod_redis/0.1"
 
@@ -86,10 +86,6 @@ struct field_info {
   const char *field_name;
   size_t field_namelen;
 };
-
-#define REDIS_FIELD_TYPE_BOOLEAN	1
-#define REDIS_FIELD_TYPE_NUMBER		2
-#define REDIS_FIELD_TYPE_STRING		3
 
 /* Key comparison for the ID/name table. */
 static int field_idcmp(const void *k1, size_t ksz1, const void *k2,
@@ -169,90 +165,81 @@ static int make_fieldtab(pool *p) {
    * for use e.g. as JSON object member names.
    */
 
-  field_add(p, LOGFMT_META_BYTES_SENT, "bytes_sent", REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_FILENAME, "file", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_ENV_VAR, "ENV:", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_REMOTE_HOST, "remote_dns", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_REMOTE_IP, "remote_ip", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_IDENT_USER, "identd_user", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_PID, "pid", REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_TIME, "local_time", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_SECONDS, "transfer_secs", REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_COMMAND, "raw_command", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_LOCAL_NAME, "server_name", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_LOCAL_PORT, "local_port", REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_LOCAL_IP, "local_ip", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_LOCAL_FQDN, "server_dns", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_USER, "user", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_ORIGINAL_USER, "original_user",
-    REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_RESPONSE_CODE, "response_code",
-    REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_CLASS, "connection_class", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_ANON_PASS, "anon_password", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_METHOD, "command", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_XFER_PATH, "transfer_path", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_DIR_NAME, "dir_name", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_DIR_PATH, "dir_path", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_CMD_PARAMS, "command_params",
-    REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_RESPONSE_STR, "response_msg",
-    REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_PROTOCOL, "protocol", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_VERSION, "server_version", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_RENAME_FROM, "rename_from", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_FILE_MODIFIED, "file_modified",
-    REDIS_FIELD_TYPE_BOOLEAN);
-  field_add(p, LOGFMT_META_UID, "uid", REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_GID, "gid", REDIS_FIELD_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_BYTES_SENT, "bytes_sent", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_FILENAME, "file", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_ENV_VAR, "ENV:", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_REMOTE_HOST, "remote_dns", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_REMOTE_IP, "remote_ip", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_IDENT_USER, "identd_user", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_PID, "pid", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_TIME, "local_time", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_SECONDS, "transfer_secs", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_COMMAND, "raw_command", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_LOCAL_NAME, "server_name", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_LOCAL_PORT, "local_port", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_LOCAL_IP, "local_ip", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_LOCAL_FQDN, "server_dns", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_USER, "user", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_ORIGINAL_USER, "original_user", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_RESPONSE_CODE, "response_code", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_CLASS, "connection_class", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_ANON_PASS, "anon_password", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_METHOD, "command", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_XFER_PATH, "transfer_path", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_DIR_NAME, "dir_name", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_DIR_PATH, "dir_path", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_CMD_PARAMS, "command_params", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_RESPONSE_STR, "response_msg", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_PROTOCOL, "protocol", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_VERSION, "server_version", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_RENAME_FROM, "rename_from", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_FILE_MODIFIED, "file_modified", PR_JSON_TYPE_BOOL);
+  field_add(p, LOGFMT_META_UID, "uid", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_GID, "gid", PR_JSON_TYPE_NUMBER);
   field_add(p, LOGFMT_META_RAW_BYTES_IN, "session_bytes_rcvd",
-    REDIS_FIELD_TYPE_NUMBER);
+    PR_JSON_TYPE_NUMBER);
   field_add(p, LOGFMT_META_RAW_BYTES_OUT, "session_bytes_sent",
-    REDIS_FIELD_TYPE_NUMBER);
+    PR_JSON_TYPE_NUMBER);
   field_add(p, LOGFMT_META_EOS_REASON, "session_end_reason",
-    REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_VHOST_IP, "server_ip", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_NOTE_VAR, "NOTE:", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_XFER_STATUS, "transfer_status",
-    REDIS_FIELD_TYPE_STRING);
+    PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_VHOST_IP, "server_ip", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_NOTE_VAR, "NOTE:", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_XFER_STATUS, "transfer_status", PR_JSON_TYPE_STRING);
   field_add(p, LOGFMT_META_XFER_FAILURE, "transfer_failure",
-    REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_MICROSECS, "microsecs", REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_MILLISECS, "millisecs", REDIS_FIELD_TYPE_NUMBER);
-  field_add(p, LOGFMT_META_ISO8601, "timestamp", REDIS_FIELD_TYPE_STRING);
-  field_add(p, LOGFMT_META_GROUP, "group", REDIS_FIELD_TYPE_STRING);
+    PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_MICROSECS, "microsecs", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_MILLISECS, "millisecs", PR_JSON_TYPE_NUMBER);
+  field_add(p, LOGFMT_META_ISO8601, "timestamp", PR_JSON_TYPE_STRING);
+  field_add(p, LOGFMT_META_GROUP, "group", PR_JSON_TYPE_STRING);
 
-  field_add(p, REDIS_META_CONNECT, "connecting", REDIS_FIELD_TYPE_BOOLEAN);
-  field_add(p, REDIS_META_DISCONNECT, "disconnecting",
-    REDIS_FIELD_TYPE_BOOLEAN);
+  field_add(p, REDIS_META_CONNECT, "connecting", PR_JSON_TYPE_BOOL);
+  field_add(p, REDIS_META_DISCONNECT, "disconnecting", PR_JSON_TYPE_BOOL);
 
   return 0;
 }
 
-static void encode_json(void *json, const char *field_name,
+static void encode_json(pool *p, void *json, const char *field_name,
     size_t field_namelen, unsigned int field_type, const void *field_value) {
-  JsonNode *field = NULL;
 
   switch (field_type) {
-    case REDIS_FIELD_TYPE_STRING:
-      field = json_mkstring((const char *) field_value);
+    case PR_JSON_TYPE_STRING:
+      (void) pr_json_object_set_string(p, json, field_name,
+        (const char *) field_value);
       break;
 
-    case REDIS_FIELD_TYPE_NUMBER:
-      field = json_mknumber(*((double *) field_value));
+    case PR_JSON_TYPE_NUMBER:
+      (void) pr_json_object_set_number(p, json, field_name,
+        *((double *) field_value));
       break;
 
-    case REDIS_FIELD_TYPE_BOOLEAN:
-      field = json_mkbool(*((int *) field_value));
+    case PR_JSON_TYPE_BOOL:
+      (void) pr_json_object_set_bool(p, json, field_name,
+        *((int *) field_value));
       break;
 
     default:
       (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
         "unsupported JSON field type: %u", field_type);
-  }
-
-  if (field != NULL) {
-    json_append_member(json, field_name, field);
   }
 }
 
@@ -661,7 +648,7 @@ static const char *get_meta_transfer_status(cmd_rec *cmd) {
 
 static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
     unsigned char **log_fmt, void *obj,
-    void (*encode_field)(void *, const char *, size_t, unsigned int,
+    void (*encode_field)(pool *, void *, const char *, size_t, unsigned int,
       const void *)) {
   const struct field_info *fi;
   unsigned char *m;
@@ -679,14 +666,14 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
         double bytes_sent;
 
         bytes_sent = session.xfer.total_bytes;
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           &bytes_sent);
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_DELE_ID) == 0) {
         double bytes_sent;
 
         bytes_sent = redis_dele_filesz;
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           &bytes_sent);
       }
 
@@ -699,7 +686,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       filename = get_meta_filename(cmd);
       if (filename != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           filename);
       }
 
@@ -726,7 +713,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
           field_name = pstrcat(p, fi->field_name, key, NULL);
           field_namelen = strlen(field_name);
 
-          encode_field(obj, field_name, field_namelen, fi->field_type, env);
+          encode_field(p, obj, field_name, field_namelen, fi->field_type, env);
         }
       }
 
@@ -737,7 +724,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       const char *name;
 
       name = pr_netaddr_get_sess_remote_name();
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         name);
 
       m++;
@@ -748,7 +735,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       const char *ipstr;
 
       ipstr = pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr());
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         ipstr);
 
       m++;
@@ -760,7 +747,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       ident_user = pr_table_get(session.notes, "mod_ident.rfc1413-ident", NULL);
       if (ident_user != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           ident_user);
       }
 
@@ -772,7 +759,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       double sess_pid;
 
       sess_pid = session.pid;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &sess_pid);
 
       m++;
@@ -797,7 +784,8 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       }
 
       strftime(ts, sizeof(ts)-1, time_fmt, tm);
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type, ts);
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
+        ts);
 
       break;
     }
@@ -806,7 +794,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       double transfer_secs;
 
       if (get_meta_transfer_secs(cmd, &transfer_secs) == 0) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           &transfer_secs);
       }
 
@@ -819,20 +807,20 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
           session.hide_password) {
         const char *full_cmd = "PASS (hidden)";
 
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           full_cmd);
 
       } else if (pr_cmd_cmp(cmd, PR_CMD_ADAT_ID) == 0) {
         const char *full_cmd = "ADAT (hidden)";
 
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           full_cmd);
 
       } else if (flags == REDIS_LOG_EVENT_FL_COMMAND) {
         const char *full_cmd;
 
         full_cmd = get_full_cmd(cmd);
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           full_cmd);
       }
 
@@ -841,7 +829,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
     }
 
     case LOGFMT_META_LOCAL_NAME: {
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         cmd->server->ServerName);
       m++;
       break;
@@ -851,7 +839,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       double server_port;
 
       server_port = cmd->server->ServerPort;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &server_port);
 
       m++;
@@ -862,7 +850,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       const char *ipstr;
 
       ipstr = pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr());
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         ipstr);
 
       m++;
@@ -873,7 +861,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       const char *dnsstr;
 
       dnsstr = pr_netaddr_get_dnsstr(pr_netaddr_get_sess_local_addr());
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         dnsstr);
 
       m++;
@@ -882,7 +870,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
     case LOGFMT_META_USER: {
       if (session.user != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           session.user);
       }
 
@@ -895,7 +883,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       orig_user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
       if (orig_user != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           orig_user);
       }
 
@@ -913,14 +901,14 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
         double code;
 
         code = atoi(resp_code);
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           &code);
 
       /* Hack to add return code for proper logging of QUIT command. */
       } else if (pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) == 0) {
         double code = 221;
 
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           &code);
       }
 
@@ -930,7 +918,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
     case LOGFMT_META_CLASS: {
       if (session.conn_class != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           session.conn_class);
       }
 
@@ -943,7 +931,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       anon_pass = pr_table_get(session.notes, "mod_auth.anon-passwd", NULL);
       if (anon_pass == NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           anon_pass);
       }
 
@@ -954,8 +942,8 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
     case LOGFMT_META_METHOD: {
       if (flags == REDIS_LOG_EVENT_FL_COMMAND) {
         if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) != 0) {
-          encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
-            cmd->argv[0]);
+          encode_field(p, obj, fi->field_name, fi->field_namelen,
+            fi->field_type, cmd->argv[0]);
 
         } else {
           char buf[32], *ptr;
@@ -970,8 +958,8 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
           memset(buf, '\0', sizeof(buf));
           snprintf(buf, sizeof(buf)-1, "%s %s", cmd->argv[0], cmd->argv[1]);
 
-          encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
-            buf);
+          encode_field(p, obj, fi->field_name, fi->field_namelen,
+            fi->field_type, buf);
         }
       }
 
@@ -984,7 +972,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       transfer_path = get_meta_transfer_path(cmd);
       if (transfer_path != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           transfer_path);
       }
 
@@ -997,7 +985,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       dir_name = get_meta_dir_name(cmd);
       if (dir_name != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           dir_name);
       }
 
@@ -1010,7 +998,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       dir_path = get_meta_dir_path(cmd);
       if (dir_path != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           dir_path);
       }
 
@@ -1023,7 +1011,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
           pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0) {
         const char *params = "(hidden)";
 
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           params);
 
       } else if (REDIS_LOG_EVENT_FL_COMMAND &&
@@ -1031,7 +1019,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
         const char *params;
 
         params = pr_fs_decode_path(p, cmd->arg);
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           params);
       }
 
@@ -1046,7 +1034,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       res = pr_response_get_last(p, NULL, &resp_msg);
       if (res == 0 &&
           resp_msg != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           resp_msg);
       }
 
@@ -1058,7 +1046,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       const char *proto;
 
       proto = pr_session_get_protocol(0);
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         proto);
 
       m++;
@@ -1069,7 +1057,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       const char *version;
 
       version = PROFTPD_VERSION_TEXT;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         version);
 
       m++;
@@ -1082,8 +1070,8 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
         rnfr_path = pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
         if (rnfr_path != NULL) {
-          encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
-            rnfr_path);
+          encode_field(p, obj, fi->field_name, fi->field_namelen,
+            fi->field_type, rnfr_path);
         }
       }
 
@@ -1102,7 +1090,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
         }
       }
 
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &modified);
 
       m++;
@@ -1113,7 +1101,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       double sess_uid;
 
       sess_uid = session.login_uid;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &sess_uid);
 
       m++;
@@ -1124,7 +1112,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       double sess_gid;
 
       sess_gid = session.login_gid;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &sess_gid);
 
       m++;
@@ -1135,7 +1123,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       double bytes_rcvd;
 
       bytes_rcvd = session.total_raw_in;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &bytes_rcvd);
 
       m++;
@@ -1146,7 +1134,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       double bytes_sent;
 
       bytes_sent = session.total_raw_out;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &bytes_sent);
 
       m++;
@@ -1163,12 +1151,12 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
           memset(buf, '\0', sizeof(buf));
           snprintf(buf, sizeof(buf)-1, "%s: %s", reason, details);
-          encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
-            buf);
+          encode_field(p, obj, fi->field_name, fi->field_namelen,
+            fi->field_type, buf);
 
         } else {
-          encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
-            reason);
+          encode_field(p, obj, fi->field_name, fi->field_namelen,
+            fi->field_type, reason);
         }
       }
 
@@ -1177,7 +1165,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
     }
 
     case LOGFMT_META_VHOST_IP:
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         cmd->server->ServerAddress);
       m++;
       break;
@@ -1208,7 +1196,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
           field_name = pstrcat(p, fi->field_name, note, NULL);
           field_namelen = strlen(field_name);
 
-          encode_field(obj, field_name, field_namelen, fi->field_type, note);
+          encode_field(p, obj, field_name, field_namelen, fi->field_type, note);
         }
       }
 
@@ -1220,7 +1208,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       transfer_status = get_meta_transfer_status(cmd);
       if (transfer_status != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           transfer_status);
       }
 
@@ -1233,7 +1221,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       transfer_failure = get_meta_transfer_failure(cmd);
       if (transfer_failure != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           transfer_failure);
       }
 
@@ -1247,7 +1235,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
       gettimeofday(&now, NULL);
       sess_usecs = now.tv_usec;
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &sess_usecs);
 
       m++;
@@ -1263,7 +1251,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       /* Convert microsecs to millisecs. */
       sess_msecs = (now.tv_usec / 1000);
 
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
         &sess_msecs);
 
       m++;
@@ -1286,7 +1274,8 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
       millis = now.tv_usec / 1000;
 
       snprintf(ts + len, sizeof(ts) - len - 1, ",%03lu", millis);
-      encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type, ts);
+      encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
+        ts);
 
       m++;
       break;
@@ -1294,7 +1283,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
     case LOGFMT_META_GROUP: {
       if (session.group != NULL) {
-        encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+        encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
           session.group);
       }
       m++;
@@ -1313,7 +1302,7 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
 
 static int encode_fields(pool *p, cmd_rec *cmd, int flags,
     unsigned char *log_fmt, void *obj,
-    void (*encode_field)(void *, const char *, size_t, unsigned int,
+    void (*encode_field)(pool *, void *, const char *, size_t, unsigned int,
       const void *)) {
 
   if (flags == REDIS_LOG_EVENT_FL_CONNECT &&
@@ -1325,7 +1314,7 @@ static int encode_fields(pool *p, cmd_rec *cmd, int flags,
     fi = pr_table_kget(redis_field_idtab, (const void *) &meta,
       sizeof(unsigned int), NULL);
 
-    encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+    encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
       &connecting);
 
   } else if (flags == REDIS_LOG_EVENT_FL_DISCONNECT) {
@@ -1336,7 +1325,7 @@ static int encode_fields(pool *p, cmd_rec *cmd, int flags,
     fi = pr_table_kget(redis_field_idtab, (const void *) &meta,
       sizeof(unsigned int), NULL);
 
-    encode_field(obj, fi->field_name, fi->field_namelen, fi->field_type,
+    encode_field(p, obj, fi->field_name, fi->field_namelen, fi->field_type,
       &disconnecting);
   }
 
@@ -1357,36 +1346,19 @@ static int encode_fields(pool *p, cmd_rec *cmd, int flags,
 static int encode_log_fmt(pool *p, cmd_rec *cmd, int flags,
     unsigned char *log_fmt, char **payload, size_t *payload_len) {
   int res;
-  char errstr[256], *json = NULL;
-  void *obj = NULL;
+  pr_json_object_t *json;
+  char *text = NULL;
 
-  obj = json_mkobject();
+  json = pr_json_object_alloc(p);
+  res = encode_fields(p, cmd, flags, log_fmt, json, encode_json);
 
-  res = encode_fields(p, cmd, flags, log_fmt, obj, encode_json);
+  text = pr_json_object_to_text(p, json, "");
+  pr_trace_msg(trace_channel, 3, "generated JSON payload: %s", text);
 
-  if (!json_check(obj, errstr)) {
-    (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
-      "JSON structural problems: %s", errstr);
-    json_delete(obj);
+  *payload_len = strlen(text);
+  *payload = text;
 
-    errno = EINVAL;
-    return -1;
-  }
-
-  json = json_encode(obj);
-  pr_trace_msg(trace_channel, 3, "generated JSON payload: %s", json);
-
-  *payload_len = strlen(json);
-  *payload = palloc(p, *payload_len);
-  memcpy(*payload, json, *payload_len);
-
-  /* To avoid a memory leak via malloc(3), we have to explicitly call free(3)
-   * on the returned JSON string.  Which is why we duplicate it out of the
-   * given memory pool, for use outside of this function.
-   */
-  free(json);
-  json_delete(obj);
-
+  pr_json_object_free(json);
   return 0;
 }
 
@@ -1783,11 +1755,6 @@ static void redis_shutdown_ev(const void *event_data, void *user_data) {
 /* Initialization functions
  */
 
-static void redis_oom(void) {
-  pr_log_pri(PR_LOG_ALERT, "Out of memory!");
-  exit(1);
-}
-
 static int redis_module_init(void) {
   redis_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(redis_pool, MOD_REDIS_VERSION);
@@ -1803,7 +1770,6 @@ static int redis_module_init(void) {
     return -1;
   }
 
-  json_set_oom(redis_oom);
   return 0;
 }
 

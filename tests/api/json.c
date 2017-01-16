@@ -34,7 +34,7 @@ static void set_up(void) {
     p = make_sub_pool(NULL);
   }
 
-  json_init();
+  init_json();
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("json", 1, 20);
@@ -46,9 +46,9 @@ static void tear_down(void) {
     pr_trace_set_levels("json", 0, 0);
   }
 
-  json_free();
+  finish_json();
 
-  if (p) {
+  if (p != NULL) {
     destroy_pool(p);
     p = NULL;
   }
@@ -308,7 +308,7 @@ START_TEST(json_object_get_bool_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_get_bool(p, json, key, NULL);
@@ -370,7 +370,7 @@ START_TEST(json_object_set_bool_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_set_bool(p, json, key, val);
@@ -414,7 +414,7 @@ START_TEST(json_object_get_null_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_get_null(p, json, key);
@@ -469,7 +469,7 @@ START_TEST(json_object_set_null_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_set_null(p, json, key);
@@ -510,7 +510,7 @@ START_TEST(json_object_get_number_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_get_number(p, json, key, NULL);
@@ -573,7 +573,7 @@ START_TEST(json_object_set_number_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_set_number(p, json, key, val);
@@ -617,7 +617,7 @@ START_TEST(json_object_get_string_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_get_string(p, json, key, NULL);
@@ -733,7 +733,7 @@ START_TEST(json_object_get_array_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_get_array(p, json, key, NULL);
@@ -801,7 +801,7 @@ START_TEST(json_object_set_array_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_set_array(p, json, key, val);
@@ -856,7 +856,7 @@ START_TEST(json_object_get_object_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_get_object(p, json, key, NULL);
@@ -923,7 +923,7 @@ START_TEST(json_object_set_object_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
  
-  key = "foo"; 
+  key = "foo";
 
   mark_point();
   res = pr_json_object_set_object(p, json, key, val);
