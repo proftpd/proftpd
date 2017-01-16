@@ -947,7 +947,12 @@ sub server_start {
     }
   }
 
-  $cmd .= "$proftpd_bin -q -c $abs_config_file";
+  my $quiet = '-q';
+  if ($ENV{TEST_VERBOSE}) {
+    $quiet = '';
+  }
+
+  $cmd .= "$proftpd_bin $quiet -c $abs_config_file";
 
   if (defined($server_opts->{define})) {
     my $defines = $server_opts->{define};

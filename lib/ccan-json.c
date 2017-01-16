@@ -472,10 +472,10 @@ int json_validate(const char *json)
 	return TRUE;
 }
 
-JsonNode *json_find_element(JsonNode *array, int idx)
+JsonNode *json_find_element(JsonNode *array, unsigned int idx)
 {
 	JsonNode *element;
-	int i = 0;
+	unsigned int i = 0;
 	
 	if (array == NULL || array->tag != JSON_ARRAY)
 		return NULL;

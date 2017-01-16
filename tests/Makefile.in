@@ -48,6 +48,7 @@ TEST_API_DEPS=\
   $(top_srcdir)/src/ascii.o \
   $(top_srcdir)/src/help.o \
   $(top_srcdir)/src/display.o \
+  $(top_srcdir)/src/json.o \
   $(top_srcdir)/src/redis.o
 
 TEST_API_LIBS=-lcheck
@@ -91,6 +92,7 @@ TEST_API_OBJS=\
   api/privs.o \
   api/display.o \
   api/misc.o \
+  api/json.o \
   api/redis.o \
   api/stubs.o \
   api/tests.o

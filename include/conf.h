@@ -460,6 +460,7 @@ typedef struct {
 #include "pidfile.h"
 #include "env.h"
 #include "pr-syslog.h"
+#include "json.h"
 #include "memcache.h"
 #include "redis.h"
 
