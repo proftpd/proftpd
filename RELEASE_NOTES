@@ -6,6 +6,27 @@ This file contains a description of the major changes to ProFTPD for the
 releases.  More information on these changes can be found in the NEWS and
 ChangeLog files.
 
+1.3.6rc5
+---------
+
+  + Support for using Redis for caching, logging.
+
+  + New Modules:
+
+    mod_redis
+
+    mod_tls_redis
+
+  + Changed Modules:
+
+    mod_ban
+      Use BanCache redis for Redis-based caching
+
+  + API Changes
+
+    A new JSON API has been added, for use by third-party modules.
+
+
 1.3.6rc4
 ---------
 

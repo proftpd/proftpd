@@ -31,11 +31,11 @@
 #include "mod_tls.h"
 #include "ccan-json.h"
 
-#define MOD_TLS_REDIS_VERSION		"mod_tls_redis/0.2"
+#define MOD_TLS_REDIS_VERSION		"mod_tls_redis/0.1"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030603
-# error "ProFTPD 1.3.6rc3 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030605
+# error "ProFTPD 1.3.6rc5 or later required"
 #endif
 
 module tls_redis_module;

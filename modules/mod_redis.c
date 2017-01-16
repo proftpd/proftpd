@@ -32,8 +32,8 @@
 
 #define MOD_REDIS_VERSION		"mod_redis/0.1"
 
-#if PROFTPD_VERSION_NUMBER < 0x0001030603
-# error "ProFTPD 1.3.6rc3 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030605
+# error "ProFTPD 1.3.6rc5 or later required"
 #endif
 
 #include <hiredis/hiredis.h>
