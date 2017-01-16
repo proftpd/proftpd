@@ -1020,8 +1020,11 @@
 /* Define if largefile support is desired.  */
 #undef PR_USE_LARGEFILES
 
-/* Define if memcache support is desired.. */
+/* Define if Memcache support is desired.. */
 #undef PR_USE_MEMCACHE
+
+/* Define if Redis support is desired.. */
+#undef PR_USE_REDIS
 
 /* Define if the %llu format should be used.  */
 #undef HAVE_LLU

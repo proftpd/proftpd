@@ -1548,6 +1548,8 @@ Optional Features:
 
   --enable-pcre           enable use of PCRE for POSIX regular expressions
                           rather than the system library (default=no)
+  --enable-redis          enable support for Redis (default=no)
+
   --enable-force-setpassent
                           force use of setpassent (default=no on FreeBSD)
 
@@ -3893,13 +3895,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:3896: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:3898: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3899: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:3901: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:3902: output\"" >&5)
+  (eval echo "\"\$as_me:3904: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5121,7 +5123,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5124 "configure"' > conftest.$ac_ext
+  echo '#line 5126 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -6971,11 +6973,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:6974: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:6976: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:6978: \$? = $ac_status" >&5
+   echo "$as_me:6980: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7310,11 +7312,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7313: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7315: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7317: \$? = $ac_status" >&5
+   echo "$as_me:7319: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7415,11 +7417,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7418: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7420: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7422: \$? = $ac_status" >&5
+   echo "$as_me:7424: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7470,11 +7472,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7473: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7475: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7477: \$? = $ac_status" >&5
+   echo "$as_me:7479: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10239,7 +10241,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10242 "configure"
+#line 10244 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10335,7 +10337,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10338 "configure"
+#line 10340 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14008,11 +14010,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14011: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14013: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14015: \$? = $ac_status" >&5
+   echo "$as_me:14017: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14107,11 +14109,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14110: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14112: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14114: \$? = $ac_status" >&5
+   echo "$as_me:14116: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14159,11 +14161,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14162: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14164: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14166: \$? = $ac_status" >&5
+   echo "$as_me:14168: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16901,6 +16903,12 @@ echo "$as_me: error: use --enable-nls instead of --with-modules=mod_lang for NLS
 echo "$as_me: error: use --enable-memcache instead of --with-modules=mod_memcache for Memcache support" >&2;}
    { (exit 1); exit 1; }; }
           fi
+
+          if test x"$amodule" = xmod_redis ; then
+            { { echo "$as_me:$LINENO: error: use --enable-redis instead of --with-modules=mod_redis for Redis support" >&5
+echo "$as_me: error: use --enable-redis instead of --with-modules=mod_redis for Redis support" >&2;}
+   { (exit 1); exit 1; }; }
+          fi
         done
 
         # Trim off any leading/trailing colons, and collapse double-colons
@@ -16932,7 +16940,15 @@ if test x"$enable_memcache" = xyes; then
   ac_build_static_modules="$ac_build_static_modules modules/mod_memcache.o"
 fi
 
-ac_unshareable_modules="mod_auth mod_rlimit mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_log mod_site mod_cap mod_ctrls mod_memcache"
+if test x"$enable_redis" = xyes; then
+  # Yes, we DO want mod_redis AFTER the other modules in the static
+  # module list. Otherwise, the module load ordering will be such that
+  # Redis support will not work as expected.
+  ac_static_modules="$ac_static_modules mod_redis.o"
+  ac_build_static_modules="$ac_build_static_modules modules/mod_redis.o"
+fi
+
+ac_unshareable_modules="mod_auth mod_rlimit mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_log mod_site mod_cap mod_ctrls mod_memcache mod_redis"
 
 
 # Check whether --with-shared was given.
@@ -18129,7 +18145,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 18132 "configure"
+#line 18148 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -19835,6 +19851,19 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       CPPFLAGS="$saved_cppflags"
       LDFLAGS="$saved_ldflags"
       LIBS="$saved_libs"
+    fi
+
+fi
+
+
+# Check whether --enable-redis was given.
+if test "${enable_redis+set}" = set; then
+  enableval=$enable_redis;  if test x"$enableval" = xyes ; then
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_REDIS 1
+_ACEOF
+
     fi
 
 fi

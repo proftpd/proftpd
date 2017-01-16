@@ -32,6 +32,15 @@
 typedef struct json_list_st pr_json_array_t;
 typedef struct json_obj_st pr_json_object_t;
 
+/* JSON Types */
+
+#define PR_JSON_TYPE_BOOL		1
+#define PR_JSON_TYPE_NUMBER		2
+#define PR_JSON_TYPE_NULL		3
+#define PR_JSON_TYPE_STRING		4
+#define PR_JSON_TYPE_ARRAY		5
+#define PR_JSON_TYPE_OBJECT		6
+
 /* JSON Objects */
 
 pr_json_object_t *pr_json_object_alloc(pool *p);
@@ -40,7 +49,7 @@ int pr_json_object_free(pr_json_object_t *json);
 
 pr_json_object_t *pr_json_object_from_text(pool *p, const char *text);
 
-const char *pr_json_object_to_text(pool *p, const pr_json_object_t *json,
+char *pr_json_object_to_text(pool *p, const pr_json_object_t *json,
   const char *indent);
 
 /* Returns the number of members (keys) in the given object. */
@@ -91,7 +100,7 @@ int pr_json_array_free(pr_json_array_t *json);
 
 pr_json_array_t *pr_json_array_from_text(pool *p, const char *text);
 
-const char *pr_json_array_to_text(pool *p, const pr_json_array_t *json,
+char *pr_json_array_to_text(pool *p, const pr_json_array_t *json,
   const char *indent);
 
 /* Returns the number of items in the given array. */
@@ -138,7 +147,7 @@ int pr_json_array_get_object(pool *p, const pr_json_array_t *json,
 int pr_json_text_validate(pool *p, const char *text);
 
 /* Internal use only. */
-int json_init(void);
-int json_free(void);
+int init_json(void);
+int finish_json(void);
 
 #endif /* PR_JSON_H */

@@ -2054,6 +2054,12 @@ static void show_settings(void) {
   printf("%s", "    - NLS support\n");
 #endif /* PR_USE_NLS */
 
+#ifdef PR_USE_REDIS
+  printf("%s", "    + Redis support\n");
+#else
+  printf("%s", "    - Redis support\n");
+#endif /* PR_USE_REDIS */
+
 #ifdef PR_USE_SODIUM
   printf("%s", "    + Sodium support\n");
 #else
@@ -2438,6 +2444,7 @@ int main(int argc, char *argv[], char **envp) {
   init_config();
   init_dirtree();
   init_stash();
+  init_json();
 
 #ifdef PR_USE_CTRLS
   init_ctrls();

@@ -80,14 +80,20 @@ static unsigned int get_count(JsonNode *json) {
   return count;
 }
 
-static const char *get_text(pool *p, JsonNode *json, const char *ident) {
+static char *get_text(pool *p, JsonNode *json, const char *ident) {
+  char *str, *text;
+
   if (p == NULL ||
       ident == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
-  return json_stringify(json, ident);
+  str = json_stringify(json, ident);
+  text = pstrdup(p, str);
+  free(str);
+
+  return text;
 }
 
 /* JSON Objects */
@@ -154,7 +160,7 @@ pr_json_object_t *pr_json_object_from_text(pool *p, const char *text) {
   return json;
 }
 
-const char *pr_json_object_to_text(pool *p, const pr_json_object_t *json,
+char *pr_json_object_to_text(pool *p, const pr_json_object_t *json,
     const char *indent) {
   if (json == NULL) {
     errno = EINVAL;
@@ -568,7 +574,7 @@ pr_json_array_t *pr_json_array_from_text(pool *p, const char *text) {
   return json;
 }
 
-const char *pr_json_array_to_text(pool *p, const pr_json_array_t *json,
+char *pr_json_array_to_text(pool *p, const pr_json_array_t *json,
     const char *indent) {
   if (json == NULL) {
     errno = EINVAL;
@@ -818,12 +824,12 @@ static void json_oom(void) {
 }
 
 
-int json_init(void) {
+int init_json(void) {
   json_set_oom(json_oom);
   return 0;
 }
 
-int json_free(void) {
+int finish_json(void) {
   json_set_oom(NULL);
   return 0;
 }
