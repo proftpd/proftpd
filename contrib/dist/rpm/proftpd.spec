@@ -1,5 +1,3 @@
-# $Id: proftpd.spec,v 1.90 2014-05-15 15:53:13 castaglia Exp $
-
 # Module List:
 #
 # Dynamic modules with no/minimal additional build or runtime dependencies, always built
@@ -50,7 +48,7 @@
 #
 # NOTE: rpmbuild is really bloody stupid, and CANNOT handle a leading '#'
 # character followed by a '%' character.  
-%global release_cand_version      b
+%global release_cand_version      d
 
 %global usecvsversion             0%{?_with_cvs:1}
 
