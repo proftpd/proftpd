@@ -299,7 +299,7 @@ static int ban_cache_get_json_key(pool *p, unsigned int type, const char *name,
   /* Include the terminating NUL in the key. */
   *keysz = strlen(json_text) + 1;
   *key = pstrndup(p, json_text, *keysz - 1);
-  pr_json_object_free(json);
+  (void) pr_json_object_free(json);
 
   return 0;
 }
@@ -424,7 +424,7 @@ static int entry_get_json_number(pool *p, pr_json_object_t *json,
         "missing required '%s' JSON field in '%s'", key, text);
     }
 
-    pr_json_object_free(json);
+    (void) pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
@@ -444,7 +444,7 @@ static int entry_get_json_string(pool *p, pr_json_object_t *json,
         "missing required '%s' JSON field in '%s'", key, text);
     }
 
-    pr_json_object_free(json);
+    (void) pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
@@ -481,7 +481,7 @@ static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "unsupported/unknown version value '%d' in cached JSON value, rejecting",
       bce->version);
-    pr_json_object_free(json);
+    (void) pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
@@ -511,7 +511,7 @@ static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
       bce->port > 65535) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "invalid port number %u in cached JSON value, rejecting", bce->port);
-    pr_json_object_free(json);
+    (void) pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
@@ -534,7 +534,7 @@ static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   } else {
     pr_trace_msg(trace_channel, 3,
       "ignoring unknown/unsupported '%s' JSON field value: %s", key, text);
-    pr_json_object_free(json);
+    (void) pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
@@ -574,15 +574,15 @@ static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   }
   bce->be_sid = (int) number;
 
+  (void) pr_json_object_free(json);
+
   if (bce->be_sid <= 0) {
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "invalid server ID %d in cached JSON value, rejecting", bce->be_sid);
-    pr_json_object_free(json);
     errno = EINVAL;
     return -1;
   }
 
-  pr_json_object_free(json);
   return 0;
 }
 
@@ -728,7 +728,7 @@ static int ban_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
   *valuesz = strlen(json_text) + 1;
   *value = pstrndup(p, json_text, *valuesz - 1);
 
-  pr_json_object_free(json);
+  (void) pr_json_object_free(json);
   return 0;
 }
 

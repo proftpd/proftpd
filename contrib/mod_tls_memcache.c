@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_tls_memcache -- a module which provides shared SSL session
  *                              and OCSP response caches using memcached servers
- *
- * Copyright (c) 2011-2016 TJ Saunders
+ * Copyright (c) 2011-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +29,7 @@
 #include "conf.h"
 #include "privs.h"
 #include "mod_tls.h"
-#include "ccan-json.h"
+#include "json.h"
 #include "hanson-tpl.h"
 
 #define MOD_TLS_MEMCACHE_VERSION		"mod_tls_memcache/0.2"
@@ -271,20 +270,19 @@ static int sess_cache_get_tpl_key(pool *p, const unsigned char *sess_id,
 
 static int sess_cache_get_json_key(pool *p, const unsigned char *sess_id,
     unsigned int sess_id_len, void **key, size_t *keysz) {
-  char *sess_id_hex, *json_str;
-  JsonNode *json;
+  char *sess_id_hex, *json_text;
+  pr_json_object_t *json;
 
   sess_id_hex = pr_str_bin2hex(p, sess_id, sess_id_len, 0);
-  json = json_mkobject();
-  json_append_member(json, "id", json_mkstring(sess_id_hex));
+  json = pr_json_object_alloc(p);
+  (void) pr_json_object_set_string(p, json, "id", sess_id_hex);
 
-  json_str = json_stringify(json, "");
+  json_text = pr_json_object_to_text(p, json, "");
 
   /* Include the terminating NUL in the key. */
-  *keysz = strlen(json_str) + 1;
-  *key = pstrndup(p, json_str, *keysz - 1);
-  free(json_str);
-  json_delete(json);
+  *keysz = strlen(json_text) + 1;
+  *key = pstrndup(p, json_text, *keysz - 1);
+  (void) pr_json_object_free(json);
 
   return 0;
 }
@@ -349,135 +347,126 @@ static int sess_cache_entry_decode_tpl(pool *p, void *value, size_t valuesz,
   return 0;
 }
 
+static int entry_get_json_number(pool *p, pr_json_object_t *json,
+    const char *key, double *val, const char *text) {
+  if (pr_json_object_get_number(p, json, key, val) < 0) {
+    if (errno == EEXIST) {
+      pr_trace_msg(trace_channel, 3,
+       "ignoring non-number '%s' JSON field in '%s'", key, text);
+
+    } else {
+      tls_log(MOD_TLS_MEMCACHE_VERSION
+        ": missing required '%s' JSON field in '%s'", key, text);
+    }
+
+    (void) pr_json_object_free(json);
+    errno = EINVAL;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int entry_get_json_string(pool *p, pr_json_object_t *json,
+    const char *key, char **val, const char *text) {
+  if (pr_json_object_get_string(p, json, key, val) < 0) {
+    if (errno == EEXIST) {
+      pr_trace_msg(trace_channel, 3,
+       "ignoring non-string '%s' JSON field in '%s'", key, text);
+
+    } else {
+      tls_log(MOD_TLS_MEMCACHE_VERSION
+        ": missing required '%s' JSON field in '%s'", key, text);
+    }
+
+    (void) pr_json_object_free(json);
+    errno = EINVAL;
+    return -1;
+  }
+
+  return 0;
+}
+
 static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     struct sesscache_entry *se) {
-  JsonNode *field, *json;
-  const char *json_str, *key;
+  int res;
+  pr_json_object_t *json;
+  const char *key;
+  char *entry, *text;
+  double number;
 
-  json_str = value;
-  if (json_validate(json_str) == FALSE) {
+  entry = value;
+  if (pr_json_text_validate(p, entry) == FALSE) {
     tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": unable to decode invalid JSON session cache entry: '%s'", json_str);
+      ": unable to decode invalid JSON session cache entry: '%s'", entry);
     errno = EINVAL;
     return -1;
   }
 
-  json = json_decode(json_str);
+  json = pr_json_object_from_text(p, entry);
 
   key = SESS_CACHE_JSON_KEY_EXPIRES;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      se->expires = (uint32_t) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  se->expires = (uint32_t) number;
 
   key = SESS_CACHE_JSON_KEY_DATA;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_STRING) {
-      int have_padding = FALSE, res;
-      char *base64_data;
-      size_t base64_datalen;
-      unsigned char *data;
+  res = entry_get_json_string(p, json, key, &text, entry);
+  if (res == 0) {
+    int have_padding = FALSE;
+    char *base64_data;
+    size_t base64_datalen;
+    unsigned char *data;
 
-      base64_data = pstrdup(p, field->string_);
-      if (base64_data == NULL) {
-        tls_log(MOD_TLS_MEMCACHE_VERSION
-          ": invalid/empty '%s' JSON key in '%s', rejecting cache entry",
-          key, json_str);
-        json_delete(json);
-        errno = EINVAL;
-        return -1;
-      }
+    base64_data = text;
+    base64_datalen = strlen(base64_data);
 
-      base64_datalen = strlen(base64_data);
+    /* Due to Base64's padding, we need to detect if the last block was
+     * padded with zeros; we do this by looking for '=' characters at the
+     * end of the text being decoded.  If we see these characters, then we
+     * will "trim" off any trailing zero values in the decoded data, on the
+     * ASSUMPTION that they are the auto-added padding bytes.
+     */
+    if (base64_data[base64_datalen-1] == '=') {
+      have_padding = TRUE;
+    }
 
-      /* Due to Base64's padding, we need to detect if the last block was
-       * padded with zeros; we do this by looking for '=' characters at the
-       * end of the text being decoded.  If we see these characters, then we
-       * will "trim" off any trailing zero values in the decoded data, on the
-       * ASSUMPTION that they are the auto-added padding bytes.
-       */
-      if (base64_data[base64_datalen-1] == '=') {
-        have_padding = TRUE;
-      }
-
-      data = se->sess_data;
-      res = EVP_DecodeBlock(data, (unsigned char *) base64_data,
-        (int) base64_datalen);
-      if (res <= 0) {
-        /* Base64-decoding error. */
-        pr_trace_msg(trace_channel, 5,
-          "error base64-decoding session data in '%s', rejecting", json_str);
-        errno = EINVAL;
-        return -1;
-      }
-
-      if (have_padding) {
-        /* Assume that only one or two zero bytes of padding were added. */
-        if (data[res-1] == '\0') {
-          res -= 1;
-
-          if (data[res-1] == '\0') {
-            res -= 1;
-          }
-        }
-      }
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
+    data = se->sess_data;
+    res = EVP_DecodeBlock(data, (unsigned char *) base64_data,
+      (int) base64_datalen);
+    if (res <= 0) {
+      /* Base64-decoding error. */
+      pr_trace_msg(trace_channel, 5,
+        "error base64-decoding session data in '%s', rejecting", entry);
+      (void) pr_json_object_free(json);
       errno = EINVAL;
       return -1;
     }
 
+    if (have_padding) {
+      /* Assume that only one or two zero bytes of padding were added. */
+      if (data[res-1] == '\0') {
+        res -= 1;
+
+        if (data[res-1] == '\0') {
+          res -= 1;
+        }
+      }
+    }
   } else {
-    tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
     return -1;
   }
 
   key = SESS_CACHE_JSON_KEY_DATA_LENGTH;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      se->sess_datalen = (unsigned int) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  se->sess_datalen = (unsigned int) number;
 
-  json_delete(json);
+  (void) pr_json_object_free(json);
   return 0;
 }
 
@@ -608,13 +597,13 @@ static int sess_cache_entry_encode_tpl(pool *p, void **value, size_t *valuesz,
 
 static int sess_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
     struct sesscache_entry *se) {
-  JsonNode *json;
+  pr_json_object_t *json;
   pool *tmp_pool;
-  char *base64_data = NULL, *json_str;
+  char *base64_data = NULL, *json_text;
 
-  json = json_mkobject();
-  json_append_member(json, SESS_CACHE_JSON_KEY_EXPIRES,
-    json_mknumber((double) se->expires));
+  json = pr_json_object_alloc(p);
+  (void) pr_json_object_set_number(p, json, SESS_CACHE_JSON_KEY_EXPIRES,
+    (double) se->expires);
 
   /* Base64-encode the session data.  Note that EVP_EncodeBlock does
    * NUL-terminate the encoded data.
@@ -624,34 +613,31 @@ static int sess_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
 
   EVP_EncodeBlock((unsigned char *) base64_data, se->sess_data,
     (int) se->sess_datalen);
-  json_append_member(json, SESS_CACHE_JSON_KEY_DATA,
-    json_mkstring(base64_data));
+  (void) pr_json_object_set_string(p, json, SESS_CACHE_JSON_KEY_DATA,
+    base64_data);
+  (void) pr_json_object_set_number(p, json, SESS_CACHE_JSON_KEY_DATA_LENGTH,
+    (double) se->sess_datalen);
 
-  json_append_member(json, SESS_CACHE_JSON_KEY_DATA_LENGTH,
-    json_mknumber((double) se->sess_datalen));
+  destroy_pool(tmp_pool);
 
-  json_str = json_stringify(json, "");
-  if (json_str == NULL) {
-    destroy_pool(tmp_pool);
-    json_delete(json);
+  json_text = pr_json_object_to_text(p, json, "");
+  (void) pr_json_object_free(json);
+
+  if (json_text == NULL) {
     errno = ENOMEM;
     return -1;
   }
 
   /* Safety check */
-  if (json_validate(json_str) == FALSE) {
-    pr_trace_msg(trace_channel, 1, "invalid JSON emitted: '%s'", json_str);
+  if (pr_json_text_validate(p, json_text) == FALSE) {
+    pr_trace_msg(trace_channel, 1, "invalid JSON emitted: '%s'", json_text);
     errno = EINVAL;
     return -1;
   }
 
   /* Include the terminating NUL in the value. */
-  *valuesz = strlen(json_str) + 1;
-  *value = pstrndup(p, json_str, *valuesz - 1);
-
-  free(json_str);
-  json_delete(json);
-  destroy_pool(tmp_pool);
+  *valuesz = strlen(json_text) + 1;
+  *value = pstrndup(p, json_text, *valuesz - 1);
 
   return 0;
 }
@@ -1258,19 +1244,18 @@ static int sess_cache_status(tls_sess_cache_t *cache,
 
 static int ocsp_cache_get_json_key(pool *p, const char *fingerprint,
     void **key, size_t *keysz) {
-  char *json_str;
-  JsonNode *json;
+  pr_json_object_t *json;
+  char *json_text;
 
-  json = json_mkobject();
-  json_append_member(json, "fingerprint", json_mkstring(fingerprint));
+  json = pr_json_object_alloc(p);
+  (void) pr_json_object_set_string(p, json, "fingerprint", fingerprint);
 
-  json_str = json_stringify(json, "");
+  json_text = pr_json_object_to_text(p, json, "");
+  (void) pr_json_object_free(json);
 
   /* Include the terminating NUL in the key. */
-  *keysz = strlen(json_str) + 1;
-  *key = pstrndup(p, json_str, *keysz - 1);
-  free(json_str);
-  json_delete(json);
+  *keysz = strlen(json_text) + 1;
+  *key = pstrndup(p, json_text, *keysz - 1);
 
   return 0;
 }
@@ -1292,133 +1277,85 @@ static int ocsp_cache_get_key(pool *p, const char *fingerprint, void **key,
 
 static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     struct ocspcache_entry *oe) {
-  JsonNode *field, *json;
-  const char *json_str, *key;
+  int res;
+  pr_json_object_t *json;
+  const char *key;
+  char *entry, *text;
+  double number;
 
-  json_str = value;
-  if (json_validate(json_str) == FALSE) {
+  entry = value;
+  if (pr_json_text_validate(p, entry) == FALSE) {
     tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": unable to decode invalid JSON ocsp cache entry: '%s'", json_str);
+      ": unable to decode invalid JSON ocsp cache entry: '%s'", entry);
     errno = EINVAL;
     return -1;
   }
 
-  json = json_decode(json_str);
+  json = pr_json_object_from_text(p, entry);
 
   key = OCSP_CACHE_JSON_KEY_AGE;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      oe->age = (uint32_t) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  oe->age = (uint32_t) number;
 
   key = OCSP_CACHE_JSON_KEY_RESPONSE;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_STRING) {
-      int have_padding = FALSE, res;
-      char *base64_data;
-      size_t base64_datalen;
-      unsigned char *data;
+  res = entry_get_json_string(p, json, key, &text, entry);
+  if (res == 0) {
+    int have_padding = FALSE;
+    char *base64_data;
+    size_t base64_datalen;
+    unsigned char *data;
 
-      base64_data = pstrdup(p, field->string_);
-      if (base64_data == NULL) {
-        tls_log(MOD_TLS_MEMCACHE_VERSION
-          ": invalid/empty '%s' JSON key in '%s', rejecting cache entry",
-          key, json_str);
-        json_delete(json);
-        errno = EINVAL;
-        return -1;
-      }
+    base64_data = text;
+    base64_datalen = strlen(base64_data);
 
-      base64_datalen = strlen(base64_data);
+    /* Due to Base64's padding, we need to detect if the last block was
+     * padded with zeros; we do this by looking for '=' characters at the
+     * end of the text being decoded.  If we see these characters, then we
+     * will "trim" off any trailing zero values in the decoded data, on the
+     * ASSUMPTION that they are the auto-added padding bytes.
+     */
+    if (base64_data[base64_datalen-1] == '=') {
+      have_padding = TRUE;
+    }
 
-      /* Due to Base64's padding, we need to detect if the last block was
-       * padded with zeros; we do this by looking for '=' characters at the
-       * end of the text being decoded.  If we see these characters, then we
-       * will "trim" off any trailing zero values in the decoded data, on the
-       * ASSUMPTION that they are the auto-added padding bytes.
-       */
-      if (base64_data[base64_datalen-1] == '=') {
-        have_padding = TRUE;
-      }
-
-      data = oe->resp_der;
-      res = EVP_DecodeBlock(data, (unsigned char *) base64_data,
-        (int) base64_datalen);
-      if (res <= 0) {
-        /* Base64-decoding error. */
-        pr_trace_msg(trace_channel, 5,
-          "error base64-decoding session data in '%s', rejecting", json_str);
-        errno = EINVAL;
-        return -1;
-      }
-
-      if (have_padding) {
-        /* Assume that only one or two zero bytes of padding were added. */
-        if (data[res-1] == '\0') {
-          res -= 1;
-
-          if (data[res-1] == '\0') {
-            res -= 1;
-          }
-        }
-      }
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-string '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
+    data = oe->resp_der;
+    res = EVP_DecodeBlock(data, (unsigned char *) base64_data,
+      (int) base64_datalen);
+    if (res <= 0) {
+      /* Base64-decoding error. */
+      pr_trace_msg(trace_channel, 5,
+        "error base64-decoding OCSP data in '%s', rejecting", entry);
+      pr_json_object_free(json);
       errno = EINVAL;
       return -1;
     }
 
+    if (have_padding) {
+      /* Assume that only one or two zero bytes of padding were added. */
+      if (data[res-1] == '\0') {
+        res -= 1;
+
+        if (data[res-1] == '\0') {
+          res -= 1;
+        }
+      }
+    }
+
   } else {
-    tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
     return -1;
   }
 
   key = OCSP_CACHE_JSON_KEY_RESPONSE_LENGTH;
-  field = json_find_member(json, key);
-  if (field != NULL) {
-    if (field->tag == JSON_NUMBER) {
-      oe->resp_derlen = (unsigned int) field->number_;
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-       "ignoring non-number '%s' JSON field in '%s'", key, json_str);
-      json_delete(json);
-      errno = EINVAL;
-      return -1;
-    }
-
-  } else {
-    tls_log(MOD_TLS_MEMCACHE_VERSION
-      ": missing required '%s' JSON field in '%s'", key, json_str);
-    json_delete(json);
-    errno = EINVAL;
+  res = entry_get_json_number(p, json, key, &number, entry);
+  if (res < 0) {
     return -1;
   }
+  oe->resp_derlen = (unsigned int) number;
 
-  json_delete(json);
+  (void) pr_json_object_free(json);
   return 0;
 }
 
@@ -1489,13 +1426,13 @@ static int ocsp_cache_mcache_entry_delete(pool *p, const char *fingerprint) {
 
 static int ocsp_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
     struct ocspcache_entry *oe) {
-  JsonNode *json;
+  pr_json_object_t *json;
   pool *tmp_pool;
-  char *base64_data = NULL, *json_str;
+  char *base64_data = NULL, *json_text;
 
-  json = json_mkobject();
-  json_append_member(json, OCSP_CACHE_JSON_KEY_AGE,
-    json_mknumber((double) oe->age));
+  json = pr_json_object_alloc(p);
+  (void) pr_json_object_set_number(p, json, OCSP_CACHE_JSON_KEY_AGE,
+    (double) oe->age);
 
   /* Base64-encode the response data.  Note that EVP_EncodeBlock does
    * NUL-terminate the encoded data.
@@ -1505,34 +1442,25 @@ static int ocsp_cache_entry_encode_json(pool *p, void **value, size_t *valuesz,
 
   EVP_EncodeBlock((unsigned char *) base64_data, oe->resp_der,
     (int) oe->resp_derlen);
-  json_append_member(json, OCSP_CACHE_JSON_KEY_RESPONSE,
-    json_mkstring(base64_data));
+  (void) pr_json_object_set_string(p, json, OCSP_CACHE_JSON_KEY_RESPONSE,
+    base64_data);
+  (void) pr_json_object_set_number(p, json, OCSP_CACHE_JSON_KEY_RESPONSE_LENGTH,
+    (double) oe->resp_derlen);
+  destroy_pool(tmp_pool);
 
-  json_append_member(json, OCSP_CACHE_JSON_KEY_RESPONSE_LENGTH,
-    json_mknumber((double) oe->resp_derlen));
-
-  json_str = json_stringify(json, "");
-  if (json_str == NULL) {
-    destroy_pool(tmp_pool);
-    json_delete(json);
-    errno = ENOMEM;
-    return -1;
-  }
+  json_text = pr_json_object_to_text(p, json, "");
+  (void) pr_json_object_free(json);
 
   /* Safety check */
-  if (json_validate(json_str) == FALSE) {
-    pr_trace_msg(trace_channel, 1, "invalid JSON emitted: '%s'", json_str);
+  if (pr_json_text_validate(p, json_text) == FALSE) {
+    pr_trace_msg(trace_channel, 1, "invalid JSON emitted: '%s'", json_text);
     errno = EINVAL;
     return -1;
   }
 
   /* Include the terminating NUL in the value. */
-  *valuesz = strlen(json_str) + 1;
-  *value = pstrndup(p, json_str, *valuesz - 1);
-
-  free(json_str);
-  json_delete(json);
-  destroy_pool(tmp_pool);
+  *valuesz = strlen(json_text) + 1;
+  *value = pstrndup(p, json_text, *valuesz - 1);
 
   return 0;
 }

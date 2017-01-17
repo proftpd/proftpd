@@ -81,7 +81,7 @@ static unsigned int get_count(JsonNode *json) {
 }
 
 static char *get_text(pool *p, JsonNode *json, const char *ident) {
-  char *str, *text;
+  char *str, *text = NULL;
 
   if (p == NULL ||
       ident == NULL) {
@@ -90,8 +90,10 @@ static char *get_text(pool *p, JsonNode *json, const char *ident) {
   }
 
   str = json_stringify(json, ident);
-  text = pstrdup(p, str);
-  free(str);
+  if (str != NULL) {
+    text = pstrdup(p, str);
+    free(str);
+  }
 
   return text;
 }
