@@ -159,10 +159,10 @@
 ../include/lastlog.h
 ../include/libsupp.h
 ../include/log.h
+../include/logfmt.h
 ../include/memcache.h
 ../include/mkhome.h
 ../include/mod_ctrls.h
-../include/mod_log.h
 ../include/modules.h
 ../include/netacl.h
 ../include/netaddr.h

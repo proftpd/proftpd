@@ -27,7 +27,7 @@
 
 #include "conf.h"
 #include "privs.h"
-#include "mod_log.h"
+#include "logfmt.h"
 #include "json.h"
 
 #define MOD_REDIS_VERSION		"mod_redis/0.1"
