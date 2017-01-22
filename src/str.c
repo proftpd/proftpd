@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -829,6 +829,55 @@ array_header *pr_str_get_similars(pool *p, const char *s,
 
   destroy_pool(tmp_pool);
   return similars;
+}
+
+array_header *pr_str_text_to_array(pool *p, const char *text, char delimiter) {
+  char *ptr;
+  array_header *items;
+  size_t text_len;
+
+  if (p == NULL ||
+      text == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  text_len = strlen(text);
+  items = make_array(p, 1, sizeof(char *));
+
+  if (text_len == 0) {
+    return items;
+  }
+
+  ptr = memchr(text, delimiter, text_len);
+  while (ptr != NULL) {
+    char *item;
+    size_t item_len;
+
+    pr_signals_handle();
+
+    item_len = ptr - text;
+
+    item = palloc(p, item_len + 1);
+    memcpy(item, text, item_len);
+    item[item_len] = '\0';
+    *((char **) push_array(items)) = item;
+
+    text = ++ptr;
+
+    /* Include one byte for the delimiter character being skipped over. */
+    text_len = text_len - item_len - 1;
+
+    if (text_len == 0) {
+      break;
+    }
+
+    ptr = memchr(text, delimiter, text_len);
+  }
+
+  *((char **) push_array(items)) = pstrdup(p, text);
+
+  return items;
 }
 
 int pr_str2uid(const char *val, uid_t *uid) {
