@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1615,6 +1615,101 @@ START_TEST (quote_dir_test) {
 }
 END_TEST
 
+START_TEST (text_to_array_test) {
+  register unsigned int i;
+  array_header *res;
+  const char *text;
+
+  mark_point();
+  res = pr_str_text_to_array(NULL, NULL, ',');
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_str_text_to_array(p, NULL, ',');
+  fail_unless(res == NULL, "Failed to handle null text");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  text = "";
+
+  mark_point();
+  res = pr_str_text_to_array(p, text, ',');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 0, "Expected 0 items, got %u", res->nelts);
+
+  text = "foo";
+
+  mark_point();
+  res = pr_str_text_to_array(p, text, ',');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 1, "Expected 1 item, got %u", res->nelts);
+
+  text = "foo,foo,foo";
+
+  mark_point();
+  res = pr_str_text_to_array(p, text, ',');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3 items, got %u", res->nelts);
+  for (i = 0; i < res->nelts; i++) {
+    char *item, *expected;
+
+    item = ((char **) res->elts)[i];
+    fail_unless(item != NULL, "Expected item at index %u, got null", i);
+
+    expected = "foo";
+    fail_unless(strcmp(item, expected) == 0,
+      "Expected '%s' at index %u, got '%s'", expected, i, item);
+  }
+
+  text = "foo,foo,foo,";
+
+  mark_point();
+  res = pr_str_text_to_array(p, text, ',');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 4, "Expected 3 items, got %u", res->nelts);
+  for (i = 0; i < res->nelts; i++) {
+    char *item, *expected;
+
+    item = ((char **) res->elts)[i];
+    fail_unless(item != NULL, "Expected item at index %u, got null", i);
+
+    if (i == 3) {
+      expected = "";
+
+    } else {
+      expected = "foo";
+    }
+
+    fail_unless(strcmp(item, expected) == 0,
+      "Expected '%s' at index %u, got '%s'", expected, i, item);
+  }
+
+  text = "foo|foo|foo";
+
+  mark_point();
+  res = pr_str_text_to_array(p, text, '|');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3 items, got %u", res->nelts);
+  for (i = 0; i < res->nelts; i++) {
+    char *item, *expected;
+
+    item = ((char **) res->elts)[i];
+    fail_unless(item != NULL, "Expected item at index %u, got null", i);
+
+    expected = "foo";
+    fail_unless(strcmp(item, expected) == 0,
+      "Expected '%s' at index %u, got '%s'", expected, i, item);
+  }
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1655,6 +1750,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, gid2str_test);
   tcase_add_test(testcase, str_quote_test);
   tcase_add_test(testcase, quote_dir_test);
+  tcase_add_test(testcase, text_to_array_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

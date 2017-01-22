@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp miscellaneous
- * Copyright (c) 2010-2016 TJ Saunders
+ * Copyright (c) 2010-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -287,48 +287,6 @@ int sftp_misc_chown_path(pool *p, const char *path) {
   return 0;
 }
 
-static array_header *parse_namelist(pool *p, const char *names) {
-  char *ptr;
-  array_header *list;
-  size_t names_len;
-
-  list = make_array(p, 0, sizeof(const char *));
-  names_len = strlen(names);
-
-  if (names_len == 0) {
-    return list;
-  }
-
-  ptr = memchr(names, ',', names_len);
-  while (ptr != NULL) {
-    char *elt;
-    size_t elt_len;
-
-    pr_signals_handle();
-
-    elt_len = ptr - names;
-
-    elt = palloc(p, elt_len + 1);
-    memcpy(elt, names, elt_len);
-    elt[elt_len] = '\0';
-
-    *((const char **) push_array(list)) = elt;
-    names = ++ptr;
-
-    /* Include one byte for the comma character being skipped over. */
-    names_len = names_len - elt_len - 1;
-
-    if (names_len == 0) {
-      break;
-    }
-
-    ptr = memchr(names, ',', names_len);
-  }
-  *((const char **) push_array(list)) = pstrdup(p, names);
-
-  return list;
-}
-
 const char *sftp_misc_namelist_shared(pool *p, const char *c2s_names,
     const char *s2c_names) {
   register unsigned int i;
@@ -339,10 +297,10 @@ const char *sftp_misc_namelist_shared(pool *p, const char *c2s_names,
   tmp_pool = make_sub_pool(p);
   pr_pool_tag(tmp_pool, "Share name pool");
 
-  client_list = parse_namelist(tmp_pool, c2s_names);
+  client_list = pr_str_text_to_array(tmp_pool, c2s_names, ',');
   client_names = (const char **) client_list->elts;
 
-  server_list = parse_namelist(tmp_pool, s2c_names);
+  server_list = pr_str_text_to_array(tmp_pool, s2c_names, ',');
   server_names = (const char **) server_list->elts;
 
   for (i = 0; i < client_list->nelts; i++) {

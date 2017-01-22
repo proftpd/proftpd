@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* String manipulation functions
- */
+/* String manipulation functions */
 
 #ifndef PR_STR_H
 #define PR_STR_H
@@ -105,6 +104,11 @@ int pr_str_levenshtein(pool *p, const char *a, const char *b,
 array_header *pr_str_get_similars(pool *p, const char *s,
   array_header *candidates, int max_distance, int flags);
 #define PR_STR_DEFAULT_MAX_EDIT_DISTANCE		7
+
+/* Given a string delimited by a character (such as comma or pipe), return
+ * an array of each item.
+ */
+array_header *pr_str_text_to_array(pool *p, const char *text, char delimiter);
 
 /* Converts a string to a uid_t/gid_t, respectively. */
 int pr_str2uid(const char *, uid_t *);
