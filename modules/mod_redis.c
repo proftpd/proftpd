@@ -1552,7 +1552,7 @@ static array_header *event_names2ids(pool *p, const char *directive,
 }
 
 /* usage: RedisLogOnCommand commands log-fmt */
-MODRET set_redislogonevent(cmd_rec *cmd) {
+MODRET set_redislogoncommand(cmd_rec *cmd) {
   config_rec *c;
   const char *fmt_name;
   unsigned char *log_fmt = NULL;
