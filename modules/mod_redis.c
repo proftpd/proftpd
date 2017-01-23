@@ -1872,7 +1872,7 @@ static int redis_sess_init(void) {
 static conftable redis_conftab[] = {
   { "RedisEngine",		set_redisengine,	NULL },
   { "RedisLog",			set_redislog,		NULL },
-  { "RedisLogOnCommand"		set_redislogoncommand,	NULL },
+  { "RedisLogOnCommand",	set_redislogoncommand,	NULL },
   { "RedisServer",		set_redisserver,	NULL },
   { "RedisTimeouts",		set_redistimeouts,	NULL },
  
