@@ -1410,7 +1410,7 @@ static void log_event(cmd_rec *cmd, int flags) {
     return;
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "RedisLogOnEvent", FALSE);
+  c = find_config(main_server->conf, CONF_PARAM, "RedisLogOnCommand", FALSE);
   while (c != NULL) {
     int res;
     array_header *logged_events;
@@ -1424,7 +1424,7 @@ static void log_event(cmd_rec *cmd, int flags) {
     logged_events = c->argv[0];
 
     if (is_loggable_event(logged_events, cmd, flags) == FALSE) {
-      c = find_config_next(c, c->next, CONF_PARAM, "RedisLogOnEvent", FALSE);
+      c = find_config_next(c, c->next, CONF_PARAM, "RedisLogOnCommand", FALSE);
       continue;
     }
 
@@ -1447,7 +1447,7 @@ static void log_event(cmd_rec *cmd, int flags) {
       }
     }
 
-    c = find_config_next(c, c->next, CONF_PARAM, "RedisLogOnEvent", FALSE);
+    c = find_config_next(c, c->next, CONF_PARAM, "RedisLogOnCommand", FALSE);
   }
 }
 
@@ -1551,7 +1551,7 @@ static array_header *event_names2ids(pool *p, const char *directive,
   return event_ids;
 }
 
-/* usage: RedisLogOnEvent events log-fmt */
+/* usage: RedisLogOnCommand commands log-fmt */
 MODRET set_redislogonevent(cmd_rec *cmd) {
   config_rec *c;
   const char *fmt_name;
@@ -1872,7 +1872,7 @@ static int redis_sess_init(void) {
 static conftable redis_conftab[] = {
   { "RedisEngine",		set_redisengine,	NULL },
   { "RedisLog",			set_redislog,		NULL },
-  { "RedisLogOnEvent",		set_redislogonevent,	NULL },
+  { "RedisLogOnCommand"		set_redislogoncommand,	NULL },
   { "RedisServer",		set_redisserver,	NULL },
   { "RedisTimeouts",		set_redistimeouts,	NULL },
  

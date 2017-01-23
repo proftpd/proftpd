@@ -20,7 +20,7 @@ The <code>mod_redis</code> module enables ProFTPD support for caching data in
 <ul>
   <li><a href="#RedisEngine">RedisEngine</a>
   <li><a href="#RedisLog">RedisLog</a>
-  <li><a href="#RedisLogOnEvent">RedisLogOnEvent</a>
+  <li><a href="#RedisLogOnCommand">RedisLogOnCommand</a>
   <li><a href="#RedisServers">RedisServer</a>
   <li><a href="#RedisTimeouts">RedisTimeouts</a>
 </ul>
@@ -60,22 +60,22 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 
 <p>
 <hr>
-<h3><a name="RedisLogOnEvent">RedisLogOnEvent</a></h3>
-<strong>Syntax:</strong> RedisLogOnEvent <em>events format-name</em><br>
+<h3><a name="RedisLogOnCommand">RedisLogOnCommand</a></h3>
+<strong>Syntax:</strong> RedisLogOnCommand <em>commands format-name</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_redis<br>
 <strong>Compatibility:</strong> 1.3.6rc3 and later
 
 <p>
-The <code>RedisLogOnEvent</code> directive configures the use of Redis for
-<em>logging</em>.  Whenever one of the comma-separated list of <em>events</em>
+The <code>RedisLogOnCommand</code> directive configures the use of Redis for
+<em>logging</em>.  Whenever one of the comma-separated list of <em>commands</em>
 occurs, <code>mod_redis</code> will compose a JSON object, using the
 <a href="mod_log.html#LogFormat"><code>LogFormat</code></a> named by
 <em>format-name</em> as a <i>template</i> for the fields to include in the
 JSON object.  The JSON object of that event will then be appended to a list
 stored in Redis, using <em>format-name</em> as the key name.  Multiple
-<code>RedisLogOnEvent</code> directives can be used, for different log formats
+<code>RedisLogOnCommand</code> directives can be used, for different log formats
 for different events.
 
 <p>
@@ -87,19 +87,19 @@ More on the use of Redis logging, including a table showing how
 Example:
 <pre>
   LogFormat file-transfers "%h %l %u %t \"%r\" %s %b"
-  RedisLogOnEvent APPE,RETR,STOR,STOU file-transfers
+  RedisLogOnCommand APPE,RETR,STOR,STOU file-transfers
 
   LogFormat sessions "%{iso8601}"
-  RedisLogOnEvent CONNECT,DISCONNECT sessions
+  RedisLogOnCommand CONNECT,DISCONNECT sessions
 </pre>
 
 <p>
-In addition to specific FTP commands, the <em>events</em> list can specify
-"ALL", for logging on <b>all</b> events.  Or it can <i>include</i> the
-"CONNECT" and "DISCONNECT" events, which can be useful for logging the start
-and end times of a session.  <b>Note</b> that <code>RedisLogOnEvent</code> does
-<b>not</b> currently support the logging <i>classes</i> that the
-<code>ExtendedLog</code> directive supports.
+In addition to specific FTP commands, the <em>commands</em> list can specify
+"ALL", for logging on <b>all</b> commands.  Or it can <i>include</i> the
+"CONNECT" and "DISCONNECT" <i>commands</i>, which can be useful for logging the
+start and end times of a session.  <b>Note</b> that
+<code>RedisLogOnCommand</code> does <b>not</b> currently support the logging
+<i>classes</i> that the <code>ExtendedLog</code> directive supports.
 
 <p>
 <hr>
@@ -186,7 +186,7 @@ or <code>mod_tls_redis</code>:
 </pre>
 
 <p>
-This example shows the use of Redis logging for <em>all</em> events:
+This example shows the use of Redis logging for <em>all</em> commands:
 <pre>
   &lt;IfModule mod_redis.c&gt;
     RedisEngine on
@@ -194,7 +194,7 @@ This example shows the use of Redis logging for <em>all</em> events:
     RedisServer 127.0.0.1:6379
 
     LogFormat redis "%h %l %u %t \"%r\" %s %b"
-    RedisLogOnEvent ALL redis
+    RedisLogOnCommand ALL redis
   &lt;/IfModule&gt;
 </pre>
 
@@ -465,7 +465,7 @@ into a suitable/matching <code>LogFormat</code> is the necessary step.  Thus
 for example it might become:
 <pre>
   LogFormat upload "%u %H %{YYYY-MM-DD HH:MM:SS}t %r %{protocol} %a %T %b %{note:mod_digest.algo} %{note:mod_digest.digest} %f %{transfer-status}"
-  RedisLogOnEvent STOR upload
+  RedisLogOnCommand STOR upload
 </pre>
 <b>Note</b> that <code>LogFormat</code> does not provide a <code>NOW()</code>
 function, unlike many SQL databases, thus the <code>%t</code> variable is
