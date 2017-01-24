@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project
+ * Copyright (c) 2001-2017 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -5601,6 +5601,73 @@ int pr_fsio_utimes(const char *path, struct timeval *tvs) {
   }
 
   return res;
+}
+
+/* If the utimes(2) call fails because the process UID does not match the file
+ * UID, then check to see if the GIDs match (and that the file has group write
+ * permissions).
+ *
+ * This can be alleviated in two ways: a) if mod_cap is present, enable the
+ * CAP_FOWNER capability for the session, or b) use root privs.
+ */
+int pr_fsio_utimes_with_root(const char *path, struct timeval *tvs) {
+  int res, xerrno, matching_gid = FALSE;
+  struct stat st;
+
+  res = pr_fsio_utimes(path, tvs);
+  xerrno = errno;
+
+  if (res == 0) {
+    return 0;
+  }
+
+  /* We only try these workarounds for EPERM. */
+  if (xerrno != EPERM) {
+    return res;
+  }
+
+  pr_fs_clear_cache2(path);
+  if (pr_fsio_stat(path, &st) < 0) {
+    errno = xerrno;
+    return -1;
+  }
+
+  /* Be sure to check the primary and all the supplemental groups to which
+   * this session belongs.
+   */
+  if (st.st_gid == session.gid) {
+    matching_gid = TRUE;
+
+  } else if (session.gids != NULL) {
+    register unsigned int i;
+    gid_t *gids;
+
+    gids = session.gids->elts;
+    for (i = 0; i < session.gids->nelts; i++) {
+      if (st.st_gid == gids[i]) {
+        matching_gid = TRUE;
+        break;
+      }
+    }
+  }
+
+  if (matching_gid == TRUE &&
+      (st.st_mode & S_IWGRP)) {
+
+    /* Try the utimes(2) call again, this time with root privs. */
+    pr_signals_block();
+    PRIVS_ROOT
+    res = pr_fsio_utimes(path, tvs);
+    PRIVS_RELINQUISH
+    pr_signals_unblock();
+
+    if (res == 0) {
+      return 0;
+    }
+  }
+
+  errno = xerrno;
+  return -1;
 }
 
 int pr_fsio_futimes(pr_fh_t *fh, struct timeval *tvs) {
