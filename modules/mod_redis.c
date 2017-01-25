@@ -1350,7 +1350,7 @@ static int encode_log_fmt(pool *p, cmd_rec *cmd, int flags,
   char *text = NULL;
 
   json = pr_json_object_alloc(p);
-  res = encode_fields(p, cmd, flags, log_fmt, json, encode_json);
+  (void) encode_fields(p, cmd, flags, log_fmt, json, encode_json);
 
   text = pr_json_object_to_text(p, json, "");
   pr_trace_msg(trace_channel, 3, "generated JSON payload: %s", text);
