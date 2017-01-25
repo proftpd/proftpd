@@ -956,7 +956,8 @@ static int find_next_meta(pool *p, cmd_rec *cmd, int flags,
           }
 
           memset(buf, '\0', sizeof(buf));
-          snprintf(buf, sizeof(buf)-1, "%s %s", cmd->argv[0], cmd->argv[1]);
+          snprintf(buf, sizeof(buf)-1, "%s %s", (char *) cmd->argv[0],
+            (char *) cmd->argv[1]);
 
           encode_field(p, obj, fi->field_name, fi->field_namelen,
             fi->field_type, buf);
@@ -1345,7 +1346,6 @@ static int encode_fields(pool *p, cmd_rec *cmd, int flags,
 
 static int encode_log_fmt(pool *p, cmd_rec *cmd, int flags,
     unsigned char *log_fmt, char **payload, size_t *payload_len) {
-  int res;
   pr_json_object_t *json;
   char *text = NULL;
 
