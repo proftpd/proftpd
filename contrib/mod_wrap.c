@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
- * Copyright (c) 2000-2016 TJ Saunders
+ * Copyright (c) 2000-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -861,7 +861,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
       hosts_allow_table = NULL;
 
     } else
-      hosts_allow_table = allow_real_table;
+      hosts_allow_table = (char *) allow_real_table;
   }
 
   if (hosts_deny_table != NULL && hosts_deny_table[0] == '~' &&
