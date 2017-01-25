@@ -411,7 +411,7 @@ static cmd_rec *make_cmd(pool *cp, unsigned int argc, ...) {
   c->stash_hash = 0;
 
   if (argc > 0) {
-    register int i;
+    register unsigned int i;
 
     c->argv = pcalloc(cp, sizeof(void *) * (argc + 1));
 
