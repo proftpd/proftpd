@@ -1,7 +1,6 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
- *
- * Copyright (c) 2004-2016 The ProFTPD Project
+ * Copyright (c) 2004-2017 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1027,7 +1026,7 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
   tvs[0].tv_sec = tvs[1].tv_sec = site_misc_mktime(year, month, day, hour,
     min, sec);
 
-  if (pr_fsio_utimes(path, tvs) < 0) {
+  if (pr_fsio_utimes_with_root(path, tvs) < 0) {
     int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
@@ -1209,7 +1208,7 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
   tvs[0].tv_sec = parsed_atime;
   tvs[1].tv_sec = parsed_mtime;
 
-  if (pr_fsio_utimes(path, tvs) < 0) {
+  if (pr_fsio_utimes_with_root(path, tvs) < 0) {
     int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));

@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
- * Copyright (c) 2007-2016 The ProFTPD Project
+ * Copyright (c) 2007-2017 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -879,81 +879,14 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
   tvs[0].tv_sec = tvs[1].tv_sec = facts_mktime(year, month, day, hour, min,
     sec);
 
-  res = pr_fsio_utimes(path, tvs);
+  res = pr_fsio_utimes_with_root(path, tvs);
   if (res < 0) {
     int xerrno = errno;
 
-    if (xerrno == EPERM) {
-      struct stat st;
-      int matching_gid = FALSE;
-
-      /* If the utimes(2) call failed because the process UID doesn't
-       * match the file UID, then check to see if the GIDs match (and that
-       * the file has group write permissions).
-       *
-       * This can be alleviated in two ways: a) if mod_cap is present,
-       * enable the CAP_FOWNER capability for the session, or b) use root
-       * privs.
-       */
-      pr_fs_clear_cache2(path);
-      if (pr_fsio_stat(path, &st) < 0) {
-        errno = xerrno;
-        return -1;
-      }
-
-      /* Be sure to check the primary and all the supplemental groups to
-       * which this session belongs.
-       */
-      if (st.st_gid == session.gid) {
-        matching_gid = TRUE;
-
-      } else {
-        register unsigned int i;
-        gid_t *gids;
-
-        gids = session.gids->elts;
-        for (i = 0; i < session.gids->nelts; i++) {
-          if (st.st_gid == gids[i]) {
-            matching_gid = TRUE;
-            break;
-          }
-        }
-      }
-
-      if (matching_gid == TRUE &&
-          (st.st_mode & S_IWGRP)) {
-        int merrno = 0;
-
-        /* Try the utimes(2) call again, this time with root privs. */
-
-        pr_signals_block();
-        PRIVS_ROOT
-        res = pr_fsio_utimes(path, tvs);
-        if (res < 0) {
-          merrno = errno;
-        }
-        PRIVS_RELINQUISH
-        pr_signals_unblock();
-
-        if (res == 0)
-          return 0;
-
-        pr_log_debug(DEBUG2, MOD_FACTS_VERSION
-          ": error modifying modify fact for '%s': %s", path,
-          strerror(merrno));
-        errno = xerrno;
-        return -1;
-      }
-
-      errno = xerrno;
-      return -1;
-
-    } else {
-      pr_log_debug(DEBUG2, MOD_FACTS_VERSION
-        ": error modifying modify fact for '%s': %s", path, strerror(xerrno));
-      errno = xerrno;
-      return -1;
-    }
+    pr_log_debug(DEBUG2, MOD_FACTS_VERSION
+      ": error modifying modify fact for '%s': %s", path, strerror(xerrno));
+    errno = xerrno;
+    return -1;
   }
 
   return 0;
