@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2016 The ProFTPD Project team
+ * Copyright (c) 2014-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -575,9 +575,9 @@ START_TEST (inet_connect_ipv6_test) {
 
   res = pr_inet_connect(p, conn, addr, 80);
   fail_unless(res < 0, "Connected to ::1#80 unexpectedly");
-  fail_unless(errno == ECONNREFUSED || errno == ENETUNREACH,
-    "Expected ECONNREFUSED (%d) or ENETUNREACH (%d), got %s (%d)",
-    ECONNREFUSED, ENETUNREACH, strerror(errno), errno);
+  fail_unless(errno == ECONNREFUSED || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
+    "Expected ECONNREFUSED (%d), ENETUNREACH (%d), or EADDRNOTAVAIL (%d), got %s (%d)",
+    ECONNREFUSED, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
 
   /* Try connecting to Google's DNS server. */
 
@@ -591,9 +591,9 @@ START_TEST (inet_connect_ipv6_test) {
      * to connect to a different address.  Interestingly, trying to connect(2)
      * using that same fd to a different address yields EINVAL.
      */
-    fail_unless(errno == EINVAL || errno == ENETUNREACH,
-      "Expected EINVAL (%d) or ENETUNREACH (%d), got %s (%d)",
-      EINVAL, ENETUNREACH, strerror(errno), errno);
+    fail_unless(errno == EINVAL || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
+      "Expected EINVAL (%d), ENETUNREACH (%d) or EADDRNOTAVAIL (%d), got %s (%d)",
+      EINVAL, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
   }
   pr_inet_close(p, conn);
 
@@ -603,17 +603,16 @@ START_TEST (inet_connect_ipv6_test) {
   res = pr_inet_connect(p, conn, addr, 53);
   if (res < 0) {
     /* This could be expected, e.g. if there's no route. */
-    fail_unless(errno == EHOSTUNREACH || errno == ENETUNREACH,
-      "Expected EHOSTUNREACH (%d) or ENETUNREACH (%d), got %s (%d)",
-      EHOSTUNREACH, ENETUNREACH, strerror(errno), errno);
+    fail_unless(errno == EHOSTUNREACH || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
+      "Expected EHOSTUNREACH (%d) or ENETUNREACH (%d) or EADDRNOTAVAIL (%d), got %s (%d)",
+      EHOSTUNREACH, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
   }
 
   res = pr_inet_connect(p, conn, addr, 53);
   fail_unless(res < 0, "Failed to connect to 2001:4860:4860::8888#53: %s",
     strerror(errno));
-  fail_unless(errno == EISCONN || errno == EHOSTUNREACH || errno == ENETUNREACH,
-    "Expected EISCONN (%d) or EHOSTUNREACH (%d) or ENETUNREACH (%d), "
-    "got %s (%d)", EISCONN, EHOSTUNREACH, ENETUNREACH, strerror(errno), errno);
+  fail_unless(errno == EISCONN || errno == EHOSTUNREACH || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
+    "Expected EISCONN (%d) or EHOSTUNREACH (%d) or ENETUNREACH (%d) or EADDRNOTAVAIL (%d), got %s (%d)", EISCONN, EHOSTUNREACH, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
   pr_inet_close(p, conn);
 
   pr_inet_set_default_family(p, AF_INET);
