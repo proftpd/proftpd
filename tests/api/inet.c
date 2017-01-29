@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2016 The ProFTPD Project team
+ * Copyright (c) 2014-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -575,9 +575,9 @@ START_TEST (inet_connect_ipv6_test) {
 
   res = pr_inet_connect(p, conn, addr, 80);
   fail_unless(res < 0, "Connected to ::1#80 unexpectedly");
-  fail_unless(errno == ECONNREFUSED || errno == ENETUNREACH,
-    "Expected ECONNREFUSED (%d) or ENETUNREACH (%d), got %s (%d)",
-    ECONNREFUSED, ENETUNREACH, strerror(errno), errno);
+  fail_unless(errno == ECONNREFUSED || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
+    "Expected ECONNREFUSED (%d), ENETUNREACH (%d), or EADDRNOTAVAIL (%d), got %s (%d)",
+    ECONNREFUSED, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
 
   /* Try connecting to Google's DNS server. */
 
