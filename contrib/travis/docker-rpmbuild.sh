@@ -2,7 +2,8 @@
 
 set -x
 
-VERSION=1.3.6rc5
+VERSION=${PACKAGE_VERSION:-1.3.6rc5}
+exit 0
 
 # Make sure that the necessary packages/tools are installed
 yum install -y gcc make git rpm-build
