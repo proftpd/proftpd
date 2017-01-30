@@ -1,5 +1,6 @@
 #!/bin/bash
 
+BRANCH=${TRAVIS_BRANCH:-master}
 VERSION=${PACKAGE_VERSION:-1.3.6rc5}
 
 # Make sure that the necessary packages/tools are installed
@@ -20,7 +21,7 @@ yum install -y hiredis-devel
 rm -fr rpm/
 mkdir rpm/
 cd rpm/
-git clone -q -b ${TRAVIS_BRANCH} --depth 10 https://github.com/proftpd/proftpd.git proftpd-${VERSION}
+git clone -q -b ${BRANCH} --depth 10 https://github.com/proftpd/proftpd.git proftpd-${VERSION}
 cd proftpd-${VERSION}/
 ./configure
 make dist
