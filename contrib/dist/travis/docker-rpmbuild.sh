@@ -3,7 +3,7 @@
 VERSION=${PACKAGE_VERSION:-1.3.6rc5}
 
 # Make sure that the necessary packages/tools are installed
-yum install -y gcc make git rpm-build
+yum install -y gcc make git rpm-build imake
 
 # These are for the basic proftpd build
 yum install -y gettext pkgconfig pam-devel ncurses-devel zlib-devel libacl-devel libcap-devel
