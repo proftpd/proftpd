@@ -254,7 +254,7 @@ ProFTPD server:
 %if %{usecvsversion}
 %setup -q -n %{name}-%{proftpd_cvs_version_main}
 %else
-%setup -q -n %{name}-%{version}%{?release_cand_version}
+%setup -q -n %{name}-%{proftpd_version}
 %endif
 
 # Avoid documentation name conflicts
