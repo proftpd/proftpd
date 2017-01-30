@@ -13,7 +13,7 @@ yum install -y openldap-devel libmemcached-devel mysql-devel pcre-devel postgres
 
 # Install the EPEL repo, for the Redis RPMs
 yum install -y wget
-wget -r --no-parent -A 'epel-release-*.rpm' http://dl.fedoraproject.org/pub/epel/7/x86_64/e
+wget -q -r --no-parent -A 'epel-release-*.rpm' http://dl.fedoraproject.org/pub/epel/7/x86_64/e
 rpm -Uvh dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-*.rpm
 yum install -y hiredis-devel
 
