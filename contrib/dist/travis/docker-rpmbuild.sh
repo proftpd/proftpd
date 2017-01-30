@@ -17,12 +17,12 @@ wget -q -r --no-parent -A 'epel-release-*.rpm' http://dl.fedoraproject.org/pub/e
 rpm -Uvh dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-*.rpm
 yum install -y hiredis-devel
 
-mkdir git
-cd git
-git clone -q --depth 10 https://github.com/proftpd/proftpd.git proftpd-${VERSION}
+rm -fr rpm/
+mkdir rpm/
+cd rpm/
+git clone -q --depth 100 https://github.com/proftpd/proftpd.git proftpd-${VERSION}
 cd proftpd-${VERSION}/
 ./configure
-rm -fr .git/
 make dist
 cd ..
 tar zcf proftpd-${VERSION}.tar.gz proftpd-${VERSION}
