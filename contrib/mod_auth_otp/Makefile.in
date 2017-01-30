@@ -45,6 +45,14 @@ install: install-man install-utils
 		$(LIBTOOL) --mode=install --tag=CC $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXECDIR) ; \
 	fi
 
+# BSD install -d doesn't work, so ...
+$(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
+	@if [ ! -d $@ ]; then \
+		mkdir -p $@; \
+		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
+		chmod 0755 $@; \
+	fi
+
 install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) auth-otp.8 $(DESTDIR)$(mandir)/man8
 
