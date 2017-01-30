@@ -222,7 +222,7 @@ spec:
 	# RPM needs this in the top-level directory in order to support '-t'
 	mv -f contrib/dist/rpm/proftpd.spec .
 
-dist: distclean spec
+dist: depend distclean spec
 	rm -rf `find . -name CVS`
 	rm -rf `find . -name .cvsignore`
 	rm -rf `find . -name .git`
