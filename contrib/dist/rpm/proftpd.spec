@@ -134,7 +134,7 @@ Source0:                ftp://ftp.proftpd.org/devel/source/proftpd-cvs-%{proftpd
 %else
 Version:                %{proftpd_version}
 Release:                %{release_version}%{?dist}
-Source0:                ftp://ftp.proftpd.org/distrib/source/proftpd-%{version}%{?release_cand_version}.tar%{srcext}
+Source0:                ftp://ftp.proftpd.org/distrib/source/proftpd-%{proftpd_version}.tar%{srcext}
 %endif
 BuildRoot:              %{_tmppath}/%{name}-%{version}-root
 Requires:               pam >= 0.99, /sbin/chkconfig
