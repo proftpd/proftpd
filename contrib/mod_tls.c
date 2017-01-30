@@ -50,6 +50,7 @@
 #include <openssl/conf.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
+#include <openssl/ssl.h>
 #include <openssl/ssl3.h>
 #include <openssl/x509v3.h>
 #include <openssl/pkcs12.h>
@@ -1011,6 +1012,30 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 }
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
+static void tls_print_client_hello(int io_flag, int version, int content_type,
+    const void *buf, size_t buflen, SSL *ssl, void *arg) {
+  BIO *bio;
+  char *data = NULL;
+  long datalen;
+
+  bio = BIO_new(BIO_s_mem());
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(OPENSSL_NO_SSL_TRACE)
+  /* Use OpenSSL's builtin tracing where available. */
+  SSL_trace(io_flag, version, content_type, buf, buflen, ssl, bio);
+#else
+
+/* XXX Insert own code, mostly cribbed from OpenSSL, for printing out ClientHello. */
+#endif /* No OPENSSL_NO_SSL_TRACE and OpenSSL-1.0.2 */
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL) {
+    data[datalen] = '\0';
+    tls_log("[msg] %.*s", (int) datalen, data);
+  }
+
+  BIO_free(bio);
+}
+
 static void tls_msg_cb(int io_flag, int version, int content_type,
     const void *buf, size_t buflen, SSL *ssl, void *arg) {
   char *action_str = NULL;
@@ -1071,42 +1096,42 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
       version == TLS1_VERSION) {
 
     switch (content_type) {
-      case 20:
+      case SSL3_RT_CHANGE_CIPHER_SPEC:
         /* ChangeCipherSpec message */
         tls_log("[msg] %s %s ChangeCipherSpec message (%u %s)",
           action_str, version_str, (unsigned int) buflen, bytes_str);
         break;
 
-      case 21: {
+      case SSL3_RT_ALERT: {
         /* Alert messages */
         if (buflen == 2) {
           char *severity_str = NULL;
 
           /* Peek naughtily into the buffer. */
           switch (((const unsigned char *) buf)[0]) {
-            case 1:
+            case SSL3_AL_WARNING:
               severity_str = "warning";
               break;
 
-            case 2:
+            case SSL3_AL_FATAL:
               severity_str = "fatal";
               break;
           }
 
           switch (((const unsigned char *) buf)[1]) {
-            case 0:
+            case SSL3_AD_CLOSE_NOTIFY:
               tls_log("[msg] %s %s %s 'close_notify' Alert message (%u %s)",
                 action_str, version_str, severity_str, (unsigned int) buflen,
                 bytes_str);
               break;
 
-            case 10:
+            case SSL3_AD_UNEXPECTED_MESSAGE:
               tls_log("[msg] %s %s %s 'unexpected_message' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
                 (unsigned int) buflen, bytes_str);
               break;
 
-            case 20:
+            case SSL3_AD_BAD_RECORD_MAC:
               tls_log("[msg] %s %s %s 'bad_record_mac' Alert message (%u %s)",
                 action_str, version_str, severity_str, (unsigned int) buflen,
                 bytes_str);
@@ -1124,17 +1149,73 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
                 bytes_str);
               break;
 
-            case 30:
+            case SSL3_AD_DECOMPRESSION_FAILURE:
               tls_log("[msg] %s %s %s 'decompression_failure' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
                 (unsigned int) buflen, bytes_str);
               break;
 
-            case 40:
+            case SSL3_AD_HANDSHAKE_FAILURE:
               tls_log("[msg] %s %s %s 'handshake_failure' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
                 (unsigned int) buflen, bytes_str);
               break;
+
+#ifdef SSL3_AD_NO_CERTIFICATE
+            case SSL3_AD_NO_CERTIFICATE:
+              tls_log("[msg] %s %s %s 'no_certificate' Alert message "
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
+              break;
+#endif /* SSL3_AD_NO_CERTIFICATE */
+
+#ifdef SSL3_AD_BAD_CERTIFICATE
+            case SSL3_AD_BAD_CERTIFICATE:
+              tls_log("[msg] %s %s %s 'bad_certificate' Alert message "
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
+              break;
+#endif /* SSL3_AD_BAD_CERTIFICATE */
+
+#ifdef SSL3_AD_UNSUPPORTED_CERTIFICATE
+            case SSL3_AD_UNSUPPORTED_CERTIFICATE:
+              tls_log("[msg] %s %s %s 'unsupported_certificate' Alert message "
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
+              break;
+#endif /* SSL3_AD_UNSUPPORTED_CERTIFICATE */
+
+#ifdef SSL3_AD_CERTIFICATE_REVOKED
+            case SSL3_AD_CERTIFICATE_REVOKED:
+              tls_log("[msg] %s %s %s 'certificate_revoked' Alert message "
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
+              break;
+#endif /* SSL3_AD_CERTIFICATE_REVOKED */
+
+#ifdef SSL3_AD_CERTIFICATE_EXPIRED
+            case SSL3_AD_CERTIFICATE_EXPIRED:
+              tls_log("[msg] %s %s %s 'certificate_expired' Alert message "
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
+              break;
+#endif /* SSL3_AD_CERTIFICATE_EXPIRED */
+
+#ifdef SSL3_AD_CERTIFICATE_UNKNOWN
+            case SSL3_AD_CERTIFICATE_UNKNOWN:
+              tls_log("[msg] %s %s %s 'certificate_unknown' Alert message "
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
+              break;
+#endif /* SSL3_AD_CERTIFICATE_UNKNOWN */
+
+#ifdef SSL3_AD_ILLEGAL_PARAMETER
+            case SSL3_AD_ILLEGAL_PARAMETER:
+              tls_log("[msg] %s %s %s 'illegal_parameter' Alert message "
+                "(%u %s)", action_str, version_str, severity_str,
+                (unsigned int) buflen, bytes_str);
+              break;
+#endif /* SSL3_AD_ILLEGAL_PARAMETER */
           }
 
         } else {
@@ -1145,70 +1226,82 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
         break;
       }
 
-      case 22: {
+      case SSL3_RT_HANDSHAKE: {
         /* Handshake messages */
         if (buflen > 0) {
           /* Peek naughtily into the buffer. */
           switch (((const unsigned char *) buf)[0]) {
-            case 0:
+            case SSL3_MT_HELLO_REQUEST:
               tls_log("[msg] %s %s 'HelloRequest' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
-            case 1:
+            case SSL3_MT_CLIENT_HELLO: {
               tls_log("[msg] %s %s 'ClientHello' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
-              break;
 
-            case 2:
+              tls_print_client_hello(io_flag, version, content_type, buf,
+                buflen, ssl, arg);
+              break;
+            }
+
+            case SSL3_MT_SERVER_HELLO:
               tls_log("[msg] %s %s 'ServerHello' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
-            case 4:
+            case SSL3_MT_NEWSESSION_TICKET:
               tls_log("[msg] %s %s 'NewSessionTicket' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
                 bytes_str);
               break;
 
-            case 11:
+            case SSL3_MT_CERTIFICATE:
               tls_log("[msg] %s %s 'Certificate' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
-            case 12:
+            case SSL3_MT_SERVER_KEY_EXCHANGE:
               tls_log("[msg] %s %s 'ServerKeyExchange' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
                 bytes_str);
               break;
 
-            case 13:
+            case SSL3_MT_CERTIFICATE_REQUEST:
               tls_log("[msg] %s %s 'CertificateRequest' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
                 bytes_str);
               break;
 
-            case 14:
+            case SSL3_MT_SERVER_DONE:
               tls_log("[msg] %s %s 'ServerHelloDone' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
-            case 15:
+            case SSL3_MT_CERTIFICATE_VERIFY:
               tls_log("[msg] %s %s 'CertificateVerify' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
                 bytes_str);
               break;
 
-            case 16:
+            case SSL3_MT_CLIENT_KEY_EXCHANGE:
               tls_log("[msg] %s %s 'ClientKeyExchange' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
                 bytes_str);
               break;
 
-            case 20:
+            case SSL3_MT_FINISHED:
               tls_log("[msg] %s %s 'Finished' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
+
+#ifdef SSL3_MT_CERTIFICATE_STATUS
+            case SSL3_MT_CERTIFICATE_STATUS:
+              tls_log("[msg] %s %s 'CertificateStatus' Handshake message "
+                "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                bytes_str);
+              break;
+#endif /* SSL3_MT_CERTIFICATE_STATUS */
           }
 
         } else {
