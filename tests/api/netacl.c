@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -626,7 +626,7 @@ START_TEST (netacl_match_test) {
   fail_unless(addr != NULL, "Failed to get addr for '%s': %s", "localhost",
     strerror(errno));
 
-  if (getenv("TRAVIS_CI") == NULL) {
+  if (getenv("TRAVIS") == NULL) {
     /* It's possible that the DNS name for 'localhost' that is used will
      * actually be 'localhost.localdomain', depending on the contents of
      * the host's /etc/hosts file.
@@ -754,7 +754,7 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  if (getenv("TRAVIS_CI") == NULL) {
+  if (getenv("TRAVIS") == NULL) {
     fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
       strerror(errno));
   }
@@ -771,7 +771,7 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  if (getenv("TRAVIS_CI") == NULL) {
+  if (getenv("TRAVIS") == NULL) {
     fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
       strerror(errno));
   }
@@ -797,7 +797,7 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  if (getenv("TRAVIS_CI") == NULL) {
+  if (getenv("TRAVIS") == NULL) {
     fail_unless(res == 1, "Failed to positively match ACL to addr: %s",
       strerror(errno));
   }
@@ -814,7 +814,7 @@ START_TEST (netacl_match_test) {
     strerror(errno));
 
   res = pr_netacl_match(acl, addr);
-  if (getenv("TRAVIS_CI") == NULL) {
+  if (getenv("TRAVIS") == NULL) {
     fail_unless(res == -1, "Failed to negatively match ACL to addr: %s",
       strerror(errno));
   }

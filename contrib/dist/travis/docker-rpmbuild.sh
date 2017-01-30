@@ -20,7 +20,7 @@ yum install -y hiredis-devel
 rm -fr rpm/
 mkdir rpm/
 cd rpm/
-git clone -q --depth 100 https://github.com/proftpd/proftpd.git proftpd-${VERSION}
+git clone -q -b ${TRAVIS_BRANCH} --depth 10 https://github.com/proftpd/proftpd.git proftpd-${VERSION}
 cd proftpd-${VERSION}/
 ./configure
 make dist
