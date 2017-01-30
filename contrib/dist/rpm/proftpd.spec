@@ -41,19 +41,13 @@
 # RHEL5 and clones don't have suitably recent versions of pcre/libmemcached
 # so use --with rhel5 to inhibit those features when using --with everything
 
-%global proftpd_version           1.3.6
+%global proftpd_version			1.3.6rc5
+%global release_version			1
 
-# When doing a stable or maint release, this line is to be commented out.
-# When doing an RC, define it to be e.g. 'rc2'.
-#
-# NOTE: rpmbuild is really bloody stupid, and CANNOT handle a leading '#'
-# character followed by a '%' character.  
-%global release_cand_version      rc5
+%global usecvsversion             	0%{?_with_cvs:1}
 
-%global usecvsversion             0%{?_with_cvs:1}
-
-%global proftpd_cvs_version_main  1.3.6
-%global proftpd_cvs_version_date  20150527
+%global proftpd_cvs_version_main	1.3.6
+%global proftpd_cvs_version_date  	20150527
 
 # Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
 # release candidates and stable/maint releases are all available in that form;
@@ -139,8 +133,8 @@ Release:                0.1.cvs%{proftpd_cvs_version_date}%{?dist}
 Source0:                ftp://ftp.proftpd.org/devel/source/proftpd-cvs-%{proftpd_cvs_version_date}.tar%{srcext}
 %else
 Version:                %{proftpd_version}
-Release:                %{?release_cand_version:0.}1%{?release_cand_version:.%{release_cand_version}}%{?dist}
-Source0:                ftp://ftp.proftpd.org/distrib/source/proftpd-%{version}%{?release_cand_version}.tar%{srcext}
+Release:                %{release_version}%{?dist}
+Source0:                ftp://ftp.proftpd.org/distrib/source/proftpd-%{proftpd_version}.tar%{srcext}
 %endif
 BuildRoot:              %{_tmppath}/%{name}-%{version}-root
 Requires:               pam >= 0.99, /sbin/chkconfig
@@ -260,7 +254,7 @@ ProFTPD server:
 %if %{usecvsversion}
 %setup -q -n %{name}-%{proftpd_cvs_version_main}
 %else
-%setup -q -n %{name}-%{version}%{?release_cand_version}
+%setup -q -n %{name}-%{proftpd_version}
 %endif
 
 # Avoid documentation name conflicts
