@@ -4,6 +4,9 @@
 #   mod_auth_pam
 #   mod_ban
 #   mod_ctrls_admin
+#   mod_deflate
+#   mod_dnsbl
+#   mod_dynmasq
 #   mod_exec
 #   mod_facl
 #   mod_ifsession
@@ -18,22 +21,29 @@
 #   mod_rewrite
 #   mod_shaper
 #   mod_site_misc
+#   mod_snmp
 #   mod_sql
 #   mod_sql_passwd
 #   mod_wrap2
 #   mod_wrap2_file
 #   mod_wrap2_sql
+#   mod_unique_id
 #
 # Dynamic modules with additional build or runtime dependencies, not built by default
 #
+#   mod_auth_otp (needs openssl [--with ssl])
+#   mod_digest (needs openssl [--with ssl])
+#   mod_geoip (needs geoip [--with geoip])
 #   mod_ldap (needs openldap [--with ldap])
 #   mod_quotatab_ldap (needs openldap [--with ldap])
 #   mod_sftp (needs openssl [--with ssl])
 #   mod_sftp_pam (needs openssl [--with ssl])
 #   mod_sftp_sql (needs openssl [--with ssl])
 #   mod_sql_mysql (needs mysql client libraries [--with mysql])
+#   mod_sql_sqlite (needs sqlite libraries [--with sqlite])
 #   mod_sql_postgres (needs postgresql client libraries [--with postgresql])
 #   mod_tls (needs openssl [--with ssl])
+#   mod_tls_fscache (needs openssl [--with ssl])
 #   mod_tls_shmcache (needs openssl [--with ssl])
 #   mod_wrap (needs tcp_wrappers [--with wrap])
 #
@@ -61,6 +71,7 @@
 # --with rhel5 inhibits features not available on RHEL5 and clones
 # --with rhel6 inhibits features not available on RHEL6 and clones
 %if 0%{?_with_everything:1}
+%global _with_geoip 1
 %global _with_ldap 1
 %if 0%{!?_with_rhel5:1} && 0%{!?_with_rhel6:1}
 %global _with_memcache 1
@@ -69,9 +80,16 @@
 %if 0%{!?_with_rhel5:1}
 %global _with_pcre 1
 %endif
+%global _with_redis 1
+%global _with_sqlite 1
 %global _with_postgresql 1
 %global _with_ssl 1
 %global _with_wrap 1
+%endif
+#
+# --with geoip (for mod_geoip)
+%if 0%{?_with_geoip:1}
+BuildRequires: geoip-devel
 %endif
 #
 # --with ldap (for mod_ldap, mod_quotatab_ldap)
@@ -99,9 +117,18 @@ BuildRequires: pcre-devel >= 7.0
 BuildRequires: postgresql-devel
 %endif
 #
-# --with ssl (for mod_sftp, mod_sftp_pam, mod_sftp_sql, mod_sql_passwd, mod_tls, mod_tls_shmcache)
+# --with redis (for mod_redis, mod_tls_redis)
+%if 0%{?_with_redis:1}
+BuildRequires: hiredis
+%endif
+# --with ssl (for mod_auth_otp, mod_digest, mod_sftp, mod_sftp_pam, mod_sftp_sql, mod_sql_passwd, mod_tls, mod_tls_fscache, mod_tls_shmcache)
 %if 0%{?_with_ssl:1}
 BuildRequires: openssl-devel
+%endif
+#
+# --with-sqlite (for mod_sql_sqlite)
+%if 0%{?_with_sqlite:1}
+BuildRequires: sqlite-devel
 %endif
 #
 # --with wrap (for mod_wrap)
@@ -170,6 +197,16 @@ Modules requiring additional dependencies such as mod_sql_mysql, mod_ldap,
 etc. are in separate sub-packages so as not to inconvenience users that
 do not need that functionality.
 
+%if 0%{?_with_geoip:1}
+%package geoip
+Summary:        ProFTPD - Modules relying on GeoIP
+Group:          System Environment/Daemons
+Requires:       proftpd = %{version}-%{release}
+
+%description geoip
+This optional package contains the modules using GeoIP.
+%endif
+
 %if 0%{?_with_ldap:1}
 %package ldap
 Summary:        ProFTPD - Modules relying on LDAP
@@ -188,6 +225,16 @@ Requires:       proftpd = %{version}-%{release}
 
 %description mysql
 This optional package contains the modules using MySQL.
+%endif
+
+%if 0%{?_with_sqlite:1}
+%package sqlite
+Summary:        ProFTPD - Modules relying on SQLite
+Group:          System Environment/Daemons
+Requires:       proftpd = %{version}-%{release}
+
+%description sqlite
+This optional package contains the modules using SQLite.
 %endif
 
 %if 0%{?_with_postgresql:1}
@@ -223,12 +270,15 @@ Requires:       pkgconfig
 Requires:       pam-devel
 Requires:       ncurses-devel
 Requires:       zlib-devel
+%{?_with_geoip:Requires:      geoip-devel}
 %{?_with_ldap:Requires:       openldap-devel}
 %{?_with_memcache:Requires:   libmemcached-devel >= 0.41}
 %{?_with_mysql:Requires:      mysql-devel}
 %{?_with_pcre:Requires:       pcre-devel >= 7.0}
 %{?_with_postgresql:Requires: postgresql-devel}
+%{?_with_redis:Requires:      hiredis}
 %{?_with_ssl:Requires:        openssl-devel}
+%{?_with_sqlite:Requires:     sqlite-devel}
 %{?_with_wrap:Requires:       /usr/include/tcpd.h}
 
 %description devel
@@ -275,6 +325,9 @@ fi
 STANDARD_MODULE_LIST="  mod_auth_pam            \
                         mod_ban                 \
                         mod_ctrls_admin         \
+                        mod_deflate             \
+                        mod_dnsbl               \
+                        mod_dynmasq             \
                         mod_exec                \
                         mod_facl                \
                         mod_load                \
@@ -288,12 +341,17 @@ STANDARD_MODULE_LIST="  mod_auth_pam            \
                         mod_rewrite             \
                         mod_shaper              \
                         mod_site_misc           \
+                        mod_snmp                \
                         mod_sql                 \
                         mod_wrap2               \
                         mod_wrap2_file          \
-                        mod_wrap2_sql           "
+                        mod_wrap2_sql           \
+                        mod_unique_id           "
 
 OPTIONAL_MODULE_LIST="                          \
+%{?_with_ssl:           mod_auth_otp}           \
+%{?_with_ssl:           mod_digest}             \
+%{?_with_geoip:         mod_geoip}              \
 %{?_with_ldap:          mod_ldap}               \
 %{?_with_ldap:          mod_quotatab_ldap}      \
 %{?_with_ssl:           mod_sftp}               \
@@ -301,10 +359,13 @@ OPTIONAL_MODULE_LIST="                          \
 %{?_with_ssl:           mod_sftp_sql}           \
 %{?_with_mysql:         mod_sql_mysql}          \
 %{?_with_ssl:           mod_sql_passwd}         \
+%{?_with_sqlite:        mod_sql_sqlite}         \
 %{?_with_postgresql:    mod_sql_postgres}       \
 %{?_with_ssl:           mod_tls}                \
+%{?_with_ssl:           mod_tls_fscache}        \
 %{?_with_ssl:           mod_tls_shmcache}       \
 %{?_with_ssl:%{?_with_memcache:mod_tls_memcache}} \
+%{?_with_ssl:%{?_with_redis:mod_tls_redis}}     \
 %{?_with_wrap:          mod_wrap}               "
 
 MODULE_LIST=$(echo ${STANDARD_MODULE_LIST} ${OPTIONAL_MODULE_LIST} mod_ifsession | tr -s '[:space:]' ':' | sed 's/:$//')
@@ -320,6 +381,7 @@ MODULE_LIST=$(echo ${STANDARD_MODULE_LIST} ${OPTIONAL_MODULE_LIST} mod_ifsession
         --enable-nls \
         %{?_with_memcache:--enable-memcache} \
         %{?_with_pcre:--enable-pcre} \
+        %{?_with_redis:--enable-redis} \
         %{?_with_ssl:--enable-openssl} \
         --enable-shadow \
         --with-lastlog \
@@ -438,16 +500,23 @@ rm -rf %{_builddir}/%{name}-%{version}
 
 %files -f proftpd.lang
 %{_bindir}/ftpdctl
+%{?_with_ssl:%{_sbindir}/auth-otp}
 %{_sbindir}/ftpscrub
 %{_sbindir}/ftpshut
 %{_sbindir}/in.proftpd
 %{_sbindir}/proftpd
 %dir %{_libexecdir}/proftpd/
+%{?_with_ssl:%{_libexecdir}/proftpd/mod_auth_otp.so}
 %{_libexecdir}/proftpd/mod_auth_pam.so
 %{_libexecdir}/proftpd/mod_ban.so
 %{_libexecdir}/proftpd/mod_ctrls_admin.so
+%{_libexecdir}/proftpd/mod_deflate.so
+%{?_with_ssl:%{_libexecdir}/proftpd/mod_digest.so}
+%{_libexecdir}/proftpd/mod_dnsbl.so
+%{_libexecdir}/proftpd/mod_dynmasq.so
 %{_libexecdir}/proftpd/mod_exec.so
 %{_libexecdir}/proftpd/mod_facl.so
+%{?_with_geoip:%{_libexecdir}/proftpd/mod_geoip.so}
 %{_libexecdir}/proftpd/mod_ifsession.so
 %{_libexecdir}/proftpd/mod_load.so
 %{_libexecdir}/proftpd/mod_quotatab.so
@@ -463,14 +532,18 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_sftp_sql.so}
 %{_libexecdir}/proftpd/mod_shaper.so
 %{_libexecdir}/proftpd/mod_site_misc.so
+%{_libexecdir}/proftpd/mod_snmp.so
 %{_libexecdir}/proftpd/mod_sql.so
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_sql_passwd.so}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls.so}
+%{?_with_ssl:%{_libexecdir}/proftpd/mod_tls_fscache.so}
 %{?_with_ssl:%{?_with_memcache:%{_libexecdir}/proftpd/mod_tls_memcache.so}}
+%{?_with_ssl:%{?_with_redis:%{_libexecdir}/proftpd/mod_tls_redis.so}}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls_shmcache.so}
 %{_libexecdir}/proftpd/mod_wrap2.so
 %{_libexecdir}/proftpd/mod_wrap2_file.so
 %{_libexecdir}/proftpd/mod_wrap2_sql.so
+%{_libexecdir}/proftpd/mod_unique_id.so
 %exclude %{_libexecdir}/proftpd/*.a
 %exclude %{_libexecdir}/proftpd/*.la
 %dir %{rundir}/
@@ -490,6 +563,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) %{_sysconfdir}/pam.d/proftpd
 %config(noreplace) %{_sysconfdir}/logrotate.d/proftpd
 %config(noreplace) %{_sysconfdir}/xinetd.d/proftpd
+%config(noreplace) %{_sysconfdir}/PROFTPD-MIB.txt
 
 %doc COPYING CREDITS ChangeLog NEWS README.md RELEASE_NOTES
 %doc README.DSO README.modules README.IPv6 README.PAM
@@ -503,6 +577,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_mandir}/man8/ftpscrub.8*
 %{_mandir}/man8/ftpshut.8*
 %{_mandir}/man8/proftpd.8*
+%{?_with_ssl:%{_mandir}/man8/auth-otp.8*}
 
 %if 0%{?_with_ldap:1}
 %files ldap
@@ -519,6 +594,11 @@ rm -rf %{_builddir}/%{name}-%{version}
 %if 0%{?_with_postgresql:1}
 %files postgresql
 %{_libexecdir}/proftpd/mod_sql_postgres.so
+%endif
+
+%if 0%{?_with_sqlite:1}
+%files sqlite
+%{_libexecdir}/proftpd/mod_sql_sqlite.so
 %endif
 
 %if 0%{?_with_wrap:1}
