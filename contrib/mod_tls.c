@@ -365,6 +365,7 @@ struct tls_next_proto {
 
 typedef struct tls_pkey_obj {
   struct tls_pkey_obj *next;
+  pool *pool;
 
   size_t pkeysz;
 
@@ -391,7 +392,6 @@ typedef struct tls_pkey_obj {
   void *pkcs12_passwd_ptr;
 
   unsigned int flags;
-  server_rec *server;
   unsigned int sid;
   const char *path;
 
@@ -425,6 +425,7 @@ static const char *tls_crypto_device = NULL;
 #endif
 static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
+static pool *tls_pool = NULL;
 static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
 #if defined(PR_USE_OPENSSL_OCSP)
@@ -2546,13 +2547,56 @@ static int tls_handshake_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-static tls_pkey_t *tls_lookup_pkey(void) {
-  tls_pkey_t *k, *pkey = NULL;
+static void tls_scrub_pkey(tls_pkey_t *k) {
+  if (k->rsa_pkey != NULL) {
+    pr_memscrub(k->rsa_pkey, k->pkeysz);
+    free(k->rsa_pkey_ptr);
+    k->rsa_pkey = k->rsa_pkey_ptr = NULL;
+    k->rsa_passlen = 0;
+  }
 
-  for (k = tls_pkey_list; k; k = k->next) {
+  if (k->dsa_pkey != NULL) {
+    pr_memscrub(k->dsa_pkey, k->pkeysz);
+    free(k->dsa_pkey_ptr);
+    k->dsa_pkey = k->dsa_pkey_ptr = NULL;
+    k->dsa_passlen = 0;
+  }
+
+#ifdef PR_USE_OPENSSL_ECC
+  if (k->ec_pkey != NULL) {
+    pr_memscrub(k->ec_pkey, k->pkeysz);
+    free(k->ec_pkey_ptr);
+    k->ec_pkey = k->ec_pkey_ptr = NULL;
+    k->ec_passlen = 0;
+  }
+#endif /* PR_USE_OPENSSL_ECC */
+
+  if (k->pkcs12_passwd != NULL) {
+    pr_memscrub(k->pkcs12_passwd, k->pkeysz);
+    free(k->pkcs12_passwd_ptr);
+    k->pkcs12_passwd = k->pkcs12_passwd_ptr = NULL;
+    k->pkcs12_passlen = 0;
+  }
+
+  if (k->path != NULL) {
+    free((void *) k->path);
+    k->path = NULL;
+  }
+
+  k->next = NULL;
+  k->sid = 0;
+}
+
+static tls_pkey_t *tls_lookup_pkey(void) {
+  tls_pkey_t *k, *knext, *pkey = NULL;
+
+  for (k = tls_pkey_list; k; k = knext) {
+    pr_signals_handle();
+
+    knext = k->next;
 
     /* If this pkey matches the current server_rec, mark it and move on. */
-    if (k->server == main_server) {
+    if (k->sid == main_server->sid) {
 
 #ifdef HAVE_MLOCK
       /* mlock() the passphrase memory areas again; page locks are not
@@ -2592,39 +2636,11 @@ static tls_pkey_t *tls_lookup_pkey(void) {
 #endif /* HAVE_MLOCK */
 
       pkey = k;
-      continue;
+      break;
     }
 
     /* Otherwise, scrub the passphrase's memory areas. */
-    if (k->rsa_pkey != NULL) {
-      pr_memscrub(k->rsa_pkey, k->pkeysz);
-      free(k->rsa_pkey_ptr);
-      k->rsa_pkey = k->rsa_pkey_ptr = NULL;
-      k->rsa_passlen = 0;
-    }
-
-    if (k->dsa_pkey != NULL) {
-      pr_memscrub(k->dsa_pkey, k->pkeysz);
-      free(k->dsa_pkey_ptr);
-      k->dsa_pkey = k->dsa_pkey_ptr = NULL;
-      k->dsa_passlen = 0;
-    }
-
-# ifdef PR_USE_OPENSSL_ECC
-    if (k->ec_pkey != NULL) {
-      pr_memscrub(k->ec_pkey, k->pkeysz);
-      free(k->ec_pkey_ptr);
-      k->ec_pkey = k->ec_pkey_ptr = NULL;
-      k->ec_passlen = 0;
-    }
-# endif /* PR_USE_OPENSSL_ECC */
-
-    if (k->pkcs12_passwd != NULL) {
-      pr_memscrub(k->pkcs12_passwd, k->pkeysz);
-      free(k->pkcs12_passwd_ptr);
-      k->pkcs12_passwd = k->pkcs12_passwd_ptr = NULL;
-      k->pkcs12_passlen = 0;
-    }
+    tls_scrub_pkey(k);
   }
 
   return pkey;
@@ -2686,43 +2702,8 @@ static void tls_remove_pkey(tls_pkey_t *k) {
   }
 }
 
-static void tls_scrub_pkey(tls_pkey_t *k) {
-  if (k->rsa_pkey != NULL) {
-    pr_memscrub(k->rsa_pkey, k->pkeysz);
-    free(k->rsa_pkey_ptr);
-    k->rsa_pkey = k->rsa_pkey_ptr = NULL;
-    k->rsa_passlen = 0;
-  }
-
-  if (k->dsa_pkey != NULL) {
-    pr_memscrub(k->dsa_pkey, k->pkeysz);
-    free(k->dsa_pkey_ptr);
-    k->dsa_pkey = k->dsa_pkey_ptr = NULL;
-    k->dsa_passlen = 0;
-  }
-
-#ifdef PR_USE_OPENSSL_ECC
-  if (k->ec_pkey != NULL) {
-    pr_memscrub(k->ec_pkey, k->pkeysz);
-    free(k->ec_pkey_ptr);
-    k->ec_pkey = k->ec_pkey_ptr = NULL;
-    k->ec_passlen = 0;
-  }
-#endif /* PR_USE_OPENSSL_ECC */
-
-  if (k->pkcs12_passwd != NULL) {
-    pr_memscrub(k->pkcs12_passwd, k->pkeysz);
-    free(k->pkcs12_passwd_ptr);
-    k->pkcs12_passwd = k->pkcs12_passwd_ptr = NULL;
-    k->pkcs12_passlen = 0;
-  }
-
-  free((void *) k->path);
-  k->path = NULL;
-}
-
 static void tls_scrub_pkeys(void) {
-  tls_pkey_t *k;
+  tls_pkey_t *k, *knext;
   unsigned int passphrase_count = 0;
 
   if (tls_pkey_list == NULL) {
@@ -2764,7 +2745,10 @@ static void tls_scrub_pkeys(void) {
     ": scrubbing %u %s from memory", passphrase_count,
     passphrase_count != 1 ? "passphrases" : "passphrase");
 
-  for (k = tls_pkey_list; k; k = k->next) {
+  for (k = tls_pkey_list; k; k = knext) {
+    knext = k->next;
+
+    pr_signals_handle();
     tls_scrub_pkey(k);
   }
 
@@ -2787,7 +2771,7 @@ static void tls_clean_pkeys(void) {
     return;
   }
 
-  tmp_pool = make_sub_pool(permanent_pool);
+  tmp_pool = make_sub_pool(tls_pool);
   pr_pool_tag(tmp_pool, "TLS Passphrase Cleaning");
 
   dead_keys = make_array(tmp_pool, 0, sizeof(tls_pkey_t *));
@@ -2816,9 +2800,12 @@ static void tls_clean_pkeys(void) {
   }
 
   for (i = 0; i < dead_keys->nelts; i++) {
+    pr_signals_handle();
+
     k = ((tls_pkey_t **) dead_keys->elts)[i];
     tls_remove_pkey(k);
     tls_scrub_pkey(k);
+    destroy_pool(k->pool);
   }
 
   destroy_pool(tmp_pool);
@@ -5024,6 +5011,9 @@ static int tls_init_ctx(void) {
   if (tls_seed_prng() < 0) {
     pr_log_debug(DEBUG1, MOD_TLS_VERSION ": unable to properly seed PRNG");
   }
+
+  tls_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(tls_pool, MOD_TLS_VERSION);
 
   return 0;
 }
@@ -12743,6 +12733,8 @@ static void tls_shutdown_ev(const void *event_data, void *user_data) {
 #if defined(TLS_USE_SESSION_TICKETS)
     scrub_ticket_keys();
 #endif /* TLS_USE_SESSION_TICKETS */
+    destroy_pool(tls_pool);
+    tls_pool = NULL;
   }
 
   /* Write out a new RandomSeed file, for use later. */
@@ -13004,7 +12996,16 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
     tls_scrub_pkey(k);
   }
 
-  k = pcalloc(s->pool, sizeof(tls_pkey_t));
+  if (k == NULL) {
+    pool *key_pool;
+
+    key_pool = make_sub_pool(tls_pool);
+    pr_pool_tag(key_pool, "Private Key Pool");
+
+    k = pcalloc(key_pool, sizeof(tls_pkey_t));
+    k->pool = key_pool;
+  }
+
   k->pkeysz = PEM_BUFSIZE;
 
   switch (flags) {
@@ -13075,7 +13076,6 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
 
   *pass_len = res;
   k->path = strdup(path);
-  k->server = s;
   k->sid = s->sid;
 
   return k;
