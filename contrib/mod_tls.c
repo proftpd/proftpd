@@ -10618,6 +10618,21 @@ MODRET tls_auth(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* CAN we even handle an AUTH command?  If we do not have the necessary
+   * certificates, then we should indicate that we cannot.
+   */
+  if (tls_rsa_cert_file == NULL &&
+      tls_dsa_cert_file == NULL &&
+      tls_ec_cert_file == NULL &&
+      tls_pkcs12_file == NULL) {
+    tls_log("Unable to accept AUTH %s due to lack of certificates", cmd->arg);
+    pr_response_add_err(R_431, _("Necessary security resource unavailable"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
   /* Convert the parameter to upper case */
   mode = cmd->argv[1];
   for (i = 0; i < strlen(mode); i++) {
