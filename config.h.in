@@ -402,8 +402,14 @@
 /* Define if you have the llistxattr function.  */
 #undef HAVE_LLISTXATTR
 
+/* Define if you have the loginfailed function.  */
+#undef HAVE_LOGINFAILED
+
 /* Define if you have the loginrestrictions function.  */
 #undef HAVE_LOGINRESTRICTIONS
+
+/* Define if you have the loginsuccess function.  */
+#undef HAVE_LOGINSUCCESS
 
 /* Define if you have the lremovexattr function.  */
 #undef HAVE_LREMOVEXATTR
@@ -752,6 +758,9 @@
 
 /* Define if you have the <sys/acl.h> header file.  */
 #undef HAVE_SYS_ACL_H
+
+/* Define if you have the <sys/audit.h> header file.  */
+#undef HAVE_SYS_AUDIT_H
 
 /* Define if you have the <sys/dir.h> header file.  */
 #undef HAVE_SYS_DIR_H

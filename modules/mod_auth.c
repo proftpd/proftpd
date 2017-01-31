@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,14 @@
 
 #include "conf.h"
 #include "privs.h"
+
+#ifdef HAVE_USERSEC_H
+# include <usersec.h>
+#endif
+
+#ifdef HAVE_SYS_AUDIT_H
+# include <sys/audit.h>
+#endif
 
 extern pid_t mpid;
 
@@ -336,7 +344,34 @@ static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
 /* Command handlers
  */
 
+static void login_failed(pool *p, const char *user) {
+#ifdef HAVE_LOGINFAILED
+  char *host, *sess_ttyname;
+  int res, xerrno;
+
+  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
+  sess_ttyname = pr_session_get_ttyname(p);
+
+  PRIVS_ROOT
+  res = loginfailed((char *) user, host, sess_ttyname, AUDIT_FAIL);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_trace_msg("auth", 3, "AIX loginfailed() error for user '%s', "
+      "host '%s', tty '%s', reason %d: %s", user, host, sess_ttyname,
+      AUDIT_FAIL, strerror(errno));
+  }
+#endif /* HAVE_LOGINFAILED */
+}
+
 MODRET auth_err_pass(cmd_rec *cmd) {
+  const char *user;
+
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+  if (user != NULL) {
+    login_failed(cmd->tmp_pool, user);
+  }
 
   /* Remove the stashed original USER name here in a LOG_CMD_ERR handler, so
    * that other modules, who may want to lookup the original USER parameter on
@@ -369,6 +404,35 @@ MODRET auth_log_pass(cmd_rec *cmd) {
   }
 
   return PR_DECLINED(cmd);
+}
+
+static void login_succeeded(pool *p, const char *user) {
+#ifdef HAVE_LOGINSUCCESS
+  char *host, *msg = NULL, *sess_ttyname;
+  int res, xerrno;
+
+  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
+  sess_ttyname = pr_session_get_ttyname(p);
+
+  PRIVS_ROOT
+  res = loginsuccess((char *) user, host, sess_ttyname, &msg);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res == 0) {
+    if (msg != NULL) {
+      pr_trace_msg("auth", 14, "AIX loginsuccess() report: %s", msg);
+    }
+
+  } else {
+    pr_trace_msg("auth", 3, "AIX loginsuccess() error for user '%s', "
+      "host '%s', tty '%s': %s", user, host, sess_ttyname, strerror(errno));
+  }
+
+  if (msg != NULL) {
+    free(msg);
+  }
+#endif /* HAVE_LOGINSUCCESS */
 }
 
 MODRET auth_post_pass(cmd_rec *cmd) {
@@ -595,6 +659,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
      grantmsg = sreplace(cmd->tmp_pool, grantmsg, "%u", user, NULL);
      pr_response_add(auth_pass_resp_code, "%s", grantmsg);
   }
+
+  login_succeeded(cmd->tmp_pool, user);
 
   /* A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
    * 2 indicates 'NonCompliantActiveTransfer'.  We will drop root privs for any
