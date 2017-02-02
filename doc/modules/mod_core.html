@@ -1537,7 +1537,7 @@ multiple nested <code>&lt;IfModule&gt;</code> sections, <i>e.g.</i>:
 
     &lt;IfModule !mod_sql_passwd.c&gt;
       # Use only the basic SQLAuthTypes provided by mod_sql
-      SQLAuthTypes OpenSSL
+      SQLAuthTypes Crypt OpenSSL
     &lt;/IfModule&gt;
   &lt;/IfModule&gt;
 </pre>
