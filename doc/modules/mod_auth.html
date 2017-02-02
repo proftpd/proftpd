@@ -17,6 +17,8 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#AccessDenyMsg">AccessDenyMsg</a>
+  <li><a href="#AccessGrantMsg">AccessGrantMsg</a>
   <li><a href="#AllowChrootSymlinks">AllowChrootSymlinks</a>
   <li><a href="#AllowEmptyPasswords">AllowEmptyPasswords</a>
   <li><a href="#AnonAllowRobots">AnonAllowRobots</a>
@@ -25,11 +27,14 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#AuthAliasOnly">AuthAliasOnly</a>
   <li><a href="#AuthUsingAlias">AuthUsingAlias</a>
   <li><a href="#CreateHome">CreateHome</a>
+  <li><a href="#DefaultChdir">DefaultChdir</a>
   <li><a href="#DefaultRoot">DefaultRoot</a>
+  <li><a href="#DisplayLogin">DisplayLogin</a>
   <li><a href="#MaxClients">MaxClients</a>
   <li><a href="#MaxClientsPerClass">MaxClientsPerClass</a>
   <li><a href="#MaxClientsPerHost">MaxClientsPerHost</a>
   <li><a href="#MaxClientsPerUser">MaxClientsPerUser</a>
+  <li><a href="#MaxConnectionsPerHost">MaxConnectionsPerHost</a>
   <li><a href="#MaxHostsPerUser">MaxHostsPerUser</a>
   <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a>
   <li><a href="#MaxPasswordSize">MaxPasswordSize</a>
@@ -40,10 +45,60 @@ ProFTPD 1.3.<i>x</i>, and is compiled by default.
   <li><a href="#TimeoutLogin">TimeoutLogin</a>
   <li><a href="#TimeoutSession">TimeoutSession</a>
   <li><a href="#UseFtpUsers">UseFtpUsers</a>
+  <li><a href="#UseLastlog">UseLastlog</a>
   <li><a href="#UserAlias">UserAlias</a>
   <li><a href="#UserPassword">UserPassword</a>
   <li><a href="#WtmpLog">WtmpLog</a>
 </ul>
+
+<p>
+<hr>
+<h3><a name="AccessDenyMsg">AccessDenyMsg</a></h3>
+<strong>Syntax:</strong> AccessDenyMsg <em>message</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.2.2 and later
+
+<p>
+When an FTP client attempts to authenticate and fails, the client is sent the
+following FTP response:
+<pre>
+  530 Login failed
+</pre>
+This "Login failed" response message can be replaced/customized by using this
+<code>AccessDenyMsg</code> directive.  In the configured <em>message</em>
+text, the <code>%u</code> variable will be resolved to the user name used by
+the FTP client in its authentication attempt.
+
+<p>
+Example:
+<pre>
+  AccessDenyMsg "%u is not authorized"
+</pre>
+
+<p>
+<hr>
+<h3><a name="AccessGrantMsg">AccessGrantMsg</a></h3>
+<strong>Syntax:</strong> AccessGrantMsg <em>message</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.2.2 and later
+
+<p>
+When an FTP client succeeds in authenticating, it will receive an FTP response
+with the 230 response code, and a message.  This successful authentication
+response message can be replaced/customized by using this
+<code>AccessGrantMsg</code> directive.  In the configured <em>message</em>
+text, the <code>%u</code> variable will be resolved to the user name used by
+the FTP client in its authentication attempt.
+
+<p>
+Example:
+<pre>
+  AccessGrantMsg "Welcome, %u!"
+</pre>
 
 <hr>
 <h3><a name="AllowChrootSymlinks">AllowChrootSymlinks</a></h3>
@@ -339,6 +394,39 @@ with more examples, can be read <a href="../howto/CreateHome.html">here</a>.
 
 <p>
 <hr>
+<h3><a name="DefaultChdir">DefaultChdir</a></h3>
+<strong>Syntax:</strong> DefaultChdir <em>path [group-expression]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.2.0rc1
+
+<p>
+The <code>DefaultChdir</code> directive determines the directory <em>path</em>
+into which a user is placed, after logging in.
+
+<p>
+By default, the user is put into their home directory.  The specified
+<em>path</em> can be relative to the user's home directory.  <b>Note</b> that
+if the specified <em>path</em> is not available, then <code>DefaultChdir</code>
+will be ignored; the direction in which the user is placed will be determined
+by other directives.
+
+<p>
+Examples:
+<pre>
+  # Admin users start off in /var/www
+  DefaultChdir /var/www admin
+
+  # ..and others start off in their respective public FTP folders
+  DefaultChdir ~/public_ftp
+</pre>
+
+<p>
+See also: <a href="#DefaultRoot"><code>DefaultRoot</code></a>
+
+<p>
+<hr>
 <h3><a name="DefaultRoot">DefaultRoot</a></h3>
 <strong>Syntax:</strong> DefaultRoot <em>path [group-expression]</em><br>
 <strong>Default:</strong> None<br>
@@ -350,6 +438,29 @@ with more examples, can be read <a href="../howto/CreateHome.html">here</a>.
 The <code>DefaultRoot</code> directive is used to <code>chroot()</code> the
 session process for the connecting client.  A fuller explanation can be
 found in the <a href="../howto/Chroot.html">Chroot</a> howto.
+
+<p>
+<hr>
+<h3><a name="DisplayLogin">DisplayLogin</a></h3>
+<strong>Syntax:</strong> DisplayLogin <em>path</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 0.99.0
+
+<p>
+The <code>DisplayLogin</code> directive specifies a file <em>path</em> which
+will be displayed to the user when they initially login.  The <em>path</em>
+can be either relative or absolute.  For relative <em>paths</em>, the file is
+searched for in the initial directory in which a user is placed immediately
+after authentication, <i>e.g.</i> the home directory for normal users, or
+the <code&lt;Anonymous&gt;</code> directory for anonymous logins.  If the file
+cannot be found or accessed, no error occurs and nothing is displayed to the
+client.
+
+<p>
+The <a href="../howto/DisplayFiles.html">DisplayFiles</a> howto covers such
+files in greater detail.
 
 <p>
 <hr>
@@ -499,6 +610,33 @@ See also: <a href="#MaxClients"><code>MaxClients</code></a>,
 <a href="#MaxClientsPerClass"><code>MaxClientsPerClass</code></a>,
 <a href="#MaxClientsPerHost"><code>MaxClientsPerHost</code></a>,
 <a href="#MaxHostsPerUser"><code>MaxHostsPerUser</code></a>
+
+<p>
+<hr>
+<h3><a name="MaxConnectionsPerHost">MaxConnectionsPerHost</a></h3>
+<strong>Syntax:</strong> MaxConnectionsPerHost <em>count|"none" [message]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.2.11 and later
+
+<p>
+The <code>MaxConnectionsPerHost</code> directive configures the maximum number
+of <b>unauthenticated</b> clients allowed to connect from a given host.  The
+optional <em>message</em> parameter may be used, to be displayed to a client
+attempting to exceed the maximum value.   If <em>message</em> is not supplied,
+a default message of "Sorry, the maximum number of connections (%m) from your host are already connected." is used.
+
+<p>
+For example:
+<pre>
+  MaxConnectionsPerHost 1 "Sorry, you may not connect more than one time."
+</pre>
+results in additional FTP login attempts from that same host to receive
+the following FTP response:
+<pre>
+  530 Sorry, you may not connect more than one time.
+</pre>
 
 <p>
 <hr>
@@ -775,6 +913,26 @@ using the <code>UseFtpUsers</code> directive, <i>e.g.</i>:
 
 <p>
 <hr>
+<h3><a name="UseLastlog">UseLastlog</a></h3>
+<strong>Syntax:</strong> UseLastlog <em>on|off</em><br>
+<strong>Default:</strong> UseLastlog off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_auth<br>
+<strong>Compatibility:</strong> 1.3.1 and later
+
+<p>
+The <code>UseLastlog</code> directive configures whether ProFTPD will update
+the <a href="https://en.wikipedia.org/wiki/Lastlog"><code>/var/log/lastlog</code></a> file for FTP logins.
+
+<p>
+Example:
+<pre>
+  # Enable recording FTP logins in /var/log/lastlog
+  UseLastlog on
+</pre>
+
+<p>
+<hr>
 <h3><a name="UserAlias">UserAlias</a></h3>
 <strong>Syntax:</strong> UserAlias <em>alias real-user</em><br>
 <strong>Default:</strong> None<br>
@@ -865,7 +1023,7 @@ The <code>mod_auth</code> module is compiled by default.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2016<br>
+&copy; Copyright 2002-2017<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
