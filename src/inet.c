@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -788,7 +788,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 
   /* Note: main_server might be null when those code runs in the testsuite. */
   if (main_server != NULL) {
-    no_delay = get_param_ptr(main_server->conf, "tcpNoDelay", FALSE);
+    no_delay = get_param_ptr(main_server->conf, "TCPNoDelay", FALSE);
   }
 
   if (no_delay == NULL ||

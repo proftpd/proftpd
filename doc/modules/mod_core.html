@@ -26,10 +26,12 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#AllowUser">AllowUser</a>
   <li><a href="#Anonymous">&lt;Anonymous&gt;</a>
   <li><a href="#AuthOrder">AuthOrder</a>
+  <li><a href="#Class">&lt;Class&gt;</a>
   <li><a href="#CommandBufferSize">CommandBufferSize</a>
   <li><a href="#DebugLevel">DebugLevel</a>
   <li><a href="#DefaultAddress">DefaultAddress</a>
   <li><a href="#DefaultServer">DefaultServer</a>
+  <li><a href="#Define">Define</a>
   <li><a href="#Deny">Deny</a>
   <li><a href="#DenyAll">DenyAll</a>
   <li><a href="#DenyClass">DenyClass</a>
@@ -50,6 +52,8 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#HideNoAccess">HideNoAccess</a>
   <li><a href="#HideUser">HideUser</a>
   <li><a href="#IgnoreHidden">IgnoreHidden</a>
+  <li><a href="#IfDefine">&lt;IfDefine&gt;</a>
+  <li><a href="#IfModule">&lt;IfModule&gt;</a>
   <li><a href="#Include">Include</a>
   <li><a href="#IncludeOptions">IncludeOptions</a>
   <li><a href="#Limit">&lt;Limit&gt;</a>
@@ -66,8 +70,11 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#Port">Port</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
+  <li><a href="#RegexOptions">RegexOptions</a>
   <li><a href="#ScoreboardFile">ScoreboardFile</a>
   <li><a href="#ScoreboardMutex">ScoreboardMutex</a>
+  <li><a href="#ScoreboardScrub">ScoreboardScrub</a>
+  <li><a href="#ServerAdmin">ServerAdmin</a>
   <li><a href="#ServerAlias">ServerAlias</a>
   <li><a href="#ServerIdent">ServerIdent</a>
   <li><a href="#ServerName">ServerName</a>
@@ -78,6 +85,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#SyslogFacility">SyslogFacility</a>
   <li><a href="#SyslogLevel">SyslogLevel</a>
   <li><a href="#TCPBacklog">TCPBacklog</a>
+  <li><a href="#TCPNoDelay">TCPNoDelay</a>
   <li><a href="#TimeoutIdle">TimeoutIdle</a>
   <li><a href="#TimeoutLinger">TimeoutLinger</a>
   <li><a href="#TimesGMT">TimesGMT</a>
@@ -529,6 +537,29 @@ to ensure that the login fails if the PAM check fails.
 
 <p>
 <hr>
+<h3><a name="Class">&lt;Class&gt;</a></h3>
+<strong>Syntax:</strong> &lt;Class <em>name</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.10rc1 and later
+
+<p>
+The <code>&lt;Class&gt;</code> and <code>&lt;/Class&gt;</code> encompass
+a section which defines and <em>names</em> a connection <em>class</em>.
+
+<p>
+Example:
+<pre>
+  &lt;Class LAN&gt;
+    From 192.168.0.0/16
+  &lt;/Class>
+</pre>
+These connection classes are covered in much greater detail in the
+<a href="../howto/Classes.html">Classes</a> howto.
+
+<p>
+<hr>
 <h3><a name="CommandBufferSize">CommandBufferSize</a></h3>
 <strong>Syntax:</strong> CommandBufferSize <em>size</em><br>
 <strong>Default:</strong> CommandBufferSize 512<br>
@@ -635,6 +666,35 @@ connections are handled by that configuration.
 
 <p>
 Only a single server configuration can be set as the <code>DefaultServer</code>.
+
+<p>
+<hr>
+<h3><a name="Define">Define</a></h3>
+<strong>Syntax:</strong> Define <em>label</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <em>any</em><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.6rc1 and later
+
+<p>
+The <code>Define</code> directive <em>defines</em> a label, and is used
+in conjunction with <a href="#IfDefine"><code>&lt;IfDefine&gt;</code></a> to
+provide <i>conditional</i> configuration sections.  This directive is the
+configuration file equivalent of the <code>-D</code> command-line option.
+
+<p>
+Example:
+<pre>
+  # Define ANONYMOUS (or comment this out), for anonymous login support
+  Define ANONYMOUS
+
+  # If the label ANONYMOUS is defined, use this <Anonymous> section
+  &lt;IfDefine ANONYMOUS&gt;
+    &lt;Anonymous ~ftp&gt;
+      ...
+    &gt;/Anonymous&gt;
+  &lt;/IfDefine&gt;
+</pre>
 
 <p>
 <hr>
@@ -1375,6 +1435,118 @@ See also: <a href="#HideFiles"><code>HideFiles</code></a>,
 
 <p>
 <hr>
+<h3><a name="IfDefine">&lt;IfDefine&gt;</a></h3>
+<strong>Syntax:</strong> &lt;IfDefine <em>[!]label</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <em>any</em><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.6rc1 and later
+
+<p>
+The <code>&lt;IfDefine&gt;</code> and <code>&lt;/IfDefine&gt;</code> define
+a <i>conditional</i> configuration section.  The directives appearing within
+that section are processed only if the <em>label</em> expression, used by
+<code>&lt;IfDefine&gt;</code>, is true/exists.  Otherwise, everything within
+the configuration section is skipped.
+
+<p>
+For example, assume you had something like the following in your
+<code>proftpd.conf</code>:
+<pre>
+  &lt;IfDefine USE_TLS&gt;
+    TLSEngine on
+    TLSRequired on
+    ...
+  &lt;/IfDefine>
+</pre>
+Then you can enable that TLS functionality using the <code>-D</code>
+command-line option when starting ProFTPD, <i>e.g.</i>:
+<pre>
+  $ /usr/local/sbin/proftpd -DUSE_TLS ...
+</pre>
+
+<p>
+For configuration for which there are multiple conditions, you would use
+multiple nested <code>&lt;IfDefine&gt;</code> sections, <i>e.g.</i>:
+<pre>
+  &lt;IfDefine USE_TLS&gt;
+    TLSEngine on
+
+    &lt;IfDefine !REQUIRE_TLS&t;
+      # Require TLS for authentication, but allow clients to downgrade back
+      # to plain TCP after that.
+      TLSRequired auth
+    &lt;/IfDefine&gt;
+
+    &lt;IfDefine REQUIRE_TLS&gt;
+      # Require TLS for control and data connections
+      TLSRequired on
+    &lt;/IfDefine&gt;
+  &lt;/IfDefine&gt;
+</pre>
+
+<p>
+See also: <a href="#Define"><code>Define</code></a>
+
+<p>
+<hr>
+<h3><a name="IfModule">&lt;IfModule&gt;</a></h3>
+<strong>Syntax:</strong> &lt;IfModule <em>[!]module-name</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <em>any</em><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.6rc1 and later
+
+<p>
+The <code>&lt;IfModule&gt;</code> and <code>&lt;/IfModule&gt;</code> define
+a <i>conditional</i> configuration section.  The directives appearing within
+that section are processed only if the <em>module-name</em> , used by
+<code>&lt;IfModule&gt;</code>, is present/loaded.  Otherwise, everything within
+the configuration section is skipped.
+
+<p>
+Example:
+<pre>
+  &lt;IfModule mod_load.c&gt;
+    MaxLoad 10 "Acces denied, server too busy"
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+For configuration for which there are multiple modules required, you would use
+multiple nested <code>&lt;IfModule&gt;</code> sections, <i>e.g.</i>:
+<pre>
+  &lt;IfModule mod_sql.c&gt;
+    SQLEngine on
+
+    &lt;IfModule mod_sql_mysql.c&gt;
+      # Use an SQLConnectInfo using MySQL parameters
+    &lt;/IfModule&gt;
+
+    &lt;IfModule !mod_sql_mysql.c&gt;
+      &lt;IfModule mod_sql_sqlite.c&gt;
+        # No mod_sql_mysql, but we do have mod_sql_sqlite available;
+        # use an SQLConnectInfo to a local SQLite database file.
+      &lt;/IfModule&gt;
+    &lt;/IfModule&gt;
+
+    &lt;IfModule mod_sql_passwd.c&gt
+      # Try more different password hashes with mod_sql_passwd
+      SQLAuthTypes ...
+    &lt;/IfModule&gt;
+
+    &lt;IfModule !mod_sql_passwd.c&gt;
+      # Use only the basic SQLAuthTypes provided by mod_sql
+      SQLAuthTypes OpenSSL
+    &lt;/IfModule&gt;
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+See also: <a href="#Define"><code>Define</code></a>
+
+<p>
+<hr>
 <h3><a name="Include">Include</a></h3>
 <strong>Syntax:</strong> Include <em>path|pattern</em><br>
 <strong>Default:</strong> None<br>
@@ -1952,6 +2124,34 @@ The currently known/supported protocols include:
 
 <p>
 <hr>
+<h3><a name="RegexOptions">RegexOptions</a></h3>
+<strong>Syntax:</strong> RegexOptions <em>[MatchLimit limit] [MatchRecursionLimit limit]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.5rc1 and later
+
+<p>
+The <code>RegexOptions</code> directive configures <em>limits</em> that can
+be set on the handling of regular expressions.  ProFTPD can use regular
+expressions for many things; some malicious clients may attempt <i>resource
+consumption</i> attacks by forcing these regular expressions into very
+memory/CPU-intensive matching.  The <code>RegexOptions</code> directive can
+be used in such cases to enforce lower limits on the regular expression
+handling.
+
+<p>
+The <a href="http://pcre.org/current/doc/html/pcre2api.html"><code>pcreapi</code></a> documentation talks more about what the <em>match limit</em> and <em>match
+recursion limit</em> values do.
+
+<p>
+Note, however, that these limits are only used when
+<a href="http://pcre.org/">PCRE</a> support is enabled (via the
+<code>--enable-pcre</code> built-time option).  If PCRE support is <em>not</em>
+enabled, this directive has no effect.
+
+<p>
+<hr>
 <h3><a name="ScoreboardFile">ScoreboardFile</a></h3>
 <strong>Syntax:</strong> ScoreboardFile <em>path|"none"</em><br>
 <strong>Default:</strong> ScoreboardFile /usr/local/var/proftpd.scoreboard</br>
@@ -2006,6 +2206,50 @@ For performance reasons, it is <b>strongly recommended</b> that the
 filesystem, but rather be located on a local physical disk.  It is best if
 the <code>ScoreboardMutex</code> be located in the same directory as the
 <a href="#ScoreboardFile"><code>ScoreboardFile</code></a>.
+
+<p>
+<hr>
+<h3><a name="ScoreboardScrub">ScoreboardScrub</a></h3>
+<strong>Syntax:</strong> ScoreboardScrub <em>on|off|secs</em><br>
+<strong>Default:</strong> ScoreboardScrub on<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.3.3rc1 and later
+
+<p>
+The <code>ScoreboardScrub</code> directive configures the "scrubbing" of the
+<a href="../howto/Scoreboard.html"><code>ScoreboardFile</code></a>.  Scrubbing
+can be turned <em>off</em> entirely (not recommended), left <em>on</em>,
+or configured to run at a custom interval (in seconds).
+
+<p>
+Example:
+<pre>
+  # Disable scoreboard scrubbing
+  ScoreboardScrub off
+
+  # Scrub the scoreboard every 2 minutes
+  ScoreboardScrub 120
+</pre>
+
+<p>
+<hr>
+<h3><a name="ServerAdmin">ServerAdmin</a></h3>
+<strong>Syntax:</strong> ServerAdmin <em>email-address</em><br>
+<strong>Default:</strong> ServerAdmin root@host<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 0.99.0 and later
+
+<p>
+The <code>ServerAdmin</code> directive sets the <em>email address</em> of the
+administrator of the host.
+
+<p>
+Example:
+<pre>
+  ServerAdmin ftp@example.com
+</pre>
 
 <p>
 <hr>
@@ -2512,6 +2756,19 @@ and <code>tcp_syncookies</code>.  On FreeBSD, read the
 <code>syncookies(4)</code> man page.  And read
 <a href="http://www.sean.de/Solaris/soltune.html#backlog">here</a> for
 additional tuning considerations on Solaris.
+
+<p>
+<hr>
+<h3><a name="TCPNoDelay">TCPNoDelay</a></h3>
+<strong>Syntax:</strong> TCPNoDelay <em>on|off</em><br>
+<strong>Default:</strong> TCPNoDelay on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_core<br>
+<strong>Compatibility:</strong> 1.2.0 and later
+
+<p>
+The <code>TCPNoDelay</code> directive affects the use of the <a href="https://en.wikipedia.org/wiki/Nagle's_algorithm">Nagle algorithm</a>.  <b>Note</b> that
+most sites will <em>never need this</em>.
 
 <p>
 <hr>
@@ -3036,7 +3293,7 @@ The solution is to use "MultilineRFC2228 off" in your <code>proftpd.conf</code>
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2016 The ProFTPD Project<br>
+&copy; Copyright 2000-2017 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
