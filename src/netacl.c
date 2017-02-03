@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2016 The ProFTPD Project team
+ * Copyright (c) 2003-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,6 +49,7 @@ pr_netacl_type_t pr_netacl_get_type(const pr_netacl_t *acl) {
  */
 int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
   pool *tmp_pool;
+  int res = 0;
 
   if (acl == NULL ||
       addr == NULL) {
@@ -62,14 +63,14 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
     case PR_NETACL_TYPE_ALL:
       pr_trace_msg(trace_channel, 10, "addr '%s' matched rule 'ALL' ('%s')",
         pr_netaddr_get_ipstr(addr), pr_netacl_get_str(tmp_pool, acl));
-      destroy_pool(tmp_pool);
-      return 1;
+      res = 1;
+      break;
 
     case PR_NETACL_TYPE_NONE:
       pr_trace_msg(trace_channel, 10, "addr '%s' matched rule 'NONE'",
         pr_netaddr_get_ipstr(addr));
-      destroy_pool(tmp_pool);
-      return -1;
+      res = -1;
+      break;
 
     case PR_NETACL_TYPE_IPMASK:
       pr_trace_msg(trace_channel, 10,
@@ -79,17 +80,17 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
       if (pr_netaddr_ncmp(addr, acl->addr, acl->masklen) == 0) {
         pr_trace_msg(trace_channel, 10, "addr '%s' matched IP mask rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
-        destroy_pool(tmp_pool);
 
-        if (acl->negated)
-          return -1;
+        if (acl->negated) {
+          res = -1;
 
-        return 1;
+        } else {
+          res = 1;
+        }
 
       } else {
         if (acl->negated) {
-          destroy_pool(tmp_pool);
-          return 1;
+          res = 1;
         }
       }
       break;
@@ -103,17 +104,17 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
         pr_trace_msg(trace_channel, 10,
           "addr '%s' matched IP address rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
-        destroy_pool(tmp_pool);
 
-        if (acl->negated)
-          return -1;
+        if (acl->negated) {
+          res = -1;
 
-        return 1;
+        } else {
+          res = 1;
+        }
 
       } else {
         if (acl->negated) {
-          destroy_pool(tmp_pool);
-          return 1;
+          res = 1;
         }
       }
       break;
@@ -128,17 +129,17 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
           "addr '%s' (%s) matched DNS name rule '%s'",
           pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
           acl->aclstr);
-        destroy_pool(tmp_pool);
 
-        if (acl->negated)
-          return -1;
+        if (acl->negated) {
+          res = -1;
 
-        return 1;
+        } else {
+          res = 1;
+        }
 
       } else {
         if (acl->negated) {
-          destroy_pool(tmp_pool);
-          return 1;
+          res = 1;
         }
       }
       break;
@@ -153,17 +154,17 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
         pr_trace_msg(trace_channel, 10,
           "addr '%s' matched IP glob rule '%s'",
           pr_netaddr_get_ipstr(addr), acl->aclstr);
-        destroy_pool(tmp_pool);
 
-        if (acl->negated)
-          return -1;
+        if (acl->negated) {
+          res = -1;
 
-        return 1;
+        } else {
+          res = 1;
+        }
 
       } else {
         if (acl->negated) {
-          destroy_pool(tmp_pool);
-          return 1;
+          res = 1;
         }
       }
       break;
@@ -180,17 +181,17 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
             "addr '%s' (%s) matched DNS glob rule '%s'",
             pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
             acl->aclstr);
-          destroy_pool(tmp_pool);
 
-          if (acl->negated)
-            return -1;
+          if (acl->negated) {
+            res = -1;
 
-          return 1;
+          } else {
+            res = 1;
+          }
 
         } else {
           if (acl->negated) {
-            destroy_pool(tmp_pool);
-            return 1;
+            res = 1;
           }
         }
 
@@ -204,7 +205,7 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
   }
 
   destroy_pool(tmp_pool);
-  return 0;
+  return res;
 }
 
 pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {

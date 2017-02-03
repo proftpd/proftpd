@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2016 The ProFTPD Project team
+ * Copyright (c) 2015-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,6 +52,32 @@ static void tear_down(void) {
     p = permanent_pool = NULL;
   }
 }
+
+START_TEST (help_add_test) {
+  const char *cmd, *syntax;
+
+  mark_point();
+  pr_help_add(NULL, NULL, 0);
+
+  cmd = "FOO";
+
+  mark_point();
+  pr_help_add(cmd, NULL, 0);
+
+  syntax = "<path>";
+
+  mark_point();
+  pr_help_add(cmd, syntax, FALSE);
+
+  mark_point();
+  pr_help_add(cmd, syntax, TRUE);
+
+  cmd = "BAR";
+
+  mark_point();
+  pr_help_add(cmd, syntax, FALSE);
+}
+END_TEST
 
 START_TEST (help_add_response_test) {
   int res;
@@ -144,6 +170,7 @@ Suite *tests_get_help_suite(void) {
 
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
+  tcase_add_test(testcase, help_add_test);
   tcase_add_test(testcase, help_add_response_test);
 
   suite_add_tcase(suite, testcase);

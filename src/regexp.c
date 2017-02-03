@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -262,7 +262,8 @@ int pr_regexp_compile(pr_regex_t *pre, const char *pattern, int flags) {
 }
 
 size_t pr_regexp_error(int errcode, const pr_regex_t *pre, char *buf,
-  size_t bufsz) {
+    size_t bufsz) {
+  size_t res = 0;
 
   if (pre == NULL ||
       buf == NULL ||
@@ -280,10 +281,10 @@ size_t pr_regexp_error(int errcode, const pr_regex_t *pre, char *buf,
   if (pre->re != NULL) {
     /* Make sure the given buffer is always zeroed out first. */
     memset(buf, '\0', bufsz);
-    return regerror(errcode, pre->re, buf, bufsz-1);
+    res = regerror(errcode, pre->re, buf, bufsz-1);
   }
 
-  return 0;
+  return res;
 }
 
 const char *pr_regexp_get_pattern(const pr_regex_t *pre) {

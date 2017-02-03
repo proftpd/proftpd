@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2016 The ProFTPD Project team
+ * Copyright (c) 2015-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -207,6 +207,28 @@ START_TEST (display_file_test) {
 
   fail_unless(last_resp_msg != NULL,
     "Last response message is unexpectedly null");
+
+  /* With MultilineRFC2228 on */
+  mark_point();
+  res = pr_display_file(path, NULL, resp_code,
+    PR_DISPLAY_FL_SEND_NOW|PR_DISPLAY_FL_NO_EOM);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
+
+  mark_point();
+  res = pr_display_file(path, NULL, resp_code, PR_DISPLAY_FL_SEND_NOW);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
+
+  /* With session.auth_mech */
+  session.auth_mech = "testsuite";
+
+  mark_point();
+  res = pr_display_file(path, NULL, resp_code,
+    PR_DISPLAY_FL_SEND_NOW|PR_DISPLAY_FL_NO_EOM);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
+
+  mark_point();
+  res = pr_display_file(path, NULL, resp_code, PR_DISPLAY_FL_SEND_NOW);
+  fail_unless(res == 0, "Failed to display file: %s", strerror(errno));
 }
 END_TEST
 

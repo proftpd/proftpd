@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,6 +63,30 @@ END_TEST
 START_TEST (regexp_free_test) {
   mark_point();
   pr_regexp_free(NULL, NULL);
+}
+END_TEST
+
+START_TEST (regexp_error_test) {
+  size_t bufsz, res;
+  const pr_regex_t *pre;
+  char *buf;
+
+  mark_point();
+  res = pr_regexp_error(0, NULL, NULL, 0);
+  fail_unless(res == 0, "Failed to handle null regexp");
+
+  pre = (const pr_regex_t *) 3;
+
+  mark_point();
+  res = pr_regexp_error(0, pre, NULL, 0);
+  fail_unless(res == 0, "Failed to handle null buf");
+
+  bufsz = 256;
+  buf = pcalloc(p, bufsz);
+
+  mark_point();
+  res = pr_regexp_error(0, pre, buf, 0);
+  fail_unless(res == 0, "Failed to handle zero bufsz");
 }
 END_TEST
 
@@ -301,6 +325,7 @@ Suite *tests_get_regexp_suite(void) {
 
   tcase_add_test(testcase, regexp_alloc_test);
   tcase_add_test(testcase, regexp_free_test);
+  tcase_add_test(testcase, regexp_error_test);
   tcase_add_test(testcase, regexp_compile_test);
   tcase_add_test(testcase, regexp_compile_posix_test);
   tcase_add_test(testcase, regexp_exec_test);

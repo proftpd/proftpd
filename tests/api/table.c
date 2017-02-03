@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -157,6 +157,10 @@ START_TEST (table_add_dup_test) {
   res = pr_table_add_dup(tab, "", NULL, 0);
   fail_unless(res == -1, "Failed to handle duplicate (empty) key");
   fail_unless(errno == EEXIST, "Failed to set errno to EEXIST");
+
+  mark_point();
+  res = pr_table_add_dup(tab, "foo", "bar", 0);
+  fail_unless(res == 0, "Failed to add 'foo': %s", strerror(errno));
 }
 END_TEST
 
@@ -227,6 +231,18 @@ START_TEST (table_exists_test) {
   ok = 2;
   res = pr_table_exists(tab, "foo");
   fail_unless(res == ok, "Expected value count %d, got %d", ok, res);
+
+  mark_point();
+  res = pr_table_kexists(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null table");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_table_kexists(tab, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null key_data");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -322,6 +338,12 @@ START_TEST (table_get_test) {
 
   fail_unless(strcmp(str, "baz") == 0,
     "Expected value '%s', got '%s'", "baz", str);
+
+  mark_point();
+  res = pr_table_kget(NULL, NULL, 0, NULL);
+  fail_unless(res == NULL, "Failed to handle null table");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -499,6 +521,18 @@ START_TEST (table_remove_test) {
   res = pr_table_remove(tab, "foo", &sz);
   fail_unless(res == NULL, "Failed to handle absent value");
   fail_unless(errno == ENOENT, "Failed to set errno to ENOENT");
+
+  mark_point();
+  res = pr_table_kremove(NULL, NULL, 0, NULL);
+  fail_unless(res == NULL, "Failed to handle null table");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_table_kremove(tab, NULL, 0, NULL);
+  fail_unless(res == NULL, "Failed to handle null key data");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 }
 END_TEST
 
@@ -522,6 +556,12 @@ START_TEST (table_set_test) {
   res = pr_table_set(tab, "foo", NULL, 1);
   fail_unless(res == -1, "Failed to handle null value (len 1)");
   fail_unless(errno == EINVAL, "Failed to handle null value (len 1)");
+
+  mark_point();
+  res = pr_table_set(tab, "foo", "bar", 1);
+  fail_unless(res < 0, "Failed to handle empty table");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
 
   res = pr_table_add(tab, "foo", "bar", 0);
   fail_unless(res == 0, "Failed to add 'foo' to table: %s", strerror(errno));
@@ -608,8 +648,24 @@ START_TEST (table_ctl_test) {
 
   tab = pr_table_alloc(p, 0);
  
+  mark_point();
+  res = pr_table_ctl(tab, PR_TABLE_CTL_SET_ENT_INSERT, NULL);
+  fail_unless(res == 0, "Failed to set entry insert callback: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_table_ctl(tab, PR_TABLE_CTL_SET_ENT_REMOVE, NULL);
+  fail_unless(res == 0, "Failed to set entry removal callback: %s",
+    strerror(errno));
+
   res = pr_table_add(tab, "foo", "bar", 0);
   fail_unless(res == 0, "Failed to add 'foo' to table: %s", strerror(errno));
+
+  mark_point();
+  res = pr_table_ctl(tab, PR_TABLE_CTL_SET_MAX_ENTS, 0);
+  fail_unless(res < 0, "Failed to handle SET_MAX_ENTS smaller than table");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
 
   res = pr_table_ctl(tab, 0, NULL);
   fail_unless(res == -1, "Failed to handle non-empty table");

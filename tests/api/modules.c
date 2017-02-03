@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -202,6 +202,9 @@ START_TEST (module_list_test) {
   listed = 0;
   modules_list2(module_listf, PR_MODULES_LIST_FL_SHOW_VERSION);
   fail_unless(listed > 0, "Expected >0, got %u", listed);
+
+  mark_point();
+  modules_list(PR_MODULES_LIST_FL_SHOW_STATIC);
 
   loaded_modules = NULL;
 }
