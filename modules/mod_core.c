@@ -348,10 +348,28 @@ MODRET set_define(cmd_rec *cmd) {
 
 /* usage: Include path|pattern */
 MODRET set_include(cmd_rec *cmd) {
-  int res, xerrno;
+  int allowed_ctxs, parent_ctx, res, xerrno;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_LIMIT|CONF_DIR);
+
+  /* If we are not currently in a .ftpaccess context, then we allow Include
+   * in a <Limit> section.  Otherwise, a .ftpaccess file could contain a
+   * <Limit>, and that <Limit> could include e.g. itself, leading to a loop.
+   */
+
+  allowed_ctxs = CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR;
+
+  parent_ctx = CONF_ROOT;
+  if (cmd->config != NULL &&
+      cmd->config->parent != NULL) {
+    parent_ctx = cmd->config->parent->config_type;
+  }
+
+  if (parent_ctx != CONF_DYNDIR) {
+    allowed_ctxs |= CONF_LIMIT;
+  }
+
+  CHECK_CONF(cmd, allowed_ctxs);
 
   /* Make sure the given path is a valid path. */
 

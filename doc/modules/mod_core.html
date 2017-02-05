@@ -1571,11 +1571,18 @@ accidentally leave temporary files in a directory that can cause
 <p>
 The <em>path</em> must be an absolute path.
 
+<p>
 Examples:
 <pre>
   Include /etc/proftpd/conf/tls.conf
   Include /etc/proftpd/conf/vhosts/*.conf
 </pre>
+
+<p>
+<b>Note</b> that an <code>Include</code> directive appearing inside of a
+<code>&lt;Limit&gt;</code> section which itself is in a <code>.ftpaccess</code>
+file will be ignored.  <code>Include</code> directives are not allowed
+in <code>.ftpaccess</code> files, even indirectly.
 
 <p>
 <hr>

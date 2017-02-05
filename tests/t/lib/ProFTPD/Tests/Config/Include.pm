@@ -856,11 +856,28 @@ sub include_limit {
     die("Can't open $include_config: $!");
   }
 
+  my $ftpaccess_file = File::Spec->rel2abs("$setup->{home_dir}/.ftpaccess");
+  if (open(my $fh, "> $ftpaccess_file")) {
+    print $fh <<EOC;
+<Limit LOGIN>
+  Include $include_config
+  DenyAll
+</Limit>
+EOC
+    unless (close($fh)) {
+      die("Can't write $ftpaccess_file: $!");
+    }
+
+  } else {
+    die("Can't open $ftpaccess_file: $!");
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
 
+    AllowOverride => 'on',
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     DefaultChdir => '~',
