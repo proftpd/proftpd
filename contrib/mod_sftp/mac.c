@@ -103,6 +103,7 @@ static unsigned int get_next_write_index(void) {
 static void switch_read_mac(void) {
   /* First we can clear the read MAC, kept from rekeying. */
   if (read_macs[read_mac_idx].key) {
+    clear_mac(&(read_macs[read_mac_idx]));
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     HMAC_CTX_reset(hmac_read_ctxs[read_mac_idx]);
 #elif OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -626,6 +627,11 @@ int sftp_mac_set_read_algo(const char *algo) {
     idx = get_next_read_index();
   }
 
+  if (umac_read_ctxs[idx] != NULL) {
+    umac_delete(umac_read_ctxs[idx]);
+    umac_read_ctxs[idx] = NULL;
+  }
+
   read_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len);
   if (read_macs[idx].digest == NULL) {
     return -1;
@@ -634,6 +640,7 @@ int sftp_mac_set_read_algo(const char *algo) {
   read_macs[idx].algo = algo;
   if (strncmp(read_macs[idx].algo, "umac-64@openssh.com", 12) == 0) {
     read_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_UMAC64;
+    umac_read_ctxs[idx] = umac_alloc();
 
   } else {
     read_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_HMAC;
@@ -730,6 +737,11 @@ int sftp_mac_set_write_algo(const char *algo) {
     idx = get_next_write_index();
   }
 
+  if (umac_write_ctxs[idx] != NULL) {
+    umac_delete(umac_write_ctxs[idx]);
+    umac_write_ctxs[idx] = NULL;
+  }
+
   write_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len);
   if (write_macs[idx].digest == NULL) {
     return -1;
@@ -738,6 +750,7 @@ int sftp_mac_set_write_algo(const char *algo) {
   write_macs[idx].algo = algo;
   if (strncmp(write_macs[idx].algo, "umac-64@openssh.com", 12) == 0) {
     write_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_UMAC64;
+    umac_write_ctxs[idx] = umac_alloc();
 
   } else {
     write_macs[idx].algo_type = SFTP_MAC_ALGO_TYPE_HMAC;
@@ -845,18 +858,6 @@ int sftp_mac_free(void) {
   HMAC_CTX_free(hmac_write_ctxs[0]);
   HMAC_CTX_free(hmac_write_ctxs[1]);
 #endif /* OpenSSL-1.1.0 and later */
-
-  umac_delete(umac_read_ctxs[0]);
-  umac_read_ctxs[0] = NULL;
-
-  umac_delete(umac_read_ctxs[1]);
-  umac_read_ctxs[1] = NULL;
-
-  umac_delete(umac_write_ctxs[0]);
-  umac_write_ctxs[0] = NULL;
-
-  umac_delete(umac_write_ctxs[1]);
-  umac_write_ctxs[1] = NULL;
 
   return 0;
 }
