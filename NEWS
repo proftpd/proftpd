@@ -8,6 +8,10 @@
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
+1.3.5e
+--------------------------------
+- Bug 4287 - SFTP clients using umac-64@openssh.com digest fail to connect.
+
 1.3.5d - Released 15-Jan-2017
 --------------------------------
 - Bug 4283 - All FTP logins treated as anonymous logins again.  This is a
