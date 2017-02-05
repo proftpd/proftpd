@@ -6689,6 +6689,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
             ssl_opts = SSL_get_options(ssl);
 
+#ifdef SSL_OP_NO_SSLv2
+            if (ssl_opts & SSL_OP_NO_SSLv2) {
+              proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
+                "SSLv2", NULL);
+            }
+#endif /* SSLv2 */
+
             if (ssl_opts & SSL_OP_NO_SSLv3) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "SSLv3", NULL);
@@ -6704,14 +6711,14 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "TLSv1.1", NULL);
             }
-#endif
+#endif /* TLSv1.1 */
 
 #ifdef SSL_OP_NO_TLSv1_2
             if (ssl_opts & SSL_OP_NO_TLSv1_2) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "TLSv1.2", NULL);
             }
-#endif
+#endif /* TLSv1.2 */
 
             tls_log("%s: perhaps client requested disabled TLS protocol "
               "version: %s", msg, proto_str);
