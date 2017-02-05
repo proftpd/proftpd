@@ -735,9 +735,11 @@ static const char *ocsp_get_responder_url(pool *p, X509 *cert) {
 
   strs = X509_get1_ocsp(cert);
   if (strs != NULL) {
+# if OPENSSL_VERSION_NUMBER >= 0x10000001L
     if (sk_OPENSSL_STRING_num(strs) > 0) {
       ocsp_url = pstrdup(p, sk_OPENSSL_STRING_value(strs, 0));
     }
+# endif /* OpenSSL-1.0.0 and later */
 
     /* Yes, this says "email", but it Does The Right Thing(tm) for our needs. */
     X509_email_free(strs);
@@ -3873,6 +3875,7 @@ static OCSP_RESPONSE *ocsp_send_request(pool *p, BIO *bio, const char *host,
     return NULL;
   }
 
+# if OPENSSL_VERSION_NUMBER >= 0x10000001L
   header_name = "Host";
   header_value = host;
   res = OCSP_REQ_CTX_add1_header(ctx, header_name, header_value);
@@ -3941,6 +3944,7 @@ static OCSP_RESPONSE *ocsp_send_request(pool *p, BIO *bio, const char *host,
     OCSP_REQ_CTX_free(ctx);
     return NULL;
   }
+# endif /* OpenSSL-1.0.0 and later */
 
   while (TRUE) {
     fd_set fds;
@@ -5078,11 +5082,15 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
       return -1;
     }
 
+# if OPENSSL_VERSION_NUMBER >= 0x10000001L
     if (HMAC_Init_ex(hmac_ctx, k->hmac_key, 32, md, NULL) != 1) {
       pr_trace_msg(trace_channel, 3,
         "unable to initialize session ticket key HMAC: %s", tls_get_errors());
       return -1;
     }
+# else
+    HMAC_Init_ex(hmac_ctx, k->hmac_key, 32, md, NULL);
+# endif /* OpenSSL-1.0.0 and later */
 
     memcpy(key_name, k->key_name, 16);
     return 0;
@@ -5109,11 +5117,15 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
     pr_trace_msg(trace_channel, 3,
       "TLS session ticket: decrypting ticket using key '%s'", key_name_str);
 
+# if OPENSSL_VERSION_NUMBER >= 0x10000001L
     if (HMAC_Init_ex(hmac_ctx, k->hmac_key, 32, md, NULL) != 1) {
       pr_trace_msg(trace_channel, 3,
         "unable to initialize session ticket key HMAC: %s", tls_get_errors());
       return 0;
     }
+# else
+    HMAC_Init_ex(hmac_ctx, k->hmac_key, 32, md, NULL);
+# endif /* OpenSSL-1.0.0 and later */
 
     if (EVP_DecryptInit_ex(cipher_ctx, cipher, NULL, k->cipher_key, iv) != 1) {
       pr_trace_msg(trace_channel, 3,
@@ -7461,6 +7473,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
             tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
           }
 #else
+          (void) ssl_errcode;
           tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
 #endif /* No SSL_R_SHUTDOWN_WHILE_IN_INIT */
 
@@ -7522,6 +7535,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
           tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
         }
 #else
+        (void) ssl_errcode;
         tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
 #endif /* No SSL_R_SHUTDOWN_WHILE_IN_INIT */
         break;
