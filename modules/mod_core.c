@@ -351,7 +351,7 @@ MODRET set_include(cmd_rec *cmd) {
   int res, xerrno;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_LIMIT|CONF_DIR);
 
   /* Make sure the given path is a valid path. */
 

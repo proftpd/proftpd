@@ -13,14 +13,25 @@ ChangeLog files.
 
   + New Modules:
 
-    mod_redis
+    mod_redis, mod_tls_redis
 
-    mod_tls_redis
 
   + Changed Modules:
 
     mod_ban
       Use BanCache redis for Redis-based caching
+
+
+  + Changed Configuration Directives
+
+    Include
+      The Include directive can now be used within a <Limit> section, e.g.:
+
+        <Limit LOGIN>
+          Include /path/to/allowed.txt
+          DenyAll
+        </Limit>
+
 
   + API Changes
 
