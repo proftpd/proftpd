@@ -743,7 +743,8 @@ int pr_inet_set_proto_nodelay(pool *p, conn_t *conn, int nodelay) {
     res = setsockopt(conn->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
       sizeof(nodelay));
     if (res < 0 &&
-        errno != EBADF) {
+        errno != EBADF &&
+        errno != EINVAL) {
       pr_log_pri(PR_LOG_NOTICE, "error setting write fd %d TCP_NODELAY %d: %s",
        conn->wfd, nodelay, strerror(errno));
     }

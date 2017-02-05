@@ -896,12 +896,12 @@ them:
   TLSRenegotiate required off
 </pre>
 
-<p><a name="TLSNoCertRequest">
+<p><a name="TLSEOF">
 <font color=red>Question</font>: My FTPS client has trouble connecting to <code>proftpd</code> using SSL/TLS, with the following error appearing in the <code>TLSLog</code>:
 <pre>
-  Sep 17 11:03:46 mod_tls/2.1.2[9628]: TLS/TLS-C requested, starting TLS handshake
-  Sep 17 11:03:46 mod_tls/2.1.2[9628]: unable to accept TLS connection: received EOF that violates protocol
-  Sep 17 11:03:46 mod_tls/2.1.2[9628]: TLS/TLS-C negotiation failed on control channel
+  mod_tls/2.1.2[9628]: TLS/TLS-C requested, starting TLS handshake
+  mod_tls/2.1.2[9628]: unable to accept TLS connection: received EOF that violates protocol
+  mod_tls/2.1.2[9628]: TLS/TLS-C negotiation failed on control channel
 </pre>
 Is this a bug in <code>mod_tls</code>, in the client, or something else?<br><br>
 <font color=blue>Answer</font>: There might be several different causes for
@@ -909,33 +909,13 @@ this error.  It could be a bug in the OpenSSL library, in <code>mod_tls</code>,
 in the FTPS client, or it could be a transient network issue.
 
 <p>
-Now, one possible thing to try is to use the following in your <code>proftpd.conf</code> file:
-<pre>
-  TLSOptions NoCertRequest
-</pre>
-This option tells the OpenSSL library to <b>not</b> include a message requesting
-the client's certificate in the SSL/TLS handshake messages.  Some older
-SSL implementations seem to have trouble with this certificate request message,
-and react badly.  This includes some Windows FTP clients, as well as some
-FTP clients for the Mac.
-
-<p>
-One user tried using both the <a href="http://www.panic.com/transmit/">Transmit</a> and the <a href="http://www.fetchsoftworks.com/">Fetch</a> applications for
-the Mac; both state that they can handle FTP over SSL/TLS.  Using both of
-these applications, the user saw the above error.  The user, when using
-Transmit, saw the following error message appear from the client:
-<pre>
-  Server said:
-  AUTH TLS successful
-  error:00000000:lib(0):func(0):reason(0)
-</pre>
-And when using Fetch, the error message displayed by that client was:
-<pre> 
-  SSL Error -9844
-  Server responded: "AUTH TLS successful"
-</pre>
-In <b>both</b> causes, using "TLSOptions NoCertRequest" appeared to make
-those clients happy.
+The <i>usual</i> culprit for the above error is an <em>FTP-aware</em> network
+device such as a NAT, router, or firewall between the client and the server.
+Such network devices "peek" into the FTP control connection in order to
+dynamically open the necessary ports for data transfers.  However, this
+"peeking" fails once an SSL/TLS handshake starts on that same control
+connection, and when that happens, these network devices usually terminate
+the control connection, resulting in the EOF ("end of file") error reported.
 
 <p><a name="TLSNoPassphrasePrompt">
 <font color=red>Question</font>: When <code>proftpd</code> starts up, I am
@@ -1251,7 +1231,7 @@ following errors in the TLSLog:
 </pre>
 What does this mean?<br>
 <font color=blue>Answer</font>: This error means that, somehow, you have
-configured a key for a certificate, but don't have the matching certificate
+configured a key for a certificate, but do not have the matching certificate
 configured.  For example, if you configured <code>mod_tls</code> like so:
 <pre>
   #TLSRSACertificateFile /usr/local/etc/proftpd/ssl/server.cert.pem
