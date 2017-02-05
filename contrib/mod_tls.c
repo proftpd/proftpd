@@ -1507,8 +1507,7 @@ static void tls_print_client_hello(int io_flag, int version, int content_type,
 
 static void tls_msg_cb(int io_flag, int version, int content_type,
     const void *buf, size_t buflen, SSL *ssl, void *arg) {
-  char *action_str = NULL;
-  char *version_str = NULL;
+  char *action_str = NULL, *version_str = NULL;
   char *bytes_str = buflen != 1 ? "bytes" : "byte";
 
   if (io_flag == 0) {
@@ -1706,11 +1705,17 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 
             case SSL3_MT_CLIENT_HELLO: {
-              tls_log("[msg] %s %s 'ClientHello' Handshake message (%u %s)",
-                action_str, version_str, (unsigned int) buflen, bytes_str);
+              const unsigned char *msg;
+              size_t msglen;
 
-              tls_print_client_hello(io_flag, version, content_type, buf + 4,
-                buflen - 4, ssl, arg);
+              msg = buf;
+              msglen = buflen;
+
+              tls_log("[msg] %s %s 'ClientHello' Handshake message (%u %s)",
+                action_str, version_str, (unsigned int) msglen, bytes_str);
+
+              tls_print_client_hello(io_flag, version, content_type, msg + 4,
+                msglen - 4, ssl, arg);
               break;
             }
 
@@ -7457,6 +7462,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
            * to unpack them to get the reason value.
            */
 
+#ifdef SSL_R_SHUTDOWN_WHILE_IN_INIT
           if (ERR_GET_REASON(ssl_errcode) != SSL_R_SHUTDOWN_WHILE_IN_INIT) {
             /* This SHUTDOWN_WHILE_IN_INIT can happen if the TLS handshake
              * failed before being completed.  As such, logging this shutdown
@@ -7464,6 +7470,9 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
              */
             tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
           }
+#else
+          tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
+#endif /* No SSL_R_SHUTDOWN_WHILE_IN_INIT */
 
           break;
         }
@@ -7514,6 +7523,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
          * to unpack them to get the reason value.
          */
 
+#ifdef SSL_R_SHUTDOWN_WHILE_IN_INIT
         if (ERR_GET_REASON(ssl_errcode) != SSL_R_SHUTDOWN_WHILE_IN_INIT) {
           /* This SHUTDOWN_WHILE_IN_INIT can happen if the TLS handshake
            * failed before being completed.  As such, logging this shutdown
@@ -7521,6 +7531,9 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
            */
           tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
         }
+#else
+        tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
+#endif /* No SSL_R_SHUTDOWN_WHILE_IN_INIT */
         break;
       }
 
