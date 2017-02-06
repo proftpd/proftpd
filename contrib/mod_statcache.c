@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_statcache -- a module implementing caching of stat(2),
  *                           fstat(2), and lstat(2) calls
- * Copyright (c) 2013-2016 TJ Saunders
+ * Copyright (c) 2013-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1845,8 +1845,8 @@ static int statcache_handle_statcache(pr_ctrls_t *ctrl, int reqargc,
   }
 
   /* Sanity check */
-  if (!reqargv) {
-    pr_ctrls_add_response(ctrl, "missing arguments");
+  if (reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "missing parameters");
     return -1;
   }
 

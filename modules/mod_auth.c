@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3882,8 +3882,10 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
      cmd->server->config_type : CONF_ROOT);
 
   /* this directive must have either 1 or 3 arguments */
-  if (cmd->argc-1 != 1 && cmd->argc-1 != 3)
-    CONF_ERROR(cmd, "missing arguments");
+  if (cmd->argc-1 != 1 &&
+      cmd->argc-1 != 3) {
+    CONF_ERROR(cmd, "missing parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 

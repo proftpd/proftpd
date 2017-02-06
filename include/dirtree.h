@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -158,10 +158,10 @@ extern int			ServerUseReverseDNS;
 				(x)->argv[0],": ",(s),NULL));
 
 #define CHECK_ARGS(x, n)	if ((n) > 0 && (x)->argc > 0 && (x)->argc-1 < (n)) \
-				CONF_ERROR(x,"missing arguments")
+				CONF_ERROR(x,"missing parameters")
 
 #define CHECK_VARARGS(x, n, m)	if ((x)->argc - 1 < n || (x)->argc - 1 > m) \
-				CONF_ERROR(x,"missing arguments")
+				CONF_ERROR(x,"missing parameters")
 
 #define CHECK_HASARGS(x, n)	((x)->argc - 1) == (n)
 
@@ -173,13 +173,13 @@ extern int			ServerUseReverseDNS;
 
 #define CHECK_CMD_ARGS(x, n)	\
   if ((x)->argc != (n)) { \
-    pr_response_add_err(R_501, _("Invalid number of arguments")); \
+    pr_response_add_err(R_501, _("Invalid number of parameters")); \
     return PR_ERROR((x)); \
   }
 
 #define CHECK_CMD_MIN_ARGS(x, n)	\
   if ((x)->argc < (n)) { \
-    pr_response_add_err(R_501, _("Invalid number of arguments")); \
+    pr_response_add_err(R_501, _("Invalid number of parameters")); \
     return PR_ERROR((x)); \
   }
 

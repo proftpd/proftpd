@@ -947,7 +947,7 @@ MODRET facts_mff(cmd_rec *cmd) {
   char *facts, *ptr;
 
   if (cmd->argc < 3) {
-    pr_response_add_err(R_501, _("Invalid number of arguments"));
+    pr_response_add_err(R_501, _("Invalid number of parameters"));
 
     pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;
@@ -1178,7 +1178,7 @@ MODRET facts_mfmt(cmd_rec *cmd) {
   int res;
 
   if (cmd->argc < 3) {
-    pr_response_add_err(R_501, _("Invalid number of arguments"));
+    pr_response_add_err(R_501, _("Invalid number of parameters"));
 
     pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;

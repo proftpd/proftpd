@@ -2039,8 +2039,8 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
   }
 
   /* Sanity check */
-  if (!reqargv) {
-    pr_ctrls_add_response(ctrl, "missing arguments");
+  if (reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "missing parameters");
     return -1;
   }
 
@@ -2114,7 +2114,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
   if (strcmp(reqargv[0], "user") == 0) {
 
     if (reqargc < 2) {
-      pr_ctrls_add_response(ctrl, "missing arguments");
+      pr_ctrls_add_response(ctrl, "missing parameters");
       return -1;
     }
 
@@ -2155,7 +2155,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
   } else if (strcmp(reqargv[0], "host") == 0) {
 
     if (reqargc < 2) {
-      pr_ctrls_add_response(ctrl, "missing arguments");
+      pr_ctrls_add_response(ctrl, "missing parameters");
       return -1;
     }
 
@@ -2204,7 +2204,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
   } else if (strcmp(reqargv[0], "class") == 0) {
 
     if (reqargc < 2) {
-      pr_ctrls_add_response(ctrl, "missing arguments");
+      pr_ctrls_add_response(ctrl, "missing parameters");
       return -1;
     }
 
@@ -2270,8 +2270,9 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
   }
 
   /* Sanity check */
-  if (reqargc < 2 || reqargv == NULL) {
-    pr_ctrls_add_response(ctrl, "missing arguments");
+  if (reqargc < 2 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "missing parameters");
     return -1;
   }
 

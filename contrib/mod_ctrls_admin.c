@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
- * Copyright (c) 2000-2016 TJ Saunders
+ * Copyright (c) 2000-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1030,7 +1030,7 @@ static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
 
   /* Be pedantic */
   if (reqargc > 1) {
-    pr_ctrls_add_response(ctrl, "bad number of arguments");
+    pr_ctrls_add_response(ctrl, "wrong number of parameters");
     return -1;
   }
 
@@ -1079,7 +1079,7 @@ static int ctrls_handle_scoreboard(pr_ctrls_t *ctrl, int reqargc,
   }
 
   if (reqargc != 1) {
-    pr_ctrls_add_response(ctrl, "bad number of arguments");
+    pr_ctrls_add_response(ctrl, "wrong number of parameters");
     return -1;
   }
 

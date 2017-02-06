@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_lang -- a module for handling the LANG command [RFC2640]
- * Copyright (c) 2006-2016 The ProFTPD Project
+ * Copyright (c) 2006-2017 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -521,7 +521,7 @@ MODRET lang_lang(cmd_rec *cmd) {
   }
 
   if (cmd->argc > 2) {
-    pr_response_add_err(R_501, _("Invalid number of arguments"));
+    pr_response_add_err(R_501, _("Invalid number of parameters"));
 
     pr_cmd_set_errno(cmd, EINVAL);
     errno = EINVAL;

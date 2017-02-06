@@ -557,7 +557,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
+      "%s : wrong number of parameters (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 
@@ -668,7 +668,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
+      "%s : wrong number of parameters (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 
@@ -767,7 +767,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
+      "%s : wrong number of parameters (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 
@@ -1229,7 +1229,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
-      "%s : wrong number of arguments (%d)", (char *) cmd->argv[0], cmd->argc);
+      "%s : wrong number of parameters (%d)", (char *) cmd->argv[0], cmd->argc);
     return PR_DECLINED(cmd);
   }
 
@@ -1253,7 +1253,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
     if (cmd->argc < 4) {
       /* Not enough arguments for any SITE UTIME variant. */
       pr_log_debug(DEBUG9, MOD_SITE_MISC_VERSION
-        ": SITE UTIME command has wrong number of paramters (%d), ignoring",
+        ": SITE UTIME command has wrong number of parameters (%d), ignoring",
         cmd->argc);
       return PR_DECLINED(cmd);
     }

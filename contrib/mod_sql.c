@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2016 TJ Saunders
+ * Copyright (c) 2004-2017 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -6279,7 +6279,7 @@ MODRET set_sqlnamedquery(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   if (cmd->argc < 4) {
-    CONF_ERROR(cmd, "requires at least 3 arguments");
+    CONF_ERROR(cmd, "requires at least 3 parameters");
   }
 
   name = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", cmd->argv[1], NULL);
@@ -6391,7 +6391,7 @@ MODRET set_sqlauthenticate(cmd_rec *cmd) {
 
   if (cmd->argc < 2 ||
       cmd->argc > 5) {
-    CONF_ERROR(cmd, "requires 1 to 4 arguments. Check the mod_sql docs");
+    CONF_ERROR(cmd, "requires 1 to 4 parameters; check the mod_sql docs");
   }
 
   groupset_flag = userset_flag = groups_flag = users_flag = FALSE;

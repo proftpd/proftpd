@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_digest - File hashing/checksumming module
  * Copyright (c) Mathias Berchtold <mb@smartftp.com>
- * Copyright (c) 2016 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2016-2017 TJ Saunders <tj@castaglia.org>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1726,7 +1726,7 @@ static modret_t *digest_xcmd(cmd_rec *cmd, unsigned long algo) {
    * the start, or...?).
    */
   if (cmd->argc == 3) {
-    pr_response_add_err(R_501, _("Invalid number of arguments"));
+    pr_response_add_err(R_501, _("Invalid number of parameters"));
     return PR_ERROR((cmd));
   }
 
