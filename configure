@@ -15606,7 +15606,7 @@ if test $ac_cv_c_compiler_gnu = no -a "$OSTYPE" = "-DHPUX10"; then
   CFLAGS="$CFLAGS -Ae"
 fi
 
-LDFLAGS="-L\$(top_srcdir)/lib $LDFLAGS"
+LDFLAGS="-L\$(top_srcdir)/lib -L\$(top_builddir)/lib $LDFLAGS"
 
 if test $ac_cv_c_compiler_gnu = yes; then
     LDFLAGS="$LDFLAGS -rdynamic"
@@ -16994,7 +16994,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       fi
     fi
@@ -20688,7 +20688,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wextra" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wextra... $ECHO_C" >&6; }
@@ -20701,7 +20701,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Werror=implicit-function-declaration" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Werror=implicit-function-declaration... $ECHO_C" >&6; }
@@ -20714,7 +20714,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Winit-self" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Winit-self... $ECHO_C" >&6; }
@@ -20727,7 +20727,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-missing-field-initializers" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-missing-field-initializers... $ECHO_C" >&6; }
@@ -20740,7 +20740,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-unused-parameter" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-unused-parameter... $ECHO_C" >&6; }
@@ -20753,7 +20753,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wnull-dereference" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wnull-dereference... $ECHO_C" >&6; }
@@ -20766,7 +20766,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wstrict-prototypes" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wstrict-prototypes... $ECHO_C" >&6; }
@@ -20779,7 +20779,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
       { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -fdelete-null-pointer-checks" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -fdelete-null-pointer-checks... $ECHO_C" >&6; }
@@ -20792,7 +20792,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
 
 
@@ -41567,7 +41567,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wdeclaration-after-statement" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wdeclaration-after-statement... $ECHO_C" >&6; }
@@ -41580,7 +41580,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wfloat-equal" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wfloat-equal... $ECHO_C" >&6; }
@@ -41593,7 +41593,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wformat" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wformat... $ECHO_C" >&6; }
@@ -41606,7 +41606,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wformat-security" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wformat-security... $ECHO_C" >&6; }
@@ -41619,7 +41619,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wimplicit-function-declaration" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wimplicit-function-declaration... $ECHO_C" >&6; }
@@ -41632,7 +41632,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wmaybe-uninitialized" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wmaybe-uninitialized... $ECHO_C" >&6; }
@@ -41645,7 +41645,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wmissing-braces" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wmissing-braces... $ECHO_C" >&6; }
@@ -41658,7 +41658,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wpointer-to-int-cast" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wpointer-to-int-cast... $ECHO_C" >&6; }
@@ -41671,7 +41671,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wstack-protector" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wstack-protector... $ECHO_C" >&6; }
@@ -41684,7 +41684,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wstrict-overflow" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wstrict-overflow... $ECHO_C" >&6; }
@@ -41697,7 +41697,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wswitch" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wswitch... $ECHO_C" >&6; }
@@ -41710,7 +41710,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wunreachable-code" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wunreachable-code... $ECHO_C" >&6; }
@@ -41723,7 +41723,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -fstack-protector" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -fstack-protector... $ECHO_C" >&6; }
@@ -41736,7 +41736,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
     { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -fstack-protector-all" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -fstack-protector-all... $ECHO_C" >&6; }
@@ -41749,7 +41749,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
   fi
 
@@ -41776,7 +41776,7 @@ echo "${ECHO_T}yes" >&6; }
      { echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6; }
    fi
-   rm -f conftest*
+   rm -fr conftest*
 
 fi
 
@@ -44466,14 +44466,15 @@ echo "$as_me: error: $ac_sub_configure failed for $ac_dir" >&2;}
 fi
 
 
+builddir=.
 for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
   srcinc=`echo "$moduledir" | sed -e 's/^.*\///'`.h;
 
-  if test -d $srcdir/$moduledir ; then
-    if test ! -e $srcdir/include/$srcinc ; then
-      if test -e $srcdir/$moduledir/$srcinc ; then
+  if test -d $builddir/$moduledir ; then
+    if test ! -e $builddir/include/$srcinc ; then
+      if test -e $builddir/$moduledir/$srcinc ; then
         olddir=`pwd`
-        cd $srcdir/include
+        cd $builddir/include
         ln -s ../$moduledir/$srcinc $srcinc
         cd $olddir
       fi

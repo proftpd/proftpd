@@ -87,7 +87,7 @@ if test $ac_cv_prog_gcc = no -a "$OSTYPE" = "-DHPUX10"; then
   CFLAGS="$CFLAGS -Ae"
 fi
 
-LDFLAGS="-L\$(top_srcdir)/lib $LDFLAGS"
+LDFLAGS="-L\$(top_srcdir)/lib -L\$(top_builddir)/lib $LDFLAGS"
 
 if test $ac_cv_prog_gcc = yes; then
   dnl Make sure to use the -rdynamic linker flag, for stacktraces
@@ -3884,14 +3884,15 @@ AC_OUTPUT(
 
 dnl After everything has been generated, we need to double-check for
 dnl header files in the module directories.
+builddir=.
 for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
   srcinc=`echo "$moduledir" | sed -e 's/^.*\///'`.h;
 
-  if test -d $srcdir/$moduledir ; then
-    if test ! -e $srcdir/include/$srcinc ; then
-      if test -e $srcdir/$moduledir/$srcinc ; then
+  if test -d $builddir/$moduledir ; then
+    if test ! -e $builddir/include/$srcinc ; then
+      if test -e $builddir/$moduledir/$srcinc ; then
         olddir=`pwd`
-        cd $srcdir/include
+        cd $builddir/include
         ln -s ../$moduledir/$srcinc $srcinc
         cd $olddir
       fi

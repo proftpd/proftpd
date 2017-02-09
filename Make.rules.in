@@ -46,7 +46,7 @@ RC_VERSION=@RC_VERSION@
 
 # Directory include paths.
 #
-INCLUDES=-I.. -I$(top_srcdir)/include @INCLUDES@
+INCLUDES=-I.. -I$(top_srcdir)/include -I$(top_builddir)/include @INCLUDES@
 
 # Preprocessor compilation flags.
 #
