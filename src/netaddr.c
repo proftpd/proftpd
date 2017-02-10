@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2016 The ProFTPD Project team
+ * Copyright (c) 2003-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2303,6 +2303,35 @@ pr_netaddr_t *pr_netaddr_v6tov4(pool *p, const pr_netaddr_t *na) {
   pr_netaddr_set_family(res, AF_INET);
   pr_netaddr_set_port(res, pr_netaddr_get_port(na));
   memcpy(&res->na_addr.v4.sin_addr, get_v4inaddr(na), sizeof(struct in_addr));
+
+  return res;
+}
+
+pr_netaddr_t *pr_netaddr_v4tov6(pool *p, const pr_netaddr_t *na) {
+  pr_netaddr_t *res;
+
+  if (p == NULL ||
+      na == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (pr_netaddr_get_family(na) != AF_INET) {
+    errno = EPERM;
+    return NULL;
+  }
+
+#ifdef PR_USE_IPV6
+  res = (pr_netaddr_t *) pr_netaddr_get_addr(p,
+    pstrcat(p, "::ffff:", pr_netaddr_get_ipstr(na), NULL), NULL);
+  if (res != NULL) {
+    pr_netaddr_set_port(res, pr_netaddr_get_port(na));
+  }
+
+#else
+  errno = EPERM;
+  res = NULL;
+#endif /* PR_USE_IPV6 */
 
   return res;
 }
