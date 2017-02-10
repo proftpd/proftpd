@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2016 The ProFTPD Project team
+ * Copyright (c) 2003-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -395,10 +395,15 @@ int pr_netaddr_is_v6(const char *);
 int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *);
 
 /* Given an IPv4-mapped IPv6 netaddr, returns an IPv4 netaddr allocated from
- * the given pool.  Returns -1 if the given netaddr is not an IPv4-mapped
+ * the given pool.  Returns NULL if the given netaddr is not an IPv4-mapped
  * IPv6 address.
  */
-pr_netaddr_t *pr_netaddr_v6tov4(pool *p, const pr_netaddr_t *);
+pr_netaddr_t *pr_netaddr_v6tov4(pool *p, const pr_netaddr_t *addr);
+
+/* Given an IPv4 netaddr, return an IPv4-mapped IPv6 netaddr allocated from
+ * the given pool.  Returns NULL if the given netaddr is not an IPv4 address.
+ */
+pr_netaddr_t *pr_netaddr_v4tov6(pool *p, const pr_netaddr_t *addr);
 
 /* Returns TRUE if IPv6 support is enabled, FALSE otherwise. */
 unsigned char pr_netaddr_use_ipv6(void);
