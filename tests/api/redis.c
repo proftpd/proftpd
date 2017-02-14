@@ -998,7 +998,9 @@ START_TEST (redis_hash_set_test) {
   fail_unless(val != NULL, "Failed to get value from hash");
   fail_unless(strcmp(val, "hashval") == 0, "Expected 'hashval', got '%s'", val);
 
-  (void) pr_redis_remove(redis, &m, key);
+  mark_point();
+  res = pr_redis_hash_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove hash: %s", strerror(errno));
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
@@ -2160,7 +2162,7 @@ START_TEST (redis_set_exists_test) {
   fail_unless(res == TRUE, "Failed to handle existing item");
 
   mark_point();
-  res = pr_redis_remove(redis, &m, key);
+  res = pr_redis_set_remove(redis, &m, key);
   fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
 
   mark_point();

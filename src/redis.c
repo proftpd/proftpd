@@ -458,20 +458,12 @@ int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
 
     count = pr_table_kexists(redis->namespace_tab, m, sizeof(module *));
     if (count <= 0) {
-      if (pr_table_kadd(redis->namespace_tab, m, sizeof(module *),
-          pstrndup(redis->pool, prefix, prefix_len), prefix_len) < 0) {
-        pr_trace_msg(trace_channel, 7,
-          "error adding namespace prefix '%s' for module 'mod_%s.c': %s",
-          prefix, m->name, strerror(errno));
-      }
+      (void) pr_table_kadd(redis->namespace_tab, m, sizeof(module *),
+        pstrndup(redis->pool, prefix, prefix_len), prefix_len);
 
     } else {
-      if (pr_table_kset(redis->namespace_tab, m, sizeof(module *),
-          pstrndup(redis->pool, prefix, prefix_len), prefix_len) < 0) {
-        pr_trace_msg(trace_channel, 7,
-          "error setting namespace prefix '%s' for module 'mod_%s.c': %s",
-          prefix, m->name, strerror(errno));
-      }
+      (void) pr_table_kset(redis->namespace_tab, m, sizeof(module *),
+        pstrndup(redis->pool, prefix, prefix_len), prefix_len);
     }
 
   } else {
