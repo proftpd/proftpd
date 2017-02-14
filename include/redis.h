@@ -41,12 +41,6 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *owner, unsigned long flags);
 int pr_redis_conn_close(pr_redis_t *redis);
 int pr_redis_conn_destroy(pr_redis_t *redis);
 
-/* Given an existing handle, quit that handle, and clone the internal
- * structures.  This is to be used by modules which need to get their own
- * process-specific handle, using a handle inherited from their parent process.
- */
-int pr_redis_conn_clone(pool *p, pr_redis_t *redis);
-
 /* Set a namespace key prefix, to be used by this connection for all of the
  * operations involving items.  In practice, the key prefix should always
  * be a string which does contain any space characters.

@@ -101,7 +101,7 @@ START_TEST (redis_conn_new_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 
   if (getenv("TRAVIS") == NULL) {
     /* Now deliberately set the wrong server and port. */
@@ -124,6 +124,46 @@ START_TEST (redis_conn_new_test) {
 
   /* Restore our testing server/port. */
   redis_set_server(redis_server, redis_port);
+}
+END_TEST
+
+START_TEST (redis_conn_get_test) {
+  int res;
+  pr_redis_t *redis, *redis2;
+
+  mark_point();
+  redis = pr_redis_conn_get(NULL);
+  fail_unless(redis == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_get(p);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+
+  mark_point();
+  redis = pr_redis_conn_get(p);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  redis2 = pr_redis_conn_get(p);
+  fail_unless(redis2 != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+  fail_unless(redis == redis2, "Expected %p, got %p", redis, redis2);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == FALSE, "Expected FALSE, got TRUE");
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -167,7 +207,7 @@ START_TEST (redis_conn_set_namespace_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -210,7 +250,7 @@ START_TEST (redis_remove_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -280,7 +320,7 @@ START_TEST (redis_add_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -326,7 +366,7 @@ START_TEST (redis_add_with_namespace_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -414,7 +454,7 @@ START_TEST (redis_get_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -493,7 +533,7 @@ START_TEST (redis_get_str_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -597,7 +637,7 @@ START_TEST (redis_incr_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -701,7 +741,7 @@ START_TEST (redis_decr_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -771,7 +811,7 @@ START_TEST (redis_set_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -814,7 +854,7 @@ START_TEST (redis_hash_remove_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -882,7 +922,7 @@ START_TEST (redis_hash_get_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -962,7 +1002,7 @@ START_TEST (redis_hash_set_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1037,7 +1077,7 @@ START_TEST (redis_hash_delete_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1104,7 +1144,7 @@ START_TEST (redis_hash_count_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1169,7 +1209,7 @@ START_TEST (redis_hash_exists_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1247,7 +1287,7 @@ START_TEST (redis_hash_incr_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1334,7 +1374,7 @@ START_TEST (redis_hash_keys_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1421,7 +1461,7 @@ START_TEST (redis_hash_values_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1509,7 +1549,7 @@ START_TEST (redis_hash_getall_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1587,7 +1627,7 @@ START_TEST (redis_hash_setall_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1630,7 +1670,7 @@ START_TEST (redis_list_remove_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1698,7 +1738,7 @@ START_TEST (redis_list_append_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1765,7 +1805,7 @@ START_TEST (redis_list_count_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1852,7 +1892,7 @@ START_TEST (redis_list_delete_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -1918,7 +1958,7 @@ START_TEST (redis_list_exists_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -2008,7 +2048,7 @@ START_TEST (redis_list_set_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -2051,7 +2091,7 @@ START_TEST (redis_set_remove_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -2125,7 +2165,7 @@ START_TEST (redis_set_exists_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -2197,7 +2237,7 @@ START_TEST (redis_set_add_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -2268,7 +2308,7 @@ START_TEST (redis_set_count_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -2353,7 +2393,7 @@ START_TEST (redis_set_delete_test) {
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
-  fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
 
@@ -2372,6 +2412,7 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_conn_destroy_test);
   tcase_add_test(testcase, redis_conn_close_test);
   tcase_add_test(testcase, redis_conn_new_test);
+  tcase_add_test(testcase, redis_conn_get_test);
   tcase_add_test(testcase, redis_conn_set_namespace_test);
 
   tcase_add_test(testcase, redis_remove_test);

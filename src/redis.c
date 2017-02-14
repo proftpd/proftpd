@@ -147,6 +147,11 @@ static int stat_server(pr_redis_t *redis) {
 }
 
 pr_redis_t *pr_redis_conn_get(pool *p) {
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (sess_redis != NULL) {
     sess_redis->refcount++;
     return sess_redis;
@@ -337,7 +342,12 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
   return redis;
 }
 
+/* Return TRUE if we actually closed the connection, FALSE if we simply
+ * decremented the refcount.
+ */
 int pr_redis_conn_close(pr_redis_t *redis) {
+  int closed = FALSE;
+
   if (redis == NULL) {
     errno = EINVAL;
     return -1;
@@ -368,31 +378,39 @@ int pr_redis_conn_close(pr_redis_t *redis) {
       (void) pr_table_free(redis->namespace_tab);
       redis->namespace_tab = NULL;
     }
+
+    closed = TRUE;
   }
 
-  return 0;
+  return closed;
 }
 
+/* Return TRUE if we actually closed the connection, FALSE if we simply
+ * decremented the refcount.
+ */
 int pr_redis_conn_destroy(pr_redis_t *redis) {
-  int res;
+  int closed, destroyed = FALSE;
 
   if (redis == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  res = pr_redis_conn_close(redis);
-  if (res < 0) {
+  closed = pr_redis_conn_close(redis);
+  if (closed < 0) {
     return -1;
   }
 
-  destroy_pool(redis->pool);
-  return 0;
-}
+  if (closed == TRUE) {
+    if (redis == sess_redis) {
+      sess_redis = NULL;
+    }
 
-int pr_redis_conn_clone(pool *p, pr_redis_t *redis) {
-  /* This is a no-op, for now. */
-  return 0;
+    destroy_pool(redis->pool);
+    destroyed = TRUE;
+  }
+
+  return destroyed;
 }
 
 static int modptr_cmp_cb(const void *k1, size_t ksz1, const void *k2,
@@ -3195,11 +3213,6 @@ int pr_redis_conn_close(pr_redis_t *redis) {
 }
 
 int pr_redis_conn_destroy(pr_redis_t *redis) {
-  errno = ENOSYS;
-  return -1;
-}
-
-int pr_redis_conn_clone(pool *p, pr_redis_t *redis) {
   errno = ENOSYS;
   return -1;
 }
