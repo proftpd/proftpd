@@ -103,7 +103,7 @@ START_TEST (redis_conn_new_test) {
   res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 
-  if (getenv("TRAVIS_CI") == NULL) {
+  if (getenv("TRAVIS") == NULL) {
     /* Now deliberately set the wrong server and port. */
     redis_set_server("127.1.2.3", redis_port);
 
