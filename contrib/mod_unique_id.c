@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_unique_id -- a module for generating a unique ID for each
  *                           FTP session.
- * Copyright (c) 2006-2016 TJ Saunders
+ * Copyright (c) 2006-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,11 +88,11 @@ static void uniqid_mod_unload_ev(const void *event_data, void *user_data) {
 static void uniqid_postparse_ev(const void *event_data, void *user_data) {
   pool *tmp_pool = make_sub_pool(main_server->pool);
   const char *host_name = NULL;
-  pr_netaddr_t *host_addr = NULL;
+  const pr_netaddr_t *host_addr = NULL;
   void *addr_data = NULL;
 
   host_name = pr_netaddr_get_localaddr_str(tmp_pool);
-  if (!host_name) {
+  if (host_name == NULL) {
     pr_log_pri(PR_LOG_WARNING, MOD_UNIQUE_ID_VERSION
       ": unable to determine hostname");
     destroy_pool(tmp_pool);
@@ -101,7 +101,7 @@ static void uniqid_postparse_ev(const void *event_data, void *user_data) {
   }
 
   host_addr = pr_netaddr_get_addr(tmp_pool, host_name, NULL);
-  if (!host_addr) {
+  if (host_addr == NULL) {
     pr_log_pri(PR_LOG_WARNING, MOD_UNIQUE_ID_VERSION
       ": unable to resolve '%s' to an IP address", host_name);
     destroy_pool(tmp_pool);
