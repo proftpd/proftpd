@@ -103,14 +103,16 @@ START_TEST (redis_conn_new_test) {
   res = pr_redis_conn_destroy(redis);
   fail_unless(res == 0, "Failed to close redis: %s", strerror(errno));
 
-  /* Now deliberately set the wrong server and port. */
-  redis_set_server("127.1.2.3", redis_port);
+  if (getenv("TRAVIS_CI") == NULL) {
+    /* Now deliberately set the wrong server and port. */
+    redis_set_server("127.1.2.3", redis_port);
 
-  mark_point();
-  redis = pr_redis_conn_new(p, NULL, 0);
-  fail_unless(redis == NULL, "Failed to handle invalid address");
-  fail_unless(errno == EIO, "Expected EIO (%d), got %s (%d)", EIO,
-    strerror(errno), errno);
+    mark_point();
+    redis = pr_redis_conn_new(p, NULL, 0);
+    fail_unless(redis == NULL, "Failed to handle invalid address");
+    fail_unless(errno == EIO, "Expected EIO (%d), got %s (%d)", EIO,
+      strerror(errno), errno);
+  }
 
   redis_set_server(redis_server, 1020);
 
