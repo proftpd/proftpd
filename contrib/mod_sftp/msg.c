@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -137,6 +137,7 @@ uint64_t sftp_msg_read_long(pool *p, unsigned char **buf, uint32_t *buflen) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to read long (buflen = %lu)",
       (unsigned long) *buflen);
+    pr_log_stacktrace(sftp_logfd, MOD_SFTP_VERSION);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
@@ -279,6 +280,7 @@ EC_POINT *sftp_msg_read_ecpoint(pool *p, unsigned char **buf, uint32_t *buflen,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: EC point length too long (%lu > max %lu)",
       (unsigned long) datalen, (unsigned long) MAX_ECPOINT_LEN);
+    pr_log_stacktrace(sftp_logfd, MOD_SFTP_VERSION);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
@@ -404,6 +406,7 @@ uint32_t sftp_msg_write_long(unsigned char **buf, uint32_t *buflen,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to write long (buflen = %lu)",
       (unsigned long) *buflen);
+    pr_log_stacktrace(sftp_logfd, MOD_SFTP_VERSION);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
