@@ -2524,22 +2524,22 @@ static int set_session_keys(struct sftp_kex *kex) {
   int comp_read_flags, comp_write_flags;
 
   if (sftp_cipher_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 
   if (sftp_cipher_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 
   if (sftp_mac_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 
   if (sftp_mac_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 

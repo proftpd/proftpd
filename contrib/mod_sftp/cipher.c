@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -375,7 +375,7 @@ int sftp_cipher_set_read_algo(const char *algo) {
 }
 
 int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen) {
+    const char *h, uint32_t hlen, int role) {
   const unsigned char *id = NULL;
   unsigned char *buf, *ptr;
   char letter;
@@ -402,8 +402,17 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   id_len = sftp_session_get_id(&id);
 
-  /* IV: HASH(K || H || "A" || session_id) */
-  letter = 'A';
+  /* The letters used depend on the role; see:
+   *  https://tools.ietf.org/html/rfc4253#section-7.2
+   *
+   * If we are the SERVER, then we use the letters for the "client to server"
+   * flows, since we are READING from the client.
+   */
+
+  /* client-to-server IV: HASH(K || H || "A" || session_id)
+   * server-to-client IV: HASH(K || H || "B" || session_id)
+   */
+  letter = (role == SFTP_ROLE_SERVER ? 'A' : 'B');
   if (set_cipher_iv(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter, id,
       id_len) < 0) {
     pr_memscrub(ptr, bufsz);
@@ -412,8 +421,10 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   key_len = (int) cipher->key_len;
 
-  /* Key: HASH(K || H || "C" || session_id) */
-  letter = 'C';
+  /* client-to-server key: HASH(K || H || "C" || session_id)
+   * server-to-client key: HASH(K || H || "D" || session_id)
+   */
+  letter = (role == SFTP_ROLE_SERVER ? 'C' : 'D');
   if (set_cipher_key(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter,
       id, id_len) < 0) {
     pr_memscrub(ptr, bufsz);
@@ -531,7 +542,7 @@ int sftp_cipher_set_write_algo(const char *algo) {
 }
 
 int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen) {
+    const char *h, uint32_t hlen, int role) {
   const unsigned char *id = NULL;
   unsigned char *buf, *ptr;
   char letter;
@@ -558,8 +569,17 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   id_len = sftp_session_get_id(&id);
 
-  /* IV: HASH(K || H || "B" || session_id) */
-  letter = 'B';
+  /* The letters used depend on the role; see:
+   *  https://tools.ietf.org/html/rfc4253#section-7.2
+   *
+   * If we are the SERVER, then we use the letters for the "server to client"
+   * flows, since we are WRITING to the client.
+   */
+
+  /* client-to-server IV: HASH(K || H || "A" || session_id)
+   * server-to-client IV: HASH(K || H || "B" || session_id)
+   */
+  letter = (role == SFTP_ROLE_SERVER ? 'B' : 'A');
   if (set_cipher_iv(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter, id,
       id_len) < 0) {
     pr_memscrub(ptr, bufsz);
@@ -568,8 +588,10 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   key_len = (int) cipher->key_len;
 
-  /* Key: HASH(K || H || "D" || session_id) */
-  letter = 'D';
+  /* client-to-server key: HASH(K || H || "C" || session_id)
+   * server-to-client key: HASH(K || H || "D" || session_id)
+   */
+  letter = (role == SFTP_ROLE_SERVER ? 'D' : 'C');
   if (set_cipher_key(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter,
       id, id_len) < 0) {
     pr_memscrub(ptr, bufsz);

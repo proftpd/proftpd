@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -128,6 +128,10 @@
 
 #define SFTP_SERVICE_DEFAULT \
 	(SFTP_SERVICE_FL_SFTP|SFTP_SERVICE_FL_SCP)
+
+/* mod_sftp roles */
+#define SFTP_ROLE_SERVER		1
+#define SFTP_ROLE_CLIENT		2
 
 /* Miscellaneous */
 extern int sftp_logfd;

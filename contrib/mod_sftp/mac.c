@@ -690,7 +690,7 @@ int sftp_mac_set_read_algo(const char *algo) {
 }
 
 int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen) {
+    const char *h, uint32_t hlen, int role) {
   const unsigned char *id = NULL;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, id_len;
@@ -714,8 +714,17 @@ int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   id_len = sftp_session_get_id(&id);
 
-  /* HASH(K || H || "E" || session_id) */
-  letter = 'E';
+  /* The letters used depend on the role; see:
+   *  https://tools.ietf.org/html/rfc4253#section-7.2
+   *
+   * If we are the SERVER, then we use the letters for the "client to server"
+   * flows, since we are READING from the client.
+   */
+
+  /* client-to-server HASH(K || H || "E" || session_id)
+   * server-to-client HASH(K || H || "F" || session_id)
+   */
+  letter = (role == SFTP_ROLE_SERVER ? 'E' : 'F');
   set_mac_key(mac, hash, ptr, (bufsz - buflen), h, hlen, &letter, id, id_len);
 
   if (init_mac(p, mac, hmac_ctx, umac_ctx) < 0) {
@@ -814,7 +823,7 @@ int sftp_mac_set_write_algo(const char *algo) {
 }
 
 int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen) {
+    const char *h, uint32_t hlen, int role) {
   const unsigned char *id = NULL;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, id_len;
@@ -837,8 +846,17 @@ int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   id_len = sftp_session_get_id(&id);
 
-  /* HASH(K || H || "F" || session_id) */
-  letter = 'F';
+  /* The letters used depend on the role; see:
+   *  https://tools.ietf.org/html/rfc4253#section-7.2
+   *
+   * If we are the SERVER, then we use the letters for the "server to client"
+   * flows, since we are WRITING to the client.
+   */
+
+  /* client-to-server HASH(K || H || "E" || session_id)
+   * server-to-client HASH(K || H || "F" || session_id)
+   */
+  letter = (role == SFTP_ROLE_SERVER ? 'F' : 'E');
   set_mac_key(mac, hash, ptr, (bufsz - buflen), h, hlen, &letter, id, id_len);
 
   if (init_mac(p, mac, hmac_ctx, umac_ctx) < 0) {
