@@ -461,6 +461,26 @@ All that said, in ProFTPD 1.3.3rc2, the <code>mod_tls</code> module was
 enhanced to support implicit FTPS via the <code>UseImplicitSSL</code>
 <a href="../contrib/mod_tls.html#TLSOption"><code>TLSOption</code></a>.
 
+<p><a name="TLSv1.2">
+<font color=red>Question</font>: How can I require that <b>only</b> TLSv1.2
+be allowed/used?<br>
+<font color=blue>Answer</font>: Assuming your OpenSSL library is new enough,
+you should only need to use the following in your <code>mod_tls</code>
+configuration section:
+<pre>
+  TLSProtocol TLSv1.2
+</pre>
+Note that if you have multiple <code>&lt;VirtualHost&gt;</code> sections in
+your <code>proftpd.conf</code> and you want this to apply to <em>all</em> of
+those vhosts, then you should place the <code>TLSProtocol</code> directive
+in a <code>&lt;Global&gt;</code> section, <i>e.g.</i>:
+<pre>
+  &lt;Global&gt;
+    # Only allow TLSv1.2 for any of our FTPS vhosts
+    TLSProtocol TLSv1.2
+  &lt;/Global&gt;
+</pre>
+
 <p><a name="TLSPerUser">
 <font color=red>Question</font>: Can I require TLS on a per-user basis?<br>
 <font color=blue>Answer</font>: Prior to ProFTPD 1.2.10rc2, no.  The IETF
