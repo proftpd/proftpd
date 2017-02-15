@@ -10,6 +10,7 @@ ChangeLog files.
 ---------
 
   + Support for using Redis for caching, logging.
+  + RPM .spec file naming changed to conform to Fedora guidelines.
 
   + New Modules:
 

@@ -52,7 +52,22 @@
 # so use --with rhel5 to inhibit those features when using --with everything
 
 %global proftpd_version			1.3.6rc5
+
+# rc_version should be incremented for each RC release, and reset back to 1
+# AFTER each stable release.
+%global rc_version			5
+
+# release_version should be incremented for each maint release, and reset back
+# to 1 BEFORE starting new release cycle.
 %global release_version			1
+
+%if %(echo %{proftpd_version} | grep rc >/dev/null 2>&1 && echo 1 || echo 0)
+%global rpm_version %(echo %{proftpd_version} | sed -e 's/rc.*//')
+%global rpm_release 0.%{rc_version}.%(echo %{proftpd_version} | sed -e 's/.*rc/rc/')
+%else
+%global rpm_version %{proftpd_version}
+%global rpm_release %{release_version}
+%endif
 
 %global usecvsversion             	0%{?_with_cvs:1}
 
@@ -159,8 +174,8 @@ Version:                %{proftpd_cvs_version_main}
 Release:                0.1.cvs%{proftpd_cvs_version_date}%{?dist}
 Source0:                ftp://ftp.proftpd.org/devel/source/proftpd-cvs-%{proftpd_cvs_version_date}.tar%{srcext}
 %else
-Version:                %{proftpd_version}
-Release:                %{release_version}%{?dist}
+Version:                %{rpm_version}
+Release:                %{rpm_release}%{?dist}
 Source0:                ftp://ftp.proftpd.org/distrib/source/proftpd-%{proftpd_version}.tar%{srcext}
 %endif
 BuildRoot:              %{_tmppath}/%{name}-%{version}-root
