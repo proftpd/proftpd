@@ -38,7 +38,12 @@
 
 #include <libpq-fe.h>
 #if defined(HAVE_POSTGRES_PQGETSSL) && defined(PR_USE_OPENSSL)
-#include <openssl/ssl.h>
+# include <openssl/ssl.h>
+
+/* Define if you have the LibreSSL library.  */
+# if defined(LIBRESSL_VERSION_NUMBER)
+#   define HAVE_LIBRESSL	1
+# endif
 #endif /* HAVE_POSTGRES_PQGETSSL and PR_USE_OPENSSL */
 
 /* For the pg_encoding_to_char() function, used for NLS support, we need
@@ -1662,6 +1667,14 @@ static void sql_postgres_ssl_init(void) {
     init_ssl = FALSE;
     init_crypto = FALSE;
   }
+
+# if defined(HAVE_LIBRESSL)
+  /* However, if we are using LibreSSL, then the above modules will NOT be
+   * properly initializing OpenSSL.  Thus Postgres should do such
+   * initializations itself.
+   */
+  init_ssl = init_crypto = TRUE;
+# endif
 
   pr_trace_msg(trace_channel, 18,
     "telling Postgres about OpenSSL initialization: ssl = %s, crypto = %s",

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -107,7 +107,8 @@ static void switch_read_mac(void) {
   /* First we can clear the read MAC, kept from rekeying. */
   if (read_macs[read_mac_idx].key) {
     clear_mac(&(read_macs[read_mac_idx]));
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     HMAC_CTX_reset(hmac_read_ctxs[read_mac_idx]);
 #elif OPENSSL_VERSION_NUMBER > 0x000907000L
     HMAC_CTX_cleanup(hmac_read_ctxs[read_mac_idx]);
@@ -137,7 +138,8 @@ static void switch_write_mac(void) {
   /* First we can clear the write MAC, kept from rekeying. */
   if (write_macs[write_mac_idx].key) {
     clear_mac(&(write_macs[write_mac_idx]));
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     HMAC_CTX_reset(hmac_write_ctxs[write_mac_idx]);
 #elif OPENSSL_VERSION_NUMBER > 0x000907000L
     HMAC_CTX_cleanup(hmac_write_ctxs[write_mac_idx]);
@@ -176,7 +178,8 @@ static void clear_mac(struct sftp_mac *mac) {
 
 static int init_mac(pool *p, struct sftp_mac *mac, HMAC_CTX *hmac_ctx,
     struct umac_ctx *umac_ctx) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   HMAC_CTX_reset(hmac_ctx);
 #elif OPENSSL_VERSION_NUMBER > 0x000907000L
   HMAC_CTX_init(hmac_ctx);
@@ -395,7 +398,8 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
 static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
     char *letter, const unsigned char *id, uint32_t id_len) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
@@ -418,7 +422,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     _exit(1);
   }
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   pctx = &ctx;
 #else
   pctx = EVP_MD_CTX_new();
@@ -434,7 +439,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
     free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return -1;
@@ -448,7 +454,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest with K: %s", sftp_crypto_get_errors());
     free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return -1;
@@ -462,7 +469,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest with H: %s", sftp_crypto_get_errors());
     free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return -1;
@@ -477,7 +485,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
       "error updating message digest with '%c': %s", *letter,
       sftp_crypto_get_errors());
     free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return -1;
@@ -491,7 +500,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest with ID: %s", sftp_crypto_get_errors());
     free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return -1;
@@ -506,7 +516,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
     pr_memscrub(key, key_sz);
     free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return -1;
@@ -530,7 +541,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
         "error initializing message digest: %s", sftp_crypto_get_errors());
       pr_memscrub(key, key_sz);
       free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
       EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
       return -1;
@@ -545,7 +557,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
         "error updating message digest with K: %s", sftp_crypto_get_errors());
       pr_memscrub(key, key_sz);
       free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
       EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
       return -1;
@@ -560,7 +573,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
         "error updating message digest with H: %s", sftp_crypto_get_errors());
       pr_memscrub(key, key_sz);
       free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
       EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
       return -1;
@@ -576,7 +590,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
         sftp_crypto_get_errors());
       pr_memscrub(key, key_sz);
       free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
       EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
       return -1;
@@ -591,7 +606,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
         "error finalizing message digest: %s", sftp_crypto_get_errors());
       pr_memscrub(key, key_sz);
       free(key);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
       EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
       return -1;
@@ -606,7 +622,8 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
   mac->key = key;
   mac->keysz = key_sz;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
 
@@ -892,7 +909,8 @@ int sftp_mac_write_data(struct ssh2_packet *pkt) {
   return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
 /* In older versions of OpenSSL, there was not a way to dynamically allocate
  * an HMAC_CTX object.  Thus we have these static objects for those
  * older versions.
@@ -902,7 +920,8 @@ static HMAC_CTX write_ctx1, write_ctx2;
 #endif /* prior to OpenSSL-1.1.0 */
 
 int sftp_mac_init(void) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   hmac_read_ctxs[0] = &read_ctx1;
   hmac_read_ctxs[1] = &read_ctx2;
   hmac_write_ctxs[0] = &write_ctx1;
@@ -923,7 +942,8 @@ int sftp_mac_init(void) {
 }
 
 int sftp_mac_free(void) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   HMAC_CTX_free(hmac_read_ctxs[0]);
   HMAC_CTX_free(hmac_read_ctxs[1]);
   HMAC_CTX_free(hmac_write_ctxs[0]);

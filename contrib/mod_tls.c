@@ -42,6 +42,11 @@
 # include "mod_ctrls.h"
 #endif
 
+/* Define if you have the LibreSSL library.  */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL	1
+#endif
+
 /* Note that the openssl/ssl.h header is already included in mod_tls.h, so
  * we don't need to include it here.
 */
@@ -99,7 +104,8 @@ static DH *get_dh(BIGNUM *p, BIGNUM *g) {
     return NULL;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   if (DH_set0_pqg(dh, p, NULL, g) != 1) {
     pr_trace_msg(trace_channel, 3, "error setting DH p/q parameters: %s",
       ERR_error_string(ERR_get_error(), NULL));
@@ -117,7 +123,8 @@ static DH *get_dh(BIGNUM *p, BIGNUM *g) {
 static X509 *read_cert(FILE *fh, SSL_CTX *ssl_ctx) {
   X509 *cert;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   cert = PEM_read_X509(fh, NULL, SSL_CTX_get_default_passwd_cb(ssl_ctx),
     SSL_CTX_get_default_passwd_cb_userdata(ssl_ctx));
 #else
@@ -828,7 +835,8 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
         break;
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
       case TLS_ST_OK:
 #else
       case SSL_ST_OK:
@@ -852,7 +860,8 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
     ssl_state = SSL_get_state(ssl);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     if (ssl_state == TLS_ST_SR_CLNT_HELLO) {
 #else
     if (ssl_state == SSL3_ST_SR_CLNT_HELLO_A ||
@@ -7821,7 +7830,8 @@ static int tls_dotlogin_allow(const char *user) {
 
     pr_signals_handle();
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     X509_get0_signature(&client_sig, NULL, client_cert);
     X509_get0_signature(&file_sig, NULL, file_cert);
 #else
@@ -7829,7 +7839,8 @@ static int tls_dotlogin_allow(const char *user) {
     file_sig = file_cert->signature;
 #endif /* OpenSSL-1.1.x and later */
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     if (!ASN1_STRING_cmp(client_sig, file_sig)) {
 #else
     if (!M_ASN1_BIT_STRING_cmp(client_sig, file_sig)) {
@@ -8468,7 +8479,8 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     X509_get0_signature(NULL, &algo, cert);
 #else
     algo = cert->cert_info->signature;
@@ -8854,9 +8866,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   X509_STORE_CTX_init(store_ctx, tls_crl_store, NULL, NULL);
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
-#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
+      !defined(HAVE_LIBRESSL)
   crls = X509_STORE_get1_crls(store_ctx, subject);
 #else
   /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
@@ -8952,9 +8966,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to check for revocation.
    */
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
-#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
+      !defined(HAVE_LIBRESSL)
   crls = X509_STORE_get1_crls(store_ctx, subject);
 #else
   /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
@@ -8974,7 +8990,8 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
         ASN1_INTEGER *sn;
 
         revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), j);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
         sn = X509_REVOKED_get0_serialNumber(revoked);
 #else
         sn = revoked->serialNumber;
@@ -9239,7 +9256,8 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return FALSE;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   store = X509_STORE_CTX_get0_store(ctx);
 #else
   store = ctx->ctx;
@@ -14380,7 +14398,8 @@ static int tls_sess_init(void) {
     set_next_protocol();
   }
 
-# if OPENSSL_VERSION_NUMBER >= 0x10002000L
+# if OPENSSL_VERSION_NUMBER >= 0x10002000L && \
+     !defined(HAVE_LIBRESSL)
   c = find_config(main_server->conf, CONF_PARAM, "TLSServerInfoFile", FALSE);
   if (c != NULL) {
     const char *path;

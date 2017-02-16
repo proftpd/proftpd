@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_auth_otp OpenSSL interface
- * Copyright (c) 2015-2016 TJ Saunders
+ * Copyright (c) 2015-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,7 +50,8 @@ void auth_otp_crypto_free(int flags) {
     ERR_free_strings();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
-# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
     ERR_remove_thread_state();
 # else
     /* The ERR_remove_state(0) usage is deprecated due to thread ID

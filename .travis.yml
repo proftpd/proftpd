@@ -52,6 +52,8 @@ install:
   - sudo apt-get install -y libwrap0-dev
   # for PCRE support
   - sudo apt-get install -y libpcre3-dev
+  # for zlib support
+  - sudo apt-get install -y zlib1g-dev
   # for static code analysis
   - sudo apt-get install -y cppcheck rats
   # for test code coverage
