@@ -11,6 +11,7 @@ ChangeLog files.
 
   + Support for using Redis for caching, logging.
   + Fixed mod_sql_postgres SSL support (Issue #415).
+  + Support building against LibreSSL instead of OpenSSL (Issue #361).
 
   + New Modules:
 
