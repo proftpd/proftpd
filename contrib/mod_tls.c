@@ -828,7 +828,7 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
         break;
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined LIBRESSL_VERSION_NUMBER
       case TLS_ST_OK:
 #else
       case SSL_ST_OK:
@@ -852,7 +852,7 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
     ssl_state = SSL_get_state(ssl);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined LIBRESSL_VERSION_NUMBER
     if (ssl_state == TLS_ST_SR_CLNT_HELLO) {
 #else
     if (ssl_state == SSL3_ST_SR_CLNT_HELLO_A ||
