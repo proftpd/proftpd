@@ -17,6 +17,8 @@ install:
   - sudo add-apt-repository -y ppa:chris-lea/libsodium
   - echo "deb http://ppa.launchpad.net/chris-lea/libsodium/ubuntu trusty main" | sudo tee -a /etc/apt/sources.list > /dev/null
   - echo "deb-src http://ppa.launchpad.net/chris-lea/libsodium/ubuntu trusty main" | sudo tee -a /etc/apt/sources.list > /dev/null
+  # Needed for libressl packages
+  - sudo add-apt-repository -y ppa:strukturag/libressl
   - sudo apt-get update -qq
   # for unit tests
   - sudo apt-get install -y check
@@ -42,8 +44,8 @@ install:
   - sudo apt-get install -y libpq-dev
   # for mod_sql_odbc
   - sudo apt-get install -y unixodbc-dev
-  # for OpenSSL support
-  - sudo apt-get install -y libssl-dev
+  # for LibreSSL support
+  - sudo apt-get install -y libressl-dev
   # for Sodium support
   - sudo apt-get install -y --force-yes libsodium-dev
   # for mod_sql_sqlite
