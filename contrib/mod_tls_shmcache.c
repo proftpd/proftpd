@@ -2,8 +2,7 @@
  * ProFTPD: mod_tls_shmcache -- a module which provides shared SSL session
  *                              and OCSP response caches using SysV shared
  *                              memory segments
- *
- * Copyright (c) 2009-2016 TJ Saunders
+ * Copyright (c) 2009-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +36,11 @@
 
 #ifdef HAVE_MLOCK
 # include <sys/mman.h>
+#endif
+
+/* Define if you have the LibreSSL library.  */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL	1
 #endif
 
 #define MOD_TLS_SHMCACHE_VERSION		"mod_tls_shmcache/0.2"
@@ -1582,7 +1586,8 @@ static int sess_cache_status(tls_sess_cache_t *cache,
 
         ssl_version = sess->ssl_version;
 #else
-# if OPENSSL_VERSION_NUMBER >= 0x10100006L
+# if OPENSSL_VERSION_NUMBER >= 0x10100006L && \
+     !defined(HAVE_LIBRESSL)
         ssl_version = SSL_SESSION_get_protocol_version(sess);
 # else
         ssl_version = 0;

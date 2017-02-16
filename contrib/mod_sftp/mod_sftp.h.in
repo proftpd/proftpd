@@ -91,6 +91,11 @@
 # include <openssl/ecdh.h>
 #endif /* PR_USE_OPENSSL_ECC */
 
+/* Define if you have the LibreSSL library.  */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL	1
+#endif
+
 #define SFTP_ID_PREFIX		"SSH-2.0-"
 
 /* Omit the version information in the default banner.  Sites wishing to use
