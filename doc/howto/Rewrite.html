@@ -154,7 +154,7 @@ The following <code>mod_rewrite</code> configuration should do the trick:
     # Use the replaceall internal RewriteMap
     RewriteMap replace int:replaceall
 
-    RewriteRule (.*) "${replace:!$1!\\\\!/}"'
+    RewriteRule (.*) "${replace:!$1!\\\\!/}"
   &lt;/IfModule&gt;
 </pre>
 Yes, you will need the four consecutive backslashes there, in order to make it
