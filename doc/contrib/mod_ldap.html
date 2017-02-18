@@ -312,12 +312,47 @@ overridden by <code>uidNumber</code> attributes.
 <p>
 <hr>
 <h3><a name="LDAPForceGeneratedHomedir">LDAPForceGeneratedHomedir</a></h3>
-<strong>Syntax:</strong> LDAPForceGeneratedHomedir <em>off|on directory-mode</em><br>
+<strong>Syntax:</strong> LDAPForceGeneratedHomedir <em>off|on</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code
 >&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ldap<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+When no <code>homeDirectory</code> attribute is found, the <code>mod_ldap</code>
+module can be configured to <em>generate</em> a home directory using the
+<a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a> directive.
+If there <i>is</i> a <code>homeDirectory</code> attribute present, however,
+the <code>mod_ldap</code> module will use that attribute value as the home
+directory.
+
+<p>
+However, there may be cases where the administrator wishes to <em>override</em>
+the <code>homeDirectory</code> attribute, and thus to <i>always</i> use the
+home directory value that <code>mod_ldap</code> would generate.  The
+<code>LDAPForceGeneratedHomedir</code> directive is used in such cases.
+
+<p>
+For example, assume that the user logging in is named "tj", and has an
+LDAP object whose <code>homeDirectory</code> attribute value is "/home/tj".
+To <em>force</em> the use of <code>mod_ldap</code>'s generated home directory
+instead of that <code>homeDirectory</code> value, the configuration might
+look like:
+<pre>
+  LDAPForceGeneratedHomedir on
+  LDAPGenerateHomedir on
+  LDAPGenerateHomedirPrefix /var/ftp
+</pre>
+Using the above configuration, the home directory that the
+<code>mod_ldap</code> module would use is <code>/var/ftp/tj</code>, despite
+what <code>homeDirectory</code> attribute may be in the LDAP directory.
+
+<p>
+<b>Note</b> that if <code>LDAPForceGeneratedHomedir</code> is enabled, then
+<code>LDAPGenerateHomedir</code> must <b>also</b> be enabled.  It is an error
+to enable <code>LDAPForceGeneratedHomedir</code> without also enabling
+<code>LDAPGenerateHomdir</code>.
 
 <p>
 See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <a href="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>, <a href="#LDAPGenerateHomedirPrefixNoUsername"><code>LDAPGenerateHomedirPrefixNoUsername</code></a>
@@ -332,6 +367,34 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
 <p>
+By default, the <code>mod_ldap</code> module uses the <code>homeDirectory</code>
+attribute to determine what home directory to use for the session.  Sometimes,
+however, an administrator will want to use a <i>different</i> home directory
+for these FTP/SFTP sessions, something other than the path in the
+<code>homeDirectory</code> attribute.  The <code>LDAPGenerateHomedir</code>
+directive is used for situations like this.
+
+<p>
+The <code>LDAPGenerateHomedir</code> directive configures the
+<code>mod_ldap</code> module to "generate" a new home directory value,
+<em>overriding</em> the value from the <code>homeDirectory</code> attribute.
+The generated home directory value <b>requires</b> that a starting point
+for the new home directory, a "prefix", also be provided using the
+<a href="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>
+directive.
+
+<p>
+The <code>LDAPGenerateHomedir</code> directives does <b>not</b> cause the
+new home directory to be <em>created on the filesystem</em>.  It only changes
+the home directory value that the <code>mod_ldap</code> module provides to
+the ProFTPD engine.  The <i>creation</i> of the home directory, if it does
+not already exist, is done using the
+<a href="../howto/CreateHome.html"><code>CreateHome</code></a> directive.
+
+<p>
+See also: <a href="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>, <a hef="#LDAPGenerateHomedirPrefixNoUsername"><code>LDAPGenerateHomedirPrefixNoUsername</code></a>
+
+<p>
 <hr>
 <h3><a name="LDAPGenerateHomedirPrefix">LDAPGenerateHomedirPrefix</a></h3>
 <strong>Syntax:</strong> LDAPGenerateHomedirPrefix <em>prefix</em><br>
@@ -341,6 +404,33 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
 <p>
+The <code>LDAPGenerateHomedirPrefix</code> directive is used when
+<code>LDAPGenerateHomedir</code> is enabled, causing the <code>mod_ldap</code>
+module to <em>generate</em> a <b>default</b> home directory, when the
+<code>homeDirectory</code> attribute value is not present.  The generated home
+directory value like this:
+<pre>
+  <i>prefix</i>/<i>username</i>
+</pre>
+The configured <em>prefix</em> string has the username (from the
+<code>uid</code> attribute) appended to generate the home directory value for
+the user.
+
+<p>
+For example:
+<pre>
+  LDAPGenerateHomedir on
+  LDAPGenerateHomedirPrefix /var/ftp
+</pre>
+Using the above configuration, and assuming a user name of "tj", the home
+directory that the <code>mod_ldap</code> module would use is
+<code>/var/ftp/tj</code>, no matter what the <code>homeDirectory</code>
+attribute may be in the LDAP directory.
+
+<p>
+See also: <a href="#LDAPForceGeneratedHomedir"><code>LDAPForceGeneratedHomedir</code></a>, <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <a hef="#LDAPGenerateHomedirPrefixNoUsername"><code>LDAPGenerateHomedirPrefixNoUsername</code></a>
+
+<p>
 <hr>
 <h3><a name="LDAPGenerateHomedirPrefixNoUsername">LDAPGenerateHomedirPrefixNoUsername</a></h3>
 <strong>Syntax:</strong> LDAPGenerateHomedirPrefixNoUsername <em>on|off</em><br>
@@ -348,6 +438,33 @@ See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ldap<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
+
+<p>
+When the <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>
+and <a href="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a> directives are used, the <em>generated</em> home directory value for
+the session is:
+<pre>
+  <i>prefix</i>/<i>username</i>
+</pre>
+However, there may be cases where the administrator does <b>not</b> want
+the username automatically appended to the generated value, and instead wishes
+to use <i>just</i> the prefix as the home directory.  For these use cases,
+use the <code>LDAPGenerateHomedirPrefixNoUsername</code> directive.
+
+<p>
+For example:
+<pre>
+  LDAPGenerateHomedir on
+  LDAPGenerateHomedirPrefix /var/ftp
+  LDAPGenerateHomedirPrefixNoUsername on
+</pre>
+Using the above configuration, and assuming a user name of "tj", the home
+directory that the <code>mod_ldap</code> module would use is
+<code>/var/ftp</code>, no matter what the <code>homeDirectory</code> attribute
+may be in the LDAP directory.
+
+<p>
+See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <a hef="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>
 
 <p>
 <hr>
@@ -602,10 +719,45 @@ your <code>proftpd.conf</code>:
 This trace logging can generate large files; it is intended for debugging use
 only, and should be removed from any production configuration.
 
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="LDAPGenerateHomedir">
+<font color=red>Question</font>: How do I use <code>LDAPGenerateHomedir</code>
+and <code>CreateHome</code> together successfully?  Can I use <i>just</i>
+<code>LDAPGenerateHomedir</code>?<br>
+<font color=blue>Answer</font>: If you want to have home directories for your
+LDAP users automatically <b>created</b>, you <b>do</b> need to use the
+<a href="../howto/CreateHome.html"><code>CreateHome</code></a> directive.
+Whether you <em>need</em> to use the <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a> directive is a different (but related) question.
+
+<p>
+The <code>LDAPGenerateHomedir</code> directive (and its relative <a href="#LDAPForceGeneratedHomedir"><code>LDAPForceGeneratedHomedir</code></a>) should be
+used <i>when you want to users to have a different home directory than is
+configured for them in LDAP</i>.  They are <b>not</b> used for creating these
+directories, just generating the paths to use.
+
+<p>
+Thus to <i>generate</i> a different home directory for your LDAP-defined users,
+<i>and</i> to have these different home directories <em>created</em>, you
+might use something like this:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    ...
+    LDAPGenerateHomedir on
+    LDAPGenerateHomedirPrefix /data
+    LDAPForceGeneratedHomedir on
+
+    # And make sure these home directories are created
+    CreateHome on 0770 skel /opt/ProFTPD/etc/skel
+    ...
+  &lt;/IfModule&gt;
+</pre>
+
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2013-2016 TJ Saunders<br>
+&copy; Copyright 2013-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

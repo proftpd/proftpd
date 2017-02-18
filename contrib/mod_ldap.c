@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013-2016 The ProFTPD Project
+ * Copyright (c) 2013-2017 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -627,13 +627,21 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
 
       if (strcasecmp(attrs[i], ldap_attr_homedirectory) == 0) {
         if (ldap_genhdir == FALSE ||
-            ldap_genhdir_prefix == FALSE ||
             ldap_genhdir_prefix == NULL) {
           dn = ldap_get_dn(ld, e);
 
-          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-            "no %s attribute for DN %s, LDAPGenerateHomedirPrefix not "
-            "configured", ldap_attr_homedirectory, dn);
+          if (ldap_genhdir == FALSE) {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "no %s attribute for DN %s, LDAPGenerateHomedir not enabled",
+              ldap_attr_homedirectory, dn);
+
+          } else {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "no %s attribute for DN %s, LDAPGenerateHomedir enabled but "
+              "LDAPGenerateHomedirPrefix not configured",
+              ldap_attr_homedirectory, dn);
+          }
+
           free(dn);
           return NULL;
         }
@@ -723,16 +731,29 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
     } else if (strcasecmp(attrs[i], ldap_attr_homedirectory) == 0) {
       if (ldap_forcegenhdir == TRUE) {
         if (ldap_genhdir == FALSE ||
-            ldap_genhdir_prefix == FALSE ||
             ldap_genhdir_prefix == NULL) {
-          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-            "LDAPForceGeneratedHomedir enabled, but LDAPGenerateHomedir "
-            "is not");
+
+          if (ldap_genhdir == FALSE) {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "LDAPForceGeneratedHomedir enabled but LDAPGenerateHomedir is "
+              "not enabled");
+
+          } else {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "LDAPForceGeneratedHomedir and LDAPGenerateHomedir enabled, but "
+              "missing required LDAPGenerateHomedirPrefix");
+          }
+
           return NULL;
         }
 
+        if (pw->pw_dir != NULL) {
+          pr_trace_msg(trace_channel, 8, "LDAPForceGeneratedHomedir in effect, "
+            "overriding current LDAP home directory '%s'", pw->pw_dir);
+        }
+
         if (ldap_genhdir_prefix_nouname == TRUE) {
-          pw->pw_dir = pstrcat(session.pool, ldap_genhdir_prefix, NULL);
+          pw->pw_dir = pstrdup(session.pool, ldap_genhdir_prefix);
 
         } else {
           LDAP_VALUE_T **canon_username;
@@ -755,6 +776,9 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
       } else {
         pw->pw_dir = pstrdup(session.pool, LDAP_VALUE(values, 0));
       }
+
+      pr_trace_msg(trace_channel, 8, "using LDAP home directory '%s'",
+        pw->pw_dir);
 
     } else if (strcasecmp(attrs[i], ldap_attr_loginshell) == 0) {
       pw->pw_shell = pstrdup(session.pool, LDAP_VALUE(values, 0));
@@ -2024,10 +2048,17 @@ MODRET set_ldapgenhdir(cmd_rec *cmd) {
 }
 
 MODRET set_ldapgenhdirprefix(cmd_rec *cmd) {
+  char *prefix;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  prefix = cmd->argv[1];
+  if (strlen(prefix) == 0) {
+    CONF_ERROR(cmd, "must not be an empty string");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, prefix);
   return PR_HANDLED(cmd);
 }
 
