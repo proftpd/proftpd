@@ -379,8 +379,10 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
     /* item might be NULL if no LDAPServer directive was specified
      * and we're using the SDK default.
      */
-    if (item) {
+    if (item != NULL) {
       if (ldap_is_ldap_url(item)) {
+        char *url_desc;
+
         if (ldap_url_parse(item, &url) != LDAP_URL_SUCCESS) {
           (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
             "URL %s was valid during server startup, but is no longer valid?!",
@@ -391,6 +393,13 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
             cur_server_index = 0;
           }
           continue;
+        }
+
+        url_desc = ldap_url_desc2str(url);
+        if (url_desc != NULL) {
+          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+            "parsed '%s' as '%s'", item, url_desc);
+          ldap_memfree(url_desc);
         }
 
 #ifdef HAS_LDAP_INITIALIZE
