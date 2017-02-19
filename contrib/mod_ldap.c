@@ -1831,7 +1831,7 @@ MODRET set_ldapsearchscope(cmd_rec *cmd) {
 
       elt = ((char **) ldap_servers->elts)[i];
       if (ldap_is_ldap_url(elt)) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "LDAPSearchScope cannot be used when LDAPServer specifies a URL (see '", elt, "'); specify a search scope in the LDAPServer URL instead", NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "cannot be used when LDAPServer specifies a URL (see '", elt, "'); specify a search scope in the LDAPServer URL instead", NULL));
       }
     }
   }
