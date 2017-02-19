@@ -1713,7 +1713,6 @@ MODRET set_ldapprotoversion(cmd_rec *cmd) {
 MODRET set_ldapserver(cmd_rec *cmd) {
   register unsigned int i;
   int len;
-  char *item;
   LDAPURLDesc *url;
   array_header *urls = NULL;
   config_rec *c;
@@ -1726,44 +1725,58 @@ MODRET set_ldapserver(cmd_rec *cmd) {
   c->argv[0] = urls;
 
   for (i = 1; i < cmd->argc; ++i) {
-    if (ldap_is_ldap_url(cmd->argv[i])) {
-      if (ldap_url_parse(cmd->argv[i], &url) != LDAP_URL_SUCCESS) {
-        CONF_ERROR(cmd, "LDAPServer: must be supplied with a valid LDAP URL");
+    char *item;
+
+    item = cmd->argv[i];
+
+    if (ldap_is_ldap_url(item)) {
+      char *url_desc;
+
+      if (ldap_url_parse(item, &url) != LDAP_URL_SUCCESS) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "must be supplied with a valid LDAP URL: ", item, NULL));
       }
 
-      if (find_config(main_server->conf, CONF_PARAM, "LDAPSearchScope", FALSE)) {
+      url_desc = ldap_url_desc2str(url);
+      if (url_desc != NULL) {
+        pr_log_debug(DEBUG0, "%s: parsed URL '%s' as '%s'",
+          (char *) cmd->argv[0], item, url_desc);
+        ldap_memfree(url_desc);
+      }
+
+      if (find_config(cmd->server->conf, CONF_PARAM, "LDAPSearchScope", FALSE)) {
         CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead");
       }
 
 #ifdef HAS_LDAP_INITIALIZE
-      if (strncasecmp(cmd->argv[i], "ldap:", strlen("ldap:")) != 0 &&
-          strncasecmp(cmd->argv[i], "ldaps:", strlen("ldaps:")) != 0) {
-
+      if (strncasecmp(item, "ldap:", 5) != 0 &&
+          strncasecmp(item, "ldaps:", 6) != 0) {
         CONF_ERROR(cmd, "Invalid scheme specified by LDAPServer URL: valid schemes are 'ldap' or 'ldaps'");
       }
 
 #else /* HAS_LDAP_INITIALIZE */
-      if (strncasecmp(cmd->argv[i], "ldap:", strlen("ldap:")) != 0) {
+      if (strncasecmp(item, "ldap:", 5) != 0) {
         CONF_ERROR(cmd, "Invalid scheme specified by LDAPServer URL: valid schemes are 'ldap'");
       }
 #endif /* HAS_LDAP_INITIALIZE */
 
-      if (url->lud_dn && strcmp(url->lud_dn, "") != 0) {
+      if (url->lud_dn != NULL &&
+          strcmp(url->lud_dn, "") != 0) {
         CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups");
       }
 
-      if (url->lud_filter && strcmp(url->lud_filter, "") != 0) {
+      if (url->lud_filter != NULL &&
+         strcmp(url->lud_filter, "") != 0) {
         CONF_ERROR(cmd, "A search filter may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups");
       }
 
       ldap_free_urldesc(url);
-      *((char **) push_array(urls)) = pstrdup(c->pool, cmd->argv[i]);
+      *((char **) push_array(urls)) = pstrdup(c->pool, item);
 
     } else {
-      /* Split non-URL arguments on whitespace and insert them as
-       * separate servers.
+      /* Split non-URL arguments on whitespace and insert them as separate
+       * servers.
        */
-      item = cmd->argv[i];
       while (*item) {
         len = strcspn(item, " \f\n\r\t\v");
         *((char **) push_array(urls)) = pstrndup(c->pool, item, len);
