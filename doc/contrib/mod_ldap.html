@@ -622,9 +622,17 @@ quotation marks.  For example:
 <pre>
   LDAPServer &quot;host1:port1 host2:port2&quot;
 </pre>
+or:
+<pre>
+  LDAPServer &quot;url1 url2&quot;
+</pre>
+Th default search scope for LDAP URLs is "base" (unless a scope is explicitly
+provided in the URL). This behavior differs from the
+<a href="#LDAPSearchScope"><code>LDAPSearchScope</code></a> directive, which
+defaults to "subtree".
 
 <p>
-<b>Note</b> that to use LDAPS (LDAP over SSL), use the <em>url</em> format,
+<b>Note</b> that to use LDAPS (LDAP over SSL), use the <em>URL</em> format,
 <i>e.g.</i>:
 <pre>
   LDAPServer ldaps://host1:port1 ldaps://host2:port2
