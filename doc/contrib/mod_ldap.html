@@ -128,7 +128,7 @@ The following LDAP attributes can be renamed in this manner:
 <hr>
 <h3><a name="LDAPAuthBinds">LDAPAuthBinds</a></h3>
 <strong>Syntax:</strong> LDAPAuthBinds <em>on|off</em><br>
-<strong>Default:</strong> None<br>
+<strong>Default:</strong> LDAPAuthBinds on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ldap<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
@@ -722,7 +722,7 @@ only, and should be removed from any production configuration.
 <p><a name="FAQ">
 <b>Frequently Asked Questions</b><br>
 
-<p><a name="LDAPGenerateHomedir">
+<p><a name="LDAPHomedir">
 <font color=red>Question</font>: How do I use <code>LDAPGenerateHomedir</code>
 and <code>CreateHome</code> together successfully?  Can I use <i>just</i>
 <code>LDAPGenerateHomedir</code>?<br>
@@ -753,6 +753,14 @@ might use something like this:
     ...
   &lt;/IfModule&gt;
 </pre>
+
+<p><a name="LDAPMultipleBinds">
+<font color=red>Question</font>: In my LDAP server logs, I see ProFTPD make
+<i>multiple</i> binds for the same client logging in; I was expecting just
+<i>one</i> bind.  Is this a bug, or is it expected behavior?<br>
+<font color=blue>Answer</font>: Yes, this <em>is</em> the expected behavior.
+See the <a href="#LDAPAuthBinds"><code>LDAPAuthBinds</code></a> directive
+for details.
 
 <p>
 <hr>
