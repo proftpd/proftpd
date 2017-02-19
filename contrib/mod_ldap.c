@@ -1814,23 +1814,48 @@ MODRET set_ldapbinddn(cmd_rec *cmd) {
 
 MODRET set_ldapsearchscope(cmd_rec *cmd) {
   config_rec *c;
+  const char *scope_name;
+  int search_scope;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE);
-  if (c != NULL &&
-      ldap_is_ldap_url(c->argv[0])) {
-    CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead");
+  if (c != NULL) {
+    register unsigned int i;
+    array_header *ldap_servers = NULL;
+
+    ldap_servers = c->argv[0];
+    for (i = 0; i < ldap_servers->nelts; i++) {
+      char *elt;
+
+      elt = ((char **) ldap_servers->elts)[i];
+      if (ldap_is_ldap_url(elt)) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "LDAPSearchScope cannot be used when LDAPServer specifies a URL (see '", elt, "'); specify a search scope in the LDAPServer URL instead", NULL));
+      }
+    }
   }
 
-    if (strcasecmp(cmd->argv[1], "base") != 0 &&
-        strcasecmp(cmd->argv[1], "onelevel") != 0 &&
-        strcasecmp(cmd->argv[1], "subtree") != 0) {
-      CONF_ERROR(cmd, "LDAPSearchScope: invalid search scope")
-    }
+  scope_name = cmd->argv[1];
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  if (strcasecmp(scope_name, "base") == 0) {
+    search_scope = LDAP_SCOPE_BASE;
+
+  } else if (strcasecmp(scope_name, "one") == 0 ||
+             strcasecmp(scope_name, "onelevel") == 0) {
+    search_scope = LDAP_SCOPE_ONELEVEL;
+
+  } else if (strcasecmp(scope_name, "subtree") == 0) {
+    search_scope = LDAP_SCOPE_SUBTREE;
+
+  } else {
+    CONF_ERROR(cmd, "search scope must be one of: base, onelevel, subtree");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = search_scope;
+
   return PR_HANDLED(cmd);
 }
 
@@ -2209,7 +2234,6 @@ static int ldap_mod_init(void) {
 }
 
 static int ldap_sess_init(void) {
-  char *scope;
   config_rec *c;
   void *ptr;
 
@@ -2286,17 +2310,9 @@ static int ldap_sess_init(void) {
     ldap_dnpass = pstrdup(ldap_pool, c->argv[1]);
   }
 
-  scope = get_param_ptr(main_server->conf, "LDAPSearchScope", FALSE);
-  if (scope != NULL) {
-    if (strcasecmp(scope, "base") == 0) {
-      ldap_search_scope = LDAP_SCOPE_BASE;
-
-    } else if (strcasecmp(scope, "onelevel") == 0) {
-      ldap_search_scope = LDAP_SCOPE_ONELEVEL;
-
-    } else if (strcasecmp(scope, "subtree") == 0) {
-      ldap_search_scope = LDAP_SCOPE_SUBTREE;
-    }
+  c = find_config(main_server->conf, CONF_PARAM, "LDAPSearchScope", FALSE);
+  if (c != NULL) {
+    ldap_search_scope = *((int *) c->argv[0]);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPQueryTimeout", FALSE);
