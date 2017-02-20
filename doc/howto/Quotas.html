@@ -289,7 +289,8 @@ are checked is dependent up on the order in which the groups are returned
 from the auth module providing them, <i>e.g.</i> <code>mod_sql</code>,
 <code>mod_ldap</code>, or perhaps <code>mod_auth_unix</code>.
 
-<p><a name="QuotasOverwrites" title="#QuotasOverwrites"></a><font color=red>Question</font>: Does <code>mod_quotatab</code> handle the case where a client might append to/overwrite an existing file, in terms of tracking bytes?<br>
+<p><a name="QuotasOverwrites" title="#QuotasOverwrites"></a>
+<font color=red>Question</font>: Does <code>mod_quotatab</code> handle the case where a client might append to/overwrite an existing file, in terms of tracking bytes?<br>
 <font color=blue>Answer</font>: Yes.  The <code>mod_quotatab</code> module
 checks the size of the file before the upload/append starts, and then checks
 the size of the file again after the upload/append completes.  The difference
@@ -310,6 +311,34 @@ in this case, on the transferred bytes, the <code>mod_quotatab</code> module
 ends up not changing any tally value for a delete.  More details on this
 can be found in
 <a href="http://bugs.proftpd.org/show_bug.cgi?id=2897">Bug#2897</a>.
+
+<p><a name="QuotasZeroLimits" title="#QuotasZeroLimits"></a>
+<font color=red>Question</font>: Why does the <code>ftpquota</code> tool
+treat limit values of zero as "unlimited"?
+<pre>
+  $ ftpquota --create-table --type=limit
+  $ ftpquota --add-record --type=limit --name=tj --quota-type=user <b>--files-download=0</b>
+  $ ftpquota --show-records --type=limit
+  -------------------------------------------
+    Name: tj
+    Quota Type: User
+    Per Session: False
+    Limit Type: Hard
+      Uploaded bytes: unlimited
+      Downloaded bytes: unlimited
+      Transferred bytes:  unlimited
+      Uploaded files: unlimited
+      <b>Downloaded files: unlimited</b>
+      Transferred files:  unlimited
+</pre>
+I want to use this to prevent a user from uploading/download files.<br>
+<p>
+<font color=blue>Answer</font>:  If you wish to prevent users from uploading
+or downloading, then you should use
+<a href="Limits.html"><code>&lt;Limit&gt;</code></a> sections in your
+ProFTPD configuration; that is what they are designed to do.  The
+<code>ftpquota</code> tool was <em>explicitly designed</em> to not allow
+being used to prevent uploads/downloads; it is for managing <em>quotas</em>.
 
 <p>
 <hr>
