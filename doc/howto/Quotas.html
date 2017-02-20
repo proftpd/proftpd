@@ -160,14 +160,8 @@ automatically update your tally table.
 
 <p><a name="QuotasDefaults" title="#QuotasDefaults"></a>
 <font color=red>Question</font>: How can I set a default quota for all of my users?<br>
-<font color=blue>Answer</font>: Unfortunately, there is no way currently
-to do this.  The <code>mod_quotatab</code> module was designed such that
-the administrator would have to explicitly create limits for every user.
-
-<p>
-However, a <code>mod_quotatab_default</code> module could be written to
-provide default quotas.  I simply do not know if this would be desirable
-enough to users for writing the module.
+<font color=blue>Answer</font>: For this, you can use the <a href="../contrib/mod_quotatab.html#QuotaDefault"><code>QuotaDefault</code></a> directive, which
+first appeared in ProFTPD 1.3.5rc1.
 
 <p><a name="QuotasTallyTable" title="#QuotasTallyTable"></a>
 <font color=red>Question</font>: What is a &quot;tally table&quot;?<br>
