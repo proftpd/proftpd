@@ -422,6 +422,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  sql_userowner_issue346 => {
+    order => ++$order,
+    test_class => [qw(forking rootprivs)],
+  },
+
 };
 
 sub new {
@@ -14794,6 +14799,162 @@ EOS
     test_msg("Expected '$expected', got '$port'"));
 
   unlink($log_file);
+}
+
+sub sql_userowner_issue346 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sqlite');
+
+  my $uid = 0;
+  my $gid = 0;
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT,
+  lastdir TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$setup->{user}', '$setup->{passwd}', $uid, $gid, '$setup->{home_dir}', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$setup->{group}', $gid, '$setup->{user}');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script);
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    RootLogin => 'on',
+    RootRevoke => 'off',
+
+    Directory => {
+      '/' => {
+        UserOwner => 'www',
+        GroupOwner => 'www',
+      },
+    },
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLAuthTypes => 'plaintext',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+        SQLMinUserUID => 0,
+        SQLMinUserGID => 0,
+        SQLMinID => 0,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.dat');
+      unless ($conn) {
+        die("STOR test.dat failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $text = "Hello, World!\n";
+      $conn->write($text, length($text), 10);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+
+      $self->assert(-f $test_file,
+        "File $test_file does not exist as expected");
+
+      my $file_uid = (stat($test_file))[4];
+      my $file_gid = (stat($test_file))[5];
+
+      $self->assert($file_uid != 0, "Expected UID non-0, got $file_uid");
+      $self->assert($file_gid != 0, "Expected GID non-0, got $file_gid");
+    };
+
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;
