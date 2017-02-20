@@ -1763,13 +1763,26 @@ has no effect when <code>proftpd</code> is configured with "ServerType inetd".
 Each <code>proftpd</code> child process represents a single client connection,
 and thus this directive also controls the maximum number of simultaneous
 connections allowed.  Additional connections beyond the configured limit are
-logged, and silently disconnected.  The <code>MaxInstances</code> directive
-can be used to prevent undesirable denial-of-service attacks (<i>e.g.</i>
-by repeatedly connecting to the FTP control port, a malicious client could try
-to cause <code>proftpd</code> to repeatedly fork new processes, creating a
-"fork-bomb").   By default, no limit is placed on the number of child
-processes that may run at one time; it is <b>highly recommended</b> that a
-maximum number, suitable to your sites traffic, be configured.
+logged, and <b>silently disconnected</b>; the clients will <b>not</b> receive an
+FTP response in this case, but instead will encounter connection-level errors
+such as "Connection reset by peer".  In order to provide a more user-facing
+error message, use the
+<a href="mod_auth.html#MaxClients"><code>MaxClients</code></a> directive,
+set to a value <em>lower</em> than <code>MaxInstances</code>, <i>e.g.</i>:
+<pre>
+  # Set MaxClients lower than MaxInstances, so that clients receive a nicer error message when they are rejected.
+  MaxClients 100
+  MaxInstances 101
+</pre>
+
+<p>
+The <code>MaxInstances</code> directive can be used to prevent undesirable
+denial-of-service attacks (<i>e.g.</i> by repeatedly connecting to the FTP
+control port, a malicious client could try to cause <code>proftpd</code> to
+repeatedly fork new processes, creating a "fork-bomb").  By default, no limit
+is placed on the number of child processes that may run at one time; it is
+<b>highly recommended</b> that a maximum number, suitable to your sites
+traffic, be configured.
 
 <p>
 <hr>
@@ -3294,8 +3307,11 @@ FileZilla expects, which can lead to the above "does not support non-ASCII
 characters" message.
 
 <p>
-The solution is to use "MultilineRFC2228 off" in your <code>proftpd.conf</code>
-(or simply remove that directive entirely).
+The solution is to use:
+<pre>
+  MultilineRFC2228 off
+</pre>
+in your <code>proftpd.conf</code> (or simply remove that directive entirely).
 
 <p>
 <hr>
