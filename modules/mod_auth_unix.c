@@ -1097,6 +1097,8 @@ static int get_groups_by_getgrset(const char *user, gid_t primary_gid,
   }
 
   for (i = 0; i < ngroups; i++) {
+    struct group *gr;
+
     gr = my_getgrgid(group_ids[i]);
     if (gr != NULL) {
       if (gids != NULL &&
