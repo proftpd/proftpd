@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_snmp</title>
@@ -85,7 +86,7 @@ contain colons as well, <i>e.g.</i>:
 </pre>
 
 <p>
-Multiple addresses can be supplied, allowing <code>mod_snmp<code> to listen
+Multiple addresses can be supplied, allowing <code>mod_snmp</code> to listen
 on multiple addresses/ports simultaneously:
 <pre>
   SNMPAgent master 1.2.3.4:1161 [a::f]:2262
@@ -334,13 +335,13 @@ use only, and should be removed from any production configuration.
 contains the ProFTPD versions where the OID is present.
 
 <p>
-<table border=1>
+<table border=1 summary="ProFTPD SNMP OIDs">
   <tr>
-    <td>&nbsp;<b>OID<b>&nbsp;</td>
-    <td>&nbsp;<b>Name<b>&nbsp;</td>
-    <td>&nbsp;<b>Type<b>&nbsp;</td>
-    <td>&nbsp;<b><code>ProFTPD</code><b>&nbsp;</td>
-    <td>&nbsp;<b>Description<b>&nbsp;</td>
+    <td>&nbsp;<b>OID</b>&nbsp;</td>
+    <td>&nbsp;<b>Name</b>&nbsp;</td>
+    <td>&nbsp;<b>Type</b>&nbsp;</td>
+    <td>&nbsp;<b><code>ProFTPD</code></b>&nbsp;</td>
+    <td>&nbsp;<b>Description</b>&nbsp;</td>
   </tr>
 
   <!-- daemon arc -->
@@ -1274,7 +1275,7 @@ according to need, demand, inclination, and time:
   <li>Controls support (<i>e.g.</i> for "ftpdctl snmp" action)
 </ul>
 
-<p><a name="Notifications">
+<p><a name="Notifications"></a>
 <b>Notifications</b><br>
 The <code>mod_snmp</code> module supports sending notifications (via SNMP
 <i>traps</i>) whenever certain events occur or conditions are met.  Note
@@ -1300,10 +1301,10 @@ that should be notified via the
 Agent process?<br>
 <font color=blue>Answer</font>: You can test if your <code>proftpd</code>
 supports SNMP with the <code>snmpwalk</code> program (<code>snmpwalk</code> is
-a part of the <a href="http://net-snmp.sourceforge.net">Net-SNMP</code></a>
-project). Note that you have to specify the SNMP port, which in
-<code>mod_snmp</code> is configured via the
-<a href="#SNMPAgent"><code>SNMPAgent</code></a> directive.
+a part of the
+<a href="http://net-snmp.sourceforge.net"><code>Net-SNMP</code></a> project).
+Note that you have to specify the SNMP port, which in <code>mod_snmp</code> is
+configured via the <a href="#SNMPAgent"><code>SNMPAgent</code></a> directive.
 
 <p>
 For example, you might try:
@@ -1343,7 +1344,7 @@ to get <i>just</i> a directory listing; the protocol only transfers files.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2011-2015 TJ Saunders<br>
+&copy; Copyright 2011-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

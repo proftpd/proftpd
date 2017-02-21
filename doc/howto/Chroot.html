@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD: Symlinks and chroot()</title>
@@ -288,7 +289,7 @@ used for the chroot.  It's always a good idea of have a "applies to everyone"
 <code>DefaultRoot</code> directive in your proftpd.conf, at the
 <i>end of the list</i> of <code>DefaultRoot</code>s, as a catch-all.
 
-<p><a name="Symlinks">
+<p><a name="SymlinksFAQ">
 <font color=red>Question</font>: Does <code>DefaultRoot</code> work properly if
 the path/home directory is a symlink?<br>
 <font color=blue>Answer</font>: Yes.
@@ -332,6 +333,14 @@ assume it is.  Maybe a different config file is being used than the one you
 edited, or maybe the <code>DefaultRoot</code> directive is not in a
 <code>&lt;Global&gt;</code> section and you are using
 <code>&lt;VirtualHost&gt;</code> sections, <i>etc</i>.
+
+<p>
+<hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
 
 </body>
 </html>

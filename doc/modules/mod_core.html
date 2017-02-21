@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_core</title>
@@ -66,7 +67,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#PassivePorts">PassivePorts</a>
   <li><a href="#PathAllowFilter">PathAllowFilter</a>
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
-  <li><a href="#PidFile>PidFile</a>
+  <li><a href="#PidFile">PidFile</a>
   <li><a href="#Port">Port</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
@@ -441,10 +442,11 @@ logged in user).  By default, ProFTPD <i>assumes</i> an anonymous login
 in which case anonymous logins are <b>not</b> allowed regardless of the
 presence of an <code>&lt;Anonymous&gt;</code> section.  To force anonymous
 logins to be bound to a user other than the current user, see the
-<a href="#User><code>User</code></a> and <a href="#Group"><code>Group</code></a>
-directives.  In addition, if a <code>User</code> or <code>Group</code>
-directive <i>is</i> present in an <code>&lt;Anonymous&gt;</code> section,
-ProFTPD permanently switches to that UID/GID before the <code>chroot(2)</code>.
+<a href="#User"><code>User</code></a> and
+<a href="#Group"><code>Group</code></a> directives.  In addition, if a
+<code>User</code> or <code>Group</code> directive <i>is</i> present in an
+<code>&lt;Anonymous&gt;</code> section, ProFTPD permanently switches to that
+UID/GID before the <code>chroot(2)</code>.
 
 <p>
 Normally, anonymous logins are <b>not</b> required to authenticate with a
@@ -688,11 +690,11 @@ Example:
   # Define ANONYMOUS (or comment this out), for anonymous login support
   Define ANONYMOUS
 
-  # If the label ANONYMOUS is defined, use this <Anonymous> section
+  # If the label ANONYMOUS is defined, use this &lt;Anonymous&gt; section
   &lt;IfDefine ANONYMOUS&gt;
     &lt;Anonymous ~ftp&gt;
       ...
-    &gt;/Anonymous&gt;
+    &lt;/Anonymous&gt;
   &lt;/IfDefine&gt;
 </pre>
 
@@ -1472,7 +1474,7 @@ multiple nested <code>&lt;IfDefine&gt;</code> sections, <i>e.g.</i>:
   &lt;IfDefine USE_TLS&gt;
     TLSEngine on
 
-    &lt;IfDefine !REQUIRE_TLS&t;
+    &lt;IfDefine !REQUIRE_TLS&gt;
       # Require TLS for authentication, but allow clients to downgrade back
       # to plain TCP after that.
       TLSRequired auth
@@ -1530,7 +1532,7 @@ multiple nested <code>&lt;IfModule&gt;</code> sections, <i>e.g.</i>:
       &lt;/IfModule&gt;
     &lt;/IfModule&gt;
 
-    &lt;IfModule mod_sql_passwd.c&gt
+    &lt;IfModule mod_sql_passwd.c&gt;
       # Try more different password hashes with mod_sql_passwd
       SQLAuthTypes ...
     &lt;/IfModule&gt;
@@ -2661,7 +2663,7 @@ recorded via the default Unix syslog logging. The following <em>levels</em>
 are available, in order of decreasing significance:
 
 <p>
-<table border=1>
+<table border=1 summary="Syslog Levels">
   <tr>
     <td><b>Level</b></td>
     <td><b>Description</b></td>
@@ -2771,7 +2773,7 @@ to <a href="http://en.wikipedia.org/wiki/Syn_flood">TCP syn floods</a>.
 Each operating system, then, has different ways of handling incoming and
 pending connections, to attempt to guard against such attacks.  For Linux
 systems, read the <code>tcp(7)</code> man page and specifically about
-<code>tcp_abort_on_overflow</code>, </code>tcp_max_syn_backlog</code>,
+<code>tcp_abort_on_overflow</code>, <code>tcp_max_syn_backlog</code>,
 and <code>tcp_syncookies</code>.  On FreeBSD, read the
 <code>syncookies(4)</code> man page.  And read
 <a href="http://www.sean.de/Solaris/soltune.html#backlog">here</a> for
@@ -3106,7 +3108,7 @@ possible after startup.
 On some Unix variants, ProFTPD will occasionally switch back to &quot;root&quot;
 in order to accomplish a task which requires superuser access.  Once that task
 is completed, root privileges are relinquished and the server returns to running
-as the specified UID/GID.  When applied to a <code>&lt;VirtualHost&lgt;</code>
+as the specified UID/GID.  When applied to a <code>&lt;VirtualHost&gt;</code>
 section, ProFTPD will run as the specified UID/GID on connections destined for
 the virtual server's address and port.  If either <code>User</code> or
 <code>Group</code> is applied to an <code>&lt;Anonymous&gt;</code> section,

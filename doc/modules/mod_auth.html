@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_auth</title>
@@ -454,7 +455,7 @@ will be displayed to the user when they initially login.  The <em>path</em>
 can be either relative or absolute.  For relative <em>paths</em>, the file is
 searched for in the initial directory in which a user is placed immediately
 after authentication, <i>e.g.</i> the home directory for normal users, or
-the <code&lt;Anonymous&gt;</code> directory for anonymous logins.  If the file
+the <code>&lt;Anonymous&gt;</code> directory for anonymous logins.  If the file
 cannot be found or accessed, no error occurs and nothing is displayed to the
 client.
 
@@ -500,7 +501,7 @@ will result in this FTP response, when the limit is reached:
 </pre>
 
 <p>
-See also: <a href="#MaxClientsPerClass">MaxClientsPerClass</code></a>,
+See also: <a href="#MaxClientsPerClass"><code>MaxClientsPerClass</code></a>,
 <a href="#MaxClientsPerHost"><code>MaxClientsPerHost</code></a>,
 <a href="#MaxClientsPerUser"><code>MaxClientsPerUser</code></a>,
 <a href="#MaxHostsPerUser"><code>MaxHostsPerUser</code></a>

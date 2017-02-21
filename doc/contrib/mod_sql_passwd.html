@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_sql_passwd</title>
@@ -107,7 +108,7 @@ cost values are:
     <p>
     For <code>scrypt</code>, depending on the version of <code>libsodium</code>
     used, this <em>cost</em> uses:
-</pre>
+<pre>
     N=1048576, r=8, p=1
 </pre>
   </li>
@@ -594,7 +595,7 @@ Let's look at each of the <code>SQLPasswordOptions</code> in turn:
     <code>HASH()</code> function on the salt data before using it.
     If no salt is used, this option is silently ignored.  Thus:
 <pre>
-  <i>data</i> = HASH(<i>salt</i>) + </i>password</i>
+  <i>data</i> = HASH(<i>salt</i>) + <i>password</i>
 </pre>
     which assuming hex and MD5, means:
 <pre>
@@ -691,7 +692,7 @@ values can be supported by the <code>mod_sql_passwd</code> module.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2009-2016 TJ Saunders<br>
+&copy; Copyright 2009-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

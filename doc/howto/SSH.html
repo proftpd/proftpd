@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD: Configuring FTP over SSH</title>
@@ -52,7 +53,7 @@ encrypted traffic to <i>host</i>'s <i>remote-addr</i> at port
 specific, the control channel, through which passwords are transmitted, will
 be encrypted; the data channel will not), it would look like:
 <pre>
-  $ ssh -f -L3000:ftpserver:21 ftpserver 'exec sleep 10' && ftp localhost 3000
+  $ ssh -f -L3000:ftpserver:21 ftpserver 'exec sleep 10' &amp;&amp; ftp localhost 3000
 </pre>
 Note that the choice of <i>local-port</i> is arbitrary.  Using port
 <code>3000</code> is not a requirement.  This trick also requires that
@@ -81,7 +82,7 @@ of quasi-shell (although, strictly speaking, there are better, more restrictive
 shells than this example, as it could be escaped from), one can ssh over any
 command:
 <pre>
-  $ ssh -l test -f -L3000:ftpserver:21 ftpserver true && ftp localhost 3000
+  $ ssh -l test -f -L3000:ftpserver:21 ftpserver true &amp;&amp; ftp localhost 3000
 </pre>
 You'll also need to use the
 <a href="../modules/mod_core.html#AllowForeignAddress"><code>AllowForeignAddress</code></a> configuration directive in your
@@ -109,5 +110,11 @@ email.<br>
 
 <p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

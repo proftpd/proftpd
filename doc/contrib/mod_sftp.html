@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_sftp</title>
@@ -1261,7 +1262,7 @@ of policies; the chances columns list the probability that
 <code>mod_sftp</code> will send an <code>SSH_MSG_IGNORE</code> message.
 
 <p>
-<table border=1>
+<table border=1 summary="SFTP Traffic Policies">
   <tr>
     <td><b>Policy Name</b></td>
     <td><b>Chances</b></td>
@@ -1706,7 +1707,7 @@ mode, it will refuse to advertise support for the following cipher algorithms:
   <li><code>cast128-cbc</code>
 </ul>
 and for the following digest algorithms:
-</ul>
+<ul>
   <li><code>hmac-md5</code>
   <li><code>hmac-md5-96</code>
   <li><code>hmac-ripemd160</code>
@@ -2369,7 +2370,7 @@ capability).
 <pre>
   WARNING: unable to read SFTPDHParamFile '<i>path</i>': Permission denied
   unable to open SFTPKeyBlacklist '<i>path</i>': Permission denied
-<pre>
+</pre>
 What can I do to fix this?<br>
 <font color=blue>Answer</font>: This indicates that the files are not
 readable (usually <i>world</i>-readable) by the users logging in,
@@ -2384,7 +2385,7 @@ cannot read either the <code>SFTPDHParamFile</code> or the
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2008-2016 TJ Saunders<br>
+&copy; Copyright 2008-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

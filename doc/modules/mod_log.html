@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_log</title>
@@ -86,7 +87,7 @@ level at which to log the data.  For example:
 <p>
 This table shows the supported command classes:
 <p>
-<table border=1>
+<table border=1 summary="Command Classes">
   <tr>
     <td><b>Command Class</b></td>
     <td><b>FTP Commands</b></td>
@@ -214,7 +215,7 @@ The following meta sequences/variables are available and are replaced as
 indicated when logging.
 
 <p>
-<table border=1>
+<table border=1 summary="LogFormat Variables">
   <tr>
     <td><b>Variable</b></td>
     <td><b>Value</b></td>
@@ -506,7 +507,8 @@ The <code>SystemLog</code> directive disables <code>proftpd</code>'s use of the
 specified <em>path</em>.  The <em>path</em> should contain an absolute path,
 and should not be to a file in a nonexistent directory, in a world-writable
 directory, or be a symbolic link (unless
-<a href="#AllowLogSymlinks">AllowLogSymlinks</code></a> is set to <em>on</em>).
+<a href="#AllowLogSymlinks"><code>AllowLogSymlinks</code></a> is set to
+<em>on</em>).
 
 <p>
 Use of this directive overrides any facility set by the
@@ -593,7 +595,7 @@ your log would have a line like:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2016<br>
+&copy; Copyright 2002-2017 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 

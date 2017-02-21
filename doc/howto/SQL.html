@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD: SQL and mod_sql</title>
@@ -83,7 +84,7 @@ be provided is described below.
 
 <p>
 <b>User Information Table</b><sub>1</sub>
-<table border=1>
+<table border=1 summary="User Information Table">
   <tr>
     <td><i>Column</i></td>
     <td><i>Type</i></td>
@@ -150,7 +151,7 @@ be provided is described below.
 
 <p>
 <i>Notes</i>:
-<ol type=number>
+<ol>
   <li>The user table <b>MUST</b> exist.
 
   <p>
@@ -168,7 +169,7 @@ be provided is described below.
 
 <p>
 <b>Group Information Table</b><sub>1</sub>
-<table border=1>
+<table border=1 summary="Group Information Table">
   <tr>
     <td><i>Column</i></td>
     <td><i>Type</i></td>
@@ -204,7 +205,7 @@ be provided is described below.
 
 <p>
 <i>Notes</i>:
-<ol type=number>
+<ol>
   <li><code>mod_sql</code> will normally concatenate all matching group rows;
     you can have multiple rows for each group with only one member per group,
     or have a single row with multiple groups, or a mixing of the two.  However,
@@ -909,5 +910,11 @@ compiled with SSL support.
 
 <p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

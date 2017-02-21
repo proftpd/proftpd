@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_dso</title>
@@ -435,8 +436,8 @@ a few such modules with this special handling:
 All of these modules would appear in the <code>`proftpd -l'</code> static
 module list.
 
-<p><a name="DSOLoadingStaticModule">
-<font color=red>Question</font>: If I use <code><a href="../utils/prxs.html">prxs</a></code> to compile a module like <code>mod_ldap</code>, which is already
+<p><a name="DSOLoadingStaticModule"></a>
+<font color=red>Question</font>: If I use <a href="../utils/prxs.html"><code>prxs</code></a> to compile a module like <code>mod_ldap</code>, which is already
 built into my <code>proftpd</code> as a static module, and then I use:
 <pre>
   LoadModule mod_ldap.c
@@ -464,7 +465,7 @@ Why?<br>
 ProFTPD for DSO/shared modules, ensures that the
 <a href="#ModulePath"><code>ModulePath</code></a> directory is secure.  DSO
 modules are code that are loaded directly into <code>proftpd</code>; loading
-these modules from a world-writable directory means that <b>any<b> system user
+these modules from a world-writable directory means that <b>any</b> system user
 could inject/replace any of those DSO modules with their own code, and get
 <code>proftpd</code> to do whatever they wanted.  Thus <code>mod_dso</code>
 will <b>refuse</b> to use a world-writable directory for loading of modules.
@@ -478,7 +479,7 @@ To fix this, you simply need to ensure that the <code>ModulePath</code> director
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2004-2015 TJ Saunders<br>
+&copy; Copyright 2004-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
