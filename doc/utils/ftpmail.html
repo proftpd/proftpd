@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ftpmail: Automated Email Notifications of Uploads</title>
@@ -65,7 +66,7 @@ starting <code>proftpd</code>.  For example, you might do:
        --recipient='tj@castaglia.org' \
        --smtp-server=mail.domain.com \
        --attach-file \
-       --log=/var/proftpd/log/transfer.log &
+       --log=/var/proftpd/log/transfer.log &amp;
 </pre>
 The key is to make <code>ftpmail</code> run in the background, so that it is
 constantly running.  If the <code>ftpmail</code> process dies, then
@@ -88,7 +89,7 @@ the <code>proftpd</code> daemon was started.
 
 <p>
 <b>Options</b><br>
-The following shows the full list of <code>ftpmail<code> options; this
+The following shows the full list of <code>ftpmail</code> options; this
 can also be obtained by running:
 <pre>
   # ftpmail --help

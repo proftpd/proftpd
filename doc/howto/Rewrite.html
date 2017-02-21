@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD: Using mod_rewrite</title>
@@ -355,7 +356,7 @@ handle non-ASCII characters well; it displays them as <code>?</code>.
 
 <p>
 Here's an example, using Perl, to replace "&auml;" with "ae" in uploaded file
-names.  Note that "&auml" in hex notation is <code>0xE4</code>:
+names.  Note that "&auml;" in hex notation is <code>0xE4</code>:
 <pre>
   my $rewrite_rule = 'RewriteRule (.*) ${replace:/$1/' . chr(0xE4) . '/ae}';
 
@@ -450,6 +451,13 @@ any other time than during January 2013, then the
 <code>mod_rewrite</code>-rewritten path will not match the name of the file
 on disk, and the download will fail.
 
+<p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

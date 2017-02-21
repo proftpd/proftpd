@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_redis</title>
@@ -198,12 +199,12 @@ This example shows the use of Redis logging for <em>all</em> commands:
   &lt;/IfModule&gt;
 </pre>
 
-<p><a name="Logging">
+<p><a name="Logging"></a>
 <b>Redis Logging</b><br>
 When using Redis logging, the following table shows how <code>mod_redis</code>
 converts a <code>LogFormat</code> variable into the key names in the JSON
 logging objects:
-<table border=1>
+<table border=1 summary="Redis LogFormat Variables">
   <tr>
     <td><b><code>LogFormat</code> Variable</b></td>
     <td><b>Key</b></td>
@@ -449,10 +450,10 @@ Another thing to notice is that the generated JSON object ignores the textual
 delimiters configured by the <code>LogFormat</code> directive; all that
 matters are the <code>LogFormat</code> variables which appear in the directive.
 
-<p><a name="FAQ">
+<p><a name="FAQ"></a>
 <b>Frequently Asked Questions</b><br>
 
-<p><a name="SQLLog">
+<p><a name="SQLLog"></a>
 <font color=red>Question</font>: How can I convert this SQL logging into the
 equivalent Redis logging?
 <pre>

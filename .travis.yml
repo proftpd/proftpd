@@ -59,6 +59,8 @@ install:
   # for test code coverage
   - sudo apt-get install -y lcov
   - gem install coveralls-lcov
+  # for HTML validation
+  - sudo apt-get install -y tidy
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR}
@@ -85,3 +87,5 @@ after_success:
   - lcov --list coverage.info
   # upload coverage info to coveralls
   - coveralls-lcov coverage.info
+  # Run some validation on the docs
+  - for f in `/bin/ls doc/contrib/*.html doc/howto/*.html doc/modules/*.html doc/utils/*.html`; do echo "Processing $f"; tidy -errors -omit -q $f; done

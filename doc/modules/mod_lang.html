@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_lang</title>
@@ -238,11 +239,11 @@ mandates that the Telnet control codes be supported in FTP implementations.
 
 <p>
 The <code>mod_lang</code> module, however, can be used to deal with this
-situation.  <b><i>If</i></b> the <a href="#UseEncoding">UseEncoding</code></a>
-directive is used to translate between local and client character sets,
-<i>and</i> the client character set is one of the known Cyrillic character
-sets, then <code>proftpd</code> will disable support of the Telnet control
-codes.
+situation.  <b><i>If</i></b> the
+<a href="#UseEncoding"><code>UseEncoding</code></a> directive is used to
+translate between local and client character sets, <i>and</i> the client
+character set is one of the known Cyrillic character sets, then
+<code>proftpd</code> will disable support of the Telnet control codes.
 
 <p>
 To make a long explanation short, if you want to use Cyrillic characters
@@ -336,11 +337,10 @@ Both of these conditions <b>must</b> be true, otherwise you will see the
 
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2006-2016 TJ Saunders<br>
+&copy; Copyright 2006-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
 <hr>
 </body>
 </html>
-

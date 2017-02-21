@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_ldap</title>
@@ -270,7 +271,7 @@ By default, the search filter template used is:
 </pre>
 The <em>uid</em> for the the search filter is taken from the
 <code>LDAPAttr</code> directive.  Search filter templates are only supported
-in versions of <code>mod_ldap</code> 2.7 and later.</para>
+in versions of <code>mod_ldap</code> 2.7 and later.
 
 <p>
 See also: <a href="#LDAPAttr"><code>LDAPAttr</code></a>
@@ -392,7 +393,7 @@ not already exist, is done using the
 <a href="../howto/CreateHome.html"><code>CreateHome</code></a> directive.
 
 <p>
-See also: <a href="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>, <a hef="#LDAPGenerateHomedirPrefixNoUsername"><code>LDAPGenerateHomedirPrefixNoUsername</code></a>
+See also: <a href="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>, <a href="#LDAPGenerateHomedirPrefixNoUsername"><code>LDAPGenerateHomedirPrefixNoUsername</code></a>
 
 <p>
 <hr>
@@ -428,7 +429,7 @@ directory that the <code>mod_ldap</code> module would use is
 attribute may be in the LDAP directory.
 
 <p>
-See also: <a href="#LDAPForceGeneratedHomedir"><code>LDAPForceGeneratedHomedir</code></a>, <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <a hef="#LDAPGenerateHomedirPrefixNoUsername"><code>LDAPGenerateHomedirPrefixNoUsername</code></a>
+See also: <a href="#LDAPForceGeneratedHomedir"><code>LDAPForceGeneratedHomedir</code></a>, <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <a href="#LDAPGenerateHomedirPrefixNoUsername"><code>LDAPGenerateHomedirPrefixNoUsername</code></a>
 
 <p>
 <hr>
@@ -464,7 +465,7 @@ directory that the <code>mod_ldap</code> module would use is
 may be in the LDAP directory.
 
 <p>
-See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <a hef="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>
+See also: <a href="#LDAPGenerateHomedir"><code>LDAPGenerateHomedir</code></a>, <a href="#LDAPGenerateHomedirPrefix"><code>LDAPGenerateHomedirPrefix</code></a>
 
 <p>
 <hr>
@@ -731,7 +732,7 @@ you (or not), please let us know:
     LDAPAuthBinds on
     LDAPBindDN "cn=SRV_ACC_SVN_AUTH,ou=special accounts,ou=Sales,dc=example,dc=org" ******************
 
-    LDAPUsers ou=Users,ou=Sales,dc=example,dc=org "(&(sAMAccountName=%u)(objectclass=user)(memberOf=cn=Linux Admins,ou=Groups,ou=Sales,dc=example,dc=com))"
+    LDAPUsers ou=Users,ou=Sales,dc=example,dc=org "(&amp;(sAMAccountName=%u)(objectclass=user)(memberOf=cn=Linux Admins,ou=Groups,ou=Sales,dc=example,dc=com))"
     LDAPSearchScope subtree
 
     # Assign default IDs
@@ -775,7 +776,7 @@ scope by default, rather than "subtree"?  I configured:
 </pre>
 but it is not working; I see the following in my LDAP server logs:
 <pre>
-  slapd[31709]: conn=20239 op=1 SRCH <b>base</b>="ou=people,dc=example,dc=com" scope=0 deref=0 filter="(&(uid=tj)(objectClass=posixAccount))"
+  slapd[31709]: conn=20239 op=1 SRCH <b>base</b>="ou=people,dc=example,dc=com" scope=0 deref=0 filter="(&amp;(uid=tj)(objectClass=posixAccount))"
 </pre>
 <font color=blue>Answer</font>: The use of the "base" scope for searches, in
 spite of any <code>LDAPSearchScope</code> directive, happens when a URL, rather
