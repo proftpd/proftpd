@@ -129,6 +129,7 @@ static const char *trace_channel = "auth.unix";
 #define AUTH_UNIX_OPT_NO_GETGROUPLIST		0x0002
 #define AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT	0x0004
 #define AUTH_UNIX_OPT_NO_INITGROUPS		0x0008
+#define AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE	0x0010
 
 static unsigned long auth_unix_opts = 0UL;
 
@@ -749,65 +750,97 @@ MODRET pw_auth(cmd_rec *cmd) {
 }
 
 MODRET pw_authz(cmd_rec *cmd) {
-
-#ifdef HAVE_LOGINRESTRICTIONS
-  int code = 0, mode = S_RLOGIN;
-  char *reason = NULL;
-#endif
-
   /* XXX Any other implementations here? */
 
-#ifdef HAVE_LOGINRESTRICTIONS
+#ifdef HAVE_AUTHENTICATE
+  if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE)) {
+    int res, xerrno, reenter;
+    char *user = NULL, *passwd = NULL, *msg = NULL;
 
-  if (auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_RLOGIN) {
-    mode = 0;
-  }
+    user = cmd->argv[0];
+    passwd = cmd->argv[1];
 
-  /* Check for account login restrictions and such using AIX-specific
-   * functions.
-   */
-  PRIVS_ROOT
-  if (loginrestrictions(cmd->argv[0], mode, NULL, &reason) != 0) {
+    PRIVS_ROOT
+    do {
+      res = authenticate(user, passwd, &reenter, &msg);
+      xerrno = errno;
+
+      pr_trace_msg(trace_channel, 9,
+        "AIX authenticate result: %d (msg '%.100s')", res, msg);
+
+    } while (reenter != 0);
     PRIVS_RELINQUISH
 
-    if (reason &&
-        *reason) {
-      pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
-        cmd->argv[0], reason);
+    /* AIX indicates failure with a return value of 1. */
+    if (res != 0) {
+      pr_log_auth(LOG_WARNING,
+       "AIX authenticate failed for user '%s': %.100s", user, msg);
+
+      if (xerrno == ENOENT) {
+        return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
+      }
+
+      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+    }
+  }
+#endif /* HAVE_AUTHENTICATE */
+
+#ifdef HAVE_LOGINRESTRICTIONS
+  if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_RLOGIN)) {
+    int res, xerrno, code = 0;
+    char *user = NULL, *reason = NULL;
+
+    user = cmd->argv[0];
+
+    /* Check for account login restrictions and such using AIX-specific
+     * functions.
+     */
+    PRIVS_ROOT
+    res = loginrestrictions(user, S_RLOGIN, NULL, &reason);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res != 0) {
+      if (reason != NULL &&
+          *reason) {
+        pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
+          user, reason);
+      }
+
+      pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
+        user, strerror(xerrno));
+
+      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
     }
 
-    pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
-      cmd->argv[0], strerror(errno));
+    PRIVS_ROOT
+    code = passwdexpired(user, &reason);
+    PRIVS_RELINQUISH
 
-    return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
-  }
+    switch (code) {
+      case 0:
+        /* Password not expired for user */
+        break;
 
-  code = passwdexpired(cmd->argv[0], &reason);
-  PRIVS_RELINQUISH
+      case 1:
+        /* Password expired and needs to be changed */
+        pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
+          cmd->argv[0], reason);
+        return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
-  switch (code) {
-    case 0:
-      /* Password not expired for user */
-      break;
+      case 2:
+        /* Password expired, requires sysadmin to change it */
+        pr_log_auth(LOG_WARNING,
+          "password expired for user '%s', requires sysadmin intervention: "
+          "%.100s", user, reason);
+        return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
-    case 1:
-      /* Password expired and needs to be changed */
-      pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
-        cmd->argv[0], reason);
-      return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
-
-    case 2:
-      /* Password expired, requires sysadmin to change it */
-      pr_log_auth(LOG_WARNING,
-        "password expired for user '%s', requires sysadmin intervention: "
-        "%.100s", cmd->argv[0], reason);
-      return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
-
-    default:
-      /* Other error */
-      pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
-        "%.100s", cmd->argv[0], reason);
-      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+      default:
+        /* Other error */
+        pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
+          "%.100s", user, reason);
+        return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+    }
   }
 #endif /* !HAVE_LOGINRESTRICTIONS */
 
@@ -1460,6 +1493,9 @@ MODRET set_authunixoptions(cmd_rec *cmd) {
 
     } else if (strcasecmp(cmd->argv[i], "MagicTokenChroot") == 0) {
       opts |= AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT;
+
+    } else if (strcasecmp(cmd->argv[i], "AIXNoAuthenticate") == 0) {
+      opts |= AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthUnixOption '",

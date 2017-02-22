@@ -258,6 +258,9 @@
 /* The number of bytes in a gid_t.  */
 #undef SIZEOF_GID_T
 
+/* Define if you have the authenticate function.  */
+#undef HAVE_AUTHENTICATE
+
 /* Define if you have the backtrace function.  */
 #undef HAVE_BACKTRACE
 
