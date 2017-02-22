@@ -661,7 +661,10 @@ connection.
 Normally, if the incoming connection is destined for an IP address which is
 neither the host's primary IP address nor one of the addresses specified in a
 <code>&lt;VirtualHost&gt;</code> configuration section, the "unknown"
-connection is issued a "no server available to service your request" response,
+connection receives the following response:
+<pre>
+  500 Sorry, no server available to handle request on <i>a.b.c.d</i>
+</pre>
 and is disconnected.  When <code>DefaultServer</code> is enabled for either
 the primary server configuration <i>or</i> a virtual server, these "unknown"
 connections are handled by that configuration.
@@ -2508,20 +2511,23 @@ On the other hand, if we use:
 then <code>proftpd</code> again creates two sockets.  However one is bound to
 10.0.0.1, port 21 (<i>i.e.</i> "10.0.0.1:21") and the other is bound to
 10.0.0.2, port 2001 (<i>i.e.</i> "10.0.0.2:2001").  Thus these sockets are
-<em>"tightly"</em> bound to the IP addresses.  This means that port 21 can be
+<em>tightly</em> bound to the IP addresses.  This means that port 21 can be
 reused on any address <i>other</i> than 10.0.0.1, and similarly for port 2001
 and 10.0.0.2.
 
 <p>
 One side effect of setting <code>SocketBindTight</code> to <em>on</em> is that
 connections to non-bound addresses will result in a "connection refused"
-message rather than the more common:
+message rather than the more common (<i>assuming</i> no <a href="#DefaultServer"><code>DefaultServer</code></a> directive):
 <pre>
   500 Sorry, no server available to handle request on <i>a.b.c.d.</i>
 </pre>
 due to the fact that no TCP listening socket has been bound to the particular
 address/port pair.  This may or may not be aesthetically desirable, depending
 on your circumstances.
+
+<p>
+See also: <a href="#DefaultServer"><code>DefaultServer</code></a>
 
 <p>
 <hr>
