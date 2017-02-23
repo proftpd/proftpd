@@ -754,11 +754,14 @@ MODRET pw_authz(cmd_rec *cmd) {
 
 #ifdef HAVE_AUTHENTICATE
   if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE)) {
-    int res, xerrno, reenter;
+    int res, xerrno, reenter = 0;
     char *user = NULL, *passwd = NULL, *msg = NULL;
 
     user = cmd->argv[0];
     passwd = cmd->argv[1];
+
+    pr_trace_msg(trace_channel, 9, "calling AIX authenticate() for user '%s'",
+      user);
 
     PRIVS_ROOT
     do {
