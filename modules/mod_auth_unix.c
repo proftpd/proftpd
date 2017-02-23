@@ -752,42 +752,6 @@ MODRET pw_auth(cmd_rec *cmd) {
 MODRET pw_authz(cmd_rec *cmd) {
   /* XXX Any other implementations here? */
 
-#ifdef HAVE_AUTHENTICATE
-  if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE)) {
-    int res, xerrno, reenter = 0;
-    char *user = NULL, *passwd = NULL, *msg = NULL;
-
-    user = cmd->argv[0];
-    passwd = cmd->argv[1];
-
-    pr_trace_msg(trace_channel, 9, "calling AIX authenticate() for user '%s'",
-      user);
-
-    PRIVS_ROOT
-    do {
-      res = authenticate(user, passwd, &reenter, &msg);
-      xerrno = errno;
-
-      pr_trace_msg(trace_channel, 9,
-        "AIX authenticate result: %d (msg '%.100s')", res, msg);
-
-    } while (reenter != 0);
-    PRIVS_RELINQUISH
-
-    /* AIX indicates failure with a return value of 1. */
-    if (res != 0) {
-      pr_log_auth(LOG_WARNING,
-       "AIX authenticate failed for user '%s': %.100s", user, msg);
-
-      if (xerrno == ENOENT) {
-        return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
-      }
-
-      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
-    }
-  }
-#endif /* HAVE_AUTHENTICATE */
-
 #ifdef HAVE_LOGINRESTRICTIONS
   if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_RLOGIN)) {
     int res, xerrno, code = 0;
@@ -972,6 +936,42 @@ MODRET pw_check(cmd_rec *cmd) {
 
   } else {
 # endif /* CYGWIN */
+
+#ifdef HAVE_AUTHENTICATE
+  if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE)) {
+    int res, xerrno, reenter = 0;
+    char *user, *passwd, *msg = NULL;
+
+    user = cmd->argv[1];
+    passwd = cmd->argv[2];
+
+    pr_trace_msg(trace_channel, 9, "calling AIX authenticate() for user '%s'",
+      user);
+
+    PRIVS_ROOT
+    do {
+      res = authenticate(user, passwd, &reenter, &msg);
+      xerrno = errno;
+
+      pr_trace_msg(trace_channel, 9,
+        "AIX authenticate result: %d (msg '%.100s')", res, msg);
+
+    } while (reenter != 0);
+    PRIVS_RELINQUISH
+
+    /* AIX indicates failure with a return value of 1. */
+    if (res != 0) {
+      pr_log_auth(LOG_WARNING,
+       "AIX authenticate failed for user '%s': %.100s", user, msg);
+
+      if (xerrno == ENOENT) {
+        return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
+      }
+
+      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+    }
+  }
+#endif /* HAVE_AUTHENTICATE */
 
   /* Call pw_authz here, to make sure the user is authorized to login. */
 
