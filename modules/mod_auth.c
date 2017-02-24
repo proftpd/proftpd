@@ -346,14 +346,15 @@ static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
 
 static void login_failed(pool *p, const char *user) {
 #ifdef HAVE_LOGINFAILED
-  char *host, *sess_ttyname;
+  const char *host, *sess_ttyname;
   int res, xerrno;
 
   host = pr_netaddr_get_dnsstr(session.c->remote_addr);
   sess_ttyname = pr_session_get_ttyname(p);
 
   PRIVS_ROOT
-  res = loginfailed((char *) user, host, sess_ttyname, AUDIT_FAIL);
+  res = loginfailed((char *) user, (char *) host, (char *) sess_ttyname,
+    AUDIT_FAIL);
   xerrno = errno;
   PRIVS_RELINQUISH
 
@@ -408,14 +409,15 @@ MODRET auth_log_pass(cmd_rec *cmd) {
 
 static void login_succeeded(pool *p, const char *user) {
 #ifdef HAVE_LOGINSUCCESS
-  char *host, *msg = NULL, *sess_ttyname;
+  const char *host, *sess_ttyname;
+  char *msg = NULL;
   int res, xerrno;
 
   host = pr_netaddr_get_dnsstr(session.c->remote_addr);
   sess_ttyname = pr_session_get_ttyname(p);
 
   PRIVS_ROOT
-  res = loginsuccess((char *) user, host, sess_ttyname, &msg);
+  res = loginsuccess((char *) user, (char *) host, (char *) sess_ttyname, &msg);
   xerrno = errno;
   PRIVS_RELINQUISH
 
