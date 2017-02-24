@@ -2387,7 +2387,7 @@ For example:
 <hr>
 <h3><a name="ServerName">ServerName</a></h3>
 <strong>Syntax:</strong> ServerName <em>"standalone"|"inetd"</em><br>
-<strong>Default:</strong> ServerName "ProFTPD Server <em>version</em>"
+<strong>Default:</strong> ServerName "ProFTPD"
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
@@ -2396,7 +2396,7 @@ For example:
 The <code>ServerName</code> directive configures the text that will be
 displayed to a client connecting to the server.  This text will be displayed
 to the client <i>e.g.</i> as part of the response for a <code>HELP</code>
-command.
+or <code>STAT</code> command.
 
 <p>
 <hr>
