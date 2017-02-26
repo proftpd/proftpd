@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2016 The ProFTPD Project team
+ * Copyright (c) 2004-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,12 +62,8 @@ static int is_errno_eperm(int xerrno) {
   return 0;
 }
 
-/* Copied directory from src/fsio.c, since these functions are not
- * accessible outside of that file.
- */
-static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
+static int facl_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
     gid_t gid, array_header *suppl_gids) {
-  mode_t mask;
   struct stat st;
 
   pr_fs_clear_cache2(path);
@@ -75,74 +71,12 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
     return -1;
   }
 
-  /* Root always succeeds. */
-  if (uid == PR_ROOT_UID) {
-    return 0;
-  }
-
-  /* Initialize mask to reflect the permission bits that are applicable for
-   * the given user. mask contains the user-bits if the user ID equals the
-   * ID of the file owner. mask contains the group bits if the group ID
-   * belongs to the group of the file. mask will always contain the other
-   * bits of the permission bits.
-   */
-  mask = S_IROTH|S_IWOTH|S_IXOTH;
-
-  if (st.st_uid == uid) {
-    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
-  }
-
-  /* Check the current group, as well as all supplementary groups.
-   * Fortunately, we have this information cached, so accessing it is
-   * almost free.
-   */
-  if (st.st_gid == gid) {
-    mask |= S_IRGRP|S_IWGRP|S_IXGRP;
-
-  } else {
-    if (suppl_gids) {
-      register unsigned int i = 0;
-
-      for (i = 0; i < suppl_gids->nelts; i++) {
-        if (st.st_gid == ((gid_t *) suppl_gids->elts)[i]) {
-          mask |= S_IRGRP|S_IWGRP|S_IXGRP;
-          break;
-        }
-      }
-    }
-  }
-
-  mask &= st.st_mode;
-
-  /* Perform requested access checks. */
-  if (mode & R_OK) {
-    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & W_OK) {
-    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & X_OK) {
-    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  /* F_OK already checked by checking the return value of stat. */
-  return 0;
+  return pr_fs_have_access(&st, mode, uid, gid, suppl_gids);
 }
 
-static int sys_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
+static int facl_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
     array_header *suppl_gids) {
-  return sys_access(fh->fh_fs, fh->fh_path, mode, uid, gid, suppl_gids);
+  return facl_access(fh->fh_fs, fh->fh_path, mode, uid, gid, suppl_gids);
 }
 
 #if defined(HAVE_BSD_POSIX_ACL) || \
@@ -1065,12 +999,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
-      /* Fall back to the custom access() function defined in src/fsio.
-       * Since that sys_access() function there is not public, we have
-       * to duplicate the code.  For now, that is, until a more clean
-       * arrangement can be found.
-       */
-      if (sys_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
+      if (facl_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
         xerrno = errno;
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
@@ -1100,7 +1029,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
-      if (sys_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
+      if (facl_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
         xerrno = errno;
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
@@ -1141,7 +1070,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
-      if (sys_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
+      if (facl_access(fs, path, mode, uid, gid, suppl_gids) < 0) {
         xerrno = errno;
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
@@ -1205,12 +1134,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
-      /* Fall back to the custom faccess() function defined in src/fsio.
-       * Since that sys_faccess() function there is not public, we have
-       * to duplicate the code.  For now, that is, until a more clean
-       * arrangement can be found.
-       */
-      if (sys_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
+      if (facl_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
         xerrno = errno;
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
@@ -1240,7 +1164,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
-      if (sys_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
+      if (facl_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
         xerrno = errno;
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
@@ -1278,7 +1202,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
-      if (sys_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
+      if (facl_faccess(fh, mode, uid, gid, suppl_gids) < 0) {
         xerrno = errno;
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
