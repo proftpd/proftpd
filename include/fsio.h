@@ -431,6 +431,10 @@ int pr_fs_getsize2(char *, off_t *);
  */
 int pr_fs_fgetsize(int, off_t *);
 
+/* Perform access(2)-like checks on the given struct stat. */
+int pr_fs_have_access(struct stat *st, int mode, uid_t uid, gid_t gid,
+  array_header *suppl_gids);
+
 /* Returns TRUE if the given path is on an NFS-mounted filesystem, FALSE
  * if not on an NFS-mounted filesystem, and -1 if there was an error
  * determining which (with errno set appropriately).

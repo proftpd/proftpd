@@ -3795,6 +3795,190 @@ START_TEST (fs_fadvise_test) {
 }
 END_TEST
 
+START_TEST (fs_have_access_test) {
+  int res;
+  struct stat st;
+  uid_t uid;
+  gid_t gid;
+  array_header *suppl_gids;
+
+  mark_point();
+  res = pr_fs_have_access(NULL, R_OK, 0, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null stat");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  memset(&st, 0, sizeof(struct stat));
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, 0, 0, NULL);
+  fail_unless(res == 0, "Failed to handle root access: %s", strerror(errno));
+
+  /* Use cases: no matching UID or GID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+  uid = 1;
+  gid = 1;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing other R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing other W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing other X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IROTH|S_IWOTH|S_IXOTH;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle other R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle other W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle other X_OK access: %s",
+    strerror(errno));
+
+  /* Use cases: matching UID, not GID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+
+  st.st_uid = uid;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing user R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing user W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing user X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IRUSR|S_IWUSR|S_IXUSR;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle user R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle user W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle user X_OK access: %s",
+    strerror(errno));
+
+  /* Use cases: matching GID, not UID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+
+  st.st_gid = gid;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing group R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing group W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing group X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IRGRP|S_IWGRP|S_IXGRP;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle group R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle group W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle group X_OK access: %s",
+    strerror(errno));
+
+  /* Use cases: matching suppl GID, not UID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+
+  suppl_gids = make_array(p, 1, sizeof(gid_t));
+  *((gid_t *) push_array(suppl_gids)) = 100;
+  *((gid_t *) push_array(suppl_gids)) = gid;
+  st.st_gid = gid;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, 0, suppl_gids);
+  fail_unless(res < 0, "Failed to handle missing group R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, 0, suppl_gids);
+  fail_unless(res < 0, "Failed to handle missing group W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, 0, suppl_gids);
+  fail_unless(res < 0, "Failed to handle missing group X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IRGRP|S_IWGRP|S_IXGRP;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, 0, suppl_gids);
+  fail_unless(res == 0, "Failed to handle group R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, 0, suppl_gids);
+  fail_unless(res == 0, "Failed to handle group W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, 0, suppl_gids);
+  fail_unless(res == 0, "Failed to handle group X_OK access: %s",
+    strerror(errno));
+}
+END_TEST
+
 START_TEST (fs_is_nfs_test) {
   int res;
 
@@ -4212,6 +4396,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_getsize2_test);
   tcase_add_test(testcase, fs_fgetsize_test);
   tcase_add_test(testcase, fs_fadvise_test);
+  tcase_add_test(testcase, fs_have_access_test);
   tcase_add_test(testcase, fs_is_nfs_test);
   tcase_add_test(testcase, fs_valid_path_test);
   tcase_add_test(testcase, fsio_smkdir_test);
