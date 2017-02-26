@@ -486,7 +486,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
 }
 
 #ifdef PR_USE_SHADOW
-static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
+static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   struct spwd *sp;
   char *cpw = NULL;
@@ -594,7 +594,7 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
 
 #else /* PR_USE_SHADOW */
 
-static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
+static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   char *cpw = NULL;
 #if defined(HAVE_GETPRPWENT) || defined(COMSEC)
@@ -721,14 +721,13 @@ MODRET pw_auth(cmd_rec *cmd) {
   name = cmd->argv[0];
   time(&now);
 
-  cpw = _get_pw_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
+  cpw = get_pwd_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
     &disable);
-
-  if (!cpw) {
+  if (cpw == NULL) {
     return PR_DECLINED(cmd);
   }
 
-  if (pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1])) {
+  if (pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]) < 0) {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
@@ -975,10 +974,15 @@ MODRET pw_check(cmd_rec *cmd) {
 
   /* Call pw_authz here, to make sure the user is authorized to login. */
 
-  if (cmd2 == NULL)
+  if (cmd2 == NULL) {
     cmd2 = pr_cmd_alloc(cmd->tmp_pool, 1, cmd->argv[1]);
+  }
 
   mr = pw_authz(cmd2);
+  if (MODRET_ISERROR(mr)) {
+    return PR_ERROR(cmd);
+  }
+
   if (MODRET_ISDECLINED(mr)) {
     return PR_DECLINED(cmd);
   }
