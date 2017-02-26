@@ -393,76 +393,13 @@ static int sys_lchown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
  */
 static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
     gid_t gid, array_header *suppl_gids) {
-  mode_t mask;
   struct stat st;
 
   if (pr_fsio_stat(path, &st) < 0) {
     return -1;
   }
 
-  /* Root always succeeds. */
-  if (uid == PR_ROOT_UID) {
-    return 0;
-  }
-
-  /* Initialize mask to reflect the permission bits that are applicable for
-   * the given user. mask contains the user-bits if the user ID equals the
-   * ID of the file owner. mask contains the group bits if the group ID
-   * belongs to the group of the file. mask will always contain the other
-   * bits of the permission bits.
-   */
-  mask = S_IROTH|S_IWOTH|S_IXOTH;
-
-  if (st.st_uid == uid) {
-    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
-  }
-
-  /* Check the current group, as well as all supplementary groups.
-   * Fortunately, we have this information cached, so accessing it is
-   * almost free.
-   */
-  if (st.st_gid == gid) {
-    mask |= S_IRGRP|S_IWGRP|S_IXGRP;
-
-  } else {
-    if (suppl_gids) {
-      register unsigned int i = 0;
-
-      for (i = 0; i < suppl_gids->nelts; i++) {
-        if (st.st_gid == ((gid_t *) suppl_gids->elts)[i]) {
-          mask |= S_IRGRP|S_IWGRP|S_IXGRP;
-          break;
-        }
-      }
-    }
-  }
-
-  mask &= st.st_mode;
-
-  /* Perform requested access checks. */
-  if (mode & R_OK) {
-    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & W_OK) {
-    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & X_OK) {
-    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  /* F_OK already checked by checking the return value of stat. */
-  return 0;
+  return pr_fs_have_access(&st, mode, uid, gid, suppl_gids);
 }
 
 static int sys_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
@@ -6819,6 +6756,80 @@ void pr_fs_fadvise(int fd, off_t offset, off_t len, int advice) {
 #endif
 
   return;
+}
+
+int pr_fs_have_access(struct stat *st, int mode, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
+  mode_t mask;
+
+  if (st == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Root always succeeds. */
+  if (uid == PR_ROOT_UID) {
+    return 0;
+  }
+
+  /* Initialize mask to reflect the permission bits that are applicable for
+   * the given user. mask contains the user-bits if the user ID equals the
+   * ID of the file owner. mask contains the group bits if the group ID
+   * belongs to the group of the file. mask will always contain the other
+   * bits of the permission bits.
+   */
+  mask = S_IROTH|S_IWOTH|S_IXOTH;
+
+  if (st->st_uid == uid) {
+    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
+  }
+
+  /* Check the current group, as well as all supplementary groups.
+   * Fortunately, we have this information cached, so accessing it is
+   * almost free.
+   */
+  if (st->st_gid == gid) {
+    mask |= S_IRGRP|S_IWGRP|S_IXGRP;
+
+  } else {
+    if (suppl_gids != NULL) {
+      register unsigned int i = 0;
+
+      for (i = 0; i < suppl_gids->nelts; i++) {
+        if (st->st_gid == ((gid_t *) suppl_gids->elts)[i]) {
+          mask |= S_IRGRP|S_IWGRP|S_IXGRP;
+          break;
+        }
+      }
+    }
+  }
+
+  mask &= st->st_mode;
+
+  /* Perform requested access checks. */
+  if (mode & R_OK) {
+    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  if (mode & W_OK) {
+    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  if (mode & X_OK) {
+    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  /* F_OK already checked by checking the return value of stat. */
+  return 0;
 }
 
 int pr_fs_is_nfs(const char *path) {
