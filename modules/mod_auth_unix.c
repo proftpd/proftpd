@@ -982,7 +982,10 @@ MODRET pw_check(cmd_rec *cmd) {
 
   mr = pw_authz(cmd2);
   if (MODRET_ISERROR(mr)) {
-    return PR_ERROR(cmd);
+    int err_code;
+
+    err_code = MODRET_ERROR(mr);
+    return PR_ERROR_INT(cmd, err_code);
   }
 
   if (MODRET_ISDECLINED(mr)) {
