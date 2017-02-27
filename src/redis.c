@@ -1079,6 +1079,63 @@ int pr_redis_list_exists(pr_redis_t *redis, module *m, const char *key,
   return res;
 }
 
+int pr_redis_list_get(pool *p, pr_redis_t *redis, module *m, const char *key,
+    unsigned int idx, void **value, size_t *valuesz) {
+  int res;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      value == NULL ||
+      valuesz == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_kget(p, redis, m, key, strlen(key), idx, value, valuesz);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error getting item at index %u in list using key '%s': %s", idx, key,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return res;
+}
+
+int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
+    array_header **values, array_header **valueszs) {
+  int res;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      values == NULL ||
+      valueszs == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_kgetall(p, redis, m, key, strlen(key), values, valueszs);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error getting items in list using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return res;
+}
+
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
@@ -1231,6 +1288,34 @@ int pr_redis_set_exists(pr_redis_t *redis, module *m, const char *key,
 
     pr_trace_msg(trace_channel, 2,
       "error checking item in set using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return res;
+}
+
+int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
+    array_header **values, array_header **valueszs) {
+  int res;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      values == NULL ||
+      valueszs == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_set_kgetall(p, redis, m, key, strlen(key), values, valueszs);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error getting items in set using key '%s': %s", key, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -2751,16 +2836,43 @@ int pr_redis_list_kdelete(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_list_kexists(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, unsigned int idx) {
-  int xerrno = 0, exists = FALSE;
+  pool *tmp_pool;
+  int res, xerrno = 0;
+  void *val = NULL;
+  size_t valsz = 0;
+
+  tmp_pool = make_sub_pool(NULL);
+  res = pr_redis_list_kget(tmp_pool, redis, m, key, keysz, idx, &val, &valsz);
+  xerrno = errno;
+  destroy_pool(tmp_pool);
+
+  if (res < 0) {
+    if (xerrno != ENOENT) {
+      errno = xerrno;
+      return -1;
+    }
+
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, unsigned int idx, void **value, size_t *valuesz) {
+  int res, xerrno = 0;
   pool *tmp_pool = NULL;
   const char *cmd = NULL, *namespace_prefix;
   redisReply *reply;
   uint64_t count;
 
-  if (redis == NULL ||
+  if (p == NULL ||
+      redis == NULL ||
       m == NULL ||
       key == NULL ||
-      keysz == 0) {
+      keysz == 0 ||
+      value == NULL ||
+      valuesz == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -2770,7 +2882,8 @@ int pr_redis_list_kexists(pr_redis_t *redis, module *m, const char *key,
         idx > 0 &&
         idx >= count) {
       pr_trace_msg(trace_channel, 14,
-        "request index %u exceeds list length %lu", idx, (unsigned long) count);
+        "requested index %u exceeds list length %lu", idx,
+        (unsigned long) count);
       errno = ERANGE;
       return -1;
     }
@@ -2814,11 +2927,126 @@ int pr_redis_list_kexists(pr_redis_t *redis, module *m, const char *key,
     return -1;
   }
 
-  exists = reply->type == REDIS_REPLY_STRING ? TRUE : FALSE;
+  if (reply->type == REDIS_REPLY_STRING) {
+    pr_trace_msg(trace_channel, 7, "%s reply: %.*s", cmd, (int) reply->len,
+      reply->str);
+    *valuesz = reply->len;
+    *value = palloc(p, reply->len);
+    memcpy(*value, reply->str, reply->len);
+    res = 0;
+
+  } else {
+    pr_trace_msg(trace_channel, 7, "%s reply: nil", cmd);
+    xerrno = ENOENT;
+    res = -1;
+  }
 
   freeReplyObject(reply);
   destroy_pool(tmp_pool);
-  return exists;
+
+  errno = xerrno;
+  return res;
+}
+
+int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
+    const char *key, size_t keysz, array_header **values,
+    array_header **valueszs) {
+  int res = 0, xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL, *namespace_prefix;
+  redisReply *reply;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      values == NULL ||
+      valueszs == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis LRANGE pool");
+
+  namespace_prefix = get_namespace_prefix(redis, m);
+  if (namespace_prefix != NULL) {
+    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
+  }
+
+  cmd = "LRANGE";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b 0 -1", cmd, key, keysz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error getting items in list using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_ARRAY) {
+    pr_trace_msg(trace_channel, 2,
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (reply->elements > 0) {
+    register unsigned int i;
+
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu elements", cmd,
+      (unsigned long) reply->elements);
+
+    *values = make_array(p, 0, sizeof(void *));
+    *valueszs = make_array(p, 0, sizeof(size_t));
+
+    for (i = 0; i < reply->elements; i++) {
+      redisReply *value_elt;
+      void *value_data = NULL;
+      size_t value_datasz = 0;
+
+      value_elt = reply->element[i];
+      if (value_elt->type == REDIS_REPLY_STRING) {
+        value_datasz = value_elt->len;
+        value_data = palloc(p, value_datasz);
+        memcpy(value_data, value_elt->str, value_datasz);
+
+      } else {
+        pr_trace_msg(trace_channel, 2,
+          "expected STRING element at index %u, got %s", i + 1,
+          get_reply_type(value_elt));
+      }
+
+      if (value_data != NULL) {
+        *((void **) push_array(*values)) = value_data;
+        *((size_t *) push_array(*valueszs)) = value_datasz;
+      }
+    }
+
+    res = 0;
+
+  } else {
+    xerrno = ENOENT;
+    res = -1;
+  }
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+
+  errno = xerrno;
+  return res;
 }
 
 int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
@@ -3148,6 +3376,106 @@ int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
   return exists;
 }
 
+int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header **values, array_header **valueszs) {
+  int res = 0, xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL, *namespace_prefix;
+  redisReply *reply;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      values == NULL ||
+      valueszs == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis SMEMBERS pool");
+
+  namespace_prefix = get_namespace_prefix(redis, m);
+  if (namespace_prefix != NULL) {
+    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
+  }
+
+  cmd = "SMEMBERS";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b", cmd, key, keysz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error getting items in set using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_ARRAY) {
+    pr_trace_msg(trace_channel, 2,
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (reply->elements > 0) {
+    register unsigned int i;
+
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu elements", cmd,
+      (unsigned long) reply->elements);
+
+    *values = make_array(p, 0, sizeof(void *));
+    *valueszs = make_array(p, 0, sizeof(size_t));
+
+    for (i = 0; i < reply->elements; i++) {
+      redisReply *value_elt;
+      void *value_data = NULL;
+      size_t value_datasz = 0;
+
+      value_elt = reply->element[i];
+      if (value_elt->type == REDIS_REPLY_STRING) {
+        value_datasz = value_elt->len;
+        value_data = palloc(p, value_datasz);
+        memcpy(value_data, value_elt->str, value_datasz);
+
+      } else {
+        pr_trace_msg(trace_channel, 2,
+          "expected STRING element at index %u, got %s", i + 1,
+          get_reply_type(value_elt));
+      }
+
+      if (value_data != NULL) {
+        *((void **) push_array(*values)) = value_data;
+        *((size_t *) push_array(*valueszs)) = value_datasz;
+      }
+    }
+
+    res = 0;
+
+  } else {
+    xerrno = ENOENT;
+    res = -1;
+  }
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+
+  errno = xerrno;
+  return res;
+}
+
 int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
 
@@ -3344,6 +3672,18 @@ int pr_redis_list_exists(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
+int pr_redis_list_get(pool *p, pr_redis_t *redis, module *m, const char *key,
+    unsigned int idx, void **value, size_t *valuesz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
+    array_header **values, **valueszs) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
   errno = ENOSYS;
   return -1;
@@ -3375,6 +3715,12 @@ int pr_redis_set_delete(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_set_exists(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
+    array_header **values, array_header **valueszs) {
   errno = ENOSYS;
   return -1;
 }
@@ -3478,7 +3824,10 @@ int pr_redis_hash_ksetall(pr_redis_t *redis, module *m, const char *key,
 }
 
 int pr_redis_hash_kvalues(pool *p, pr_redis_t *redis, module *m,
-  const char *key, size_t keysz, array_header **values);
+    const char *key, size_t keysz, array_header **values) {
+  errno = ENOSYS;
+  return -1;
+}
 
 int pr_redis_list_kappend(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
@@ -3500,6 +3849,19 @@ int pr_redis_list_kdelete(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_list_kexists(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, unsigned int idx) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, unsigned int idx, void **value, size_t *valuesz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
+    const char *key, size_t keysz, array_header **values,
+    array_header **valueszs) {
   errno = ENOSYS;
   return -1;
 }
@@ -3536,6 +3898,12 @@ int pr_redis_set_kdelete(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header **values, array_header **valueszs) {
   errno = ENOSYS;
   return -1;
 }

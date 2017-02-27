@@ -96,6 +96,10 @@ int pr_redis_list_delete(pr_redis_t *redis, module *m, const char *key,
   void *value, size_t valuesz);
 int pr_redis_list_exists(pr_redis_t *redis, module *m, const char *key,
   unsigned int idx);
+int pr_redis_list_get(pool *p, pr_redis_t *redis, module *m, const char *key,
+  unsigned int idx, void **value, size_t *valuesz);
+int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m,
+  const char *key, array_header **values, array_header **valueszs);
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key);
 int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
   unsigned int idx, void *value, size_t valuesz);
@@ -109,6 +113,8 @@ int pr_redis_set_delete(pr_redis_t *redis, module *m, const char *key,
   void *value, size_t valuesz);
 int pr_redis_set_exists(pr_redis_t *redis, module *m, const char *key,
   void *value, size_t valuesz);
+int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
+  array_header **values, array_header **valueszs);
 int pr_redis_set_remove(pr_redis_t *redis, module *m, const char *key);
 
 /* Variants of the above, where the key values are arbitrary bits rather than
@@ -162,6 +168,11 @@ int pr_redis_list_kdelete(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz);
 int pr_redis_list_kexists(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, unsigned int idx);
+int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, unsigned int idx, void **value, size_t *valuesz);
+int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, array_header **values,
+  array_header **valueszs);
 int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
 int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
@@ -175,6 +186,8 @@ int pr_redis_set_kdelete(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz);
 int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz);
+int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, array_header **values, array_header **valueszs);
 int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
 
