@@ -2869,7 +2869,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
           long_tag = pstrdup(cmd->tmp_pool, "success");
 
         } else {
-          long_tag = pstrdup(cmd->tmp_pool, "failed");
+          long_tag = pstrdup(cmd->tmp_pool, status);
         }
       }
 
