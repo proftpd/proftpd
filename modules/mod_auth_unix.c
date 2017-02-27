@@ -771,6 +771,8 @@ MODRET pw_authz(cmd_rec *cmd) {
     if (res != 0) {
       if (reason != NULL &&
           *reason) {
+        pr_trace_msg(trace_channel, 9,
+          "AIX loginrestrictions() failed for user '%s': %.100s", user, reason);
         pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
           user, reason);
       }
