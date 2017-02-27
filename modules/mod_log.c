@@ -1847,7 +1847,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
             len = sstrncpy(argp, "success", sizeof(arg));
 
           } else {
-            len = sstrncpy(argp, "failed", sizeof(arg));
+            len = sstrncpy(argp, status, sizeof(arg));
           }
         }
 
