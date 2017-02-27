@@ -3679,7 +3679,7 @@ int pr_redis_list_get(pool *p, pr_redis_t *redis, module *m, const char *key,
 }
 
 int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
-    array_header **values, **valueszs) {
+    array_header **values, array_header **valueszs) {
   errno = ENOSYS;
   return -1;
 }
