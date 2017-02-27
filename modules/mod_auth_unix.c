@@ -713,6 +713,7 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
  */
 
 MODRET pw_auth(cmd_rec *cmd) {
+  int res;
   time_t now;
   char *cpw;
   time_t lstchg = -1, max = -1, inact = -1, disable = -1;
@@ -727,8 +728,9 @@ MODRET pw_auth(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]) < 0) {
-    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  res = pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]);
+  if (res < PR_AUTH_OK) {
+    return PR_ERROR_INT(cmd, res);
   }
 
   if (lstchg > (time_t) 0 &&
