@@ -21,6 +21,8 @@
 - Bug 4289 - LDAPSearchScope does not alter search scope as expected.  When
   the LDAPServer directive is used with LDAP URLs, the LDAPSearchScope should
   not be used; the handler was failing to handle this case properly.
+- Bug 4285 - In AIX, log failed logins so that user accounts can be locked by
+  the OS after multiple failed login attempts.
 
 1.3.6rc4 - Released 15-Jan-2017
 --------------------------------
