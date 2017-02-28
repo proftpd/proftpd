@@ -897,6 +897,77 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
   return res;
 }
 
+static const char *get_authcode_str(int auth_code) {
+  const char *name = "(unknown)";
+
+  switch (auth_code) {
+    case PR_AUTH_OK_NO_PASS:
+      name = "OK_NO_PASS";
+      break;
+
+    case PR_AUTH_RFC2228_OK:
+      name = "RFC2228_OK";
+      break;
+
+    case PR_AUTH_OK:
+      name = "OK";
+      break;
+
+    case PR_AUTH_ERROR:
+      name = "ERROR";
+      break;
+
+    case PR_AUTH_NOPWD:
+      name = "NOPWD";
+      break;
+
+    case PR_AUTH_BADPWD:
+      name = "BADPWD";
+      break;
+
+    case PR_AUTH_AGEPWD:
+      name = "AGEPWD";
+      break;
+
+    case PR_AUTH_DISABLEDPWD:
+      name = "DISABLEDPWD";
+      break;
+
+    case PR_AUTH_CRED_INSUFFICIENT:
+      name = "CRED_INSUFFICIENT";
+      break;
+
+    case PR_AUTH_CRED_UNAVAIL:
+      name = "CRED_UNAVAIL";
+      break;
+
+    case PR_AUTH_CRED_ERROR:
+      name = "CRED_ERROR";
+      break;
+
+    case PR_AUTH_INFO_UNAVAIL:
+      name = "INFO_UNAVAIL";
+      break;
+
+    case PR_AUTH_MAX_ATTEMPTS_EXCEEDED:
+      name = "MAX_ATTEMPTS_EXCEEDED";
+      break;
+
+    case PR_AUTH_INIT_ERROR:
+      name = "INIT_ERROR";
+      break;
+
+    case PR_AUTH_NEW_TOKEN_REQUIRED:
+      name = "NEW_TOKEN_REQUIRED";
+      break;
+
+    default:
+      break;
+  }
+
+  return name;
+}
+
 int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
@@ -941,6 +1012,9 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
             cmd->tmp_pool = NULL;
           }
 
+          pr_trace_msg(trace_channel, 9,
+            "module '%s' returned HANDLED (%s) for authenticating user '%s'",
+            elt->name, get_authcode_str(res), name);
           return res;
         }
 
@@ -952,6 +1026,9 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
             cmd->tmp_pool = NULL;
           }
 
+          pr_trace_msg(trace_channel, 9,
+            "module '%s' returned ERROR (%s) for authenticating user '%s'",
+            elt->name, get_authcode_str(res), name);
           return res;
         }
 
@@ -978,9 +1055,15 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
   if (MODRET_ISHANDLED(mr)) {
     res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+    pr_trace_msg(trace_channel, 9,
+      "obtained HANDLED (%s) for authenticating user '%s'",
+      get_authcode_str(res), name);
 
   } else if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
+    pr_trace_msg(trace_channel, 9,
+      "obtained ERROR (%s) for authenticating user '%s'", get_authcode_str(res),
+      name);
   }
 
   if (cmd->tmp_pool) {
@@ -1030,6 +1113,9 @@ int pr_auth_authorize(pool *p, const char *name) {
 
   if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
+    pr_trace_msg(trace_channel, 9,
+      "obtained ERROR (%s) for authorizing user '%s'", get_authcode_str(res),
+      name);
   }
 
   if (cmd->tmp_pool) {
@@ -1096,6 +1182,9 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
             cmd->tmp_pool = NULL;
           }
 
+          pr_trace_msg(trace_channel, 9,
+            "module '%s' returned HANDLED (%s) for checking user '%s'",
+            elt->name, get_authcode_str(res), name);
           return res;
         }
 
@@ -1107,6 +1196,9 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
             cmd->tmp_pool = NULL;
           }
 
+          pr_trace_msg(trace_channel, 9,
+            "module '%s' returned ERROR (%s) for checking user '%s'",
+            elt->name, get_authcode_str(res), name);
           return res;
         }
 
@@ -1133,6 +1225,9 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
 
   if (MODRET_ISHANDLED(mr)) {
     res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+    pr_trace_msg(trace_channel, 9,
+      "obtained HANDLED (%s) for checking user '%s'", get_authcode_str(res),
+      name);
   }
 
   if (cmd->tmp_pool) {

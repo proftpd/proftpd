@@ -1334,7 +1334,7 @@ if test "$pr_cv_var__pw_stayopen" = "yes"; then
   AC_DEFINE(HAVE__PW_STAYOPEN, 1, [Define if you have __pw_stayopen variable.])
 fi
 
-AC_CHECK_HEADERS(krb.h login.h prot.h usersec.h)
+AC_CHECK_HEADERS(krb.h login.h prot.h usersec.h sys/audit.h)
 
 dnl HP-UX's hpsecurity.h can multiply define MAXINT and confuse configure
 AC_CHECK_HEADERS(hpsecurity.h, [
@@ -1355,6 +1355,64 @@ AC_CHECK_HEADERS(hpsecurity.h, [
     AC_MSG_RESULT(no)
   ])
 ])
+
+dnl AIX's "lastlog" support is done via specific functions, rather than a
+dnl struct (Bug#4285).
+AC_MSG_CHECKING(for AIX authenticate)
+AC_TRY_COMPILE([
+  #include <sys/types.h>
+  #ifdef HAVE_USERSEC_H
+  # include <usersec.h>
+  #endif
+  ],
+  [
+    (void) authenticate(NULL, NULL, NULL, NULL);
+  ],
+  [
+    AC_DEFINE(HAVE_AUTHENTICATE, 1, [Define if you have the AIX authenticate function])
+    AC_MSG_RESULT(yes)
+  ], [
+    AC_MSG_RESULT(no)
+  ]
+)
+
+
+AC_MSG_CHECKING(for AIX loginfailed)
+AC_TRY_COMPILE([
+  #include <sys/types.h>
+  #ifdef HAVE_USERSEC_H
+  # include <usersec.h>
+  #endif
+  ],
+  [
+    (void) loginfailed(NULL, NULL, NULL, 0);
+  ],
+  [
+    AC_DEFINE(HAVE_LOGINFAILED, 1, [Define if you have the AIX loginfailed function])
+    AC_MSG_RESULT(yes)
+  ], [
+    AC_MSG_RESULT(no)
+  ]
+)
+
+AC_MSG_CHECKING(for AIX loginsuccess)
+AC_TRY_COMPILE([
+  #include <sys/types.h>
+  #ifdef HAVE_USERSEC_H
+  # include <usersec.h>
+  #endif
+  ],
+  [
+    (void) loginsuccess(NULL, NULL, NULL, NULL);
+  ],
+  [
+    AC_DEFINE(HAVE_LOGINSUCCESS, 1, [Define if you have the AIX loginsuccess function]
+)
+    AC_MSG_RESULT(yes)
+  ], [
+    AC_MSG_RESULT(no)
+  ]
+)
 
 dnl Checks for installation user/group
 
