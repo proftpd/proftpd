@@ -112,7 +112,9 @@ static void switch_read_mac(void) {
     HMAC_cleanup(hmac_read_ctxs[read_mac_idx]);
 #endif
 
-    umac_reset(umac_read_ctxs[read_mac_idx]);
+    if (umac_read_ctxs[read_mac_idx] != NULL) {
+      umac_reset(umac_read_ctxs[read_mac_idx]);
+    }
 
     mac_blockszs[read_mac_idx] = 0; 
 
@@ -138,7 +140,9 @@ static void switch_write_mac(void) {
     HMAC_cleanup(hmac_write_ctxs[write_mac_idx]);
 #endif
 
-    umac_reset(umac_write_ctxs[write_mac_idx]);
+    if (umac_write_ctxs[write_mac_idx] != NULL) {
+      umac_reset(umac_write_ctxs[write_mac_idx]);
+    }
 
     /* Now we can switch the index. */
     if (write_mac_idx == 1) {
