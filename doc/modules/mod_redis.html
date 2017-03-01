@@ -22,7 +22,7 @@ The <code>mod_redis</code> module enables ProFTPD support for caching data in
   <li><a href="#RedisEngine">RedisEngine</a>
   <li><a href="#RedisLog">RedisLog</a>
   <li><a href="#RedisLogOnCommand">RedisLogOnCommand</a>
-  <li><a href="#RedisServers">RedisServer</a>
+  <li><a href="#RedisServer">RedisServer</a>
   <li><a href="#RedisTimeouts">RedisTimeouts</a>
 </ul>
 
@@ -105,11 +105,11 @@ start and end times of a session.  <b>Note</b> that
 <p>
 <hr>
 <h3><a name="RedisServer">RedisServer</a></h3>
-<strong>Syntax:</strong> RedisServer <em>server</em><br>
+<strong>Syntax:</strong> RedisServer <em>server [password]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_redis<br>
-<strong>Compatibility:</strong> 1.3.6rc3 and later
+<strong>Compatibility:</strong> 1.3.6rc5 and later
 
 <p>
 The <code>RedisServer</code> directive is used to configure the IP address/port
@@ -124,6 +124,10 @@ Alternatively, you can configure a Unix domain socket path using <i>e.g.</i>:
 <pre>
   RedisServer /var/run/redis.sock
 </pre>
+
+<p>
+An optional <em>password</em> parameter can be provided, for Redis servers
+which are password protected.
 
 <p>
 <hr>
