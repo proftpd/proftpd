@@ -123,10 +123,7 @@ sub new {
 }
 
 sub list_tests {
-#  return testsuite_get_runnable_tests($TESTS);
-  return qw(
-    wrap2_sql_deny_table_dns_domain_bug3558
-  );
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub wrap2_allow_msg {
