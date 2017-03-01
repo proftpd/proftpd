@@ -4119,7 +4119,7 @@ int redis_set_password(const char *password) {
   return -1;
 }
 
-int redis_set_server(const char *server, int port) {
+int redis_set_server(const char *server, int port, const char *password) {
   errno = ENOSYS;
   return -1;
 }
