@@ -5183,6 +5183,12 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
   res = (fs->ftruncate)(fh, fh->fh_fd, len);
   if (res == 0) {
     pr_fs_clear_cache2(fh->fh_path);
+
+    /* Clear any read buffer. */
+    if (fh->fh_buf != NULL) {
+      fh->fh_buf->current = fh->fh_buf->buf;
+      fh->fh_buf->remaining = fh->fh_buf->buflen;
+    }
   }
 
   return res;

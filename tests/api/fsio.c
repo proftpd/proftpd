@@ -1251,9 +1251,23 @@ START_TEST (fsio_sys_ftruncate_test) {
   fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
     strerror(errno));
 
+  mark_point();
   res = pr_fsio_ftruncate(fh, len);
   fail_unless(res == 0, "Failed to truncate '%s': %s", fsio_test_path,
     strerror(errno));
+
+  /* Attach a read buffer to the handle, make sure it is cleared. */
+  fh->fh_buf = palloc(p, sizeof(pr_buffer_t));
+  fh->fh_buf->buflen = 100;
+  fh->fh_buf->remaining = 1;
+
+  mark_point();
+  res = pr_fsio_ftruncate(fh, len);
+  fail_unless(res == 0, "Failed to truncate '%s': %s", fsio_test_path,
+    strerror(errno));
+  fail_unless(fh->fh_buf->remaining == fh->fh_buf->buflen,
+    "Expected %lu, got %lu", (unsigned long) fh->fh_buf->buflen,
+    (unsigned long) fh->fh_buf->remaining);
 
   (void) pr_fsio_close(fh);
   (void) pr_fsio_unlink(fsio_test_path);
