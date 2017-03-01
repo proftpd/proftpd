@@ -1589,23 +1589,42 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
 }
 
 /* usage: RedisServer host[:port] [password] */
-/* NOTE: Need to handle IPv6 addresses here, eventually. */
 MODRET set_redisserver(cmd_rec *cmd) {
   config_rec *c;
   char *server, *password = NULL, *ptr;
-  int ctx, port;
+  size_t server_len;
+  int ctx, port = REDIS_DEFAULT_PORT;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   server = pstrdup(cmd->tmp_pool, cmd->argv[1]);
-  ptr = strrchr(server, ':');
-  if (ptr == NULL) {
-    port = REDIS_DEFAULT_PORT;
+  server_len = strlen(server);
 
-  } else {
-    *ptr = '\0';
-    port = atoi(ptr + 1);
+  ptr = strrchr(server, ':');
+  if (ptr != NULL) {
+    /* We also need to check for IPv6 addresses, e.g. "[::1]" or "[::1]:6379",
+     * before assuming that the text following our discovered ':' is indeed
+     * a port number.
+     */
+
+    if (*server == '[') {
+      if (*(ptr-1) == ']') {
+        /* We have an IPv6 address with an explicit port number. */
+        server = pstrndup(cmd->tmp_pool, server + 1, (ptr - 1) - (server + 1));
+        *ptr = '\0';
+        port = atoi(ptr + 1);
+
+      } else if (server[server_len-1] == ']') {
+        /* We have an IPv6 address without an explicit port number. */
+        server = pstrndup(cmd->tmp_pool, server + 1, server_len - 2);
+        port = REDIS_DEFAULT_PORT;
+      }
+
+    } else {
+      *ptr = '\0';
+      port = atoi(ptr + 1);
+    }
   }
 
   if (cmd->argc == 3) {

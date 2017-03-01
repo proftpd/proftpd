@@ -40,7 +40,7 @@ static void set_up(void) {
   }
 
   redis_init();
-  redis_set_server(redis_server, redis_port);
+  redis_set_server(redis_server, redis_port, NULL);
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("redis", 1, 20);
@@ -105,7 +105,7 @@ START_TEST (redis_conn_new_test) {
 
   if (getenv("TRAVIS") == NULL) {
     /* Now deliberately set the wrong server and port. */
-    redis_set_server("127.1.2.3", redis_port);
+    redis_set_server("127.1.2.3", redis_port, NULL);
 
     mark_point();
     redis = pr_redis_conn_new(p, NULL, 0);
@@ -114,7 +114,7 @@ START_TEST (redis_conn_new_test) {
       strerror(errno), errno);
   }
 
-  redis_set_server(redis_server, 1020);
+  redis_set_server(redis_server, 1020, NULL);
 
   mark_point();
   redis = pr_redis_conn_new(p, NULL, 0);
@@ -123,7 +123,7 @@ START_TEST (redis_conn_new_test) {
     strerror(errno), errno);
 
   /* Restore our testing server/port. */
-  redis_set_server(redis_server, redis_port);
+  redis_set_server(redis_server, redis_port, NULL);
 }
 END_TEST
 
