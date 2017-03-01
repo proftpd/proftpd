@@ -211,6 +211,148 @@ START_TEST (redis_conn_set_namespace_test) {
 }
 END_TEST
 
+START_TEST (redis_conn_auth_test) {
+  int res;
+  pr_redis_t *redis;
+  const char *text;
+  array_header *args;
+
+  mark_point();
+  res = pr_redis_auth(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_auth(redis, NULL);
+  fail_unless(res < 0, "Failed to handle null password");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  text = "password";
+
+  /* What happens if we try to AUTH to a non-password-protected Redis?
+   * Answer: Redis returns an error indicating that no password is required.
+   */
+  mark_point();
+  res = pr_redis_auth(redis, text);
+  fail_unless(res < 0, "Failed to handle lack of need for authentication");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* Use CONFIG SET to require a password. */
+  args = make_array(p, 0, sizeof(char *));
+  *((char **) push_array(args)) = pstrdup(p, "CONFIG");
+  *((char **) push_array(args)) = pstrdup(p, "SET");
+  *((char **) push_array(args)) = pstrdup(p, "requirepass");
+  *((char **) push_array(args)) = pstrdup(p, text);
+
+  mark_point();
+  res = pr_redis_command(redis, args, PR_REDIS_REPLY_TYPE_STATUS);
+  fail_unless(res == 0, "Failed to enable authentication: %s", strerror(errno));
+
+  args = make_array(p, 0, sizeof(char *));
+  *((char **) push_array(args)) = pstrdup(p, "TIME");
+
+  mark_point();
+  res = pr_redis_command(redis, args, PR_REDIS_REPLY_TYPE_ARRAY);
+  fail_unless(res < 0, "Failed to handle required authentication");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_auth(redis, text);
+  fail_unless(res == 0, "Failed to authenticate client: %s", strerror(errno));
+
+  /* Don't forget to remove the password. */
+  args = make_array(p, 0, sizeof(char *));
+  *((char **) push_array(args)) = pstrdup(p, "CONFIG");
+  *((char **) push_array(args)) = pstrdup(p, "SET");
+  *((char **) push_array(args)) = pstrdup(p, "requirepass");
+  *((char **) push_array(args)) = pstrdup(p, "");
+
+  mark_point();
+  res = pr_redis_command(redis, args, PR_REDIS_REPLY_TYPE_STATUS);
+  fail_unless(res == 0, "Failed to remove password authentication: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_command_test) {
+  int res;
+  pr_redis_t *redis;
+  array_header *args;
+
+  mark_point();
+  res = pr_redis_command(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_command(redis, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null args");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  args = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_command(redis, args, 0);
+  fail_unless(res < 0, "Failed to handle empty args");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((char **) push_array(args)) = pstrdup(p, "FOO");
+
+  mark_point();
+  res = pr_redis_command(redis, args, -1);
+  fail_unless(res < 0, "Failed to handle invalid reply type");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_command(redis, args, PR_REDIS_REPLY_TYPE_ERROR);
+  fail_unless(res == 0, "Failed to handle invalid command with error: %s",
+    strerror(errno));
+
+  args = make_array(p, 0, sizeof(char *));
+  *((char **) push_array(args)) = pstrdup(p, "COMMAND");
+  *((char **) push_array(args)) = pstrdup(p, "COUNT");
+
+  mark_point();
+  res = pr_redis_command(redis, args, PR_REDIS_REPLY_TYPE_INTEGER);
+  fail_unless(res == 0, "Failed to handle valid command with integer: %s",
+    strerror(errno));
+
+  args = make_array(p, 0, sizeof(char *));
+  *((char **) push_array(args)) = pstrdup(p, "INFO");
+
+  mark_point();
+  res = pr_redis_command(redis, args, PR_REDIS_REPLY_TYPE_STRING);
+  fail_unless(res == 0, "Failed to handle valid command with array: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (redis_remove_test) {
   int res;
   pr_redis_t *redis;
@@ -2693,6 +2835,8 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_conn_new_test);
   tcase_add_test(testcase, redis_conn_get_test);
   tcase_add_test(testcase, redis_conn_set_namespace_test);
+  tcase_add_test(testcase, redis_conn_auth_test);
+  tcase_add_test(testcase, redis_command_test);
 
   tcase_add_test(testcase, redis_remove_test);
   tcase_add_test(testcase, redis_add_test);

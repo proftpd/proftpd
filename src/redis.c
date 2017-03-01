@@ -47,6 +47,7 @@ struct redis_rec {
 
 static const char *redis_server = NULL;
 static int redis_port = -1;
+static const char *redis_password = NULL;
 
 static pr_redis_t *sess_redis = NULL;
 
@@ -141,7 +142,14 @@ static int stat_server(pr_redis_t *redis) {
     return -1;
   }
 
-  pr_trace_msg(trace_channel, 7, "%s reply: %s", cmd, reply->str);
+  if (pr_trace_get_level(trace_channel) >= 25) {
+    pr_trace_msg(trace_channel, 25, "%s reply: %s", cmd, reply->str);
+
+  } else {
+    pr_trace_msg(trace_channel, 7, "%s reply: (text, %lu bytes)", cmd,
+      (unsigned long) reply->len);
+  }
+
   freeReplyObject(reply);
   return 0;
 }
@@ -1367,10 +1375,10 @@ static const char *get_namespace_prefix(pr_redis_t *redis, module *m) {
   return prefix;
 }
 
-static const char *get_reply_type(redisReply *reply) {
+static const char *get_reply_type(int reply_type) {
   const char *type_name;
 
-  switch (reply->type) {
+  switch (reply_type) {
     case REDIS_REPLY_STRING:
       type_name = "STRING";
       break;
@@ -1400,6 +1408,175 @@ static const char *get_reply_type(redisReply *reply) {
   }
 
   return type_name;
+}
+
+int pr_redis_command(pr_redis_t *redis, const array_header *args,
+    int reply_type) {
+  register unsigned int i;
+  int xerrno;
+  pool *tmp_pool = NULL;
+  array_header *arglens;
+  const char *cmd = NULL;
+  redisReply *reply;
+  int redis_reply_type;
+
+  if (redis == NULL ||
+      args == NULL ||
+      args->nelts == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  switch (reply_type) {
+    case PR_REDIS_REPLY_TYPE_STRING:
+      redis_reply_type = REDIS_REPLY_STRING;
+      break;
+
+    case PR_REDIS_REPLY_TYPE_INTEGER:
+      redis_reply_type = REDIS_REPLY_INTEGER;
+      break;
+
+    case PR_REDIS_REPLY_TYPE_NIL:
+      redis_reply_type = REDIS_REPLY_NIL;
+      break;
+
+    case PR_REDIS_REPLY_TYPE_ARRAY:
+      redis_reply_type = REDIS_REPLY_ARRAY;
+      break;
+
+    case PR_REDIS_REPLY_TYPE_STATUS:
+      redis_reply_type = REDIS_REPLY_STATUS;
+      break;
+
+    case PR_REDIS_REPLY_TYPE_ERROR:
+      redis_reply_type = REDIS_REPLY_ERROR;
+      break;
+
+    default:
+      errno = EINVAL;
+      return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis Command pool");
+
+  arglens = make_array(tmp_pool, args->nelts, sizeof(size_t));
+  for (i = 0; i < args->nelts; i++) {
+    pr_signals_handle();
+    *((size_t *) push_array(arglens)) = strlen(((char **) args->elts)[i]);
+  }
+
+  cmd = ((char **) args->elts)[0];
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error executing command '%s': %s", cmd,
+      redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = EIO;
+    return -1;
+  }
+
+  if (reply->type != redis_reply_type) {
+    pr_trace_msg(trace_channel, 2,
+      "expected %s reply for %s, got %s", get_reply_type(redis_reply_type), cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  switch (reply->type) {
+    case REDIS_REPLY_STRING:
+    case REDIS_REPLY_STATUS:
+    case REDIS_REPLY_ERROR:
+      pr_trace_msg(trace_channel, 7, "%s %s reply: %.*s", cmd,
+       get_reply_type(reply->type), (int) reply->len, reply->str);
+      break;
+
+    case REDIS_REPLY_INTEGER:
+      pr_trace_msg(trace_channel, 7, "%s INTEGER reply: %lld", cmd,
+        reply->integer);
+      break;
+
+    case REDIS_REPLY_NIL:
+      pr_trace_msg(trace_channel, 7, "%s NIL reply", cmd);
+      break;
+
+    case REDIS_REPLY_ARRAY:
+      pr_trace_msg(trace_channel, 7, "%s ARRAY reply: (%lu elements)", cmd,
+        (unsigned long) reply->elements);
+      break;
+
+    default:
+      break;
+  }
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
+int pr_redis_auth(pr_redis_t *redis, const char *password) {
+  int xerrno = 0;
+  const char *cmd;
+  pool *tmp_pool;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      password == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis AUTH pool");
+
+  cmd = "AUTH";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %s", cmd, password);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error authenticating client: %s", redis_strerror(tmp_pool, redis,
+        xerrno));
+    destroy_pool(tmp_pool);
+    errno = EIO;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_STRING &&
+      reply->type != REDIS_REPLY_STATUS) {
+    pr_trace_msg(trace_channel, 2,
+      "expected STRING or STATUS reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %.*s", cmd, (int) reply->len,
+    reply->str);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
 }
 
 int pr_redis_kadd(pr_redis_t *redis, module *m, const char *key, size_t keysz,
@@ -1448,7 +1625,8 @@ int pr_redis_kdecr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -1533,7 +1711,7 @@ void *pr_redis_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_STRING) {
     pr_trace_msg(trace_channel, 2,
-      "expected STRING reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected STRING reply for %s, got %s", cmd, get_reply_type(reply->type));
     freeReplyObject(reply);
     destroy_pool(tmp_pool);
     errno = EINVAL;
@@ -1603,7 +1781,7 @@ char *pr_redis_kget_str(pool *p, pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_STRING) {
     pr_trace_msg(trace_channel, 2,
-      "expected STRING reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected STRING reply for %s, got %s", cmd, get_reply_type(reply->type));
     freeReplyObject(reply);
     destroy_pool(tmp_pool);
     errno = EINVAL;
@@ -1661,7 +1839,8 @@ int pr_redis_kincr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -1736,7 +1915,8 @@ int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
     freeReplyObject(reply);
     destroy_pool(tmp_pool);
     errno = EINVAL;
@@ -1856,7 +2036,7 @@ int pr_redis_hash_kcount(pr_redis_t *redis, module *m, const char *key,
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
       "expected INTEGER reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -1918,7 +2098,7 @@ int pr_redis_hash_kdelete(pr_redis_t *redis, module *m, const char *key,
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
       "expected INTEGER reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -1986,7 +2166,7 @@ int pr_redis_hash_kexists(pr_redis_t *redis, module *m, const char *key,
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
       "expected INTEGER reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2052,7 +2232,7 @@ int pr_redis_hash_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
       reply->type != REDIS_REPLY_NIL) {
     pr_trace_msg(trace_channel, 2,
       "expected STRING or NIL reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2133,7 +2313,7 @@ int pr_redis_hash_kgetall(pool *p, pr_redis_t *redis, module *m,
 
   if (reply->type != REDIS_REPLY_ARRAY) {
     pr_trace_msg(trace_channel, 2,
-      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2167,7 +2347,7 @@ int pr_redis_hash_kgetall(pool *p, pr_redis_t *redis, module *m,
       } else {
         pr_trace_msg(trace_channel, 2,
           "expected STRING element at index %u, got %s", i,
-          get_reply_type(key_elt));
+          get_reply_type(key_elt->type));
       }
 
       value_elt = reply->element[i+1];
@@ -2179,7 +2359,7 @@ int pr_redis_hash_kgetall(pool *p, pr_redis_t *redis, module *m,
       } else {
         pr_trace_msg(trace_channel, 2,
           "expected STRING element at index %u, got %s", i + 2,
-          get_reply_type(value_elt));
+          get_reply_type(value_elt->type));
       }
 
       if (key_data != NULL &&
@@ -2257,7 +2437,8 @@ int pr_redis_hash_kincr(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2320,7 +2501,7 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_ARRAY) {
     pr_trace_msg(trace_channel, 2,
-      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2353,7 +2534,7 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
       } else {
         pr_trace_msg(trace_channel, 2,
           "expected STRING element at index %u, got %s", i,
-          get_reply_type(elt));
+          get_reply_type(elt->type));
       }
     }
 
@@ -2424,7 +2605,7 @@ int pr_redis_hash_kset(pr_redis_t *redis, module *m, const char *key,
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
       "expected INTEGER reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2532,7 +2713,7 @@ int pr_redis_hash_ksetall(pr_redis_t *redis, module *m, const char *key,
       reply->type != REDIS_REPLY_STATUS) {
     pr_trace_msg(trace_channel, 2,
       "expected STRING or STATUS reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2593,7 +2774,7 @@ int pr_redis_hash_kvalues(pool *p, pr_redis_t *redis, module *m,
 
   if (reply->type != REDIS_REPLY_ARRAY) {
     pr_trace_msg(trace_channel, 2,
-      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2626,7 +2807,7 @@ int pr_redis_hash_kvalues(pool *p, pr_redis_t *redis, module *m,
       } else {
         pr_trace_msg(trace_channel, 2,
           "expected STRING element at index %u, got %s", i,
-          get_reply_type(elt));
+          get_reply_type(elt->type));
       }
     }
 
@@ -2685,7 +2866,8 @@ int pr_redis_list_kappend(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2744,7 +2926,8 @@ int pr_redis_list_kcount(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2807,7 +2990,8 @@ int pr_redis_list_kdelete(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2915,7 +3099,7 @@ int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
       reply->type != REDIS_REPLY_NIL) {
     pr_trace_msg(trace_channel, 2,
       "expected STRING or NIL reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -2991,7 +3175,7 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
 
   if (reply->type != REDIS_REPLY_ARRAY) {
     pr_trace_msg(trace_channel, 2,
-      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -3026,7 +3210,7 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
       } else {
         pr_trace_msg(trace_channel, 2,
           "expected STRING element at index %u, got %s", i + 1,
-          get_reply_type(value_elt));
+          get_reply_type(value_elt->type));
       }
 
       if (value_data != NULL) {
@@ -3100,7 +3284,7 @@ int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
       reply->type != REDIS_REPLY_STATUS) {
     pr_trace_msg(trace_channel, 2,
       "expected STRING or STATUS reply for %s, got %s", cmd,
-      get_reply_type(reply));
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -3167,7 +3351,8 @@ int pr_redis_set_kadd(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -3226,7 +3411,8 @@ int pr_redis_set_kcount(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -3288,7 +3474,8 @@ int pr_redis_set_kdelete(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -3356,7 +3543,8 @@ int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_INTEGER) {
     pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -3418,7 +3606,7 @@ int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
 
   if (reply->type != REDIS_REPLY_ARRAY) {
     pr_trace_msg(trace_channel, 2,
-      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply));
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
 
     if (reply->type == REDIS_REPLY_ERROR) {
       pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
@@ -3453,7 +3641,7 @@ int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
       } else {
         pr_trace_msg(trace_channel, 2,
           "expected STRING element at index %u, got %s", i + 1,
-          get_reply_type(value_elt));
+          get_reply_type(value_elt->type));
       }
 
       if (value_data != NULL) {
@@ -3483,7 +3671,7 @@ int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
   return pr_redis_kremove(redis, m, key, keysz);
 }
 
-int redis_set_server(const char *server, int port) {
+int redis_set_server(const char *server, int port, const char *password) {
   if (server == NULL ||
       port < 1) {
     errno = EINVAL;
@@ -3492,6 +3680,7 @@ int redis_set_server(const char *server, int port) {
 
   redis_server = server;
   redis_port = port;
+  redis_password = password;
   return 0;
 }
 
@@ -3539,6 +3728,17 @@ int pr_redis_conn_destroy(pr_redis_t *redis) {
 
 int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
     const char *prefix) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_auth(pr_redis_t *redis, const char *password) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_command(pr_redis_t *redis, const array_header *args,
+    int reply_type) {
   errno = ENOSYS;
   return -1;
 }
@@ -3910,6 +4110,11 @@ int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int redis_set_password(const char *password) {
   errno = ENOSYS;
   return -1;
 }

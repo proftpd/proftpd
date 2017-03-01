@@ -51,6 +51,21 @@ int pr_redis_conn_destroy(pr_redis_t *redis);
 int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
   const char *prefix);
 
+/* Authenticate to a password-protected Redis server. */
+int pr_redis_auth(pr_redis_t *redis, const char *password);
+
+/* Issue a custom command to the Redis server; the reply type MUST match the
+ * one specified.  Mostly this is used for testing.
+ */
+int pr_redis_command(pr_redis_t *redis, const array_header *args,
+  int reply_type);
+#define PR_REDIS_REPLY_TYPE_STRING		1
+#define PR_REDIS_REPLY_TYPE_INTEGER		2
+#define PR_REDIS_REPLY_TYPE_NIL			3
+#define PR_REDIS_REPLY_TYPE_ARRAY		4
+#define PR_REDIS_REPLY_TYPE_STATUS		5
+#define PR_REDIS_REPLY_TYPE_ERROR		6
+
 int pr_redis_add(pr_redis_t *redis, module *m, const char *key, void *value,
   size_t valuesz, time_t expires);
 int pr_redis_decr(pr_redis_t *redis, module *m, const char *key, uint32_t decr,
@@ -192,8 +207,7 @@ int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
 
 /* For internal use only */
-
-int redis_set_server(const char *server, int port);
+int redis_set_server(const char *server, int port, const char *password);
 int redis_set_timeouts(unsigned long connect_millis, unsigned long io_millis);
 
 int redis_clear(void);

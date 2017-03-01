@@ -1588,11 +1588,11 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisServer host[:port] ... */
+/* usage: RedisServer host[:port] [password] */
 /* NOTE: Need to handle IPv6 addresses here, eventually. */
 MODRET set_redisserver(cmd_rec *cmd) {
   config_rec *c;
-  char *server, *ptr;
+  char *server, *password = NULL, *ptr;
   int ctx, port;
 
   CHECK_ARGS(cmd, 1);
@@ -1608,10 +1608,15 @@ MODRET set_redisserver(cmd_rec *cmd) {
     port = atoi(ptr + 1);
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  if (cmd->argc == 3) {
+    password = cmd->argv[2];
+  }
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, server);
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = port;
+  c->argv[2] = pstrdup(c->pool, password);
 
   ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
@@ -1621,7 +1626,7 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    redis_set_server(server, port);
+    (void) redis_set_server(c->argv[0], port, c->argv[2]);
   }
 
   return PR_HANDLED(cmd);
@@ -1837,12 +1842,14 @@ static int redis_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
-    const char *server;
+    const char *server, *password;
     int port;
 
     server = c->argv[0];
     port = *((int *) c->argv[1]);
-    redis_set_server(server, port);
+    password = c->argv[2];
+
+    (void) redis_set_server(server, port, password);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);
