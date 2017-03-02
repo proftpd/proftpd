@@ -16,7 +16,7 @@ ChangeLog files.
 
   + New Modules:
 
-    mod_redis, mod_tls_redis
+    mod_redis, mod_tls_redis, mod_wrap2_redis
 
 
   + Changed Modules:

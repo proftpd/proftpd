@@ -1513,8 +1513,9 @@ int pr_redis_command(pr_redis_t *redis, const array_header *args,
       break;
 
     case REDIS_REPLY_ARRAY:
-      pr_trace_msg(trace_channel, 7, "%s ARRAY reply: (%lu elements)", cmd,
-        (unsigned long) reply->elements);
+      pr_trace_msg(trace_channel, 7, "%s ARRAY reply: (%lu %s)", cmd,
+        (unsigned long) reply->elements,
+        reply->elements != 1 ? "elements" : "element");
       break;
 
     default:
@@ -2328,8 +2329,9 @@ int pr_redis_hash_kgetall(pool *p, pr_redis_t *redis, module *m,
   if (reply->elements > 0) {
     register unsigned int i;
 
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu elements", cmd,
-      (unsigned long) reply->elements);
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
 
     *hash = pr_table_alloc(p, 0);
 
@@ -2516,8 +2518,9 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
   if (reply->elements > 0) {
     register unsigned int i;
 
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu elements", cmd,
-      (unsigned long) reply->elements);
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
 
     *fields = make_array(p, reply->elements, sizeof(char *));
     for (i = 0; i < reply->elements; i++) {
@@ -2789,8 +2792,9 @@ int pr_redis_hash_kvalues(pool *p, pr_redis_t *redis, module *m,
   if (reply->elements > 0) {
     register unsigned int i;
 
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu elements", cmd,
-      (unsigned long) reply->elements);
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
 
     *values = make_array(p, reply->elements, sizeof(char *));
     for (i = 0; i < reply->elements; i++) {
@@ -3190,8 +3194,9 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
   if (reply->elements > 0) {
     register unsigned int i;
 
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu elements", cmd,
-      (unsigned long) reply->elements);
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
 
     *values = make_array(p, 0, sizeof(void *));
     *valueszs = make_array(p, 0, sizeof(size_t));
@@ -3621,8 +3626,9 @@ int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
   if (reply->elements > 0) {
     register unsigned int i;
 
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu elements", cmd,
-      (unsigned long) reply->elements);
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
 
     *values = make_array(p, 0, sizeof(void *));
     *valueszs = make_array(p, 0, sizeof(size_t));

@@ -85,7 +85,7 @@ optional.
 <p>
 <b>SQL Access Tables Example</b><br>
 Here are example <code>SQLNamedQuery</code> directives to help demonstrate
-how the <code>mod_sql</code> hooks are used by <code>mod_wrap2</code>.
+how the <code>mod_sql</code> hooks are used by <code>mod_wrap2_sql</code>.
 These example SQL statements assume the existence of two tables: a
 <code>wrapallow</code> table that defines allowed clients, and a
 <code>wrapdeny</code> table that defines the denied clients.
@@ -103,6 +103,7 @@ up (<i>e.g.</i> user name for <code>WrapUserTables</code>, primary group name
 for <code>WrapGroupTables</code>, or the empty string for
 <code>WrapTables</code>).
 
+<p>
 If the administrator wants to make use of access options, then queries for
 those options would need to be similarly defined:
 <pre>
