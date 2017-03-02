@@ -23,6 +23,7 @@
   not be used; the handler was failing to handle this case properly.
 - Bug 4285 - In AIX, log failed logins so that user accounts can be locked by
   the OS after multiple failed login attempts.
+- Added mod_wrap2_redis to the contrib/ modules directory.
 
 1.3.6rc4 - Released 15-Jan-2017
 --------------------------------
