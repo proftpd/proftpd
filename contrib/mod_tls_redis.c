@@ -595,7 +595,7 @@ static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
 
   /* Configure a namespace prefix for our Redis keys. */
   if (pr_redis_conn_set_namespace(sess_redis, &tls_redis_module,
-      "mod_tls_redis.sessions.") < 0) {
+      "mod_tls_redis.sessions.", 23) < 0) {
     pr_trace_msg(trace_channel, 2, 
       "error setting Redis namespace prefix: %s", strerror(errno));
   }
@@ -1400,7 +1400,7 @@ static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
 
   /* Configure a namespace prefix for our Redis keys. */
   if (pr_redis_conn_set_namespace(ocsp_redis, &tls_redis_module,
-      "mod_tls_redis.ocsp.") < 0) {
+      "mod_tls_redis.ocsp.", 19) < 0) {
     pr_trace_msg(trace_channel, 2,
       "error setting Redis namespace prefix: %s", strerror(errno));
   }
