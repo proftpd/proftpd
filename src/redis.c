@@ -440,10 +440,16 @@ static unsigned int modptr_hash_cb(const void *k, size_t ksz) {
 }
 
 int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
-    const char *prefix) {
+    const void *prefix, size_t prefixsz) {
 
   if (redis == NULL ||
       m == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (prefix != NULL &&
+      prefixsz == 0) {
     errno = EINVAL;
     return -1;
   }
@@ -460,18 +466,21 @@ int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
 
   if (prefix != NULL) {
     int count;
-    size_t prefix_len;
+    void *val;
+    size_t valsz;
 
-    prefix_len = strlen(prefix);
+    valsz = prefixsz;
+    val = palloc(redis->pool, valsz);
+    memcpy(val, prefix, prefixsz);
 
     count = pr_table_kexists(redis->namespace_tab, m, sizeof(module *));
     if (count <= 0) {
-      (void) pr_table_kadd(redis->namespace_tab, m, sizeof(module *),
-        pstrndup(redis->pool, prefix, prefix_len), prefix_len);
+      (void) pr_table_kadd(redis->namespace_tab, m, sizeof(module *), val,
+        valsz);
 
     } else {
-      (void) pr_table_kset(redis->namespace_tab, m, sizeof(module *),
-        pstrndup(redis->pool, prefix, prefix_len), prefix_len);
+      (void) pr_table_kset(redis->namespace_tab, m, sizeof(module *), val,
+        valsz);
     }
 
   } else {
@@ -640,6 +649,32 @@ int pr_redis_remove(pr_redis_t *redis, module *m, const char *key) {
 
     pr_trace_msg(trace_channel, 2,
       "error removing key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+int pr_redis_rename(pr_redis_t *redis, module *m, const char *from,
+    const char *to) {
+  int res;
+
+  if (redis == NULL ||
+      m == NULL ||
+      from == NULL ||
+      to == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_krename(redis, m, from, strlen(from), to, strlen(to));
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error renaming key '%s' to '%s': %s", from, to, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -1144,6 +1179,62 @@ int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
   return res;
 }
 
+int pr_redis_list_pop(pool *p, pr_redis_t *redis, module *m, const char *key,
+    void **value, size_t *valuesz, int flags) {
+  int res;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      value == NULL ||
+      valuesz == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_kpop(p, redis, m, key, strlen(key), value, valuesz,
+    flags);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error popping item from list using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return res;
+}
+
+int pr_redis_list_push(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz, int flags) {
+  int res;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_kpush(redis, m, key, strlen(key), value, valuesz, flags);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error pushing item into list using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
@@ -1356,23 +1447,37 @@ int pr_redis_set_remove(pr_redis_t *redis, module *m, const char *key) {
   return 0;
 }
 
-static const char *get_namespace_prefix(pr_redis_t *redis, module *m) {
-  const char *prefix = NULL;
+static const char *get_namespace_key(pool *p, pr_redis_t *redis, module *m,
+    const char *key, size_t *keysz) {
 
   if (m != NULL &&
       redis->namespace_tab != NULL) {
-    const char *v;
+    const char *prefix = NULL;
+    size_t prefixsz = 0;
 
-    v = pr_table_kget(redis->namespace_tab, m, sizeof(module *), NULL);
-    if (v != NULL) {
+    prefix = pr_table_kget(redis->namespace_tab, m, sizeof(module *),
+      &prefixsz);
+    if (prefix != NULL) {
+      char *new_key;
+      size_t new_keysz;
+
       pr_trace_msg(trace_channel, 25,
-        "using namespace prefix '%s' for module 'mod_%s.c'", v, m->name);
+        "using namespace prefix '%s' for module 'mod_%s.c'", prefix, m->name);
 
-      prefix = v;
+      /* Since the given key may not be text, we cannot simply use pstrcat()
+       * to prepend our namespace value.
+       */
+      new_keysz = prefixsz + *keysz;
+      new_key = palloc(p, new_keysz);
+      memcpy(new_key, prefix, prefixsz);
+      memcpy(new_key + prefixsz, key, *keysz);
+
+      key = new_key;
+      *keysz = new_keysz;
     }
   }
 
-  return prefix;
+  return key;
 }
 
 static const char *get_reply_type(int reply_type) {
@@ -1589,7 +1694,7 @@ int pr_redis_kdecr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
     uint32_t decr, uint64_t *value) {
   int xerrno;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -1603,10 +1708,7 @@ int pr_redis_kdecr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis DECRBY pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "DECRBY";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -1666,7 +1768,7 @@ int pr_redis_kdecr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
 void *pr_redis_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
     size_t keysz, size_t *valuesz) {
   int xerrno = 0;
-  const char *cmd, *namespace_prefix;
+  const char *cmd;
   pool *tmp_pool;
   redisReply *reply;
   char *data = NULL;
@@ -1683,10 +1785,7 @@ void *pr_redis_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis GET pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "GET";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -1737,7 +1836,7 @@ void *pr_redis_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
 char *pr_redis_kget_str(pool *p, pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
   int xerrno = 0;
-  const char *cmd, *namespace_prefix;
+  const char *cmd;
   pool *tmp_pool;
   redisReply *reply;
   char *data = NULL;
@@ -1753,10 +1852,7 @@ char *pr_redis_kget_str(pool *p, pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis GET pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "GET";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -1803,7 +1899,7 @@ int pr_redis_kincr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
     uint32_t incr, uint64_t *value) {
   int xerrno;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -1817,10 +1913,7 @@ int pr_redis_kincr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis INCRRBY pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "INCRBY";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -1881,7 +1974,7 @@ int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
   long long count;
 
@@ -1895,10 +1988,7 @@ int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis DEL pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "DEL";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -1939,11 +2029,82 @@ int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
   return 0;
 }
 
+int pr_redis_krename(pr_redis_t *redis, module *m, const char *from,
+    size_t fromsz, const char *to, size_t tosz) {
+  int xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      from == NULL ||
+      fromsz == 0 ||
+      to == NULL ||
+      tosz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis RENAME pool");
+
+  from = get_namespace_key(tmp_pool, redis, m, from, &fromsz);
+  to = get_namespace_key(tmp_pool, redis, m, to, &tosz);
+
+  cmd = "RENAME";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b %b", cmd, from, fromsz, to, tosz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error renaming key (from %lu bytes, to %lu bytes): %s",
+      (unsigned long) fromsz, (unsigned long) tosz,
+      redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_STRING &&
+      reply->type != REDIS_REPLY_STATUS) {
+    xerrno = EINVAL;
+
+    pr_trace_msg(trace_channel, 2,
+      "expected STRING or STATUS reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+
+      /* Note: In order to provide ENOENT semantics here, we have to be
+       * naughty, and assume the contents of this error message.
+       */
+      if (strstr(reply->str, "no such key") != NULL) {
+        xerrno = ENOENT;
+      }
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %.*s", cmd, (int) reply->len,
+    reply->str);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
 int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
     void *value, size_t valuesz, time_t expires) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   /* XXX Should we allow null values to be added, thus allowing use of keys
@@ -1960,10 +2121,7 @@ int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis SET pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   if (expires > 0) {
     cmd = "SETEX";
@@ -2000,7 +2158,7 @@ int pr_redis_hash_kcount(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, uint64_t *count) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -2015,10 +2173,7 @@ int pr_redis_hash_kcount(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HLEN pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HLEN";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2061,7 +2216,7 @@ int pr_redis_hash_kdelete(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, const char *field, size_t fieldsz) {
   int xerrno = 0, exists = FALSE;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -2077,10 +2232,7 @@ int pr_redis_hash_kdelete(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HDEL pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HDEL";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2129,7 +2281,7 @@ int pr_redis_hash_kexists(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, const char *field, size_t fieldsz) {
   int xerrno = 0, exists = FALSE;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -2145,10 +2297,7 @@ int pr_redis_hash_kexists(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HEXISTS pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HEXISTS";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2192,7 +2341,7 @@ int pr_redis_hash_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
     size_t *valuesz) {
   int xerrno = 0, exists = FALSE;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (p == NULL ||
@@ -2210,10 +2359,7 @@ int pr_redis_hash_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HGET pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HGET";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2277,7 +2423,7 @@ int pr_redis_hash_kgetall(pool *p, pr_redis_t *redis, module *m,
     const char *key, size_t keysz, pr_table_t **hash) {
   int res, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (p == NULL ||
@@ -2293,10 +2439,7 @@ int pr_redis_hash_kgetall(pool *p, pr_redis_t *redis, module *m,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HGETALL pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HGETALL";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2395,7 +2538,7 @@ int pr_redis_hash_kincr(pr_redis_t *redis, module *m, const char *key,
     int64_t *value) {
   int xerrno = 0, exists = FALSE;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -2417,10 +2560,7 @@ int pr_redis_hash_kincr(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HINCRBY pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HINCRBY";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2466,7 +2606,7 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
     size_t keysz, array_header **fields) {
   int res, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (p == NULL ||
@@ -2482,10 +2622,7 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HKEYS pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HKEYS";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2567,7 +2704,7 @@ int pr_redis_hash_kset(pr_redis_t *redis, module *m, const char *key,
     size_t valuesz) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -2585,10 +2722,7 @@ int pr_redis_hash_kset(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HSET pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HSET";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2631,7 +2765,7 @@ int pr_redis_hash_ksetall(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, pr_table_t *hash) {
   int count, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   array_header *args, *arglens;
   redisReply *reply;
   const void *key_data;
@@ -2657,10 +2791,7 @@ int pr_redis_hash_ksetall(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HMSET pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HMSET";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2740,7 +2871,7 @@ int pr_redis_hash_kvalues(pool *p, pr_redis_t *redis, module *m,
     const char *key, size_t keysz, array_header **values) {
   int res, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (p == NULL ||
@@ -2756,10 +2887,7 @@ int pr_redis_hash_kvalues(pool *p, pr_redis_t *redis, module *m,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis HVALS pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "HVALS";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2831,70 +2959,15 @@ int pr_redis_hash_kvalues(pool *p, pr_redis_t *redis, module *m,
 
 int pr_redis_list_kappend(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
-  int xerrno = 0;
-  pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
-  redisReply *reply;
-
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      keysz == 0 ||
-      value == NULL ||
-      valuesz == 0) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  tmp_pool = make_sub_pool(redis->pool);
-  pr_pool_tag(tmp_pool, "Redis RPUSH pool");
-
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
-
-  cmd = "RPUSH";
-  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
-  reply = redisCommand(redis->ctx, "%s %b %b", cmd, key, keysz, value, valuesz);
-  xerrno = errno;
-
-  if (reply == NULL) {
-    pr_trace_msg(trace_channel, 2,
-      "error appending to list using key (%lu bytes): %s",
-      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
-    destroy_pool(tmp_pool);
-    errno = xerrno;
-    return -1;
-  }
-
-  if (reply->type != REDIS_REPLY_INTEGER) {
-    pr_trace_msg(trace_channel, 2,
-      "expected INTEGER reply for %s, got %s", cmd,
-      get_reply_type(reply->type));
-
-    if (reply->type == REDIS_REPLY_ERROR) {
-      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
-    }
-
-    freeReplyObject(reply);
-    destroy_pool(tmp_pool);
-    errno = EINVAL;
-    return -1;
-  }
-
-  pr_trace_msg(trace_channel, 7, "%s reply: %lld", cmd, reply->integer);
-
-  freeReplyObject(reply);
-  destroy_pool(tmp_pool);
-  return 0;
+  return pr_redis_list_kpush(redis, m, key, keysz, value, valuesz,
+    PR_REDIS_LIST_FL_RIGHT);
 }
 
 int pr_redis_list_kcount(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, uint64_t *count) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -2909,10 +2982,7 @@ int pr_redis_list_kcount(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis LLEN pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "LLEN";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -2955,7 +3025,7 @@ int pr_redis_list_kdelete(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
   long long count = 0;
 
@@ -2972,10 +3042,7 @@ int pr_redis_list_kdelete(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis LREM pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "LREM";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3050,7 +3117,7 @@ int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
     size_t keysz, unsigned int idx, void **value, size_t *valuesz) {
   int res, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
   uint64_t count;
 
@@ -3080,10 +3147,7 @@ int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis LINDEX pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "LINDEX";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3141,7 +3205,7 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
     array_header **valueszs) {
   int res = 0, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (p == NULL ||
@@ -3158,10 +3222,7 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis LRANGE pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "LRANGE";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3238,6 +3299,168 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
   return res;
 }
 
+int pr_redis_list_kpop(pool *p, pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void **value, size_t *valuesz, int flags) {
+  int res, xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      value == NULL ||
+      valuesz == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+
+  switch (flags) {
+    case PR_REDIS_LIST_FL_RIGHT:
+      pr_pool_tag(tmp_pool, "Redis RPOP pool");
+      cmd = "RPOP";
+      break;
+
+    case PR_REDIS_LIST_FL_LEFT:
+      pr_pool_tag(tmp_pool, "Redis LPOP pool");
+      cmd = "LPOP";
+      break;
+
+    default:
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+  }
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b", cmd, key, keysz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error popping item from list using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_STRING &&
+      reply->type != REDIS_REPLY_NIL) {
+    pr_trace_msg(trace_channel, 2,
+      "expected STRING or NIL reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (reply->type == REDIS_REPLY_STRING) {
+    pr_trace_msg(trace_channel, 7, "%s reply: %.*s", cmd, (int) reply->len,
+      reply->str);
+    *valuesz = reply->len;
+    *value = palloc(p, reply->len);
+    memcpy(*value, reply->str, reply->len);
+    res = 0;
+
+  } else {
+    pr_trace_msg(trace_channel, 7, "%s reply: nil", cmd);
+    xerrno = ENOENT;
+    res = -1;
+  }
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+
+  errno = xerrno;
+  return res;
+}
+
+int pr_redis_list_kpush(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, int flags) {
+  int xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+
+  switch (flags) {
+    case PR_REDIS_LIST_FL_RIGHT:
+      pr_pool_tag(tmp_pool, "Redis RPUSH pool");
+      cmd = "RPUSH";
+      break;
+
+    case PR_REDIS_LIST_FL_LEFT:
+      pr_pool_tag(tmp_pool, "Redis LPUSH pool");
+      cmd = "LPUSH";
+      break;
+
+    default:
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+  }
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b %b", cmd, key, keysz, value, valuesz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error pushing to list using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_INTEGER) {
+    pr_trace_msg(trace_channel, 2,
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %lld", cmd, reply->integer);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
 int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
 
@@ -3249,7 +3472,7 @@ int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, unsigned int idx, void *value, size_t valuesz) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -3265,10 +3488,7 @@ int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis LSET pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "LSET";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3313,7 +3533,7 @@ int pr_redis_set_kadd(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
   int xerrno = 0, exists = FALSE;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -3335,10 +3555,7 @@ int pr_redis_set_kadd(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis SADD pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "SADD";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3380,7 +3597,7 @@ int pr_redis_set_kcount(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, uint64_t *count) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -3395,10 +3612,7 @@ int pr_redis_set_kcount(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis SCARD pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "SCARD";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3441,7 +3655,7 @@ int pr_redis_set_kdelete(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
   int xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
   long long count = 0;
 
@@ -3458,10 +3672,7 @@ int pr_redis_set_kdelete(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis SREM pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "SREM";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3511,7 +3722,7 @@ int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
   int xerrno = 0, exists = FALSE;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (redis == NULL ||
@@ -3527,10 +3738,7 @@ int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis SISMEMBER pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "SISMEMBER";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3573,7 +3781,7 @@ int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
     size_t keysz, array_header **values, array_header **valueszs) {
   int res = 0, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL, *namespace_prefix;
+  const char *cmd = NULL;
   redisReply *reply;
 
   if (p == NULL ||
@@ -3590,10 +3798,7 @@ int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
   tmp_pool = make_sub_pool(redis->pool);
   pr_pool_tag(tmp_pool, "Redis SMEMBERS pool");
 
-  namespace_prefix = get_namespace_prefix(redis, m);
-  if (namespace_prefix != NULL) {
-    key = pstrcat(tmp_pool, namespace_prefix, key, NULL);
-  }
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
   cmd = "SMEMBERS";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
@@ -3733,7 +3938,7 @@ int pr_redis_conn_destroy(pr_redis_t *redis) {
 }
 
 int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
-    const char *prefix) {
+    const void *prefix, size_t prefixsz) {
   errno = ENOSYS;
   return -1;
 }
@@ -3779,6 +3984,12 @@ int pr_redis_incr(pr_redis_t *redis, module *m, const char *key, uint32_t incr,
 }
 
 int pr_redis_remove(pr_redis_t *redis, module *m, const char *key) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_rename(pr_redis_t *redis, module *m, const char *from,
+    const char *to) {
   errno = ENOSYS;
   return -1;
 }
@@ -3890,6 +4101,18 @@ int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
+int pr_redis_list_pop(pool *p, pr_redis_t *redis, module *m, const char *key,
+    void **value, size_t *valuesz, int flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_push(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz, int flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
   errno = ENOSYS;
   return -1;
@@ -3956,6 +4179,12 @@ char *pr_redis_kget_str(pool *p, pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_krename(pr_redis_t *redis, module *m, const char *from,
+    size_t fromsz, const char *to, size_t tosz) {
   errno = ENOSYS;
   return -1;
 }
@@ -4068,6 +4297,18 @@ int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
 int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
     const char *key, size_t keysz, array_header **values,
     array_header **valueszs) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_kpop(pool *p, pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void **value, size_t *valuesz, int flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_kpush(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, int flags) {
   errno = ENOSYS;
   return -1;
 }
