@@ -49,7 +49,7 @@ int pr_redis_conn_destroy(pr_redis_t *redis);
  * Setting NULL for the namespace prefix clears it.
  */
 int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
-  const char *prefix);
+  const void *prefix, size_t prefixsz);
 
 /* Authenticate to a password-protected Redis server. */
 int pr_redis_auth(pr_redis_t *redis, const char *password);
@@ -76,6 +76,8 @@ char *pr_redis_get_str(pool *p, pr_redis_t *redis, module *m, const char *key);
 int pr_redis_incr(pr_redis_t *redis, module *m, const char *key, uint32_t incr,
   uint64_t *value);
 int pr_redis_remove(pr_redis_t *redis, module *m, const char *key);
+int pr_redis_rename(pr_redis_t *redis, module *m, const char *from,
+  const char *to);
 int pr_redis_set(pr_redis_t *redis, module *m, const char *key, void *value,
   size_t valuesz, time_t expires);
 
@@ -115,9 +117,19 @@ int pr_redis_list_get(pool *p, pr_redis_t *redis, module *m, const char *key,
   unsigned int idx, void **value, size_t *valuesz);
 int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m,
   const char *key, array_header **values, array_header **valueszs);
+int pr_redis_list_pop(pool *p, pr_redis_t *redis, module *m, const char *key,
+  void **value, size_t *valuesz, int flags);
+int pr_redis_list_push(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, int flags);
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key);
 int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
   unsigned int idx, void *value, size_t valuesz);
+
+/* These flags are used for determining whether the list operation occurs
+ * to the LEFT or the RIGHT side of the list, e.g. LPUSH vs RPUSH.
+ */
+#define PR_REDIS_LIST_FL_LEFT		1
+#define PR_REDIS_LIST_FL_RIGHT		2
 
 /* Set operations */
 int pr_redis_set_add(pr_redis_t *redis, module *m, const char *key,
@@ -147,6 +159,8 @@ int pr_redis_kincr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   uint32_t incr, uint64_t *value);
 int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
+int pr_redis_krename(pr_redis_t *redis, module *m, const char *from,
+  size_t fromsz, const char *to, size_t tosz);
 int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   void *value, size_t valuesz, time_t expires);
 
@@ -188,6 +202,10 @@ int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
 int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
   const char *key, size_t keysz, array_header **values,
   array_header **valueszs);
+int pr_redis_list_kpop(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, void **value, size_t *valuesz, int flags);
+int pr_redis_list_kpush(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, int flags);
 int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
 int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,

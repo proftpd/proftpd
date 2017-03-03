@@ -172,9 +172,10 @@ START_TEST (redis_conn_set_namespace_test) {
   pr_redis_t *redis;
   module m;
   const char *prefix;
+  size_t prefixsz;
 
   mark_point();
-  res = pr_redis_conn_set_namespace(NULL, NULL, NULL);
+  res = pr_redis_conn_set_namespace(NULL, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null redis");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -185,23 +186,32 @@ START_TEST (redis_conn_set_namespace_test) {
     strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_set_namespace(redis, NULL, NULL);
+  res = pr_redis_conn_set_namespace(redis, NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null module");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
-  res = pr_redis_conn_set_namespace(redis, &m, NULL);
+  res = pr_redis_conn_set_namespace(redis, &m, NULL, 0);
   fail_unless(res == 0, "Failed to set null namespace prefix: %s",
     strerror(errno));
 
   prefix = "test.";
-  res = pr_redis_conn_set_namespace(redis, &m, prefix);
+  prefixsz = strlen(prefix);
+
+  mark_point();
+  res = pr_redis_conn_set_namespace(redis, &m, prefix, 0);
+  fail_unless(res < 0, "Failed to handle empty namespace prefix");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_conn_set_namespace(redis, &m, prefix, prefixsz);
   fail_unless(res == 0, "Failed to set namespace prefix '%s': %s", prefix,
     strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_set_namespace(redis, &m, NULL);
+  res = pr_redis_conn_set_namespace(redis, &m, NULL, 0);
   fail_unless(res == 0, "Failed to set null namespace prefix: %s",
     strerror(errno));
 
@@ -472,7 +482,7 @@ START_TEST (redis_add_with_namespace_test) {
   module m;
   const char *prefix, *key;
   char *val;
-  size_t valsz;
+  size_t prefixsz, valsz;
   time_t expires;
 
   mark_point();
@@ -481,9 +491,10 @@ START_TEST (redis_add_with_namespace_test) {
     strerror(errno));
 
   prefix = "test.";
+  prefixsz = strlen(prefix);
 
   mark_point();
-  res = pr_redis_conn_set_namespace(redis, &m, prefix);
+  res = pr_redis_conn_set_namespace(redis, &m, prefix, prefixsz);
   fail_unless(res == 0, "Failed to set namespace prefix '%s': %s", prefix,
     strerror(errno));
 
@@ -502,7 +513,7 @@ START_TEST (redis_add_with_namespace_test) {
   fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
 
   mark_point();
-  res = pr_redis_conn_set_namespace(redis, &m, NULL);
+  res = pr_redis_conn_set_namespace(redis, &m, NULL, 0);
   fail_unless(res == 0, "Failed to set null namespace prefix: %s",
     strerror(errno));
 
@@ -593,6 +604,61 @@ START_TEST (redis_get_test) {
   fail_unless(data == NULL, "Failed to handle nonexistent key");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_get_with_namespace_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *prefix, *key;
+  char *val;
+  size_t prefixsz, valsz;
+  time_t expires;
+  void *data;
+
+  /* set a value, set the namespace, get it. */
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  prefix = "prefix.";
+  prefixsz = strlen(prefix);
+
+  key = "prefix.testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  val = "Hello, World!";
+  valsz = strlen(val);
+  expires = 0;
+
+  mark_point();
+  res = pr_redis_set(redis, &m, key, val, valsz, expires);
+  fail_unless(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_set_namespace(redis, &m, prefix, prefixsz);
+  fail_unless(res == 0, "Failed to set namespace prefix '%s': %s", prefix,
+    strerror(errno));
+
+  key = "testkey";
+  valsz = 0;
+
+  mark_point();
+  data = pr_redis_get(p, redis, &m, key, &valsz);
+  fail_unless(data != NULL, "Failed to get data for key '%s': %s", key,
+    strerror(errno));
+  fail_unless(valsz == strlen(val), "Expected %lu, got %lu",
+    (unsigned long) strlen(val), (unsigned long) valsz);
+  fail_unless(strncmp(data, val, valsz) == 0, "Expected '%s', got '%.*s'",
+    val, (int) valsz, data);
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
@@ -880,6 +946,78 @@ START_TEST (redis_decr_test) {
     strerror(errno), errno);
 
   (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_rename_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *from, *to;
+  char *val;
+  size_t valsz;
+  time_t expires;
+
+  mark_point();
+  res = pr_redis_rename(NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_rename(redis, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_rename(redis, &m, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null from");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  from = "fromkey";
+
+  mark_point();
+  res = pr_redis_rename(redis, &m, from, NULL);
+  fail_unless(res < 0, "Failed to handle null to");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  to = "tokey";
+
+  mark_point();
+  res = pr_redis_rename(redis, &m, from, to);
+  fail_unless(res < 0, "Failed to handle nonexistent from key");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  val = "testval";
+  valsz = strlen(val);
+  expires = 0;
+
+  mark_point();
+  res = pr_redis_set(redis, &m, from, val, valsz, expires);
+  fail_unless(res == 0, "Failed to set key '%s', val '%s': %s", from, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_rename(redis, &m, from, to);
+  fail_unless(res == 0, "Failed to rename '%s' to '%s': %s", from, to,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_remove(redis, &m, to);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", to, strerror(errno));
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
@@ -2288,6 +2426,291 @@ START_TEST (redis_list_getall_test) {
 }
 END_TEST
 
+START_TEST (redis_list_pop_params_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+
+  mark_point();
+  res = pr_redis_list_pop(NULL, NULL, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_pop(p, NULL, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, key, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, key, (void **) &val, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null valuesz");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, key, (void **) &val, &valsz, 0);
+  fail_unless(res < 0, "Failed to handle invalid flags");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_list_pop_left_test) {
+  int res, flags = PR_REDIS_LIST_FL_LEFT;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  key = "testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, key, (void **) &val, &valsz, flags);
+  fail_unless(res < 0, "Failed to handle nonexistent list");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  val = "foo";
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_list_append(redis, &m, key, val, valsz);
+  fail_unless(res == 0, "Failed to append item to key '%s': %s", key,
+    strerror(errno));
+
+  val = NULL;
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, key, (void **) &val, &valsz, flags);
+  fail_unless(res == 0, "Failed to get item in list: %s", strerror(errno));
+  fail_unless(val != NULL, "Expected value, got null");
+  fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
+  fail_unless(strncmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
+    (int) valsz, val);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_list_pop_right_test) {
+  int res, flags = PR_REDIS_LIST_FL_RIGHT;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  key = "testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, key, (void **) &val, &valsz, flags);
+  fail_unless(res < 0, "Failed to handle nonexistent list");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  val = "foo";
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_list_append(redis, &m, key, val, valsz);
+  fail_unless(res == 0, "Failed to append item to key '%s': %s", key,
+    strerror(errno));
+
+  val = NULL;
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_list_pop(p, redis, &m, key, (void **) &val, &valsz, flags);
+  fail_unless(res == 0, "Failed to get item in list: %s", strerror(errno));
+  fail_unless(val != NULL, "Expected value, got null");
+  fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
+  fail_unless(strncmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
+    (int) valsz, val);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_list_push_params_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+
+  mark_point();
+  res = pr_redis_list_push(NULL, NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_list_push(redis, NULL, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_push(redis, &m, NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+
+  mark_point();
+  res = pr_redis_list_push(redis, &m, key, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "testval";
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_list_push(redis, &m, key, val, 0, 0);
+  fail_unless(res < 0, "Failed to handle empty valuesz");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_push(redis, &m, key, val, valsz, 0);
+  fail_unless(res < 0, "Failed to handle invalid flags");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_list_push_left_test) {
+  int res, flags = PR_REDIS_LIST_FL_LEFT;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  key = "testlistkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  val = "Some JSON here";
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_list_push(redis, &m, key, val, valsz, flags);
+  fail_unless(res == 0, "Failed to append to list '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_list_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove list '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_list_push_right_test) {
+  int res, flags = PR_REDIS_LIST_FL_RIGHT;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  key = "testlistkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  val = "Some JSON here";
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_list_push(redis, &m, key, val, valsz, flags);
+  fail_unless(res == 0, "Failed to append to list '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_list_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove list '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (redis_list_set_test) {
   int res;
   pr_redis_t *redis;
@@ -2842,9 +3265,11 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_add_test);
   tcase_add_test(testcase, redis_add_with_namespace_test);
   tcase_add_test(testcase, redis_get_test);
+  tcase_add_test(testcase, redis_get_with_namespace_test);
   tcase_add_test(testcase, redis_get_str_test);
   tcase_add_test(testcase, redis_incr_test);
   tcase_add_test(testcase, redis_decr_test);
+  tcase_add_test(testcase, redis_rename_test);
   tcase_add_test(testcase, redis_set_test);
 
   tcase_add_test(testcase, redis_hash_remove_test);
@@ -2866,6 +3291,12 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_list_exists_test);
   tcase_add_test(testcase, redis_list_get_test);
   tcase_add_test(testcase, redis_list_getall_test);
+  tcase_add_test(testcase, redis_list_pop_params_test);
+  tcase_add_test(testcase, redis_list_pop_left_test);
+  tcase_add_test(testcase, redis_list_pop_right_test);
+  tcase_add_test(testcase, redis_list_push_params_test);
+  tcase_add_test(testcase, redis_list_push_left_test);
+  tcase_add_test(testcase, redis_list_push_right_test);
   tcase_add_test(testcase, redis_list_set_test);
 
   tcase_add_test(testcase, redis_set_remove_test);
