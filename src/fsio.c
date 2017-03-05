@@ -3406,7 +3406,7 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 }
 
 array_header *pr_fs_split_path(pool *p, const char *path) {
-  int res;
+  int res, have_abs_path = FALSE;
   char *buf;
   size_t buflen, bufsz, pathlen;
   array_header *components;
@@ -3421,6 +3421,10 @@ array_header *pr_fs_split_path(pool *p, const char *path) {
   if (pathlen == 0) {
     errno = EINVAL;
     return NULL;
+  }
+
+  if (*path == '/') {
+    have_abs_path = TRUE;
   }
 
   /* Clean the path first */
@@ -3475,7 +3479,51 @@ array_header *pr_fs_split_path(pool *p, const char *path) {
     }
   }
 
+  if (have_abs_path == TRUE) {
+    array_header *root_component;
+
+    /* Since pr_str_text_to_array() will treat the leading '/' as a delimiter,
+     * it will be stripped and not included as a path component.  But it
+     * DOES need to be there.
+     */
+    root_component = make_array(p, 1, sizeof(char *));
+    *((char **) push_array(root_component)) = pstrdup(p, "/");
+
+    array_cat(root_component, components);
+    components = root_component;
+  }
+
   return components;
+}
+
+char *pr_fs_join_path(pool *p, array_header *components, size_t count) {
+  register unsigned int i;
+  char *path = NULL;
+
+  if (p == NULL ||
+      components == NULL ||
+      components->nelts == 0 ||
+      count == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* Can't join more components than we have. */
+  if (count > components->nelts) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  path = ((char **) components->elts)[0];
+
+  for (i = 1; i < count; i++) {
+    char *elt;
+
+    elt = ((char **) components->elts)[i];
+    path = pdircat(p, path, elt, NULL);
+  }
+
+  return path;
 }
 
 /* This function checks the given path's prefix against the paths that

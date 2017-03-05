@@ -396,6 +396,12 @@ int pr_fs_use_encoding(int);
 /* Split the given path into its individual path components. */
 array_header *pr_fs_split_path(pool *p, const char *path);
 
+/* Given an array of individual path components, join them into a single
+ * path.  The count parameter indicates how many components in the array,
+ * starting from zero, to use.
+ */
+char *pr_fs_join_path(pool *p, array_header *components, size_t count);
+
 int pr_fs_valid_path(const char *);
 void pr_fs_virtual_path(const char *, char *, size_t);
 
