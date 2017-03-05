@@ -392,6 +392,10 @@ char *pr_fs_decode_path2(pool *, const char *, int);
 
 char *pr_fs_encode_path(pool *, const char *);
 int pr_fs_use_encoding(int);
+
+/* Split the given path into its individual path components. */
+array_header *pr_fs_split_path(pool *p, const char *path);
+
 int pr_fs_valid_path(const char *);
 void pr_fs_virtual_path(const char *, char *, size_t);
 

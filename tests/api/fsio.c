@@ -3052,6 +3052,33 @@ END_TEST
 START_TEST (fs_clean_path_test) {
   char res[PR_TUNABLE_PATH_MAX+1], *path, *expected;
 
+  mark_point();
+  pr_fs_clean_path(NULL, NULL, 0);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+
+  mark_point();
+  pr_fs_clean_path(path, NULL, 0);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res[sizeof(res)-1] = '\0';
+
+  mark_point();
+  pr_fs_clean_path(path, res, 0);
+
+  pr_fs_clean_path(path, res, sizeof(res)-1);
+  fail_unless(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
+    path, res);
+
+  res[sizeof(res)-1] = '\0';
+  path = "/test.txt";
+  pr_fs_clean_path(path, res, sizeof(res)-1);
+  fail_unless(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
+    path, res);
+
   res[sizeof(res)-1] = '\0';
   path = "/test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
@@ -3061,7 +3088,6 @@ START_TEST (fs_clean_path_test) {
   res[sizeof(res)-1] = '\0';
   path = "/./test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
-
   expected = "/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
@@ -3069,7 +3095,6 @@ START_TEST (fs_clean_path_test) {
   res[sizeof(res)-1] = '\0';
   path = "test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
-
   expected = "/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", path, res);
@@ -3078,38 +3103,64 @@ END_TEST
 
 START_TEST (fs_clean_path2_test) {
   char res[PR_TUNABLE_PATH_MAX+1], *path, *expected;
+  int code;
+
+  mark_point();
+  code = pr_fs_clean_path2(NULL, NULL, 0, 0);
+  fail_unless(code < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+
+  mark_point();
+  code = pr_fs_clean_path2(path, NULL, 0, 0);
+  fail_unless(code < 0, "Failed to handle null buf");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res[sizeof(res)-1] = '\0';
+
+  mark_point();
+  code = pr_fs_clean_path2(path, res, 0, 0);
+  fail_unless(code == 0, "Failed to handle zero length buf: %s",
+    strerror(errno));
 
   res[sizeof(res)-1] = '\0';
   path = "test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   fail_unless(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
     path, res);
 
   res[sizeof(res)-1] = '\0';
   path = "/./test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
-
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   expected = "/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 
   res[sizeof(res)-1] = '\0';
   path = "test.d///test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
-
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   expected = "test.d/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 
   res[sizeof(res)-1] = '\0';
   path = "/test.d///test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1,
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1,
     PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
-
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   expected = "/test.d/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
-
 }
 END_TEST
 
@@ -3623,6 +3674,109 @@ START_TEST (fs_encode_path_test) {
   path = junk;
   res = pr_fs_encode_path(p, path);
   fail_unless(res != NULL, "Failed to encode path: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (fs_split_path_test) {
+  array_header *res;
+  const char *path, *elt;
+
+  mark_point();
+  res = pr_fs_split_path(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_split_path(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res == NULL, "Failed to handle empty path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 1, "Expected 1, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+
+  path = "///";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 1, "Expected 1, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+
+  path = "/foo/bar/baz/";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+
+  path = "/foo//bar//baz//";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+
+  path = "/foo/bar/baz";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+
+  path = "foo/bar/baz";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+
 }
 END_TEST
 
@@ -4395,6 +4549,7 @@ Suite *tests_get_fsio_suite(void) {
   /* Misc */
   tcase_add_test(testcase, fs_clean_path_test);
   tcase_add_test(testcase, fs_clean_path2_test);
+
   tcase_add_test(testcase, fs_dircat_test);
   tcase_add_test(testcase, fs_setcwd_test);
   tcase_add_test(testcase, fs_glob_test);
@@ -4406,6 +4561,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_use_encoding_test);
   tcase_add_test(testcase, fs_decode_path2_test);
   tcase_add_test(testcase, fs_encode_path_test);
+  tcase_add_test(testcase, fs_split_path_test);
   tcase_add_test(testcase, fs_virtual_path_test);
   tcase_add_test(testcase, fs_get_usable_fd_test);
   tcase_add_test(testcase, fs_get_usable_fd2_test);
