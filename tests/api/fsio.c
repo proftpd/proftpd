@@ -3727,12 +3727,14 @@ START_TEST (fs_split_path_test) {
   res = pr_fs_split_path(p, path);
   fail_unless(res != NULL, "Failed to split path '%s': %s", path,
     strerror(errno));
-  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  fail_unless(res->nelts == 4, "Expected 4, got %u", res->nelts);
   elt = ((char **) res->elts)[0];
-  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
   elt = ((char **) res->elts)[1];
-  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
   elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[3];
   fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
 
   path = "/foo//bar//baz//";
@@ -3741,12 +3743,14 @@ START_TEST (fs_split_path_test) {
   res = pr_fs_split_path(p, path);
   fail_unless(res != NULL, "Failed to split path '%s': %s", path,
     strerror(errno));
-  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  fail_unless(res->nelts == 4, "Expected 4, got %u", res->nelts);
   elt = ((char **) res->elts)[0];
-  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
   elt = ((char **) res->elts)[1];
-  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
   elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[3];
   fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
 
   path = "/foo/bar/baz";
@@ -3755,12 +3759,14 @@ START_TEST (fs_split_path_test) {
   res = pr_fs_split_path(p, path);
   fail_unless(res != NULL, "Failed to split path '%s': %s", path,
     strerror(errno));
-  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  fail_unless(res->nelts == 4, "Expected 4, got %u", res->nelts);
   elt = ((char **) res->elts)[0];
-  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
   elt = ((char **) res->elts)[1];
-  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
   elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[3];
   fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
 
   path = "foo/bar/baz";
@@ -3776,7 +3782,67 @@ START_TEST (fs_split_path_test) {
   fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
   elt = ((char **) res->elts)[2];
   fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+}
+END_TEST
 
+START_TEST (fs_join_path_test) {
+  char *path;
+  array_header *components;
+
+  mark_point();
+  path = pr_fs_join_path(NULL, NULL, 0);
+  fail_unless(path == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = pr_fs_join_path(p, NULL, 0);
+  fail_unless(path == NULL, "Failed to handle null components");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  components = make_array(p, 0, sizeof(char **));
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 0);
+  fail_unless(path == NULL, "Failed to handle empty components");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((char **) push_array(components)) = pstrdup(p, "/");
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 0);
+  fail_unless(path == NULL, "Failed to handle empty count");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 3);
+  fail_unless(path == NULL, "Failed to handle invalid count");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 1);
+  fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
+  fail_unless(strcmp(path, "/") == 0, "Expected '/', got '%s'", path);
+
+  *((char **) push_array(components)) = pstrdup(p, "foo");
+  *((char **) push_array(components)) = pstrdup(p, "bar");
+  *((char **) push_array(components)) = pstrdup(p, "baz");
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 4);
+  fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
+  fail_unless(strcmp(path, "/foo/bar/baz") == 0,
+    "Expected '/foo/bar/baz', got '%s'", path);
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 3);
+  fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
+  fail_unless(strcmp(path, "/foo/bar") == 0, "Expected '/foo/bar', got '%s'",
+    path);
 }
 END_TEST
 
@@ -4562,6 +4628,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_decode_path2_test);
   tcase_add_test(testcase, fs_encode_path_test);
   tcase_add_test(testcase, fs_split_path_test);
+  tcase_add_test(testcase, fs_join_path_test);
   tcase_add_test(testcase, fs_virtual_path_test);
   tcase_add_test(testcase, fs_get_usable_fd_test);
   tcase_add_test(testcase, fs_get_usable_fd2_test);
