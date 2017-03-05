@@ -1640,6 +1640,22 @@ START_TEST (text_to_array_test) {
     strerror(errno));
   fail_unless(res->nelts == 0, "Expected 0 items, got %u", res->nelts);
 
+  text = ",";
+
+  mark_point();
+  res = pr_str_text_to_array(p, text, ',');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 0, "Expected 0 items, got %u", res->nelts);
+
+  text = ",,,";
+
+  mark_point();
+  res = pr_str_text_to_array(p, text, ',');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 0, "Expected 0 items, got %u", res->nelts);
+
   text = "foo";
 
   mark_point();
@@ -1672,7 +1688,7 @@ START_TEST (text_to_array_test) {
   res = pr_str_text_to_array(p, text, ',');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
-  fail_unless(res->nelts == 4, "Expected 3 items, got %u", res->nelts);
+  fail_unless(res->nelts == 3, "Expected 3 items, got %u", res->nelts);
   for (i = 0; i < res->nelts; i++) {
     char *item, *expected;
 

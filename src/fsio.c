@@ -3405,6 +3405,79 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 #endif /* PR_USE_NLS */
 }
 
+array_header *pr_fs_split_path(pool *p, const char *path) {
+  int res;
+  char *buf;
+  size_t buflen, bufsz, pathlen;
+  array_header *components;
+
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  pathlen = strlen(path);
+  if (pathlen == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* Clean the path first */
+  bufsz = PR_TUNABLE_PATH_MAX;
+  buf = pcalloc(p, bufsz + 1);
+
+  res = pr_fs_clean_path2(path, buf, bufsz,
+    PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 7, "error cleaning path '%s': %s", path,
+      strerror(xerrno));
+    errno = xerrno;
+    return NULL;
+  }
+
+  buflen = strlen(buf);
+
+  /* Special-case handling of just "/", since pr_str_text_to_array() will
+   * "eat" that delimiter.
+   */
+  if (buflen == 1 &&
+      buf[0] == '/') {
+    pr_trace_msg(trace_channel, 18, "split path '%s' into 1 component", path);
+
+    components = make_array(p, 1, sizeof(char *));
+    *((char **) push_array(components)) = pstrdup(p, "/");
+
+    return components;
+  }
+
+  components = pr_str_text_to_array(p, buf, '/');
+  if (components != NULL) {
+    pr_trace_msg(trace_channel, 17, "split path '%s' into %u %s", path,
+      components->nelts, components->nelts != 1 ? "components" : "component");
+
+    if (pr_trace_get_level(trace_channel) >= 18) {
+      register unsigned int i;
+
+      for (i = 0; i < components->nelts; i++) {
+        char *component;
+
+        component = ((char **) components->elts)[i];
+        if (component == NULL) {
+          component = "NULL";
+        }
+
+        pr_trace_msg(trace_channel, 18, "path '%s' component #%u: '%s'",
+          path, i + 1, component);
+      }
+    }
+  }
+
+  return components;
+}
+
 /* This function checks the given path's prefix against the paths that
  * have been registered.  If no matching path prefix has been registered,
  * the path is considered invalid.
