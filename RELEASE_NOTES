@@ -10,6 +10,7 @@ ChangeLog files.
 ---------
   + Fixed SFTP issue with umac-64@openssh.com digest/MAC.
   + Fixed regression with mod_sftp rekeying.
+  + Fixed checking entire DefaultRoot path for symlinks (Bug#4295).
 
 
 1.3.5d
