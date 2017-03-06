@@ -843,6 +843,12 @@ static int is_symlink_path(pool *p, const char *path, size_t pathlen) {
     pr_signals_handle();
 
     new_pathlen = ptr - path;
+
+    /* Make sure our pointer actually changed position. */
+    if (new_pathlen == pathlen) {
+      return 0;
+    }
+
     new_path = pstrndup(p, path, new_pathlen);
 
     pr_log_debug(DEBUG10,
