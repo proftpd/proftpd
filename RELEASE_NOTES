@@ -27,6 +27,8 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    AllowChrootSymlinks (Bug#4295)
+
     Include
       The Include directive can now be used within a <Limit> section, e.g.:
 
