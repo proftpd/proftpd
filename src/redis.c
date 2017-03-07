@@ -2667,8 +2667,7 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
       if (elt->type == REDIS_REPLY_STRING) {
         char *field;
 
-        field = pcalloc(p, reply->len + 1);
-        memcpy(field, reply->str, reply->len);
+        field = pstrndup(p, elt->str, elt->len);
         *((char **) push_array(*fields)) = field;
 
       } else {
