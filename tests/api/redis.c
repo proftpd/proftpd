@@ -2711,6 +2711,120 @@ START_TEST (redis_list_push_right_test) {
 }
 END_TEST
 
+START_TEST (redis_list_rotate_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val = NULL;
+  size_t valsz = 0;
+
+  mark_point();
+  res = pr_redis_list_rotate(NULL, NULL, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_rotate(p, NULL, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, &m, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testlistkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, &m, key, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, &m, key, (void **) &val, NULL);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, &m, key, (void **) &val, &valsz);
+  fail_unless(res < 0, "Failed to handle nonexistent key");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  val = "foo";
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_list_append(redis, &m, key, val, valsz);
+  fail_unless(res == 0, "Failed to append item using key '%s': %s", key,
+    strerror(errno));
+
+  val = "bar";
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_list_append(redis, &m, key, val, valsz);
+  fail_unless(res == 0, "Failed to append item using key '%s': %s", key,
+    strerror(errno));
+
+  val = NULL;
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, &m, key, (void **) &val, &valsz);
+  fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
+  fail_unless(val != NULL, "Expected value, got NULL");
+  fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
+  fail_unless(strcmp(val, "bar") == 0, "Expected 'bar', got '%s'", val);
+
+  val = NULL;
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, &m, key, (void **) &val, &valsz);
+  fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
+  fail_unless(val != NULL, "Expected value, got NULL");
+  fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
+  fail_unless(strcmp(val, "foo") == 0, "Expected 'foo', got '%s'", val);
+
+  val = NULL;
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_list_rotate(p, redis, &m, key, (void **) &val, &valsz);
+  fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
+  fail_unless(val != NULL, "Expected value, got NULL");
+  fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
+  fail_unless(strcmp(val, "bar") == 0, "Expected 'bar', got '%s'", val);
+
+  mark_point();
+  res = pr_redis_list_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove list '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (redis_list_set_test) {
   int res;
   pr_redis_t *redis;
@@ -3297,6 +3411,7 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_list_push_params_test);
   tcase_add_test(testcase, redis_list_push_left_test);
   tcase_add_test(testcase, redis_list_push_right_test);
+  tcase_add_test(testcase, redis_list_rotate_test);
   tcase_add_test(testcase, redis_list_set_test);
 
   tcase_add_test(testcase, redis_set_remove_test);

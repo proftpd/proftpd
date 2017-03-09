@@ -1259,6 +1259,34 @@ int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
   return 0;
 }
 
+int pr_redis_list_rotate(pool *p, pr_redis_t *redis, module *m,
+    const char *key, void **value, size_t *valuesz) {
+  int res;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      value == NULL ||
+      valuesz == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_krotate(p, redis, m, key, strlen(key), value, valuesz);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error rotating list using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
 int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
     unsigned int idx, void *value, size_t valuesz) {
   int res;
@@ -3467,6 +3495,80 @@ int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
   return pr_redis_kremove(redis, m, key, keysz);
 }
 
+int pr_redis_list_krotate(pool *p, pr_redis_t *redis, module *m,
+    const char *key, size_t keysz, void **value, size_t *valuesz) {
+  int res = 0, xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      value == NULL ||
+      valuesz == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis RPOPLPUSH pool");
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  cmd = "RPOPLPUSH";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b %b", cmd, key, keysz, key, keysz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error rotating list using key (%lu bytes): %s", (unsigned long) keysz,
+      redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_STRING &&
+      reply->type != REDIS_REPLY_NIL) {
+    pr_trace_msg(trace_channel, 2,
+      "expected STRING or NIL reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (reply->type == REDIS_REPLY_STRING) {
+    pr_trace_msg(trace_channel, 7, "%s reply: %.*s", cmd, (int) reply->len,
+      reply->str);
+    *valuesz = reply->len;
+    *value = palloc(p, reply->len);
+    memcpy(*value, reply->str, reply->len);
+    res = 0;
+
+  } else {
+    pr_trace_msg(trace_channel, 7, "%s reply: nil", cmd);
+    xerrno = ENOENT;
+    res = -1;
+  }
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+
+  errno = xerrno;
+  return res;
+}
+
 int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, unsigned int idx, void *value, size_t valuesz) {
   int xerrno = 0;
@@ -4117,6 +4219,12 @@ int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
   return -1;
 }
 
+int pr_redis_list_rotate(pool *p, pr_redis_t *redis, module *m,
+    const char *key, void **value, size_t *valuesz) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
     unsigned int idx, void *value, size_t valuesz) {
   errno = ENOSYS;
@@ -4314,6 +4422,12 @@ int pr_redis_list_kpush(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_list_krotate(pool *p, pr_redis_t *redis, module *m,
+    const char *key, size_t keysz, void **value, size_t *valuesz) {
   errno = ENOSYS;
   return -1;
 }
