@@ -165,6 +165,8 @@ int pr_redis_sorted_set_getn(pool *p, pr_redis_t *redis, module *m,
 #define PR_REDIS_SORTED_SET_FL_ASC		1
 #define PR_REDIS_SORTED_SET_FL_DESC		2
 
+int pr_redis_sorted_set_incr(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, float incr);
 int pr_redis_sorted_set_remove(pr_redis_t *redis, module *m, const char *key);
 
 /* Variants of the above, where the key values are arbitrary bits rather than
@@ -260,6 +262,8 @@ int pr_redis_sorted_set_kexists(pr_redis_t *redis, module *m, const char *key,
 int pr_redis_sorted_set_kgetn(pool *p, pr_redis_t *redis, module *m,
   const char *key, size_t keysz, unsigned int offset, unsigned int len,
   array_header **values, array_header **valueszs, int flags);
+int pr_redis_sorted_set_kincr(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, float incr);
 int pr_redis_sorted_set_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
 

@@ -1617,6 +1617,35 @@ int pr_redis_sorted_set_getn(pool *p, pr_redis_t *redis, module *m,
   return res;
 }
 
+int pr_redis_sorted_set_incr(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz, float incr) {
+  int res;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_sorted_set_kincr(redis, m, key, strlen(key), value, valuesz,
+    incr);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error incrementing item by %0.3f in sorted set using key '%s': %s",
+      incr, key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return res;
+}
+
 int pr_redis_sorted_set_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
@@ -2105,7 +2134,7 @@ int pr_redis_kincr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   }
 
   tmp_pool = make_sub_pool(redis->pool);
-  pr_pool_tag(tmp_pool, "Redis INCRRBY pool");
+  pr_pool_tag(tmp_pool, "Redis INCRBY pool");
 
   key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
@@ -4525,6 +4554,73 @@ int pr_redis_sorted_set_kgetn(pool *p, pr_redis_t *redis, module *m,
   return res;
 }
 
+int pr_redis_sorted_set_kincr(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, float incr) {
+  int xerrno, exists;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  exists = pr_redis_sorted_set_kexists(redis, m, key, keysz, value, valuesz);
+  if (exists == FALSE) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis ZINCRBY pool");
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  cmd = "ZINCRBY";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b %f %b", cmd, key, keysz, incr,
+    value, valuesz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error incrementing key (%lu bytes) by %0.3f using %s: %s",
+      (unsigned long) keysz, incr, cmd,
+      redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = EIO;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_STRING) {
+    pr_trace_msg(trace_channel, 2,
+      "expected STRING reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %.*s", cmd, (int) reply->len,
+    reply->str);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
 int pr_redis_sorted_set_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
 
@@ -4846,6 +4942,12 @@ int pr_redis_sorted_set_getn(pool *p, pr_redis_t *redis, module *m,
   return -1;
 }
 
+int pr_redis_sorted_set_incr(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz, float incr) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_sorted_set_remove(pr_redis_t *redis, module *m, const char *key) {
   errno = ENOSYS;
   return -1;
@@ -5086,6 +5188,12 @@ int pr_redis_sorted_set_kexists(pr_redis_t *redis, module *m, const char *key,
 int pr_redis_sorted_set_kgetn(pool *p, pr_redis_t *redis, module *m,
     const char *key, size_t keysz, unsigned int offset, unsigned int len,
     array_header **values, array_header **valueszs, int flags) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_sorted_set_kincr(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, float incr) {
   errno = ENOSYS;
   return -1;
 }
