@@ -3355,6 +3355,565 @@ START_TEST (redis_set_getall_test) {
 }
 END_TEST
 
+START_TEST (redis_sorted_set_remove_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+
+  mark_point();
+  res = pr_redis_sorted_set_remove(NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_remove(redis, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_remove(redis, &m, NULL);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+
+  mark_point();
+  res = pr_redis_sorted_set_remove(redis, &m, key);
+  fail_unless(res < 0, "Unexpectedly removed key '%s'", key);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sorted_set_exists_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+
+  mark_point();
+  res = pr_redis_sorted_set_exists(NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_exists(redis, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_exists(redis, &m, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_exists(redis, &m, key, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "testval";
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_sorted_set_exists(redis, &m, key, val, valsz);
+  fail_unless(res < 0, "Failed to handle zero valuesz");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_sorted_set_exists(redis, &m, key, val, valsz);
+  fail_unless(res == FALSE, "Failed to handle nonexistent item");
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, 1.0);
+  fail_unless(res == 0, "Failed to add item to key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_exists(redis, &m, key, val, valsz);
+  fail_unless(res == TRUE, "Failed to handle existing item");
+
+  mark_point();
+  res = pr_redis_sorted_set_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sorted_set_add_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  float score;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(NULL, NULL, NULL, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, NULL, NULL, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, NULL, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "testval";
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle zero valuesz");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valsz = strlen(val);
+  score = 75.32;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res == 0, "Failed to add key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res < 0, "Failed to handle duplicates");
+  fail_unless(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sorted_set_count_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  uint64_t count;
+  void *val;
+  size_t valsz;
+  float score;
+
+  mark_point();
+  res = pr_redis_sorted_set_count(NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_count(redis, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_count(redis, &m, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+
+  key = "testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_count(redis, &m, key, NULL);
+  fail_unless(res < 0, "Failed to handle null count");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_count(redis, &m, key, &count);
+  fail_unless(res == 0, "Failed to handle get sorted set count: %s",
+    strerror(errno));
+  fail_unless(count == 0, "Expected 0, got %lu", (unsigned long) count);
+
+  val = "testval";
+  valsz = strlen(val);
+  score = 23.45;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res == 0, "Failed to add item to key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_count(redis, &m, key, &count);
+  fail_unless(res == 0, "Failed to handle get set count: %s", strerror(errno));
+  fail_unless(count == 1, "Expected 1, got %lu", (unsigned long) count);
+
+  mark_point();
+  res = pr_redis_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sorted_set_delete_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  float score;
+
+  mark_point();
+  res = pr_redis_sorted_set_delete(NULL, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_delete(redis, NULL, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_delete(redis, &m, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_delete(redis, &m, key, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "testval";
+  valsz = 0;
+
+  mark_point();
+  res = pr_redis_sorted_set_delete(redis, &m, key, val, valsz);
+  fail_unless(res < 0, "Failed to handle zero valuesz");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_sorted_set_delete(redis, &m, key, val, valsz);
+  fail_unless(res < 0, "Failed to handle nonexistent item");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  score = 1.23;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res == 0, "Failed to add item to key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_delete(redis, &m, key, val, valsz);
+  fail_unless(res == 0, "Failed to delete item from set: %s", strerror(errno));
+
+  /* Note that we add this item back, just so that the set is NOT empty when
+   * we go to remove it entirely.
+   */
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res == 0, "Failed to add item to key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sorted_set_getn_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  float score;
+  array_header *values = NULL, *valueszs = NULL;
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, NULL, NULL, NULL, 0, 0, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, NULL, NULL, 0, 0, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, &m, NULL, 0, 0, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, &m, key, 0, 0, NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null values");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, &m, key, 0, 0, &values, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, &m, key, 0, 0, &values, &valueszs,
+    0);
+  fail_unless(res < 0, "Failed to handle invalid flags value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "foo";
+  valsz = strlen(val);
+  score = 0.123;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res == 0, "Failed to add item to key '%s': %s", key,
+    strerror(errno));
+
+  val = "bar";
+  valsz = strlen(val);
+  score = -1.56;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res == 0, "Failed to add item to key '%s': %s", key,
+    strerror(errno));
+
+  val = "baz";
+  valsz = strlen(val);
+  score = 234235.1;
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, score);
+  fail_unless(res == 0, "Failed to add item to key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, &m, key, 0, 3, &values, &valueszs,
+    PR_REDIS_SORTED_SET_FL_DESC);
+  fail_unless(res == 0, "Failed to get items in sorted set: %s",
+    strerror(errno));
+  fail_unless(values != NULL, "Expected values, got null");
+  fail_unless(valueszs != NULL, "Expected valueszs, got null");
+  fail_unless(values->nelts == 3, "Expected 3, got %u", values->nelts);
+  fail_unless(valueszs->nelts == 3, "Expected 3, got %u", valueszs->nelts);
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, &m, key, 1, 2, &values, &valueszs,
+    PR_REDIS_SORTED_SET_FL_ASC);
+  fail_unless(res == 0, "Failed to get items in sorted set: %s",
+    strerror(errno));
+  fail_unless(values != NULL, "Expected values, got null");
+  fail_unless(valueszs != NULL, "Expected valueszs, got null");
+  fail_unless(values->nelts == 2, "Expected 2, got %u", values->nelts);
+  fail_unless(valueszs->nelts == 2, "Expected 2, got %u", valueszs->nelts);
+
+  mark_point();
+  res = pr_redis_sorted_set_getn(p, redis, &m, key, 1, 10, &values, &valueszs,
+    PR_REDIS_SORTED_SET_FL_ASC);
+  fail_unless(res == 0, "Failed to get items in sorted set: %s",
+    strerror(errno));
+  fail_unless(values != NULL, "Expected values, got null");
+  fail_unless(valueszs != NULL, "Expected valueszs, got null");
+  fail_unless(values->nelts == 2, "Expected 2, got %u", values->nelts);
+  fail_unless(valueszs->nelts == 2, "Expected 2, got %u", valueszs->nelts);
+
+  mark_point();
+  res = pr_redis_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sorted_set_incr_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  float incr;
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(NULL, NULL, NULL, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(redis, NULL, NULL, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(redis, &m, NULL, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testval";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(redis, &m, key, NULL, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "foo";
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(redis, &m, key, val, 0, 0.0);
+  fail_unless(res < 0, "Failed to handle empty value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valsz = strlen(val);
+  incr = 2.0;
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(redis, &m, key, val, valsz, incr);
+  fail_unless(res < 0, "Failed to handle nonexistent key");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, incr);
+  fail_unless(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(redis, &m, key, val, valsz, -incr);
+  fail_unless(res == 0, "Failed to increment key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 #endif /* PR_USE_REDIS */
 
 Suite *tests_get_redis_suite(void) {
@@ -3420,6 +3979,14 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_set_count_test);
   tcase_add_test(testcase, redis_set_delete_test);
   tcase_add_test(testcase, redis_set_getall_test);
+
+  tcase_add_test(testcase, redis_sorted_set_remove_test);
+  tcase_add_test(testcase, redis_sorted_set_exists_test);
+  tcase_add_test(testcase, redis_sorted_set_add_test);
+  tcase_add_test(testcase, redis_sorted_set_count_test);
+  tcase_add_test(testcase, redis_sorted_set_delete_test);
+  tcase_add_test(testcase, redis_sorted_set_getn_test);
+  tcase_add_test(testcase, redis_sorted_set_incr_test);
 
   suite_add_tcase(suite, testcase);
 #endif /* PR_USE_REDIS */
