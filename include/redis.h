@@ -122,6 +122,8 @@ int pr_redis_list_pop(pool *p, pr_redis_t *redis, module *m, const char *key,
 int pr_redis_list_push(pr_redis_t *redis, module *m, const char *key,
   void *value, size_t valuesz, int flags);
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key);
+int pr_redis_list_rotate(pool *p, pr_redis_t *redis, module *m, const char *key,
+  void **value, size_t *valuesz);
 int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
   unsigned int idx, void *value, size_t valuesz);
 
@@ -208,6 +210,8 @@ int pr_redis_list_kpush(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz, int flags);
 int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
+int pr_redis_list_krotate(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, void **value, size_t *valuesz);
 int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, unsigned int idx, void *value, size_t valuesz);
 
