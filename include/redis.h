@@ -146,6 +146,27 @@ int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
   array_header **values, array_header **valueszs);
 int pr_redis_set_remove(pr_redis_t *redis, module *m, const char *key);
 
+/* Sorted Set operations */
+int pr_redis_sorted_set_add(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, float score);
+int pr_redis_sorted_set_count(pr_redis_t *redis, module *m, const char *key,
+  uint64_t *count);
+int pr_redis_sorted_set_delete(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz);
+int pr_redis_sorted_set_exists(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz);
+int pr_redis_sorted_set_getn(pool *p, pr_redis_t *redis, module *m,
+  const char *key, unsigned int offset, unsigned int len,
+  array_header **values, array_header **valueszs, int flags);
+
+/* These flags are used for determining whether the sorted set items are
+ * obtained in ascending (ASC) or descending (DESC) order.
+ */
+#define PR_REDIS_SORTED_SET_FL_ASC		1
+#define PR_REDIS_SORTED_SET_FL_DESC		2
+
+int pr_redis_sorted_set_remove(pr_redis_t *redis, module *m, const char *key);
+
 /* Variants of the above, where the key values are arbitrary bits rather than
  * being assumed to be strings.
  */
@@ -226,6 +247,20 @@ int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
 int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
   size_t keysz, array_header **values, array_header **valueszs);
 int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz);
+
+int pr_redis_sorted_set_kadd(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, float score);
+int pr_redis_sorted_set_kcount(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, uint64_t *count);
+int pr_redis_sorted_set_kdelete(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz);
+int pr_redis_sorted_set_kexists(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz);
+int pr_redis_sorted_set_kgetn(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, unsigned int offset, unsigned int len,
+  array_header **values, array_header **valueszs, int flags);
+int pr_redis_sorted_set_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
 
 /* For internal use only */
