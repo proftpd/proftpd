@@ -1701,6 +1701,35 @@ int pr_redis_sorted_set_score(pr_redis_t *redis, module *m, const char *key,
   return res;
 }
 
+int pr_redis_sorted_set_set(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz, float score) {
+  int res;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_sorted_set_kset(redis, m, key, strlen(key), value, valuesz,
+    score);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error setting item to score %0.3f in sorted set using key '%s': %s",
+      score, key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
 static const char *get_namespace_key(pool *p, pr_redis_t *redis, module *m,
     const char *key, size_t *keysz) {
 
@@ -4226,6 +4255,10 @@ int pr_redis_sorted_set_kadd(pr_redis_t *redis, module *m, const char *key,
     return -1;
   }
 
+  /* Note: We should probably detect the server version, and instead of using
+   * a separate existence check, if server >= 3.0.2, use the NX/XX flags of
+   * the ZADD command.
+   */
   exists = pr_redis_sorted_set_kexists(redis, m, key, keysz, value, valuesz);
   if (exists == TRUE) {
     errno = EEXIST;
@@ -4245,7 +4278,7 @@ int pr_redis_sorted_set_kadd(pr_redis_t *redis, module *m, const char *key,
 
   if (reply == NULL) {
     pr_trace_msg(trace_channel, 2,
-      "error adding to set using key (%lu bytes): %s",
+      "error adding to sorted set using key (%lu bytes): %s",
       (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
     destroy_pool(tmp_pool);
     errno = xerrno;
@@ -4622,7 +4655,7 @@ int pr_redis_sorted_set_kincr(pr_redis_t *redis, module *m, const char *key,
 
   if (reply == NULL) {
     pr_trace_msg(trace_channel, 2,
-      "error incrementing key (%lu bytes) by %0.3f using %s: %s",
+      "error incrementing key (%lu bytes) by %0.3f in sorted set using %s: %s",
       (unsigned long) keysz, incr, cmd,
       redis_strerror(tmp_pool, redis, xerrno));
     destroy_pool(tmp_pool);
@@ -4752,6 +4785,74 @@ int pr_redis_sorted_set_kscore(pr_redis_t *redis, module *m, const char *key,
 
   errno = xerrno;
   return res;
+}
+
+int pr_redis_sorted_set_kset(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, float score) {
+  int xerrno = 0, exists = FALSE;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      value == NULL ||
+      valuesz == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Note: We should probably detect the server version, and instead of using
+   * a separate existence check, if server >= 3.0.2, use the NX/XX flags of
+   * the ZADD command.
+   */
+  exists = pr_redis_sorted_set_kexists(redis, m, key, keysz, value, valuesz);
+  if (exists == FALSE) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis ZADD pool");
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  cmd = "ZADD";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %b %f %b", cmd, key, keysz, score,
+    value, valuesz);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error setting item in sorted set using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_INTEGER) {
+    pr_trace_msg(trace_channel, 2,
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %lld", cmd, reply->integer);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
 }
 
 int redis_set_server(const char *server, int port, const char *password) {
@@ -5085,6 +5186,12 @@ int pr_redis_sorted_set_score(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
+int pr_redis_sorted_set_set(pr_redis_t *redis, module *m, const char *key,
+    void *value, size_t valuesz, float score) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_kadd(pr_redis_t *redis, module *m, const char *key, size_t keysz,
     void *value, size_t valuesz, time_t expires) {
   errno = ENOSYS;
@@ -5338,6 +5445,12 @@ int pr_redis_sorted_set_kremove(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_sorted_set_kscore(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz, float *score) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_sorted_set_kset(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, void *value, size_t valuesz, float score) {
   errno = ENOSYS;
   return -1;
 }
