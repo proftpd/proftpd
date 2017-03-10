@@ -121,13 +121,13 @@ static int ping_server(pr_redis_t *redis) {
   return 0;
 }
 
-static int stat_server(pr_redis_t *redis) {
+static int stat_server(pr_redis_t *redis, const char *section) {
   const char *cmd;
   redisReply *reply;
 
   cmd = "INFO";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
-  reply = redisCommand(redis->ctx, "%s", cmd);
+  reply = redisCommand(redis->ctx, "%s %s", cmd, section);
   if (reply == NULL) {
     int xerrno;
     pool *tmp_pool;
@@ -329,7 +329,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
   /* Make sure we are connected to the configured server by querying
    * some stats/info from it.
    */
-  res = stat_server(redis);
+  res = stat_server(redis, "server");
   if (res < 0) {
     xerrno = errno;
 
