@@ -166,8 +166,10 @@ int pr_redis_sorted_set_getn(pool *p, pr_redis_t *redis, module *m,
 #define PR_REDIS_SORTED_SET_FL_DESC		2
 
 int pr_redis_sorted_set_incr(pr_redis_t *redis, module *m, const char *key,
-  void *value, size_t valuesz, float incr);
+  void *value, size_t valuesz, float incr, float *score);
 int pr_redis_sorted_set_remove(pr_redis_t *redis, module *m, const char *key);
+int pr_redis_sorted_set_score(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, float *score);
 
 /* Variants of the above, where the key values are arbitrary bits rather than
  * being assumed to be strings.
@@ -263,9 +265,11 @@ int pr_redis_sorted_set_kgetn(pool *p, pr_redis_t *redis, module *m,
   const char *key, size_t keysz, unsigned int offset, unsigned int len,
   array_header **values, array_header **valueszs, int flags);
 int pr_redis_sorted_set_kincr(pr_redis_t *redis, module *m, const char *key,
-  size_t keysz, void *value, size_t valuesz, float incr);
+  size_t keysz, void *value, size_t valuesz, float incr, float *score);
 int pr_redis_sorted_set_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
+int pr_redis_sorted_set_kscore(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, float *score);
 
 /* For internal use only */
 int redis_set_server(const char *server, int port, const char *password);

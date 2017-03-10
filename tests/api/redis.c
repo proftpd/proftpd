@@ -3843,10 +3843,10 @@ START_TEST (redis_sorted_set_incr_test) {
   const char *key;
   char *val;
   size_t valsz;
-  float incr;
+  float incr, curr;
 
   mark_point();
-  res = pr_redis_sorted_set_incr(NULL, NULL, NULL, NULL, 0, 0.0);
+  res = pr_redis_sorted_set_incr(NULL, NULL, NULL, NULL, 0, 0.0, NULL);
   fail_unless(res < 0, "Failed to handle null redis");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -3857,13 +3857,13 @@ START_TEST (redis_sorted_set_incr_test) {
     strerror(errno));
 
   mark_point();
-  res = pr_redis_sorted_set_incr(redis, NULL, NULL, NULL, 0, 0.0);
+  res = pr_redis_sorted_set_incr(redis, NULL, NULL, NULL, 0, 0.0, NULL);
   fail_unless(res < 0, "Failed to handle null module");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
-  res = pr_redis_sorted_set_incr(redis, &m, NULL, NULL, 0, 0.0);
+  res = pr_redis_sorted_set_incr(redis, &m, NULL, NULL, 0, 0.0, NULL);
   fail_unless(res < 0, "Failed to handle null key");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -3872,7 +3872,7 @@ START_TEST (redis_sorted_set_incr_test) {
   (void) pr_redis_remove(redis, &m, key);
 
   mark_point();
-  res = pr_redis_sorted_set_incr(redis, &m, key, NULL, 0, 0.0);
+  res = pr_redis_sorted_set_incr(redis, &m, key, NULL, 0, 0.0, NULL);
   fail_unless(res < 0, "Failed to handle null value");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -3880,7 +3880,7 @@ START_TEST (redis_sorted_set_incr_test) {
   val = "foo";
 
   mark_point();
-  res = pr_redis_sorted_set_incr(redis, &m, key, val, 0, 0.0);
+  res = pr_redis_sorted_set_incr(redis, &m, key, val, 0, 0.0, NULL);
   fail_unless(res < 0, "Failed to handle empty value");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -3889,7 +3889,13 @@ START_TEST (redis_sorted_set_incr_test) {
   incr = 2.0;
 
   mark_point();
-  res = pr_redis_sorted_set_incr(redis, &m, key, val, valsz, incr);
+  res = pr_redis_sorted_set_incr(redis, &m, key, val, valsz, incr, NULL);
+  fail_unless(res < 0, "Failed to handle null current value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_incr(redis, &m, key, val, valsz, incr, &curr);
   fail_unless(res < 0, "Failed to handle nonexistent key");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
@@ -3900,9 +3906,93 @@ START_TEST (redis_sorted_set_incr_test) {
     strerror(errno));
 
   mark_point();
-  res = pr_redis_sorted_set_incr(redis, &m, key, val, valsz, -incr);
+  res = pr_redis_sorted_set_incr(redis, &m, key, val, valsz, -incr, &curr);
   fail_unless(res == 0, "Failed to increment key '%s', val '%s': %s", key, val,
     strerror(errno));
+
+  mark_point();
+  res = pr_redis_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sorted_set_score_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  float score;
+
+  mark_point();
+  res = pr_redis_sorted_set_score(NULL, NULL, NULL, NULL, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_score(redis, NULL, NULL, NULL, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_score(redis, &m, NULL, NULL, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testval";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_score(redis, &m, key, NULL, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "foo";
+
+  mark_point();
+  res = pr_redis_sorted_set_score(redis, &m, key, val, 0, NULL);
+  fail_unless(res < 0, "Failed to handle empty value");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valsz = strlen(val);
+
+  mark_point();
+  res = pr_redis_sorted_set_score(redis, &m, key, val, valsz, NULL);
+  fail_unless(res < 0, "Failed to handle null score");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_score(redis, &m, key, val, valsz, &score);
+  fail_unless(res < 0, "Failed to handle nonexistent key");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_add(redis, &m, key, val, valsz, 1.0);
+  fail_unless(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_score(redis, &m, key, val, valsz, &score);
+  fail_unless(res == 0, "Failed to score key '%s', val '%s': %s", key, val,
+    strerror(errno));
+  fail_unless(score > 0.0, "Expected > 0.0, got %0.3f", score);
 
   mark_point();
   res = pr_redis_remove(redis, &m, key);
@@ -3987,6 +4077,7 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_sorted_set_delete_test);
   tcase_add_test(testcase, redis_sorted_set_getn_test);
   tcase_add_test(testcase, redis_sorted_set_incr_test);
+  tcase_add_test(testcase, redis_sorted_set_score_test);
 
   suite_add_tcase(suite, testcase);
 #endif /* PR_USE_REDIS */
