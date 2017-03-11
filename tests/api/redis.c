@@ -2915,6 +2915,98 @@ START_TEST (redis_list_set_test) {
 }
 END_TEST
 
+START_TEST (redis_list_setall_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  array_header *vals, *valszs;
+
+  mark_point();
+  res = pr_redis_list_setall(NULL, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_list_setall(redis, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_list_setall(redis, &m, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testlistkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_list_setall(redis, &m, key, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null values");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  vals = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_list_setall(redis, &m, key, vals, NULL);
+  fail_unless(res < 0, "Failed to handle empty values");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((char **) push_array(vals)) = pstrdup(p, "Some JSON here");
+
+  mark_point();
+  res = pr_redis_list_setall(redis, &m, key, vals, NULL);
+  fail_unless(res < 0, "Failed to handle null valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valszs = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_list_setall(redis, &m, key, vals, valszs);
+  fail_unless(res < 0, "Failed to handle empty valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((size_t *) push_array(valszs)) = strlen("Some JSON here");
+  *((char **) push_array(vals)) = pstrdup(p, "bar");
+
+  mark_point();
+  res = pr_redis_list_setall(redis, &m, key, vals, valszs);
+  fail_unless(res < 0, "Failed to handle mismatched values/valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((size_t *) push_array(valszs)) = strlen("bar");
+
+  mark_point();
+  (void) pr_redis_list_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_list_setall(redis, &m, key, vals, valszs);
+  fail_unless(res == 0, "Failed to set items using key '%s': %s",
+    key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_list_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove list '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (redis_set_remove_test) {
   int res;
   pr_redis_t *redis;
@@ -3348,6 +3440,98 @@ START_TEST (redis_set_getall_test) {
   mark_point();
   res = pr_redis_remove(redis, &m, key);
   fail_unless(res == 0, "Failed to remove key '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_set_setall_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  array_header *vals, *valszs;
+
+  mark_point();
+  res = pr_redis_set_setall(NULL, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_set_setall(redis, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_set_setall(redis, &m, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testsetkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_set_setall(redis, &m, key, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null values");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  vals = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_set_setall(redis, &m, key, vals, NULL);
+  fail_unless(res < 0, "Failed to handle empty values");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((char **) push_array(vals)) = pstrdup(p, "Some JSON here");
+
+  mark_point();
+  res = pr_redis_set_setall(redis, &m, key, vals, NULL);
+  fail_unless(res < 0, "Failed to handle null valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valszs = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_set_setall(redis, &m, key, vals, valszs);
+  fail_unless(res < 0, "Failed to handle empty valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((size_t *) push_array(valszs)) = strlen("Some JSON here");
+  *((char **) push_array(vals)) = pstrdup(p, "bar");
+
+  mark_point();
+  res = pr_redis_set_setall(redis, &m, key, vals, valszs);
+  fail_unless(res < 0, "Failed to handle mismatched values/valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((size_t *) push_array(valszs)) = strlen("bar");
+
+  mark_point();
+  (void) pr_redis_set_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_set_setall(redis, &m, key, vals, valszs);
+  fail_unless(res == 0, "Failed to set items using key '%s': %s",
+    key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_set_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove set '%s': %s", key, strerror(errno));
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
@@ -4085,6 +4269,122 @@ START_TEST (redis_sorted_set_set_test) {
 }
 END_TEST
 
+START_TEST (redis_sorted_set_setall_test) {
+  int res;
+  pr_redis_t *redis;
+  module m;
+  const char *key;
+  array_header *vals, *valszs, *scores;
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(NULL, NULL, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, NULL, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null module");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null key");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testsetkey";
+  (void) pr_redis_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null values");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  vals = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle empty values");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((char **) push_array(vals)) = pstrdup(p, "Some JSON here");
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  valszs = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, valszs, NULL);
+  fail_unless(res < 0, "Failed to handle empty valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((size_t *) push_array(valszs)) = strlen("Some JSON here");
+  *((char **) push_array(vals)) = pstrdup(p, "bar");
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, valszs, NULL);
+  fail_unless(res < 0, "Failed to handle mismatched values/valueszs");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((size_t *) push_array(valszs)) = strlen("bar");
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, valszs, NULL);
+  fail_unless(res < 0, "Failed to handle null scores");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  scores = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, valszs, scores);
+  fail_unless(res < 0, "Failed to handle empty scores");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((float *) push_array(scores)) = 1.0;
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, valszs, scores);
+  fail_unless(res < 0, "Failed to handle mismatched values/scores");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((float *) push_array(scores)) = 2.0;
+
+  mark_point();
+  (void) pr_redis_set_remove(redis, &m, key);
+
+  mark_point();
+  res = pr_redis_sorted_set_setall(redis, &m, key, vals, valszs, scores);
+  fail_unless(res == 0, "Failed to set items using key '%s': %s",
+    key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_set_remove(redis, &m, key);
+  fail_unless(res == 0, "Failed to remove set '%s': %s", key, strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 #endif /* PR_USE_REDIS */
 
 Suite *tests_get_redis_suite(void) {
@@ -4143,6 +4443,7 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_list_push_right_test);
   tcase_add_test(testcase, redis_list_rotate_test);
   tcase_add_test(testcase, redis_list_set_test);
+  tcase_add_test(testcase, redis_list_setall_test);
 
   tcase_add_test(testcase, redis_set_remove_test);
   tcase_add_test(testcase, redis_set_exists_test);
@@ -4150,6 +4451,7 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_set_count_test);
   tcase_add_test(testcase, redis_set_delete_test);
   tcase_add_test(testcase, redis_set_getall_test);
+  tcase_add_test(testcase, redis_set_setall_test);
 
   tcase_add_test(testcase, redis_sorted_set_remove_test);
   tcase_add_test(testcase, redis_sorted_set_exists_test);
@@ -4160,6 +4462,7 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_sorted_set_incr_test);
   tcase_add_test(testcase, redis_sorted_set_score_test);
   tcase_add_test(testcase, redis_sorted_set_set_test);
+  tcase_add_test(testcase, redis_sorted_set_setall_test);
 
   suite_add_tcase(suite, testcase);
 #endif /* PR_USE_REDIS */

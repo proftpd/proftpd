@@ -495,13 +495,7 @@ int pr_redis_add(pr_redis_t *redis, module *m, const char *key, void *value,
     size_t valuesz, time_t expires) {
   int res;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -525,13 +519,7 @@ int pr_redis_decr(pr_redis_t *redis, module *m, const char *key, uint32_t decr,
     uint64_t *value) {
   int res;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      decr == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -555,11 +543,7 @@ void *pr_redis_get(pool *p, pr_redis_t *redis, module *m, const char *key,
     size_t *valuesz) {
   void *ptr = NULL;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      valuesz == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -581,10 +565,7 @@ void *pr_redis_get(pool *p, pr_redis_t *redis, module *m, const char *key,
 char *pr_redis_get_str(pool *p, pr_redis_t *redis, module *m, const char *key) {
   char *ptr = NULL;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -607,13 +588,7 @@ int pr_redis_incr(pr_redis_t *redis, module *m, const char *key, uint32_t incr,
     uint64_t *value) {
   int res;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      incr == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -636,9 +611,7 @@ int pr_redis_incr(pr_redis_t *redis, module *m, const char *key, uint32_t incr,
 int pr_redis_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -661,9 +634,7 @@ int pr_redis_rename(pr_redis_t *redis, module *m, const char *from,
     const char *to) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      from == NULL ||
+  if (from == NULL ||
       to == NULL) {
     errno = EINVAL;
     return -1;
@@ -687,13 +658,7 @@ int pr_redis_set(pr_redis_t *redis, module *m, const char *key, void *value,
     size_t valuesz, time_t expires) {
   int res;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -718,10 +683,7 @@ int pr_redis_hash_count(pr_redis_t *redis, module *m, const char *key,
     uint64_t *count) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      count == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -744,9 +706,7 @@ int pr_redis_hash_delete(pr_redis_t *redis, module *m, const char *key,
     const char *field) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
+  if (key == NULL ||
       field == NULL) {
     errno = EINVAL;
     return -1;
@@ -771,9 +731,7 @@ int pr_redis_hash_exists(pr_redis_t *redis, module *m, const char *key,
     const char *field) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
+  if (key == NULL ||
       field == NULL) {
     errno = EINVAL;
     return -1;
@@ -798,12 +756,8 @@ int pr_redis_hash_get(pool *p, pr_redis_t *redis, module *m, const char *key,
     const char *field, void **value, size_t *valuesz) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      field == NULL ||
-      value == NULL) {
+  if (key == NULL ||
+      field == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -828,11 +782,7 @@ int pr_redis_hash_getall(pool *p, pr_redis_t *redis, module *m,
     const char *key, pr_table_t **hash) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      hash == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -855,9 +805,7 @@ int pr_redis_hash_incr(pr_redis_t *redis, module *m, const char *key,
     const char *field, int32_t incr, int64_t *value) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
+  if (key == NULL ||
       field == NULL) {
     errno = EINVAL;
     return -1;
@@ -883,11 +831,7 @@ int pr_redis_hash_keys(pool *p, pr_redis_t *redis, module *m, const char *key,
     array_header **fields) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      fields == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -910,9 +854,7 @@ int pr_redis_hash_keys(pool *p, pr_redis_t *redis, module *m, const char *key,
 int pr_redis_hash_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -935,12 +877,8 @@ int pr_redis_hash_set(pr_redis_t *redis, module *m, const char *key,
     const char *field, void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      field == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL ||
+      field == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -965,10 +903,7 @@ int pr_redis_hash_setall(pr_redis_t *redis, module *m, const char *key,
     pr_table_t *hash) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      hash == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -991,11 +926,7 @@ int pr_redis_hash_values(pool *p, pr_redis_t *redis, module *m,
     const char *key, array_header **values) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      values == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1019,11 +950,7 @@ int pr_redis_list_append(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1046,10 +973,7 @@ int pr_redis_list_count(pr_redis_t *redis, module *m, const char *key,
     uint64_t *count) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      count == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1072,11 +996,7 @@ int pr_redis_list_delete(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (value == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1100,9 +1020,7 @@ int pr_redis_list_exists(pr_redis_t *redis, module *m, const char *key,
     unsigned int idx) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1126,12 +1044,7 @@ int pr_redis_list_get(pool *p, pr_redis_t *redis, module *m, const char *key,
     unsigned int idx, void **value, size_t *valuesz) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1155,12 +1068,7 @@ int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
     array_header **values, array_header **valueszs) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      values == NULL ||
-      valueszs == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1183,12 +1091,7 @@ int pr_redis_list_pop(pool *p, pr_redis_t *redis, module *m, const char *key,
     void **value, size_t *valuesz, int flags) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1212,11 +1115,7 @@ int pr_redis_list_push(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz, int flags) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1238,9 +1137,7 @@ int pr_redis_list_push(pr_redis_t *redis, module *m, const char *key,
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1263,12 +1160,7 @@ int pr_redis_list_rotate(pool *p, pr_redis_t *redis, module *m,
     const char *key, void **value, size_t *valuesz) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1291,11 +1183,7 @@ int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
     unsigned int idx, void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1315,16 +1203,35 @@ int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
   return 0;
 }
 
+int pr_redis_list_setall(pr_redis_t *redis, module *m, const char *key,
+    array_header *values, array_header *valueszs) {
+  int res;
+
+  if (key == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_list_ksetall(redis, m, key, strlen(key), values, valueszs);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error setting items in list using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
 /* Set operations */
 int pr_redis_set_add(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1347,10 +1254,7 @@ int pr_redis_set_count(pr_redis_t *redis, module *m, const char *key,
     uint64_t *count) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      count == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1373,11 +1277,7 @@ int pr_redis_set_delete(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1400,11 +1300,7 @@ int pr_redis_set_exists(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1427,12 +1323,7 @@ int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
     array_header **values, array_header **valueszs) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      values == NULL ||
-      valueszs == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1454,9 +1345,7 @@ int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
 int pr_redis_set_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1475,15 +1364,35 @@ int pr_redis_set_remove(pr_redis_t *redis, module *m, const char *key) {
   return 0;
 }
 
+int pr_redis_set_setall(pr_redis_t *redis, module *m, const char *key,
+    array_header *values, array_header *valueszs) {
+  int res;
+
+  if (key == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_set_ksetall(redis, m, key, strlen(key), values, valueszs);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error setting items in set using key '%s': %s", key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+/* Sorted Set operations */
 int pr_redis_sorted_set_add(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz, float score) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1508,10 +1417,7 @@ int pr_redis_sorted_set_count(pr_redis_t *redis, module *m, const char *key,
     uint64_t *count) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      count == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1534,11 +1440,7 @@ int pr_redis_sorted_set_delete(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1562,11 +1464,7 @@ int pr_redis_sorted_set_exists(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1591,12 +1489,7 @@ int pr_redis_sorted_set_getn(pool *p, pr_redis_t *redis, module *m,
     array_header **values, array_header **valueszs, int flags) {
   int res;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      values == NULL ||
-      valueszs == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1621,12 +1514,7 @@ int pr_redis_sorted_set_incr(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz, float incr, float *score) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0 ||
-      score == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1650,9 +1538,7 @@ int pr_redis_sorted_set_incr(pr_redis_t *redis, module *m, const char *key,
 int pr_redis_sorted_set_remove(pr_redis_t *redis, module *m, const char *key) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1675,12 +1561,7 @@ int pr_redis_sorted_set_score(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz, float *score) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0 ||
-      score == NULL) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1705,11 +1586,7 @@ int pr_redis_sorted_set_set(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz, float score) {
   int res;
 
-  if (redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL ||
-      valuesz == 0) {
+  if (key == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1722,6 +1599,31 @@ int pr_redis_sorted_set_set(pr_redis_t *redis, module *m, const char *key,
     pr_trace_msg(trace_channel, 2,
       "error setting item to score %0.3f in sorted set using key '%s': %s",
       score, key, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
+int pr_redis_sorted_set_setall(pr_redis_t *redis, module *m, const char *key,
+    array_header *values, array_header *valueszs, array_header *scores) {
+  int res;
+
+  if (key == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = pr_redis_sorted_set_ksetall(redis, m, key, strlen(key), values,
+    valueszs, scores);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 2,
+      "error setting items in sorted set using key '%s': %s", key,
+      strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -3885,6 +3787,94 @@ int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
   return 0;
 }
 
+int pr_redis_list_ksetall(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header *values, array_header *valueszs) {
+  register unsigned int i;
+  int res, xerrno = 0;
+  pool *tmp_pool = NULL;
+  array_header *args, *arglens;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      values == NULL ||
+      values->nelts == 0 ||
+      valueszs == NULL ||
+      valueszs->nelts == 0 ||
+      values->nelts != valueszs->nelts) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* First, delete any existing list at this key; a set operation, in my mind,
+   * is a complete overwrite.
+   */
+  res = pr_redis_list_kremove(redis, m, key, keysz);
+  if (res < 0 &&
+      errno != ENOENT) {
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis RPUSH pool");
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  cmd = "RPUSH";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+
+  args = make_array(tmp_pool, 0, sizeof(char *));
+  arglens = make_array(tmp_pool, 0, sizeof(size_t));
+
+  *((char **) push_array(args)) = pstrdup(tmp_pool, cmd);
+  *((size_t *) push_array(arglens)) = strlen(cmd);
+
+  *((char **) push_array(args)) = (char *) key;
+  *((size_t *) push_array(arglens)) = keysz;
+
+  for (i = 0; i < values->nelts; i++) {
+    pr_signals_handle();
+
+    *((char **) push_array(args)) = ((char **) values->elts)[i];
+    *((size_t *) push_array(arglens)) = ((size_t *) valueszs->elts)[i];
+  }
+
+  reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error setting items in list using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_INTEGER) {
+    pr_trace_msg(trace_channel, 2,
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %lld", cmd, reply->integer);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
 int pr_redis_set_kadd(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
   int xerrno = 0, exists = FALSE;
@@ -4236,6 +4226,94 @@ int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
 
   /* Note: We can actually use just DEL here. */
   return pr_redis_kremove(redis, m, key, keysz);
+}
+
+int pr_redis_set_ksetall(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header *values, array_header *valueszs) {
+  register unsigned int i;
+  int res, xerrno = 0;
+  pool *tmp_pool = NULL;
+  array_header *args, *arglens;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      values == NULL ||
+      values->nelts == 0 ||
+      valueszs == NULL ||
+      valueszs->nelts == 0 ||
+      values->nelts != valueszs->nelts) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* First, delete any existing set at this key; a set operation, in my mind,
+   * is a complete overwrite.
+   */
+  res = pr_redis_set_kremove(redis, m, key, keysz);
+  if (res < 0 &&
+      errno != ENOENT) {
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis SADD pool");
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  cmd = "SADD";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+
+  args = make_array(tmp_pool, 0, sizeof(char *));
+  arglens = make_array(tmp_pool, 0, sizeof(size_t));
+
+  *((char **) push_array(args)) = pstrdup(tmp_pool, cmd);
+  *((size_t *) push_array(arglens)) = strlen(cmd);
+
+  *((char **) push_array(args)) = (char *) key;
+  *((size_t *) push_array(arglens)) = keysz;
+
+  for (i = 0; i < values->nelts; i++) {
+    pr_signals_handle();
+
+    *((char **) push_array(args)) = ((char **) values->elts)[i];
+    *((size_t *) push_array(arglens)) = ((size_t *) valueszs->elts)[i];
+  }
+
+  reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error setting items in set using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_INTEGER) {
+    pr_trace_msg(trace_channel, 2,
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %lld", cmd, reply->integer);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
 }
 
 int pr_redis_sorted_set_kadd(pr_redis_t *redis, module *m, const char *key,
@@ -4855,6 +4933,121 @@ int pr_redis_sorted_set_kset(pr_redis_t *redis, module *m, const char *key,
   return 0;
 }
 
+static char *f2s(pool *p, float num, size_t *len) {
+  int res;
+  char *s;
+  size_t sz;
+
+  sz = 32;
+  s = pcalloc(p, sz + 1);
+  res = snprintf(s, sz, "%0.3f", num);
+
+  *len = res;
+  return s;
+}
+
+int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header *values, array_header *valueszs,
+    array_header *scores) {
+  register unsigned int i;
+  int res, xerrno = 0;
+  pool *tmp_pool = NULL;
+  array_header *args, *arglens;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      values == NULL ||
+      values->nelts == 0 ||
+      valueszs == NULL ||
+      valueszs->nelts == 0 ||
+      scores == NULL ||
+      scores->nelts == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (values->nelts != valueszs->nelts ||
+      values->nelts != scores->nelts) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* First, delete any existing sorted set at this key; a set operation,
+   * in my mind, is a complete overwrite.
+   */
+  res = pr_redis_sorted_set_kremove(redis, m, key, keysz);
+  if (res < 0 &&
+      errno != ENOENT) {
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis ZADD pool");
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  cmd = "ZADD";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+
+  args = make_array(tmp_pool, 0, sizeof(char *));
+  arglens = make_array(tmp_pool, 0, sizeof(size_t));
+
+  *((char **) push_array(args)) = pstrdup(tmp_pool, cmd);
+  *((size_t *) push_array(arglens)) = strlen(cmd);
+
+  *((char **) push_array(args)) = (char *) key;
+  *((size_t *) push_array(arglens)) = keysz;
+
+  for (i = 0; i < values->nelts; i++) {
+    size_t scoresz = 0;
+
+    pr_signals_handle();
+
+    *((char **) push_array(args)) = f2s(tmp_pool, ((float *) scores->elts)[i],
+      &scoresz);
+    *((size_t *) push_array(arglens)) = scoresz;
+
+    *((char **) push_array(args)) = ((char **) values->elts)[i];
+    *((size_t *) push_array(arglens)) = ((size_t *) valueszs->elts)[i];
+  }
+
+  reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error setting items in sorted set using key (%lu bytes): %s",
+      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_INTEGER) {
+    pr_trace_msg(trace_channel, 2,
+      "expected INTEGER reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %lld", cmd, reply->integer);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
 int redis_set_server(const char *server, int port, const char *password) {
   if (server == NULL ||
       port < 1) {
@@ -5103,6 +5296,12 @@ int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
+int pr_redis_list_setall(pr_redis_t *redis, module *m, const char *key,
+    array_header *values, array_header *valueszs) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_set_add(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz) {
   errno = ENOSYS;
@@ -5134,6 +5333,12 @@ int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
 }
 
 int pr_redis_set_remove(pr_redis_t *redis, module *m, const char *key) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_set_setall(pr_redis_t *redis, module *m, const char *key,
+    array_header *values, array_header *valueszs) {
   errno = ENOSYS;
   return -1;
 }
@@ -5188,6 +5393,12 @@ int pr_redis_sorted_set_score(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_sorted_set_set(pr_redis_t *redis, module *m, const char *key,
     void *value, size_t valuesz, float score) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_sorted_set_setall(pr_redis_t *redis, module *m, const char *key,
+    array_header *values, array_header *valueszs, array_header *scores) {
   errno = ENOSYS;
   return -1;
 }
@@ -5364,6 +5575,12 @@ int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
+int pr_redis_list_ksetall(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header *values, array_header *valueszs) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int pr_redis_set_kadd(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz) {
   errno = ENOSYS;
@@ -5396,6 +5613,12 @@ int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
     size_t keysz) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_set_ksetall(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header *values, array_header *valueszs) {
   errno = ENOSYS;
   return -1;
 }
@@ -5451,6 +5674,13 @@ int pr_redis_sorted_set_kscore(pr_redis_t *redis, module *m, const char *key,
 
 int pr_redis_sorted_set_kset(pr_redis_t *redis, module *m, const char *key,
     size_t keysz, void *value, size_t valuesz, float score) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header *values, array_header *valueszs,
+    array_header *scores) {
   errno = ENOSYS;
   return -1;
 }
