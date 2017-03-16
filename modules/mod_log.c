@@ -1301,11 +1301,16 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       m++;
       break;
 
-    case LOGFMT_META_REMOTE_PORT:
+    case LOGFMT_META_REMOTE_PORT: {
+      const pr_netaddr_t *addr;
+
       argp = arg;
-      len = snprintf(argp, sizeof(arg), "%d", session.c->remote_port);
+
+      addr = pr_netaddr_get_sess_remote_addr();
+      len = snprintf(argp, sizeof(arg), "%d", ntohs(pr_netaddr_get_port(addr)));
       m++;
       break;
+    }
 
     case LOGFMT_META_RENAME_FROM: {
       const char *rnfr_path = "-";
