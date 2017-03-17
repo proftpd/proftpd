@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2016 TJ Saunders
+ * Copyright (c) 2009-2017 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -742,6 +742,8 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   int res;
 
   if (sql_passwd_engine == FALSE) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle PBKDF2 SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
