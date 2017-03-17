@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2016 The ProFTPD Project team
+ * Copyright (c) 2009-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -390,7 +390,7 @@ int pr_session_set_idle(void) {
 }
 
 int pr_session_set_protocol(const char *sess_proto) {
-  int count, res;
+  int count, res, xerrno;
 
   if (sess_proto == NULL) {
     errno = EINVAL;
@@ -401,25 +401,24 @@ int pr_session_set_protocol(const char *sess_proto) {
   if (count > 0) {
     res = pr_table_set(session.notes, pstrdup(session.pool, "protocol"),
       pstrdup(session.pool, sess_proto), 0);
+    xerrno = errno;
 
-    if (res == 0) {
-      /* Update the scoreboard entry for this session with the protocol. */
-      pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto,
-        NULL);
-    }
+    /* Update the scoreboard entry for this session with the protocol. */
+    pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto,
+      NULL);
 
+    errno = xerrno;
     return res;
   }
 
   res = pr_table_add(session.notes, pstrdup(session.pool, "protocol"),
     pstrdup(session.pool, sess_proto), 0);
+  xerrno = errno;
 
-  if (res == 0) {
-    /* Update the scoreboard entry for this session with the protocol. */
-    pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto,
-      NULL);
-  }
+  /* Update the scoreboard entry for this session with the protocol. */
+  pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto, NULL);
 
+  errno = xerrno;
   return res;
 }
 
