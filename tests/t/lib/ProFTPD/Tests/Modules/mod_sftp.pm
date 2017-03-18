@@ -36048,9 +36048,9 @@ sub sftp_config_timeoutlogin {
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
 
-      my $expected = 'LIBSSH2_ERROR_TIMEOUT';
-      $self->assert($expected eq $err_name,
-        test_msg("Expected '$expected', got '$err_name'"));
+      my $expected = '(LIBSSH2_ERROR_SOCKET_DISCONNECT|LIBSSH2_ERROR_TIMEOUT)';
+      $self->assert(qr/$expected/, $err_name,
+        "Expected '$expected', got '$err_name'");
     };
 
     if ($@) {
