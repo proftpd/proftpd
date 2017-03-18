@@ -825,25 +825,8 @@ int sftp_ssh2_packet_set_client_alive(unsigned int max, unsigned int interval) {
 int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
   unsigned char buf[SFTP_MAX_PACKET_LEN];
   size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0;
-  int block_alarms = FALSE;
 
   pr_session_set_idle();
-
-  /* Ideally we want to block any alarms from interrupting our read here;
-   * failure to do so could lead to corrupted reads during rekeying.
-   *
-   * However, blocking alarms here has the downside of blocking the timeout
-   * alarms of e.g. TimeoutLogin (Bug#4299 et al), TimeoutIdle, etc.  Thus
-   * for the TimeoutLogin case, we only block alarms after the client has
-   * authenticated.
-   */
-  if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
-    block_alarms = TRUE;
-  }
-
-  if (block_alarms == TRUE) {
-    pr_alarms_block();
-  }
 
   while (1) {
     uint32_t req_blocksz;
@@ -861,10 +844,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     if (read_packet_len(sockfd, pkt, buf, &offset, &buflen, bufsz) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no data to be read from socket %d", sockfd);
-
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       return -1;
     }
 
@@ -889,9 +868,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         bufsz) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no data to be read from socket %d", sockfd);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -910,9 +886,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     if (read_packet_payload(sockfd, pkt, buf, &offset, &buflen, bufsz) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to read payload from socket %d", sockfd);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -926,9 +899,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     if (read_packet_mac(sockfd, pkt, buf) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to read MAC from socket %d", sockfd);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -942,9 +912,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
        * random amount of more data from the network before closing
        * the connection.
        */
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -958,9 +925,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "packet length too short (%lu), less than minimum packet length (5)",
         (unsigned long) pkt->packet_len);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -969,9 +933,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "packet length too long (%lu), exceeds maximum packet length (%lu)",
         (unsigned long) pkt->packet_len, (unsigned long) SFTP_MAX_PACKET_LEN);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -984,9 +945,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "padding length too short (%u), less than minimum padding length (%u)",
         (unsigned int) pkt->padding_len, (unsigned int) SFTP_MIN_PADDING_LEN);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -995,9 +953,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "padding length too long (%u), exceeds packet length (%lu)",
         (unsigned int) pkt->padding_len, (unsigned long) pkt->packet_len);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -1022,9 +977,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         "packet length (%lu) not a multiple of the required block size (%lu)",
         (unsigned long) pkt->packet_len + sizeof(uint32_t),
         (unsigned long) req_blocksz);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
@@ -1039,18 +991,12 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         "(packet len %lu, padding len %u)", (unsigned long) pkt->payload_len,
         (unsigned long) SFTP_MAX_PACKET_LEN, (unsigned long) pkt->packet_len,
         (unsigned int) pkt->padding_len);
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       read_packet_discard(sockfd);
       return -1;
     }
 
     /* Sanity checks passed; move on to the reading the packet payload. */
     if (sftp_compress_read_data(pkt) < 0) {
-      if (block_alarms == TRUE) {
-        pr_alarms_unblock();
-      }
       return -1;
     }
 
@@ -1069,9 +1015,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       break;
     }
 
-    if (block_alarms == TRUE) {
-      pr_alarms_unblock();
-    }
     break;
   }
 
