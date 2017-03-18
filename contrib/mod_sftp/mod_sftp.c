@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -167,12 +167,12 @@ static int sftp_get_client_version(conn_t *conn) {
                */
               bad_proto = TRUE;
 
-            } else { 
+            } else {
               banner = buf + 9;
               bad_proto = FALSE;
             }
           }
-        } 
+        }
 
       } else {
         if (buflen == 8) {
@@ -181,7 +181,7 @@ static int sftp_get_client_version(conn_t *conn) {
            */
           bad_proto = TRUE;
 
-        } else { 
+        } else {
           banner = buf + 8;
         }
       }
@@ -1876,7 +1876,7 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
       if (user == NULL) {
         user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
       }
- 
+
       /* If the client has authenticated, we can interpolate any '%u'
        * variable in the configured deny message.
        */

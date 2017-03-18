@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -250,7 +250,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     v = pstrdup(session.pool, fp);
     pr_env_unset(session.pool, k);
     pr_env_set(session.pool, k, v);
-      
+
     k = pstrdup(session.pool, "SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO");
     v = pstrdup(session.pool, fp_algo);
     pr_env_unset(session.pool, k);

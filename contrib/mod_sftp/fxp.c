@@ -210,7 +210,7 @@ struct fxp_handle {
    * BE STALE.
    */
   struct stat *fh_st;
- 
+
   /* For tracking the number of bytes transferred for this file; for
    * better TransferLog tracking.
    */
@@ -1800,7 +1800,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 #ifdef PR_USE_XATTR
         flags |= SSH2_FX_ATTR_EXTENDED;
 #endif /* PR_USE_XATTR */
-      } 
+      }
     }
   }
 
@@ -3022,7 +3022,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
           "removing aborted uploaded file '%s'", curr_path);
 
         if (pr_fsio_unlink(curr_path) < 0) {
-          if (errno != ENOENT) { 
+          if (errno != ENOENT) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
               "error unlinking file '%s': %s", curr_path,
               strerror(errno));
@@ -12748,7 +12748,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   } else {
     file = fxh->fh->fh_path;
   }
- 
+
   cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, file);
   cmd2->cmd_class = CL_WRITE|CL_SFTP;
 

@@ -1252,11 +1252,11 @@ static int finish_dh(struct sftp_kex *kex) {
 
       if (dh_priv_key != NULL) {
         BN_clear_free(dh_priv_key);
-      } 
+      }
 
       if (dh_pub_key != NULL) {
         BN_clear_free(dh_pub_key);
-      } 
+      }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
       /* Per the docs, this is a no-no -- but its the only way to actually
