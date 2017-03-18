@@ -25,6 +25,11 @@ ChangeLog files.
       Use BanCache redis for Redis-based caching
 
 
+  + New Configuration Directives
+
+    SQLPasswordArgon2, SQLPasswordScrypt (Issue #454)
+
+
   + Changed Configuration Directives
 
     AllowChrootSymlinks (Bug#4295)
