@@ -26,21 +26,17 @@
 #include "privs.h"
 #include "mod_sql.h"
 
+#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/1.1"
+
 #ifdef PR_USE_SODIUM
 # include <sodium.h>
-# define SCRYPT_HASH_SIZE	32
-# define SCRYPT_SALT_SIZE	32
 /* Use/support Argon2, if libsodium is new enough. */
 # if SODIUM_LIBRARY_VERSION_MAJOR > 9 || \
      (SODIUM_LIBRARY_VERSION_MAJOR == 9 && \
       SODIUM_LIBRARY_VERSION_MINOR >= 2)
 #  define USE_SODIUM_ARGON2
-#  define ARGON2_HASH_SIZE	32
-#  define ARGON2_SALT_SIZE	16
 # endif
-#endif
-
-#define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/1.0"
+#endif /* PR_USE_SODIUM */
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030302 
@@ -97,6 +93,20 @@ static int sql_passwd_pbkdf2_len = -1;
 #define SQL_PASSWD_ERR_PBKDF2_UNSUPPORTED_DIGEST	-2
 #define SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS		-3
 #define SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH		-4
+
+#ifdef PR_USE_SODIUM
+/* For Scrypt */
+# define SQL_PASSWD_SCRYPT_DEFAULT_HASH_SIZE	32U
+# define SQL_PASSWD_SCRYPT_DEFAULT_SALT_SIZE	32U
+static unsigned int sql_passwd_scrypt_hash_len = SQL_PASSWD_SCRYPT_DEFAULT_HASH_SIZE;
+
+/* For Argon2 */
+# ifdef USE_SODIUM_ARGON2
+#  define SQL_PASSWD_ARGON2_DEFAULT_HASH_SIZE	32U
+#  define SQL_PASSWD_ARGON2_DEFAULT_SALT_SIZE	16U
+static unsigned int sql_passwd_argon2_hash_len = SQL_PASSWD_ARGON2_DEFAULT_HASH_SIZE;
+# endif /* USE_SODIUM_ARGON2 */
+#endif /* PR_USE_SODIUM */
 
 static const char *trace_channel = "sql.passwd";
 
@@ -849,10 +859,10 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
   }
 
   /* scrypt requires 32 bytes of salt */
-  if (scrypt_salt_len != SCRYPT_SALT_SIZE) {
+  if (scrypt_salt_len != SQL_PASSWD_SCRYPT_DEFAULT_SALT_SIZE) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": scrypt requires %u bytes of salt (%lu bytes of salt configured)",
-      SCRYPT_SALT_SIZE, (unsigned long) scrypt_salt_len);
+      SQL_PASSWD_SCRYPT_DEFAULT_SALT_SIZE, (unsigned long) scrypt_salt_len);
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -873,7 +883,7 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
       return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  hash_len = SCRYPT_HASH_SIZE;
+  hash_len = sql_passwd_scrypt_hash_len;
   hash = palloc(cmd->tmp_pool, hash_len);
 
   plaintext_len = strlen(plaintext);
@@ -940,10 +950,10 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
   }
 
   /* argon2 requires 16 bytes of salt */
-  if (argon2_salt_len != ARGON2_SALT_SIZE) {
+  if (argon2_salt_len != SQL_PASSWD_ARGON2_DEFAULT_SALT_SIZE) {
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": argon2 requires %u bytes of salt (%lu bytes of salt configured)",
-      ARGON2_SALT_SIZE, (unsigned long) argon2_salt_len);
+      SQL_PASSWD_ARGON2_DEFAULT_SALT_SIZE, (unsigned long) argon2_salt_len);
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -966,7 +976,7 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
       return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  hash_len = ARGON2_HASH_SIZE;
+  hash_len = sql_passwd_argon2_hash_len;
   hash = palloc(cmd->tmp_pool, hash_len);
 
   plaintext_len = strlen(plaintext);
@@ -1249,6 +1259,30 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
 /* Configuration handlers
  */
 
+/* usage: SQLPasswordArgon2 len */
+MODRET set_sqlpasswdargon2(cmd_rec *cmd) {
+#ifdef USE_SODIUM_ARGON2
+  config_rec *c;
+  int len;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  len = atoi(cmd->argv[1]);
+  if (len <= 0) {
+    CONF_ERROR(cmd, "length must be greater than 0");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = len;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "requires libsodium Argon2 support");
+#endif /* No libsodium Argon2 support */
+}
+
 /* usage: SQLPasswordCost "interactive"|"sensitive" */
 MODRET set_sqlpasswdcost(cmd_rec *cmd) {
   unsigned int cost;
@@ -1489,8 +1523,31 @@ MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SQLPasswordUserSalt "name"|"sql:/named-query" [flags]
- */
+/* usage: SQLPasswordScrypt len */
+MODRET set_sqlpasswdscrypt(cmd_rec *cmd) {
+#ifdef PR_USE_SODIUM
+  config_rec *c;
+  int len;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  len = atoi(cmd->argv[1]);
+  if (len <= 0) {
+    CONF_ERROR(cmd, "length must be greater than 0");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = len;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "requires libsodium support");
+#endif /* No libsodium support */
+}
+
+/* usage: SQLPasswordUserSalt "name"|"sql:/named-query" [flags] */
 MODRET set_sqlpasswdusersalt(cmd_rec *cmd) {
   config_rec *c;
   register unsigned int i;
@@ -1553,6 +1610,13 @@ static void sql_passwd_sess_reinit_ev(const void *event_data, void *user_data) {
   sql_passwd_user_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
   sql_passwd_opts = 0UL;
   sql_passwd_nrounds = 1;
+
+#ifdef PR_USE_SODIUM
+  sql_passwd_scrypt_hash_len = SQL_PASSWD_SCRYPT_DEFAULT_HASH_SIZE;
+# ifdef USE_SODIUM_ARGON2
+  sql_passwd_argon2_hash_len = SQL_PASSWD_ARGON2_DEFAULT_HASH_SIZE;
+# endif /* USE_SODIUM_ARGON2 */
+#endif /* PR_USE_SODIUM */
 
   res = sql_passwd_sess_init();
   if (res < 0) {
@@ -1698,7 +1762,7 @@ static int sql_passwd_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordSaltFile", FALSE);
-  if (c) {
+  if (c != NULL) {
     char *path;
     unsigned long salt_flags;
 
@@ -1806,6 +1870,20 @@ static int sql_passwd_sess_init(void) {
     }
   }
 
+#ifdef PR_USE_SODIUM
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordScrypt", FALSE);
+  if (c != NULL) {
+    sql_passwd_scrypt_hash_len = *((unsigned int *) c->argv[0]);
+  }
+
+# ifdef USE_SODIUM_ARGON2
+  c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordArgon2", FALSE);
+  if (c != NULL) {
+    sql_passwd_argon2_hash_len = *((unsigned int *) c->argv[0]);
+  }
+# endif /* USE_SODIUM_ARGON2 */
+#endif /* PR_USE_SODIUM */
+
   return 0;
 }
 
@@ -1813,6 +1891,7 @@ static int sql_passwd_sess_init(void) {
  */
 
 static conftable sql_passwd_conftab[] = {
+  { "SQLPasswordArgon2",	set_sqlpasswdargon2,		NULL },
   { "SQLPasswordCost",		set_sqlpasswdcost,		NULL },
   { "SQLPasswordEncoding",	set_sqlpasswdencoding,		NULL },
   { "SQLPasswordEngine",	set_sqlpasswdengine,		NULL },
@@ -1821,6 +1900,7 @@ static conftable sql_passwd_conftab[] = {
   { "SQLPasswordRounds",	set_sqlpasswdrounds,		NULL },
   { "SQLPasswordSaltEncoding",	set_sqlpasswdsaltencoding,	NULL },
   { "SQLPasswordSaltFile",	set_sqlpasswdsaltfile,		NULL },
+  { "SQLPasswordScrypt",	set_sqlpasswdscrypt,		NULL },
   { "SQLPasswordUserSalt",	set_sqlpasswdusersalt,		NULL },
 
   { NULL, NULL, NULL }
