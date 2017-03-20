@@ -13,6 +13,8 @@ ChangeLog files.
   + Fixed mod_sql_postgres SSL support (Issue #415).
   + Support building against LibreSSL instead of OpenSSL (Issue #361).
   + Better support on AIX for login restraictions (Bug #4285).
+  + TimeoutLogin (and other timeouts) were not working properly for SFTP
+    connections (Bug#4299).
 
   + New Modules:
 

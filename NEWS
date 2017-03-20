@@ -26,6 +26,7 @@
 - Added mod_wrap2_redis to the contrib/ modules directory.
 - Bug 4295 - AllowChrootSymlinks off does not check entire DefaultRoot path
   for symlinks.
+- Bug 4299 - TimeoutLogin not working for SFTP connections.
 
 1.3.6rc4 - Released 15-Jan-2017
 --------------------------------
