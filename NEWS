@@ -69,7 +69,7 @@
   now supports a SortedNLST flag for such use cases.
 - Bug 4260 - Restarting server fails when using password-protected SSL
   certificates and no TLSPassPhraseProvider.
-- Bug 4126 - SSH rekeying causes invalid packet due to interrupting timer.
+- Bug 4216 - SSH rekeying causes invalid packet due to interrupting timer.
 - Bug 4278 - Memory leak when mod_facl is used.
 
 1.3.6rc2 - Released 10-Mar-2016

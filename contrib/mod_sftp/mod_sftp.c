@@ -1829,6 +1829,12 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void sftp_timeoutlogin_ev(const void *event_data, void *user_data) {
+  if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+}
+
 #ifdef PR_USE_DEVEL
 static void pool_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
@@ -1990,6 +1996,8 @@ static int sftp_init(void) {
   pr_event_register(&sftp_module, "core.postparse", sftp_postparse_ev, NULL);
   pr_event_register(&sftp_module, "core.restart", sftp_restart_ev, NULL);
   pr_event_register(&sftp_module, "core.shutdown", sftp_shutdown_ev, NULL);
+  pr_event_register(&sftp_module, "core.timeout-login", sftp_timeoutlogin_ev,
+    NULL);
 
   return 0;
 }
