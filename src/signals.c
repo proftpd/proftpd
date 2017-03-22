@@ -330,11 +330,8 @@ static RETSIGTYPE sig_terminate(int signo) {
 
     install_stacktrace_handler();
 
-  } else if (signo == SIGTERM) {
-    recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
-
   } else {
-    recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
+    recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
   }
 
   /* Ignore future occurrences of this signal; we'll be terminating anyway. */
@@ -427,12 +424,6 @@ void pr_signals_handle(void) {
       recvd_signal_flags &= ~RECEIVED_SIG_TERMINATE;
       pr_trace_msg("signal", 9, "handling signal %d", term_signo);
       handle_terminate();
-    }
-
-    if (recvd_signal_flags & RECEIVED_SIG_TERM_OTHER) {
-      recvd_signal_flags &= ~RECEIVED_SIG_TERM_OTHER;
-      pr_trace_msg("signal", 9, "handling signal %d", term_signo);
-      handle_terminate_other();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_XCPU) {
