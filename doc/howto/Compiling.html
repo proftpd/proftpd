@@ -686,6 +686,35 @@ or:
 <i>Use only a single colon between module names</i>; this should fix this error.
 
 <p>
+<font color=red>Question</font>: I installed ProFTPD, and encountered this
+error when trying to use <code>ftptop</code>:
+<pre>
+  $ ftptop
+  ftptop: no curses or ncurses library on this system
+</pre>
+So I installed the <code>ncurses</code> library on my system, and compiled
+ProFTPD again.  But the error still occurs!  Why?<br>
+<font color=blue>Answer</font>: The ProFTPD build system discovers the
+libraries it needs, like <code>curses</code> or <code>ncurses</code>, as part
+of the running of the <code>configure</code> command; the results of those
+discoveries are recorded in the generated <code>config.h</code> (and other)
+files.
+
+<p>
+This means that if you install a needed library <i>after</i> building ProFTPD,
+you need to <i>re-run <code>configure</code>, <code>make</code>, etc</i> in
+order for ProFTPD to discover that new library and use it:
+<pre>
+  $ cd /path/to/proftpd/
+  $ make clean
+  $ ./configure ...
+  $ make
+  $ make install
+</pre>
+The "make clean" step is necessary, to clean up any leftover state from the
+previous build.
+
+<p>
 <font color=red>Question</font>: I can't seem to compile <code>mod_tls</code>
 <b>and</b> <code>mod_sql</code>.  Using one or the other works (<i>i.e.</i>
 shows up in the <code>`proftpd -l`</code> list), but not both.  I'm using the
