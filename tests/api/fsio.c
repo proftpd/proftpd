@@ -1241,6 +1241,7 @@ START_TEST (fsio_sys_ftruncate_test) {
   int res;
   off_t len = 0;
   pr_fh_t *fh;
+  pr_buffer_t *buf;
 
   res = pr_fsio_ftruncate(NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
@@ -1251,9 +1252,25 @@ START_TEST (fsio_sys_ftruncate_test) {
   fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
     strerror(errno));
 
+  mark_point();
   res = pr_fsio_ftruncate(fh, len);
   fail_unless(res == 0, "Failed to truncate '%s': %s", fsio_test_path,
     strerror(errno));
+
+  /* Attach a read buffer to the handle, make sure it is cleared. */
+  buf = pcalloc(fh->fh_pool, sizeof(pr_buffer_t));
+  buf->buflen = 100;
+  buf->remaining = 1;
+
+  fh->fh_buf = buf;
+
+  mark_point();
+  res = pr_fsio_ftruncate(fh, len);
+  fail_unless(res == 0, "Failed to truncate '%s': %s", fsio_test_path,
+    strerror(errno));
+  fail_unless(buf->remaining == buf->buflen,
+    "Expected %lu, got %lu", (unsigned long) buf->buflen,
+    (unsigned long) buf->remaining);
 
   (void) pr_fsio_close(fh);
   (void) pr_fsio_unlink(fsio_test_path);
@@ -3035,6 +3052,33 @@ END_TEST
 START_TEST (fs_clean_path_test) {
   char res[PR_TUNABLE_PATH_MAX+1], *path, *expected;
 
+  mark_point();
+  pr_fs_clean_path(NULL, NULL, 0);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+
+  mark_point();
+  pr_fs_clean_path(path, NULL, 0);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res[sizeof(res)-1] = '\0';
+
+  mark_point();
+  pr_fs_clean_path(path, res, 0);
+
+  pr_fs_clean_path(path, res, sizeof(res)-1);
+  fail_unless(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
+    path, res);
+
+  res[sizeof(res)-1] = '\0';
+  path = "/test.txt";
+  pr_fs_clean_path(path, res, sizeof(res)-1);
+  fail_unless(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
+    path, res);
+
   res[sizeof(res)-1] = '\0';
   path = "/test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
@@ -3044,7 +3088,6 @@ START_TEST (fs_clean_path_test) {
   res[sizeof(res)-1] = '\0';
   path = "/./test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
-
   expected = "/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
@@ -3052,7 +3095,6 @@ START_TEST (fs_clean_path_test) {
   res[sizeof(res)-1] = '\0';
   path = "test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
-
   expected = "/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", path, res);
@@ -3061,38 +3103,64 @@ END_TEST
 
 START_TEST (fs_clean_path2_test) {
   char res[PR_TUNABLE_PATH_MAX+1], *path, *expected;
+  int code;
+
+  mark_point();
+  code = pr_fs_clean_path2(NULL, NULL, 0, 0);
+  fail_unless(code < 0, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+
+  mark_point();
+  code = pr_fs_clean_path2(path, NULL, 0, 0);
+  fail_unless(code < 0, "Failed to handle null buf");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res[sizeof(res)-1] = '\0';
+
+  mark_point();
+  code = pr_fs_clean_path2(path, res, 0, 0);
+  fail_unless(code == 0, "Failed to handle zero length buf: %s",
+    strerror(errno));
 
   res[sizeof(res)-1] = '\0';
   path = "test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   fail_unless(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
     path, res);
 
   res[sizeof(res)-1] = '\0';
   path = "/./test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
-
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   expected = "/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 
   res[sizeof(res)-1] = '\0';
   path = "test.d///test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
-
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   expected = "test.d/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 
   res[sizeof(res)-1] = '\0';
   path = "/test.d///test.txt";
-  pr_fs_clean_path2(path, res, sizeof(res)-1,
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1,
     PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
-
+  fail_unless(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
   expected = "/test.d/test.txt";
   fail_unless(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
-
 }
 END_TEST
 
@@ -3609,6 +3677,175 @@ START_TEST (fs_encode_path_test) {
 }
 END_TEST
 
+START_TEST (fs_split_path_test) {
+  array_header *res;
+  const char *path, *elt;
+
+  mark_point();
+  res = pr_fs_split_path(NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_split_path(p, NULL);
+  fail_unless(res == NULL, "Failed to handle null path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res == NULL, "Failed to handle empty path");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  path = "/";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 1, "Expected 1, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+
+  path = "///";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 1, "Expected 1, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+
+  path = "/foo/bar/baz/";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 4, "Expected 4, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[3];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+
+  path = "/foo//bar//baz//";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 4, "Expected 4, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[3];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+
+  path = "/foo/bar/baz";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 4, "Expected 4, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[3];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+
+  path = "foo/bar/baz";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+  fail_unless(strcmp(elt, "foo") == 0, "Expected 'foo', got '%s'", elt);
+  elt = ((char **) res->elts)[1];
+  fail_unless(strcmp(elt, "bar") == 0, "Expected 'bar', got '%s'", elt);
+  elt = ((char **) res->elts)[2];
+  fail_unless(strcmp(elt, "baz") == 0, "Expected 'baz', got '%s'", elt);
+}
+END_TEST
+
+START_TEST (fs_join_path_test) {
+  char *path;
+  array_header *components;
+
+  mark_point();
+  path = pr_fs_join_path(NULL, NULL, 0);
+  fail_unless(path == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = pr_fs_join_path(p, NULL, 0);
+  fail_unless(path == NULL, "Failed to handle null components");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  components = make_array(p, 0, sizeof(char **));
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 0);
+  fail_unless(path == NULL, "Failed to handle empty components");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  *((char **) push_array(components)) = pstrdup(p, "/");
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 0);
+  fail_unless(path == NULL, "Failed to handle empty count");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 3);
+  fail_unless(path == NULL, "Failed to handle invalid count");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 1);
+  fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
+  fail_unless(strcmp(path, "/") == 0, "Expected '/', got '%s'", path);
+
+  *((char **) push_array(components)) = pstrdup(p, "foo");
+  *((char **) push_array(components)) = pstrdup(p, "bar");
+  *((char **) push_array(components)) = pstrdup(p, "baz");
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 4);
+  fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
+  fail_unless(strcmp(path, "/foo/bar/baz") == 0,
+    "Expected '/foo/bar/baz', got '%s'", path);
+
+  mark_point();
+  path = pr_fs_join_path(p, components, 3);
+  fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
+  fail_unless(strcmp(path, "/foo/bar") == 0, "Expected '/foo/bar', got '%s'",
+    path);
+}
+END_TEST
+
 START_TEST (fs_virtual_path_test) {
   const char *path;
   char buf[PR_TUNABLE_PATH_MAX];
@@ -3792,6 +4029,190 @@ START_TEST (fs_fadvise_test) {
 
   advice = PR_FS_FADVISE_NOREUSE;
   pr_fs_fadvise(fd, off, len, advice);
+}
+END_TEST
+
+START_TEST (fs_have_access_test) {
+  int res;
+  struct stat st;
+  uid_t uid;
+  gid_t gid;
+  array_header *suppl_gids;
+
+  mark_point();
+  res = pr_fs_have_access(NULL, R_OK, 0, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null stat");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  memset(&st, 0, sizeof(struct stat));
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, 0, 0, NULL);
+  fail_unless(res == 0, "Failed to handle root access: %s", strerror(errno));
+
+  /* Use cases: no matching UID or GID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+  uid = 1;
+  gid = 1;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing other R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing other W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing other X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IROTH|S_IWOTH|S_IXOTH;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle other R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle other W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle other X_OK access: %s",
+    strerror(errno));
+
+  /* Use cases: matching UID, not GID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+
+  st.st_uid = uid;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing user R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing user W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing user X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IRUSR|S_IWUSR|S_IXUSR;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle user R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle user W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle user X_OK access: %s",
+    strerror(errno));
+
+  /* Use cases: matching GID, not UID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+
+  st.st_gid = gid;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing group R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing group W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res < 0, "Failed to handle missing group X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IRGRP|S_IWGRP|S_IXGRP;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle group R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle group W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, gid, NULL);
+  fail_unless(res == 0, "Failed to handle group X_OK access: %s",
+    strerror(errno));
+
+  /* Use cases: matching suppl GID, not UID; R_OK, W_OK, X_OK. */
+  memset(&st, 0, sizeof(struct stat));
+
+  suppl_gids = make_array(p, 1, sizeof(gid_t));
+  *((gid_t *) push_array(suppl_gids)) = 100;
+  *((gid_t *) push_array(suppl_gids)) = gid;
+  st.st_gid = gid;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, 0, suppl_gids);
+  fail_unless(res < 0, "Failed to handle missing group R_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, 0, suppl_gids);
+  fail_unless(res < 0, "Failed to handle missing group W_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, 0, suppl_gids);
+  fail_unless(res < 0, "Failed to handle missing group X_OK access");
+  fail_unless(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
+    strerror(errno), errno);
+
+  st.st_mode = S_IFMT|S_IRGRP|S_IWGRP|S_IXGRP;
+
+  mark_point();
+  res = pr_fs_have_access(&st, R_OK, uid, 0, suppl_gids);
+  fail_unless(res == 0, "Failed to handle group R_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, W_OK, uid, 0, suppl_gids);
+  fail_unless(res == 0, "Failed to handle group W_OK access: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_have_access(&st, X_OK, uid, 0, suppl_gids);
+  fail_unless(res == 0, "Failed to handle group X_OK access: %s",
+    strerror(errno));
 }
 END_TEST
 
@@ -4194,6 +4615,7 @@ Suite *tests_get_fsio_suite(void) {
   /* Misc */
   tcase_add_test(testcase, fs_clean_path_test);
   tcase_add_test(testcase, fs_clean_path2_test);
+
   tcase_add_test(testcase, fs_dircat_test);
   tcase_add_test(testcase, fs_setcwd_test);
   tcase_add_test(testcase, fs_glob_test);
@@ -4205,6 +4627,8 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_use_encoding_test);
   tcase_add_test(testcase, fs_decode_path2_test);
   tcase_add_test(testcase, fs_encode_path_test);
+  tcase_add_test(testcase, fs_split_path_test);
+  tcase_add_test(testcase, fs_join_path_test);
   tcase_add_test(testcase, fs_virtual_path_test);
   tcase_add_test(testcase, fs_get_usable_fd_test);
   tcase_add_test(testcase, fs_get_usable_fd2_test);
@@ -4212,6 +4636,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_getsize2_test);
   tcase_add_test(testcase, fs_fgetsize_test);
   tcase_add_test(testcase, fs_fadvise_test);
+  tcase_add_test(testcase, fs_have_access_test);
   tcase_add_test(testcase, fs_is_nfs_test);
   tcase_add_test(testcase, fs_valid_path_test);
   tcase_add_test(testcase, fsio_smkdir_test);

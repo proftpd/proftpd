@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MAC mgmt
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,13 +40,13 @@ void sftp_mac_set_block_size(size_t);
 const char *sftp_mac_get_read_algo(void);
 int sftp_mac_set_read_algo(const char *);
 int sftp_mac_set_read_key(pool *, const EVP_MD *, const BIGNUM *, const char *,
-  uint32_t);
+  uint32_t, int);
 int sftp_mac_read_data(struct ssh2_packet *);
 
 const char *sftp_mac_get_write_algo(void);
 int sftp_mac_set_write_algo(const char *);
 int sftp_mac_set_write_key(pool *, const EVP_MD *, const BIGNUM *, const char *,
-  uint32_t);
+  uint32_t, int);
 int sftp_mac_write_data(struct ssh2_packet *);
 
 #endif /* MOD_SFTP_MAC_H */

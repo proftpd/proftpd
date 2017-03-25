@@ -488,6 +488,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_wrap2_file)],
     },
 
+    't/modules/mod_wrap2_redis.t' => {
+      order => ++$order,
+      test_class => [qw(mod_redis mod_wrap2_redis)],
+    },
+
     't/modules/mod_wrap2_sql.t' => {
       order => ++$order,
       test_class => [qw(mod_sql_sqlite mod_wrap2_sql)],

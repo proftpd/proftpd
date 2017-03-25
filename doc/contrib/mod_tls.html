@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_tls</title>
@@ -485,7 +486,7 @@ should vary between 512 and 4096, inclusive.
 The <em>file</em> parameter must be an absolute path.
 
 <p>
-<b>Note<b> that as of <code>proftpd-1.3.6rc1</code> and later, for
+<b>Note</b> that as of <code>proftpd-1.3.6rc1</code> and later, for
 Diffie-Hellman key exchanges, <code>mod_tls</code> will generate DH parameters
 that match the size of the server certificate's RSA/DSA key.  Some clients,
 such as Java 7 (and earlier) code, cannot handle DH parameter lengths greater
@@ -614,7 +615,7 @@ Example:
 <strong>Compatibility:</strong> 1.3.6rc1 and later
 
 <p>
-The <code>TLSECDHCurve/code> directive specifies the EC curve to use for
+The <code>TLSECDHCurve</code> directive specifies the EC curve to use for
 ECDHE ciphers.  To see the full list of curves supported by your OpenSSL
 library, use:
 <pre>
@@ -860,7 +861,7 @@ The currently implemented options are:
     <p>
     Sets the following environment variables, if applicable.  Note that
     doing so increases the memory size of the process quite a bit:
-    <table border=1>
+    <table border=1 summary="TLS Environment Variables">
       <tr>
         <td><code>TLS_SERVER_CERT</code></td>
         <td>Server certificate, PEM-encoded</td>
@@ -903,7 +904,7 @@ The currently implemented options are:
   <li><code>NoEmptyFragments</code><br>
     <p>
     In order to prevent certain attacks (<i>e.g.</i> the so-called
-    <a href="http://www.kb.cert.org/vuls/id/864643">&quotBEAST&quot;
+    <a href="http://www.kb.cert.org/vuls/id/864643">&quot;BEAST&quot;
     attack</a>), the <code>mod_tls</code> module was changed to use OpenSSL's
     builtin countermeasure of inserting <a href="http://www.openssl.org/~bodo/tls-cbc.txt">empty fragments</a>.  However, some browsers/clients may not handle
     such empty fragments well.  Use this <code>NoEmptyFragaments</code>
@@ -942,7 +943,7 @@ The currently implemented options are:
     Sets the following environment variables, if applicable.  These environment
     variables are then avaiable for use, such as in <code>LogFormat</code>s.
     Note that doing so may increase the memory size of the process quite a bit:
-    <table border=1>
+    <table border=1 summary="Standard Environment Variables">
       <tr>
         <td><code>FTPS</code></td>
         <td>Present if FTP over SSL/TLS is being used</td>
@@ -999,7 +1000,7 @@ The currently implemented options are:
       </tr>
 
       <tr>
-        <td><code>TLS_CLIENT_S_DN_</code><i>x509<i></td>
+        <td><code>TLS_CLIENT_S_DN_</code><i>x509</i></td>
         <td>Component of client certificate's Subject DN, where <i>x509</i> is
           a component of a X509 DN:<br>
           C,CN,D,I,G,L,O,OU,S,ST,T,UID,Email</td>
@@ -1294,7 +1295,7 @@ in the &quot;server config&quot; context.
 <p>
 The allowed protocols are:
 <p>
-<table>
+<table summary="TLS Protocol Versions">
   <tr>
     <td><code>SSLv3</code></td>
     <td>Allow only SSLv3</td>
@@ -1817,7 +1818,7 @@ The currently implemented options are:
 <p>
 <hr>
 <h3><a name="TLSStaplingResponder">TLSStaplingResponder</a></h3>
-<strong>Syntax:</strong> TLStaplingResponder <em>url<br>
+<strong>Syntax:</strong> TLStaplingResponder <em>url</em><br>
 <strong>Default:</strong> none<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
@@ -1825,7 +1826,7 @@ The currently implemented options are:
 
 <p>
 The <code>TLSStaplingResponder</code> directive overrides the URL of the OCSP
-responder specified in the “Authority Information Access” certificate extension.
+responder specified in the "Authority Information Access" certificate extension.
 
 <p>
 Example:
@@ -2232,7 +2233,7 @@ Then follow the usual steps:
 
 <p>
 You may need to specify the location of the OpenSSL header and library files
-in your <code>configure</i> command, <i>e.g.</i>:
+in your <code>configure</code> command, <i>e.g.</i>:
 <pre>
  $ ./configure --with-modules=mod_tls \
     --with-includes=/usr/local/openssl \
@@ -2242,7 +2243,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2016 TJ Saunders<br>
+&copy; Copyright 2002-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

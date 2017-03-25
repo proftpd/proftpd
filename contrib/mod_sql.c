@@ -2696,9 +2696,11 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
       tag_len == 11 &&
       strncmp(tag, "remote-port", 12) == 0) {
     char buf[64];
+    const pr_netaddr_t *addr;
 
+    addr = pr_netaddr_get_sess_remote_addr();
     memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%d", session.c->remote_port);
+    snprintf(buf, sizeof(buf)-1, "%d", ntohs(pr_netaddr_get_port(addr)));
     long_tag = pstrdup(cmd->tmp_pool, buf);
   }
 
@@ -2869,7 +2871,7 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
           long_tag = pstrdup(cmd->tmp_pool, "success");
 
         } else {
-          long_tag = pstrdup(cmd->tmp_pool, "failed");
+          long_tag = pstrdup(cmd->tmp_pool, status);
         }
       }
 

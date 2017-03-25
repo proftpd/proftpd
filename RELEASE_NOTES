@@ -10,11 +10,19 @@ ChangeLog files.
 ---------
 
   + Support for using Redis for caching, logging.
+  + Fixed mod_sql_postgres SSL support (Issue #415).
+  + Support building against LibreSSL instead of OpenSSL (Issue #361).
+  + Better support on AIX for login restraictions (Bug #4285).
+  + TimeoutLogin (and other timeouts) were not working properly for SFTP
+    connections (Bug#4299).
+  + Handling of the SIGILL and SIGINT signals, by the daemon process, now causes
+    the child processes to be terminated as well (Issue #461).
   + RPM .spec file naming changed to conform to Fedora guidelines.
+
 
   + New Modules:
 
-    mod_redis, mod_tls_redis
+    mod_redis, mod_tls_redis, mod_wrap2_redis
 
 
   + Changed Modules:
@@ -23,7 +31,14 @@ ChangeLog files.
       Use BanCache redis for Redis-based caching
 
 
+  + New Configuration Directives
+
+    SQLPasswordArgon2, SQLPasswordScrypt (Issue #454)
+
+
   + Changed Configuration Directives
+
+    AllowChrootSymlinks (Bug#4295)
 
     Include
       The Include directive can now be used within a <Limit> section, e.g.:

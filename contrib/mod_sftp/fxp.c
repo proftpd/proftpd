@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -210,7 +210,7 @@ struct fxp_handle {
    * BE STALE.
    */
   struct stat *fh_st;
- 
+
   /* For tracking the number of bytes transferred for this file; for
    * better TransferLog tracking.
    */
@@ -1043,6 +1043,16 @@ static void fxp_cmd_dispatch_err(cmd_rec *cmd) {
   pr_response_clear(&resp_err_list);
 }
 
+static void fxp_cmd_note_file_status(cmd_rec *cmd, const char *status) {
+  if (pr_table_add(cmd->notes, "mod_sftp.file-status",
+      pstrdup(cmd->pool, status), 0) < 0) {
+    if (errno != EEXIST) {
+      pr_trace_msg(trace_channel, 3,
+        "error stashing file status in command notes: %s", strerror(errno));
+    }
+  }
+}
+
 static const char *fxp_get_request_type_desc(unsigned char request_type) {
   switch (request_type) {
     case SFTP_SSH2_FXP_INIT:
@@ -1790,7 +1800,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 #ifdef PR_USE_XATTR
         flags |= SSH2_FX_ATTR_EXTENDED;
 #endif /* PR_USE_XATTR */
-      } 
+      }
     }
   }
 
@@ -2982,13 +2992,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   if (cmd != NULL) {
     /* Add a note indicating that this is a failed transfer. */
-    if (pr_table_add(cmd->notes, "mod_sftp.file-status",
-        pstrdup(fxh->pool, "failed"), 0) < 0) {
-      if (errno != EEXIST) {
-        pr_trace_msg(trace_channel, 3,
-          "error stashing file status in command notes: %s", strerror(errno));
-      }
-    }
+    fxp_cmd_note_file_status(cmd, "failed");
   }
 
   xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
@@ -3018,7 +3022,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
           "removing aborted uploaded file '%s'", curr_path);
 
         if (pr_fsio_unlink(curr_path) < 0) {
-          if (errno != ENOENT) { 
+          if (errno != ENOENT) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
               "error unlinking file '%s': %s", curr_path,
               strerror(errno));
@@ -8687,6 +8691,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
+      fxp_cmd_note_file_status(cmd, "failed");
       fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8741,6 +8746,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
+      fxp_cmd_note_file_status(cmd, "failed");
       fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8768,6 +8774,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
         fxp_strerror(status_code), NULL);
 
+      fxp_cmd_note_file_status(cmd, "failed");
       fxp_cmd_dispatch_err(cmd);
 
       resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -8790,6 +8797,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   attrs = fxp_attrs_read(fxp, &fxp->payload, &fxp->payload_sz, &attr_flags,
     &xattrs);
   if (attrs == NULL) {
+    fxp_cmd_note_file_status(cmd, "failed");
     fxp_cmd_dispatch_err(cmd);
 
     /* XXX TODO: Provide a response to the client here */
@@ -8905,8 +8913,10 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         xerrno);
 
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_note_file_status(cmd2, "failed");
       fxp_cmd_dispatch_err(cmd2);
 
+      fxp_cmd_note_file_status(cmd, "failed");
       fxp_cmd_dispatch_err(cmd);
 
       fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
@@ -9043,14 +9053,16 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       "('%s' [%d])", (unsigned long) status_code, reason,
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-    if (cmd2) {
+    if (cmd2 != NULL) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_note_file_status(cmd2, "failed");
       fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
+    fxp_cmd_note_file_status(cmd, "failed");
     fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -9088,14 +9100,16 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
       xerrno);
 
-    if (cmd2) {
+    if (cmd2 != NULL) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_note_file_status(cmd2, "failed");
       fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
+    fxp_cmd_note_file_status(cmd, "failed");
     fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -9162,11 +9176,13 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     pr_fsio_close(fh);
 
-    if (cmd2) {
+    if (cmd2 != NULL) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_note_file_status(cmd2, "failed");
       fxp_cmd_dispatch_err(cmd2);
     }
 
+    fxp_cmd_note_file_status(cmd, "failed");
     fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -9203,14 +9219,16 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       "('%s' [%d])", (unsigned long) status_code, reason,
       xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
-    if (cmd2) {
+    if (cmd2 != NULL) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_note_file_status(cmd2, "failed");
       fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
+    fxp_cmd_note_file_status(cmd, "failed");
     fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -9246,14 +9264,16 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     pr_fsio_close(fh);
     destroy_pool(fxh->pool);
 
-    if (cmd2) {
+    if (cmd2 != NULL) {
       pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_note_file_status(cmd2, "failed");
       fxp_cmd_dispatch_err(cmd2);
     }
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
 
+    fxp_cmd_note_file_status(cmd, "failed");
     fxp_cmd_dispatch_err(cmd);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -12728,7 +12748,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   } else {
     file = fxh->fh->fh_path;
   }
- 
+
   cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, file);
   cmd2->cmd_class = CL_WRITE|CL_SFTP;
 

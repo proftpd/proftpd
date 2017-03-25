@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD: Quotas</title>
@@ -68,7 +69,7 @@ quotas via file tables and SQL tables.  <b>This is an example only</b>.
       QuotaLimitTable sql:/get-quota-limit
       QuotaTallyTable sql:/get-quota-tally/update-quota-tally/insert-quota-tally
     &lt;/IfModule&gt;
-  &lt/IfModule&gt;
+  &lt;/IfModule&gt;
 </pre>
 
 <p><a name="FAQ" title="#FAQ"></a>
@@ -160,14 +161,8 @@ automatically update your tally table.
 
 <p><a name="QuotasDefaults" title="#QuotasDefaults"></a>
 <font color=red>Question</font>: How can I set a default quota for all of my users?<br>
-<font color=blue>Answer</font>: Unfortunately, there is no way currently
-to do this.  The <code>mod_quotatab</code> module was designed such that
-the administrator would have to explicitly create limits for every user.
-
-<p>
-However, a <code>mod_quotatab_default</code> module could be written to
-provide default quotas.  I simply do not know if this would be desirable
-enough to users for writing the module.
+<font color=blue>Answer</font>: For this, you can use the <a href="../contrib/mod_quotatab.html#QuotaDefault"><code>QuotaDefault</code></a> directive, which
+first appeared in ProFTPD 1.3.5rc1.
 
 <p><a name="QuotasTallyTable" title="#QuotasTallyTable"></a>
 <font color=red>Question</font>: What is a &quot;tally table&quot;?<br>
@@ -289,7 +284,8 @@ are checked is dependent up on the order in which the groups are returned
 from the auth module providing them, <i>e.g.</i> <code>mod_sql</code>,
 <code>mod_ldap</code>, or perhaps <code>mod_auth_unix</code>.
 
-<p><a name="QuotasOverwrites" title="#QuotasOverwrites"></a><font color=red>Question</font>: Does <code>mod_quotatab</code> handle the case where a client might append to/overwrite an existing file, in terms of tracking bytes?<br>
+<p><a name="QuotasOverwrites" title="#QuotasOverwrites"></a>
+<font color=red>Question</font>: Does <code>mod_quotatab</code> handle the case where a client might append to/overwrite an existing file, in terms of tracking bytes?<br>
 <font color=blue>Answer</font>: Yes.  The <code>mod_quotatab</code> module
 checks the size of the file before the upload/append starts, and then checks
 the size of the file again after the upload/append completes.  The difference
@@ -311,7 +307,41 @@ ends up not changing any tally value for a delete.  More details on this
 can be found in
 <a href="http://bugs.proftpd.org/show_bug.cgi?id=2897">Bug#2897</a>.
 
+<p><a name="QuotasZeroLimits" title="#QuotasZeroLimits"></a>
+<font color=red>Question</font>: Why does the <code>ftpquota</code> tool
+treat limit values of zero as "unlimited"?
+<pre>
+  $ ftpquota --create-table --type=limit
+  $ ftpquota --add-record --type=limit --name=tj --quota-type=user <b>--files-download=0</b>
+  $ ftpquota --show-records --type=limit
+  -------------------------------------------
+    Name: tj
+    Quota Type: User
+    Per Session: False
+    Limit Type: Hard
+      Uploaded bytes: unlimited
+      Downloaded bytes: unlimited
+      Transferred bytes:  unlimited
+      Uploaded files: unlimited
+      <b>Downloaded files: unlimited</b>
+      Transferred files:  unlimited
+</pre>
+I want to use this to prevent a user from uploading/download files.<br>
+<p>
+<font color=blue>Answer</font>:  If you wish to prevent users from uploading
+or downloading, then you should use
+<a href="Limit.html"><code>&lt;Limit&gt;</code></a> sections in your
+ProFTPD configuration; that is what they are designed to do.  The
+<code>ftpquota</code> tool was <em>explicitly designed</em> to not allow
+being used to prevent uploads/downloads; it is for managing <em>quotas</em>.
+
 <p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

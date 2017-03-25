@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD: Configuring a &lt;Directory&gt;</title>
@@ -194,7 +195,7 @@ For example, if you tried:
     &lt;Limit ALL&gt;
       DenyAll
     &lt;/Limit&gt;
-  &lt/Directory&gt;
+  &lt;/Directory&gt;
 
   &lt;Directory /path/to/dir&gt;
     &lt;Limit ALL&gt;
@@ -220,7 +221,7 @@ same path?  For example:
     &lt;Limit ALL&gt;
       DenyAll
     &lt;/Limit&gt;
-  &lt/Directory&gt;
+  &lt;/Directory&gt;
 
   &lt;Directory /path/*/dir&gt;
     &lt;Limit ALL&gt;
@@ -230,7 +231,7 @@ same path?  For example:
     &lt;Limit WRITE&gt;
       DenyAll
     &lt;/Limit&gt;
-  &lt/Directory&gt;
+  &lt;/Directory&gt;
 </pre>
 This time, the config parser would not choke; <code>proftpd</code> would start
 up normally.  When it came time to look up the <code>&lt;Directory&gt;</code>
@@ -254,18 +255,18 @@ However, if you simply reversed the order of the above
     &lt;Limit WRITE&gt;
       DenyAll
     &lt;/Limit&gt;
-  &lt/Directory&gt;
+  &lt;/Directory&gt;
 
   &lt;Directory /path/to/dir&gt;
     &lt;Limit ALL&gt;
       DenyAll
     &lt;/Limit&gt;
-  &lt/Directory&gt;
+  &lt;/Directory&gt;
 </pre>
 the upload would succeed, since the non-wildcard-using
 <code>&lt;Directory&gt;</code> section appeared later in the config.
 
-<p><a name="PreventDirectoryRename">
+<p><a name="PreventDirectoryRename"></a>
 <font color=red>Question</font>: How can I prevent a specific directory from
 being renamed?  I am currently trying:
 <pre>
@@ -313,5 +314,11 @@ list, we make sure that the <code><i>RNFR</i></code> <i>does</i> match the
 
 <p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

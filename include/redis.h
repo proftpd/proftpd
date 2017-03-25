@@ -49,7 +49,22 @@ int pr_redis_conn_destroy(pr_redis_t *redis);
  * Setting NULL for the namespace prefix clears it.
  */
 int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
-  const char *prefix);
+  const void *prefix, size_t prefixsz);
+
+/* Authenticate to a password-protected Redis server. */
+int pr_redis_auth(pr_redis_t *redis, const char *password);
+
+/* Issue a custom command to the Redis server; the reply type MUST match the
+ * one specified.  Mostly this is used for testing.
+ */
+int pr_redis_command(pr_redis_t *redis, const array_header *args,
+  int reply_type);
+#define PR_REDIS_REPLY_TYPE_STRING		1
+#define PR_REDIS_REPLY_TYPE_INTEGER		2
+#define PR_REDIS_REPLY_TYPE_NIL			3
+#define PR_REDIS_REPLY_TYPE_ARRAY		4
+#define PR_REDIS_REPLY_TYPE_STATUS		5
+#define PR_REDIS_REPLY_TYPE_ERROR		6
 
 int pr_redis_add(pr_redis_t *redis, module *m, const char *key, void *value,
   size_t valuesz, time_t expires);
@@ -61,6 +76,8 @@ char *pr_redis_get_str(pool *p, pr_redis_t *redis, module *m, const char *key);
 int pr_redis_incr(pr_redis_t *redis, module *m, const char *key, uint32_t incr,
   uint64_t *value);
 int pr_redis_remove(pr_redis_t *redis, module *m, const char *key);
+int pr_redis_rename(pr_redis_t *redis, module *m, const char *from,
+  const char *to);
 int pr_redis_set(pr_redis_t *redis, module *m, const char *key, void *value,
   size_t valuesz, time_t expires);
 
@@ -96,9 +113,27 @@ int pr_redis_list_delete(pr_redis_t *redis, module *m, const char *key,
   void *value, size_t valuesz);
 int pr_redis_list_exists(pr_redis_t *redis, module *m, const char *key,
   unsigned int idx);
+int pr_redis_list_get(pool *p, pr_redis_t *redis, module *m, const char *key,
+  unsigned int idx, void **value, size_t *valuesz);
+int pr_redis_list_getall(pool *p, pr_redis_t *redis, module *m,
+  const char *key, array_header **values, array_header **valueszs);
+int pr_redis_list_pop(pool *p, pr_redis_t *redis, module *m, const char *key,
+  void **value, size_t *valuesz, int flags);
+int pr_redis_list_push(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, int flags);
 int pr_redis_list_remove(pr_redis_t *redis, module *m, const char *key);
+int pr_redis_list_rotate(pool *p, pr_redis_t *redis, module *m, const char *key,
+  void **value, size_t *valuesz);
 int pr_redis_list_set(pr_redis_t *redis, module *m, const char *key,
   unsigned int idx, void *value, size_t valuesz);
+int pr_redis_list_setall(pr_redis_t *redis, module *m, const char *key,
+  array_header *values, array_header *valueszs);
+
+/* These flags are used for determining whether the list operation occurs
+ * to the LEFT or the RIGHT side of the list, e.g. LPUSH vs RPUSH.
+ */
+#define PR_REDIS_LIST_FL_LEFT		1
+#define PR_REDIS_LIST_FL_RIGHT		2
 
 /* Set operations */
 int pr_redis_set_add(pr_redis_t *redis, module *m, const char *key,
@@ -109,7 +144,40 @@ int pr_redis_set_delete(pr_redis_t *redis, module *m, const char *key,
   void *value, size_t valuesz);
 int pr_redis_set_exists(pr_redis_t *redis, module *m, const char *key,
   void *value, size_t valuesz);
+int pr_redis_set_getall(pool *p, pr_redis_t *redis, module *m, const char *key,
+  array_header **values, array_header **valueszs);
 int pr_redis_set_remove(pr_redis_t *redis, module *m, const char *key);
+int pr_redis_set_setall(pr_redis_t *redis, module *m, const char *key,
+  array_header *values, array_header *valueszs);
+
+/* Sorted Set operations */
+int pr_redis_sorted_set_add(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, float score);
+int pr_redis_sorted_set_count(pr_redis_t *redis, module *m, const char *key,
+  uint64_t *count);
+int pr_redis_sorted_set_delete(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz);
+int pr_redis_sorted_set_exists(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz);
+int pr_redis_sorted_set_getn(pool *p, pr_redis_t *redis, module *m,
+  const char *key, unsigned int offset, unsigned int len,
+  array_header **values, array_header **valueszs, int flags);
+
+/* These flags are used for determining whether the sorted set items are
+ * obtained in ascending (ASC) or descending (DESC) order.
+ */
+#define PR_REDIS_SORTED_SET_FL_ASC		1
+#define PR_REDIS_SORTED_SET_FL_DESC		2
+
+int pr_redis_sorted_set_incr(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, float incr, float *score);
+int pr_redis_sorted_set_remove(pr_redis_t *redis, module *m, const char *key);
+int pr_redis_sorted_set_score(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, float *score);
+int pr_redis_sorted_set_set(pr_redis_t *redis, module *m, const char *key,
+  void *value, size_t valuesz, float score);
+int pr_redis_sorted_set_setall(pr_redis_t *redis, module *m, const char *key,
+  array_header *values, array_header *valueszs, array_header *scores);
 
 /* Variants of the above, where the key values are arbitrary bits rather than
  * being assumed to be strings.
@@ -126,6 +194,8 @@ int pr_redis_kincr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   uint32_t incr, uint64_t *value);
 int pr_redis_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
+int pr_redis_krename(pr_redis_t *redis, module *m, const char *from,
+  size_t fromsz, const char *to, size_t tosz);
 int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
   void *value, size_t valuesz, time_t expires);
 
@@ -162,10 +232,23 @@ int pr_redis_list_kdelete(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz);
 int pr_redis_list_kexists(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, unsigned int idx);
+int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, unsigned int idx, void **value, size_t *valuesz);
+int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, array_header **values,
+  array_header **valueszs);
+int pr_redis_list_kpop(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, void **value, size_t *valuesz, int flags);
+int pr_redis_list_kpush(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, int flags);
 int pr_redis_list_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
+int pr_redis_list_krotate(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, void **value, size_t *valuesz);
 int pr_redis_list_kset(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, unsigned int idx, void *value, size_t valuesz);
+int pr_redis_list_ksetall(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, array_header *values, array_header *valueszs);
 
 int pr_redis_set_kadd(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz);
@@ -175,12 +258,38 @@ int pr_redis_set_kdelete(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz);
 int pr_redis_set_kexists(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, void *value, size_t valuesz);
+int pr_redis_set_kgetall(pool *p, pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, array_header **values, array_header **valueszs);
 int pr_redis_set_kremove(pr_redis_t *redis, module *m, const char *key,
   size_t keysz);
+int pr_redis_set_ksetall(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, array_header *values, array_header *valueszs);
+
+int pr_redis_sorted_set_kadd(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, float score);
+int pr_redis_sorted_set_kcount(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, uint64_t *count);
+int pr_redis_sorted_set_kdelete(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz);
+int pr_redis_sorted_set_kexists(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz);
+int pr_redis_sorted_set_kgetn(pool *p, pr_redis_t *redis, module *m,
+  const char *key, size_t keysz, unsigned int offset, unsigned int len,
+  array_header **values, array_header **valueszs, int flags);
+int pr_redis_sorted_set_kincr(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, float incr, float *score);
+int pr_redis_sorted_set_kremove(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz);
+int pr_redis_sorted_set_kscore(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, float *score);
+int pr_redis_sorted_set_kset(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, void *value, size_t valuesz, float score);
+int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
+  size_t keysz, array_header *values, array_header *valueszs,
+  array_header *scores);
 
 /* For internal use only */
-
-int redis_set_server(const char *server, int port);
+int redis_set_server(const char *server, int port, const char *password);
 int redis_set_timeouts(unsigned long connect_millis, unsigned long io_millis);
 
 int redis_clear(void);

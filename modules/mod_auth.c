@@ -29,6 +29,14 @@
 #include "conf.h"
 #include "privs.h"
 
+#ifdef HAVE_USERSEC_H
+# include <usersec.h>
+#endif
+
+#ifdef HAVE_SYS_AUDIT_H
+# include <sys/audit.h>
+#endif
+
 extern pid_t mpid;
 
 module auth_module;
@@ -336,7 +344,35 @@ static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
 /* Command handlers
  */
 
+static void login_failed(pool *p, const char *user) {
+#ifdef HAVE_LOGINFAILED
+  const char *host, *sess_ttyname;
+  int res, xerrno;
+
+  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
+  sess_ttyname = pr_session_get_ttyname(p);
+
+  PRIVS_ROOT
+  res = loginfailed((char *) user, (char *) host, (char *) sess_ttyname,
+    AUDIT_FAIL);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_trace_msg("auth", 3, "AIX loginfailed() error for user '%s', "
+      "host '%s', tty '%s', reason %d: %s", user, host, sess_ttyname,
+      AUDIT_FAIL, strerror(errno));
+  }
+#endif /* HAVE_LOGINFAILED */
+}
+
 MODRET auth_err_pass(cmd_rec *cmd) {
+  const char *user;
+
+  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+  if (user != NULL) {
+    login_failed(cmd->tmp_pool, user);
+  }
 
   /* Remove the stashed original USER name here in a LOG_CMD_ERR handler, so
    * that other modules, who may want to lookup the original USER parameter on
@@ -369,6 +405,36 @@ MODRET auth_log_pass(cmd_rec *cmd) {
   }
 
   return PR_DECLINED(cmd);
+}
+
+static void login_succeeded(pool *p, const char *user) {
+#ifdef HAVE_LOGINSUCCESS
+  const char *host, *sess_ttyname;
+  char *msg = NULL;
+  int res, xerrno;
+
+  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
+  sess_ttyname = pr_session_get_ttyname(p);
+
+  PRIVS_ROOT
+  res = loginsuccess((char *) user, (char *) host, (char *) sess_ttyname, &msg);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res == 0) {
+    if (msg != NULL) {
+      pr_trace_msg("auth", 14, "AIX loginsuccess() report: %s", msg);
+    }
+
+  } else {
+    pr_trace_msg("auth", 3, "AIX loginsuccess() error for user '%s', "
+      "host '%s', tty '%s': %s", user, host, sess_ttyname, strerror(errno));
+  }
+
+  if (msg != NULL) {
+    free(msg);
+  }
+#endif /* HAVE_LOGINSUCCESS */
 }
 
 MODRET auth_post_pass(cmd_rec *cmd) {
@@ -596,6 +662,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
      pr_response_add(auth_pass_resp_code, "%s", grantmsg);
   }
 
+  login_succeeded(cmd->tmp_pool, user);
+
   /* A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
    * 2 indicates 'NonCompliantActiveTransfer'.  We will drop root privs for any
    * RootRevoke value greater than 0.
@@ -736,6 +804,65 @@ static const char *get_default_chdir(pool *p, xaset_t *conf) {
   return dir;
 }
 
+static int is_symlink_path(pool *p, const char *path, size_t pathlen) {
+  int res, xerrno = 0;
+  struct stat st;
+  char *ptr;
+
+  if (pathlen == 0) {
+    return 0;
+  }
+
+  pr_fs_clear_cache2(path);
+  res = pr_fsio_lstat(path, &st);
+  if (res < 0) {
+    xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, "error: unable to check %s: %s", path,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (S_ISLNK(st.st_mode)) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* To handle the case where a component further up the path might be a
+   * symlink (which lstat(2) will NOT handle), we walk the path backwards,
+   * calling ourselves recursively.
+   */
+
+  ptr = strrchr(path, '/');
+  if (ptr != NULL) {
+    char *new_path;
+    size_t new_pathlen;
+
+    pr_signals_handle();
+
+    new_pathlen = ptr - path;
+
+    /* Make sure our pointer actually changed position. */
+    if (new_pathlen == pathlen) {
+      return 0;
+    }
+
+    new_path = pstrndup(p, path, new_pathlen);
+
+    pr_log_debug(DEBUG10,
+      "AllowChrootSymlink: path '%s' not a symlink, checking '%s'", path,
+      new_path);
+    res = is_symlink_path(p, new_path, new_pathlen);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
 /* Determine if the user (non-anon) needs a default root dir other than /. */
 static int get_default_root(pool *p, int allow_symlinks, const char **root) {
   config_rec *c = NULL;
@@ -779,7 +906,6 @@ static int get_default_root(pool *p, int allow_symlinks, const char **root) {
 
       if (allow_symlinks == FALSE) {
         char *path, target_path[PR_TUNABLE_PATH_MAX + 1];
-        struct stat st;
         size_t pathlen;
 
         /* First, deal with any possible interpolation.  dir_realpath() will
@@ -810,22 +936,13 @@ static int get_default_root(pool *p, int allow_symlinks, const char **root) {
           path[pathlen-1] = '\0';
         }
 
-        pr_fs_clear_cache2(path);
-        res = pr_fsio_lstat(path, &st);
+        res = is_symlink_path(p, path, pathlen);
         if (res < 0) {
-          xerrno = errno;
+          if (errno == EPERM) {
+            pr_log_pri(PR_LOG_WARNING, "error: DefaultRoot %s is a symlink "
+              "(denied by AllowChrootSymlinks config)", path);
+          }
 
-          pr_log_pri(PR_LOG_WARNING, "error: unable to check %s: %s", path,
-            strerror(xerrno));
-
-          errno = xerrno;
-          return -1;
-        }
-
-        if (S_ISLNK(st.st_mode)) {
-          pr_log_pri(PR_LOG_WARNING,
-            "error: DefaultRoot %s is a symlink (denied by AllowChrootSymlinks "
-            "config)", path);
           errno = EPERM;
           return -1;
         }

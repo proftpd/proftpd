@@ -392,6 +392,16 @@ char *pr_fs_decode_path2(pool *, const char *, int);
 
 char *pr_fs_encode_path(pool *, const char *);
 int pr_fs_use_encoding(int);
+
+/* Split the given path into its individual path components. */
+array_header *pr_fs_split_path(pool *p, const char *path);
+
+/* Given an array of individual path components, join them into a single
+ * path.  The count parameter indicates how many components in the array,
+ * starting from zero, to use.
+ */
+char *pr_fs_join_path(pool *p, array_header *components, size_t count);
+
 int pr_fs_valid_path(const char *);
 void pr_fs_virtual_path(const char *, char *, size_t);
 
@@ -430,6 +440,10 @@ int pr_fs_getsize2(char *, off_t *);
  * file descriptor, rather than a path.
  */
 int pr_fs_fgetsize(int, off_t *);
+
+/* Perform access(2)-like checks on the given struct stat. */
+int pr_fs_have_access(struct stat *st, int mode, uid_t uid, gid_t gid,
+  array_header *suppl_gids);
 
 /* Returns TRUE if the given path is on an NFS-mounted filesystem, FALSE
  * if not on an NFS-mounted filesystem, and -1 if there was an error

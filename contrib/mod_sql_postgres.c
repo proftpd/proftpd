@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2016 TJ Saunders
+ * Copyright (c) 2004-2017 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,7 +38,12 @@
 
 #include <libpq-fe.h>
 #if defined(HAVE_POSTGRES_PQGETSSL) && defined(PR_USE_OPENSSL)
-#include <openssl/ssl.h>
+# include <openssl/ssl.h>
+
+/* Define if you have the LibreSSL library.  */
+# if defined(LIBRESSL_VERSION_NUMBER)
+#   define HAVE_LIBRESSL	1
+# endif
 #endif /* HAVE_POSTGRES_PQGETSSL and PR_USE_OPENSSL */
 
 /* For the pg_encoding_to_char() function, used for NLS support, we need
@@ -60,6 +65,8 @@ extern const char *pg_encoding_to_char(int encoding);
  */
 static const char *get_postgres_encoding(const char *encoding);
 #endif
+
+static const char *trace_channel = "sql.postgres";
 
 /* 
  * timer-handling code adds the need for a couple of forward declarations
@@ -676,6 +683,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
   char *have_host = NULL, *have_port = NULL, *info = NULL, *name = NULL;
   const char *db = NULL, *host = NULL, *port = NULL, *connect_string = NULL;
   const char *ssl_cert_file = NULL, *ssl_key_file = NULL, *ssl_ca_file = NULL;
+  const char *ssl_ciphers = NULL;
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL; 
 
@@ -752,6 +760,11 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
     ssl_ca_file = cmd->argv[7];
   }
 
+  /* Ignore the ssl_ca_dir parameter, for now. */
+  if (cmd->argc >= 10) {
+    ssl_ciphers = cmd->argv[9];
+  }
+
   conn->host = pstrdup(conn_pool, host);
   conn->db = pstrdup(conn_pool, db);
   conn->port = pstrdup(conn_pool, port);
@@ -768,6 +781,14 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
    * "require", when SSL parameters have been set?
    */
 
+  if (ssl_ciphers != NULL ||
+      ssl_cert_file != NULL ||
+      ssl_key_file != NULL ||
+      ssl_ca_file != NULL) {
+    connect_string = pstrcat(cmd->tmp_pool, connect_string,
+      " sslmode='prefer'", NULL);
+  }
+
   if (conn->ssl_cert_file != NULL) {
     connect_string = pstrcat(cmd->tmp_pool, connect_string, " sslcert='",
       conn->ssl_cert_file, "'", NULL);
@@ -783,6 +804,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
       conn->ssl_ca_file, "'", NULL);
   }
 
+  pr_trace_msg(trace_channel, 17, "using connect string '%s'", connect_string);
   conn->connect_string = pstrdup(conn_pool, connect_string);
 
   /* insert the new conn_info into the connection hash */
@@ -1626,27 +1648,49 @@ static void sql_postgres_mod_unload_ev(const void *event_data,
 /* Initialization routines
  */
 
-static int sql_postgres_init(void) {
+static void sql_postgres_ssl_init(void) {
+#ifdef HAVE_POSTGRES_PQINITOPENSSL
+  int init_ssl = TRUE, init_crypto = TRUE;
 
+  /* If any of the OpenSSL-using modules are loaded, tell Postgres to NOT
+   * initialize OpenSSL itself.  Note that there are nuances to this; some
+   * of the other modules may only use the crypto libs.
+   */
+  if (pr_module_exists("mod_auth_otp.c") == TRUE ||
+      pr_module_exists("mod_digest.c") == TRUE ||
+      pr_module_exists("mod_sftp.c") == TRUE ||
+      pr_module_exists("mod_sql_passwd.c") == TRUE) {
+    init_crypto = FALSE;
+  }
+
+  if (pr_module_exists("mod_tls.c") == TRUE) {
+    init_ssl = FALSE;
+    init_crypto = FALSE;
+  }
+
+# if defined(HAVE_LIBRESSL)
+  /* However, if we are using LibreSSL, then the above modules will NOT be
+   * properly initializing OpenSSL.  Thus Postgres should do such
+   * initializations itself.
+   */
+  init_ssl = init_crypto = TRUE;
+# endif
+
+  pr_trace_msg(trace_channel, 18,
+    "telling Postgres about OpenSSL initialization: ssl = %s, crypto = %s",
+    init_ssl ? "yes" : "no", init_crypto ? "yes" : "no");
+  PQinitOpenSSL(init_ssl, init_crypto);
+#endif /* HAVE_POSTGRES_PQINITOPENSSL */
+}
+
+static int sql_postgres_init(void) {
   /* Register listeners for the load and unload events. */
   pr_event_register(&sql_postgres_module, "core.module-load",
     sql_postgres_mod_load_ev, NULL);
   pr_event_register(&sql_postgres_module, "core.module-unload",
     sql_postgres_mod_unload_ev, NULL);
 
-#ifdef HAVE_POSTGRES_PQINITOPENSSL
-  /* If any of the OpenSSL-using modules are loaded, tell Postgres to NOT
-   * initialize OpenSSL itself.
-   */
-  if (pr_module_exists("mod_auth_otp.c") == TRUE ||
-      pr_module_exists("mod_digest.c") == TRUE ||
-      pr_module_exists("mod_tls.c") == TRUE ||
-      pr_module_exists("mod_sftp.c") == TRUE ||
-      pr_module_exists("mod_sql_passwd.c") == TRUE) {
-    PQinitOpenSSL(0, 0);
-  }
-#endif /* HAVE_POSTGRES_PQINITOPENSSL */
-
+  sql_postgres_ssl_init();
   return 0;
 }
 

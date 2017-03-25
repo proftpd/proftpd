@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -167,12 +167,12 @@ static int sftp_get_client_version(conn_t *conn) {
                */
               bad_proto = TRUE;
 
-            } else { 
+            } else {
               banner = buf + 9;
               bad_proto = FALSE;
             }
           }
-        } 
+        }
 
       } else {
         if (buflen == 8) {
@@ -181,7 +181,7 @@ static int sftp_get_client_version(conn_t *conn) {
            */
           bad_proto = TRUE;
 
-        } else { 
+        } else {
           banner = buf + 8;
         }
       }
@@ -1829,6 +1829,12 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void sftp_timeoutlogin_ev(const void *event_data, void *user_data) {
+  if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+}
+
 #ifdef PR_USE_DEVEL
 static void pool_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
@@ -1876,7 +1882,7 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
       if (user == NULL) {
         user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
       }
- 
+
       /* If the client has authenticated, we can interpolate any '%u'
        * variable in the configured deny message.
        */
@@ -1990,6 +1996,8 @@ static int sftp_init(void) {
   pr_event_register(&sftp_module, "core.postparse", sftp_postparse_ev, NULL);
   pr_event_register(&sftp_module, "core.restart", sftp_restart_ev, NULL);
   pr_event_register(&sftp_module, "core.shutdown", sftp_shutdown_ev, NULL);
+  pr_event_register(&sftp_module, "core.timeout-login", sftp_timeoutlogin_ev,
+    NULL);
 
   return 0;
 }

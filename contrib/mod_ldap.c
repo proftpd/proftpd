@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013-2016 The ProFTPD Project
+ * Copyright (c) 2013-2017 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -379,8 +379,10 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
     /* item might be NULL if no LDAPServer directive was specified
      * and we're using the SDK default.
      */
-    if (item) {
+    if (item != NULL) {
       if (ldap_is_ldap_url(item)) {
+        char *url_desc;
+
         if (ldap_url_parse(item, &url) != LDAP_URL_SUCCESS) {
           (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
             "URL %s was valid during server startup, but is no longer valid?!",
@@ -391,6 +393,13 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
             cur_server_index = 0;
           }
           continue;
+        }
+
+        url_desc = ldap_url_desc2str(url);
+        if (url_desc != NULL) {
+          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+            "parsed '%s' as '%s'", item, url_desc);
+          ldap_memfree(url_desc);
         }
 
 #ifdef HAS_LDAP_INITIALIZE
@@ -627,13 +636,21 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
 
       if (strcasecmp(attrs[i], ldap_attr_homedirectory) == 0) {
         if (ldap_genhdir == FALSE ||
-            ldap_genhdir_prefix == FALSE ||
             ldap_genhdir_prefix == NULL) {
           dn = ldap_get_dn(ld, e);
 
-          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-            "no %s attribute for DN %s, LDAPGenerateHomedirPrefix not "
-            "configured", ldap_attr_homedirectory, dn);
+          if (ldap_genhdir == FALSE) {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "no %s attribute for DN %s, LDAPGenerateHomedir not enabled",
+              ldap_attr_homedirectory, dn);
+
+          } else {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "no %s attribute for DN %s, LDAPGenerateHomedir enabled but "
+              "LDAPGenerateHomedirPrefix not configured",
+              ldap_attr_homedirectory, dn);
+          }
+
           free(dn);
           return NULL;
         }
@@ -723,16 +740,29 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
     } else if (strcasecmp(attrs[i], ldap_attr_homedirectory) == 0) {
       if (ldap_forcegenhdir == TRUE) {
         if (ldap_genhdir == FALSE ||
-            ldap_genhdir_prefix == FALSE ||
             ldap_genhdir_prefix == NULL) {
-          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-            "LDAPForceGeneratedHomedir enabled, but LDAPGenerateHomedir "
-            "is not");
+
+          if (ldap_genhdir == FALSE) {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "LDAPForceGeneratedHomedir enabled but LDAPGenerateHomedir is "
+              "not enabled");
+
+          } else {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "LDAPForceGeneratedHomedir and LDAPGenerateHomedir enabled, but "
+              "missing required LDAPGenerateHomedirPrefix");
+          }
+
           return NULL;
         }
 
+        if (pw->pw_dir != NULL) {
+          pr_trace_msg(trace_channel, 8, "LDAPForceGeneratedHomedir in effect, "
+            "overriding current LDAP home directory '%s'", pw->pw_dir);
+        }
+
         if (ldap_genhdir_prefix_nouname == TRUE) {
-          pw->pw_dir = pstrcat(session.pool, ldap_genhdir_prefix, NULL);
+          pw->pw_dir = pstrdup(session.pool, ldap_genhdir_prefix);
 
         } else {
           LDAP_VALUE_T **canon_username;
@@ -755,6 +785,9 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
       } else {
         pw->pw_dir = pstrdup(session.pool, LDAP_VALUE(values, 0));
       }
+
+      pr_trace_msg(trace_channel, 8, "using LDAP home directory '%s'",
+        pw->pw_dir);
 
     } else if (strcasecmp(attrs[i], ldap_attr_loginshell) == 0) {
       pw->pw_shell = pstrdup(session.pool, LDAP_VALUE(values, 0));
@@ -1689,7 +1722,6 @@ MODRET set_ldapprotoversion(cmd_rec *cmd) {
 MODRET set_ldapserver(cmd_rec *cmd) {
   register unsigned int i;
   int len;
-  char *item;
   LDAPURLDesc *url;
   array_header *urls = NULL;
   config_rec *c;
@@ -1702,44 +1734,58 @@ MODRET set_ldapserver(cmd_rec *cmd) {
   c->argv[0] = urls;
 
   for (i = 1; i < cmd->argc; ++i) {
-    if (ldap_is_ldap_url(cmd->argv[i])) {
-      if (ldap_url_parse(cmd->argv[i], &url) != LDAP_URL_SUCCESS) {
-        CONF_ERROR(cmd, "LDAPServer: must be supplied with a valid LDAP URL");
+    char *item;
+
+    item = cmd->argv[i];
+
+    if (ldap_is_ldap_url(item)) {
+      char *url_desc;
+
+      if (ldap_url_parse(item, &url) != LDAP_URL_SUCCESS) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "must be supplied with a valid LDAP URL: ", item, NULL));
       }
 
-      if (find_config(main_server->conf, CONF_PARAM, "LDAPSearchScope", FALSE)) {
+      url_desc = ldap_url_desc2str(url);
+      if (url_desc != NULL) {
+        pr_log_debug(DEBUG0, "%s: parsed URL '%s' as '%s'",
+          (char *) cmd->argv[0], item, url_desc);
+        ldap_memfree(url_desc);
+      }
+
+      if (find_config(cmd->server->conf, CONF_PARAM, "LDAPSearchScope", FALSE)) {
         CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead");
       }
 
 #ifdef HAS_LDAP_INITIALIZE
-      if (strncasecmp(cmd->argv[i], "ldap:", strlen("ldap:")) != 0 &&
-          strncasecmp(cmd->argv[i], "ldaps:", strlen("ldaps:")) != 0) {
-
+      if (strncasecmp(item, "ldap:", 5) != 0 &&
+          strncasecmp(item, "ldaps:", 6) != 0) {
         CONF_ERROR(cmd, "Invalid scheme specified by LDAPServer URL: valid schemes are 'ldap' or 'ldaps'");
       }
 
 #else /* HAS_LDAP_INITIALIZE */
-      if (strncasecmp(cmd->argv[i], "ldap:", strlen("ldap:")) != 0) {
+      if (strncasecmp(item, "ldap:", 5) != 0) {
         CONF_ERROR(cmd, "Invalid scheme specified by LDAPServer URL: valid schemes are 'ldap'");
       }
 #endif /* HAS_LDAP_INITIALIZE */
 
-      if (url->lud_dn && strcmp(url->lud_dn, "") != 0) {
+      if (url->lud_dn != NULL &&
+          strcmp(url->lud_dn, "") != 0) {
         CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups");
       }
 
-      if (url->lud_filter && strcmp(url->lud_filter, "") != 0) {
+      if (url->lud_filter != NULL &&
+         strcmp(url->lud_filter, "") != 0) {
         CONF_ERROR(cmd, "A search filter may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups");
       }
 
       ldap_free_urldesc(url);
-      *((char **) push_array(urls)) = pstrdup(c->pool, cmd->argv[i]);
+      *((char **) push_array(urls)) = pstrdup(c->pool, item);
 
     } else {
-      /* Split non-URL arguments on whitespace and insert them as
-       * separate servers.
+      /* Split non-URL arguments on whitespace and insert them as separate
+       * servers.
        */
-      item = cmd->argv[i];
       while (*item) {
         len = strcspn(item, " \f\n\r\t\v");
         *((char **) push_array(urls)) = pstrndup(c->pool, item, len);
@@ -1790,23 +1836,48 @@ MODRET set_ldapbinddn(cmd_rec *cmd) {
 
 MODRET set_ldapsearchscope(cmd_rec *cmd) {
   config_rec *c;
+  const char *scope_name;
+  int search_scope;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE);
-  if (c != NULL &&
-      ldap_is_ldap_url(c->argv[0])) {
-    CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead");
+  if (c != NULL) {
+    register unsigned int i;
+    array_header *ldap_servers = NULL;
+
+    ldap_servers = c->argv[0];
+    for (i = 0; i < ldap_servers->nelts; i++) {
+      char *elt;
+
+      elt = ((char **) ldap_servers->elts)[i];
+      if (ldap_is_ldap_url(elt)) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "cannot be used when LDAPServer specifies a URL (see '", elt, "'); specify a search scope in the LDAPServer URL instead", NULL));
+      }
+    }
   }
 
-    if (strcasecmp(cmd->argv[1], "base") != 0 &&
-        strcasecmp(cmd->argv[1], "onelevel") != 0 &&
-        strcasecmp(cmd->argv[1], "subtree") != 0) {
-      CONF_ERROR(cmd, "LDAPSearchScope: invalid search scope")
-    }
+  scope_name = cmd->argv[1];
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  if (strcasecmp(scope_name, "base") == 0) {
+    search_scope = LDAP_SCOPE_BASE;
+
+  } else if (strcasecmp(scope_name, "one") == 0 ||
+             strcasecmp(scope_name, "onelevel") == 0) {
+    search_scope = LDAP_SCOPE_ONELEVEL;
+
+  } else if (strcasecmp(scope_name, "subtree") == 0) {
+    search_scope = LDAP_SCOPE_SUBTREE;
+
+  } else {
+    CONF_ERROR(cmd, "search scope must be one of: base, onelevel, subtree");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = search_scope;
+
   return PR_HANDLED(cmd);
 }
 
@@ -2024,10 +2095,17 @@ MODRET set_ldapgenhdir(cmd_rec *cmd) {
 }
 
 MODRET set_ldapgenhdirprefix(cmd_rec *cmd) {
+  char *prefix;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  prefix = cmd->argv[1];
+  if (strlen(prefix) == 0) {
+    CONF_ERROR(cmd, "must not be an empty string");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, prefix);
   return PR_HANDLED(cmd);
 }
 
@@ -2178,7 +2256,6 @@ static int ldap_mod_init(void) {
 }
 
 static int ldap_sess_init(void) {
-  char *scope;
   config_rec *c;
   void *ptr;
 
@@ -2255,17 +2332,9 @@ static int ldap_sess_init(void) {
     ldap_dnpass = pstrdup(ldap_pool, c->argv[1]);
   }
 
-  scope = get_param_ptr(main_server->conf, "LDAPSearchScope", FALSE);
-  if (scope != NULL) {
-    if (strcasecmp(scope, "base") == 0) {
-      ldap_search_scope = LDAP_SCOPE_BASE;
-
-    } else if (strcasecmp(scope, "onelevel") == 0) {
-      ldap_search_scope = LDAP_SCOPE_ONELEVEL;
-
-    } else if (strcasecmp(scope, "subtree") == 0) {
-      ldap_search_scope = LDAP_SCOPE_SUBTREE;
-    }
+  c = find_config(main_server->conf, CONF_PARAM, "LDAPSearchScope", FALSE);
+  if (c != NULL) {
+    ldap_search_scope = *((int *) c->argv[0]);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPQueryTimeout", FALSE);

@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_sftp</title>
@@ -1261,7 +1262,7 @@ of policies; the chances columns list the probability that
 <code>mod_sftp</code> will send an <code>SSH_MSG_IGNORE</code> message.
 
 <p>
-<table border=1>
+<table border=1 summary="SFTP Traffic Policies">
   <tr>
     <td><b>Policy Name</b></td>
     <td><b>Chances</b></td>
@@ -1706,7 +1707,7 @@ mode, it will refuse to advertise support for the following cipher algorithms:
   <li><code>cast128-cbc</code>
 </ul>
 and for the following digest algorithms:
-</ul>
+<ul>
   <li><code>hmac-md5</code>
   <li><code>hmac-md5-96</code>
   <li><code>hmac-ripemd160</code>
@@ -2030,6 +2031,59 @@ format using <code>ssh-keygen</code>, <em>before</em> adding it to your
 </pre>
 See the <a href="#UsageRFC4716Format">Usage</a> documentation for more
 information.
+
+<p><a name="SFTPBrokenMaxFileSize">
+<font color=red>Question</font>: I'm using the <a href="../modules/mod_xfer.html"><code>MaxStoreFileSize</code></a> directive in my <code>mod_sftp</code>
+configuration, but when I upload a file using <i>e.g.</i> OpenSSH's
+<code>sftp</code> client, I see the file uploaded past my configured limit.  Is
+this a bug?<br>
+<font color=blue>Answer</font>: No.  The <code>mod_sftp</code> module honors
+a configured <code>MaxStoreFileSize</code> limit properly.  <i>However</i>,
+what you see <i>in the SFTP client</i> may not reflect this as you would expect.
+Some SFTP clients, like that from OpenSSH, will only reflect the failure
+<i>after the entire file has been uploaded</i>:
+<pre>
+  sftp&gt; put /path/to/file.dat
+  Uploading /path/to/file.dat to /file.dat
+  /path/to/file.dat                           100%  704KB 704.1KB/s   00:00
+  Couldn't write to remote file "/file.dat": Failure
+</pre>
+In the <code>SFTPLog</code> for the above situation, you would most likely
+see log messages about the SFTP <code>WRITE</code> requests being rejected:
+<pre>
+  mod_sftp/0.9.9[32297]: error writing 32768 bytes to '/file.dat': File too large (MaxStoreFileSize 204800 exceeded)
+  mod_sftp/0.9.9[32297]: error writing 32768 bytes to '/file.dat': File too large (MaxStoreFileSize 204800 exceeded)
+</pre>
+
+<p>
+<b>There is a discrepancy between what the client shows the user, and what the
+server is actually doing.</b>  The <code>mod_sftp</code> module, when handling
+SFTP uploads, checks the size of the file on disk, after receiving the buffer
+of data from the network, but <i>before</i> writing that data to disk.  If the
+size of the file on disk exceeds the <code>MaxStoreFileSize</code> limit, then
+that SFTP <code>WRITE</code> request is denied.
+
+<p>
+Many SFTP clients will send multiple SFTP <code>WRITE</code> requests
+concurrently, optimistically hoping that they will succeed; this makes for
+faster SFTP uploads.  This is why you might see multiple "File too large"
+messages logged by <code>mod_sftp</code>.  And it also means that the client
+<i>thinks</i> it has sent more data to the server than has actually been
+written to disk.
+
+<p>
+Now, this may lead you to ask "Due to SFTP protocol itself, there is no way to
+control the file size uploaded by a client, right?"  This is not quite correct.
+
+<p>
+There's no way <em>for an SFTP server</em> to control how much data the
+SFTP client will send.  But there <em>is</em> a way to control how much data is
+written to disk by the SFTP server; that is what <code>MaxStoreFileSize</code>
+does.  But this means that the SFTP client may report how much data it sent
+over the network, which <b>is not the same</b> as how much data was actually
+stored by the SFTP server.  Believing what your client shows you, though, is
+always suspect, since what the client shows may not actually reflect the
+reality of things on the server side of things.
 
 <p><a name="SFTPPCBCModeAttacks">
 <font color=red>Question</font>: Is it true that using CBC mode ciphers in
@@ -2369,7 +2423,7 @@ capability).
 <pre>
   WARNING: unable to read SFTPDHParamFile '<i>path</i>': Permission denied
   unable to open SFTPKeyBlacklist '<i>path</i>': Permission denied
-<pre>
+</pre>
 What can I do to fix this?<br>
 <font color=blue>Answer</font>: This indicates that the files are not
 readable (usually <i>world</i>-readable) by the users logging in,
@@ -2384,7 +2438,7 @@ cannot read either the <code>SFTPDHParamFile</code> or the
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2008-2016 TJ Saunders<br>
+&copy; Copyright 2008-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

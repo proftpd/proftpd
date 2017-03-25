@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_core</title>
@@ -66,7 +67,7 @@ The <code>mod_core</code> module handles most of the core FTP commands.
   <li><a href="#PassivePorts">PassivePorts</a>
   <li><a href="#PathAllowFilter">PathAllowFilter</a>
   <li><a href="#PathDenyFilter">PathDenyFilter</a>
-  <li><a href="#PidFile>PidFile</a>
+  <li><a href="#PidFile">PidFile</a>
   <li><a href="#Port">Port</a>
   <li><a href="#ProcessTitles">ProcessTitles</a>
   <li><a href="#Protocols">Protocols</a>
@@ -441,10 +442,11 @@ logged in user).  By default, ProFTPD <i>assumes</i> an anonymous login
 in which case anonymous logins are <b>not</b> allowed regardless of the
 presence of an <code>&lt;Anonymous&gt;</code> section.  To force anonymous
 logins to be bound to a user other than the current user, see the
-<a href="#User><code>User</code></a> and <a href="#Group"><code>Group</code></a>
-directives.  In addition, if a <code>User</code> or <code>Group</code>
-directive <i>is</i> present in an <code>&lt;Anonymous&gt;</code> section,
-ProFTPD permanently switches to that UID/GID before the <code>chroot(2)</code>.
+<a href="#User"><code>User</code></a> and
+<a href="#Group"><code>Group</code></a> directives.  In addition, if a
+<code>User</code> or <code>Group</code> directive <i>is</i> present in an
+<code>&lt;Anonymous&gt;</code> section, ProFTPD permanently switches to that
+UID/GID before the <code>chroot(2)</code>.
 
 <p>
 Normally, anonymous logins are <b>not</b> required to authenticate with a
@@ -659,7 +661,10 @@ connection.
 Normally, if the incoming connection is destined for an IP address which is
 neither the host's primary IP address nor one of the addresses specified in a
 <code>&lt;VirtualHost&gt;</code> configuration section, the "unknown"
-connection is issued a "no server available to service your request" response,
+connection receives the following response:
+<pre>
+  500 Sorry, no server available to handle request on <i>a.b.c.d</i>
+</pre>
 and is disconnected.  When <code>DefaultServer</code> is enabled for either
 the primary server configuration <i>or</i> a virtual server, these "unknown"
 connections are handled by that configuration.
@@ -688,11 +693,11 @@ Example:
   # Define ANONYMOUS (or comment this out), for anonymous login support
   Define ANONYMOUS
 
-  # If the label ANONYMOUS is defined, use this <Anonymous> section
+  # If the label ANONYMOUS is defined, use this &lt;Anonymous&gt; section
   &lt;IfDefine ANONYMOUS&gt;
     &lt;Anonymous ~ftp&gt;
       ...
-    &gt;/Anonymous&gt;
+    &lt;/Anonymous&gt;
   &lt;/IfDefine&gt;
 </pre>
 
@@ -1472,7 +1477,7 @@ multiple nested <code>&lt;IfDefine&gt;</code> sections, <i>e.g.</i>:
   &lt;IfDefine USE_TLS&gt;
     TLSEngine on
 
-    &lt;IfDefine !REQUIRE_TLS&t;
+    &lt;IfDefine !REQUIRE_TLS&gt;
       # Require TLS for authentication, but allow clients to downgrade back
       # to plain TCP after that.
       TLSRequired auth
@@ -1530,7 +1535,7 @@ multiple nested <code>&lt;IfModule&gt;</code> sections, <i>e.g.</i>:
       &lt;/IfModule&gt;
     &lt;/IfModule&gt;
 
-    &lt;IfModule mod_sql_passwd.c&gt
+    &lt;IfModule mod_sql_passwd.c&gt;
       # Try more different password hashes with mod_sql_passwd
       SQLAuthTypes ...
     &lt;/IfModule&gt;
@@ -1763,13 +1768,26 @@ has no effect when <code>proftpd</code> is configured with "ServerType inetd".
 Each <code>proftpd</code> child process represents a single client connection,
 and thus this directive also controls the maximum number of simultaneous
 connections allowed.  Additional connections beyond the configured limit are
-logged, and silently disconnected.  The <code>MaxInstances</code> directive
-can be used to prevent undesirable denial-of-service attacks (<i>e.g.</i>
-by repeatedly connecting to the FTP control port, a malicious client could try
-to cause <code>proftpd</code> to repeatedly fork new processes, creating a
-"fork-bomb").   By default, no limit is placed on the number of child
-processes that may run at one time; it is <b>highly recommended</b> that a
-maximum number, suitable to your sites traffic, be configured.
+logged, and <b>silently disconnected</b>; the clients will <b>not</b> receive an
+FTP response in this case, but instead will encounter connection-level errors
+such as "Connection reset by peer".  In order to provide a more user-facing
+error message, use the
+<a href="mod_auth.html#MaxClients"><code>MaxClients</code></a> directive,
+set to a value <em>lower</em> than <code>MaxInstances</code>, <i>e.g.</i>:
+<pre>
+  # Set MaxClients lower than MaxInstances, so that clients receive a nicer error message when they are rejected.
+  MaxClients 100
+  MaxInstances 101
+</pre>
+
+<p>
+The <code>MaxInstances</code> directive can be used to prevent undesirable
+denial-of-service attacks (<i>e.g.</i> by repeatedly connecting to the FTP
+control port, a malicious client could try to cause <code>proftpd</code> to
+repeatedly fork new processes, creating a "fork-bomb").  By default, no limit
+is placed on the number of child processes that may run at one time; it is
+<b>highly recommended</b> that a maximum number, suitable to your sites
+traffic, be configured.
 
 <p>
 <hr>
@@ -2369,7 +2387,7 @@ For example:
 <hr>
 <h3><a name="ServerName">ServerName</a></h3>
 <strong>Syntax:</strong> ServerName <em>"standalone"|"inetd"</em><br>
-<strong>Default:</strong> ServerName "ProFTPD Server <em>version</em>"
+<strong>Default:</strong> ServerName "ProFTPD"
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
@@ -2378,7 +2396,7 @@ For example:
 The <code>ServerName</code> directive configures the text that will be
 displayed to a client connecting to the server.  This text will be displayed
 to the client <i>e.g.</i> as part of the response for a <code>HELP</code>
-command.
+or <code>STAT</code> command.
 
 <p>
 <hr>
@@ -2493,20 +2511,23 @@ On the other hand, if we use:
 then <code>proftpd</code> again creates two sockets.  However one is bound to
 10.0.0.1, port 21 (<i>i.e.</i> "10.0.0.1:21") and the other is bound to
 10.0.0.2, port 2001 (<i>i.e.</i> "10.0.0.2:2001").  Thus these sockets are
-<em>"tightly"</em> bound to the IP addresses.  This means that port 21 can be
+<em>tightly</em> bound to the IP addresses.  This means that port 21 can be
 reused on any address <i>other</i> than 10.0.0.1, and similarly for port 2001
 and 10.0.0.2.
 
 <p>
 One side effect of setting <code>SocketBindTight</code> to <em>on</em> is that
 connections to non-bound addresses will result in a "connection refused"
-message rather than the more common:
+message rather than the more common (<i>assuming</i> no <a href="#DefaultServer"><code>DefaultServer</code></a> directive):
 <pre>
   500 Sorry, no server available to handle request on <i>a.b.c.d.</i>
 </pre>
 due to the fact that no TCP listening socket has been bound to the particular
 address/port pair.  This may or may not be aesthetically desirable, depending
 on your circumstances.
+
+<p>
+See also: <a href="#DefaultServer"><code>DefaultServer</code></a>
 
 <p>
 <hr>
@@ -2648,7 +2669,7 @@ recorded via the default Unix syslog logging. The following <em>levels</em>
 are available, in order of decreasing significance:
 
 <p>
-<table border=1>
+<table border=1 summary="Syslog Levels">
   <tr>
     <td><b>Level</b></td>
     <td><b>Description</b></td>
@@ -2758,7 +2779,7 @@ to <a href="http://en.wikipedia.org/wiki/Syn_flood">TCP syn floods</a>.
 Each operating system, then, has different ways of handling incoming and
 pending connections, to attempt to guard against such attacks.  For Linux
 systems, read the <code>tcp(7)</code> man page and specifically about
-<code>tcp_abort_on_overflow</code>, </code>tcp_max_syn_backlog</code>,
+<code>tcp_abort_on_overflow</code>, <code>tcp_max_syn_backlog</code>,
 and <code>tcp_syncookies</code>.  On FreeBSD, read the
 <code>syncookies(4)</code> man page.  And read
 <a href="http://www.sean.de/Solaris/soltune.html#backlog">here</a> for
@@ -3093,7 +3114,7 @@ possible after startup.
 On some Unix variants, ProFTPD will occasionally switch back to &quot;root&quot;
 in order to accomplish a task which requires superuser access.  Once that task
 is completed, root privileges are relinquished and the server returns to running
-as the specified UID/GID.  When applied to a <code>&lt;VirtualHost&lgt;</code>
+as the specified UID/GID.  When applied to a <code>&lt;VirtualHost&gt;</code>
 section, ProFTPD will run as the specified UID/GID on connections destined for
 the virtual server's address and port.  If either <code>User</code> or
 <code>Group</code> is applied to an <code>&lt;Anonymous&gt;</code> section,
@@ -3294,8 +3315,11 @@ FileZilla expects, which can lead to the above "does not support non-ASCII
 characters" message.
 
 <p>
-The solution is to use "MultilineRFC2228 off" in your <code>proftpd.conf</code>
-(or simply remove that directive entirely).
+The solution is to use:
+<pre>
+  MultilineRFC2228 off
+</pre>
+in your <code>proftpd.conf</code> (or simply remove that directive entirely).
 
 <p>
 <hr>

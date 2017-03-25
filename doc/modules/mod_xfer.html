@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_xfer</title>
@@ -110,7 +111,7 @@ See also: <a href="#AllowRetrieveRestart"><code>AllowRetrieveRestart</code></a>,
 The <code>DefaultTransferMode</code> directive sets the <em>default</em>
 transfer mode used for data transfers.  Per RFC 959 requirements, the default
 transfer mode is "ascii", which means that carriage return (<code>CR</code>)
-and line feed (<code>LF</code) translation will be performed: <code>CRLF</code>
+and line feed (<code>LF</code>) translation will be performed: <code>CRLF</code>
 sequences in <em>uploaded</em> data will be translated to <code>LF</code>,
 and <code>LF</code> translated to <code>CRLF</code> in <em>downloaded</em> data.
 

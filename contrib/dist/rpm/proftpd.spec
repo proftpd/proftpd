@@ -26,6 +26,7 @@
 #   mod_sql_passwd
 #   mod_wrap2
 #   mod_wrap2_file
+#   mod_wrap2_redis
 #   mod_wrap2_sql
 #   mod_unique_id
 #
@@ -360,6 +361,7 @@ STANDARD_MODULE_LIST="  mod_auth_pam            \
                         mod_sql                 \
                         mod_wrap2               \
                         mod_wrap2_file          \
+                        mod_wrap2_redis         \
                         mod_wrap2_sql           \
                         mod_unique_id           "
 
@@ -557,6 +559,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls_shmcache.so}
 %{_libexecdir}/proftpd/mod_wrap2.so
 %{_libexecdir}/proftpd/mod_wrap2_file.so
+%{_libexecdir}/proftpd/mod_wrap2_redis.so
 %{_libexecdir}/proftpd/mod_wrap2_sql.so
 %{_libexecdir}/proftpd/mod_unique_id.so
 %exclude %{_libexecdir}/proftpd/*.a

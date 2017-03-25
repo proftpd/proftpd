@@ -393,76 +393,13 @@ static int sys_lchown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
  */
 static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
     gid_t gid, array_header *suppl_gids) {
-  mode_t mask;
   struct stat st;
 
   if (pr_fsio_stat(path, &st) < 0) {
     return -1;
   }
 
-  /* Root always succeeds. */
-  if (uid == PR_ROOT_UID) {
-    return 0;
-  }
-
-  /* Initialize mask to reflect the permission bits that are applicable for
-   * the given user. mask contains the user-bits if the user ID equals the
-   * ID of the file owner. mask contains the group bits if the group ID
-   * belongs to the group of the file. mask will always contain the other
-   * bits of the permission bits.
-   */
-  mask = S_IROTH|S_IWOTH|S_IXOTH;
-
-  if (st.st_uid == uid) {
-    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
-  }
-
-  /* Check the current group, as well as all supplementary groups.
-   * Fortunately, we have this information cached, so accessing it is
-   * almost free.
-   */
-  if (st.st_gid == gid) {
-    mask |= S_IRGRP|S_IWGRP|S_IXGRP;
-
-  } else {
-    if (suppl_gids) {
-      register unsigned int i = 0;
-
-      for (i = 0; i < suppl_gids->nelts; i++) {
-        if (st.st_gid == ((gid_t *) suppl_gids->elts)[i]) {
-          mask |= S_IRGRP|S_IWGRP|S_IXGRP;
-          break;
-        }
-      }
-    }
-  }
-
-  mask &= st.st_mode;
-
-  /* Perform requested access checks. */
-  if (mode & R_OK) {
-    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & W_OK) {
-    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & X_OK) {
-    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  /* F_OK already checked by checking the return value of stat. */
-  return 0;
+  return pr_fs_have_access(&st, mode, uid, gid, suppl_gids);
 }
 
 static int sys_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
@@ -3468,6 +3405,127 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 #endif /* PR_USE_NLS */
 }
 
+array_header *pr_fs_split_path(pool *p, const char *path) {
+  int res, have_abs_path = FALSE;
+  char *buf;
+  size_t buflen, bufsz, pathlen;
+  array_header *components;
+
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  pathlen = strlen(path);
+  if (pathlen == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (*path == '/') {
+    have_abs_path = TRUE;
+  }
+
+  /* Clean the path first */
+  bufsz = PR_TUNABLE_PATH_MAX;
+  buf = pcalloc(p, bufsz + 1);
+
+  res = pr_fs_clean_path2(path, buf, bufsz,
+    PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+  if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 7, "error cleaning path '%s': %s", path,
+      strerror(xerrno));
+    errno = xerrno;
+    return NULL;
+  }
+
+  buflen = strlen(buf);
+
+  /* Special-case handling of just "/", since pr_str_text_to_array() will
+   * "eat" that delimiter.
+   */
+  if (buflen == 1 &&
+      buf[0] == '/') {
+    pr_trace_msg(trace_channel, 18, "split path '%s' into 1 component", path);
+
+    components = make_array(p, 1, sizeof(char *));
+    *((char **) push_array(components)) = pstrdup(p, "/");
+
+    return components;
+  }
+
+  components = pr_str_text_to_array(p, buf, '/');
+  if (components != NULL) {
+    pr_trace_msg(trace_channel, 17, "split path '%s' into %u %s", path,
+      components->nelts, components->nelts != 1 ? "components" : "component");
+
+    if (pr_trace_get_level(trace_channel) >= 18) {
+      register unsigned int i;
+
+      for (i = 0; i < components->nelts; i++) {
+        char *component;
+
+        component = ((char **) components->elts)[i];
+        if (component == NULL) {
+          component = "NULL";
+        }
+
+        pr_trace_msg(trace_channel, 18, "path '%s' component #%u: '%s'",
+          path, i + 1, component);
+      }
+    }
+  }
+
+  if (have_abs_path == TRUE) {
+    array_header *root_component;
+
+    /* Since pr_str_text_to_array() will treat the leading '/' as a delimiter,
+     * it will be stripped and not included as a path component.  But it
+     * DOES need to be there.
+     */
+    root_component = make_array(p, 1, sizeof(char *));
+    *((char **) push_array(root_component)) = pstrdup(p, "/");
+
+    array_cat(root_component, components);
+    components = root_component;
+  }
+
+  return components;
+}
+
+char *pr_fs_join_path(pool *p, array_header *components, size_t count) {
+  register unsigned int i;
+  char *path = NULL;
+
+  if (p == NULL ||
+      components == NULL ||
+      components->nelts == 0 ||
+      count == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* Can't join more components than we have. */
+  if (count > components->nelts) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  path = ((char **) components->elts)[0];
+
+  for (i = 1; i < count; i++) {
+    char *elt;
+
+    elt = ((char **) components->elts)[i];
+    path = pdircat(p, path, elt, NULL);
+  }
+
+  return path;
+}
+
 /* This function checks the given path's prefix against the paths that
  * have been registered.  If no matching path prefix has been registered,
  * the path is considered invalid.
@@ -5246,6 +5304,12 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
   res = (fs->ftruncate)(fh, fh->fh_fd, len);
   if (res == 0) {
     pr_fs_clear_cache2(fh->fh_path);
+
+    /* Clear any read buffer. */
+    if (fh->fh_buf != NULL) {
+      fh->fh_buf->current = fh->fh_buf->buf;
+      fh->fh_buf->remaining = fh->fh_buf->buflen;
+    }
   }
 
   return res;
@@ -6819,6 +6883,80 @@ void pr_fs_fadvise(int fd, off_t offset, off_t len, int advice) {
 #endif
 
   return;
+}
+
+int pr_fs_have_access(struct stat *st, int mode, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
+  mode_t mask;
+
+  if (st == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Root always succeeds. */
+  if (uid == PR_ROOT_UID) {
+    return 0;
+  }
+
+  /* Initialize mask to reflect the permission bits that are applicable for
+   * the given user. mask contains the user-bits if the user ID equals the
+   * ID of the file owner. mask contains the group bits if the group ID
+   * belongs to the group of the file. mask will always contain the other
+   * bits of the permission bits.
+   */
+  mask = S_IROTH|S_IWOTH|S_IXOTH;
+
+  if (st->st_uid == uid) {
+    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
+  }
+
+  /* Check the current group, as well as all supplementary groups.
+   * Fortunately, we have this information cached, so accessing it is
+   * almost free.
+   */
+  if (st->st_gid == gid) {
+    mask |= S_IRGRP|S_IWGRP|S_IXGRP;
+
+  } else {
+    if (suppl_gids != NULL) {
+      register unsigned int i = 0;
+
+      for (i = 0; i < suppl_gids->nelts; i++) {
+        if (st->st_gid == ((gid_t *) suppl_gids->elts)[i]) {
+          mask |= S_IRGRP|S_IWGRP|S_IXGRP;
+          break;
+        }
+      }
+    }
+  }
+
+  mask &= st->st_mode;
+
+  /* Perform requested access checks. */
+  if (mode & R_OK) {
+    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  if (mode & W_OK) {
+    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  if (mode & X_OK) {
+    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  /* F_OK already checked by checking the return value of stat. */
+  return 0;
 }
 
 int pr_fs_is_nfs(const char *path) {

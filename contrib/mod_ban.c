@@ -3456,7 +3456,7 @@ static void ban_sess_reinit_ev(const void *event_data, void *user_data) {
 
 #if defined(PR_USE_REDIS)
   if (redis != NULL) {
-    (void) pr_redis_conn_set_namespace(redis, &ban_module, NULL);
+    (void) pr_redis_conn_set_namespace(redis, &ban_module, NULL, 0);
     redis = NULL;
   }
 #endif /* PR_USE_REDIS */
@@ -3675,7 +3675,7 @@ static int ban_sess_init(void) {
       }
 
       /* Configure a namespace prefix for our Redis keys. */
-      if (pr_redis_conn_set_namespace(redis, &ban_module, "mod_ban.") < 0) {
+      if (pr_redis_conn_set_namespace(redis, &ban_module, "mod_ban.", 8) < 0) {
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
           "error setting Redis namespace prefix: %s", strerror(errno));
       }

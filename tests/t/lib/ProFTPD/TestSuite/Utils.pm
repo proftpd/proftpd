@@ -1198,6 +1198,7 @@ sub test_setup {
   $uid = 500 unless defined($uid);
   my $gid = shift;
   $gid = 500 unless defined($gid);
+  my $home_dir = shift;
 
   my $config_file = "$tmpdir/$name.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/$name.pid");
@@ -1206,17 +1207,21 @@ sub test_setup {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/$name.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/$name.group");
 
-  my $home_dir = File::Spec->rel2abs($tmpdir);
+  # If the caller provides the home directory, it is ASSUMED that they will
+  # have created it.
+  unless (defined($home_dir)) {
+    $home_dir = File::Spec->rel2abs($tmpdir);
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      croak("Can't set perms on $home_dir to 0755: $!");
-    }
+    # Make sure that, if we're running as root, that the home directory has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chmod(0755, $home_dir)) {
+        croak("Can't set perms on $home_dir to 0755: $!");
+      }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      croak("Can't set owner of $home_dir to $uid/$gid: $!");
+      unless (chown($uid, $gid, $home_dir)) {
+        croak("Can't set owner of $home_dir to $uid/$gid: $!");
+      }
     }
   }
 

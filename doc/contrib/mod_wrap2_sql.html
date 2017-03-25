@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_wrap2_sql</title>
@@ -84,7 +85,7 @@ optional.
 <p>
 <b>SQL Access Tables Example</b><br>
 Here are example <code>SQLNamedQuery</code> directives to help demonstrate
-how the <code>mod_sql</code> hooks are used by <code>mod_wrap2</code>.
+how the <code>mod_sql</code> hooks are used by <code>mod_wrap2_sql</code>.
 These example SQL statements assume the existence of two tables: a
 <code>wrapallow</code> table that defines allowed clients, and a
 <code>wrapdeny</code> table that defines the denied clients.
@@ -102,6 +103,7 @@ up (<i>e.g.</i> user name for <code>WrapUserTables</code>, primary group name
 for <code>WrapGroupTables</code>, or the empty string for
 <code>WrapTables</code>).
 
+<p>
 If the administrator wants to make use of access options, then queries for
 those options would need to be similarly defined:
 <pre>
@@ -150,7 +152,6 @@ Here are some example table schema for SQL-based access tables:
   );
 </pre>
   </li>
-  <br>
 
   <p>
   <li><b><i>Per-User/Group Deny Table</i></b><br>
@@ -210,7 +211,7 @@ options in a single row, in an appropriately formatted string.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2016 TJ Saunders<br>
+&copy; Copyright 2000-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

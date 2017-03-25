@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_auth_otp
- * Copyright (c) 2015-2016 TJ Saunders
+ * Copyright (c) 2015-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,6 +49,11 @@
 #include <openssl/hmac.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+
+/* Define if you have the LibreSSL library.  */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL	1
+#endif
 
 /* mod_auth_otp option flags */
 

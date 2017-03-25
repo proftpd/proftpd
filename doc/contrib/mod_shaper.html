@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_shaper</title>
@@ -487,7 +488,7 @@ session.  The priority for <code>TransferRate</code> directives depends on
 the configuration context in which the directive appears:
 <p>
 <b>TransferRate Priority</b><br>
-<table border=1>
+<table border=1 summary="TransferRate Priorities">
   <tr>
     <td align=left><i>Context</i></td>
     <td align=left><i>Priority</i></td>
@@ -510,11 +511,11 @@ the configuration context in which the directive appears:
   </tr>
   <tr>
     <td align=left><code>&lt;Directory&gt;</code></td>
-    <td align=right>4</code>
+    <td align=right>4</td>
   </tr>
   <tr>
     <td align=left><code>.ftpaccess</code></td>
-    <td align=right>5</code>
+    <td align=right>5</td>
   </tr>
 </table>
 <p>
@@ -601,7 +602,7 @@ while the daemon and sessions are running, to set the desired shaping values.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2004-2013 TJ Saunders<br>
+&copy; Copyright 2004-2017 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

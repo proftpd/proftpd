@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,6 +129,7 @@ static const char *trace_channel = "auth.unix";
 #define AUTH_UNIX_OPT_NO_GETGROUPLIST		0x0002
 #define AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT	0x0004
 #define AUTH_UNIX_OPT_NO_INITGROUPS		0x0008
+#define AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE	0x0010
 
 static unsigned long auth_unix_opts = 0UL;
 
@@ -485,7 +486,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
 }
 
 #ifdef PR_USE_SHADOW
-static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
+static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   struct spwd *sp;
   char *cpw = NULL;
@@ -593,7 +594,7 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
 
 #else /* PR_USE_SHADOW */
 
-static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
+static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   char *cpw = NULL;
 #if defined(HAVE_GETPRPWENT) || defined(COMSEC)
@@ -712,6 +713,7 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
  */
 
 MODRET pw_auth(cmd_rec *cmd) {
+  int res;
   time_t now;
   char *cpw;
   time_t lstchg = -1, max = -1, inact = -1, disable = -1;
@@ -720,15 +722,15 @@ MODRET pw_auth(cmd_rec *cmd) {
   name = cmd->argv[0];
   time(&now);
 
-  cpw = _get_pw_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
+  cpw = get_pwd_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
     &disable);
-
-  if (!cpw) {
+  if (cpw == NULL) {
     return PR_DECLINED(cmd);
   }
 
-  if (pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1])) {
-    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  res = pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]);
+  if (res < PR_AUTH_OK) {
+    return PR_ERROR_INT(cmd, res);
   }
 
   if (lstchg > (time_t) 0 &&
@@ -749,65 +751,67 @@ MODRET pw_auth(cmd_rec *cmd) {
 }
 
 MODRET pw_authz(cmd_rec *cmd) {
-
-#ifdef HAVE_LOGINRESTRICTIONS
-  int code = 0, mode = S_RLOGIN;
-  char *reason = NULL;
-#endif
-
   /* XXX Any other implementations here? */
 
 #ifdef HAVE_LOGINRESTRICTIONS
+  if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_RLOGIN)) {
+    int res, xerrno, code = 0;
+    char *user = NULL, *reason = NULL;
 
-  if (auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_RLOGIN) {
-    mode = 0;
-  }
+    user = cmd->argv[0];
 
-  /* Check for account login restrictions and such using AIX-specific
-   * functions.
-   */
-  PRIVS_ROOT
-  if (loginrestrictions(cmd->argv[0], mode, NULL, &reason) != 0) {
+    /* Check for account login restrictions and such using AIX-specific
+     * functions.
+     */
+    PRIVS_ROOT
+    res = loginrestrictions(user, S_RLOGIN, NULL, &reason);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
-    if (reason &&
-        *reason) {
-      pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
-        cmd->argv[0], reason);
+    if (res != 0) {
+      if (reason != NULL &&
+          *reason) {
+        pr_trace_msg(trace_channel, 9,
+          "AIX loginrestrictions() failed for user '%s': %.100s", user, reason);
+        pr_log_auth(LOG_WARNING, "login restricted for user '%s': %.100s",
+          user, reason);
+      }
+
+      pr_log_auth(LOG_NOTICE,
+        "AIX loginrestrictions() failed for user '%s': %s", user,
+        strerror(xerrno));
+
+      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
     }
 
-    pr_log_debug(DEBUG2, "AIX loginrestrictions() failed for user '%s': %s",
-      cmd->argv[0], strerror(errno));
+    PRIVS_ROOT
+    code = passwdexpired(user, &reason);
+    PRIVS_RELINQUISH
 
-    return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
-  }
+    switch (code) {
+      case 0:
+        /* Password not expired for user */
+        break;
 
-  code = passwdexpired(cmd->argv[0], &reason);
-  PRIVS_RELINQUISH
+      case 1:
+        /* Password expired and needs to be changed */
+        pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
+          cmd->argv[0], reason);
+        return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
-  switch (code) {
-    case 0:
-      /* Password not expired for user */
-      break;
+      case 2:
+        /* Password expired, requires sysadmin to change it */
+        pr_log_auth(LOG_WARNING,
+          "password expired for user '%s', requires sysadmin intervention: "
+          "%.100s", user, reason);
+        return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
-    case 1:
-      /* Password expired and needs to be changed */
-      pr_log_auth(LOG_WARNING, "password expired for user '%s': %.100s",
-        cmd->argv[0], reason);
-      return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
-
-    case 2:
-      /* Password expired, requires sysadmin to change it */
-      pr_log_auth(LOG_WARNING,
-        "password expired for user '%s', requires sysadmin intervention: "
-        "%.100s", cmd->argv[0], reason);
-      return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
-
-    default:
-      /* Other error */
-      pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
-        "%.100s", cmd->argv[0], reason);
-      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+      default:
+        /* Other error */
+        pr_log_auth(LOG_WARNING, "AIX passwdexpired() failed for user '%s': "
+          "%.100s", user, reason);
+        return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+    }
   }
 #endif /* !HAVE_LOGINRESTRICTIONS */
 
@@ -937,12 +941,56 @@ MODRET pw_check(cmd_rec *cmd) {
   } else {
 # endif /* CYGWIN */
 
+#ifdef HAVE_AUTHENTICATE
+  if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE)) {
+    int res, xerrno, reenter = 0;
+    char *user, *passwd, *msg = NULL;
+
+    user = cmd->argv[1];
+    passwd = cmd->argv[2];
+
+    pr_trace_msg(trace_channel, 9, "calling AIX authenticate() for user '%s'",
+      user);
+
+    PRIVS_ROOT
+    do {
+      res = authenticate(user, passwd, &reenter, &msg);
+      xerrno = errno;
+
+      pr_trace_msg(trace_channel, 9,
+        "AIX authenticate result: %d (msg '%.100s')", res, msg);
+
+    } while (reenter != 0);
+    PRIVS_RELINQUISH
+
+    /* AIX indicates failure with a return value of 1. */
+    if (res != 0) {
+      pr_log_auth(LOG_WARNING,
+       "AIX authenticate failed for user '%s': %.100s", user, msg);
+
+      if (xerrno == ENOENT) {
+        return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
+      }
+
+      return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+    }
+  }
+#endif /* HAVE_AUTHENTICATE */
+
   /* Call pw_authz here, to make sure the user is authorized to login. */
 
-  if (cmd2 == NULL)
+  if (cmd2 == NULL) {
     cmd2 = pr_cmd_alloc(cmd->tmp_pool, 1, cmd->argv[1]);
+  }
 
   mr = pw_authz(cmd2);
+  if (MODRET_ISERROR(mr)) {
+    int err_code;
+
+    err_code = MODRET_ERROR(mr);
+    return PR_ERROR_INT(cmd, err_code);
+  }
+
   if (MODRET_ISDECLINED(mr)) {
     return PR_DECLINED(cmd);
   }
@@ -1097,6 +1145,8 @@ static int get_groups_by_getgrset(const char *user, gid_t primary_gid,
   }
 
   for (i = 0; i < ngroups; i++) {
+    struct group *gr;
+
     gr = my_getgrgid(group_ids[i]);
     if (gr != NULL) {
       if (gids != NULL &&
@@ -1458,6 +1508,9 @@ MODRET set_authunixoptions(cmd_rec *cmd) {
 
     } else if (strcasecmp(cmd->argv[i], "MagicTokenChroot") == 0) {
       opts |= AUTH_UNIX_OPT_MAGIC_TOKEN_CHROOT;
+
+    } else if (strcasecmp(cmd->argv[i], "AIXNoAuthenticate") == 0) {
+      opts |= AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthUnixOption '",

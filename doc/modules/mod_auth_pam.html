@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD module mod_auth_pam</title>
@@ -15,7 +16,7 @@
 PAM stands for <b>P</b>luggable <b>A</b>uthentication <b>M</b>odules,
 and is used to configure ways for authenticating users.  Now
 &quot;authenticating&quot; a user usually means comparing a password they
-give with some other information, and returning a &quotyes/no&quot;-style
+give with some other information, and returning a &quot;yes/no&quot;-style
 answer.  PAM does <b>not</b> provide all of the other information for a user,
 such as UID, GID, home, and shell.  This means that <code>mod_auth_pam</code>
 cannot be used, by itself, as an auth module for <code>proftpd</code>;
@@ -161,6 +162,13 @@ The asterisk ("*") after a module name in the <code>AuthOrder</code> directive
 is what tells <code>proftpd</code> to treat that module's results as
 authoritative.
 
+<p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

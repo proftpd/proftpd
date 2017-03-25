@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -284,7 +284,8 @@ static int kex_rekey_timer_cb(CALLBACK_FRAME) {
 static const unsigned char *calculate_h(struct sftp_kex *kex,
     const unsigned char *hostkey_data, uint32_t hostkey_datalen,
     const BIGNUM *k, uint32_t *hlen) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
@@ -322,7 +323,8 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, kex->e);
 
   /* Server's key */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   DH_get0_key(kex->dh, &dh_pub_key, NULL);
 #else
   dh_pub_key = kex->dh->pub_key;
@@ -332,7 +334,8 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   /* Shared secret */
   sftp_msg_write_mpint(&buf, &buflen, k);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   pctx = EVP_MD_CTX_new();
 #else
   pctx = &ctx;
@@ -350,7 +353,8 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -366,7 +370,8 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -382,7 +387,8 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -391,7 +397,8 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   EVP_DigestFinal(pctx, kex_digest_buf, hlen);
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
 
@@ -406,7 +413,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     const unsigned char *hostkey_data, uint32_t hostkey_datalen,
     const BIGNUM *k, uint32_t min, uint32_t pref, uint32_t max,
     uint32_t *hlen) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
@@ -452,7 +460,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     sftp_msg_write_int(&buf, &buflen, max);
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   DH_get0_pqg(kex->dh, &dh_p, NULL, &dh_g);
 #else
   dh_p = kex->dh->p;
@@ -465,7 +474,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, kex->e);
 
   /* Server's key */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   DH_get0_key(kex->dh, &dh_pub_key, NULL);
 #else
   dh_pub_key = kex->dh->pub_key;
@@ -475,7 +485,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   /* Shared secret */
   sftp_msg_write_mpint(&buf, &buflen, k);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   pctx = EVP_MD_CTX_new();
 #else
   pctx = &ctx;
@@ -493,7 +504,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -509,7 +521,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -525,7 +538,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -534,7 +548,8 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   EVP_DigestFinal(pctx, kex_digest_buf, hlen);
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
   BN_clear_free(kex->e);
@@ -548,7 +563,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
     const unsigned char *hostkey_data, uint32_t hostkey_datalen,
     const BIGNUM *k, unsigned char *rsa_key, uint32_t rsa_keylen,
     uint32_t *hlen) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
@@ -591,7 +607,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
   /* Shared secret. */
   sftp_msg_write_mpint(&buf, &buflen, k);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   pctx = EVP_MD_CTX_new();
 #else
   pctx = &ctx;
@@ -607,7 +624,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -621,7 +639,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -635,7 +654,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -644,7 +664,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
   EVP_DigestFinal(pctx, kex_digest_buf, hlen);
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
   pr_memscrub(ptr, bufsz);
@@ -656,7 +677,8 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
 static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
     const unsigned char *hostkey_data, uint32_t hostkey_datalen,
     const BIGNUM *k, uint32_t *hlen) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
@@ -702,7 +724,8 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
   /* Shared secret */
   sftp_msg_write_mpint(&buf, &buflen, k);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   pctx = EVP_MD_CTX_new();
 #else
   pctx = &ctx;
@@ -720,7 +743,8 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -736,7 +760,8 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -752,7 +777,8 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
     BN_clear_free(kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
-# if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+# if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+     !defined(HAVE_LIBRESSL)
     EVP_MD_CTX_free(pctx);
 # endif /* OpenSSL-1.1.0 and later */
     return NULL;
@@ -761,7 +787,8 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
   EVP_DigestFinal(pctx, kex_digest_buf, hlen);
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000LL
+#if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
+    !defined(HAVE_LIBRESSL)
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
   BN_clear_free(kex->e);
@@ -794,7 +821,8 @@ static int have_good_dh(DH *dh, BIGNUM *pub_key) {
     return -1;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   DH_get0_pqg(dh, &dh_p, NULL, NULL);
 #else
   dh_p = dh->p;
@@ -1032,7 +1060,8 @@ static int create_dh(struct sftp_kex *kex, int type) {
       return -1;
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     DH_set0_pqg(dh, dh_p, NULL, dh_g);
 #else
     dh->p = dh_p;
@@ -1052,7 +1081,8 @@ static int create_dh(struct sftp_kex *kex, int type) {
     }
 
     dh_pub_key = BN_new();
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     DH_set0_key(dh, dh_pub_key, dh_priv_key);
 #else
     dh->pub_key = dh_pub_key;
@@ -1067,7 +1097,8 @@ static int create_dh(struct sftp_kex *kex, int type) {
       return -1;
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     DH_get0_key(dh, &dh_pub_key, NULL);
 #else
     dh_pub_key = dh->pub_key;
@@ -1192,7 +1223,8 @@ static int finish_dh(struct sftp_kex *kex) {
 
     dh_pub_key = BN_new();
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     DH_set0_key(kex->dh, dh_pub_key, dh_priv_key);
 #else
     kex->dh->pub_key = dh_pub_key;
@@ -1210,7 +1242,8 @@ static int finish_dh(struct sftp_kex *kex) {
       dh_pub_key = NULL;
       dh_priv_key = NULL;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
       DH_get0_key(kex->dh, &dh_pub_key, &dh_priv_key);
 #else
       dh_pub_key = kex->dh->pub_key;
@@ -1219,11 +1252,11 @@ static int finish_dh(struct sftp_kex *kex) {
 
       if (dh_priv_key != NULL) {
         BN_clear_free(dh_priv_key);
-      } 
+      }
 
       if (dh_pub_key != NULL) {
         BN_clear_free(dh_pub_key);
-      } 
+      }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
       /* Per the docs, this is a no-no -- but its the only way to actually
@@ -2524,22 +2557,22 @@ static int set_session_keys(struct sftp_kex *kex) {
   int comp_read_flags, comp_write_flags;
 
   if (sftp_cipher_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 
   if (sftp_cipher_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 
   if (sftp_mac_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 
   if (sftp_mac_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
-      kex->hlen) < 0) {
+      kex->hlen, SFTP_ROLE_SERVER) < 0) {
     return -1;
   }
 
@@ -2705,7 +2738,8 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_DH_REPLY);
   sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   DH_get0_key(kex->dh, &dh_pub_key, NULL);
 #else
   dh_pub_key = kex->dh->pub_key;
@@ -3034,7 +3068,8 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
          * of them for our KEX DH.
          */
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
         DH_get0_pqg(chosen_dh, &dh_p, NULL, &dh_g);
 #else
         dh_p = chosen_dh->p;
@@ -3061,7 +3096,8 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 
           } else {
             /* Now set those P, G copies into our KEX DH. */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
             DH_set0_pqg(kex->dh, dup_p, NULL, dup_g);
 #else
             kex->dh->p = dup_p;
@@ -3126,7 +3162,8 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
       return -1;
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     DH_set0_pqg(kex->dh, dh_p, NULL, dh_g);
 #else
     kex->dh->p = dh_p;
@@ -3153,7 +3190,8 @@ static int write_dh_gex_group(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_DH_GEX_GROUP);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   DH_get0_pqg(kex->dh, &dh_p, NULL, &dh_g);
 #else
   dh_p = kex->dh->p;
@@ -3273,7 +3311,8 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_DH_GEX_REPLY);
   sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   DH_get0_key(kex->dh, &dh_pub_key, NULL);
 #else
   dh_pub_key = kex->dh->pub_key;
@@ -3466,7 +3505,8 @@ static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
    */
   sftp_msg_write_string(&buf, &buflen, "ssh-rsa");
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   RSA_get0_key(kex->rsa, &rsa_n, &rsa_e, NULL);
 #else
   rsa_e = kex->rsa->e;
@@ -3524,7 +3564,8 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
    */
   sftp_msg_write_string(&buf2, &buflen2, "ssh-rsa");
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   RSA_get0_key(kex->rsa, &rsa_n, &rsa_e, NULL);
 #else
   rsa_e = kex->rsa->e;

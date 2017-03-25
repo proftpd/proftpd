@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2016 The ProFTPD Project team
+ * Copyright (c) 2014-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -141,9 +141,9 @@ static void handle_evnt(void) {
   pr_event_generate("core.signal.USR2", NULL);
 }
 
-static void handle_terminate(void) {
+static void handle_terminate_with_kids(void) {
   /* Do not log if we are a child that has been terminated. */
-  if (is_master) {
+  if (is_master == TRUE) {
 
     /* Send a SIGTERM to all our children */
     if (child_count()) {
@@ -158,7 +158,7 @@ static void handle_terminate(void) {
   finish_terminate(term_signo);
 }
 
-static void handle_terminate_other(void) {
+static void handle_terminate_without_kids(void) {
   pr_log_pri(PR_LOG_WARNING, "ProFTPD terminating (signal %d)", term_signo);
   finish_terminate(term_signo);
 }
@@ -221,6 +221,14 @@ static void handle_xcpu(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
   finish_terminate(SIGXCPU);
 }
+
+#ifdef SIGXFSZ
+static void handle_xfsz(void) {
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD File size limit exceeded (signal %d)",
+    SIGXFSZ);
+  finish_terminate(SIGXFSZ);
+}
+#endif /* SIGXFSZ */
 
 static RETSIGTYPE sig_child(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_CHLD;
@@ -298,43 +306,81 @@ static RETSIGTYPE sig_abort(int signo) {
 }
 
 static RETSIGTYPE sig_terminate(int signo) {
+  const char *signame = "(unsupported)";
+  int log_signal = TRUE, log_stacktrace = TRUE;
+
   /* Capture the signal number for later display purposes. */
   term_signo = signo;
 
-  if (signo == SIGSEGV ||
-      signo == SIGXCPU
+  /* Some terminating signals get more special treatment than others. */
+
+  switch (signo) {
+    case SIGSEGV:
+      recvd_signal_flags |= RECEIVED_SIG_SEGV;
+      signame = "SIGSEGV";
+      break;
+
+    case SIGXCPU:
+      recvd_signal_flags |= RECEIVED_SIG_XCPU;
+      signame = "SIGXCPU";
+      break;
+
+#ifdef SIGXFSZ
+      recvd_signal_flags |= RECEIVED_SIG_XFSZ;
+      signame = "SIGXFSZ";
+      break;
+#endif /* SIGXFSZ */
+
+    case SIGTERM:
+      /* Since SIGTERM is more common, we do not want to log as much for it. */
+      log_signal = log_stacktrace = FALSE;
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGTERM";
+      break;
+
 #ifdef SIGBUS
-      || signo == SIGBUS) {
-#else
-     ) {
+    case SIGBUS:
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGBUS";
+      break;
 #endif /* SIGBUS */
 
-    if (signo == SIGXCPU) {
-      recvd_signal_flags |= RECEIVED_SIG_XCPU;
+    case SIGILL:
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGILL";
+      break;
 
-    } else {
-      recvd_signal_flags |= RECEIVED_SIG_SEGV;
-    }
+    case SIGINT:
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGINT";
+      break;
 
+    default:
+      /* Note that we do NOT want to automatically set the
+       * RECEIVED_SIG_TERMINATE here by as a fallback for unspecified signals;
+       * that flag causes the daemon to terminate all of its child processes.
+       * And not every signal should have that effect; it's on a case-by-case
+       * basis.
+       */
+      break;
+  }
+
+  if (log_signal == TRUE) {
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging
-     * that a segfault happened...
+     * that a segfault (or other unusual event) happened.
      */
-    pr_trace_msg("signal", 9, "handling %s (signal %d)",
-      signo == SIGSEGV ? "SIGSEGV" : 
-        signo == SIGXCPU ? "SIGXCPU" : "SIGBUS", signo);
+    pr_trace_msg("signal", 9, "handling %s (signal %d)", signame, signo);
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal %d)", signo);
 
-    pr_log_pri(PR_LOG_INFO, "%s session closed.",
-      pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
+    if (!is_master) {
+      pr_log_pri(PR_LOG_INFO, "%s session closed.",
+        pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
+    }
+  }
 
+  if (log_stacktrace == TRUE) {
     install_stacktrace_handler();
-
-  } else if (signo == SIGTERM) {
-    recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
-
-  } else {
-    recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
   }
 
   /* Ignore future occurrences of this signal; we'll be terminating anyway. */
@@ -420,19 +466,13 @@ void pr_signals_handle(void) {
     if (recvd_signal_flags & RECEIVED_SIG_SEGV) {
       recvd_signal_flags &= ~RECEIVED_SIG_SEGV;
       pr_trace_msg("signal", 9, "handling SIGSEGV (signal %d)", SIGSEGV);
-      handle_terminate_other();
+      handle_terminate_without_kids();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_TERMINATE) {
       recvd_signal_flags &= ~RECEIVED_SIG_TERMINATE;
       pr_trace_msg("signal", 9, "handling signal %d", term_signo);
-      handle_terminate();
-    }
-
-    if (recvd_signal_flags & RECEIVED_SIG_TERM_OTHER) {
-      recvd_signal_flags &= ~RECEIVED_SIG_TERM_OTHER;
-      pr_trace_msg("signal", 9, "handling signal %d", term_signo);
-      handle_terminate_other();
+      handle_terminate_with_kids();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_XCPU) {
@@ -440,6 +480,14 @@ void pr_signals_handle(void) {
       pr_trace_msg("signal", 9, "handling SIGXCPU (signal %d)", SIGXCPU);
       handle_xcpu();
     }
+
+#ifdef SIGXFSZ
+    if (recvd_signal_flags & RECEIVED_SIG_XFSZ) {
+      recvd_signal_flags &= ~RECEIVED_SIG_XFSZ;
+      pr_trace_msg("signal", 9, "handling SIGXFSZ (signal %d)", SIGXFSZ);
+      handle_xfsz();
+    }
+#endif /* SIGXFSZ */
 
     if (recvd_signal_flags & RECEIVED_SIG_ABORT) {
       recvd_signal_flags &= ~RECEIVED_SIG_ABORT;
@@ -598,6 +646,14 @@ int init_signals(void) {
       "unable to install SIGFPE (signal %d) handler: %s", SIGFPE,
       strerror(errno));
   }
+
+#ifdef SIGXFSZ
+  if (signal(SIGXFSZ, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGXFSZ (signal %d) handler: %s", SIGXFSZ,
+      strerror(errno));
+  }
+#endif /* SIGXFSZ */
 
   if (signal(SIGABRT, sig_abort) == SIG_ERR) {
     pr_log_pri(PR_LOG_NOTICE,

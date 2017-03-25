@@ -1588,30 +1588,54 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisServer host[:port] ... */
-/* NOTE: Need to handle IPv6 addresses here, eventually. */
+/* usage: RedisServer host[:port] [password] */
 MODRET set_redisserver(cmd_rec *cmd) {
   config_rec *c;
-  char *server, *ptr;
-  int ctx, port;
+  char *server, *password = NULL, *ptr;
+  size_t server_len;
+  int ctx, port = REDIS_DEFAULT_PORT;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   server = pstrdup(cmd->tmp_pool, cmd->argv[1]);
-  ptr = strrchr(server, ':');
-  if (ptr == NULL) {
-    port = REDIS_DEFAULT_PORT;
+  server_len = strlen(server);
 
-  } else {
-    *ptr = '\0';
-    port = atoi(ptr + 1);
+  ptr = strrchr(server, ':');
+  if (ptr != NULL) {
+    /* We also need to check for IPv6 addresses, e.g. "[::1]" or "[::1]:6379",
+     * before assuming that the text following our discovered ':' is indeed
+     * a port number.
+     */
+
+    if (*server == '[') {
+      if (*(ptr-1) == ']') {
+        /* We have an IPv6 address with an explicit port number. */
+        server = pstrndup(cmd->tmp_pool, server + 1, (ptr - 1) - (server + 1));
+        *ptr = '\0';
+        port = atoi(ptr + 1);
+
+      } else if (server[server_len-1] == ']') {
+        /* We have an IPv6 address without an explicit port number. */
+        server = pstrndup(cmd->tmp_pool, server + 1, server_len - 2);
+        port = REDIS_DEFAULT_PORT;
+      }
+
+    } else {
+      *ptr = '\0';
+      port = atoi(ptr + 1);
+    }
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  if (cmd->argc == 3) {
+    password = cmd->argv[2];
+  }
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, server);
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = port;
+  c->argv[2] = pstrdup(c->pool, password);
 
   ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
@@ -1621,7 +1645,7 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    redis_set_server(server, port);
+    (void) redis_set_server(c->argv[0], port, c->argv[2]);
   }
 
   return PR_HANDLED(cmd);
@@ -1837,12 +1861,14 @@ static int redis_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
-    const char *server;
+    const char *server, *password;
     int port;
 
     server = c->argv[0];
     port = *((int *) c->argv[1]);
-    redis_set_server(server, port);
+    password = c->argv[2];
+
+    (void) redis_set_server(server, port, password);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);

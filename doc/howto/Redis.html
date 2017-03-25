@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
 <title>ProFTPD: Redis</title>
@@ -125,7 +126,7 @@ different node every time, caching the SSL/TLS session data in a shared storage
 mechanism like Redis can be quite beneficial.
 
 <p>
-To use Redis for SSL/TLS session caching, then, you use the <code><a href="../contrib/mod_tls.html#TLSSessionCache">TLSSessionCache</code></a> directive of the <code>mod_tls</code> module, using something like this
+To use Redis for SSL/TLS session caching, then, you use the <a href="../contrib/mod_tls.html#TLSSessionCache"><code>TLSSessionCache</code></a> directive of the <code>mod_tls</code> module, using something like this
 in your <code>proftpd.conf</code>:
 <pre>
   &lt;IfModule mod_tls.c&gt;
@@ -195,5 +196,11 @@ some of your modules want to use a feature that was not enabled.
 
 <p>
 <hr>
+<font size=2><b><i>
+&copy; Copyright 2017 The ProFTPD Project<br>
+ All Rights Reserved<br>
+</i></b></font>
+<hr>
+
 </body>
 </html>

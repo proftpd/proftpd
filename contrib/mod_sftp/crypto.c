@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -317,7 +317,8 @@ static int do_bf_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
 static const EVP_CIPHER *get_bf_ctr_cipher(void) {
   EVP_CIPHER *cipher;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   /* XXX TODO: At some point, we also need to call EVP_CIPHER_meth_free() on
    * this, to avoid a resource leak.
    */
@@ -485,7 +486,8 @@ static int do_des3_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
 static const EVP_CIPHER *get_des3_ctr_cipher(void) {
   EVP_CIPHER *cipher;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   unsigned long flags;
 
   /* XXX TODO: At some point, we also need to call EVP_CIPHER_meth_free() on
@@ -705,7 +707,8 @@ static int get_aes_ctr_cipher_nid(int key_len) {
 static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
   EVP_CIPHER *cipher;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   unsigned long flags;
 
   /* XXX TODO: At some point, we also need to call EVP_CIPHER_meth_free() on
@@ -753,7 +756,8 @@ static int update_umac64(EVP_MD_CTX *ctx, const void *data, size_t len) {
   int res;
   void *md_data;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   md_data = EVP_MD_CTX_md_data(ctx);
 #else
   md_data = ctx->md_data;
@@ -780,7 +784,8 @@ static int update_umac128(EVP_MD_CTX *ctx, const void *data, size_t len) {
   int res;
   void *md_data;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   md_data = EVP_MD_CTX_md_data(ctx);
 #else
   md_data = ctx->md_data;
@@ -809,7 +814,8 @@ static int final_umac64(EVP_MD_CTX *ctx, unsigned char *md) {
   int res;
   void *md_data;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   md_data = EVP_MD_CTX_md_data(ctx);
 #else
   md_data = ctx->md_data;
@@ -824,7 +830,8 @@ static int final_umac128(EVP_MD_CTX *ctx, unsigned char *md) {
   int res;
   void *md_data;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   md_data = EVP_MD_CTX_md_data(ctx);
 #else
   md_data = ctx->md_data;
@@ -838,7 +845,8 @@ static int delete_umac64(EVP_MD_CTX *ctx) {
   struct umac_ctx *umac;
   void *md_data, **ptr;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   md_data = EVP_MD_CTX_md_data(ctx);
 #else
   md_data = ctx->md_data;
@@ -857,7 +865,8 @@ static int delete_umac128(EVP_MD_CTX *ctx) {
   struct umac_ctx *umac;
   void *md_data, **ptr;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   md_data = EVP_MD_CTX_md_data(ctx);
 #else
   md_data = ctx->md_data;
@@ -875,7 +884,8 @@ static int delete_umac128(EVP_MD_CTX *ctx) {
 static const EVP_MD *get_umac64_digest(void) {
   EVP_MD *md;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
    * this, to avoid a resource leak.
    */
@@ -909,7 +919,8 @@ static const EVP_MD *get_umac64_digest(void) {
 static const EVP_MD *get_umac128_digest(void) {
   EVP_MD *md;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
   /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
    * this, to avoid a resource leak.
    */

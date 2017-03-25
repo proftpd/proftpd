@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1685,7 +1685,7 @@ int sftp_auth_chain_parse_method(pool *p, const char *name,
     if (ptr != NULL) {
       if (sftp_kbdint_get_driver(ptr) == NULL) {
         errno = EPERM;
-        return -1;  
+        return -1;
       }
 
       *method_name = pstrndup(p, name, method_namelen);
@@ -1702,7 +1702,7 @@ int sftp_auth_chain_parse_method(pool *p, const char *name,
     errno = EINVAL;
     return -1;
   }
- 
+
   return 0;
 }
 
