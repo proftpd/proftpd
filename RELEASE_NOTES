@@ -15,6 +15,9 @@ ChangeLog files.
   + Better support on AIX for login restraictions (Bug #4285).
   + TimeoutLogin (and other timeouts) were not working properly for SFTP
     connections (Bug#4299).
+  + Handling of the SIGILL and SIGINT signals, by the daemon process, now causes
+    the child processes to be terminated as well (Issue #461).
+
 
   + New Modules:
 

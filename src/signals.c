@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2016 The ProFTPD Project team
+ * Copyright (c) 2014-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -141,9 +141,9 @@ static void handle_evnt(void) {
   pr_event_generate("core.signal.USR2", NULL);
 }
 
-static void handle_terminate(void) {
+static void handle_terminate_with_kids(void) {
   /* Do not log if we are a child that has been terminated. */
-  if (is_master) {
+  if (is_master == TRUE) {
 
     /* Send a SIGTERM to all our children */
     if (child_count()) {
@@ -158,7 +158,7 @@ static void handle_terminate(void) {
   finish_terminate(term_signo);
 }
 
-static void handle_terminate_other(void) {
+static void handle_terminate_without_kids(void) {
   pr_log_pri(PR_LOG_WARNING, "ProFTPD terminating (signal %d)", term_signo);
   finish_terminate(term_signo);
 }
@@ -302,39 +302,58 @@ static RETSIGTYPE sig_terminate(int signo) {
   term_signo = signo;
 
   if (signo == SIGSEGV ||
-      signo == SIGXCPU
 #ifdef SIGBUS
-      || signo == SIGBUS) {
-#else
-     ) {
+      signo == SIGBUS ||
 #endif /* SIGBUS */
+      signo == SIGILL ||
+      signo == SIGINT ||
+      signo == SIGXCPU) {
+    const char *signame = "(unsupported)";
 
-    if (signo == SIGXCPU) {
-      recvd_signal_flags |= RECEIVED_SIG_XCPU;
+    switch (signo) {
+      case SIGSEGV:
+        recvd_signal_flags |= RECEIVED_SIG_SEGV;
+        signame = "SIGSEGV";
+        break;
 
-    } else {
-      recvd_signal_flags |= RECEIVED_SIG_SEGV;
+      case SIGXCPU:
+        recvd_signal_flags |= RECEIVED_SIG_XCPU;
+        signame = "SIGXCPU";
+        break;
+
+      default:
+        recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+
+        switch (signo) {
+          case SIGILL:
+            signame = "SIGILL";
+            break;
+
+          case SIGINT:
+            signame = "SIGINT";
+            break;
+
+#ifdef SIGBUS
+          case SIGBUS:
+            signame = "SIGBUS";
+            break;
+#endif /* SIGBUS */
+        }
+
+        break;
     }
 
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging
      * that a segfault happened...
      */
-    pr_trace_msg("signal", 9, "handling %s (signal %d)",
-      signo == SIGSEGV ? "SIGSEGV" : 
-        signo == SIGXCPU ? "SIGXCPU" : "SIGBUS", signo);
+    pr_trace_msg("signal", 9, "handling %s (signal %d)", signame, signo);
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal %d)", signo);
 
     pr_log_pri(PR_LOG_INFO, "%s session closed.",
       pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
 
     install_stacktrace_handler();
-
-  } else if (signo == SIGTERM) {
-    recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
-
-  } else {
-    recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
   }
 
   /* Ignore future occurrences of this signal; we'll be terminating anyway. */
@@ -420,19 +439,13 @@ void pr_signals_handle(void) {
     if (recvd_signal_flags & RECEIVED_SIG_SEGV) {
       recvd_signal_flags &= ~RECEIVED_SIG_SEGV;
       pr_trace_msg("signal", 9, "handling SIGSEGV (signal %d)", SIGSEGV);
-      handle_terminate_other();
+      handle_terminate_without_kids();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_TERMINATE) {
       recvd_signal_flags &= ~RECEIVED_SIG_TERMINATE;
       pr_trace_msg("signal", 9, "handling signal %d", term_signo);
-      handle_terminate();
-    }
-
-    if (recvd_signal_flags & RECEIVED_SIG_TERM_OTHER) {
-      recvd_signal_flags &= ~RECEIVED_SIG_TERM_OTHER;
-      pr_trace_msg("signal", 9, "handling signal %d", term_signo);
-      handle_terminate_other();
+      handle_terminate_with_kids();
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_XCPU) {

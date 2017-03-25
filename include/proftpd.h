@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2015 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -260,7 +260,7 @@ extern char ServerType;
 #define RECEIVED_SIG_SEGV	0x0008
 #define RECEIVED_SIG_TERMINATE	0x0010
 #define RECEIVED_SIG_XCPU	0x0020
-#define RECEIVED_SIG_TERM_OTHER	0x0040
+/* RECEIVED_SIG_TERM_OTHER deprecated/removed; see Issue #461) */
 #define RECEIVED_SIG_ABORT	0x0080
 #define RECEIVED_SIG_EVENT	0x0100
 #define RECEIVED_SIG_CHLD	0x0200
