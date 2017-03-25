@@ -356,7 +356,12 @@ static RETSIGTYPE sig_terminate(int signo) {
       break;
 
     default:
-      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      /* Note that we do NOT want to automatically set the
+       * RECEIVED_SIG_TERMINATE here by as a fallback for unspecified signals;
+       * that flag causes the daemon to terminate all of its child processes.
+       * And not every signal should have that effect; it's on a case-by-case
+       * basis.
+       */
       break;
   }
 
