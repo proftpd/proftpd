@@ -222,6 +222,14 @@ static void handle_xcpu(void) {
   finish_terminate(SIGXCPU);
 }
 
+#ifdef SIGXFSZ
+static void handle_xfsz(void) {
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD File size limit exceeded (signal %d)",
+    SIGXFSZ);
+  finish_terminate(SIGXFSZ);
+}
+#endif /* SIGXFSZ */
+
 static RETSIGTYPE sig_child(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_CHLD;
 
@@ -317,6 +325,12 @@ static RETSIGTYPE sig_terminate(int signo) {
       signame = "SIGXCPU";
       break;
 
+#ifdef SIGXFSZ
+      recvd_signal_flags |= RECEIVED_SIG_XFSZ;
+      signame = "SIGXFSZ";
+      break;
+#endif /* SIGXFSZ */
+
     case SIGTERM:
       /* Since SIGTERM is more common, we do not want to log as much for it. */
       log_signal = log_stacktrace = FALSE;
@@ -342,6 +356,12 @@ static RETSIGTYPE sig_terminate(int signo) {
       break;
 
     default:
+      /* Note that we do NOT want to automatically set the
+       * RECEIVED_SIG_TERMINATE here by as a fallback for unspecified signals;
+       * that flag causes the daemon to terminate all of its child processes.
+       * And not every signal should have that effect; it's on a case-by-case
+       * basis.
+       */
       break;
   }
 
@@ -460,6 +480,14 @@ void pr_signals_handle(void) {
       pr_trace_msg("signal", 9, "handling SIGXCPU (signal %d)", SIGXCPU);
       handle_xcpu();
     }
+
+#ifdef SIGXFSZ
+    if (recvd_signal_flags & RECEIVED_SIG_XFSZ) {
+      recvd_signal_flags &= ~RECEIVED_SIG_XFSZ;
+      pr_trace_msg("signal", 9, "handling SIGXFSZ (signal %d)", SIGXFSZ);
+      handle_xfsz();
+    }
+#endif /* SIGXFSZ */
 
     if (recvd_signal_flags & RECEIVED_SIG_ABORT) {
       recvd_signal_flags &= ~RECEIVED_SIG_ABORT;
@@ -618,6 +646,14 @@ int init_signals(void) {
       "unable to install SIGFPE (signal %d) handler: %s", SIGFPE,
       strerror(errno));
   }
+
+#ifdef SIGXFSZ
+  if (signal(SIGXFSZ, sig_terminate) == SIG_ERR) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "unable to install SIGXFSZ (signal %d) handler: %s", SIGXFSZ,
+      strerror(errno));
+  }
+#endif /* SIGXFSZ */
 
   if (signal(SIGABRT, sig_abort) == SIG_ERR) {
     pr_log_pri(PR_LOG_NOTICE,
