@@ -298,61 +298,68 @@ static RETSIGTYPE sig_abort(int signo) {
 }
 
 static RETSIGTYPE sig_terminate(int signo) {
+  const char *signame = "(unsupported)";
+  int log_signal = TRUE, log_stacktrace = TRUE;
+
   /* Capture the signal number for later display purposes. */
   term_signo = signo;
 
-  if (signo == SIGSEGV ||
-#ifdef SIGBUS
-      signo == SIGBUS ||
-#endif /* SIGBUS */
-      signo == SIGILL ||
-      signo == SIGINT ||
-      signo == SIGXCPU) {
-    const char *signame = "(unsupported)";
+  /* Some terminating signals get more special treatment than others. */
 
-    switch (signo) {
-      case SIGSEGV:
-        recvd_signal_flags |= RECEIVED_SIG_SEGV;
-        signame = "SIGSEGV";
-        break;
+  switch (signo) {
+    case SIGSEGV:
+      recvd_signal_flags |= RECEIVED_SIG_SEGV;
+      signame = "SIGSEGV";
+      break;
 
-      case SIGXCPU:
-        recvd_signal_flags |= RECEIVED_SIG_XCPU;
-        signame = "SIGXCPU";
-        break;
+    case SIGXCPU:
+      recvd_signal_flags |= RECEIVED_SIG_XCPU;
+      signame = "SIGXCPU";
+      break;
 
-      default:
-        recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
-
-        switch (signo) {
-          case SIGILL:
-            signame = "SIGILL";
-            break;
-
-          case SIGINT:
-            signame = "SIGINT";
-            break;
+    case SIGTERM:
+      /* Since SIGTERM is more common, we do not want to log as much for it. */
+      log_signal = log_stacktrace = FALSE;
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGTERM";
+      break;
 
 #ifdef SIGBUS
-          case SIGBUS:
-            signame = "SIGBUS";
-            break;
+    case SIGBUS:
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGBUS";
+      break;
 #endif /* SIGBUS */
-        }
 
-        break;
-    }
+    case SIGILL:
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGILL";
+      break;
 
+    case SIGINT:
+      recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+      signame = "SIGINT";
+      break;
+
+    default:
+      break;
+  }
+
+  if (log_signal == TRUE) {
     /* This is probably not the safest thing to be doing, but since the
      * process is terminating anyway, why not?  It helps when knowing/logging
-     * that a segfault happened...
+     * that a segfault (or other unusual event) happened.
      */
     pr_trace_msg("signal", 9, "handling %s (signal %d)", signame, signo);
     pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal %d)", signo);
 
-    pr_log_pri(PR_LOG_INFO, "%s session closed.",
-      pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
+    if (!is_master) {
+      pr_log_pri(PR_LOG_INFO, "%s session closed.",
+        pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT));
+    }
+  }
 
+  if (log_stacktrace == TRUE) {
     install_stacktrace_handler();
   }
 
