@@ -1056,7 +1056,7 @@ START_TEST (fsio_sys_access_file_test) {
   array_header *suppl_gids;
 
   /* Make the file to check; we want it to have perms 664.*/
-  fd = open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fd = open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY, S_IRUSR|S_IWUSR);
   fail_if(fd < 0, "Unable to create file '%s': %s", fsio_test_path,
     strerror(errno));
 
