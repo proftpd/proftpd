@@ -265,7 +265,7 @@ START_TEST (scoreboard_lock_test) {
   fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
-  fd = open(test_file2, O_CREAT|O_EXCL|O_RDWR);
+  fd = open(test_file2, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
   fail_unless(fd >= 0, "Failed to open '%s': %s", test_file2, strerror(errno));
 
   res = pr_lock_scoreboard(fd, lock_type);
@@ -909,7 +909,7 @@ START_TEST (scoreboard_entry_lock_test) {
   fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
-  fd = open(test_file2, O_CREAT|O_EXCL|O_RDWR);
+  fd = open(test_file2, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
   fail_unless(fd >= 0, "Failed to open '%s': %s", test_file2, strerror(errno));
 
   res = pr_scoreboard_entry_lock(fd, lock_type);
