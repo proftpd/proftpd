@@ -149,14 +149,15 @@ knows how to talk to the Redis server using <code>mod_redis</code>.
 <font color=red>Question</font>: If I don't use Redis, are there other
 ways for sharing data (such as ban lists) among different <code>proftpd</code>
 instances?<br>
-<font color=blue>Answer</font>: Not really.  It might be possible using
-<code>mod_sql</code> and some <code>SQLLogInfo</code> directives, but that
-would only work for very specific information.  For sharing things like ban
-lists and SSL/TLS sessions across a cluster of <code>proftpd</code> servers,
-Redis (or <a href="Memcache.html">memcache</a>) support is <b>required</b>.
+<font color=blue>Answer</font>: It might be possible using <code>mod_sql</code>
+and some <code>SQLLogInfo</code> directives, but that would only work for very
+specific information.  For sharing things like ban lists and SSL/TLS sessions
+across a cluster of <code>proftpd</code> servers, Redis (or
+<a href="Memcache.html">Memcache</a>) support is <em>recommended</em>.
 
 <p>
-<font color=red>Question</font>: Can I use <code>mod_redis</code> to cache rerequently accessed files, similar to <code><a href="http://wiki.nginx.org/HttpMemcachedModule">nginx+memcache</a></code>?<br>
+<font color=red>Question</font>: Can I use <code>mod_redis</code> to cache
+frequently accessed files, similar to <code><a href="http://wiki.nginx.org/HttpMemcachedModule">nginx+memcache</a></code>?<br>
 <font color=blue>Answer</font>: No.  And in reality, caching of files like that
 will probably not give you the same performance gain for FTP transfers as it
 can for HTTP transfers.
