@@ -689,9 +689,9 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   /* return HANDLED */
   sql_log(DEBUG_INFO, "connection '%s' opened", entry->name);
-
   sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
     entry->connections);
+  pr_event_generate("mod_sql.db.connection-opened", &sql_mysql_module);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
   return PR_HANDLED(cmd);
@@ -769,6 +769,7 @@ MODRET cmd_close(cmd_rec *cmd) {
     }
 
     sql_log(DEBUG_INFO, "connection '%s' closed", entry->name);
+    pr_event_generate("mod_sql.db.connection-closed", &sql_mysql_module);
   }
 
   sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,

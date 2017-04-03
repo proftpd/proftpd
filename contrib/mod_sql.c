@@ -479,6 +479,8 @@ static int check_response(modret_t *mr, int flags) {
   pr_log_pri(PR_LOG_ERR, MOD_SQL_VERSION
     ": check the SQLLogFile for more details");
 
+  pr_event_generate("mod_sql.db.error", mr->mr_message);
+
   if (!(flags & SQL_LOG_FL_IGNORE_ERRORS) &&
       !(pr_sql_opts & SQL_OPT_NO_DISCONNECT_ON_ERROR)) {
     pr_session_disconnect(&sql_module, PR_SESS_DISCONNECT_BY_APPLICATION,
@@ -498,6 +500,8 @@ static int check_response(modret_t *mr, int flags) {
 static modret_t *sql_dispatch(cmd_rec *cmd, char *cmdname) {
   modret_t *mr = NULL;
   register unsigned int i = 0;
+
+  pr_trace_msg(trace_channel, 19, "dispatching SQL command '%s'", cmdname);
 
   for (i = 0; sql_cmdtable[i].command; i++) {
     if (strcmp(cmdname, sql_cmdtable[i].command) == 0) {
