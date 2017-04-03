@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_odbc -- Support for connecting to databases via ODBC
- * Copyright (c) 2003-2016 TJ Saunders
+ * Copyright (c) 2003-2017 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -988,6 +988,7 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
   sql_log(DEBUG_INFO, "'%s' connection opened", entry->name);
   sql_log(DEBUG_INFO, "'%s' connection count is now %u", entry->name,
     entry->nconn);
+  pr_event_generate("mod_sql.db.connection-opened", &sql_odbc_module);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_open");
   return PR_HANDLED(cmd);
@@ -1058,6 +1059,7 @@ MODRET sqlodbc_close(cmd_rec *cmd) {
     }
 
     sql_log(DEBUG_INFO, "'%s' connection closed", entry->name);
+    pr_event_generate("mod_sql.db.connection-closed", &sql_odbc_module);
   }
 
   sql_log(DEBUG_INFO, "'%s' connection count is now %u", entry->name,

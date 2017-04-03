@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_sqlite -- Support for connecting to SQLite databases
- * Copyright (c) 2004-2016 TJ Saunders
+ * Copyright (c) 2004-2017 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -312,8 +312,9 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
   if (entry->nconn > 0) {
     entry->nconn++;
 
-    if (entry->timer)
+    if (entry->timer) {
       pr_timer_reset(entry->timer, &sql_sqlite_module);
+    }
 
     sql_log(DEBUG_INFO, "'%s' connection count is now %u", entry->name,
       entry->nconn);
@@ -411,6 +412,7 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
   sql_log(DEBUG_INFO, "'%s' connection opened", entry->name);
   sql_log(DEBUG_INFO, "'%s' connection count is now %u", entry->name,
     entry->nconn);
+  pr_event_generate("mod_sql.db.connection-opened", &sql_sqlite_module);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_open");
   return PR_HANDLED(cmd);
@@ -469,6 +471,7 @@ MODRET sql_sqlite_close(cmd_rec *cmd) {
     }
 
     sql_log(DEBUG_INFO, "'%s' connection closed", entry->name);
+    pr_event_generate("mod_sql.db.connection-closed", &sql_sqlite_module);
   }
 
   sql_log(DEBUG_INFO, "'%s' connection count is now %u", entry->name,
