@@ -58,6 +58,10 @@
 #define SSH2_FX_ATTR_UNTRANSLATED_NAME	0x00004000
 
 #define SSH2_FX_ATTR_CTIME		0x00008000
+
+/* The EXTENDED attribute was defined in draft-ietf-secsh-filexfer-02,
+ * which is SFTP protocol version 3.
+ */
 #define SSH2_FX_ATTR_EXTENDED		0x80000000
 
 /* FX_ATTR_BITS values (see draft-ietf-secsh-filexfer-13, Section 7.9) */
@@ -10335,11 +10339,18 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
       SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
   }
 
-  /* The FX_ATTR_EXTENDED and FX_ATTR_LINK_COUNT bits were defined in
+  /* The FX_ATTR_LINK_COUNT attribute was defined in
    * draft-ietf-secsh-filexfer-06, which is SFTP protocol version 6.
    */
   if (fxp_session->client_version >= 6) {
     attr_flags |= SSH2_FX_ATTR_LINK_COUNT;
+
+    /* The FX_ATTR_EXTENDED attribute was defined in
+     * draft-ietf-secsh-filexfer-02, which is SFTP protocol version 3.
+     * However, many SFTP clients may not be prepared for handling these.
+     * Thus we CHOOSE to only provide these extended attributes, if supported,
+     * to protocol version 6 clients.
+     */
 #ifdef PR_USE_XATTR
     attr_flags |= SSH2_FX_ATTR_EXTENDED;
 #endif /* PR_USE_XATTR */
