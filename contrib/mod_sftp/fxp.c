@@ -10335,14 +10335,14 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
       SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
   }
 
-  if (fxp_session->client_version >= 3) {
+  /* The FX_ATTR_EXTENDED and FX_ATTR_LINK_COUNT bits were defined in
+   * draft-ietf-secsh-filexfer-06, which is SFTP protocol version 6.
+   */
+  if (fxp_session->client_version >= 6) {
+    attr_flags |= SSH2_FX_ATTR_LINK_COUNT;
 #ifdef PR_USE_XATTR
     attr_flags |= SSH2_FX_ATTR_EXTENDED;
 #endif /* PR_USE_XATTR */
-  }
-
-  if (fxp_session->client_version >= 6) {
-    attr_flags |= SSH2_FX_ATTR_LINK_COUNT;
   }
 
   for (i = 0; i < path_list->nelts; i++) {
