@@ -1039,6 +1039,7 @@ AC_ARG_ENABLE(devel,
       PR_CHECK_CC_OPT(Wnull-dereference)
       PR_CHECK_CC_OPT(Wstrict-prototypes)
       PR_CHECK_CC_OPT(fdelete-null-pointer-checks)
+      PR_CHECK_CC_OPT(fsanitize=address)
 
       dnl Check to see if specific developer flags were requested
 
