@@ -2114,6 +2114,18 @@ static int sftp_sess_init(void) {
   sftp_pool = make_sub_pool(session.pool);
   pr_pool_tag(sftp_pool, MOD_SFTP_VERSION);
 
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    sftp_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SFTPOptions", FALSE);
+  }
+
   /* We do two passes through the configured hostkeys.  On the first pass,
    * we focus on loading all of the configured keys.  On the second pass,
    * we focus on handling any of the hostkey flags that would e.g. clear the
@@ -2230,18 +2242,6 @@ static int sftp_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "SFTPMaxChannels", FALSE);
   if (c) {
     sftp_channel_set_max_count(*((unsigned int *) c->argv[0]));
-  }
-
-  c = find_config(main_server->conf, CONF_PARAM, "SFTPOptions", FALSE);
-  while (c != NULL) {
-    unsigned long opts;
-
-    pr_signals_handle();
-
-    opts = *((unsigned long *) c->argv[0]);
-    sftp_opts |= opts;
-
-    c = find_config_next(c, c->next, CONF_PARAM, "SFTPOptions", FALSE);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "DisplayLogin", FALSE);
