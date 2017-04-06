@@ -5685,11 +5685,6 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
-int redis_set_password(const char *password) {
-  errno = ENOSYS;
-  return -1;
-}
-
 int redis_set_server(const char *server, int port, const char *password) {
   errno = ENOSYS;
   return -1;
