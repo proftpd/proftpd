@@ -1065,7 +1065,8 @@ AC_ARG_ENABLE(devel,
       fi
 
       if test `echo $enableval | grep -c sanitize` = "1" ; then
-        PR_CHECK_CC_OPT(fsanitize=address)
+        pr_devel_cflags="-fsanitize=address $pr_devel_cflags"
+        pr_devel_libs="-fsanitize=address $pr_devel_libs"
 
         # Determine whether we need to link with libasan (gcc) or not (clang)
         AC_MSG_CHECKING([whether the C compiler accepts -lasan])

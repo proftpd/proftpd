@@ -20819,19 +20819,8 @@ echo "${ECHO_T}no" >&6; }
       fi
 
       if test `echo $enableval | grep -c sanitize` = "1" ; then
-        { echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -fsanitize=address" >&5
-echo $ECHO_N "checking whether ${CC-cc} accepts -fsanitize=address... $ECHO_C" >&6; }
-   echo 'void f(){}' > conftest.c
-   if test -z "`${CC-cc} -c -fsanitize=address conftest.c 2>&1`"; then
-     { echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6; }
-     CFLAGS="$CFLAGS -fsanitize=address"
-   else
-     { echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6; }
-   fi
-   rm -f conftest*
-
+        pr_devel_cflags="-fsanitize=address $pr_devel_cflags"
+        pr_devel_libs="-fsanitize=address $pr_devel_libs"
 
         # Determine whether we need to link with libasan (gcc) or not (clang)
         { echo "$as_me:$LINENO: checking whether the C compiler accepts -lasan" >&5
