@@ -9,7 +9,8 @@ ChangeLog files.
 1.3.6rc5
 ---------
 
-  + Support for using Redis for caching, logging.
+  + Support for using Redis for caching, logging; see the doc/howto/Redis.html
+    documentation.
   + Fixed mod_sql_postgres SSL support (Issue #415).
   + Support building against LibreSSL instead of OpenSSL (Issue #361).
   + Better support on AIX for login restraictions (Bug #4285).
@@ -23,22 +24,43 @@ ChangeLog files.
   + New Modules:
 
     mod_redis, mod_tls_redis, mod_wrap2_redis
+      With Redis now supported as a caching mechanism, similar to Memcache,
+      there are now Redis-using modules: mod_redis (for configuring the Redis
+      connection information), mod_tls_redis (for caching SSL sessions and
+      OCSP information using Redis), and mod_wrap2_redis (for using ACLs stored
+      in Redis).
+
+      See the respective module documentation for details:
+        doc/modules/mod_redis.html, doc/contrib/mod_tls_redis.html, and
+        doc/contrib/mod_wrap2_redis.html.
 
 
   + Changed Modules:
 
     mod_ban
-      Use BanCache redis for Redis-based caching
+      The mod_ban module's BanCache directive can now use Redis-based caching;
+      see doc/contrib/mod_ban.html#BanCache.
 
 
   + New Configuration Directives
 
-    SQLPasswordArgon2, SQLPasswordScrypt (Issue #454)
+    SQLPasswordArgon2, SQLPasswordScrypt
+      The key lengths for Argon2 and Scrypt-based passwords are now configurable
+      via these new directives; previously, the key length had been hardcoded
+      to be 32 bytes, which is not interoperable with all other implementations
+      (Issue #454).
+
+      See doc/contrib/mod_sql_passwd.html#SQLPasswordArgon2,
+        doc/contrib/mod_sql_passwd.html#SQLPasswordScrypt for details.
 
 
   + Changed Configuration Directives
 
-    AllowChrootSymlinks (Bug#4295)
+    AllowChrootSymlinks
+      When "AllowChrootSymlinks off" was used, only the last portion of the
+      DefaultRoot path would be checked to see if it was a symlink.  Now,
+      each component of the DefaultRoot path will be checked to see if it is
+      a symlink when "AllowChrootSymlinks off" is used.
 
     Include
       The Include directive can now be used within a <Limit> section, e.g.:
