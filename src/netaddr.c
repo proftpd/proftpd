@@ -2000,8 +2000,18 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
      * that function, for it is possible that the configured hostname for
      * a machine only resolves to an IPv6 address.
      */
+#ifdef HAVE_GETHOSTBYNAME2
+    host = gethostbyname2(buf, AF_INET);
+    if (host == NULL &&
+        h_errno == HOST_NOT_FOUND) {
+# ifdef AF_INET6
+      host = gethostbyname2(buf, AF_INET6);
+# endif /* AF_INET6 */
+    }
+#else
     host = gethostbyname(buf);
-    if (host) {
+#endif
+    if (host != NULL) {
       return pr_netaddr_validate_dns_str(pstrdup(p, host->h_name));
     }
 
