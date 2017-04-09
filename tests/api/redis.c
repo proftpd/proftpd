@@ -1276,7 +1276,8 @@ START_TEST (redis_hash_set_test) {
   fail_unless(valsz == 7, "Expected item length 7, got %lu",
     (unsigned long) valsz);
   fail_unless(val != NULL, "Failed to get value from hash");
-  fail_unless(strcmp(val, "hashval") == 0, "Expected 'hashval', got '%s'", val);
+  fail_unless(strncmp(val, "hashval", valsz) == 0,
+    "Expected 'hashval', got '%.*s'", (int) valsz, val);
 
   mark_point();
   res = pr_redis_hash_remove(redis, &m, key);
@@ -2793,7 +2794,8 @@ START_TEST (redis_list_rotate_test) {
   fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
   fail_unless(val != NULL, "Expected value, got NULL");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strcmp(val, "bar") == 0, "Expected 'bar', got '%s'", val);
+  fail_unless(strncmp(val, "bar", valsz) == 0, "Expected 'bar', got '%.*s'",
+    (int) valsz, val);
 
   val = NULL;
   valsz = 0;
@@ -2803,7 +2805,8 @@ START_TEST (redis_list_rotate_test) {
   fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
   fail_unless(val != NULL, "Expected value, got NULL");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strcmp(val, "foo") == 0, "Expected 'foo', got '%s'", val);
+  fail_unless(strncmp(val, "foo", valsz) == 0, "Expected 'foo', got '%.*s'",
+    (int) valsz, val);
 
   val = NULL;
   valsz = 0;
@@ -2813,7 +2816,8 @@ START_TEST (redis_list_rotate_test) {
   fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
   fail_unless(val != NULL, "Expected value, got NULL");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strcmp(val, "bar") == 0, "Expected 'bar', got '%s'", val);
+  fail_unless(strncmp(val, "bar", valsz) == 0, "Expected 'bar', got '%.*s'",
+    (int) valsz, val);
 
   mark_point();
   res = pr_redis_list_remove(redis, &m, key);
