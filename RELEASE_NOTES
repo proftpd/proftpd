@@ -19,6 +19,8 @@ ChangeLog files.
   + Handling of the SIGILL and SIGINT signals, by the daemon process, now causes
     the child processes to be terminated as well (Issue #461).
   + RPM .spec file naming changed to conform to Fedora guidelines.
+  + Fix for "AllowChrootSymlinks off" checking each component for symlinks
+    (CVE-2017-7418).
 
 
   + New Modules:
