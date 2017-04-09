@@ -8,7 +8,7 @@
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-1.3.5e
+1.3.5e - Released 09-Apr-2017
 --------------------------------
 - Bug 4287 - SFTP clients using umac-64@openssh.com digest fail to connect.
 - Bug 4288 - SFTP rekeying failure with ProFTPD 1.3.5d, caused by null
