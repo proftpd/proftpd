@@ -171,6 +171,28 @@ Example:
 </pre>
 
 <p>
+<b>Note</b>: If you use <code>RLimitMemory</code>, <i>e.g.</i>:
+<pre>
+  &lt;IfModule mod_rlimit.c&gt;
+    RLimitMemory session 64M
+  &lt;/IfModule&gt;
+</pre>
+<b>and</b> you use <a href="../contrib/mod_tls.html"><code>mod_tls</code></a>
+for FTPS transfers:
+<pre>
+  &lt;IfModule mod_tls.c&gt;
+    ...
+  &lt;/IfModule&gt;
+</pre>
+then your transfers are likely to fail.  Why?  Because OpenSSL will need to
+allocate memory for the TLS support, in addition to the memory that ProFTPD
+already allocates for data transfers.  Depending on the specific ciphersuites
+negotiated, and the specific memory limit configured, you are very likely to
+hit the <code>RLimitMemory</code> limit.  In short, your
+<code>RLimitMemory</code> might be too low, and not allowing ProFTPD and
+OpenSSL enough memory for the transfer.
+
+<p>
 <hr>
 <h3><a name="RLimitOpenFiles">RLimitOpenFiles</a></h3>
 <strong>Syntax:</strong> RLimitOpenFiles <em>[scope] soft-limit|"max" [hard-limit|"max"]</em><br>
@@ -205,7 +227,7 @@ used.
 Example:
 <pre>
   # Limit a given session to 12 open file descriptors
-  RLimitMemory session 12
+  RLimitOpenFiles session 12
 </pre>
 
 <p>
@@ -235,7 +257,7 @@ the <a href="#RLimitChroot"><code>RLimitChroot</code></a> directive.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2013-2016 The ProFTPD Project<br>
+&copy; Copyright 2013-2017 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
