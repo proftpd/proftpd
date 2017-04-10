@@ -641,11 +641,6 @@ HREF="#LOGFORMAT"
 >&nbsp;--&nbsp;Specify a logging format</DT
 ><DT
 ><A
-HREF="#LOGINPASSWORDPROMPT"
->&#13;LoginPasswordPrompt</A
->&nbsp;--&nbsp;Configure to display the passwort prompt or not</DT
-><DT
-><A
 HREF="#MASQUERADEADDRESS"
 >&#13;MasqueradeAddress</A
 >&nbsp;--&nbsp;Configure the server address presented to clients</DT
@@ -15895,115 +15890,6 @@ HREF="#TRANSFERLOG"
 CLASS="REFSECT1"
 ><A
 NAME="AEN5695"
-></A
-><H2
->Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
-NAME="LOGINPASSWORDPROMPT"
-></A
->
-LoginPasswordPrompt</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN5706"
-></A
-><H2
->Name</H2
->LoginPasswordPrompt&nbsp;--&nbsp;Configure to display the passwort prompt or not</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN5709"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->LoginPasswordPrompt</B
->  [  <CODE
-CLASS="OPTION"
->LoginPasswordPrompt on|off</CODE
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->LoginPasswordPrompt on</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_auth</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->1.2.0pre1 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5736"
-></A
-><H2
->Description</H2
-><P
->If set to off, ProFTPd will skip the password request if the 
-login will be denied regardless of password, e.g., if a &lt;Limit LOGIN&gt; 
-directive forbids the connection.</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5739"
-></A
-><H2
->See also</H2
-><P
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5742"
 ></A
 ><H2
 >Examples</H2
@@ -33485,10 +33371,6 @@ HREF="#DEFAULTROOT"
 <A
 HREF="#GROUPPASSWORD"
 >GroupPassword</A
->
-<A
-HREF="#LOGINPASSWORDPROMPT"
->LoginPasswordPrompt</A
 >
 <A
 HREF="#MAXCLIENTS"
