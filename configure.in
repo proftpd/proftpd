@@ -742,8 +742,8 @@ AC_ARG_ENABLE(dso,
 dnl ident (RFC1413) support
 AC_ARG_ENABLE(ident,
   [AC_HELP_STRING(
-    [--disable-ident],
-    [disable use of ident (RFC1413) lookups (default=no)])
+    [--enable-ident],
+    [enable use of ident (RFC1413) lookups (default=no)])
   ])
 
 dnl Memcache support
@@ -2687,7 +2687,7 @@ if test x"$enable_nonblocking_log_open" != xno; then
   AC_DEFINE(PR_USE_NONBLOCKING_LOG_OPEN, 1, [Define if using nonblocking open of log files])
 fi
 
-if test x"$enable_ident" != xno ; then
+if test x"$enable_ident" == xyes ; then
   ac_static_modules="mod_ident.o $ac_static_modules"
   ac_build_static_modules="modules/mod_ident.o $ac_build_static_modules"
 fi
