@@ -9,4 +9,8 @@ ChangeLog files.
 1.3.7rc1
 ---------
 
+  + The mod_ident module is no longer automatically built by default.
+    To include the mod_ident module in the build, it must be explicitly
+    requested via --enable-ident or --with-shared=mod_ident.
+
   + Removed Configuration Directives:
