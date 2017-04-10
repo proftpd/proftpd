@@ -2422,8 +2422,7 @@ MODRET auth_user(cmd_rec *cmd) {
   int nopass = FALSE;
   config_rec *c;
   const char *denymsg = NULL, *user, *origuser;
-  int failnopwprompt = 0, aclp, i;
-  unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
+  unsigned char *anon_require_passwd = NULL;
 
   if (cmd->argc < 2) {
     return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
@@ -2467,89 +2466,10 @@ MODRET auth_user(cmd_rec *cmd) {
     }
   }
 
-  login_passwd_prompt = get_param_ptr(
-    (c && c->config_type == CONF_ANON) ? c->subset : main_server->conf,
-    "LoginPasswordPrompt", FALSE);
-
-  if (login_passwd_prompt &&
-      *login_passwd_prompt == FALSE) {
-    failnopwprompt = TRUE;
-
-  } else {
-    failnopwprompt = FALSE;
-  }
-
-  if (failnopwprompt) {
-    if (!user) {
-      (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
-      (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
-
-      pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias",
-        origuser);
-
-      if (denymsg) {
-        pr_response_send(R_530, "%s", denymsg);
-
-      } else {
-        pr_response_send(R_530, _("Login incorrect."));
-      }
-
-      pr_session_end(0);
-    }
-
-    aclp = login_check_limits(main_server->conf, FALSE, TRUE, &i);
-
-    if (c && c->config_type != CONF_ANON) {
-      c = (config_rec *) pcalloc(session.pool, sizeof(config_rec));
-      c->config_type = CONF_ANON;
-      c->name = "";	/* don't really need this yet */
-      c->subset = main_server->conf;
-    }
-
-    if (c) {
-      if (!login_check_limits(c->subset, FALSE, TRUE, &i) ||
-          (!aclp && !i) ) {
-        (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
-        (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
-
-        pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login",
-          origuser);
-
-        if (denymsg) {
-          pr_response_send(R_530, "%s", denymsg);
-
-        } else {
-          pr_response_send(R_530, _("Login incorrect."));
-        }
-
-        pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
-          "Denied by <Limit LOGIN>");
-      }
-    }
-
-    if (c == NULL &&
-        aclp == 0) {
-      (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
-      (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
-
-      pr_log_auth(PR_LOG_NOTICE,
-        "USER %s: Limit access denies login", origuser);
-
-      if (denymsg) {
-        pr_response_send(R_530, "%s", denymsg);
-
-      } else {
-        pr_response_send(R_530, "%s", _("Login incorrect."));
-      }
-
-      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
-        "Denied by <Limit LOGIN>");
-    }
-  }
-
-  if (c)
+  if (c != NULL) {
     anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
       FALSE);
+  }
 
   if (c && user && (!anon_require_passwd || *anon_require_passwd == FALSE))
     nopass = TRUE;
@@ -3569,25 +3489,6 @@ MODRET set_grouppassword(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_loginpasswordprompt(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
-  c->flags |= CF_MERGEDOWN;
-
-  return PR_HANDLED(cmd);
-}
-
 /* usage: MaxClientsPerClass class max|"none" ["message"] */
 MODRET set_maxclientsclass(cmd_rec *cmd) {
   int max;
@@ -4250,7 +4151,6 @@ static conftable auth_conftab[] = {
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "DisplayLogin",		set_displaylogin,		NULL },
   { "GroupPassword",		set_grouppassword,		NULL },
-  { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerClass",	set_maxclientsclass,		NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
