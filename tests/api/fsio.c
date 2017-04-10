@@ -257,26 +257,6 @@ START_TEST (fsio_sys_unlink_test) {
 }
 END_TEST
 
-START_TEST (fsio_sys_unlink_canon_test) {
-  int res;
-  pr_fh_t *fh;
-
-  res = pr_fsio_unlink_canon(NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  fh = pr_fsio_open(fsio_unlink_path, O_CREAT|O_EXCL|O_WRONLY);
-  fail_unless(fh != NULL, "Failed to open '%s': %s", fsio_unlink_path, 
-    strerror(errno));
-  (void) pr_fsio_close(fh);
-
-  res = pr_fsio_unlink_canon(fsio_unlink_path);
-  fail_unless(res == 0, "Failed to unlink '%s': %s", fsio_unlink_path,
-    strerror(errno));
-}
-END_TEST
-
 START_TEST (fsio_sys_unlink_chroot_guard_test) {
   int res;
 
@@ -357,58 +337,6 @@ START_TEST (fsio_sys_stat_test) {
     strerror(errno));
 
   (void) unlink(fsio_link_path);
-}
-END_TEST
-
-START_TEST (fsio_sys_stat_canon_test) {
-  int res;
-  struct stat st;
-  unsigned int cache_size = 3, max_age = 1, policy_flags = 0;
-
-  res = pr_fsio_stat_canon(NULL, &st);
-  fail_unless(res < 0, "Failed to handle null path");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  res = pr_fsio_stat_canon("/", NULL);
-  fail_unless(res < 0, "Failed to handle null struct stat");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  res = pr_fsio_stat_canon("/", &st);
-  fail_unless(res == 0, "Unexpected stat(2) error on '/': %s",
-    strerror(errno));
-  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
-
-  /* Now, do the stat(2) again, and make sure we get the same information
-   * from the cache.
-   */
-  res = pr_fsio_stat_canon("/", &st);
-  fail_unless(res == 0, "Unexpected stat(2) error on '/': %s",
-    strerror(errno));
-  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
-
-  pr_fs_statcache_reset();
-  res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
-  fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
-
-  res = pr_fsio_stat_canon("/foo/bar/baz/quxx", &st);
-  fail_unless(res < 0, "Failed to handle nonexistent path");
-  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
-    errno);
-
-  res = pr_fsio_stat_canon("/foo/bar/baz/quxx", &st);
-  fail_unless(res < 0, "Failed to handle nonexistent path");
-  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
-    errno);
-
-  /* Now wait for longer than 1 second (our configured max age) */
-  sleep(max_age + 1);
-
-  res = pr_fsio_stat_canon("/foo/bar/baz/quxx", &st);
-  fail_unless(res < 0, "Failed to handle nonexistent path");
-  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
-    errno);
 }
 END_TEST
 
@@ -572,54 +500,6 @@ START_TEST (fsio_sys_link_test) {
 }
 END_TEST
 
-START_TEST (fsio_sys_link_canon_test) {
-  int res;
-  const char *target_path, *link_path;
-  pr_fh_t *fh;
-
-  target_path = link_path = NULL;
-  res = pr_fsio_link_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  target_path = fsio_test_path;
-  link_path = NULL;
-  res = pr_fsio_link_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle null link_path argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  target_path = NULL;
-  link_path = fsio_link_path;
-  res = pr_fsio_link_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle null target_path argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
-  fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
-    strerror(errno));
-  (void) pr_fsio_close(fh);
-
-  /* Link a file (that exists) to itself */
-  link_path = target_path = fsio_test_path;
-  res = pr_fsio_link_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle same existing source/destination");
-  fail_unless(errno == EEXIST, "Expected EEXIST, got %s (%d)", strerror(errno),
-    errno);
-
-  /* Create expected link */
-  link_path = fsio_link_path;
-  target_path = fsio_test_path;
-  res = pr_fsio_link_canon(target_path, link_path);
-  fail_unless(res == 0, "Failed to create link from '%s' to '%s': %s",
-    link_path, target_path, strerror(errno));
-  (void) unlink(link_path);
-  (void) pr_fsio_unlink(fsio_test_path);
-}
-END_TEST
-
 START_TEST (fsio_sys_link_chroot_guard_test) {
   int res;
 
@@ -676,47 +556,6 @@ START_TEST (fsio_sys_symlink_test) {
   link_path = fsio_link_path;
   target_path = "/tmp";
   res = pr_fsio_symlink(target_path, link_path);
-  fail_unless(res == 0, "Failed to create symlink from '%s' to '%s': %s",
-    link_path, target_path, strerror(errno));
-  (void) unlink(link_path);
-}
-END_TEST
-
-START_TEST (fsio_sys_symlink_canon_test) {
-  int res;
-  const char *target_path, *link_path;
-
-  target_path = link_path = NULL;
-  res = pr_fsio_symlink_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  target_path = "/tmp";
-  link_path = NULL;
-  res = pr_fsio_symlink_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle null link_path argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  target_path = NULL;
-  link_path = fsio_link_path;
-  res = pr_fsio_symlink_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle null target_path argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  /* Symlink a file (that exists) to itself */
-  link_path = target_path = "/tmp";
-  res = pr_fsio_symlink_canon(target_path, link_path);
-  fail_unless(res < 0, "Failed to handle same existing source/destination");
-  fail_unless(errno == EEXIST, "Expected EEXIST, got %s (%d)", strerror(errno),
-    errno);
-
-  /* Create expected symlink */
-  link_path = fsio_link_path;
-  target_path = "/tmp";
-  res = pr_fsio_symlink_canon(target_path, link_path);
   fail_unless(res == 0, "Failed to create symlink from '%s' to '%s': %s",
     link_path, target_path, strerror(errno));
   (void) unlink(link_path);
@@ -784,46 +623,6 @@ START_TEST (fsio_sys_readlink_test) {
 }
 END_TEST
 
-START_TEST (fsio_sys_readlink_canon_test) {
-  int res;
-  char buf[PR_TUNABLE_BUFFER_SIZE];
-  const char *link_path, *target_path, *path;
-
-  res = pr_fsio_readlink_canon(NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  /* Read a non-symlink file */
-  path = "/";
-  res = pr_fsio_readlink_canon(path, buf, sizeof(buf)-1);
-  fail_unless(res < 0, "Failed to handle non-symlink path");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  /* Read a symlink file */
-  target_path = "/tmp";
-  link_path = fsio_link_path;
-  res = pr_fsio_symlink(target_path, link_path);
-  fail_unless(res == 0, "Failed to create symlink from '%s' to '%s': %s",
-    link_path, target_path, strerror(errno));
-
-  memset(buf, '\0', sizeof(buf));
-  res = pr_fsio_readlink_canon(link_path, buf, sizeof(buf)-1);
-  fail_unless(res > 0, "Failed to read symlink '%s': %s", link_path,
-    strerror(errno));
-  buf[res] = '\0';
-  fail_unless(strcmp(buf, target_path) == 0, "Expected '%s', got '%s'",
-    target_path, buf);
-
-  /* Read a symlink file using a zero-length buffer */
-  res = pr_fsio_readlink_canon(link_path, buf, 0);
-  fail_unless(res <= 0, "Expected length <= 0, got %d", res);
-
-  (void) unlink(link_path);
-}
-END_TEST
-
 START_TEST (fsio_sys_lstat_test) {
   int res;
   struct stat st;
@@ -884,58 +683,6 @@ START_TEST (fsio_sys_lstat_test) {
     strerror(errno));
 
   (void) unlink(fsio_link_path);
-}
-END_TEST
-
-START_TEST (fsio_sys_lstat_canon_test) {
-  int res;
-  struct stat st;
-  unsigned int cache_size = 3, max_age = 1, policy_flags = 0;
-
-  res = pr_fsio_lstat_canon(NULL, &st);
-  fail_unless(res < 0, "Failed to handle null path");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  res = pr_fsio_lstat_canon("/", NULL);
-  fail_unless(res < 0, "Failed to handle null struct stat");
-  fail_unless(errno == EINVAL, "Expected EINVAL, got %s (%d)", strerror(errno),
-    errno);
-
-  res = pr_fsio_lstat_canon("/", &st);
-  fail_unless(res == 0, "Unexpected lstat(2) error on '/': %s",
-    strerror(errno));
-  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
-
-  /* Now, do the lstat(2) again, and make sure we get the same information
-   * from the cache.
-   */
-  res = pr_fsio_lstat_canon("/", &st);
-  fail_unless(res == 0, "Unexpected lstat(2) error on '/': %s",
-    strerror(errno));
-  fail_unless(S_ISDIR(st.st_mode), "'/' is not a directory as expected");
-
-  pr_fs_statcache_reset();
-  res = pr_fs_statcache_set_policy(cache_size, max_age, policy_flags);
-  fail_unless(res == 0, "Failed to set statcache policy: %s", strerror(errno));
-
-  res = pr_fsio_lstat_canon("/foo/bar/baz/quxx", &st);
-  fail_unless(res < 0, "Failed to handle nonexistent path");
-  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
-    errno);
-
-  res = pr_fsio_lstat_canon("/foo/bar/baz/quxx", &st);
-  fail_unless(res < 0, "Failed to handle nonexistent path");
-  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
-    errno);
-
-  /* Now wait for longer than 1 second (our configured max age) */
-  sleep(max_age + 1);
-
-  res = pr_fsio_lstat_canon("/foo/bar/baz/quxx", &st);
-  fail_unless(res < 0, "Failed to handle nonexistent path");
-  fail_unless(errno == ENOENT, "Expected ENOENT, got %s (%d)", strerror(errno),
-    errno);
 }
 END_TEST
 
@@ -1189,34 +936,6 @@ START_TEST (fsio_sys_truncate_test) {
 }
 END_TEST
 
-START_TEST (fsio_sys_truncate_canon_test) {
-  int res;
-  off_t len = 0;
-  pr_fh_t *fh;
-
-  res = pr_fsio_truncate_canon(NULL, 0);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  res = pr_fsio_truncate_canon(fsio_test_path, 0);
-  fail_unless(res < 0, "Truncated '%s' unexpectedly", fsio_test_path);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
-    strerror(errno), errno);
-
-  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
-  fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
-    strerror(errno));
-
-  res = pr_fsio_truncate_canon(fsio_test_path, len);
-  fail_unless(res == 0, "Failed to truncate '%s': %s", fsio_test_path,
-    strerror(errno));
-  
-  (void) pr_fsio_close(fh);
-  (void) pr_fsio_unlink(fsio_test_path);
-}
-END_TEST
-
 START_TEST (fsio_sys_truncate_chroot_guard_test) {
   int res;
 
@@ -1305,34 +1024,6 @@ START_TEST (fsio_sys_chmod_test) {
 }
 END_TEST
 
-START_TEST (fsio_sys_chmod_canon_test) {
-  int res;
-  mode_t mode = 0644;
-  pr_fh_t *fh;
-
-  res = pr_fsio_chmod_canon(NULL, mode);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  res = pr_fsio_chmod_canon(fsio_test_path, 0);
-  fail_unless(res < 0, "Changed perms of '%s' unexpectedly", fsio_test_path);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
-    strerror(errno), errno);
-
-  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
-  fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
-    strerror(errno));
-
-  res = pr_fsio_chmod_canon(fsio_test_path, mode);
-  fail_unless(res == 0, "Failed to set perms of '%s': %s", fsio_test_path,
-    strerror(errno));
-
-  (void) pr_fsio_close(fh);
-  (void) pr_fsio_unlink(fsio_test_path);
-}
-END_TEST
-
 START_TEST (fsio_sys_chmod_chroot_guard_test) {
   int res;
   mode_t mode = 0644;
@@ -1399,36 +1090,6 @@ START_TEST (fsio_sys_chown_test) {
     strerror(errno));
 
   res = pr_fsio_chown(fsio_test_path, uid, gid);
-  fail_unless(res == 0, "Failed to set ownership of '%s': %s", fsio_test_path,
-    strerror(errno));
-
-  (void) pr_fsio_close(fh);
-  (void) pr_fsio_unlink(fsio_test_path);
-}
-END_TEST
-
-START_TEST (fsio_sys_chown_canon_test) {
-  int res;
-  uid_t uid = getuid();
-  gid_t gid = getgid();
-  pr_fh_t *fh;
-
-  res = pr_fsio_chown_canon(NULL, uid, gid);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  res = pr_fsio_chown_canon(fsio_test_path, uid, gid);
-  fail_unless(res < 0, "Changed ownership of '%s' unexpectedly",
-    fsio_test_path);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
-    strerror(errno), errno);
-
-  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
-  fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
-    strerror(errno));
-
-  res = pr_fsio_chown_canon(fsio_test_path, uid, gid);
   fail_unless(res == 0, "Failed to set ownership of '%s': %s", fsio_test_path,
     strerror(errno));
 
@@ -1560,39 +1221,6 @@ START_TEST (fsio_sys_rename_test) {
   (void) pr_fsio_close(fh);
 
   res = pr_fsio_rename(fsio_test_path, fsio_test2_path);
-  fail_unless(res == 0, "Failed to rename '%s' to '%s': %s", fsio_test_path,
-    fsio_test2_path, strerror(errno));
-
-  (void) pr_fsio_unlink(fsio_test_path);
-  (void) pr_fsio_unlink(fsio_test2_path);
-}
-END_TEST
-
-START_TEST (fsio_sys_rename_canon_test) {
-  int res;
-  pr_fh_t *fh;
-
-  res = pr_fsio_rename_canon(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  res = pr_fsio_rename_canon(fsio_test_path, NULL);
-  fail_unless(res < 0, "Failed to handle null dst argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  res = pr_fsio_rename_canon(fsio_test_path, fsio_test2_path);
-  fail_unless(res < 0, "Failed to handle non-existent files");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
-    strerror(errno), errno);
-
-  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
-  fail_unless(fh != NULL, "Failed to create '%s': %s", fsio_test_path,
-    strerror(errno));
-  (void) pr_fsio_close(fh);
-
-  res = pr_fsio_rename_canon(fsio_test_path, fsio_test2_path);
   fail_unless(res == 0, "Failed to rename '%s' to '%s': %s", fsio_test_path,
     fsio_test2_path, strerror(errno));
 
@@ -4521,43 +4149,33 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_open_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_close_test);
   tcase_add_test(testcase, fsio_sys_unlink_test);
-  tcase_add_test(testcase, fsio_sys_unlink_canon_test);
   tcase_add_test(testcase, fsio_sys_unlink_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_stat_test);
-  tcase_add_test(testcase, fsio_sys_stat_canon_test);
   tcase_add_test(testcase, fsio_sys_fstat_test);
   tcase_add_test(testcase, fsio_sys_read_test);
   tcase_add_test(testcase, fsio_sys_write_test);
   tcase_add_test(testcase, fsio_sys_lseek_test);
   tcase_add_test(testcase, fsio_sys_link_test);
-  tcase_add_test(testcase, fsio_sys_link_canon_test);
   tcase_add_test(testcase, fsio_sys_link_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_symlink_test);
-  tcase_add_test(testcase, fsio_sys_symlink_canon_test);
   tcase_add_test(testcase, fsio_sys_symlink_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_readlink_test);
-  tcase_add_test(testcase, fsio_sys_readlink_canon_test);
   tcase_add_test(testcase, fsio_sys_lstat_test);
-  tcase_add_test(testcase, fsio_sys_lstat_canon_test);
   tcase_add_test(testcase, fsio_sys_access_dir_test);
   tcase_add_test(testcase, fsio_sys_access_file_test);
   tcase_add_test(testcase, fsio_sys_faccess_test);
   tcase_add_test(testcase, fsio_sys_truncate_test);
-  tcase_add_test(testcase, fsio_sys_truncate_canon_test);
   tcase_add_test(testcase, fsio_sys_truncate_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_ftruncate_test);
   tcase_add_test(testcase, fsio_sys_chmod_test);
-  tcase_add_test(testcase, fsio_sys_chmod_canon_test);
   tcase_add_test(testcase, fsio_sys_chmod_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_fchmod_test);
   tcase_add_test(testcase, fsio_sys_chown_test);
-  tcase_add_test(testcase, fsio_sys_chown_canon_test);
   tcase_add_test(testcase, fsio_sys_chown_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_fchown_test);
   tcase_add_test(testcase, fsio_sys_lchown_test);
   tcase_add_test(testcase, fsio_sys_lchown_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_rename_test);
-  tcase_add_test(testcase, fsio_sys_rename_canon_test);
   tcase_add_test(testcase, fsio_sys_rename_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_utimes_test);
   tcase_add_test(testcase, fsio_sys_utimes_chroot_guard_test);

@@ -4508,32 +4508,6 @@ int pr_fsio_rmdir(const char *path) {
   return res;
 }
 
-int pr_fsio_stat_canon(const char *path, struct stat *st) {
-  pr_fs_t *fs;
-
-  if (path == NULL ||
-      st == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_STAT);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom stat handler.  If there are none,
-   * use the system stat.
-   */
-  while (fs && fs->fs_next && !fs->stat) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s stat() for path '%s'",
-    fs ? fs->fs_name : "system", path);
-  return fs_cache_stat(fs ? fs : root_fs, path, st);
-}
-
 int pr_fsio_stat(const char *path, struct stat *st) {
   pr_fs_t *fs = NULL;
 
@@ -4585,32 +4559,6 @@ int pr_fsio_fstat(pr_fh_t *fh, struct stat *st) {
   return res;
 }
 
-int pr_fsio_lstat_canon(const char *path, struct stat *st) {
-  pr_fs_t *fs;
-
-  if (path == NULL ||
-      st == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_LSTAT);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom lstat handler.  If there are none,
-   * use the system lstat.
-   */
-  while (fs && fs->fs_next && !fs->lstat) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s lstat() for path '%s'",
-    fs ? fs->fs_name : "system", path);
-  return fs_cache_lstat(fs ? fs : root_fs, path, st);
-}
-
 int pr_fsio_lstat(const char *path, struct stat *st) {
   pr_fs_t *fs;
 
@@ -4635,35 +4583,6 @@ int pr_fsio_lstat(const char *path, struct stat *st) {
   pr_trace_msg(trace_channel, 8, "using %s lstat() for path '%s'", fs->fs_name,
     path);
   return fs_cache_lstat(fs ? fs : root_fs, path, st);
-}
-
-int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
-  int res;
-  pr_fs_t *fs;
-
-  if (path == NULL ||
-      buf == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_READLINK);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom readlink handler.  If there are none,
-   * use the system readlink.
-   */
-  while (fs && fs->fs_next && !fs->readlink) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s readlink() for path '%s'",
-    fs->fs_name, path);
-  res = (fs->readlink)(fs, path, buf, buflen);
-
-  return res;
 }
 
 int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
@@ -4724,55 +4643,6 @@ void pr_fs_globfree(glob_t *pglob) {
   }
 }
 
-int pr_fsio_rename_canon(const char *rnfr, const char *rnto) {
-  int res;
-  pr_fs_t *from_fs, *to_fs, *fs;
-
-  if (rnfr == NULL ||
-      rnto == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  from_fs = lookup_file_canon_fs(rnfr, NULL, FSIO_FILE_RENAME);
-  if (from_fs == NULL) {
-    return -1;
-  }
-
-  to_fs = lookup_file_canon_fs(rnto, NULL, FSIO_FILE_RENAME);
-  if (to_fs == NULL) {
-    return -1;
-  }
-
-  if (from_fs->allow_xdev_rename == FALSE ||
-      to_fs->allow_xdev_rename == FALSE) {
-    if (from_fs != to_fs) {
-      errno = EXDEV;
-      return -1;
-    }
-  }
-
-  fs = to_fs;
-
-  /* Find the first non-NULL custom rename handler.  If there are none,
-   * use the system rename.
-   */
-  while (fs && fs->fs_next && !fs->rename) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s rename() for paths '%s', '%s'",
-    fs->fs_name, rnfr, rnto);
-  res = (fs->rename)(fs, rnfr, rnto);
-
-  if (res == 0) {
-    pr_fs_clear_cache2(rnfr);
-    pr_fs_clear_cache2(rnto);
-  }
-
-  return res;
-}
-
 int pr_fsio_rename(const char *rnfr, const char *rnto) {
   int res;
   pr_fs_t *from_fs, *to_fs, *fs;
@@ -4816,37 +4686,6 @@ int pr_fsio_rename(const char *rnfr, const char *rnto) {
   if (res == 0) {
     pr_fs_clear_cache2(rnfr);
     pr_fs_clear_cache2(rnto);
-  }
-
-  return res;
-}
-
-int pr_fsio_unlink_canon(const char *name) {
-  int res;
-  pr_fs_t *fs;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_UNLINK);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom unlink handler.  If there are none,
-   * use the system unlink.
-   */
-  while (fs && fs->fs_next && !fs->unlink) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s unlink() for path '%s'",
-    fs->fs_name, name);
-  res = (fs->unlink)(fs, name);
-  if (res == 0) {
-    pr_fs_clear_cache2(name);
   }
 
   return res;
@@ -5124,53 +4963,6 @@ off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
   return res;
 }
 
-int pr_fsio_link_canon(const char *target_path, const char *link_path) {
-  int res;
-  pr_fs_t *target_fs, *link_fs, *fs;
-
-  if (target_path == NULL ||
-      link_path == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  target_fs = lookup_file_fs(target_path, NULL, FSIO_FILE_LINK);
-  if (target_fs == NULL) {
-    return -1;
-  }
-
-  link_fs = lookup_file_fs(link_path, NULL, FSIO_FILE_LINK);
-  if (link_fs == NULL) {
-    return -1;
-  }
-
-  if (target_fs->allow_xdev_link == FALSE ||
-      link_fs->allow_xdev_link == FALSE) {
-    if (target_fs != link_fs) {
-      errno = EXDEV;
-      return -1;
-    }
-  }
-
-  fs = link_fs;
-
-  /* Find the first non-NULL custom link handler.  If there are none,
-   * use the system link.
-   */
-  while (fs && fs->fs_next && !fs->link) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
-    fs->fs_name, target_path, link_path);
-  res = (fs->link)(fs, target_path, link_path);
-  if (res == 0) {
-    pr_fs_clear_cache2(link_path);
-  }
-
-  return res;
-}
-
 int pr_fsio_link(const char *target_path, const char *link_path) {
   int res;
   pr_fs_t *target_fs, *link_fs, *fs;
@@ -5211,38 +5003,6 @@ int pr_fsio_link(const char *target_path, const char *link_path) {
   pr_trace_msg(trace_channel, 8, "using %s link() for paths '%s', '%s'",
     fs->fs_name, target_path, link_path);
   res = (fs->link)(fs, target_path, link_path);
-  if (res == 0) {
-    pr_fs_clear_cache2(link_path);
-  }
-
-  return res;
-}
-
-int pr_fsio_symlink_canon(const char *target_path, const char *link_path) {
-  int res;
-  pr_fs_t *fs;
-
-  if (target_path == NULL ||
-      link_path == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(link_path, NULL, FSIO_FILE_SYMLINK);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom symlink handler.  If there are none,
-   * use the system symlink
-   */
-  while (fs && fs->fs_next && !fs->symlink) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s symlink() for path '%s'",
-    fs->fs_name, link_path);
-  res = (fs->symlink)(fs, target_path, link_path);
   if (res == 0) {
     pr_fs_clear_cache2(link_path);
   }
@@ -5315,37 +5075,6 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
   return res;
 }
 
-int pr_fsio_truncate_canon(const char *path, off_t len) {
-  int res;
-  pr_fs_t *fs;
-
-  if (path == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_TRUNC);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom truncate handler.  If there are none,
-   * use the system truncate.
-   */
-  while (fs && fs->fs_next && !fs->truncate) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s truncate() for path '%s'",
-    fs->fs_name, path);
-  res = (fs->truncate)(fs, path, len);
-  if (res == 0) {
-    pr_fs_clear_cache2(path);
-  }
-
-  return res;
-}
-
 int pr_fsio_truncate(const char *path, off_t len) {
   int res;
   pr_fs_t *fs;
@@ -5374,38 +5103,6 @@ int pr_fsio_truncate(const char *path, off_t len) {
     pr_fs_clear_cache2(path);
   }
   
-  return res;
-}
-
-int pr_fsio_chmod_canon(const char *name, mode_t mode) {
-  int res;
-  char *deref = NULL;
-  pr_fs_t *fs;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CHMOD);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom chmod handler.  If there are none,
-   * use the system chmod.
-   */
-  while (fs && fs->fs_next && !fs->chmod) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s chmod() for path '%s'",
-    fs->fs_name, name);
-  res = (fs->chmod)(fs, deref, mode);
-  if (res == 0) {
-    pr_fs_clear_cache2(name);
-  }
-
   return res;
 }
 
@@ -5462,37 +5159,6 @@ int pr_fsio_fchmod(pr_fh_t *fh, mode_t mode) {
   res = (fs->fchmod)(fh, fh->fh_fd, mode);
   if (res == 0) {
     pr_fs_clear_cache2(fh->fh_path);
-  }
-
-  return res;
-}
-
-int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
-  int res;
-  pr_fs_t *fs;
-
-  if (name == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_CHOWN);
-  if (fs == NULL) {
-    return -1;
-  }
-
-  /* Find the first non-NULL custom chown handler.  If there are none,
-   * use the system chown.
-   */
-  while (fs && fs->fs_next && !fs->chown) {
-    fs = fs->fs_next;
-  }
-
-  pr_trace_msg(trace_channel, 8, "using %s chown() for path '%s'",
-    fs->fs_name, name);
-  res = (fs->chown)(fs, name, uid, gid);
-  if (res == 0) {
-    pr_fs_clear_cache2(name);
   }
 
   return res;
