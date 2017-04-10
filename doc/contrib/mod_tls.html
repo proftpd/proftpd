@@ -907,7 +907,7 @@ The currently implemented options are:
     <a href="http://www.kb.cert.org/vuls/id/864643">&quot;BEAST&quot;
     attack</a>), the <code>mod_tls</code> module was changed to use OpenSSL's
     builtin countermeasure of inserting <a href="http://www.openssl.org/~bodo/tls-cbc.txt">empty fragments</a>.  However, some browsers/clients may not handle
-    such empty fragments well.  Use this <code>NoEmptyFragaments</code>
+    such empty fragments well.  Use this <code>NoEmptyFragments</code>
     TLSOption in order to interoperate with such clients, with risk of losing
     the protective countermeasure.
    
@@ -1731,7 +1731,7 @@ directive.
 <p>
 <hr>
 <h3><a name="TLSStapling">TLSStapling</a></h3>
-<strong>Syntax:</strong> TLStapling <em>on|off</em><br>
+<strong>Syntax:</strong> TLSStapling <em>on|off</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
@@ -1760,7 +1760,7 @@ See also: <a href="#TLSStaplingCache"><code>TLSStaplingCache</code></a>,
 <p>
 <hr>
 <h3><a name="TLSStaplingCache">TLSStaplingCache</a></h3>
-<strong>Syntax:</strong> TLStaplingCache <em>type:/info</em><br>
+<strong>Syntax:</strong> TLSStaplingCache <em>type:/info</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_tls<br>
@@ -1786,7 +1786,7 @@ memcached servers as an OCSP response cache.
 <p>
 <hr>
 <h3><a name="TLSStaplingOptions">TLSStaplingOptions</a></h3>
-<strong>Syntax:</strong> TLStaplingOptions <em>opt1 ...</em><br>
+<strong>Syntax:</strong> TLSStaplingOptions <em>opt1 ...</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
@@ -1818,7 +1818,7 @@ The currently implemented options are:
 <p>
 <hr>
 <h3><a name="TLSStaplingResponder">TLSStaplingResponder</a></h3>
-<strong>Syntax:</strong> TLStaplingResponder <em>url</em><br>
+<strong>Syntax:</strong> TLSStaplingResponder <em>url</em><br>
 <strong>Default:</strong> none<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
@@ -1838,7 +1838,7 @@ Example:
 <p>
 <hr>
 <h3><a name="TLSStaplingTimeout">TLSStaplingTimeout</a></h3>
-<strong>Syntax:</strong> TLStaplingTimeout <em>secs</em><br>
+<strong>Syntax:</strong> TLSStaplingTimeout <em>secs</em><br>
 <strong>Default:</strong> 10s<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
