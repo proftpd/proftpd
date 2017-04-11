@@ -5384,6 +5384,9 @@ static int tls_init_ctx(void) {
     if (use_server_pref == TRUE) {
       ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
     }
+  } else {
+    /* Use the server cipher preferences by default. */
+    ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 

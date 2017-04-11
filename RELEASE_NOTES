@@ -13,7 +13,13 @@ ChangeLog files.
     To include the mod_ident module in the build, it must be explicitly
     requested via --enable-ident or --with-shared=mod_ident.
 
-  + Removed Configuration Directives:
+  + Changed Configuration Directives
+
+    TLSServerCipherPreference
+      The TLSServerCipherPreference directive is now enabled by default.
+
+
+  + Removed Configuration Directives
 
     GroupPassword
 
