@@ -1385,7 +1385,7 @@ AC_CHECK_HEADERS(hpsecurity.h, [
 dnl AIX's "lastlog" support is done via specific functions, rather than a
 dnl struct (Bug#4285).
 AC_MSG_CHECKING(for AIX authenticate)
-AC_TRY_COMPILE([
+AC_TRY_LINK([
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
@@ -1404,7 +1404,7 @@ AC_TRY_COMPILE([
 
 
 AC_MSG_CHECKING(for AIX loginfailed)
-AC_TRY_COMPILE([
+AC_TRY_LINK([
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
@@ -1422,7 +1422,7 @@ AC_TRY_COMPILE([
 )
 
 AC_MSG_CHECKING(for AIX loginsuccess)
-AC_TRY_COMPILE([
+AC_TRY_LINK([
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
