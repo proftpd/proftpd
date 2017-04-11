@@ -716,50 +716,6 @@ static config_rec *auth_group(pool *p, const char *user, char **group,
     *ournamep = ourname;
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "GroupPassword", TRUE);
-  if (c) do {
-    grp = pr_auth_getgrnam(p, c->argv[0]);
-    if (grp == NULL) {
-      continue;
-    }
-
-    for (grmem = grp->gr_mem; *grmem; grmem++) {
-      if (strcmp(*grmem, user) == 0) {
-        if (pr_auth_check(p, c->argv[1], user, pass) == 0) {
-          break;
-        }
-      }
-    }
-
-    if (*grmem) {
-      if (group != NULL) {
-        *group = c->argv[0];
-      }
-
-      if (c->parent != NULL) {
-        c = c->parent;
-      }
-
-      if (c->config_type == CONF_ANON) {
-        anonname = get_param_ptr(c->subset, "UserName", FALSE);
-      }
-
-      if (anonnamep != NULL) {
-        *anonnamep = anonname;
-      }
-
-      if (anonnamep != NULL &&
-          !anonname &&
-          ourname != NULL) {
-        *anonnamep = ourname;
-      }
-
-      break;
-    }
-
-  } while((c = find_config_next(c, c->next, CONF_PARAM, "GroupPassword",
-     TRUE)) != NULL);
-
   return c;
 }
 
@@ -3477,18 +3433,6 @@ MODRET set_displaylogin(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_grouppassword(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
-  c->flags |= CF_MERGEDOWN;
-
-  return PR_HANDLED(cmd);
-}
-
 /* usage: MaxClientsPerClass class max|"none" ["message"] */
 MODRET set_maxclientsclass(cmd_rec *cmd) {
   int max;
@@ -4150,7 +4094,6 @@ static conftable auth_conftab[] = {
   { "DefaultChdir",		add_defaultchdir,		NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "DisplayLogin",		set_displaylogin,		NULL },
-  { "GroupPassword",		set_grouppassword,		NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerClass",	set_maxclientsclass,		NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },

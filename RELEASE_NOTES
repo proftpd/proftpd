@@ -14,3 +14,7 @@ ChangeLog files.
     requested via --enable-ident or --with-shared=mod_ident.
 
   + Removed Configuration Directives:
+
+    GroupPassword
+
+    LoginPasswordPrompt
