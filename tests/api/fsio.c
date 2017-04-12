@@ -2910,8 +2910,9 @@ START_TEST (fs_glob_test) {
     strerror(errno), errno);
 
   memset(&pglob, 0, sizeof(pglob));
-  res = pr_fs_glob("?", 0, NULL, &pglob);
-  fail_unless(res == 0, "Failed to glob: %s", strerror(errno));
+  res = pr_fs_glob("*", 0, NULL, &pglob);
+  fail_unless(res == 0, "Failed to glob: glob(3) returned %d: %s", res,
+    strerror(errno));
   fail_unless(pglob.gl_pathc > 0, "Expected >0, got %lu",
     (unsigned long) pglob.gl_pathc);
 
