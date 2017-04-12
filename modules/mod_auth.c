@@ -702,23 +702,6 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-/* Handle group based authentication, only checked if pw based fails. */
-static config_rec *auth_group(pool *p, const char *user, char **group,
-    char **ournamep, char **anonnamep, char *pass) {
-  config_rec *c;
-  char *ourname = NULL, *anonname = NULL;
-  char **grmem;
-  struct group *grp;
-
-  ourname = get_param_ptr(main_server->conf, "UserName", FALSE);
-  if (ournamep != NULL &&
-      ourname != NULL) {
-    *ournamep = ourname;
-  }
-
-  return c;
-}
-
 /* Determine any applicable chdirs. */
 static const char *get_default_chdir(pool *p, xaset_t *conf) {
   config_rec *c;
@@ -1202,27 +1185,11 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
 
     pr_event_generate("mod_auth.authentication-code", &auth_code);
 
-    if (auth_code < 0) {
-      /* Normal authentication has failed, see if group authentication
-       * passes
-       */
-
-      c = auth_group(p, user, &anongroup, &ourname, &anonname, pass);
-      if (c != NULL) {
-        if (c->config_type != CONF_ANON) {
-          c = NULL;
-          ugroup = anongroup;
-          anongroup = NULL;
-        }
-
-        auth_code = PR_AUTH_OK;
-      }
+    if (pass != NULL) {
+      pr_memscrub(pass, strlen(pass));
     }
 
-    if (pass)
-      pr_memscrub(pass, strlen(pass));
-
-    if (session.auth_mech)
+    if (session.auth_mech != NULL)
       pr_log_debug(DEBUG2, "user '%s' authenticated by %s", user,
         session.auth_mech);
 
