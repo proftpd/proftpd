@@ -1845,13 +1845,13 @@ MODRET set_ldapsearchscope(cmd_rec *cmd) {
   c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE);
   if (c != NULL) {
     register unsigned int i;
-    array_header *ldap_servers = NULL;
+    array_header *servers = NULL;
 
-    ldap_servers = c->argv[0];
-    for (i = 0; i < ldap_servers->nelts; i++) {
+    servers = c->argv[0];
+    for (i = 0; i < servers->nelts; i++) {
       char *elt;
 
-      elt = ((char **) ldap_servers->elts)[i];
+      elt = ((char **) servers->elts)[i];
       if (ldap_is_ldap_url(elt)) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "cannot be used when LDAPServer specifies a URL (see '", elt, "'); specify a search scope in the LDAPServer URL instead", NULL));
       }
