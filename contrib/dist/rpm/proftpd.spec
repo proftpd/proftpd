@@ -584,8 +584,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) %{_sysconfdir}/PROFTPD-MIB.txt
 
 %doc COPYING CREDITS ChangeLog NEWS README.md RELEASE_NOTES
-%doc README.DSO README.modules README.IPv6 README.PAM
-%doc README.capabilities README.classes README.controls README.facl
+%doc README.modules README.PAM
 %doc contrib/README.contrib contrib/README.ratio
 %doc contrib/dist/systemd/README.systemd
 %doc doc/* sample-configurations/
