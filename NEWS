@@ -18,6 +18,8 @@
 1.3.7rc1
 --------------------------------
 - Bug 4304 - Configure script wrongly detects AIX lastlog functions.
+- Bug 3217 - ProFTPD does not build when configure is run from directory other
+  than source directory.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
