@@ -583,8 +583,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) %{_sysconfdir}/xinetd.d/proftpd
 %config(noreplace) %{_sysconfdir}/PROFTPD-MIB.txt
 
-%doc COPYING CREDITS ChangeLog NEWS README.md RELEASE_NOTES
-%doc README.modules README.PAM
+%doc COPYING CREDITS ChangeLog NEWS README.md RELEASE_NOTES README.modules
 %doc contrib/README.contrib contrib/README.ratio
 %doc contrib/dist/systemd/README.systemd
 %doc doc/* sample-configurations/
