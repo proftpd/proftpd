@@ -458,9 +458,6 @@ mkdir -p %{buildroot}%{_localstatedir}/ftp/pub/
 # Find translations
 %find_lang proftpd
 
-# We do not want this dangling symlink to make it into the RPM
-rm -f contrib/README.mod_sql
-
 %post
 %if %{use_systemd}
 /bin/systemctl daemon-reload &>/dev/null || :
