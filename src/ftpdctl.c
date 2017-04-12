@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -78,6 +78,10 @@ int pr_privs_root(const char *file, int lineno) {
 
 int pr_privs_relinquish(const char *file, int lineno) {
   return 0;
+}
+
+long pr_random_next(long min, long max) {
+  return 1;
 }
 
 void pr_signals_block(void) {

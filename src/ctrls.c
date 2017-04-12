@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -266,7 +266,7 @@ int pr_ctrls_register(const module *mod, const char *action,
   /* Randomly generate a unique random ID for this object */
   while (TRUE) {
     unsigned char have_id = FALSE;
-    act_id = rand();
+    act_id = (unsigned int) pr_random_next(1L, RAND_MAX);
 
     /* Check the list for this ID */
     for (acti = ctrls_action_list; acti; acti = acti->next) {
