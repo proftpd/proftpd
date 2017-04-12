@@ -504,6 +504,9 @@
 /* Define if you have the putenv function.  */
 #undef HAVE_PUTENV
 
+/* Define if you have the random function.  */
+#undef HAVE_RANDOM
+
 /* Define if you have the regcomp function.  */
 #undef HAVE_REGCOMP
 
@@ -551,6 +554,9 @@
 
 /* Define if you have the socket function.  */
 #undef HAVE_SOCKET
+
+/* Define if you have the srandom function.  */
+#undef HAVE_SRANDOM
 
 /* Define if you have the statfs function.  */
 #undef HAVE_STATFS
