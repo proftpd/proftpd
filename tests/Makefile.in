@@ -21,6 +21,7 @@ TEST_API_DEPS=\
   $(top_builddir)/src/var.o \
   $(top_builddir)/src/event.o \
   $(top_builddir)/src/env.o \
+  $(top_builddir)/src/random.o \
   $(top_builddir)/src/version.o \
   $(top_builddir)/src/feat.o \
   $(top_builddir)/src/netaddr.o \
@@ -63,6 +64,7 @@ TEST_API_OBJS=\
   api/var.o \
   api/event.o \
   api/env.o \
+  api/random.o \
   api/version.o \
   api/feat.o \
   api/netaddr.o \

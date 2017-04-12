@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1205,7 +1205,7 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
    */
 
   /* Reseed pseudo-randoms */
-  srand((unsigned int) (time(NULL) * getpid()));
+  pr_random_init();
 
 #endif /* PR_DEVEL_NO_FORK */
 
@@ -2235,7 +2235,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_proctitle_init(argc, argv, envp);
 
   /* Seed rand */
-  srand((unsigned int) (time(NULL) * getpid()));
+  pr_random_init();
 
   /* getpeername() fails if the fd isn't a socket */
   peerlen = sizeof(peer);

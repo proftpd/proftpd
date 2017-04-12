@@ -459,6 +459,7 @@ typedef struct {
 #include "proctitle.h"
 #include "pidfile.h"
 #include "env.h"
+#include "random.h"
 #include "pr-syslog.h"
 #include "json.h"
 #include "memcache.h"

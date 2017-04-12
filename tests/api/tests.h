@@ -48,6 +48,7 @@ Suite *tests_get_table_suite(void);
 Suite *tests_get_var_suite(void);
 Suite *tests_get_event_suite(void);
 Suite *tests_get_env_suite(void);
+Suite *tests_get_random_suite(void);
 Suite *tests_get_version_suite(void);
 Suite *tests_get_feat_suite(void);
 Suite *tests_get_netaddr_suite(void);
