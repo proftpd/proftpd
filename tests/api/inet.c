@@ -508,7 +508,7 @@ START_TEST (inet_connect_ipv4_test) {
   conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
-  res = pr_inet_connect(p, conn, NULL, 80);
+  res = pr_inet_connect(p, conn, NULL, 180);
   fail_unless(res < 0, "Failed to handle null address");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -517,8 +517,8 @@ START_TEST (inet_connect_ipv4_test) {
   fail_unless(addr != NULL, "Failed to resolve '127.0.0.1': %s",
     strerror(errno));
 
-  res = pr_inet_connect(p, conn, addr, 80);
-  fail_unless(res < 0, "Connected to 127.0.0.1#80 unexpectedly");
+  res = pr_inet_connect(p, conn, addr, 180);
+  fail_unless(res < 0, "Connected to 127.0.0.1#180 unexpectedly");
   fail_unless(errno == ECONNREFUSED, "Expected ECONNREFUSED (%d), got %s (%d)",
     ECONNREFUSED, strerror(errno), errno);
 
@@ -573,8 +573,8 @@ START_TEST (inet_connect_ipv6_test) {
   fail_unless(addr != NULL, "Failed to resolve '::1': %s",
     strerror(errno));
 
-  res = pr_inet_connect(p, conn, addr, 80);
-  fail_unless(res < 0, "Connected to ::1#80 unexpectedly");
+  res = pr_inet_connect(p, conn, addr, 180);
+  fail_unless(res < 0, "Connected to ::1#180 unexpectedly");
   fail_unless(errno == ECONNREFUSED || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
     "Expected ECONNREFUSED (%d), ENETUNREACH (%d), or EADDRNOTAVAIL (%d), got %s (%d)",
     ECONNREFUSED, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
@@ -637,7 +637,7 @@ START_TEST (inet_connect_nowait_test) {
   conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
-  res = pr_inet_connect_nowait(p, conn, NULL, 80);
+  res = pr_inet_connect_nowait(p, conn, NULL, 180);
   fail_unless(res < 0, "Failed to handle null address");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -646,8 +646,8 @@ START_TEST (inet_connect_nowait_test) {
   fail_unless(addr != NULL, "Failed to resolve '127.0.0.1': %s",
     strerror(errno));
 
-  res = pr_inet_connect_nowait(p, conn, addr, 80);
-  fail_unless(res != -1, "Connected to 127.0.0.1#80 unexpectedly");
+  res = pr_inet_connect_nowait(p, conn, addr, 180);
+  fail_unless(res != -1, "Connected to 127.0.0.1#180 unexpectedly");
 
   /* Try connecting to Google's DNS server. */
 
@@ -657,7 +657,8 @@ START_TEST (inet_connect_nowait_test) {
 
   res = pr_inet_connect_nowait(p, conn, addr, 53);
   if (res < 0 &&
-      errno != ECONNREFUSED) {
+      errno != ECONNREFUSED &&
+      errno != EBADF) {
     fail_unless(res != -1, "Failed to connect to 8.8.8.8#53: %s",
       strerror(errno));
   }
