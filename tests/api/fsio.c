@@ -34,6 +34,8 @@ static const char *fsio_test2_path = "/tmp/prt-foo.bar.baz.quxx.quzz";
 static const char *fsio_unlink_path = "/tmp/prt-fsio-link.dat";
 static const char *fsio_link_path = "/tmp/prt-fsio-symlink.lnk";
 static const char *fsio_testdir_path = "/tmp/prt-fsio-test.d";
+static const char *fsio_copy_src_path = "/tmp/prt-fs-src.dat";
+static const char *fsio_copy_dst_path = "/tmp/prt-fs-dst.dat";
 
 /* Fixtures */
 
@@ -757,8 +759,12 @@ START_TEST (fsio_sys_access_dir_test) {
     strerror(errno));
 
   if (getenv("TRAVIS") == NULL) {
-    uid_t other_uid = 1000;
-    gid_t other_gid = 1000;
+    uid_t other_uid;
+    gid_t other_gid;
+
+    /* Deliberately use IDs other than the current ones. */
+    other_uid = uid - 1;
+    other_gid = gid - 1;
 
     /* Next, check that others can access the directory. */
     pr_fs_clear_cache2(fsio_testdir_path);
@@ -2926,7 +2932,7 @@ END_TEST
 
 START_TEST (fs_copy_file_test) {
   int res;
-  char *src_path, *dst_path, *text;
+  char *src_path = NULL, *dst_path = NULL, *text;
   pr_fh_t *fh;
 
   res = pr_fs_copy_file(NULL, NULL);
@@ -2934,15 +2940,15 @@ START_TEST (fs_copy_file_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  src_path = "/tmp/prt-fs-src.dat";
+  src_path = fsio_copy_src_path;
   res = pr_fs_copy_file(src_path, NULL);
   fail_unless(res < 0, "Failed to handle null destination path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  dst_path = "/tmp/prt-fs-dst.dat";
+  dst_path = fsio_copy_dst_path;
   res = pr_fs_copy_file(src_path, dst_path);
-  fail_unless(res < 0, "Failed to handle null destination path");
+  fail_unless(res < 0, "Failed to handle nonexistent source path");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
@@ -2951,6 +2957,7 @@ START_TEST (fs_copy_file_test) {
   fail_unless(errno == EISDIR, "Expected EISDIR (%d), got %s (%d)", EISDIR,
     strerror(errno), errno);
 
+  (void) unlink(src_path);
   fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
   fail_unless(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));
 
@@ -2976,6 +2983,8 @@ START_TEST (fs_copy_file_test) {
   res = pr_fs_copy_file(src_path, src_path);
   fail_unless(res == 0, "Failed to copy file to itself: %s", strerror(errno));
 
+  (void) unlink(dst_path);
+
   mark_point();
   res = pr_fs_copy_file(src_path, dst_path);
   fail_unless(res == 0, "Failed to copy file: %s", strerror(errno));
@@ -2995,9 +3004,12 @@ START_TEST (fs_copy_file2_test) {
   char *src_path, *dst_path, *text;
   pr_fh_t *fh;
 
-  src_path = "/tmp/prt-fs-src.dat";
-  dst_path = "/tmp/prt-fs-dst.dat";
+  src_path = fsio_copy_src_path;
+  dst_path = fsio_copy_dst_path;
   flags = PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE;
+
+  (void) unlink(src_path);
+  (void) unlink(dst_path);
 
   fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
   fail_unless(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));

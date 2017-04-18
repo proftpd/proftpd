@@ -313,8 +313,9 @@ START_TEST (data_sendfile_test) {
   mark_point();
   res = pr_data_sendfile(fd, &offset, strlen(text));
   if (res < 0) {
-    fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
-      ENOTSOCK, strerror(errno), errno);
+    fail_unless(errno == ENOTSOCK || errno == EINVAL,
+     "Expected ENOTSOCK (%d) or EINVAL (%d), got %s (%d)", ENOTSOCK, EINVAL,
+     strerror(errno), errno);
   }
 
   (void) close(fd);
