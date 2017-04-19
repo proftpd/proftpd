@@ -2063,7 +2063,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
     const char **names;
 
     names = xattrs->elts;
-    for (i = 0; xattrs->nelts; i++) {
+    for (i = 0; i < xattrs->nelts; i++) {
       ssize_t valsz;
 
       /* First, find out how much memory we need for this attribute's
