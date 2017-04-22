@@ -13,7 +13,11 @@ ChangeLog files.
     To include the mod_ident module in the build, it must be explicitly
     requested via --enable-ident or --with-shared=mod_ident.
 
+
   + Changed Configuration Directives
+
+    SFTPCipher, SFTPDigest
+      Weak algorithms now disabled by default (Bug#4279)
 
     TLSServerCipherPreference
       The TLSServerCipherPreference directive is now enabled by default.
