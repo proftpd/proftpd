@@ -164,8 +164,8 @@ static struct sftp_digest digests[] = {
 #endif /* SHA512 support in OpenSSL */
   { "hmac-sha1",	"sha1",		EVP_sha1,	0, 	TRUE, TRUE },
   { "hmac-sha1-96",	"sha1",		EVP_sha1,	12,	TRUE, TRUE },
-  { "hmac-md5",		"md5",		EVP_md5,	0,	TRUE, FALSE },
-  { "hmac-md5-96",	"md5",		EVP_md5,	12,	TRUE, FALSE },
+  { "hmac-md5",		"md5",		EVP_md5,	0,	FALSE, FALSE },
+  { "hmac-md5-96",	"md5",		EVP_md5,	12,	FALSE, FALSE },
 #if !defined(OPENSSL_NO_RIPEMD)
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	FALSE, FALSE },
 #endif /* !OPENSSL_NO_RIPEMD */
