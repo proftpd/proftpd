@@ -5938,6 +5938,7 @@ sub ssh2_cipher_c2s_blowfish_cbc {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers blowfish-cbc",
       ],
     },
   };
@@ -6071,6 +6072,7 @@ sub ssh2_cipher_c2s_arcfour {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers arcfour256",
       ],
     },
   };
@@ -7008,6 +7010,7 @@ sub ssh2_cipher_s2c_blowfish_cbc {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers blowfish-cbc",
       ],
     },
   };
@@ -7141,6 +7144,7 @@ sub ssh2_cipher_s2c_arcfour {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers arcfour256",
       ],
     },
   };
@@ -7945,6 +7949,7 @@ sub ssh2_mac_c2s_hmac_md5 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests hmac-md5",
       ],
     },
   };
@@ -8078,6 +8083,7 @@ sub ssh2_mac_c2s_hmac_md5_96 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests hmac-md5-96",
       ],
     },
   };
@@ -8211,6 +8217,7 @@ sub ssh2_mac_c2s_hmac_ripemd160 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests hmac-ripemd160",
       ],
     },
   };
@@ -8744,6 +8751,7 @@ sub ssh2_mac_s2c_hmac_md5 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests hmac-md5",
       ],
     },
   };
@@ -8877,6 +8885,7 @@ sub ssh2_mac_s2c_hmac_md5_96 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests hmac-md5-96",
       ],
     },
   };
@@ -9010,6 +9019,7 @@ sub ssh2_mac_s2c_hmac_ripemd160 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPDigests hmac-ripemd160",
       ],
     },
   };
