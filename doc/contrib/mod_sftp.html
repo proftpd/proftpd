@@ -331,16 +331,24 @@ of supported cipher algorithms is, in the default order of preference:
   <li>aes256-cbc
   <li>aes192-cbc
   <li>aes128-cbc
-  <li>blowfish-ctr
-  <li>blowfish-cbc
   <li>cast128-cbc
-  <li>arcfour256
-  <li>arcfour128
   <li>3des-ctr
   <li>3des-cbc
 </ul>
 By default, all of the above cipher algorithms are presented to the client,
 in the above order, during the key exchange.
+
+<p>
+In ProFTPD 1.3.7rc1 and later, the following list of algorithms are
+<em>supported</em>, but <b>not</b> presented to clients by default.  These
+algorithms must be <em>explicitly</em> configured via <code>SFTPCiphers</code>
+to be available for use by clients:
+<ul>
+  <li>blowfish-ctr
+  <li>blowfish-cbc
+  <li>arcfour256
+  <li>arcfour128
+</ul>
 
 <p>
 The "none" cipher (<i>i.e.</i> no encryption) will <b>not</b> be presented to
@@ -596,9 +604,6 @@ of supported MAC algorithms is:
   <li>hmac-sha2-512
   <li>hmac-sha1
   <li>hmac-sha1-96
-  <li>hmac-md5
-  <li>hmac-md5-96
-  <li>hmac-ripemd160
   <li>umac-64@openssh.com
   <li>umac-128@openssh.com
 </ul>
@@ -606,6 +611,16 @@ By default, all of the above MAC algorithms are presented to the client,
 in the above order, during the key exchange.  <b>Note</b> that some algorithms
 (<i>e.g.</i> the SHA256 and SHA512 algorithms) may not be supported by
 the version of OpenSSL used; this will be automatically detected.
+
+<p>
+The following list of algorithms are <em>supported</em>, but <b>not</b>
+presented to clients by default.  These algorithms must be <em>explicitly</em>
+configured via <code>SFTPDigests</code> to be available for use by clients:
+<ul>
+  <li>hmac-md5
+  <li>hmac-md5-96
+  <li>hmac-ripemd160
+</ul>
 
 <p>
 The "none" MAC (<i>i.e.</i> no MAC) will <b>not</b> be presented to the client
