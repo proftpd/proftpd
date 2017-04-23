@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- * Copyright (c) 2001-2016 TJ Saunders
+ * Copyright (c) 2001-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,11 +27,15 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.9"
+#ifdef HAVE_IDNA_H
+# include <idna.h>
+#endif /* HAVE_IDNA_H */
+
+#define MOD_REWRITE_VERSION		"mod_rewrite/1.0"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030501
-# error "ProFTPD 1.3.5rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030701
+# error "ProFTPD 1.3.7rc1 or later required"
 #endif
 
 #ifdef PR_USE_REGEX
@@ -1994,7 +1998,7 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
 
   /* If the key is NULL or empty, do nothing. */
   if (key == NULL ||
-      !strlen(key)) {
+      strlen(key) == 0) {
     return NULL;
   }
 
@@ -2027,6 +2031,34 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
 
   return NULL;
 }
+
+#if defined(HAVE_IDNA_H) && defined(HAVE_IDNA_TO_ASCII_8Z)
+static char *rewrite_map_int_idnatrans(pool *map_pool, char *key) {
+  int flags = 0, res;
+  char *ascii_val = NULL, *map_val = NULL;
+
+  /* If the key is NULL or empty, do nothing. */
+  if (key == NULL ||
+      strlen(key) == 0) {
+    return NULL;
+  }
+
+  /* TODO: Should we enforce the use of e.g. the IDNA_USE_STD3_ASCII_RULES
+   * flag?
+   */
+  res = idna_to_ascii_8z(key, &ascii_val, flags);
+  if (res != IDNA_SUCCESS) {
+    rewrite_log("rewrite_map_int_idnatrans(): failed transforming IDNA "
+      "'%s' to ASCII: %s", key, idna_strerror(res));
+    return NULL;
+  }
+
+  map_val = pstrdup(map_pool, ascii_val);
+  free(ascii_val);
+
+  return map_val;
+}
+#endif /* IDNA support */
 
 /* Rewrite logging functions */
 
@@ -2378,9 +2410,10 @@ MODRET set_rewritemap(cmd_rec *cmd) {
 
   /* Check the configured map types */
   mapsrc = strchr(cmd->argv[2], ':');
-  if (mapsrc == NULL)
+  if (mapsrc == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid RewriteMap parameter: '",
       cmd->argv[2], "'", NULL));
+  }
 
   *mapsrc = '\0';
   mapsrc++;
@@ -2404,9 +2437,18 @@ MODRET set_rewritemap(cmd_rec *cmd) {
     } else if (strcmp(mapsrc, "utf8trans") == 0) {
       map = (void *) rewrite_map_int_utf8trans;
 
-    } else
+    } else if (strcmp(mapsrc, "idnatrans") == 0) {
+#if defined(HAVE_IDNA_H) && defined(HAVE_IDNA_TO_ASCII_8Z)
+      map = (void *) rewrite_map_int_idnatrans;
+#else
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupported internal map function requested: '", mapsrc, "'", NULL));
+#endif /* IDNA support */
+
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unknown internal map function requested: '", mapsrc, "'", NULL));
+    }
 
   } else if (strcmp(cmd->argv[2], "fifo") == 0) {
     struct stat st;
@@ -2414,18 +2456,21 @@ MODRET set_rewritemap(cmd_rec *cmd) {
     c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
     /* Make sure the given path is absolute. */
-    if (*mapsrc != '/')
+    if (*mapsrc != '/') {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0],
         ": fifo: absolute path required", NULL));
+    }
 
     /* Stat the path, to make sure it is indeed a FIFO. */
-    if (pr_fsio_stat(mapsrc, &st) < 0)
+    if (pr_fsio_stat(mapsrc, &st) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0],
         ": fifo: error stat'ing '", mapsrc, "': ", strerror(errno), NULL));
+    }
 
-    if (!S_ISFIFO(st.st_mode))
+    if (!S_ISFIFO(st.st_mode)) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0],
         ": fifo: error: '", mapsrc, "' is not a FIFO", NULL));
+    }
 
     map = (void *) pstrdup(c->pool, mapsrc);
 
@@ -3074,5 +3119,4 @@ module rewrite_module = {
   /* Module version */
   MOD_REWRITE_VERSION
 };
-
 #endif /* regex support */
