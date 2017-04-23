@@ -16,6 +16,8 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    RewriteMap idnatrans (Issue #231)
+
     SFTPCipher, SFTPDigest
       Weak algorithms now disabled by default (Bug#4279)
 
