@@ -875,9 +875,13 @@ static int get_default_root(pool *p, int allow_symlinks, const char **root) {
           path[pathlen-1] = '\0';
         }
 
+        PRIVS_USER
         res = is_symlink_path(p, path, pathlen);
+        xerrno = errno;
+        PRIVS_RELINQUISH
+
         if (res < 0) {
-          if (errno == EPERM) {
+          if (xerrno == EPERM) {
             pr_log_pri(PR_LOG_WARNING, "error: DefaultRoot %s is a symlink "
               "(denied by AllowChrootSymlinks config)", path);
           }
