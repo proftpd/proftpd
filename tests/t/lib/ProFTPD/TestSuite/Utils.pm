@@ -411,10 +411,6 @@ sub config_write {
       $config->{DefaultServer} = 'on';
     }
 
-    unless (defined($config->{IdentLookups})) {
-      $config->{IdentLookups} = 'off';
-    }
-
     unless (defined($config->{RequireValidShell})) {
       $config->{RequireValidShell} = 'off';
     }
