@@ -20423,7 +20423,8 @@ fi
 ENABLE_TESTS="\"\""
 # Check whether --enable-tests was given.
 if test "${enable_tests+set}" = set; then
-  enableval=$enable_tests;  if test x"$enableval" = x"yes" ; then
+  enableval=$enable_tests;
+    if test "$enableval" != xno ; then
 
 for ac_header in check.h
 do
@@ -20648,6 +20649,14 @@ echo "$as_me: error: libcheck support, required for tests, not present -- aborti
 
 fi
 
+
+      if test x"$enableval" != x"nonetwork" ; then
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_NETWORK_TESTS 1
+_ACEOF
+
+      fi
     fi
 
 fi
