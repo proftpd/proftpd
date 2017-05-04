@@ -479,10 +479,6 @@ sub config_write {
       push(@$config, "DefaultServer on");
     }
 
-    unless (grep(/^IdentLookups/, @$config) > 0) {
-      push(@$config, "IdentLookups off");
-    }
-
     unless (grep(/^RequireValidShell/, @$config) > 0) {
       push(@$config, "RequireValidShell off");
     }
