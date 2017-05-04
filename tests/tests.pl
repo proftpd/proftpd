@@ -173,6 +173,7 @@ if (scalar(@ARGV) > 0) {
     t/config/showsymlinks.t
     t/config/socketoptions.t
     t/config/storeuniqueprefix.t
+    t/config/sysloglevel.t
     t/config/timeoutidle.t
     t/config/timeoutlogin.t
     t/config/timeoutnotransfer.t
