@@ -1056,6 +1056,9 @@
 /* Define if ncursesw support, if available, should be used.  */
 #undef PR_USE_NCURSESW
 
+/* Define if non-local network tests are enabled. */
+#undef PR_USE_NETWORK_TESTS
+
 /* Define if using nonblocking open of log files.  */
 #undef PR_USE_NONBLOCKING_LOG_OPEN
 

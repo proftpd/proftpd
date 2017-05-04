@@ -522,6 +522,7 @@ START_TEST (inet_connect_ipv4_test) {
   fail_unless(errno == ECONNREFUSED, "Expected ECONNREFUSED (%d), got %s (%d)",
     ECONNREFUSED, strerror(errno), errno);
 
+#if defined(PR_USE_NETWORK_TESTS)
   /* Try connecting to Google's DNS server. */
 
   addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
@@ -551,6 +552,7 @@ START_TEST (inet_connect_ipv4_test) {
   fail_unless(errno == EISCONN, "Expected EISCONN (%d), got %s (%d)",
     EISCONN, strerror(errno), errno);
   pr_inet_close(p, conn);
+#endif
 }
 END_TEST
 
@@ -579,6 +581,7 @@ START_TEST (inet_connect_ipv6_test) {
     "Expected ECONNREFUSED (%d), ENETUNREACH (%d), or EADDRNOTAVAIL (%d), got %s (%d)",
     ECONNREFUSED, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
 
+#if defined(PR_USE_NETWORK_TESTS)
   /* Try connecting to Google's DNS server. */
 
   addr = pr_netaddr_get_addr(p, "2001:4860:4860::8888", NULL);
@@ -614,6 +617,7 @@ START_TEST (inet_connect_ipv6_test) {
   fail_unless(errno == EISCONN || errno == EHOSTUNREACH || errno == ENETUNREACH || errno == EADDRNOTAVAIL,
     "Expected EISCONN (%d) or EHOSTUNREACH (%d) or ENETUNREACH (%d) or EADDRNOTAVAIL (%d), got %s (%d)", EISCONN, EHOSTUNREACH, ENETUNREACH, EADDRNOTAVAIL, strerror(errno), errno);
   pr_inet_close(p, conn);
+#endif
 
   pr_inet_set_default_family(p, AF_INET);
 
@@ -649,6 +653,7 @@ START_TEST (inet_connect_nowait_test) {
   res = pr_inet_connect_nowait(p, conn, addr, 180);
   fail_unless(res != -1, "Connected to 127.0.0.1#180 unexpectedly");
 
+#if defined(PR_USE_NETWORK_TESTS)
   /* Try connecting to Google's DNS server. */
 
   addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
@@ -664,6 +669,7 @@ START_TEST (inet_connect_nowait_test) {
   }
 
   pr_inet_close(p, conn);
+#endif
 
   /* Restore the default family to AF_INET, for other tests. */
   pr_inet_set_default_family(p, AF_INET);
