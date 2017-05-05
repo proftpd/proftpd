@@ -11985,7 +11985,12 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
-  ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+  /* This breaks system profiles though, so don't change them.   */
+  if (strncmp(ciphersuite, "PROFILE=", 8) == 0) {
+    ciphersuite = pstrdup(c->pool, ciphersuite);
+  } else {
+    ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+  }
 
   /* Check that our construct ciphersuite is acceptable. */
   ctx = SSL_CTX_new(SSLv23_server_method());
