@@ -11976,6 +11976,7 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
 MODRET set_tlsciphersuite(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *ciphersuite = NULL;
+  SSL_CTX *ctx;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -11984,8 +11985,26 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
-  c->argv[0] = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+  ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
 
+  /* Check that our construct ciphersuite is acceptable. */
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx != NULL) {
+    if (SSL_CTX_set_cipher_list(ctx, ciphersuite) != 1) {
+      /* Note: tls_get_errors() relies on session.pool, so temporarily set
+       * it to our temporary pool.
+       */
+      session.pool = cmd->tmp_pool;
+
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unable to use configured TLSCipherSuite '", ciphersuite, "': ",
+        tls_get_errors(), NULL));
+    }
+
+    SSL_CTX_free(ctx);
+  }
+
+  c->argv[0] = ciphersuite;
   return PR_HANDLED(cmd);
 }
 

@@ -295,7 +295,13 @@ Example:
 <strong>Compatibility:</strong> 1.2.7rc1 and later
 
 <p>
-Default cipher list is &quot;DEFAULT:!ADH:!EXPORT:!DES&quot;.
+Sets the list of SSL/TLS ciphersuites for use.  Default cipher list is
+&quot;DEFAULT:!ADH:!EXPORT:!DES&quot;.
+
+<p>
+<b>Note</b> that <code>mod_tls</code> will automatically <i>prepend</i> the
+configured <em>cipher-list</em> with "!EXPORT", in order to <i>prevent</i> the
+use of the insecure "export grade" ciphers.
 
 <p>
 How to put together a <em>cipher list</em> parameter:
@@ -2214,6 +2220,19 @@ Then tell <code>mod_tls</code> to use that DH parameter:
   # Use 1024-bit DH parameters for the Java clients
   TLSDHParamFile /path/to/dh1024.pem
 </pre>
+
+<p><a name="TLSNoCipherMatch">
+<font color=red>Question</font>: I tried to configure a specific ciphersuite
+using <code>TLSCipherSuite</code>, but ProFTPD fails on startup with this error:
+<pre>
+  fatal: TLSCipherSuite: unable to use configured TLSCipherSuite '!EXPORT:MYCIPHER':
+  (1) error:1410D0B9:SSL routines:SSL_CTX_set_cipher_list:no cipher match on line 16 of '/etc/proftpd/tls.conf'
+</pre>
+<font color=blue>Answer</font>: This error indicates that the version of OpenSSL
+does not recognize/support one of the ciphers that you configured in your
+<code>TLSCipherSuite</code> list.  Unfortunately the OpenSSL error reporting
+does not pinpoint <i>which</i> is the offending ciphersuite; experimenting
+with your cipher list will reveal which ones are problematic.
 
 <p>
 <hr>

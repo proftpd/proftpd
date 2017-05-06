@@ -299,6 +299,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_config_tlsciphersuite_bad_cipher => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   tls_session_cache_off_bug3869 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -8981,6 +8986,51 @@ sub tls_config_tlsdhparamfile_bug3868 {
   }
 
   unlink($log_file);
+}
+
+sub tls_config_tlsciphersuite_bad_cipher {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSCipherSuite => 'FOOBAR',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_session_cache_off_bug3869 {
