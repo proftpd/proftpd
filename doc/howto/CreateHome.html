@@ -109,6 +109,12 @@ of the target home directory itself.  By default, this home directory will
 be owned by the user's primary GID.
 
 <p>
+The <code>NoRootPrivs</code> parameter can be used to prevent proftpd from
+using root privileges when creating the home directory and parents. This can be
+useful for e.g. the case where home directories are on NFS with root squashing
+enabled.
+
+<p>
 Here are some examples (from the documentation) to help illustrate how one
 might use the <code>CreateHome</code> configuration directive:
 <pre>
