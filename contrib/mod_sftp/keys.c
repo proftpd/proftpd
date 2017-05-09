@@ -1388,7 +1388,7 @@ static int get_pkey_type(EVP_PKEY *pkey) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESS)
-  pkey_type = EVP_PKEY_id(pkey);
+  pkey_type = EVP_PKEY_base_id(pkey);
 #else
   pkey_type = EVP_PKEY_type(pkey->type);
 #endif /* OpenSSL 1.1.x and later */

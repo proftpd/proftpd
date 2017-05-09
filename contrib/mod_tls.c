@@ -138,8 +138,9 @@ static X509 *read_cert(FILE *fh, SSL_CTX *ssl_ctx) {
 static int get_pkey_type(EVP_PKEY *pkey) {
   int pkey_type;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  pkey_type = EVP_PKEY_id(pkey);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESS)
+  pkey_type = EVP_PKEY_base_id(pkey);
 #else
   pkey_type = EVP_PKEY_type(pkey->type);
 #endif /* OpenSSL 1.1.x and later */
@@ -595,6 +596,7 @@ static void tls_end_sess(SSL *, conn_t *, int);
 
 static void tls_fatal_error(long, int);
 static const char *tls_get_errors(void);
+static const char *tls_get_errors2(pool *p);
 static char *tls_get_page(size_t, void **);
 static size_t tls_get_pagesz(void);
 static int tls_get_passphrase(server_rec *, const char *, const char *,
@@ -683,6 +685,12 @@ static int tls_data_need_init_handshake = TRUE;
 
 static const char *timing_channel = "timing";
 
+static int tls_keyfile_check_cb(char *buf, int size, int rwflag,
+    void *user_data) {
+  buf[0] = '\0';
+  return 0;
+}
+
 static const char *tls_get_fingerprint(pool *p, X509 *cert) {
   const EVP_MD *md = EVP_sha1();
   unsigned char fp[EVP_MAX_MD_SIZE];
@@ -704,13 +712,40 @@ static const char *tls_get_fingerprint(pool *p, X509 *cert) {
   return fp_hex;
 }
 
-static const char *tls_get_fingerprint_from_file(pool *p, const char *path) {
+static const char *get_pkey_typestr(int pkey_type) {
+  const char *str = "unknown";
+
+  switch (pkey_type) {
+    case EVP_PKEY_RSA:
+      str = "RSA";
+      break;
+
+    case EVP_PKEY_DSA:
+      str = "DSA";
+      break;
+
+#ifdef PR_USE_OPENSSL_ECC
+    case EVP_PKEY_EC:
+      str = "EC";
+      break;
+#endif /* PR_USE_OPENSSL_EC */
+  }
+
+  return str;
+}
+
+static const char *tls_get_fingerprint_from_file(pool *p, const char *path,
+    int expected_pkey_type, const char **errstr) {
   FILE *fh;
   X509 *cert = NULL;
   const char *fingerprint;
 
   fh = fopen(path, "rb");
   if (fh == NULL) {
+    int xerrno = errno;
+
+    *errstr = (const char *) pstrdup(p, strerror(xerrno));
+    errno = xerrno;
     return NULL;
   }
 
@@ -723,15 +758,65 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path) {
   (void) fclose(fh);
 
   if (cert == NULL) {
+    const char *err_msg;
+
+    err_msg = tls_get_errors2(p);
+    *errstr = err_msg;
+
     pr_trace_msg(trace_channel, 1, "error obtaining X509 cert from '%s': %s",
-      path, tls_get_errors());
+      path, err_msg);
     errno = ENOENT;
     return NULL;
   }
 
   fingerprint = tls_get_fingerprint(p, cert);
-  X509_free(cert);
 
+  if (cert != NULL) {
+    time_t now;
+    const ASN1_TIME *cert_end_ts;
+    EVP_PKEY *pkey;
+
+    now = time(NULL);
+    cert_end_ts = X509_get_notAfter(cert);
+    pkey = X509_get_pubkey(cert);
+
+    if (pkey != NULL) {
+      int pkey_type;
+
+      pkey_type = get_pkey_type(pkey);
+      EVP_PKEY_free(pkey);
+
+      if (pkey_type != expected_pkey_type) {
+        pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+          ": certificate '%s': expected %s certificate, found %s", path,
+          get_pkey_typestr(expected_pkey_type), get_pkey_typestr(pkey_type));
+      }
+    }
+
+    if (X509_cmp_time(cert_end_ts, &now) < 0) {
+      BIO *bio;
+      char *data = NULL;
+      long datalen = 0;
+
+      bio = BIO_new(BIO_s_mem());
+      ASN1_TIME_print(bio, cert_end_ts);
+      datalen = BIO_get_mem_data(bio, &data);
+      if (data != NULL) {
+        data[datalen] = '\0';
+        *errstr = (const char *) pstrcat(p, "expired on ", data, NULL);
+
+      } else {
+        *errstr = "already expired";
+      }
+
+      BIO_free(bio);
+
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": certificate '%s': %s",  path, *errstr);
+    }
+  }
+
+  X509_free(cert);
   return fingerprint;
 }
 
@@ -7596,7 +7681,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
   SSL_free(ssl);
 }
 
-static const char *tls_get_errors(void) {
+static const char *tls_get_errors2(pool *p) {
   unsigned int count = 0;
   unsigned long error_code;
   BIO *bio = NULL;
@@ -7634,7 +7719,7 @@ static const char *tls_get_errors(void) {
   datalen = BIO_get_mem_data(bio, &data);
   if (data) {
     data[datalen] = '\0';
-    str = pstrdup(session.pool, data);
+    str = pstrdup(p, data);
   }
 
   if (bio) {
@@ -7642,6 +7727,10 @@ static const char *tls_get_errors(void) {
   }
 
   return str;
+}
+
+static const char *tls_get_errors(void) {
+  return tls_get_errors2(session.pool);
 }
 
 /* Return a page-aligned pointer to memory of at least the given size. */
@@ -11843,6 +11932,7 @@ MODRET tls_sscn(cmd_rec *cmd) {
 MODRET set_tlscacertfile(cmd_rec *cmd) {
   int res;
   char *path;
+  SSL_CTX *ctx;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -11850,13 +11940,44 @@ MODRET set_tlscacertfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists2(cmd->tmp_pool, path);
-  PRIVS_RELINQUISH
 
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx != NULL) {
+    res = SSL_CTX_load_verify_locations(ctx, path, NULL);
+    if (res != 1) {
+      unsigned long err_code;
+      const char *err_msg;
+
+      PRIVS_RELINQUISH
+
+      /* Unfortunately, if the specified path exists but does not contain
+       * any certificate data, the error queue is not helpful.  Thanks,
+       * OpenSSL.  Thus we have to peek first.
+       */
+      err_code = ERR_peek_error();
+      if (err_code != 0) {
+        err_msg = tls_get_errors2(cmd->tmp_pool);
+
+      } else {
+        err_msg = "file contained no certificate data";
+      }
+
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unable to use '", path, "': ", err_msg, NULL));
+    }
+
+    SSL_CTX_free(ctx);
+
+  } else {
+    res = file_exists2(cmd->tmp_pool, path);
+    if (res == FALSE) {
+      PRIVS_RELINQUISH
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
+        NULL));
+    }
   }
+
+  PRIVS_RELINQUISH
 
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -11880,7 +12001,7 @@ MODRET set_tlscacertpath(cmd_rec *cmd) {
   res = dir_exists2(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
-  if (!res) {
+  if (res == FALSE) {
     CONF_ERROR(cmd, "parameter must be a directory path");
   }
 
@@ -11896,6 +12017,7 @@ MODRET set_tlscacertpath(cmd_rec *cmd) {
 MODRET set_tlscacrlfile(cmd_rec *cmd) {
   int res;
   char *path;
+  X509_STORE *store;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -11903,13 +12025,44 @@ MODRET set_tlscacrlfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists2(cmd->tmp_pool, path);
-  PRIVS_RELINQUISH
 
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
+  store = X509_STORE_new();
+  if (store != NULL) {
+    res = X509_STORE_load_locations(store, path, NULL);
+    if (res != 1) {
+      unsigned long err_code;
+      const char *err_msg;
+
+      PRIVS_RELINQUISH
+
+      /* Unfortunately, if the specified path exists but does not contain
+       * any CRL data, the error queue is not helpful.  Thanks, OpenSSL.
+       * Thus we have to peek first.
+       */
+      err_code = ERR_peek_error();
+      if (err_code != 0) {
+        err_msg = tls_get_errors2(cmd->tmp_pool);
+
+      } else {
+        err_msg = "file contained no CRL data";
+      }
+
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unable to use '", path, "': ", err_msg, NULL));
+    }
+
+    X509_STORE_free(store);
+
+  } else {
+    res = file_exists2(cmd->tmp_pool, path);
+    if (res == FALSE) {
+      PRIVS_RELINQUISH
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
+        NULL));
+    }
   }
+
+  PRIVS_RELINQUISH
 
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -11949,6 +12102,7 @@ MODRET set_tlscacrlpath(cmd_rec *cmd) {
 MODRET set_tlscertchain(cmd_rec *cmd) {
   int res;
   char *path;
+  SSL_CTX *ctx;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -11956,13 +12110,44 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists2(cmd->tmp_pool, path);
-  PRIVS_RELINQUISH
 
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx != NULL) {
+    res = SSL_CTX_use_certificate_chain_file(ctx, path);
+    if (res != 1) {
+      unsigned long err_code;
+      const char *err_msg;
+
+      PRIVS_RELINQUISH
+
+      /* Unfortunately, if the specified path exists but does not contain
+       * any certificate data, the error queue is not helpful.  Thanks,
+       * OpenSSL.  Thus we have to peek first.
+       */
+      err_code = ERR_peek_error();
+      if (err_code != 0) {
+        err_msg = tls_get_errors2(cmd->tmp_pool);
+
+      } else {
+        err_msg = "file contained no certificate data";
+      }
+
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unable to use '", path, "': ", err_msg, NULL));
+    }
+
+    SSL_CTX_free(ctx);
+
+  } else {
+    res = file_exists2(cmd->tmp_pool, path);
+    if (res == FALSE) {
+      PRIVS_RELINQUISH
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
+        NULL));
+    }
   }
+
+  PRIVS_RELINQUISH
 
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -11991,14 +12176,9 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   ctx = SSL_CTX_new(SSLv23_server_method());
   if (ctx != NULL) {
     if (SSL_CTX_set_cipher_list(ctx, ciphersuite) != 1) {
-      /* Note: tls_get_errors() relies on session.pool, so temporarily set
-       * it to our temporary pool.
-       */
-      session.pool = cmd->tmp_pool;
-
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unable to use configured TLSCipherSuite '", ciphersuite, "': ",
-        tls_get_errors(), NULL));
+        "unable to use ciphersuite '", ciphersuite, "': ",
+        tls_get_errors2(cmd->tmp_pool), NULL));
     }
 
     SSL_CTX_free(ctx);
@@ -12078,7 +12258,7 @@ MODRET set_tlsdhparamfile(cmd_rec *cmd) {
   res = file_exists2(cmd->tmp_pool, path);
   PRIVS_RELINQUISH
 
-  if (!res) {
+  if (res == FALSE) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
       NULL));
   }
@@ -12094,7 +12274,7 @@ MODRET set_tlsdhparamfile(cmd_rec *cmd) {
 /* usage: TLSDSACertificateFile file */
 MODRET set_tlsdsacertfile(cmd_rec *cmd) {
   char *path;
-  const char *fingerprint;
+  const char *fingerprint, *errstr = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -12105,12 +12285,17 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
   }
 
   PRIVS_ROOT
-  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path);
+  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path, EVP_PKEY_DSA,
+    &errstr);
   PRIVS_RELINQUISH
 
   if (fingerprint == NULL) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path,
-      "' does not exist or does not contain a certificate", NULL));
+    if (errstr == NULL) {
+      errstr = "does not exist or does not contain a certificate";
+    }
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
+      errstr, NULL));
   }
 
   add_config_param_str(cmd->argv[0], 2, path, fingerprint);
@@ -12121,6 +12306,7 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
 MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   int res;
   char *path;
+  SSL_CTX *ctx;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -12128,13 +12314,41 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists2(cmd->tmp_pool, path);
-  PRIVS_RELINQUISH
 
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx != NULL) {
+    /* Note that the configured key file might be passphrase-protected.  We
+     * do not necessarily want to prompt for the passphrase here, so if that
+     * is the error returned, it is an expected condition, and indicates that
+     * the encoding of the key is acceptable.
+     */
+    SSL_CTX_set_default_passwd_cb(ctx, tls_keyfile_check_cb);
+
+    res = SSL_CTX_use_PrivateKey_file(ctx, path, X509_FILETYPE_PEM);
+    if (res != 1) {
+      unsigned long err_code;
+
+      err_code = ERR_peek_error();
+      if (ERR_GET_REASON(err_code) != PEM_R_BAD_PASSWORD_READ) {
+        PRIVS_RELINQUISH
+
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
+          tls_get_errors2(cmd->tmp_pool), NULL));
+      }
+    }
+
+    SSL_CTX_free(ctx);
+
+  } else {
+    res = file_exists2(cmd->tmp_pool, path);
+    if (res == FALSE) {
+      PRIVS_RELINQUISH
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
+        NULL));
+    }
   }
+
+  PRIVS_RELINQUISH
 
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -12148,7 +12362,7 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
 MODRET set_tlseccertfile(cmd_rec *cmd) {
 #ifdef PR_USE_OPENSSL_ECC
   char *path;
-  const char *fingerprint;
+  const char *fingerprint, *errstr = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -12159,7 +12373,8 @@ MODRET set_tlseccertfile(cmd_rec *cmd) {
   }
 
   PRIVS_ROOT
-  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path);
+  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path, EVP_PKEY_EC,
+    &errstr);
   PRIVS_RELINQUISH
 
   if (fingerprint == NULL) {
@@ -12181,6 +12396,7 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
 #ifdef PR_USE_OPENSSL_ECC
   int res;
   char *path;
+  SSL_CTX *ctx;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -12188,13 +12404,41 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists2(cmd->tmp_pool, path);
-  PRIVS_RELINQUISH
 
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx != NULL) {
+    /* Note that the configured key file might be passphrase-protected.  We
+     * do not necessarily want to prompt for the passphrase here, so if that
+     * is the error returned, it is an expected condition, and indicates that
+     * the encoding of the key is acceptable.
+     */
+    SSL_CTX_set_default_passwd_cb(ctx, tls_keyfile_check_cb);
+
+    res = SSL_CTX_use_PrivateKey_file(ctx, path, X509_FILETYPE_PEM);
+    if (res != 1) {
+      unsigned long err_code;
+
+      err_code = ERR_peek_error();
+      if (ERR_GET_REASON(err_code) != PEM_R_BAD_PASSWORD_READ) {
+        PRIVS_RELINQUISH
+
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
+          tls_get_errors2(cmd->tmp_pool), NULL));
+      }
+    }
+
+    SSL_CTX_free(ctx);
+
+  } else {
+    res = file_exists2(cmd->tmp_pool, path);
+    if (res == FALSE) {
+      PRIVS_RELINQUISH
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
+        NULL));
+    }
   }
+
+  PRIVS_RELINQUISH
 
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -12815,7 +13059,7 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
 /* usage: TLSRSACertificateFile file */
 MODRET set_tlsrsacertfile(cmd_rec *cmd) {
   char *path;
-  const char *fingerprint;
+  const char *fingerprint, *errstr = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -12826,7 +13070,8 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
   }
 
   PRIVS_ROOT
-  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path);
+  fingerprint = tls_get_fingerprint_from_file(cmd->tmp_pool, path, EVP_PKEY_RSA,
+    &errstr);
   PRIVS_RELINQUISH
 
   if (fingerprint == NULL) {
@@ -12842,6 +13087,7 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
 MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   int res;
   char *path;
+  SSL_CTX *ctx;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -12849,13 +13095,41 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-  res = file_exists2(cmd->tmp_pool, path);
-  PRIVS_RELINQUISH
 
-  if (!res) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-      NULL));
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx != NULL) {
+    /* Note that the configured key file might be passphrase-protected.  We
+     * do not necessarily want to prompt for the passphrase here, so if that
+     * is the error returned, it is an expected condition, and indicates that
+     * the encoding of the key is acceptable.
+     */
+    SSL_CTX_set_default_passwd_cb(ctx, tls_keyfile_check_cb);
+
+    res = SSL_CTX_use_PrivateKey_file(ctx, path, X509_FILETYPE_PEM);
+    if (res != 1) {
+      unsigned long err_code;
+
+      err_code = ERR_peek_error();
+      if (ERR_GET_REASON(err_code) != PEM_R_BAD_PASSWORD_READ) {
+        PRIVS_RELINQUISH
+
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
+          tls_get_errors2(cmd->tmp_pool), NULL));
+      }
+    }
+
+    SSL_CTX_free(ctx);
+
+  } else {
+    res = file_exists2(cmd->tmp_pool, path);
+    if (res == FALSE) {
+      PRIVS_RELINQUISH
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
+        NULL));
+    }
   }
+
+  PRIVS_RELINQUISH
 
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");

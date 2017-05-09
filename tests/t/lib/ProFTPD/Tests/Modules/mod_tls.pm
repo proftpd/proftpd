@@ -304,6 +304,36 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  tls_config_tlscacertfile_bad_format => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  tls_config_tlscarevocationfile_bad_format => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  tls_config_tlsdsacertfile_bad_format => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  tls_config_tlsdsacertfile_not_dsa => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  tls_config_tlsdsacertkeyfile_bad_format => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  tls_config_tlsrsacertkeyfile_passphrase => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   tls_session_cache_off_bug3869 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -9012,6 +9042,361 @@ sub tls_config_tlsciphersuite_bad_cipher {
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
         TLSCipherSuite => 'FOOBAR',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlscacertfile_bad_format {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+
+  my $ca_file = File::Spec->rel2abs("$tmpdir/bad-ca.pem");
+  if (open(my $fh, "> $ca_file")) {
+    print $fh "foobar\n";
+    unless (close($fh)) {
+      die("Can't write $ca_file: $!");
+    }
+
+  } else {
+    die("Can't open $ca_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlscarevocationfile_bad_format {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $crl_file = File::Spec->rel2abs("$tmpdir/bad-crl.pem");
+  if (open(my $fh, "> $crl_file")) {
+    print $fh "foobar\n";
+    unless (close($fh)) {
+      die("Can't write $crl_file: $!");
+    }
+
+  } else {
+    die("Can't open $crl_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSCARevocationFile => $crl_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlscertchainfile_bad_format {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+
+  my $cert_chain_file = File::Spec->rel2abs("$tmpdir/cert-chain.pem");
+  if (open(my $fh, "> $cert_chain_file")) {
+    print $fh "FooBar\n";
+    unless (close($fh)) {
+      die("Can't write $cert_chain_file: $!");
+    }
+
+  } else {
+    die("Can't open $cert_chain_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRSACertificateFile => $cert_file,
+        TLSCertificateChainFile => $cert_chain_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlsdsacertfile_bad_format {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs("$tmpdir/bad-dsa.pem");
+  if (open(my $fh, "> $cert_file")) {
+    print $fh "FooBar\n";
+    unless (close($fh)) {
+      die("Can't write $cert_file: $!");
+    }
+
+  } else {
+    die("Can't open $cert_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSDSACertificateFile => $cert_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlsdsacertfile_not_dsa {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSDSACertificateFile => $cert_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlsdsacertkeyfile_bad_format {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $key_file = File::Spec->rel2abs('t/etc/modules/mod_tls/bad-key.pem');
+  if (open(my $fh, "> $key_file")) {
+    print $fh "FooBar\n";
+    unless (close($fh)) {
+      die("Can't write $key_file: $!");
+    }
+
+  } else {
+    die("Can't open $key_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSDSACertificateKeyFile => $key_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # This should silently fail.
+  server_start($setup->{config_file});
+
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlsrsacertkeyfile_passphrase {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert-passwd.pem');
+  my $key_file = $cert_file;
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+  my $passphrase_provider = File::Spec->rel2abs('t/etc/modules/mod_tls/tls-get-passphrase.pl');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRSACertificateFile => $cert_file,
+        TLSRSACertificateKeyFile => $key_file,
+        TLSPassPhraseProvider => $passphrase_provider,
       },
     },
   };
