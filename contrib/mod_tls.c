@@ -12169,10 +12169,12 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   ciphersuite = cmd->argv[1];
   c = add_config_param(cmd->argv[0], 1, NULL);
 
-  /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. */
-  /* This breaks system profiles though, so don't change them.   */
+  /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. Note that
+   * this breaks system profiles, so handle them specially.
+   */
   if (strncmp(ciphersuite, "PROFILE=", 8) == 0) {
     ciphersuite = pstrdup(c->pool, ciphersuite);
+
   } else {
     ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
   }
