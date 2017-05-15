@@ -273,7 +273,13 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
   ptr = strchr(str, '-');
   if (ptr == NULL) {
     /* Just a single value. */
+    errno = 0;
     high = (int) strtol(str, &ptr, 10);
+    if (errno == ERANGE) {
+      errno = EINVAL;
+      return -1;
+    }
+
     if (ptr && *ptr) {
       errno = EINVAL;
       return -1;
@@ -302,6 +308,11 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
   *ptr = '\0';
 
   low = (int) strtol(str, &tmp, 10);
+  if (errno == ERANGE) {
+    errno = EINVAL;
+    return -1;
+  }
+
   if (tmp && *tmp) {
     *ptr = '-';
     errno = EINVAL;
@@ -316,6 +327,11 @@ int pr_trace_parse_levels(char *str, int *min_level, int *max_level) {
 
   tmp = NULL;
   high = (int) strtol(ptr + 1, &tmp, 10);
+  if (errno == ERANGE) {
+    errno = EINVAL;
+    return -1;
+  }
+
   if (tmp && *tmp) {
     errno = EINVAL;
     return -1;
