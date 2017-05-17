@@ -2032,33 +2032,35 @@ static int sftp_sess_init(void) {
     sftp_max_conns_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPLog", FALSE);
-  if (c) {
-    int res, xerrno;
-
+  if (c != NULL) {
     sftp_logname = c->argv[0];
 
-    pr_signals_block();
-    PRIVS_ROOT
-    res = pr_log_openfile(sftp_logname, &sftp_logfd, PR_LOG_SYSTEM_MODE);
-    xerrno = errno;
-    PRIVS_RELINQUISH
-    pr_signals_unblock();
+    if (strcasecmp(sftp_logname, "none") != 0) {
+      int res, xerrno;
 
-    if (res < 0) {
-      if (res == -1) {
-        pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
-          ": notice: unable to open SFTPLog '%s': %s", sftp_logname,
-          strerror(xerrno));
+      pr_signals_block();
+      PRIVS_ROOT
+      res = pr_log_openfile(sftp_logname, &sftp_logfd, PR_LOG_SYSTEM_MODE);
+      xerrno = errno;
+      PRIVS_RELINQUISH
+      pr_signals_unblock();
 
-      } else if (res == PR_LOG_WRITABLE_DIR) {
-        pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
-          ": notice: unable to open SFTPLog '%s': parent directory is "
-          "world-writable", sftp_logname);
+      if (res < 0) {
+        if (res == -1) {
+          pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+            ": notice: unable to open SFTPLog '%s': %s", sftp_logname,
+            strerror(xerrno));
 
-      } else if (res == PR_LOG_SYMLINK) {
-        pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
-          ": notice: unable to open SFTPLog '%s': cannot log to a symlink",
-          sftp_logname);
+        } else if (res == PR_LOG_WRITABLE_DIR) {
+          pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
+            ": notice: unable to open SFTPLog '%s': parent directory is "
+            "world-writable", sftp_logname);
+
+        } else if (res == PR_LOG_SYMLINK) {
+          pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
+            ": notice: unable to open SFTPLog '%s': cannot log to a symlink",
+            sftp_logname);
+        }
       }
     }
   }
