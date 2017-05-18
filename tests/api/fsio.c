@@ -119,8 +119,8 @@ START_TEST (fsio_sys_open_test) {
 
   mark_point();
   flags = O_RDONLY;
-  fh = pr_fsio_open("/etc/resolv.conf", flags);
-  fail_unless(fh != NULL, "Failed to /etc/resolv.conf: %s", strerror(errno));
+  fh = pr_fsio_open("/etc/hosts", flags);
+  fail_unless(fh != NULL, "Failed to open /etc/hosts: %s", strerror(errno));
 
   (void) pr_fsio_close(fh);
 }
@@ -144,8 +144,8 @@ START_TEST (fsio_sys_open_canon_test) {
     strerror(errno), errno);
 
   flags = O_RDONLY;
-  fh = pr_fsio_open_canon("/etc/resolv.conf", flags);
-  fail_unless(fh != NULL, "Failed to /etc/resolv.conf: %s", strerror(errno));
+  fh = pr_fsio_open_canon("/etc/hosts", flags);
+  fail_unless(fh != NULL, "Failed to open /etc/hosts: %s", strerror(errno));
 
   (void) pr_fsio_close(fh);
 }
@@ -159,7 +159,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   res = pr_fsio_guard_chroot(TRUE);
   fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
 
-  path = "/etc/resolv.conf";
+  path = "/etc/hosts";
   flags = O_CREAT|O_RDONLY;
   fh = pr_fsio_open(path, flags);
   if (fh != NULL) {
@@ -203,7 +203,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
 
   (void) pr_fsio_guard_chroot(FALSE);
 
-  path = "/etc/resolv.conf";
+  path = "/etc/hosts";
   flags = O_RDONLY;
   fh = pr_fsio_open(path, flags);
   fail_unless(fh != NULL, "Failed to open '%s': %s", path, strerror(errno));
@@ -220,8 +220,8 @@ START_TEST (fsio_sys_close_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s %d", EINVAL,
     strerror(errno), errno);
 
-  fh = pr_fsio_open("/etc/resolv.conf", O_RDONLY);
-  fail_unless(fh != NULL, "Failed to open /etc/resolv.conf: %s",
+  fh = pr_fsio_open("/etc/hosts", O_RDONLY);
+  fail_unless(fh != NULL, "Failed to open /etc/hosts: %s",
     strerror(errno));
 
   res = pr_fsio_close(fh);
@@ -265,8 +265,8 @@ START_TEST (fsio_sys_unlink_chroot_guard_test) {
   res = pr_fsio_guard_chroot(TRUE);
   fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
 
-  res = pr_fsio_unlink("/etc/resolv.conf");
-  fail_unless(res < 0, "Deleted /etc/resolv.conf unexpectedly");
+  res = pr_fsio_unlink("/etc/hosts");
+  fail_unless(res < 0, "Deleted /etc/hosts unexpectedly");
   fail_unless(errno == EACCES, "Expected EACCES (%d), got %s %d", EACCES,
     strerror(errno), errno);
 
@@ -352,12 +352,12 @@ START_TEST (fsio_sys_fstat_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  fh = pr_fsio_open("/etc/resolv.conf", O_RDONLY);
-  fail_unless(fh != NULL, "Failed to open /etc/resolv.conf: %s",
+  fh = pr_fsio_open("/etc/hosts", O_RDONLY);
+  fail_unless(fh != NULL, "Failed to open /etc/hosts: %s",
     strerror(errno));
 
   res = pr_fsio_fstat(fh, &st);
-  fail_unless(res == 0, "Failed to fstat /etc/resolv.conf: %s",
+  fail_unless(res == 0, "Failed to fstat /etc/hosts: %s",
     strerror(errno));
   (void) pr_fsio_close(fh);
 }
@@ -374,8 +374,8 @@ START_TEST (fsio_sys_read_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  fh = pr_fsio_open("/etc/resolv.conf", O_RDONLY);
-  fail_unless(fh != NULL, "Failed to open /etc/resolv.conf: %s",
+  fh = pr_fsio_open("/etc/hosts", O_RDONLY);
+  fail_unless(fh != NULL, "Failed to open /etc/hosts: %s",
     strerror(errno));
 
   res = pr_fsio_read(fh, NULL, 0);
@@ -443,8 +443,8 @@ START_TEST (fsio_sys_lseek_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  fh = pr_fsio_open("/etc/resolv.conf", O_RDONLY);
-  fail_unless(fh != NULL, "Failed to open /etc/resolv.conf: %s",
+  fh = pr_fsio_open("/etc/hosts", O_RDONLY);
+  fail_unless(fh != NULL, "Failed to open /etc/hosts: %s",
     strerror(errno));
 
   res = pr_fsio_lseek(fh, 0, 0);
@@ -2083,7 +2083,7 @@ START_TEST (fsio_sys_chdir_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  res = pr_fsio_chdir("/etc/resolv.conf", FALSE);
+  res = pr_fsio_chdir("/etc/hosts", FALSE);
   fail_unless(res < 0, "Failed to handle file argument");
   fail_unless(errno == EINVAL || errno == ENOTDIR,
     "Expected EINVAL (%d) or ENOTDIR (%d), got %s (%d)", EINVAL, ENOTDIR,
@@ -2145,7 +2145,7 @@ START_TEST (fsio_sys_opendir_test) {
     strerror(errno), errno); 
 
   mark_point();
-  path = "/etc/resolv.conf";
+  path = "/etc/hosts";
   res = pr_fsio_opendir(path);
   fail_unless(res == NULL, "Failed to handle file argument");
   fail_unless(errno == ENOTDIR, "Expected ENOTDIR (%d), got %s (%d)", ENOTDIR,
@@ -2175,7 +2175,7 @@ START_TEST (fsio_sys_readdir_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  dent = pr_fsio_readdir("/etc/resolv.conf");
+  dent = pr_fsio_readdir("/etc/hosts");
   fail_unless(dent == NULL, "Failed to handle file argument");
   fail_unless(errno == ENOTDIR, "Expected ENOTDIR (%d), got %s (%d)", ENOTDIR,
     strerror(errno), errno);
