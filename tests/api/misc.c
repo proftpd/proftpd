@@ -702,7 +702,7 @@ START_TEST (check_shutmsg_test) {
 
   (void) unlink(path);
   res = write_shutmsg(path,
-    "2340 1 1 0 0 0 0000 0000\nGoodbye, cruel world!\n");
+    "2037 1 1 0 0 0 0000 0000\nGoodbye, cruel world!\n");
   fail_unless(res == 0, "Failed to write '%s': %s", path, strerror(errno));
 
   mark_point();
