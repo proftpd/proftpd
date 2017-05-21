@@ -725,11 +725,11 @@ static int distance_cmp(const void *a, const void *b) {
   const char *s1, *s2;
   int distance1, distance2;
 
-  cand1 = * (const struct candidate **) a;
+  cand1 = *((const struct candidate **) a);
   s1 = cand1->s;
   distance1 = cand1->distance;
 
-  cand2 = * (const struct candidate **) b;
+  cand2 = *((const struct candidate **) b);
   s2 = cand2->s;
   distance2 = cand2->distance;
 
