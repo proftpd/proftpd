@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
- * Copyright (c) 2002-2016 TJ Saunders
+ * Copyright (c) 2002-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 # include <sys/resource.h>
 #endif
 
-#define MOD_EXEC_VERSION	"mod_exec/0.9.14"
+#define MOD_EXEC_VERSION	"mod_exec/0.9.15"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -241,7 +241,7 @@ static char **exec_prepare_environ(pool *env_pool, cmd_rec *cmd) {
   array_header *env = make_array(env_pool, 0, sizeof(char *));
 
   c = find_config(main_server->conf, CONF_PARAM, "ExecEnviron", FALSE);
-  while (c) {
+  while (c != NULL) {
     pr_signals_handle();
 
     if (strncmp("-", c->argv[1], 2) == 0) {
@@ -952,6 +952,20 @@ static const char *exec_subst_var(pool *tmp_pool, const char *varstr,
     }
 
     varstr = sreplace(tmp_pool, varstr, "%A", anon_pass, NULL);
+  }
+
+  ptr = strstr(varstr, "%b");
+  if (ptr != NULL) {
+    char buf[1024];
+
+    memset(buf, '\0', sizeof(buf));
+
+    if (session.xfer.p != NULL) {
+      snprintf(buf, sizeof(buf)-1, "%" PR_LU,
+        (pr_off_t) session.xfer.total_bytes);
+    }
+
+    varstr = sreplace(tmp_pool, varstr, "%b", buf, NULL);
   }
 
   ptr = strstr(varstr, "%C");
