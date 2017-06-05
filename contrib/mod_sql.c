@@ -6747,7 +6747,7 @@ MODRET set_sqlauthtypes(cmd_rec *cmd) {
     if (strcasecmp(sah->name, "Plaintext") == 0) {
       pr_log_pri(PR_LOG_WARNING, MOD_SQL_VERSION
         ": WARNING: Use of Plaintext SQLAuthType is insecure, as it allows "
-        "storage of passwords *in the clear* in your database tables");
+        "storage of passwords IN THE CLEAR in your database tables!");
     }
 
     *((struct sql_authtype_handler **) push_array(auth_list)) = sah;
