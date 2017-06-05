@@ -2430,6 +2430,20 @@ static const char *resolve_long_tag(cmd_rec *cmd, char *tag) {
   }
 
   if (long_tag == NULL &&
+      tag_len == 5 &&
+      strncmp(tag, "epoch", 6) == 0) {
+    char buf[7];
+    struct timeval now;
+    size_t len = 0;
+
+    memset(buf, '\0', sizeof(buf));
+    gettimeofday(&now, NULL);
+
+    len = snprintf(buf, sizeof(buf), "%lu", (unsigned long) now.tv_sec);
+    long_tag = pstrndup(cmd->tmp_pool, buf, len);
+  }
+
+  if (long_tag == NULL &&
       tag_len == 13 &&
       strncasecmp(tag, "file-modified", 14) == 0) {
     const char *modified;

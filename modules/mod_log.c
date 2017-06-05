@@ -113,6 +113,7 @@ static xaset_t *log_set = NULL;
    %V                   - DNS name of server serving request
    %v			- ServerName of server serving request
    %w                   - RNFR path ("whence" a rename comes, i.e. the source)
+   %{epoch}             - Unix epoch (seconds since Jan 1 1970)
    %{file-modified}     - Indicates whether a file is being modified
                           (i.e. already exists) or not.
    %{file-offset}       - Contains the offset at which the file is read/written
@@ -195,6 +196,12 @@ static void logformat(const char *directive, char *nickname, char *fmts) {
         if (strncmp(tmp, "{basename}", 10) == 0) {
           add_meta(&outs, LOGFMT_META_BASENAME, 0);
           tmp += 10;
+          continue;
+        }
+
+        if (strncmp(tmp, "{epoch}", 7) == 0) {
+          add_meta(&outs, LOGFMT_META_EPOCH, 0);
+          tmp += 7;
           continue;
         }
  
@@ -1395,6 +1402,18 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f,
       len = snprintf(argp, sizeof(arg), "%u", (unsigned int) session.pid);
       m++;
       break;
+
+    case LOGFMT_META_EPOCH: {
+      struct timeval now;
+
+      argp = arg;
+
+      gettimeofday(&now, NULL);
+
+      len = snprintf(argp, sizeof(arg), "%lu", (unsigned long) now.tv_sec);
+      m++;
+      break;
+    }
 
     case LOGFMT_META_MICROSECS: {
       struct timeval now;
