@@ -4120,6 +4120,8 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
   X509_STORE_CTX *store_ctx;
 
   if (ssl == NULL) {
+    pr_trace_msg(trace_channel, 4, "%s",
+      "unable to get issuing cert: no SSL session provided");
     errno = EINVAL;
     return NULL;
   }
@@ -4227,9 +4229,9 @@ static OCSP_REQUEST *ocsp_get_request(pool *p, X509 *cert, X509 *issuer) {
           tls_log("sending OCSP request (%ld bytes):\n%s", datalen, data);
         }
       }
-    }
 
-    BIO_free(diags_bio);
+      BIO_free(diags_bio);
+    }
   }
 
   return req;
@@ -4437,12 +4439,14 @@ static int ocsp_connect(pool *p, BIO *bio, unsigned int request_timeout) {
       (request_timeout == 0 || !BIO_should_retry(bio))) {
     pr_trace_msg(trace_channel, 4,
       "error connecting to OCSP responder: %s", tls_get_errors());
+    errno = EPERM;
     return -1;
   }
 
   if (BIO_get_fd(bio, &fd) < 0) {
     pr_trace_msg(trace_channel, 3,
       "error obtaining OCSP responder socket fd: %s", tls_get_errors());
+    errno = EINVAL;
     return -1;
   }
 
@@ -4490,6 +4494,10 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     return NULL;
   }
 
+  pr_trace_msg(trace_channel, 9,
+    "parsed OCSP URL '%s' to get host '%s', port '%s', URI '%s'%s",
+    url, host, port, uri, use_ssl ? ", using TLS" : "");
+
   bio = BIO_new_connect(host);
   if (bio == NULL) {
     pr_trace_msg(trace_channel, 4, "error allocating connect BIO: %s",
@@ -4525,10 +4533,18 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
 
   res = ocsp_connect(p, bio, request_timeout);
   if (res < 0) {
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3,
+      "error connecting to OCSP responder %s:%s: %s", host, port,
+      strerror(xerrno));
+
     BIO_free_all(bio);
     OPENSSL_free(host);
     OPENSSL_free(port);
     OPENSSL_free(uri);
+
+    errno = xerrno;
     return NULL;
   }
 
@@ -4747,6 +4763,11 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
                 pr_trace_msg(trace_channel, 8,
                   "found OCSP responder URL '%s' in certificate "
                   "(fingerprint '%s')", ocsp_url, fingerprint);
+
+              } else {
+                pr_trace_msg(trace_channel, 8,
+                  "no OCSP responder URL found in certificate "
+                  "(fingerprint '%s')", fingerprint);
               }
 
             } else {
