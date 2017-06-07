@@ -4719,12 +4719,9 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
   if (cert != NULL) {
     fingerprint = tls_get_fingerprint(p, cert);
     if (fingerprint != NULL) {
-
       pr_trace_msg(trace_channel, 3,
         "using fingerprint '%s' for server cert", fingerprint);
       if (tls_ocsp_cache != NULL) {
-        OCSP_RESPONSE *fresh_resp = NULL;
-
         cached_resp = ocsp_get_cached_response(p, fingerprint);
         if (cached_resp != NULL) {
           if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
@@ -4751,47 +4748,60 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
           resp = cached_resp;
         }
 
-        if (cached_resp == NULL) {
-          int xerrno = errno;
+      } else {
+        /* No TLSStaplingCache configured. */
+        errno = ENOENT;
+      }
 
-          if (xerrno == ENOENT) {
-            const char *ocsp_url;
+      if (cached_resp == NULL) {
+        int xerrno = errno;
+        OCSP_RESPONSE *fresh_resp = NULL;
 
-            if (tls_stapling_responder == NULL) {
-              ocsp_url = ocsp_get_responder_url(p, cert);
-              if (ocsp_url != NULL) {
-                pr_trace_msg(trace_channel, 8,
-                  "found OCSP responder URL '%s' in certificate "
-                  "(fingerprint '%s')", ocsp_url, fingerprint);
+        if (xerrno == ENOENT) {
+          const char *ocsp_url;
 
-              } else {
-                pr_trace_msg(trace_channel, 8,
-                  "no OCSP responder URL found in certificate "
-                  "(fingerprint '%s')", fingerprint);
-              }
-
-            } else {
-              ocsp_url = tls_stapling_responder;
-              pr_trace_msg(trace_channel, 8,
-                "using configured OCSP responder URL '%s'", ocsp_url);
-            }
-
+          if (tls_stapling_responder == NULL) {
+            ocsp_url = ocsp_get_responder_url(p, cert);
             if (ocsp_url != NULL) {
-              fresh_resp = ocsp_request_response(p, cert, ssl, ocsp_url,
-                tls_stapling_timeout);
-              if (fresh_resp != NULL) {
-                resp = fresh_resp;
-              }
+              pr_trace_msg(trace_channel, 8,
+                "found OCSP responder URL '%s' in certificate "
+                "(fingerprint '%s')", ocsp_url, fingerprint);
 
             } else {
-              pr_trace_msg(trace_channel, 5,
-                "no OCSP responder URL found in certificate (fingerprint '%s')",
-                fingerprint);
+              pr_trace_msg(trace_channel, 8,
+                "no OCSP responder URL found in certificate "
+                "(fingerprint '%s')", fingerprint);
             }
+
+          } else {
+            ocsp_url = tls_stapling_responder;
+            pr_trace_msg(trace_channel, 8,
+              "using configured OCSP responder URL '%s'", ocsp_url);
           }
+
+          if (ocsp_url != NULL) {
+            fresh_resp = ocsp_request_response(p, cert, ssl, ocsp_url,
+              tls_stapling_timeout);
+            if (fresh_resp != NULL) {
+              resp = fresh_resp;
+            }
+
+          } else {
+            pr_trace_msg(trace_channel, 5,
+              "no OCSP responder URL found in certificate (fingerprint '%s')",
+              fingerprint);
+          }
+
+        } else {
+          pr_trace_msg(trace_channel, 5,
+            "no cached OCSP response found: %s", strerror(xerrno));
         }
       }
     }
+
+  } else {
+    pr_trace_msg(trace_channel, 8, "%s",
+      "no server certificate found for SSL session");
   }
 
   if (resp == NULL) {
