@@ -4118,6 +4118,7 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
   SSL_CTX *ctx;
   X509_STORE *store;
   X509_STORE_CTX *store_ctx;
+  STACK_OF(X509) *extra_certs = NULL;
 
   if (ssl == NULL) {
     pr_trace_msg(trace_channel, 4, "%s",
@@ -4134,10 +4135,37 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
     return NULL;
   }
 
+  /* First look for the issuer in the CertificateChainFile certs, if any. */
+# if OPENSSL_VERSION_NUMBER >= 0x10001000L
+  (void) SSL_CTX_get_extra_chain_certs(ctx, &extra_certs);
+# else
+  extra_certs = ctx->extra_certs;
+# endif
+
+  if (extra_certs != NULL &&
+      sk_X509_num(extra_certs) > 0) {
+    register int i;
+
+    for (i = 0; i < sk_X509_num(extra_certs); i++) {
+      X509 *extra_cert;
+
+      extra_cert = sk_X509_value(extra_certs, i);
+      if (X509_check_issued(extra_cert, cert) == X509_V_OK) {
+        issuer = X509_dup(extra_cert);
+        pr_trace_msg(trace_channel, 14, "found issuer %p for certificate",
+          issuer);
+
+        return issuer;
+      }
+    }
+  }
+
+  /* If not found, look in the trusted certs (CACertificateFile/Path). */
   store = SSL_CTX_get_cert_store(ctx);
   if (store == NULL) {
     pr_trace_msg(trace_channel, 4,
       "no certificate store found for SSL_CTX: %s", tls_get_errors());
+
     errno = EINVAL;
     return NULL;
   }
@@ -4146,6 +4174,7 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
   if (store_ctx == NULL) {
     pr_trace_msg(trace_channel, 4,
       "error allocating certificate store context: %s", tls_get_errors());
+
     errno = ENOMEM;
     return NULL;
   }
@@ -4155,6 +4184,7 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
     pr_trace_msg(trace_channel, 4,
       "error initializing certificate store context: %s", tls_get_errors());
     X509_STORE_CTX_free(store_ctx);
+
     errno = ENOMEM;
     return NULL;
   }
@@ -4179,6 +4209,7 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
   }
 
   X509_STORE_CTX_free(store_ctx);
+
   pr_trace_msg(trace_channel, 14, "found issuer %p for certificate", issuer);
   return issuer;
 }
@@ -4491,6 +4522,17 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
   if (res != 1) {
     pr_trace_msg(trace_channel, 4, "error parsing OCSP URL '%s': %s", url,
       tls_get_errors());
+    X509_free(issuer);
+    return NULL;
+  }
+
+  req = ocsp_get_request(p, cert, issuer);
+  if (req == NULL) {
+    X509_free(issuer);
+    OCSP_REQUEST_free(req);
+    OPENSSL_free(host);
+    OPENSSL_free(port);
+    OPENSSL_free(uri);
     return NULL;
   }
 
@@ -4503,6 +4545,8 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     pr_trace_msg(trace_channel, 4, "error allocating connect BIO: %s",
       tls_get_errors());
 
+    X509_free(issuer);
+    OCSP_REQUEST_free(req);
     OPENSSL_free(host);
     OPENSSL_free(port);
     OPENSSL_free(uri);
@@ -4519,6 +4563,8 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
       pr_trace_msg(trace_channel, 4, "error allocating SSL context: %s",
         tls_get_errors());
 
+      X509_free(issuer);
+      OCSP_REQUEST_free(req);
       BIO_free_all(bio);
       OPENSSL_free(host);
       OPENSSL_free(port);
@@ -4539,21 +4585,14 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
       "error connecting to OCSP responder %s:%s: %s", host, port,
       strerror(xerrno));
 
+    X509_free(issuer);
+    OCSP_REQUEST_free(req);
     BIO_free_all(bio);
     OPENSSL_free(host);
     OPENSSL_free(port);
     OPENSSL_free(uri);
 
     errno = xerrno;
-    return NULL;
-  }
-
-  req = ocsp_get_request(p, cert, issuer);
-  if (req == NULL) {
-    BIO_free_all(bio);
-    OPENSSL_free(host);
-    OPENSSL_free(port);
-    OPENSSL_free(uri);
     return NULL;
   }
 
@@ -4572,11 +4611,14 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
   }
 
   if (resp == NULL) {
+    X509_free(issuer);
+    OCSP_REQUEST_free(req);
     return NULL;
   }
 
   if (ocsp_check_response(p, cert, issuer, ssl, req, resp) < 0) {
     if (errno != ENOSYS) {
+      X509_free(issuer);
       OCSP_REQUEST_free(req);
       OCSP_RESPONSE_free(resp);
       errno = EINVAL;
@@ -4584,6 +4626,7 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     }
   }
 
+  X509_free(issuer);
   OCSP_REQUEST_free(req);
   return resp;
 }
@@ -6435,7 +6478,7 @@ static int tls_init_server(void) {
      */
 
     bio = BIO_new_file(tls_ca_chain, "r");
-    if (bio) {
+    if (bio != NULL) {
       unsigned int count = 0;
       int res;
 
@@ -6448,20 +6491,35 @@ static int tls_init_server(void) {
            * server cert.
            */
           if (X509_cmp(server_rsa_cert, cert) == 0) {
+            X509_free(cert);
             cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
             continue;
           }
         }
 
         if (server_dsa_cert != NULL) {
-          /* Skip this cert if it is the same as the configured RSA
+          /* Skip this cert if it is the same as the configured DSA
            * server cert.
            */
           if (X509_cmp(server_dsa_cert, cert) == 0) {
+            X509_free(cert);
             cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
             continue;
           }
         }
+
+#ifdef PR_USE_OPENSSL_ECC
+        if (server_ec_cert != NULL) {
+          /* Skip this cert if it is the same as the configured EC
+           * server cert.
+           */
+          if (X509_cmp(server_ec_cert, cert) == 0) {
+            X509_free(cert);
+            cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+            continue;
+          }
+        }
+#endif /* PR_USE_OPENSSL_ECC */
 
         res = SSL_CTX_add_extra_chain_cert(ssl_ctx, cert);
         if (res != 1) {
@@ -6476,7 +6534,6 @@ static int tls_init_server(void) {
       }
 
       BIO_free(bio);
-
       tls_log("added %u certs from '%s' to certificate chain", count,
         tls_ca_chain);
 
