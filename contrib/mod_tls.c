@@ -11338,6 +11338,7 @@ MODRET tls_any(cmd_rec *cmd) {
       pr_cmd_cmp(cmd, PR_CMD_AUTH_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_FEAT_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_HOST_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_CLNT_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_QUIT_ID) == 0) {
     return PR_DECLINED(cmd);
   }
