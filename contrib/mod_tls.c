@@ -4892,13 +4892,15 @@ static int tls_ocsp_cb(SSL *ssl, void *user_data) {
 
   resp = ocsp_get_response(ocsp_pool, ssl);
   resp_derlen = i2d_OCSP_RESPONSE(resp, &resp_der);
+  if (resp_derlen <= 0) {
+    tls_log("error determining OCSP response length: %s", tls_get_errors());
+  }
   destroy_pool(ocsp_pool);
 
   /* Success or failure, we're done with the OCSP response. */
   OCSP_RESPONSE_free(resp);
 
   if (resp_derlen <= 0) {
-    tls_log("error determining OCSP response length: %s", tls_get_errors());
     return SSL_TLSEXT_ERR_NOACK;
   }
 
