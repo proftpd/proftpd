@@ -440,8 +440,9 @@ static int tls_logfd = -1;
 #if defined(PR_USE_OPENSSL_OCSP)
 static int tls_stapling = FALSE;
 static unsigned long tls_stapling_opts = 0UL;
-# define TLS_STAPLING_OPT_NO_NONCE	0x0001
-# define TLS_STAPLING_OPT_NO_VERIFY	0x0002
+# define TLS_STAPLING_OPT_NO_NONCE		0x0001
+# define TLS_STAPLING_OPT_NO_VERIFY		0x0002
+# define TLS_STAPLING_OPT_NO_FAKE_TRY_LATER	0x0004
 static const char *tls_stapling_responder = NULL;
 static unsigned int tls_stapling_timeout = 10;
 #endif
@@ -528,6 +529,11 @@ static unsigned int tls_sscn_mode = TLS_SSCN_MODE_SERVER;
 
 /* mod_tls OCSP constants */
 #define TLS_OCSP_RESP_MAX_AGE_SECS	300
+
+/* X509v3 OCSP "must staple" extensions (RFC 7633) */
+#define TLS_X509V3_TLS_FEAT_OID_TEXT		"1.3.6.1.5.5.7.1.24"
+#define TLS_X509V3_TLS_FEAT_STATUS_REQUEST 	{ 0x30, 0x03, 0x02, 0x01, 0x05 }
+#define TLS_X509V3_TLS_FEAT_STATUS_REQUEST_V2	{ 0x30, 0x03, 0x02, 0x01, 0x17 }
 
 static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
@@ -4750,10 +4756,69 @@ static int ocsp_add_cached_response(pool *p, const char *fingerprint,
   return res;
 }
 
+static int tls_feature_cmp(ASN1_STRING *str, void *feat_data,
+    size_t feat_datasz) {
+  int is_feat = FALSE;
+  ASN1_STRING *feat;
+
+  feat = ASN1_STRING_type_new(V_ASN1_OCTET_STRING);
+  ASN1_STRING_set(feat, feat_data, feat_datasz);
+  if (M_ASN1_OCTET_STRING_cmp(str, feat) == 0) {
+    is_feat = TRUE;
+  }
+  ASN1_STRING_free(feat);
+
+  return is_feat;
+}
+
+static int tls_cert_must_staple(X509 *cert, int *v2) {
+  register int i;
+  X509_CINF *ci;
+  STACK_OF(X509_EXTENSION) *exts;
+  int must_staple = FALSE;
+
+  ci = cert->cert_info;
+  if (ci == NULL) {
+    return FALSE;
+  }
+
+  exts = ci->extensions;
+  for (i = 0; i < sk_X509_EXTENSION_num(exts); i++) {
+    char buf[1024];
+    X509_EXTENSION *ext;
+    ASN1_OBJECT *obj;
+
+    ext = sk_X509_EXTENSION_value(exts, i);
+    obj = X509_EXTENSION_get_object(ext);
+    memset(buf, '\0', sizeof(buf));
+    OBJ_obj2txt(buf, sizeof(buf)-1, obj, 1);
+
+    /* Double-check that the OID is that of the "TLS Feature" extension. */
+    if (strcmp(buf, TLS_X509V3_TLS_FEAT_OID_TEXT) == 0) {
+      char status_request[] = TLS_X509V3_TLS_FEAT_STATUS_REQUEST;
+
+      /* Is the value of this extension the "status_request" value? */
+      must_staple = tls_feature_cmp(ext->value, status_request, 5);
+      if (must_staple != TRUE) {
+        char status_request_v2[] = TLS_X509V3_TLS_FEAT_STATUS_REQUEST_V2;
+
+        /* Is the value of this extension the "status_request_v2" value? */
+        must_staple = tls_feature_cmp(ext->value, status_request_v2, 5);
+        if (must_staple == TRUE) {
+          *v2 = TRUE;
+        }
+      }
+    }
+  }
+
+  return must_staple;
+}
+
 static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
   X509 *cert;
   const char *fingerprint = NULL;
   OCSP_RESPONSE *resp = NULL, *cached_resp = NULL;
+  int use_fake_trylater = FALSE;
 
   /* We need to find a cached OCSP response for the server cert in question,
    * thus we need to find out which server cert is used for this session.
@@ -4848,6 +4913,34 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
   }
 
   if (resp == NULL) {
+    use_fake_trylater = TRUE;
+
+    /* No proper OCSP response found for stapling; provide a fake tryLater
+     * response as a fallback.  However, if the NoFakeTryLater
+     * TLSStaplingOption is used, we omit this fake response; some
+     * implementation e.g. GnuTLS reject/choke on these fake responses.
+     */
+    if (tls_stapling_opts & TLS_STAPLING_OPT_NO_FAKE_TRY_LATER) {
+      use_fake_trylater = FALSE;
+    }
+
+    /* On the other hand, if the server certificate uses the "must staple"
+     * X509v3 feature, then we MUST provide an OCSP response, even a fake one.
+     */
+    if (cert != NULL) {
+      int must_staple, is_v2 = FALSE;
+
+      must_staple = tls_cert_must_staple(cert, &is_v2);
+      if (must_staple == TRUE) {
+        pr_trace_msg(trace_channel, 8,
+          "found status_request%s 'must staple' TLS feature in certificate "
+          "(fingerprint '%s')", is_v2 ? "_v2" : "", fingerprint);
+        use_fake_trylater = TRUE;
+      }
+    }
+  }
+
+  if (use_fake_trylater) {
     pr_trace_msg(trace_channel, 5, "returning fake tryLater OCSP response");
 
     /* If we have not found an OCSP response, then fall back to using
@@ -13542,6 +13635,9 @@ MODRET set_tlsstaplingoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "NoVerify") == 0) {
       opts |= TLS_STAPLING_OPT_NO_VERIFY;
+
+    } else if (strcmp(cmd->argv[i], "NoFakeTryLater") == 0) {
+      opts |= TLS_STAPLING_OPT_NO_FAKE_TRY_LATER;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TLSStaplingOption '",
