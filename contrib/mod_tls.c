@@ -4640,45 +4640,129 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
   return resp;
 }
 
-static int ocsp_expired_cached_response(pool *p, OCSP_RESPONSE *resp,
-    time_t age) {
-  int res = -1, status;
-  time_t expired = 0;
+static int ocsp_stale_response(pool *p, OCSP_RESPONSE *resp, X509 *cert,
+    SSL *ssl, time_t age, time_t *expired) {
+  int res = -1, ocsp_status, stale = FALSE;
 
-  status = OCSP_response_status(resp);
+  ocsp_status = OCSP_response_status(resp);
+  *expired = 0;
 
   /* If we received a SUCCESSFUL response from the OCSP responder, then
-   * we expire the response after 1 hour (hardcoded).  Otherwise, we expire
-   * the cached entry after 5 minutes (hardcoded).
+   * we consider the response to be stale starting at halfway through its
+   * validity period (and expired if after the validity period).  Otherwise,
+   * we expire the cached entry after 5 minutes (hardcoded).
    */
 
-  if (status == OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-    if (age > 3600) {
-      expired = age - 3600;
-      res = 0;
+  if (ocsp_status == OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    OCSP_BASICRESP *basic_resp = NULL;
+
+    basic_resp = OCSP_response_get1_basic(resp);
+    if (basic_resp != NULL) {
+      X509 *issuer;
+
+      issuer = ocsp_get_issuing_cert(p, cert, ssl);
+      if (issuer != NULL) {
+        OCSP_CERTID *cert_id = NULL;
+
+        cert_id = OCSP_cert_to_id(NULL, cert, issuer);
+        if (cert_id != NULL) {
+          ASN1_GENERALIZEDTIME *this_update = NULL, *next_update = NULL;
+
+          res = OCSP_resp_find_status(basic_resp, cert_id, NULL, NULL, NULL,
+            &this_update, &next_update);
+          if (res == 1) {
+            time_t now;
+
+            now = time(NULL);
+
+            /* If we have passed the nextUpdate time, we have expired. */
+            if (next_update != NULL) {
+              res = X509_cmp_time(next_update, &now);
+              if (res < 0) {
+                pr_trace_msg(trace_channel, 17,
+                  "cached OCSP response has EXPIRED");
+                *expired = now;
+                stale = TRUE;
+
+              } else {
+                int ndays = 0, nsecs = 0;
+
+                /* Start requesting fresh responses halfway through the validity
+                 * period:
+                 *
+                 *  now > (thisUpdate + ((nextUpdate - thisUpdate) / 2))
+                 *
+                 * or, rephrased slightly differently:
+                 *
+                 *  now - ((nextUpdate - thisUpdate) / 2) > thisUpdate
+                 */
+
+                res = ASN1_TIME_diff(&ndays, &nsecs, this_update, next_update);
+                if (res == 1) {
+                  int validity_secs;
+                  time_t refresh_ts;
+
+                  validity_secs = (ndays * 86400) + nsecs;
+                  refresh_ts = now - (validity_secs / 2);
+
+                  res = X509_cmp_time(this_update, &refresh_ts);
+                  if (res < 0) {
+                    pr_trace_msg(trace_channel, 17,
+                      "cached OCSP response is stale");
+                    stale = TRUE;
+                  }
+
+                } else {
+                  pr_trace_msg(trace_channel, 3, "error computing difference "
+                    "in OCSP response timestamps: %s", tls_get_errors());
+                }
+              }
+
+            } else {
+              /* If the OCSP response has no nextUpdate time, then we assume
+               * it to be stale after one hour (hardcoded).
+               */
+              if (age > 3600) {
+                stale = TRUE;
+              }
+            }
+          }
+
+          OCSP_CERTID_free(cert_id);
+        }
+
+        X509_free(issuer);
+      }
+
+      OCSP_BASICRESP_free(basic_resp);
+
+    } else {
+      if (age > 300) {
+        stale = TRUE;
+      }
     }
 
   } else {
     if (age > 300) {
-      expired = age - 300;
-      res = 0;
+      stale = TRUE;
     }
   }
 
-  if (res == 0) {
+  if (stale == TRUE) {
     pr_trace_msg(trace_channel, 8,
-      "cached %s OCSP response expired %lu %s ago",
-      OCSP_response_status_str(status), (unsigned long) expired,
-      expired != 1 ? "secs" : "sec");
+      "cached %s OCSP response is %s", OCSP_response_status_str(ocsp_status),
+      *expired > 0 ? "EXPIRED" : "stale");
+    return 0;
   }
 
-  return res;
+  return -1;
 }
 
 static OCSP_RESPONSE *ocsp_get_cached_response(pool *p,
-    const char *fingerprint) {
+    const char *fingerprint, X509 *cert, SSL *ssl, int *stale) {
   OCSP_RESPONSE *resp = NULL;
-  time_t resp_age = 0;
+  time_t cache_age = 0, resp_age = 0;
+  int res;
 
   if (tls_ocsp_cache == NULL) {
     errno = ENOSYS;
@@ -4687,28 +4771,43 @@ static OCSP_RESPONSE *ocsp_get_cached_response(pool *p,
 
   resp = (tls_ocsp_cache->get)(tls_ocsp_cache, fingerprint, &resp_age);
   if (resp != NULL) {
-    time_t now = 0, age = 0;
-    int res;
+    time_t now = 0;
 
     time(&now);
-    age = now - resp_age;
+    cache_age = now - resp_age;
     pr_trace_msg(trace_channel, 9,
       "found cached OCSP response for fingerprint '%s': %lu %s old",
-      fingerprint, (unsigned long) age, age != 1 ? "secs" : "sec");
+      fingerprint, (unsigned long) cache_age, cache_age != 1 ? "secs" : "sec");
+  }
 
-    res = ocsp_expired_cached_response(p, resp, age);
-    if (res == 0) {
-      /* Cached response has expired; request a new one. */
+  if (resp != NULL) {
+    time_t expired = 0;
+
+    res = ocsp_stale_response(p, resp, cert, ssl, cache_age, &expired);
+    if (expired > 0) {
+      /* If the response has expired, we need to delete it. */
+      pr_trace_msg(trace_channel, 5,
+        "cached OCSP response for fingerprint '%s' expired at %s",
+        fingerprint, pr_strtime2(expired, TRUE));
       res = (tls_ocsp_cache->delete)(tls_ocsp_cache, fingerprint);
       if (res < 0) {
         pr_trace_msg(trace_channel, 3,
-          "error deleting OCSP response from '%s' cache for "
+          "error deleting expired OCSP response from '%s' cache for "
           "fingerprint '%s': %s", tls_ocsp_cache->cache_name, fingerprint,
           strerror(errno));
       }
 
       OCSP_RESPONSE_free(resp);
       resp = NULL;
+      errno = ENOENT;
+
+    } else {
+      if (res == 0) {
+        *stale = TRUE;
+
+      } else {
+        *stale = FALSE;
+      }
     }
 
   } else {
@@ -4821,7 +4920,7 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
   X509 *cert;
   const char *fingerprint = NULL;
   OCSP_RESPONSE *resp = NULL, *cached_resp = NULL;
-  int use_fake_trylater = FALSE;
+  int stale_cache = FALSE, use_fake_trylater = FALSE;
 
   /* We need to find a cached OCSP response for the server cert in question,
    * thus we need to find out which server cert is used for this session.
@@ -4833,7 +4932,8 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
       pr_trace_msg(trace_channel, 3,
         "using fingerprint '%s' for server cert", fingerprint);
       if (tls_ocsp_cache != NULL) {
-        cached_resp = ocsp_get_cached_response(p, fingerprint);
+        cached_resp = ocsp_get_cached_response(p, fingerprint, cert, ssl,
+          &stale_cache);
         if (cached_resp != NULL) {
           if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
             BIO *diags_bio;
@@ -4857,18 +4957,32 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
           }
 
           resp = cached_resp;
+
+        } else {
+          int xerrno = errno;
+
+          pr_trace_msg(trace_channel, 17,
+            "no cached OCSP response found in '%s' cache for "
+            "fingerprint '%s': %s", tls_ocsp_cache->cache_name, fingerprint,
+            strerror(errno));
+
+          errno = xerrno;
         }
 
       } else {
         /* No TLSStaplingCache configured. */
+        pr_trace_msg(trace_channel, 17,
+          "no cached OCSP response found (TLSStaplingCache not configured)");
         errno = ENOENT;
       }
 
-      if (cached_resp == NULL) {
+      if (cached_resp == NULL ||
+          stale_cache == TRUE) {
         int xerrno = errno;
         OCSP_RESPONSE *fresh_resp = NULL;
 
-        if (xerrno == ENOENT) {
+        if (xerrno == ENOENT ||
+            stale_cache == TRUE) {
           const char *ocsp_url;
 
           if (tls_stapling_responder == NULL) {
@@ -4895,6 +5009,24 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
               tls_stapling_timeout);
             if (fresh_resp != NULL) {
               resp = fresh_resp;
+
+              /* If our previously cached response was stale, delete it so
+               * that we can cache our new one.
+               */
+              if (stale_cache == TRUE) {
+                int res;
+
+                res = (tls_ocsp_cache->delete)(tls_ocsp_cache, fingerprint);
+                if (res < 0) {
+                  pr_trace_msg(trace_channel, 3,
+                    "error deleting OCSP response from '%s' cache for "
+                    "fingerprint '%s': %s", tls_ocsp_cache->cache_name,
+                    fingerprint, strerror(errno));
+                }
+
+                OCSP_RESPONSE_free(cached_resp);
+                cached_resp = NULL;
+              }
             }
 
           } else {
