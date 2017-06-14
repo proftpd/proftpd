@@ -18,6 +18,8 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    ExecEnviron %b (Issue #515)
+
     RewriteMap idnatrans (Issue #231)
 
     SFTPCipher, SFTPDigest
@@ -25,6 +27,8 @@ ChangeLog files.
 
     TLSServerCipherPreference
       The TLSServerCipherPreference directive is now enabled by default.
+
+    TLSStaplingOptions NoFakeTryLater (Issue #518)
 
 
   + Removed Configuration Directives
