@@ -4640,45 +4640,356 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
   return resp;
 }
 
-static int ocsp_expired_cached_response(pool *p, OCSP_RESPONSE *resp,
-    time_t age) {
-  int res = -1, status;
-  time_t expired = 0;
+#if OPENSSL_VERSION_NUMBER < 0x10002000L
+/* We need to provide our own backport of the ASN1_TIME_diff() function. */
+static time_t ASN1_TIME_seconds(const ASN1_TIME *a) {
+  static const int min[9] = { 0, 0, 1, 1, 0, 0, 0, 0, 0 };
+  static const int max[9] = { 99, 99, 12, 31, 23, 59, 59, 12, 59 };
+  time_t t = 0;
+  char *text;
+  int text_len;
+  int i, j, n;
+  unsigned int nyears, nmons, nhours, nmins, nsecs;
 
-  status = OCSP_response_status(resp);
+  if (a->type != V_ASN1_GENERALIZEDTIME) {
+    return 0;
+  }
 
-  /* If we received a SUCCESSFUL response from the OCSP responder, then
-   * we expire the response after 1 hour (hardcoded).  Otherwise, we expire
-   * the cached entry after 5 minutes (hardcoded).
+  text_len = a->length;
+  text = (char *) a->data;
+
+  /* GENERALIZEDTIME is similar to UTCTIME except the year is represented
+   * as YYYY. This stuff treats everything as a two digit field so make
+   * first two fields 00 to 99
    */
 
-  if (status == OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-    if (age > 3600) {
-      expired = age - 3600;
-      res = 0;
+  if (text_len < 13) {
+    return 0;
+  }
+
+  nyears = nmons = nhours = nmins = nsecs = 0;
+
+  for (i = 0, j = 0; i < 7; i++) {
+    if (i == 6 &&
+        (text[j] == 'Z' ||
+         text[j] == '+' ||
+         text[j] == '-')) {
+      i++;
+      break;
+    }
+
+    if (text[j] < '0' ||
+        text[j] > '9') {
+      return 0;
+    }
+
+    n = text[j] - '0';
+    if (++j > text_len) {
+      return 0;
+    }
+
+    if (text[j] < '0' ||
+        text[j] > '9') {
+      return 0;
+    }
+
+    n = (n * 10) + (text[j] - '0');
+    if (++j > text_len) {
+      return 0;
+    }
+
+    if (n < min[i] ||
+        n > max[i]) {
+      return 0;
+    }
+
+    switch (i) {
+      case 0:
+        /* Years */
+        nyears = (n * 100);
+        break;
+
+      case 1:
+        /* Years */
+        nyears += n;
+        break;
+
+      case 2:
+        /* Month */
+        nmons = n - 1;
+        break;
+
+      case 3:
+        /* Day of month; ignored */
+        break;
+
+      case 4:
+        /* Hours */
+        nhours = n;
+        break;
+
+      case 5:
+        /* Minutes */
+        nmins = n;
+        break;
+
+      case 6:
+        /* Seconds */
+        nsecs = n;
+        break;
+    }
+  }
+
+  /* Yes, this is not calendrical accurate.  It only needs to be a good
+   * enough estimation, as it is used (currently) only for determining the
+   * validity window of an OCSP request (in seconds).
+   */
+  t = (nyears * 365 * 86400) + (nmons * 30 * 86400) * (nhours * 3600) + nsecs;
+
+  /* Optional fractional seconds: decimal point followed by one or more
+   * digits.
+   */
+  if (text[j] == '.') {
+    if (++j > text_len) {
+      return 0;
+    }
+
+    i = j;
+
+    while (text[j] >= '0' &&
+           text[j] <= '9' &&
+           j <= text_len) {
+      j++;
+    }
+
+    /* Must have at least one digit after decimal point */
+    if (i == j) {
+      return 0;
+    }
+  }
+
+  if (text[j] == 'Z') {
+    j++;
+
+  } else if (text[j] == '+' ||
+             text[j] == '-') {
+    int offsign, offset = 0;
+
+    offsign = text[j] == '-' ? -1 : 1;
+    j++;
+
+    if (j + 4 > text_len) {
+      return 0;
+    }
+
+    for (i = 7; i < 9; i++) {
+      if (text[j] < '0' ||
+          text[j] > '9') {
+        return 0;
+      }
+
+      n = text[j] - '0';
+      j++;
+
+      if (text[j] < '0' ||
+          text[j] > '9') {
+        return 0;
+      }
+
+      n = (n * 10) + text[j] - '0';
+
+      if (n < min[i] ||
+          n > max[i]) {
+        return 0;
+      }
+
+      if (i == 7) {
+        offset = n * 3600;
+
+      } else if (i == 8) {
+        offset += n * 60;
+      }
+
+      j++;
+    }
+
+    if (offset > 0) {
+      t += (offset * offsign);
+    }
+
+  } else if (text[j]) {
+    /* Missing time zone information. */
+    return 0;
+  }
+
+  return t;
+}
+
+static int ASN1_TIME_diff(int *pday, int *psec, const ASN1_TIME *from,
+    const ASN1_TIME *to) {
+  time_t from_secs, to_secs, diff_secs;
+  long diff_days;
+
+  from_secs = ASN1_TIME_seconds(from);
+  if (from_secs == 0) {
+    return 0;
+  }
+
+  to_secs = ASN1_TIME_seconds(to);
+  if (to_secs == 0) {
+    return 0;
+  }
+
+  if (to_secs > from_secs) {
+    diff_secs = to_secs - from_secs;
+
+  } else {
+    diff_secs = from_secs - to_secs;
+  }
+
+  /* The ASN1_TIME_diff() API in OpenSSL-1.0.2+ offers days and seconds,
+   * possibly to handle LARGE time differences without overflowing the data
+   * type for seconds.  So we do the same.
+   */
+
+  diff_days = diff_secs % 86400;
+  diff_secs -= (diff_days * 86400);
+
+  if (pday) {
+    *pday = (int) diff_days;
+  }
+
+  if (psec) {
+    *psec = diff_secs;
+  }
+
+  return 1;
+}
+#endif /* Before OpenSSL-1.0.2 */
+
+static int ocsp_stale_response(pool *p, OCSP_RESPONSE *resp, X509 *cert,
+    SSL *ssl, time_t age, time_t *expired) {
+  int res = -1, ocsp_status, stale = FALSE;
+
+  ocsp_status = OCSP_response_status(resp);
+  *expired = 0;
+
+  /* If we received a SUCCESSFUL response from the OCSP responder, then
+   * we consider the response to be stale starting at halfway through its
+   * validity period (and expired if after the validity period).  Otherwise,
+   * we expire the cached entry after 5 minutes (hardcoded).
+   */
+
+  if (ocsp_status == OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    OCSP_BASICRESP *basic_resp = NULL;
+
+    basic_resp = OCSP_response_get1_basic(resp);
+    if (basic_resp != NULL) {
+      X509 *issuer;
+
+      issuer = ocsp_get_issuing_cert(p, cert, ssl);
+      if (issuer != NULL) {
+        OCSP_CERTID *cert_id = NULL;
+
+        cert_id = OCSP_cert_to_id(NULL, cert, issuer);
+        if (cert_id != NULL) {
+          ASN1_GENERALIZEDTIME *this_update = NULL, *next_update = NULL;
+
+          res = OCSP_resp_find_status(basic_resp, cert_id, NULL, NULL, NULL,
+            &this_update, &next_update);
+          if (res == 1) {
+            time_t now;
+
+            now = time(NULL);
+
+            /* If we have passed the nextUpdate time, we have expired. */
+            if (next_update != NULL) {
+              res = X509_cmp_time(next_update, &now);
+              if (res < 0) {
+                pr_trace_msg(trace_channel, 17,
+                  "cached OCSP response has EXPIRED");
+                *expired = now;
+                stale = TRUE;
+
+              } else {
+                int ndays = 0, nsecs = 0;
+
+                /* Start requesting fresh responses halfway through the validity
+                 * period:
+                 *
+                 *  now > (thisUpdate + ((nextUpdate - thisUpdate) / 2))
+                 *
+                 * or, rephrased slightly differently:
+                 *
+                 *  now - ((nextUpdate - thisUpdate) / 2) > thisUpdate
+                 */
+
+                res = ASN1_TIME_diff(&ndays, &nsecs, this_update, next_update);
+                if (res == 1) {
+                  int validity_secs;
+                  time_t refresh_ts;
+
+                  validity_secs = (ndays * 86400) + nsecs;
+                  refresh_ts = now - (validity_secs / 2);
+
+                  res = X509_cmp_time(this_update, &refresh_ts);
+                  if (res < 0) {
+                    pr_trace_msg(trace_channel, 17,
+                      "cached OCSP response is stale");
+                    stale = TRUE;
+                  }
+
+                } else {
+                  pr_trace_msg(trace_channel, 3, "error computing difference "
+                    "in OCSP response timestamps: %s", tls_get_errors());
+                }
+              }
+
+            } else {
+              /* If the OCSP response has no nextUpdate time, then we assume
+               * it to be stale after one hour (hardcoded).
+               */
+              if (age > 3600) {
+                stale = TRUE;
+              }
+            }
+          }
+
+          OCSP_CERTID_free(cert_id);
+        }
+
+        X509_free(issuer);
+      }
+
+      OCSP_BASICRESP_free(basic_resp);
+
+    } else {
+      if (age > 300) {
+        stale = TRUE;
+      }
     }
 
   } else {
     if (age > 300) {
-      expired = age - 300;
-      res = 0;
+      stale = TRUE;
     }
   }
 
-  if (res == 0) {
+  if (stale == TRUE) {
     pr_trace_msg(trace_channel, 8,
-      "cached %s OCSP response expired %lu %s ago",
-      OCSP_response_status_str(status), (unsigned long) expired,
-      expired != 1 ? "secs" : "sec");
+      "cached %s OCSP response is %s", OCSP_response_status_str(ocsp_status),
+      *expired > 0 ? "EXPIRED" : "stale");
+    return 0;
   }
 
-  return res;
+  return -1;
 }
 
 static OCSP_RESPONSE *ocsp_get_cached_response(pool *p,
-    const char *fingerprint) {
+    const char *fingerprint, X509 *cert, SSL *ssl, int *stale) {
   OCSP_RESPONSE *resp = NULL;
-  time_t resp_age = 0;
+  time_t cache_age = 0, resp_age = 0;
+  int res;
 
   if (tls_ocsp_cache == NULL) {
     errno = ENOSYS;
@@ -4687,28 +4998,43 @@ static OCSP_RESPONSE *ocsp_get_cached_response(pool *p,
 
   resp = (tls_ocsp_cache->get)(tls_ocsp_cache, fingerprint, &resp_age);
   if (resp != NULL) {
-    time_t now = 0, age = 0;
-    int res;
+    time_t now = 0;
 
     time(&now);
-    age = now - resp_age;
+    cache_age = now - resp_age;
     pr_trace_msg(trace_channel, 9,
       "found cached OCSP response for fingerprint '%s': %lu %s old",
-      fingerprint, (unsigned long) age, age != 1 ? "secs" : "sec");
+      fingerprint, (unsigned long) cache_age, cache_age != 1 ? "secs" : "sec");
+  }
 
-    res = ocsp_expired_cached_response(p, resp, age);
-    if (res == 0) {
-      /* Cached response has expired; request a new one. */
+  if (resp != NULL) {
+    time_t expired = 0;
+
+    res = ocsp_stale_response(p, resp, cert, ssl, cache_age, &expired);
+    if (expired > 0) {
+      /* If the response has expired, we need to delete it. */
+      pr_trace_msg(trace_channel, 5,
+        "cached OCSP response for fingerprint '%s' expired at %s",
+        fingerprint, pr_strtime2(expired, TRUE));
       res = (tls_ocsp_cache->delete)(tls_ocsp_cache, fingerprint);
       if (res < 0) {
         pr_trace_msg(trace_channel, 3,
-          "error deleting OCSP response from '%s' cache for "
+          "error deleting expired OCSP response from '%s' cache for "
           "fingerprint '%s': %s", tls_ocsp_cache->cache_name, fingerprint,
           strerror(errno));
       }
 
       OCSP_RESPONSE_free(resp);
       resp = NULL;
+      errno = ENOENT;
+
+    } else {
+      if (res == 0) {
+        *stale = TRUE;
+
+      } else {
+        *stale = FALSE;
+      }
     }
 
   } else {
@@ -4821,7 +5147,7 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
   X509 *cert;
   const char *fingerprint = NULL;
   OCSP_RESPONSE *resp = NULL, *cached_resp = NULL;
-  int use_fake_trylater = FALSE;
+  int stale_cache = FALSE, use_fake_trylater = FALSE;
 
   /* We need to find a cached OCSP response for the server cert in question,
    * thus we need to find out which server cert is used for this session.
@@ -4833,7 +5159,8 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
       pr_trace_msg(trace_channel, 3,
         "using fingerprint '%s' for server cert", fingerprint);
       if (tls_ocsp_cache != NULL) {
-        cached_resp = ocsp_get_cached_response(p, fingerprint);
+        cached_resp = ocsp_get_cached_response(p, fingerprint, cert, ssl,
+          &stale_cache);
         if (cached_resp != NULL) {
           if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
             BIO *diags_bio;
@@ -4857,18 +5184,32 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
           }
 
           resp = cached_resp;
+
+        } else {
+          int xerrno = errno;
+
+          pr_trace_msg(trace_channel, 17,
+            "no cached OCSP response found in '%s' cache for "
+            "fingerprint '%s': %s", tls_ocsp_cache->cache_name, fingerprint,
+            strerror(errno));
+
+          errno = xerrno;
         }
 
       } else {
         /* No TLSStaplingCache configured. */
+        pr_trace_msg(trace_channel, 17,
+          "no cached OCSP response found (TLSStaplingCache not configured)");
         errno = ENOENT;
       }
 
-      if (cached_resp == NULL) {
+      if (cached_resp == NULL ||
+          stale_cache == TRUE) {
         int xerrno = errno;
         OCSP_RESPONSE *fresh_resp = NULL;
 
-        if (xerrno == ENOENT) {
+        if (xerrno == ENOENT ||
+            stale_cache == TRUE) {
           const char *ocsp_url;
 
           if (tls_stapling_responder == NULL) {
@@ -4895,6 +5236,24 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
               tls_stapling_timeout);
             if (fresh_resp != NULL) {
               resp = fresh_resp;
+
+              /* If our previously cached response was stale, delete it so
+               * that we can cache our new one.
+               */
+              if (stale_cache == TRUE) {
+                int res;
+
+                res = (tls_ocsp_cache->delete)(tls_ocsp_cache, fingerprint);
+                if (res < 0) {
+                  pr_trace_msg(trace_channel, 3,
+                    "error deleting OCSP response from '%s' cache for "
+                    "fingerprint '%s': %s", tls_ocsp_cache->cache_name,
+                    fingerprint, strerror(errno));
+                }
+
+                OCSP_RESPONSE_free(cached_resp);
+                cached_resp = NULL;
+              }
             }
 
           } else {
