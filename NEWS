@@ -33,6 +33,9 @@
 - Issue 518 - Provide option to disable sending of fake "tryLater" OCSP
   response.
 - Issue 519 - Improve handling of cached OCSP responses.
+- Bug 4307 - High CPU load on CWD to non existing directory.  This has been
+  addressed by improving the in-memory config tree DFS algorithm to
+  short-circuit recursive searching where possible.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
