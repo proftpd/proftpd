@@ -14,6 +14,8 @@ ChangeLog files.
     requested via --enable-ident or --with-shared=mod_ident.
   + The mod_tls module now performs basic sanity checks of configured TLS
     files on startup (Issue #491).
+  + The mod_deflate module now supports MODE Z data transfers when TLS
+    is used (Issue #505).
 
 
   + Changed Configuration Directives
