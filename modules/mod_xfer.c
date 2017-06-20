@@ -2513,6 +2513,15 @@ MODRET xfer_retr(cmd_rec *cmd) {
     }
 
     len = transmit_data(cmd->pool, nbytes_sent, &curr_pos, lbuf, bufsz);
+
+	/*waiting 2 secons to check if the file is growing*/
+	sleep(2);
+
+	/*check the new size of the file*/
+	if (stat(dir, &st2) == 0){
+		session.xfer.file_size=st2.st_size;		
+	}
+
     if (len == 0) {
       break;
     }
