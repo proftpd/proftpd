@@ -155,8 +155,7 @@ static int deflate_netio_close_cb(pr_netio_stream_t *nstrm) {
 
       res = 0;
 
-      if (deflate_next_netio != NULL &&
-          deflate_next_netio_close != NULL) {
+      if (deflate_next_netio_close != NULL) {
         res = (deflate_next_netio_close)(nstrm);
         xerrno = errno;
 
@@ -225,8 +224,7 @@ static int deflate_netio_close_cb(pr_netio_stream_t *nstrm) {
     pr_table_remove(nstrm->notes, DEFLATE_NETIO_NOTE, NULL);
   }
 
-  if (deflate_next_netio != NULL &&
-      deflate_next_netio_close != NULL) {
+  if (deflate_next_netio_close != NULL) {
     if ((deflate_next_netio_close)(nstrm) < 0) {
       pr_trace_msg(trace_channel, 1, "error calling next netio close: %s",
         strerror(errno));
@@ -242,8 +240,7 @@ static pr_netio_stream_t *deflate_netio_open_cb(pr_netio_stream_t *nstrm,
   nstrm->strm_fd = fd;
   nstrm->strm_mode = mode;
 
-  if (deflate_next_netio != NULL &&
-      deflate_next_netio_open != NULL) {
+  if (deflate_next_netio_open != NULL) {
     if ((deflate_next_netio_open)(nstrm, fd, mode) == NULL) {
       int xerrno = errno;
 
@@ -442,8 +439,7 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
 
     datalen = deflate_rbufsz - deflate_rbuflen;
 
-    if (deflate_next_netio != NULL &&
-        deflate_next_netio_read != NULL) {
+    if (deflate_next_netio_read != NULL) {
       nread = (deflate_next_netio_read)(nstrm, (char *) deflate_rbuf, datalen);
 
     } else {
@@ -617,8 +613,7 @@ static int deflate_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
         offset = 0;
 
         while (datalen > 0) {
-          if (deflate_next_netio != NULL &&
-              deflate_next_netio_write != NULL) {
+          if (deflate_next_netio_write != NULL) {
             res = (deflate_next_netio_write)(nstrm,
               (char *) (deflate_zbuf + offset), datalen);
 
@@ -657,8 +652,7 @@ static int deflate_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
         }
       }
 
-      if (deflate_next_netio != NULL &&
-          deflate_next_netio_shutdown != NULL) {
+      if (deflate_next_netio_shutdown != NULL) {
         res = (deflate_next_netio_shutdown)(nstrm, how);
 
       } else {
@@ -730,8 +724,7 @@ static int deflate_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     while (datalen > 0) {
       pr_signals_handle();
 
-      if (deflate_next_netio != NULL &&
-          deflate_next_netio_write != NULL) {
+      if (deflate_next_netio_write != NULL) {
         res = (deflate_next_netio_write)(nstrm,
           (char *) (deflate_zbuf + offset), datalen);
 
