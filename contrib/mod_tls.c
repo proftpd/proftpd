@@ -5087,12 +5087,20 @@ static int ocsp_add_cached_response(pool *p, const char *fingerprint,
 
 static int tls_feature_cmp(ASN1_STRING *str, void *feat_data,
     size_t feat_datasz) {
-  int is_feat = FALSE;
+  int is_feat = FALSE, res;
   ASN1_STRING *feat;
 
   feat = ASN1_STRING_type_new(V_ASN1_OCTET_STRING);
   ASN1_STRING_set(feat, feat_data, feat_datasz);
-  if (M_ASN1_OCTET_STRING_cmp(str, feat) == 0) {
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  res = ASN1_STRING_cmp(str, feat);
+#else
+  res = M_ASN1_OCTET_STRING_cmp(str, feat);
+#endif /* Before OpenSSL-1.1.0, or libressl */
+
+  if (res == 0) {
     is_feat = TRUE;
   }
   ASN1_STRING_free(feat);
@@ -5102,9 +5110,14 @@ static int tls_feature_cmp(ASN1_STRING *str, void *feat_data,
 
 static int tls_cert_must_staple(X509 *cert, int *v2) {
   register int i;
+  int ext_count = 0, must_staple = FALSE;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  ext_count = X509_get_ext_count(cert);
+#else
   X509_CINF *ci;
   STACK_OF(X509_EXTENSION) *exts;
-  int must_staple = FALSE;
 
   ci = cert->cert_info;
   if (ci == NULL) {
@@ -5112,12 +5125,21 @@ static int tls_cert_must_staple(X509 *cert, int *v2) {
   }
 
   exts = ci->extensions;
-  for (i = 0; i < sk_X509_EXTENSION_num(exts); i++) {
+  ext_count = sk_X509_EXTENSION_num(exts);
+#endif /* Before OpenSSL-1.1.0, or libressl */
+
+  for (i = 0; i < ext_count; i++) {
     char buf[1024];
     X509_EXTENSION *ext;
     ASN1_OBJECT *obj;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+    ext = X509_get_ext(cert, i);
+#else
     ext = sk_X509_EXTENSION_value(exts, i);
+#endif /* Before OpenSSL-1.1.0, or libressl */
+
     obj = X509_EXTENSION_get_object(ext);
     memset(buf, '\0', sizeof(buf));
     OBJ_obj2txt(buf, sizeof(buf)-1, obj, 1);
@@ -5125,14 +5147,22 @@ static int tls_cert_must_staple(X509 *cert, int *v2) {
     /* Double-check that the OID is that of the "TLS Feature" extension. */
     if (strcmp(buf, TLS_X509V3_TLS_FEAT_OID_TEXT) == 0) {
       char status_request[] = TLS_X509V3_TLS_FEAT_STATUS_REQUEST;
+      ASN1_OCTET_STRING *value;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+      value = X509_EXTENSION_get_data(ext);
+#else
+      value = ext->value;
+#endif /* Before OpenSSL-1.1.0, or libressl */
 
       /* Is the value of this extension the "status_request" value? */
-      must_staple = tls_feature_cmp(ext->value, status_request, 5);
+      must_staple = tls_feature_cmp(value, status_request, 5);
       if (must_staple != TRUE) {
         char status_request_v2[] = TLS_X509V3_TLS_FEAT_STATUS_REQUEST_V2;
 
         /* Is the value of this extension the "status_request_v2" value? */
-        must_staple = tls_feature_cmp(ext->value, status_request_v2, 5);
+        must_staple = tls_feature_cmp(value, status_request_v2, 5);
         if (must_staple == TRUE) {
           *v2 = TRUE;
         }
