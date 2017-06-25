@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -159,7 +159,8 @@ static int data_passive_open(const char *reason, off_t size) {
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size) {
         pr_response_send(R_150, _("Opening %s mode data connection for %s "
-          "(%" PR_LU " bytes)"), MODE_STRING, reason, (pr_off_t) size);
+          "(%" PR_LU " %s)"), MODE_STRING, reason, (pr_off_t) size,
+          size != 1 ? "bytes" : "byte");
 
       } else {
         pr_response_send(R_150, _("Opening %s mode data connection for %s"),
@@ -356,7 +357,8 @@ static int data_active_open(const char *reason, off_t size) {
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size) {
         pr_response_send(R_150, _("Opening %s mode data connection for %s "
-          "(%" PR_LU " bytes)"), MODE_STRING, reason, (pr_off_t) size);
+          "(%" PR_LU " %s)"), MODE_STRING, reason, (pr_off_t) size,
+          size != 1 ? "bytes" : "byte");
 
       } else {
         pr_response_send(R_150, _("Opening %s mode data connection for %s"),

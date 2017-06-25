@@ -77,6 +77,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/feat.t
     t/commands/help.t
     t/commands/quit.t
+    t/commands/rang.t
     t/commands/rnfr.t
     t/commands/rnto.t
     t/commands/rest.t
