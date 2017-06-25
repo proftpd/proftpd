@@ -145,7 +145,8 @@ typedef struct {
 					 * the main_server pointer.
 					 */
 
-  off_t restart_pos;			/* Restart marked position */
+  off_t restart_pos;			/* Restart marked position (REST) */
+  off_t range_start, range_len;		/* Transfer range (RANG) */
 
   struct {
     struct pool_rec *p;
