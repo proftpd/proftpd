@@ -16,6 +16,8 @@ ChangeLog files.
     files on startup (Issue #491).
   + The mod_deflate module now supports MODE Z data transfers when TLS
     is used (Issue #505).
+  + The mod_xfer module now supports the RANG FTP command; see
+    https://tools.ietf.org/html/draft-bryan-ftp-range-08 (Issue #351).
 
 
   + Changed Configuration Directives
