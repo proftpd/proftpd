@@ -1219,8 +1219,8 @@ static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
    * lower the maximum age, and try again.  If not enough room by then, then
    * we'll try again on the next stat.
    */
- 
-  evict_data.now = now; 
+
+  evict_data.now = now;
   evict_data.max_age = statcache_max_age;
   evict_data.cache_tab = cache_tab;
 
@@ -1317,7 +1317,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   char cleaned_path[PR_TUNABLE_PATH_MAX+1], pathbuf[PR_TUNABLE_PATH_MAX+1];
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
   size_t path_len;
-  pr_table_t *cache_tab = NULL; 
+  pr_table_t *cache_tab = NULL;
   const struct fs_statcache *sc = NULL;
   time_t now;
 
@@ -1645,7 +1645,7 @@ void pr_fs_statcache_reset(void) {
   lstat_statcache_tab = pr_table_alloc(statcache_pool, 0);
 }
 
-int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age, 
+int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age,
     unsigned int flags) {
 
   statcache_size = size;
@@ -5078,7 +5078,7 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
 int pr_fsio_truncate(const char *path, off_t len) {
   int res;
   pr_fs_t *fs;
- 
+
   if (path == NULL) {
     errno = EINVAL;
     return -1;

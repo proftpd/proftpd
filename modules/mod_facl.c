@@ -1036,7 +1036,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
           "failed: %s", path, strerror(xerrno));
         errno = xerrno;
         return -1;
-      }   
+      }
 
       return 0;
     }
@@ -1077,7 +1077,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
           "failed: %s", path, strerror(xerrno));
         errno = xerrno;
         return -1;
-      }   
+      }
 
       return 0;
     }
@@ -1141,7 +1141,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
           "failed: %s", fh->fh_path, strerror(xerrno));
         errno = xerrno;
         return -1;
-      }   
+      }
 
       return 0;
     }
