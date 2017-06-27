@@ -5363,12 +5363,23 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
 
 static int tls_ocsp_cb(SSL *ssl, void *user_data) {
   OCSP_RESPONSE *resp;
-  int resp_derlen;
+  int resp_derlen, reused;
   unsigned char *resp_der = NULL;
   pool *ocsp_pool;
 
   if (tls_stapling == FALSE) {
     /* OCSP stapling disabled; do nothing. */
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  reused = SSL_session_reused(ssl);
+  if (reused > 0) {
+    /* Per RFC 6066, if we are a resumed TLS session, then we should NOT be
+     * stapling an OCSP response; the original handshake still applies
+     * (Issue #528).
+     */
+    pr_trace_msg(trace_channel, 9,
+      "OCSP stapling requested but ignored for resumed session, per RFC 6066");
     return SSL_TLSEXT_ERR_NOACK;
   }
 
