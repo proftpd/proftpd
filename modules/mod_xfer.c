@@ -583,7 +583,7 @@ static int transmit_normal(pool *p, char *buf, size_t bufsz) {
 
   read_len = bufsz;
   if (session.range_len > 0) {
-    if (read_len > session.range_len) {
+    if (((off_t) read_len) > session.range_len) {
       read_len = session.range_len;
     }
   }
