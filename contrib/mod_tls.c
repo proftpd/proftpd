@@ -4640,7 +4640,8 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
   return resp;
 }
 
-#if OPENSSL_VERSION_NUMBER < 0x10002000L
+#if OPENSSL_VERSION_NUMBER < 0x10002000L || \
+    defined(HAVE_LIBRESSL)
 /* We need to provide our own backport of the ASN1_TIME_diff() function. */
 static time_t ASN1_TIME_seconds(const ASN1_TIME *a) {
   static const int min[9] = { 0, 0, 1, 1, 0, 0, 0, 0, 0 };
@@ -4865,7 +4866,7 @@ static int ASN1_TIME_diff(int *pday, int *psec, const ASN1_TIME *from,
 
   return 1;
 }
-#endif /* Before OpenSSL-1.0.2 */
+#endif /* Before OpenSSL-1.0.2, or libressl */
 
 static int ocsp_stale_response(pool *p, OCSP_RESPONSE *resp, X509 *cert,
     SSL *ssl, time_t age, time_t *expired) {
