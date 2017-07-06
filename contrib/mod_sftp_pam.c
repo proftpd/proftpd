@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_sftp_pam -- a module which provides an SSH2
  *                          "keyboard-interactive" driver using PAM
- *
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -407,9 +406,11 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
   }
 
   if (pr_auth_add_auth_only_module("mod_sftp_pam.c") < 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_PAM_VERSION
-      ": error adding 'mod_sftp_pam.c' to the auth-only module list: %s",
-      strerror(errno));
+    if (errno != EEXIST) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_PAM_VERSION
+        ": error adding 'mod_sftp_pam.c' to the auth-only module list: %s",
+        strerror(errno));
+    }
   }
 
   sftppam_handle_auth = TRUE;
