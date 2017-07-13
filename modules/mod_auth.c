@@ -2479,35 +2479,52 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
 
       allow_empty_passwords = *((int *) c->argv[0]);
       if (allow_empty_passwords == FALSE) {
+        const char *proto;
+        int reject_empty_passwd = FALSE, using_ssh2 = FALSE;
         size_t passwd_len = 0;
  
+        proto = pr_session_get_protocol(0);
+        if (strcmp(proto, "ssh2") == 0) {
+          using_ssh2 = TRUE;
+        }
+
         if (cmd->argc > 1) {
           if (cmd->arg != NULL) {
             passwd_len = strlen(cmd->arg);
           }
         }
 
-        /* Make sure to NOT enforce 'AllowEmptyPasswords off' if e.g.
-         * the AllowDotLogin TLSOption is in effect.
-         */
-        if (cmd->argc == 1 ||
-            passwd_len == 0) {
+        if (passwd_len == 0) {
+          reject_empty_passwd = TRUE;
 
-          if (session.auth_mech == NULL ||
-              strcmp(session.auth_mech, "mod_tls.c") != 0) {
-            pr_log_debug(DEBUG5,
-              "Refusing empty password from user '%s' (AllowEmptyPasswords "
-              "false)", user);
-            pr_log_auth(PR_LOG_NOTICE,
-              "Refusing empty password from user '%s'", user);
+          /* Make sure to NOT enforce 'AllowEmptyPasswords off' if e.g.
+           * the AllowDotLogin TLSOption is in effect, or if the protocol is
+           * SSH2 (for mod_sftp uses "fake" PASS commands for the SSH login
+           * protocol).
+           */
 
-            pr_event_generate("mod_auth.empty-password", user);
-            pr_response_add_err(R_501, _("Login incorrect."));
-            return PR_ERROR(cmd);
+          if (session.auth_mech != NULL &&
+              strcmp(session.auth_mech, "mod_tls.c") == 0) {
+            pr_log_debug(DEBUG9, "%s", "'AllowEmptyPasswords off' in effect, "
+              "BUT client authenticated via the AllowDotLogin TLSOption");
+            reject_empty_passwd = FALSE;
           }
 
-          pr_log_debug(DEBUG9, "%s", "'AllowEmptyPasswords off' in effect, "
-            "BUT client authenticated via the AllowDotLogin TLSOption");
+          if (using_ssh2 == TRUE) {
+            reject_empty_passwd = FALSE;
+          }
+        }
+
+        if (reject_empty_passwd == TRUE) {
+          pr_log_debug(DEBUG5,
+            "Refusing empty password from user '%s' (AllowEmptyPasswords "
+            "false)", user);
+          pr_log_auth(PR_LOG_NOTICE,
+            "Refusing empty password from user '%s'", user);
+
+          pr_event_generate("mod_auth.empty-password", user);
+          pr_response_add_err(R_501, _("Login incorrect."));
+          return PR_ERROR(cmd);
         }
       }
     }
