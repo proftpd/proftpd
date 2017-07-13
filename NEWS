@@ -40,6 +40,7 @@
 - Issue 351 - Support FTP RANG command.
 - Bug 4308 - mod_sftp fails to check shadow password information when publickey
   authentication used.
+- Bug 4309 - Use of "AllowEmptyPasswords off" breaks SFTP/SCP logins.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
