@@ -13051,27 +13051,51 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
 /* usage: TLSECDHCurve name */
 MODRET set_tlsecdhcurve(cmd_rec *cmd) {
 #ifdef PR_USE_OPENSSL_ECC
-  char *curve_name = NULL;
+  char *curve_names = NULL;
+# if defined(SSL_CTX_set1_curves_list)
+  SSL_CTX *ctx = NULL;
+# else
   int curve_nid = -1;
   EC_KEY *ec_key = NULL;
+# endif /* No SSL_CTX_set1_curves_list; pre-OpenSSL 1.0.2 */
   
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  curve_name = cmd->argv[1];
+  curve_names = cmd->argv[1];
 
+# if defined(SSL_CTX_set1_curves_list)
+  if (strcasecmp(curve_names, "auto") != 0) {
+    ctx = SSL_CTX_new(SSLv23_server_method());
+  }
+
+  if (ctx != NULL) {
+    int res;
+
+    res = SSL_CTX_set1_curves_list(ctx, curve_names);
+    if (res != 1) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use ECDH curves '",
+        curve_names, "': ", tls_get_errors2(cmd->tmp_pool), NULL));
+    }
+
+    SSL_CTX_free(ctx);
+  }
+
+  (void) add_config_param_str(cmd->argv[0], 1, curve_names);
+
+# else
   /* The special-case handling of these curve names is copied from OpenSSL's
    * apps/ecparam.c code.
    */
 
-  if (strcmp(curve_name, "secp192r1") == 0) {
+  if (strcmp(curve_names, "secp192r1") == 0) {
     curve_nid = NID_X9_62_prime192v1;
 
-  } else if (strcmp(curve_name, "secp256r1") == 0) {
+  } else if (strcmp(curve_names, "secp256r1") == 0) {
     curve_nid = NID_X9_62_prime256v1;
 
   } else {
-    curve_nid = OBJ_sn2nid(curve_name);
+    curve_nid = OBJ_sn2nid(curve_names);
   }
 
   ec_key = EC_KEY_new_by_curve_name(curve_nid);
@@ -13082,11 +13106,20 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
       err_str = ERR_error_string(ERR_get_error(), NULL);
     }
 
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to create '", curve_name,
-      "' EC curve: ", err_str, NULL));
+    if (strchr(curve_names, ':') != NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "configuring multiple curves '", curve_names,
+        "' not supported by OpenSSL version ", OPENSSL_VERSION_TEXT, NULL));
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to create '", curve_names,
+        "' EC curve: ", err_str, NULL));
+    }
   }
 
   (void) add_config_param(cmd->argv[0], 1, ec_key);
+# endif /* pre-OpenSSL-1.0.2 */
+
   return PR_HANDLED(cmd);
 
 #else
@@ -15405,12 +15438,22 @@ static int tls_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
   if (c != NULL) {
+# if defined(SSL_CTX_set1_curves_list)
+    char *curve_names;
+
+    curve_names = c->argv[0];
+    if (strcasecmp(curve_names, "auto") != 0) {
+      SSL_CTX_set1_curves_list(ssl_ctx, curve_names);
+    }
+# else
     const EC_KEY *ec_key;
 
     ec_key = c->argv[0];
 
-    SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_ECDH_USE);
     SSL_CTX_set_tmp_ecdh(ssl_ctx, ec_key);
+# endif /* pre OpenSSL-1.0.2 */
+    SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_ECDH_USE);
+
   } else {
 # if OPENSSL_VERSION_NUMBER < 0x10100000L
     SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
