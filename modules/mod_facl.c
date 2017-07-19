@@ -1284,8 +1284,6 @@ static void unmount_facl(void) {
     defined(HAVE_POSIX_ACL)
 static void facl_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_facl.c", (const char *) event_data) == 0) {
-    pr_fs_t *fs;
-
     pr_event_unregister(&facl_module, NULL, NULL);
     unmount_facl();
   }
