@@ -1260,16 +1260,32 @@ MODRET set_faclengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Event listeners
+ */
+
+static void unmount_facl(void) {
+  pr_fs_t *fs;
+
+  fs = pr_unmount_fs("/", "facl");
+  if (fs != NULL) {
+    destroy_pool(fs->fs_pool);
+    fs->fs_pool = NULL;
+    return;
+  }
+
+  if (errno != ENOENT) {
+    pr_log_debug(DEBUG0, MOD_FACL_VERSION
+      ": error unmounting 'facl' FS: %s", strerror(errno));
+  }
+}
+
 #if defined(PR_SHARED_MODULE) && \
     defined(PR_USE_FACL) && \
     defined(HAVE_POSIX_ACL)
 static void facl_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_facl.c", (const char *) event_data) == 0) {
     pr_event_unregister(&facl_module, NULL, NULL);
-    if (pr_unregister_fs("/") < 0) {
-      pr_log_debug(DEBUG0, MOD_FACL_VERSION
-        ": error unregistering 'facl' FS: %s", strerror(errno));
-    }
+    unmount_facl();
   }
 }
 #endif /* !PR_SHARED_MODULE */
@@ -1303,6 +1319,14 @@ static void facl_postparse_ev(const void *event_data, void *user_data) {
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
 }
 
+static void facl_restart_ev(const void *event_data, void *user_data) {
+  if (facl_engine == FALSE) {
+    return;
+  }
+
+  unmount_facl();
+}
+
 /* Initialization routines
  */
 
@@ -1315,6 +1339,7 @@ static int facl_init(void) {
 # endif /* !PR_SHARED_MODULE */
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
   pr_event_register(&facl_module, "core.postparse", facl_postparse_ev, NULL);
+  pr_event_register(&facl_module, "core.restart", facl_restart_ev, NULL);
 
   return 0;
 }
