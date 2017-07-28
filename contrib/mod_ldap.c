@@ -92,6 +92,8 @@ static int ldap_port = LDAP_PORT;
 # define LDAP_SEARCH(ld, base, scope, filter, attrs, timeout, sizelimit, res) \
    ldap_search_ext_s(ld, base, scope, filter, attrs, 0, NULL, NULL, \
                      timeout, sizelimit, res)
+# define LDAP_COMPARE(ld, base, attr, val) \
+   ldap_compare_ext_s(ld, base, attr, val, NULL, NULL)
 #else /* LDAP_API_VERSION >= 2000 */
 # define LDAP_VALUE_T char
 # define LDAP_GET_VALUES(ld, entry, attr) ldap_get_values(ld, entry, attr)
@@ -1500,6 +1502,11 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
+  /*
+   * Make the username available to cmd handler (ldap_any).
+   */
+  pr_table_add(session.notes,"username",username,strlen(username)+1);
+
   session.auth_mech = "mod_ldap.c";
   return PR_HANDLED(cmd);
 }
@@ -1899,6 +1906,69 @@ MODRET set_ldapquerytimeout(cmd_rec *cmd) {
 
   return PR_HANDLED(cmd);
 }
+
+MODRET set_ldaprequiregroup(cmd_rec *cmd) {
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_DIR);
+
+  if (get_boolean(cmd, 1) != -1) {
+    CONF_ERROR(cmd, "first parameter must be the base DN, not on/off.");
+  }
+
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c->flags |= CF_MERGEDOWN;
+
+  return PR_HANDLED(cmd);
+}
+
+MODRET ldap_any(cmd_rec *cmd) {
+  config_rec * c;
+  char * username = NULL;
+  size_t username_len = 255;
+
+  if (strcmp(session.auth_mech,"mod_ldap.c") != 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  c = find_config(get_dir_ctxt(cmd->pool,cmd->argv[cmd->argc-1]), CONF_PARAM, "LDAPRequireGroup", FALSE);
+  if (c != NULL) {
+    int rc;
+    struct berval *ber_authbind_dn;
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "%s [%s][%s]", c->name, (char*)c->argv[0], (char*)c->argv[1]);
+    ber_authbind_dn = ber_bvstrdup(ldap_authbind_dn);
+    rc = LDAP_COMPARE(ld, c->argv[0], c->argv[1], ber_authbind_dn);
+    ber_bvfree(ber_authbind_dn);
+    username = (char*)pr_table_get(session.notes, "username", &username_len);
+    if (rc == LDAP_COMPARE_TRUE) {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "%s successful [%s][%s][%s]", c->name, username,ldap_authbind_dn,ldap_err2string(rc));
+    } else {
+      if (c->parent != NULL) {
+        (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+          "%s: Access denied to %s for user %s", c->name, c->parent->name, username);
+      }
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "%s: user %s is not in group %s [%s][%s]", c->name, username, (char*)c->argv[0],ldap_authbind_dn,ldap_err2string(rc));
+      if (rc == LDAP_COMPARE_FALSE) {
+        pr_log_debug(DEBUG0, "%s %s denied user %s by %s %s",
+         (char *) cmd->argv[0], cmd->arg, username, c->name, (char*)c->argv[0]);
+      } else {
+        pr_log_debug(DEBUG0, "%s %s denied user %s due to LDAP Errors.",
+         (char *) cmd->argv[0], cmd->arg, username);
+      }
+      pr_response_add_err(R_550, "Access Denied.");
+
+      pr_cmd_set_errno(cmd, EACCES);
+      return PR_ERROR(cmd);
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 
 MODRET set_ldapaliasdereference(cmd_rec *cmd) {
   int value;
@@ -2532,6 +2602,7 @@ static conftable ldap_conftab[] = {
   { "LDAPLog",			set_ldaplog,			NULL },
   { "LDAPProtocolVersion",	set_ldapprotoversion,		NULL },
   { "LDAPQueryTimeout",		set_ldapquerytimeout,		NULL },
+  { "LDAPRequireGroup",		set_ldaprequiregroup,		NULL },
   { "LDAPSearchScope",		set_ldapsearchscope,		NULL },
   { "LDAPServer",		set_ldapserver,			NULL },
   { "LDAPUsers",		set_ldapusers,			NULL },
@@ -2541,6 +2612,7 @@ static conftable ldap_conftab[] = {
 };
 
 static cmdtable ldap_cmdtab[] = {
+  { PRE_CMD, C_ANY,			G_NONE, ldap_any, FASLE, FASLE},
   { HOOK, "ldap_quota_lookup",		G_NONE, handle_ldap_quota_lookup, FALSE, FALSE},
   { HOOK, "ldap_ssh_publickey_lookup",	G_NONE, handle_ldap_ssh_pubkey_lookup, FALSE, FALSE},
 

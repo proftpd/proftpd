@@ -45,6 +45,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#LDAPLog">LDAPLog</a>
   <li><a href="#LDAPProtocolVersion">LDAPProtocolVersion</a>
   <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</a>
+  <li><a href="#LDAPRequireGroup">LDAPRequireGroup</a>
   <li><a href="#LDAPSearchScope">LDAPSearchScope</a>
   <li><a href="#LDAPServer">LDAPServer</a>
   <li><a href="#LDAPUsers">LDAPUsers</a>
@@ -549,6 +550,33 @@ LDAP servers.  The default protocol version used is <em>3</em>.
 The <code>LDAPQueryTimeout</code> directive configures the timeout value,
 in seconds, that will be used for LDAP directory queries.  The default timeout
 value is determined by your LDAP API.
+
+<p>
+<hr>
+<h3><a name="LDAPRequireGroup">LDAPRequireGroup</a></h3>
+<strong>Syntax:</strong> LDAPRequireGroup <em>group-base-dn</em> <em>member-attr</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> <code>&lt;Directory&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.6 and later
+
+<p>
+The <code>LDAPRequireGroup</code> directive enables the requirement that the
+authenticated LDAP user be a member of a specific LDAP group in order to gain
+access to a speific directory.  The first parameter to this directive is the LDAP
+<em>base DN</em> for the LDAP group that controls access.  The second parameter
+is the attribute name for the member list within the group.
+
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    ...
+    &lt;Directory&gt;
+      LDAPRequireGroup cn=GroupName,ou=OrgUnit,o=domain members
+    &lt;/Directory&gt;
+    ...
+  &lt;/IfModule&gt;
+</pre>
+
 
 <p>
 <hr>
