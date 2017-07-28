@@ -44,6 +44,8 @@
 - Issue 534 - Support configuring multiple curves using TLSECDHCurve.
 - Bug 4310 - Use of mod_facl as static module causes ProFTPD to die on
   SIGHUP/restart.
+- Bug 4311 - Directory creation in mod_site_misc, mod_copy does not honor
+  directory Umask.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
