@@ -46,6 +46,7 @@
   SIGHUP/restart.
 - Bug 4311 - Directory creation in mod_site_misc, mod_copy does not honor
   directory Umask.
+- Issue 445 - Remove non-functional TransferPriority directive.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------

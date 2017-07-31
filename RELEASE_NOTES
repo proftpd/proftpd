@@ -40,3 +40,5 @@ ChangeLog files.
     GroupPassword
 
     LoginPasswordPrompt
+
+    TransferPriority (Issue#445)
