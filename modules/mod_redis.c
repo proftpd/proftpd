@@ -30,7 +30,7 @@
 #include "logfmt.h"
 #include "json.h"
 
-#define MOD_REDIS_VERSION		"mod_redis/0.1.1"
+#define MOD_REDIS_VERSION		"mod_redis/0.2.1"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030605
 # error "ProFTPD 1.3.6rc5 or later required"
@@ -42,7 +42,8 @@ extern xaset_t *server_list;
 
 module redis_module;
 
-#define REDIS_DEFAULT_PORT		6379
+#define REDIS_SERVER_DEFAULT_PORT		6379
+#define REDIS_SENTINEL_DEFAULT_PORT		26379
 
 static int redis_engine = FALSE;
 static int redis_logfd = -1;
@@ -1588,12 +1589,87 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: RedisSentinel host[:port] ... [master name] */
+MODRET set_redissentinel(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  array_header *sentinels;
+  char *master_name = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (cmd->argc >= 4) {
+    /* Has the name of a master been explicitly provided? */
+    if (strcasecmp(cmd->argv[cmd->argc-2], "master") == 0) {
+      master_name = cmd->argv[cmd->argc-1];
+
+      cmd->argc -= 2;
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  sentinels = make_array(c->pool, 0, sizeof(pr_netaddr_t *));
+
+  for (i = 1; i < cmd->argc; i++) {
+    char *sentinel, *ptr;
+    size_t sentinel_len;
+    int port = REDIS_SENTINEL_DEFAULT_PORT;
+    pr_netaddr_t *sentinel_addr;
+
+    sentinel = pstrdup(cmd->tmp_pool, cmd->argv[i]);
+    sentinel_len = strlen(sentinel);
+
+    ptr = strrchr(sentinel, ':');
+    if (ptr != NULL) {
+      /* We also need to check for IPv6 addresses, e.g. "[::1]" or
+       * "[::1]:26379", before assuming that the text following our discovered
+       * ':' is indeed a port number.
+       */
+      if (*sentinel == '[') {
+        if (*(ptr-1) == ']') {
+          /* We have an IPv6 address with an explicit port number. */
+          sentinel = pstrndup(cmd->tmp_pool, sentinel + 1,
+            (ptr - 1) - (sentinel + 1));
+          *ptr = '\0';
+          port = atoi(ptr + 1);
+
+        } else if (sentinel[sentinel_len-1] == ']') {
+          /* We have an IPv6 address without an explicit port number. */
+          sentinel = pstrndup(cmd->tmp_pool, sentinel + 1, sentinel_len - 2);
+          port = REDIS_SENTINEL_DEFAULT_PORT;
+        }
+
+      } else {
+        *ptr = '\0';
+        port = atoi(ptr + 1);
+      }
+    }
+
+    sentinel_addr = (pr_netaddr_t *) pr_netaddr_get_addr(c->pool, sentinel,
+      NULL);
+    if (sentinel_addr != NULL) {
+      pr_netaddr_set_port2(sentinel_addr, port);
+      *((pr_netaddr_t **) push_array(sentinels)) = sentinel_addr;
+
+    } else {
+      pr_log_debug(DEBUG0, "%s: unable to resolve '%s' (%s), ignoring",
+        (char *) cmd->argv[0], sentinel, strerror(errno));
+    }
+  }
+
+  c->argv[0] = sentinels;
+  c->argv[1] = pstrdup(c->pool, master_name);
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: RedisServer host[:port] [password] [db-index] */
 MODRET set_redisserver(cmd_rec *cmd) {
   config_rec *c;
   char *server, *password = NULL, *db_idx = NULL, *ptr;
   size_t server_len;
-  int ctx, port = REDIS_DEFAULT_PORT;
+  int ctx, port = REDIS_SERVER_DEFAULT_PORT;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1618,7 +1694,7 @@ MODRET set_redisserver(cmd_rec *cmd) {
       } else if (server[server_len-1] == ']') {
         /* We have an IPv6 address without an explicit port number. */
         server = pstrndup(cmd->tmp_pool, server + 1, server_len - 2);
-        port = REDIS_DEFAULT_PORT;
+        port = REDIS_SERVER_DEFAULT_PORT;
       }
 
     } else {
@@ -1870,6 +1946,17 @@ static int redis_sess_init(void) {
     }
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "RedisSentinel", FALSE);
+  if (c != NULL) {
+    array_header *sentinels;
+    const char *master;
+
+    sentinels = c->argv[0];
+    master = c->argv[1];
+
+    (void) redis_set_sentinels(sentinels, master);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
     const char *server, *password, *db_idx;
@@ -1911,6 +1998,7 @@ static conftable redis_conftab[] = {
   { "RedisEngine",		set_redisengine,	NULL },
   { "RedisLog",			set_redislog,		NULL },
   { "RedisLogOnCommand",	set_redislogoncommand,	NULL },
+  { "RedisSentinel",		set_redissentinel,	NULL },
   { "RedisServer",		set_redisserver,	NULL },
   { "RedisTimeouts",		set_redistimeouts,	NULL },
  
