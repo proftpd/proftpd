@@ -291,9 +291,16 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   size_t keysz, array_header *values, array_header *valueszs,
   array_header *scores);
 
+/* Sentinel operations */
+int pr_redis_sentinel_get_master_addr(pool *p, pr_redis_t *redis,
+  const char *name, pr_netaddr_t **addr);
+int pr_redis_sentinel_get_masters(pool *p, pr_redis_t *redis,
+  array_header **masters);
+
 /* For internal use only */
 int redis_set_server(const char *server, int port, const char *password,
   const char *db_idx);
+int redis_set_sentinels(array_header *sentinels, const char *name);
 int redis_set_timeouts(unsigned long connect_millis, unsigned long io_millis);
 
 int redis_clear(void);

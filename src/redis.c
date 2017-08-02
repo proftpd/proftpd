@@ -45,6 +45,9 @@ struct redis_rec {
   pr_table_t *namespace_tab;
 };
 
+static array_header *redis_sentinels = NULL;
+static const char *redis_sentinel_master = NULL;
+
 static const char *redis_server = NULL;
 static int redis_port = -1;
 static const char *redis_password = NULL;
@@ -205,36 +208,24 @@ static void sess_redis_cleanup(void *data) {
   sess_redis = NULL;
 }
 
-pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
-  int uses_ip = TRUE, res, xerrno;
+static pr_redis_t *make_redis_conn(pool *p, const char *host, int port) {
+  int uses_ip = TRUE, xerrno;
   pr_redis_t *redis;
   pool *sub_pool;
   redisContext *ctx;
   struct timeval tv;
-
-  if (p == NULL) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  if (redis_server == NULL) {
-    pr_trace_msg(trace_channel, 9, "%s",
-      "unable to create new Redis connection: No server configured");
-    errno = EPERM;
-    return NULL;
-  }
 
   millis2timeval(&tv, redis_connect_millis); 
 
   /* If the given redis "server" string starts with a '/' character, assume
    * that it is a Unix socket path.
    */
-  if (*redis_server == '/') {
+  if (*host == '/') {
     uses_ip = FALSE;
-    ctx = redisConnectUnixWithTimeout(redis_server, tv);
+    ctx = redisConnectUnixWithTimeout(host, tv);
 
   } else {
-    ctx = redisConnectWithTimeout(redis_server, redis_port, tv);
+    ctx = redisConnectWithTimeout(host, port, tv);
   }
 
   xerrno = errno;
@@ -281,12 +272,11 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
 
     if (uses_ip == TRUE) {
       pr_trace_msg(trace_channel, 3,
-        "error connecting to %s#%d: [%s] %s", redis_server, redis_port,
-        err_type, err_msg);
+        "error connecting to %s#%d: [%s] %s", host, port, err_type, err_msg);
 
     } else {
       pr_trace_msg(trace_channel, 3,
-        "error connecting to '%s': [%s] %s", redis_server, err_type, err_msg);
+        "error connecting to '%s': [%s] %s", host, err_type, err_msg);
     }
 
     redisFree(ctx);
@@ -299,8 +289,125 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
 
   redis = pcalloc(sub_pool, sizeof(pr_redis_t));
   redis->pool = sub_pool;
-  redis->owner = m;
   redis->ctx = ctx;
+
+  return redis;
+}
+
+static int discover_redis_master(pool *p, const char *host, int port,
+    const char *master) {
+  int res = 0, xerrno = 0;
+  pool *tmp_pool;
+  pr_redis_t *redis;
+  pr_netaddr_t *addr = NULL;
+
+  tmp_pool = make_sub_pool(p);
+
+  redis = make_redis_conn(tmp_pool, host, port);
+  xerrno = errno;
+
+  if (redis == NULL) {
+    destroy_pool(tmp_pool);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (master == NULL) {
+    array_header *masters = NULL;
+
+    res = pr_redis_sentinel_get_masters(tmp_pool, redis, &masters);
+    if (res < 0) {
+      pr_trace_msg(trace_channel, 14, "error getting masters from Sentinel: %s",
+        strerror(errno));
+
+    } else {
+      master = ((char **) masters->elts)[0];
+      pr_trace_msg(trace_channel, 17, "discovered master '%s'", master);
+    }
+  }
+
+  res = pr_redis_sentinel_get_master_addr(tmp_pool, redis, master, &addr);
+  xerrno = errno;
+
+  if (res < 0) {
+    pr_redis_conn_destroy(redis);
+    destroy_pool(tmp_pool);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  redis_server = pstrdup(p, pr_netaddr_get_ipstr(addr));
+  redis_port = ntohs(pr_netaddr_get_port(addr));
+
+  pr_redis_conn_destroy(redis);
+  destroy_pool(tmp_pool);
+
+  errno = xerrno;
+  return res;
+}
+
+pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
+  int default_port, res, xerrno;
+  pr_redis_t *redis;
+  const char *default_host;
+
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  default_host = redis_server;
+  default_port = redis_port;
+
+  /* Do we have a list of Sentinels configured?  If so, try those first. */
+  if (redis_sentinels != NULL) {
+    register unsigned int i;
+
+    pr_trace_msg(trace_channel, 17,
+      "querying Sentinels (%u count) for Redis server",
+      redis_sentinels->nelts);
+
+    for (i = 0; i < redis_sentinels->nelts; i++) {
+      pr_netaddr_t *addr;
+      const char *sentinel;
+      int port;
+
+      addr = ((pr_netaddr_t **) redis_sentinels->elts)[i];
+      sentinel = pr_netaddr_get_ipstr(addr);
+      port = ntohs(pr_netaddr_get_port(addr));
+
+      if (discover_redis_master(p, sentinel, port,
+          redis_sentinel_master) == 0) {
+        pr_trace_msg(trace_channel, 17,
+          "discovered Redis server %s:%d using Sentinel #%u (%s:%d)",
+          redis_server, redis_port, i+1, sentinel, port);
+      }
+    }
+  }
+
+  /* If the Sentinels failed to provide a usable host, fall back to the
+   * default.
+   */
+  if (redis_server == NULL) {
+    redis_server = default_host;
+    redis_port = default_port;
+  }
+
+  if (redis_server == NULL) {
+    pr_trace_msg(trace_channel, 9, "%s",
+      "unable to create new Redis connection: No server configured");
+    errno = EPERM;
+    return NULL;
+  }
+
+  redis = make_redis_conn(p, redis_server, redis_port);
+  if (redis == NULL) {
+    return NULL;
+  }
+
+  redis->owner = m;
   redis->refcount = 1;
 
   /* The namespace table is null; it will be created if/when callers
@@ -5124,19 +5231,244 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   return 0;
 }
 
+int pr_redis_sentinel_get_master_addr(pool *p, pr_redis_t *redis,
+    const char *name, pr_netaddr_t **addr) {
+  int res = 0, xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (p == NULL ||
+      redis == NULL ||
+      name == NULL ||
+      addr == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis SENTINEL pool");
+
+  cmd = "SENTINEL";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s get-master-addr-by-name %s", cmd, name);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error getting address for master '%s': %s", name,
+      redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = EIO;
+    return -1;
+  }
+
+  if (reply->type == REDIS_REPLY_NIL) {
+    pr_trace_msg(trace_channel, 7, "%s reply: nil", cmd);
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+
+    errno = ENOENT;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_ARRAY) {
+    pr_trace_msg(trace_channel, 2,
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (reply->elements > 0) {
+    redisReply *elt;
+    char *host = NULL;
+    int port = -1;
+
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
+
+    elt = reply->element[0];
+    if (elt->type == REDIS_REPLY_STRING) {
+      host = pstrndup(tmp_pool, elt->str, elt->len);
+
+    } else {
+      pr_trace_msg(trace_channel, 2,
+        "expected STRING element at index 0, got %s",
+        get_reply_type(elt->type));
+    }
+
+    elt = reply->element[1];
+    if (elt->type == REDIS_REPLY_STRING) {
+      char *port_str;
+
+      port_str = pstrndup(tmp_pool, elt->str, elt->len);
+      port = atoi(port_str);
+
+    } else {
+      pr_trace_msg(trace_channel, 2,
+        "expected STRING element at index 1, got %s",
+        get_reply_type(elt->type));
+    }
+
+    if (host != NULL &&
+        port != -1) {
+      *addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, host, NULL);
+      if (*addr != NULL) {
+        pr_netaddr_set_port2(*addr, port);
+
+      } else {
+        xerrno = errno;
+        res = -1;
+      }
+
+    } else {
+      xerrno = ENOENT;
+      res = -1;
+    }
+
+  } else {
+    xerrno = ENOENT;
+    res = -1;
+  }
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+
+  errno = xerrno;
+  return res;
+}
+
+int pr_redis_sentinel_get_masters(pool *p, pr_redis_t *redis,
+    array_header **masters) {
+  int res = 0, xerrno = 0;
+  pool *tmp_pool = NULL;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  if (p == NULL ||
+      redis == NULL ||
+      masters == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis SENTINEL pool");
+
+  cmd = "SENTINEL";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s masters", cmd);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error getting masters: %s", redis_strerror(tmp_pool, redis, xerrno));
+    destroy_pool(tmp_pool);
+    errno = EIO;
+    return -1;
+  }
+
+  if (reply->type == REDIS_REPLY_NIL) {
+    pr_trace_msg(trace_channel, 7, "%s reply: nil", cmd);
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+
+    errno = ENOENT;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_ARRAY) {
+    pr_trace_msg(trace_channel, 2,
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (reply->elements > 0) {
+    register unsigned int i;
+
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
+
+    *masters = make_array(p, reply->elements, sizeof(char *));
+
+    for (i = 0; i < reply->elements; i++) {
+      redisReply *elt;
+
+      elt = reply->element[i];
+      if (elt->type == REDIS_REPLY_ARRAY) {
+        redisReply *info;
+
+        info = elt->element[1];
+        *((char **) push_array(*masters)) = pstrndup(p, info->str, info->len);
+
+      } else {
+        pr_trace_msg(trace_channel, 2,
+          "expected ARRAY element at index %u, got %s", i,
+          get_reply_type(elt->type));
+      }
+    }
+
+  } else {
+    xerrno = ENOENT;
+    res = -1;
+  }
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+
+  errno = xerrno;
+  return res;
+}
+
 int redis_set_server(const char *server, int port, const char *password,
     const char *db_idx) {
 
-  if (server == NULL ||
-      port < 1) {
-    errno = EINVAL;
-    return -1;
+  if (server == NULL) {
+    /* By using a port of -2 specifically, we can use this function to
+     * clear the server/port, for testing purposes ONLY.
+     */
+    if (port < 1 &&
+        port != -2) {
+      errno = EINVAL;
+      return -1;
+    }
   }
 
   redis_server = server;
   redis_port = port;
   redis_password = password;
   redis_db_idx = db_idx;
+
+  return 0;
+}
+
+int redis_set_sentinels(array_header *sentinels, const char *name) {
+
+  if (sentinels != NULL &&
+      sentinels->nelts == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  redis_sentinels = sentinels;
+  redis_sentinel_master = name;
 
   return 0;
 }
@@ -5770,8 +6102,25 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
+int pr_redis_sentinel_get_master(pool *p, pr_redis_t *redis, const char *name,
+    pr_netaddr_t **addr) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_sentinel_get_masters(pool *p, pr_redis_t *redis,
+    array_header **masters) {
+  errno = ENOSYS;
+  return -1;
+}
+
 int redis_set_server(const char *server, int port, const char *password,
     const char *db_idx) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int redis_set_sentinels(array_header *sentinels, const char *name) {
   errno = ENOSYS;
   return -1;
 }

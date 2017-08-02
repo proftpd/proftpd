@@ -424,6 +424,17 @@ static int redistab_sess_init(void) {
    * order.
    */
 
+  c = find_config(main_server->conf, CONF_PARAM, "RedisSentinel", FALSE);
+  if (c != NULL) {
+    array_header *sentinels;
+    const char *name;
+
+    sentinels = c->argv[0];
+    name = c->argv[1];
+
+    (void) redis_set_sentinels(sentinels, name);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
     const char *server, *password, *db_idx;
