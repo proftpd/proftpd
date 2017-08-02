@@ -48,6 +48,7 @@ struct redis_rec {
 static const char *redis_server = NULL;
 static int redis_port = -1;
 static const char *redis_password = NULL;
+static const char *redis_db_idx = NULL;
 
 static pr_redis_t *sess_redis = NULL;
 
@@ -336,6 +337,28 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
     pr_redis_conn_destroy(redis);
     errno = xerrno;
     return NULL;    
+  }
+
+  if (redis_password != NULL) {
+    res = pr_redis_auth(redis, redis_password);
+    if (res < 0) {
+      xerrno = errno;
+
+      pr_redis_conn_destroy(redis);
+      errno = xerrno;
+      return NULL;
+    }
+  }
+
+  if (redis_db_idx != NULL) {
+    res = pr_redis_select(redis, redis_db_idx);
+    if (res < 0) {
+      xerrno = errno;
+
+      pr_redis_conn_destroy(redis);
+      errno = xerrno;
+      return NULL;
+    }
   }
 
   if (sess_redis == NULL) {
@@ -1841,6 +1864,59 @@ int pr_redis_auth(pr_redis_t *redis, const char *password) {
     pr_trace_msg(trace_channel, 2,
       "error authenticating client: %s", redis_strerror(tmp_pool, redis,
         xerrno));
+    destroy_pool(tmp_pool);
+    errno = EIO;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_STRING &&
+      reply->type != REDIS_REPLY_STATUS) {
+    pr_trace_msg(trace_channel, 2,
+      "expected STRING or STATUS reply for %s, got %s", cmd,
+      get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    destroy_pool(tmp_pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 7, "%s reply: %.*s", cmd, (int) reply->len,
+    reply->str);
+
+  freeReplyObject(reply);
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
+int pr_redis_select(pr_redis_t *redis, const char *db_idx) {
+  int xerrno = 0;
+  const char *cmd;
+  pool *tmp_pool;
+  redisReply *reply;
+
+  if (redis == NULL ||
+      db_idx == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis SELECT pool");
+
+  cmd = "SELECT";
+  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
+  reply = redisCommand(redis->ctx, "%s %s", cmd, db_idx);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error selecting database '%s': %s", db_idx,
+      redis_strerror(tmp_pool, redis, xerrno));
     destroy_pool(tmp_pool);
     errno = EIO;
     return -1;
@@ -5048,7 +5124,9 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   return 0;
 }
 
-int redis_set_server(const char *server, int port, const char *password) {
+int redis_set_server(const char *server, int port, const char *password,
+    const char *db_idx) {
+
   if (server == NULL ||
       port < 1) {
     errno = EINVAL;
@@ -5058,6 +5136,8 @@ int redis_set_server(const char *server, int port, const char *password) {
   redis_server = server;
   redis_port = port;
   redis_password = password;
+  redis_db_idx = db_idx;
+
   return 0;
 }
 
@@ -5110,6 +5190,11 @@ int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
 }
 
 int pr_redis_auth(pr_redis_t *redis, const char *password) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_redis_select(pr_redis_t *redis, const char *db_idx) {
   errno = ENOSYS;
   return -1;
 }
@@ -5685,7 +5770,8 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
-int redis_set_server(const char *server, int port, const char *password) {
+int redis_set_server(const char *server, int port, const char *password,
+    const char *db_idx) {
   errno = ENOSYS;
   return -1;
 }

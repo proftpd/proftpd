@@ -297,6 +297,68 @@ START_TEST (redis_conn_auth_test) {
 }
 END_TEST
 
+START_TEST (redis_conn_select_test) {
+  int res;
+  pr_redis_t *redis;
+  const char *text;
+  array_header *args;
+
+  mark_point();
+  res = pr_redis_select(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_select(redis, NULL);
+  fail_unless(res < 0, "Failed to handle null db_idx");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "-1";
+  res = pr_redis_select(redis, text);
+  fail_unless(res < 0, "Failed to handle invalid index %s", text);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "100";
+  res = pr_redis_select(redis, text);
+  fail_unless(res < 0, "Failed to handle invalid index %s", text);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "someotherlabel";
+  res = pr_redis_select(redis, text);
+  fail_unless(res < 0, "Failed to handle invalid index %s", text);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "0";
+  res = pr_redis_select(redis, text);
+  fail_unless(res == 0, "Failed to select database %s: %s", text,
+    strerror(errno));
+
+  mark_point();
+  text = "1";
+  res = pr_redis_select(redis, text);
+  fail_unless(res == 0, "Failed to select database %s: %s", text,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (redis_command_test) {
   int res;
   pr_redis_t *redis;
@@ -4407,6 +4469,7 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_conn_get_test);
   tcase_add_test(testcase, redis_conn_set_namespace_test);
   tcase_add_test(testcase, redis_conn_auth_test);
+  tcase_add_test(testcase, redis_conn_select_test);
   tcase_add_test(testcase, redis_command_test);
 
   tcase_add_test(testcase, redis_remove_test);
