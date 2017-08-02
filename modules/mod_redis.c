@@ -30,7 +30,7 @@
 #include "logfmt.h"
 #include "json.h"
 
-#define MOD_REDIS_VERSION		"mod_redis/0.1"
+#define MOD_REDIS_VERSION		"mod_redis/0.1.1"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030605
 # error "ProFTPD 1.3.6rc5 or later required"
@@ -1588,10 +1588,10 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisServer host[:port] [password] */
+/* usage: RedisServer host[:port] [password] [db-index] */
 MODRET set_redisserver(cmd_rec *cmd) {
   config_rec *c;
-  char *server, *password = NULL, *ptr;
+  char *server, *password = NULL, *db_idx = NULL, *ptr;
   size_t server_len;
   int ctx, port = REDIS_DEFAULT_PORT;
 
@@ -1629,13 +1629,24 @@ MODRET set_redisserver(cmd_rec *cmd) {
 
   if (cmd->argc == 3) {
     password = cmd->argv[2];
+    if (strcmp(password, "") == 0) {
+      password = NULL;
+    }
   }
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  if (cmd->argc == 4) {
+    db_idx = cmd->argv[3];
+    if (strcmp(db_idx, "") == 0) {
+      db_idx = NULL;
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, server);
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = port;
   c->argv[2] = pstrdup(c->pool, password);
+  c->argv[3] = pstrdup(c->pool, db_idx);
 
   ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
@@ -1645,7 +1656,7 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    (void) redis_set_server(c->argv[0], port, c->argv[2]);
+    (void) redis_set_server(c->argv[0], port, c->argv[2], c->argv[3]);
   }
 
   return PR_HANDLED(cmd);
@@ -1861,14 +1872,15 @@ static int redis_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
-    const char *server, *password;
+    const char *server, *password, *db_idx;
     int port;
 
     server = c->argv[0];
     port = *((int *) c->argv[1]);
     password = c->argv[2];
+    db_idx = c->argv[3];
 
-    (void) redis_set_server(server, port, password);
+    (void) redis_set_server(server, port, password, db_idx);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);

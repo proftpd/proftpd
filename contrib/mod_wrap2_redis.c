@@ -426,14 +426,15 @@ static int redistab_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
-    const char *server, *password;
+    const char *server, *password, *db_idx;
     int port;
 
     server = c->argv[0];
     port = *((int *) c->argv[1]);
     password = c->argv[2];
+    db_idx = c->argv[3];
 
-    (void) redis_set_server(server, port, password);
+    (void) redis_set_server(server, port, password, db_idx);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);

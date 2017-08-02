@@ -54,6 +54,9 @@ int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
 /* Authenticate to a password-protected Redis server. */
 int pr_redis_auth(pr_redis_t *redis, const char *password);
 
+/* Select the database used by the Redis server. */
+int pr_redis_select(pr_redis_t *redis, const char *db_idx);
+
 /* Issue a custom command to the Redis server; the reply type MUST match the
  * one specified.  Mostly this is used for testing.
  */
@@ -289,7 +292,8 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   array_header *scores);
 
 /* For internal use only */
-int redis_set_server(const char *server, int port, const char *password);
+int redis_set_server(const char *server, int port, const char *password,
+  const char *db_idx);
 int redis_set_timeouts(unsigned long connect_millis, unsigned long io_millis);
 
 int redis_clear(void);
