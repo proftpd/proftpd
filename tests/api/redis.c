@@ -40,7 +40,7 @@ static void set_up(void) {
   }
 
   redis_init();
-  redis_set_server(redis_server, redis_port, NULL);
+  redis_set_server(redis_server, redis_port, NULL, NULL);
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("redis", 1, 20);
@@ -105,7 +105,7 @@ START_TEST (redis_conn_new_test) {
 
   if (getenv("TRAVIS") == NULL) {
     /* Now deliberately set the wrong server and port. */
-    redis_set_server("127.1.2.3", redis_port, NULL);
+    redis_set_server("127.1.2.3", redis_port, NULL, NULL);
 
     mark_point();
     redis = pr_redis_conn_new(p, NULL, 0);
@@ -114,7 +114,7 @@ START_TEST (redis_conn_new_test) {
       strerror(errno), errno);
   }
 
-  redis_set_server(redis_server, 1020, NULL);
+  redis_set_server(redis_server, 1020, NULL, NULL);
 
   mark_point();
   redis = pr_redis_conn_new(p, NULL, 0);
@@ -123,7 +123,7 @@ START_TEST (redis_conn_new_test) {
     strerror(errno), errno);
 
   /* Restore our testing server/port. */
-  redis_set_server(redis_server, redis_port, NULL);
+  redis_set_server(redis_server, redis_port, NULL, NULL);
 }
 END_TEST
 
@@ -297,6 +297,67 @@ START_TEST (redis_conn_auth_test) {
 }
 END_TEST
 
+START_TEST (redis_conn_select_test) {
+  int res;
+  pr_redis_t *redis;
+  const char *text;
+
+  mark_point();
+  res = pr_redis_select(NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_select(redis, NULL);
+  fail_unless(res < 0, "Failed to handle null db_idx");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "-1";
+  res = pr_redis_select(redis, text);
+  fail_unless(res < 0, "Failed to handle invalid index %s", text);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "100";
+  res = pr_redis_select(redis, text);
+  fail_unless(res < 0, "Failed to handle invalid index %s", text);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "someotherlabel";
+  res = pr_redis_select(redis, text);
+  fail_unless(res < 0, "Failed to handle invalid index %s", text);
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  text = "0";
+  res = pr_redis_select(redis, text);
+  fail_unless(res == 0, "Failed to select database %s: %s", text,
+    strerror(errno));
+
+  mark_point();
+  text = "1";
+  res = pr_redis_select(redis, text);
+  fail_unless(res == 0, "Failed to select database %s: %s", text,
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (redis_command_test) {
   int res;
   pr_redis_t *redis;
@@ -360,6 +421,235 @@ START_TEST (redis_command_test) {
   mark_point();
   res = pr_redis_conn_destroy(redis);
   fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sentinel_get_master_addr_test) {
+  int res;
+  pr_redis_t *redis;
+  pr_netaddr_t *addr = NULL;
+  const char *name;
+
+  mark_point();
+  res = pr_redis_sentinel_get_master_addr(NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sentinel_get_master_addr(p, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sentinel_get_master_addr(p, redis, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null name");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  name = "foobar";
+  res = pr_redis_sentinel_get_master_addr(p, redis, name, NULL);
+  fail_unless(res < 0, "Failed to handle null addr");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  name = "foobar";
+  res = pr_redis_sentinel_get_master_addr(p, redis, name, &addr);
+  fail_unless(res < 0, "Failed to handle invalid sentinel");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sentinel_get_masters_test) {
+  int res;
+  pr_redis_t *redis;
+  array_header *masters = NULL;
+
+  mark_point();
+  res = pr_redis_sentinel_get_masters(NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sentinel_get_masters(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null redis");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to open connection to Redis: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_sentinel_get_masters(p, redis, NULL);
+  fail_unless(res < 0, "Failed to handle null masters");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_sentinel_get_masters(p, redis, &masters);
+  fail_unless(res < 0, "Failed to handle invalid sentinel");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (redis_sentinel_conn_new_test) {
+  int res;
+  pr_redis_t *redis;
+  array_header *sentinels = NULL;
+  const char *master = NULL;
+  const pr_netaddr_t *addr;
+
+  /* Deliberately set the wrong server and port; we want to discover the
+   * correct host/port via the Sentinels.
+   */
+  redis_set_server(NULL, -2, NULL, NULL);
+
+  sentinels = make_array(p, 0, sizeof(pr_netaddr_t *));
+
+  if (getenv("TRAVIS") != NULL) {
+    /* Treat the local Redis server as a Sentinel. */
+    addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+    pr_netaddr_set_port2(addr, 6379);
+    *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+    mark_point();
+    res = redis_set_sentinels(sentinels, NULL);
+    fail_unless(res == 0, "Failed to set sentinel list: %s", strerror(errno));
+
+    mark_point();
+    redis = pr_redis_conn_new(p, NULL, 0);
+    fail_unless(redis == NULL, "Failed to handle invald sentinels");
+    fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+      strerror(errno), errno);
+
+    /* Restore our testing server/port. */
+    redis_set_server(redis_server, redis_port, NULL, NULL);
+    redis_set_sentinels(NULL, NULL);
+
+    return;
+  }
+
+  mark_point();
+  res = redis_set_sentinels(sentinels, NULL);
+  fail_unless(res < 0, "Failed to handle empty sentinel list");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* Set a list of bad sentinels */
+  addr = pr_netaddr_get_addr(p, "127.1.2.3", NULL);
+  pr_netaddr_set_port2(addr, 26379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  pr_netaddr_set_port2(addr, 16379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  mark_point();
+  res = redis_set_sentinels(sentinels, NULL);
+  fail_unless(res == 0, "Failed to set sentinels: %s", strerror(errno));
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis == NULL, "Failed to handle invalid sentinels");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  /* Set a list of one bad, one good sentinel -- use "bad" master" */
+  sentinels = make_array(p, 0, sizeof(pr_netaddr_t *));
+  master = "foobar";
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  pr_netaddr_set_port2(addr, 16379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  pr_netaddr_set_port2(addr, 26379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  mark_point();
+  res = redis_set_sentinels(sentinels, master);
+  fail_unless(res == 0, "Failed to set sentinels: %s", strerror(errno));
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis == NULL, "Failed to handle invalid master");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  /* Set a list of one bad, one good sentinel -- use "good" master */
+  sentinels = make_array(p, 0, sizeof(pr_netaddr_t *));
+  master = "proftpd";
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  pr_netaddr_set_port2(addr, 16379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  pr_netaddr_set_port2(addr, 26379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  mark_point();
+  res = redis_set_sentinels(sentinels, master);
+  fail_unless(res == 0, "Failed to set sentinels: %s", strerror(errno));
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to discover valid master: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+
+  /* Set a list of one bad, one good sentinel -- use no master */
+  sentinels = make_array(p, 0, sizeof(pr_netaddr_t *));
+  master = NULL;
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  pr_netaddr_set_port2(addr, 16379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  pr_netaddr_set_port2(addr, 26379);
+  *((pr_netaddr_t **) push_array(sentinels)) = addr;
+
+  mark_point();
+  res = redis_set_sentinels(sentinels, master);
+  fail_unless(res == 0, "Failed to set sentinels: %s", strerror(errno));
+
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  fail_unless(redis != NULL, "Failed to discover valid master: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_redis_conn_destroy(redis);
+  fail_unless(res == TRUE, "Failed to close redis: %s", strerror(errno));
+
+  /* Restore our testing server/port. */
+  redis_set_server(redis_server, redis_port, NULL, NULL);
+  redis_set_sentinels(NULL, NULL);
 }
 END_TEST
 
@@ -4407,7 +4697,12 @@ Suite *tests_get_redis_suite(void) {
   tcase_add_test(testcase, redis_conn_get_test);
   tcase_add_test(testcase, redis_conn_set_namespace_test);
   tcase_add_test(testcase, redis_conn_auth_test);
+  tcase_add_test(testcase, redis_conn_select_test);
   tcase_add_test(testcase, redis_command_test);
+
+  tcase_add_test(testcase, redis_sentinel_get_master_addr_test);
+  tcase_add_test(testcase, redis_sentinel_get_masters_test);
+  tcase_add_test(testcase, redis_sentinel_conn_new_test);
 
   tcase_add_test(testcase, redis_remove_test);
   tcase_add_test(testcase, redis_add_test);
