@@ -229,11 +229,28 @@ Examples:
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_ls</code>module is <b>always</b> installed.
 
+<p><a name="FAQ">
+<b>Frequently Asked Questions</b><br>
+
+<p><a name="NLSTNamesOnly">
+<font color=red>Question</font>: I have a legacy FTP application which sends
+the <code>NLST</code> command, and expects to receive <i>only</i> file
+<em>names</em>, without any directory prefix (relative or absolute).  I cannot
+change this application.  How can I configure ProFTPD to return only names
+for the <code>NLST</code> command?<br>
+<font color=blue>Answer</font>: You can use the
+<a href="#ListOptions"><code>ListOptions</code></a> directive to achieve
+this, like so:
+<pre>
+  # We want only names, no hidden files, and only for NLST
+  ListOptions '-A -1 NLSTOnly'
+</pre>
+
 <p>
 <hr><br>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2016 The ProFTPD Project<br>
+&copy; Copyright 2000-2017 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
