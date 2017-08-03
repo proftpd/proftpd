@@ -30,6 +30,9 @@
 
 #include <hiredis/hiredis.h>
 
+/* When scanning for keys/lists, how many items to request per command? */
+#define PR_REDIS_SCAN_SIZE	100
+
 struct redis_rec {
   pool *pool;
   module *owner;
@@ -2970,38 +2973,22 @@ int pr_redis_hash_kincr(pr_redis_t *redis, module *m, const char *key,
   return 0;
 }
 
-int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
-    size_t keysz, array_header **fields) {
-  int res, xerrno = 0;
-  pool *tmp_pool = NULL;
+static int hash_scan(pool *p, pr_redis_t *redis, const char *key,
+    size_t keysz, array_header *fields, char **cursor, int count) {
+  int res = 0, xerrno = 0;
   const char *cmd = NULL;
   redisReply *reply;
 
-  if (p == NULL ||
-      redis == NULL ||
-      m == NULL ||
-      key == NULL ||
-      keysz == 0 ||
-      fields == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  tmp_pool = make_sub_pool(redis->pool);
-  pr_pool_tag(tmp_pool, "Redis HKEYS pool");
-
-  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
-
-  cmd = "HKEYS";
-  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
-  reply = redisCommand(redis->ctx, "%s %b", cmd, key, keysz);
+  cmd = "HSCAN";
+  pr_trace_msg(trace_channel, 7, "sending command: %s %s", cmd, *cursor);
+  reply = redisCommand(redis->ctx, "%s %b %s COUNT %d", cmd, key, keysz,
+    *cursor, count);
   xerrno = errno;
 
   if (reply == NULL) {
     pr_trace_msg(trace_channel, 2,
-      "error getting fields of hash using key (%lu bytes): %s",
-      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
-    destroy_pool(tmp_pool);
+      "error getting fields of hash using key (%lu bytes), cursor '%s': %s",
+      (unsigned long) keysz, *cursor, redis_strerror(p, redis, xerrno));
     errno = xerrno;
     return -1;
   }
@@ -3015,37 +3002,72 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
     }
 
     freeReplyObject(reply);
-    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
 
-  if (reply->elements > 0) {
-    register unsigned int i;
+  if (reply->elements == 2) {
+    redisReply *elt;
 
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
-      (unsigned long) reply->elements,
-      reply->elements != 1 ? "elements" : "element");
+    elt = reply->element[0];
+    if (elt->type == REDIS_REPLY_STRING) {
+      *cursor = pstrndup(p, elt->str, elt->len);
 
-    *fields = make_array(p, reply->elements, sizeof(char *));
-    for (i = 0; i < reply->elements; i++) {
-      redisReply *elt;
+    } else {
+      pr_trace_msg(trace_channel, 2,
+        "expected STRING element at index 0, got %s",
+        get_reply_type(elt->type));
 
-      elt = reply->element[i];
-      if (elt->type == REDIS_REPLY_STRING) {
-        char *field;
+      xerrno = EINVAL;
+      res = -1;
+    }
 
-        field = pstrndup(p, elt->str, elt->len);
-        *((char **) push_array(*fields)) = field;
+    if (res == 0) {
+      elt = reply->element[1];
+      if (elt->type == REDIS_REPLY_ARRAY) {
+        register unsigned int i;
+
+        pr_trace_msg(trace_channel, 7, "%s reply: %s %lu %s", cmd, *cursor,
+          (unsigned long) elt->elements,
+          elt->elements != 1 ? "elements" : "element");
+
+        /* When using HSCAN, we iterate over ALL the fields of the hash,
+         * key AND value.  Thus to get just the keys, we need every other
+         * item.
+         */
+        for (i = 1; i < elt->elements; i += 2) {
+          redisReply *item;
+
+          item = elt->element[i];
+          if (item->type == REDIS_REPLY_STRING) {
+            char *field;
+
+            field = pstrndup(p, item->str, item->len);
+            *((char **) push_array(fields)) = field;
+
+          } else {
+            pr_trace_msg(trace_channel, 2,
+              "expected STRING element at index %u, got %s", i,
+              get_reply_type(elt->type));
+          }
+        }
+
+        if (strcmp(*cursor, "0") == 0) {
+          /* Set the cursor to NULL, to indicate to the caller the end
+           * of the iteration.
+           */
+          *cursor = NULL;
+        }
 
       } else {
         pr_trace_msg(trace_channel, 2,
-          "expected STRING element at index %u, got %s", i,
+          "expected ARRAY element at index 1, got %s",
           get_reply_type(elt->type));
+
+        xerrno = EINVAL;
+        res = -1;
       }
     }
-
-    res = 0;
 
   } else {
     xerrno = ENOENT;
@@ -3053,8 +3075,58 @@ int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
   }
 
   freeReplyObject(reply);
-  destroy_pool(tmp_pool);
+  errno = xerrno;
+  return res;
+}
 
+int pr_redis_hash_kkeys(pool *p, pr_redis_t *redis, module *m, const char *key,
+    size_t keysz, array_header **fields) {
+  int res = 0, xerrno = 0;
+  pool *tmp_pool = NULL;
+  char *cursor;
+
+  if (p == NULL ||
+      redis == NULL ||
+      m == NULL ||
+      key == NULL ||
+      keysz == 0 ||
+      fields == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(redis->pool);
+  pr_pool_tag(tmp_pool, "Redis HSCAN pool");
+
+  key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
+
+  cursor = "0";
+  res = 0;
+  *fields = make_array(p, 0, sizeof(char *));
+
+  while (res == 0 &&
+         cursor != NULL) {
+    pr_signals_handle();
+
+    res = hash_scan(tmp_pool, redis, key, keysz, *fields, &cursor,
+      PR_REDIS_SCAN_SIZE);
+    xerrno = errno;
+
+    if (res < 0) {
+      destroy_pool(tmp_pool);
+
+      errno = xerrno;
+      return -1;
+    }
+  }
+
+  if ((*fields)->nelts == 0) {
+    *fields = NULL;
+    xerrno = ENOENT;
+    res = -1;
+  }
+
+  destroy_pool(tmp_pool);
   errno = xerrno;
   return res;
 }
@@ -3567,13 +3639,111 @@ int pr_redis_list_kget(pool *p, pr_redis_t *redis, module *m, const char *key,
   return res;
 }
 
+static int list_scan(pool *p, pr_redis_t *redis, const char *key, size_t keysz,
+    array_header *values, array_header *valueszs, int *cursor, int count) {
+  int res = 0, xerrno = 0, range;
+  const char *cmd = NULL;
+  redisReply *reply;
+
+  cmd = "LRANGE";
+
+  /* Note: We use one less than the count to preserve [...) semantics of the
+   * requested range, rather than Redis' [...] inclusive semantics.
+   */
+  range = *cursor + count - 1;
+  pr_trace_msg(trace_channel, 7, "sending command: %s %d %d", cmd, *cursor,
+    range);
+  reply = redisCommand(redis->ctx, "%s %b %d %d", cmd, key, keysz,
+    *cursor, range);
+  xerrno = errno;
+
+  if (reply == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error getting items in list using key (%lu bytes), cursor %d: %s",
+      (unsigned long) keysz, *cursor, redis_strerror(p, redis, xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  if (reply->type != REDIS_REPLY_ARRAY) {
+    pr_trace_msg(trace_channel, 2,
+      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
+
+    if (reply->type == REDIS_REPLY_ERROR) {
+      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
+    }
+
+    freeReplyObject(reply);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (reply->elements > 0) {
+    register unsigned int i;
+
+    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+      (unsigned long) reply->elements,
+      reply->elements != 1 ? "elements" : "element");
+
+    for (i = 0; i < reply->elements; i++) {
+      redisReply *value_elt;
+      void *value_data = NULL;
+      size_t value_datasz = 0;
+
+      value_elt = reply->element[i];
+      if (value_elt->type == REDIS_REPLY_STRING) {
+        value_datasz = value_elt->len;
+        value_data = palloc(p, value_datasz);
+        memcpy(value_data, value_elt->str, value_datasz);
+
+      } else {
+        pr_trace_msg(trace_channel, 2,
+          "expected STRING element at index %u, got %s", i+1,
+          get_reply_type(value_elt->type));
+      }
+
+      if (value_data != NULL) {
+        *((void **) push_array(values)) = value_data;
+        *((size_t *) push_array(valueszs)) = value_datasz;
+      }
+    }
+
+    if (reply->elements == 0) {
+      /* Set the cursor to -1, to indicate to the caller the end of the
+       * iteration.
+       */
+      *cursor = -1;
+
+    } else {
+      (*cursor) += reply->elements;
+    }
+
+    res = 0;
+
+  } else {
+    if (*cursor > 0) {
+      /* If cursor is greater than zero, then we have found some elements,
+       * and have reached the end of the iteration.
+       */
+      *cursor = -1;
+      res = 0;
+
+    } else {
+      xerrno = ENOENT;
+      res = -1;
+    }
+  }
+
+  freeReplyObject(reply);
+  errno = xerrno;
+  return res;
+}
+
 int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
     const char *key, size_t keysz, array_header **values,
     array_header **valueszs) {
-  int res = 0, xerrno = 0;
+  int cursor, res = 0, xerrno = 0;
   pool *tmp_pool = NULL;
-  const char *cmd = NULL;
-  redisReply *reply;
 
   if (p == NULL ||
       redis == NULL ||
@@ -3591,77 +3761,34 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
 
   key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
-  cmd = "LRANGE";
-  pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
-  reply = redisCommand(redis->ctx, "%s %b 0 -1", cmd, key, keysz);
-  xerrno = errno;
+  cursor = 0;
+  res = 0;
+  *values = make_array(p, 0, sizeof(void *));
+  *valueszs = make_array(p, 0, sizeof(size_t));
 
-  if (reply == NULL) {
-    pr_trace_msg(trace_channel, 2,
-      "error getting items in list using key (%lu bytes): %s",
-      (unsigned long) keysz, redis_strerror(tmp_pool, redis, xerrno));
-    destroy_pool(tmp_pool);
-    errno = xerrno;
-    return -1;
+  while (res == 0 &&
+         cursor != -1) {
+    pr_signals_handle();
+
+    res = list_scan(tmp_pool, redis, key, keysz, *values, *valueszs, &cursor,
+      PR_REDIS_SCAN_SIZE);
+    xerrno = errno;
+
+    if (res < 0) {
+      destroy_pool(tmp_pool);
+
+      errno = xerrno;
+      return -1;
+    }
   }
 
-  if (reply->type != REDIS_REPLY_ARRAY) {
-    pr_trace_msg(trace_channel, 2,
-      "expected ARRAY reply for %s, got %s", cmd, get_reply_type(reply->type));
-
-    if (reply->type == REDIS_REPLY_ERROR) {
-      pr_trace_msg(trace_channel, 2, "%s error: %s", cmd, reply->str);
-    }
-
-    freeReplyObject(reply);
-    destroy_pool(tmp_pool);
-    errno = EINVAL;
-    return -1;
-  }
-
-  if (reply->elements > 0) {
-    register unsigned int i;
-
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
-      (unsigned long) reply->elements,
-      reply->elements != 1 ? "elements" : "element");
-
-    *values = make_array(p, 0, sizeof(void *));
-    *valueszs = make_array(p, 0, sizeof(size_t));
-
-    for (i = 0; i < reply->elements; i++) {
-      redisReply *value_elt;
-      void *value_data = NULL;
-      size_t value_datasz = 0;
-
-      value_elt = reply->element[i];
-      if (value_elt->type == REDIS_REPLY_STRING) {
-        value_datasz = value_elt->len;
-        value_data = palloc(p, value_datasz);
-        memcpy(value_data, value_elt->str, value_datasz);
-
-      } else {
-        pr_trace_msg(trace_channel, 2,
-          "expected STRING element at index %u, got %s", i + 1,
-          get_reply_type(value_elt->type));
-      }
-
-      if (value_data != NULL) {
-        *((void **) push_array(*values)) = value_data;
-        *((size_t *) push_array(*valueszs)) = value_datasz;
-      }
-    }
-
-    res = 0;
-
-  } else {
+  if ((*values)->nelts == 0) {
+    *values = *valueszs = NULL;
     xerrno = ENOENT;
     res = -1;
   }
 
-  freeReplyObject(reply);
   destroy_pool(tmp_pool);
-
   errno = xerrno;
   return res;
 }
