@@ -3732,14 +3732,22 @@ static int read_curve25519_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   char *data;
 
   buf = pkt->payload;
-  buflen = pkt->payload_len;
+  buflen = data_len = pkt->payload_len;
 
   data = sftp_msg_read_string(pkt->pool, &buf, &buflen);
-  data_len = strlen(data);
+
+  /* The "string" we read MIGHT contain NULs, thus using strlen(3) to determine
+   * the length of data is a Bad Idea (Issue #556).  Thus instead, we track
+   * the packet payload length remaining after the read; the data length is
+   * the difference, including the length value prefix of 4 bytes.
+   */
+  data_len -= (buflen + sizeof(uint32_t));
+
   if (data_len != CURVE25519_SIZE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "rejecting invalid length (%lu bytes) client Curve25519 key",
-      (unsigned long) data_len);
+      "rejecting invalid length (%lu %s, wanted %d) client Curve25519 key",
+      (unsigned long) data_len, data_len != 1 ? "bytes" : "byte",
+      CURVE25519_SIZE);
     errno = EINVAL;
     return -1;
   }
