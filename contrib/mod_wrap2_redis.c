@@ -445,7 +445,7 @@ static int redistab_sess_init(void) {
     password = c->argv[2];
     db_idx = c->argv[3];
 
-    (void) redis_set_server(server, port, password, db_idx);
+    (void) redis_set_server(server, port, 0UL, password, db_idx);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);
