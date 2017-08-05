@@ -30,6 +30,10 @@
 
 #include <hiredis/hiredis.h>
 
+#ifndef REDIS_CONNECT_RETRIES
+# define REDIS_CONNECT_RETRIES	10
+#endif /* REDIS_CONNECT_RETRIES */
+
 /* When scanning for keys/lists, how many items to request per command? */
 #define PR_REDIS_SCAN_SIZE	100
 
