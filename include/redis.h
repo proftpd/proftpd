@@ -36,8 +36,12 @@ typedef struct redis_rec pr_redis_t;
 /* This function returns the pr_redis_t for the current session; if one
  * does not exist, it will be allocated.
  */
-pr_redis_t *pr_redis_conn_get(pool *p);
+pr_redis_t *pr_redis_conn_get(pool *p, unsigned long flags);
 pr_redis_t *pr_redis_conn_new(pool *p, module *owner, unsigned long flags);
+
+/* These flags are used for tweaking connection behaviors. */
+#define PR_REDIS_CONN_FL_NO_RECONNECT		0x0001
+
 int pr_redis_conn_close(pr_redis_t *redis);
 int pr_redis_conn_destroy(pr_redis_t *redis);
 
@@ -298,8 +302,8 @@ int pr_redis_sentinel_get_masters(pool *p, pr_redis_t *redis,
   array_header **masters);
 
 /* For internal use only */
-int redis_set_server(const char *server, int port, const char *password,
-  const char *db_idx);
+int redis_set_server(const char *server, int port, unsigned long flags,
+  const char *password, const char *db_idx);
 int redis_set_sentinels(array_header *sentinels, const char *name);
 int redis_set_timeouts(unsigned long connect_millis, unsigned long io_millis);
 
