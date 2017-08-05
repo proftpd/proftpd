@@ -22,6 +22,7 @@ The <code>mod_redis</code> module enables ProFTPD support for caching data in
   <li><a href="#RedisEngine">RedisEngine</a>
   <li><a href="#RedisLog">RedisLog</a>
   <li><a href="#RedisLogOnCommand">RedisLogOnCommand</a>
+  <li><a href="#RedisOptions">RedisOptions</a>
   <li><a href="#RedisSentinel">RedisSentinel</a>
   <li><a href="#RedisServer">RedisServer</a>
   <li><a href="#RedisTimeouts">RedisTimeouts</a>
@@ -102,6 +103,36 @@ In addition to specific FTP commands, the <em>commands</em> list can specify
 start and end times of a session.  <b>Note</b> that
 <code>RedisLogOnCommand</code> does <b>not</b> currently support the logging
 <i>classes</i> that the <code>ExtendedLog</code> directive supports.
+
+<p>
+<hr>
+<h3><a name="RedisOptions">RedisOptions</a></h3>
+<strong>Syntax:</strong> RedisOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_redis<br>
+<strong>Compatibility:</strong> 1.3.7rc1 and later
+
+<p>
+The <code>RedisOptions</code> directive is used to configure various optional
+behavior of <code>mod_redis</code>.
+
+<p>
+Example:
+<pre>
+  RedisOptions NoReconnect
+</pre>
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>NoReconnect</code><br>
+    <p>
+    If the connection to Redis breaks unexpectedly, <code>mod_redis</code>
+    will attempt to <em>reconnect</em> automatically.  Use this option to
+    disable the automatic reconnection.
+  </li>
+</ul>
 
 <p>
 <hr>

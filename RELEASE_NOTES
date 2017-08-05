@@ -22,6 +22,8 @@ ChangeLog files.
 
   + New Configuration Directives
 
+    RedisOptions (Issue #477)
+
     RedisSentinel (Issue #396)
 
 
