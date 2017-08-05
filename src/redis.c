@@ -2511,6 +2511,7 @@ int pr_redis_krename(pr_redis_t *redis, module *m, const char *from,
 
 int pr_redis_kset(pr_redis_t *redis, module *m, const char *key, size_t keysz,
     void *value, size_t valuesz, time_t expires) {
+  int xerrno = 0;
   pool *tmp_pool = NULL;
   const char *cmd = NULL;
   redisReply *reply;
