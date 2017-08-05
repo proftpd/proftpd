@@ -1763,7 +1763,7 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    (void) redis_set_server(c->argv[0], port, c->argv[2], c->argv[3]);
+    (void) redis_set_server(c->argv[0], port, 0UL, c->argv[2], c->argv[3]);
   }
 
   return PR_HANDLED(cmd);
@@ -2010,7 +2010,7 @@ static int redis_sess_init(void) {
     password = c->argv[2];
     db_idx = c->argv[3];
 
-    (void) redis_set_server(server, port, password, db_idx);
+    (void) redis_set_server(server, port, redis_opts, password, db_idx);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);
