@@ -108,8 +108,9 @@ static const char *redis_strerror(pool *p, pr_redis_t *redis, int rerrno) {
 }
 
 static int conn_reconnect(pool *p, pr_redis_t *redis) {
-  register unsigned int i;
   int xerrno = 0;
+#ifdef HAVE_HIREDIS_REDISRECONNECT
+  register unsigned int i;
 
   if (redis->flags & PR_REDIS_CONN_FL_NO_RECONNECT) {
     errno = EPERM;
@@ -137,6 +138,9 @@ static int conn_reconnect(pool *p, pr_redis_t *redis) {
     pr_trace_msg(trace_channel, 9, "attempt #%u to reconnect failed: %s",
       i+ 1, redis_strerror(p, redis, xerrno));
   }
+#else
+  xerrno = ENOSYS;
+#endif /* No redisReconnect() */
 
   errno = xerrno;
   return -1;
