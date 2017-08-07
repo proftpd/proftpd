@@ -47,6 +47,7 @@ module redis_module;
 
 static int redis_engine = FALSE;
 static int redis_logfd = -1;
+static unsigned long redis_opts = 0UL;
 static pool *redis_pool = NULL;
 
 static void redis_exit_ev(const void *, void *);
@@ -1404,7 +1405,7 @@ static void log_event(cmd_rec *cmd, int flags) {
   pr_redis_t *redis;
   config_rec *c;
 
-  redis = pr_redis_conn_get(session.pool);
+  redis = pr_redis_conn_get(session.pool, redis_opts);
   if (redis == NULL) {
     (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
       "error connecting to Redis: %s", strerror(errno));
@@ -1589,6 +1590,36 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: RedisOptions opt1 opt2 ... */
+MODRET set_redisoptions(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "NoReconnect") == 0) {
+      opts |= PR_REDIS_CONN_FL_NO_RECONNECT;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown RedisOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: RedisSentinel host[:port] ... [master name] */
 MODRET set_redissentinel(cmd_rec *cmd) {
   register unsigned int i;
@@ -1732,7 +1763,7 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    (void) redis_set_server(c->argv[0], port, c->argv[2], c->argv[3]);
+    (void) redis_set_server(c->argv[0], port, 0UL, c->argv[2], c->argv[3]);
   }
 
   return PR_HANDLED(cmd);
@@ -1946,6 +1977,18 @@ static int redis_sess_init(void) {
     }
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "RedisOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    redis_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "RedisOptions", FALSE);
+  }
+
   c = find_config(main_server->conf, CONF_PARAM, "RedisSentinel", FALSE);
   if (c != NULL) {
     array_header *sentinels;
@@ -1967,7 +2010,7 @@ static int redis_sess_init(void) {
     password = c->argv[2];
     db_idx = c->argv[3];
 
-    (void) redis_set_server(server, port, password, db_idx);
+    (void) redis_set_server(server, port, redis_opts, password, db_idx);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);
@@ -1998,6 +2041,7 @@ static conftable redis_conftab[] = {
   { "RedisEngine",		set_redisengine,	NULL },
   { "RedisLog",			set_redislog,		NULL },
   { "RedisLogOnCommand",	set_redislogoncommand,	NULL },
+  { "RedisOptions",		set_redisoptions,	NULL },
   { "RedisSentinel",		set_redissentinel,	NULL },
   { "RedisServer",		set_redisserver,	NULL },
   { "RedisTimeouts",		set_redistimeouts,	NULL },

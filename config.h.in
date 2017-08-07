@@ -381,6 +381,9 @@
 /* Define if you have the gettimeofday function.  */
 #undef HAVE_GETTIMEOFDAY
 
+/* Define if you have the Hiredis redisReconnect function.  */
+#undef HAVE_HIREDIS_REDISRECONNECT
+
 /* Define if you have the hstrerror function.  */
 #undef HAVE_HSTRERROR
 
@@ -659,6 +662,9 @@
 
 /* Define if you have the <krb.h> header file.  */
 #undef HAVE_KRB_H
+
+/* Define if you have the <hiredis/hiredis.h> header file.  */
+#undef HAVE_HIREDIS_HIREDIS_H
 
 /* Define if you have the <iconv.h> header file.  */
 #undef HAVE_ICONV_H
