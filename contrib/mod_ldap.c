@@ -1936,15 +1936,6 @@ MODRET ldap_any(cmd_rec *cmd) {
   if (c != NULL) {
     int rc;
     struct berval *ber_authbind_dn;
-
-    if (ld == NULL) {
-      if (pr_ldap_connect(&ld, TRUE) == -1) {
-        pr_log_debug(DEBUG0, "unable to check group membership: LDAP connection failed");
-        pr_cmd_set_errno(cmd, EACCES);
-        return PR_ERROR(cmd);
-      }
-    }
-
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
       "%s [%s][%s]", c->name, (char*)c->argv[0], (char*)c->argv[1]);
     ber_authbind_dn = ber_bvstrdup(ldap_authbind_dn);
