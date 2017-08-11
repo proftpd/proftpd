@@ -2612,7 +2612,7 @@ static conftable ldap_conftab[] = {
 };
 
 static cmdtable ldap_cmdtab[] = {
-  { PRE_CMD, C_ANY,			G_NONE, ldap_any, FASLE, FASLE},
+  { PRE_CMD, C_ANY,			G_NONE, ldap_any, FALSE, FALSE},
   { HOOK, "ldap_quota_lookup",		G_NONE, handle_ldap_quota_lookup, FALSE, FALSE},
   { HOOK, "ldap_ssh_publickey_lookup",	G_NONE, handle_ldap_ssh_pubkey_lookup, FALSE, FALSE},
 
