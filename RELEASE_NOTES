@@ -38,6 +38,8 @@ ChangeLog files.
     SFTPCipher, SFTPDigest
       Weak algorithms now disabled by default (Bug#4279)
 
+    TLSProtocol TLSv1.3 (Issue #536)
+
     TLSServerCipherPreference
       The TLSServerCipherPreference directive is now enabled by default.
 
