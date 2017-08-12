@@ -75,7 +75,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.7"
+#define MOD_TLS_VERSION		"mod_tls/2.8"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
@@ -458,15 +458,18 @@ static char *tls_passphrase_provider = NULL;
 #define TLS_PROTO_TLS_V1		0x0002
 #define TLS_PROTO_TLS_V1_1		0x0004
 #define TLS_PROTO_TLS_V1_2		0x0008
+#define TLS_PROTO_TLS_V1_3		0x0010
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+# define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2|TLS_PROTO_TLS_V1_3)
+#elif OPENSSL_VERSION_NUMBER >= 0x10001000L
 # define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2)
 #else
 # define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1)
 #endif /* OpenSSL 1.0.1 or later */
 
 /* This is used for e.g. "TLSProtocol ALL -SSLv3 ...". */
-#define TLS_PROTO_ALL			(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2)
+#define TLS_PROTO_ALL			(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2|TLS_PROTO_TLS_V1_3)
 
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
 static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
@@ -6296,6 +6299,12 @@ static const char *tls_get_proto_str(pool *p, unsigned int protos,
     nproto++;
   }
 
+  if (protos & TLS_PROTO_TLS_V1_3) {
+    proto_str = pstrcat(p, proto_str, *proto_str ? ", " : "",
+      "TLSv1.3", NULL);
+    nproto++;
+  }
+
   *count = nproto;
   return proto_str;
 }
@@ -6312,6 +6321,9 @@ static int get_disabled_protocols(unsigned int supported_protocols) {
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
   disabled_protocols |= SSL_OP_NO_TLSv1_2;
+#endif
+#ifdef SSL_OP_NO_TLSv1_3
+  disabled_protocols |= SSL_OP_NO_TLSv1_3;
 #endif
 
   /* Now, based on the given bitset of supported protocols, clear the
@@ -6335,6 +6347,12 @@ static int get_disabled_protocols(unsigned int supported_protocols) {
     disabled_protocols &= ~SSL_OP_NO_TLSv1_2;
   }
 #endif /* OpenSSL-1.0.1 or later */
+
+#ifdef SSL_OP_NO_TLSv1_3
+  if (supported_protocols & TLS_PROTO_TLS_V1_3) {
+    disabled_protocols &= ~SSL_OP_NO_TLSv1_3;
+  }
+#endif /* OpenSSL 1.1.1 or later */
 
   return disabled_protocols;
 }
@@ -13466,6 +13484,17 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.2");
 #endif /* OpenSSL 1.0.1 or later */
 
+      } else if (strncasecmp(proto_name, "TLSv1.3", 8) == 0) {
+#ifdef TLS1_3_VERSION
+        if (disable) {
+          tls_protocol &= ~TLS_PROTO_TLS_V1_3;
+        } else {
+          tls_protocol |= TLS_PROTO_TLS_V1_3;
+        }
+#else
+        CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.3");
+#endif /* OpenSSL 1.1.1 or later */
+
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
           cmd->argv[i], "'", NULL));
@@ -13497,6 +13526,13 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.2");
 #endif /* OpenSSL 1.0.1 or later */
+
+      } else if (strncasecmp(cmd->argv[i], "TLSv1.3", 8) == 0) {
+#ifdef TLS1_3_VERSION
+        tls_protocol |= TLS_PROTO_TLS_V1_3;
+#else
+        CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.3");
+#endif /* OpenSSL 1.1.1 or later */
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
