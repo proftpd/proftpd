@@ -885,52 +885,7 @@ AC_ARG_ENABLE(redis,
     [enable support for Redis (default=no)])
   ],
   [ if test x"$enableval" = xyes ; then
-      AC_CHECK_HEADER(hiredis/hiredis.h,
-        [AC_DEFINE(HAVE_HIREDIS_HIREDIS_H, 1, [Define if hiredis.h is present.])
-         AC_DEFINE(PR_USE_REDIS, 1, [Define if using Redis support.])
-      ])
-
-      # Check for the redisReconnect() function in Hiredis; earlier versions
-      # did not have this.
-      saved_ldflags="$LDFLAGS"
-      saved_libs="$LIBS"
-      saved_cppflags="$CPPFLAGS"
-
-      # fiddle with CPPFLAGS, LDFLAGS
-      CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
-      LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-      dnl Splice out -lsupp, since that library hasn't been built yet
-      LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
-      LIBS="$LIBS -lhiredis"
-
-      AC_MSG_CHECKING([for Hiredis' redisReconnect])
-      AC_TRY_LINK(
-        [
-          #ifdef HAVE_STDLIB_H
-          # include <stdlib.h>
-          #endif
-          #ifdef HAVE_SYS_TYPES_H
-          # include <sys/types.h>
-          #endif
-          #include <hiredis/hiredis.h>
-        ],
-        [
-          (void) redisReconnect(NULL);
-        ],
-        [
-          AC_MSG_RESULT(yes)
-          AC_DEFINE(HAVE_HIREDIS_REDISRECONNECT, 1, [Define if you have Hiredis' redisReconnect])
-        ],
-        [
-          AC_MSG_RESULT(no)
-        ]
-      )
-
-      # restore CPPFLAGS, LDFLAGS
-      CPPFLAGS="$saved_cppflags"
-      LDFLAGS="$saved_ldflags"
-      LIBS="$saved_libs"
+      AC_DEFINE(PR_USE_REDIS, 1, [Define if using Redis support.])
     fi
   ])
 

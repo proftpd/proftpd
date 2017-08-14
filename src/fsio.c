@@ -3951,9 +3951,8 @@ struct dirent *pr_fsio_readdir(void *dir) {
 }
 
 int pr_fsio_mkdir(const char *path, mode_t mode) {
-  int res, xerrno;
+  int res;
   pr_fs_t *fs;
-  mode_t dir_umask = -1, prev_umask = -1, *umask_ptr = NULL;
 
   if (path == NULL) {
     errno = EINVAL;
@@ -3972,37 +3971,13 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
     fs = fs->fs_next;
   }
 
-  /* Make sure we honor the directory Umask, if any (Bug#4311). */
-  umask_ptr = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
-  if (umask_ptr == NULL) {
-    /* If Umask was configured with a single parameter, then DirUmask
-     * would not be present; we still should check for Umask.
-     */
-    umask_ptr = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
-  }
-
-  if (umask_ptr != NULL) {
-    dir_umask = *umask_ptr;
-
-    if (dir_umask != (mode_t) -1) {
-      prev_umask = umask(dir_umask);
-    }
-  }
-
   pr_trace_msg(trace_channel, 8, "using %s mkdir() for path '%s'", fs->fs_name,
     path);
   res = (fs->mkdir)(fs, path, mode);
-  xerrno = errno;
-
   if (res == 0) {
     pr_fs_clear_cache2(path);
   }
 
-  if (dir_umask != (mode_t) -1) {
-    (void) umask(prev_umask);
-  }
-
-  errno = xerrno;
   return res;
 }
 

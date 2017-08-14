@@ -20,18 +20,9 @@ ChangeLog files.
     https://tools.ietf.org/html/draft-bryan-ftp-range-08 (Issue #351).
 
 
-  + New Configuration Directives
-
-    RedisOptions (Issue #477)
-
-    RedisSentinel (Issue #396)
-
-
   + Changed Configuration Directives
 
     ExecEnviron %b (Issue #515)
-
-    RedisServer db-index (Issue #550)
 
     RewriteMap idnatrans (Issue #231)
 
@@ -51,5 +42,3 @@ ChangeLog files.
     GroupPassword
 
     LoginPasswordPrompt
-
-    TransferPriority (Issue#445)
