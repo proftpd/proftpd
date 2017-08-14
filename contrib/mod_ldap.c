@@ -43,7 +43,7 @@
 
 module ldap_module;
 
-int ldap_logfd = -1;
+static int ldap_logfd = -1;
 static pool *ldap_pool = NULL;
 
 static const char *trace_channel = "ldap";
