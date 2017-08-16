@@ -3900,6 +3900,12 @@ START_TEST (fs_virtual_path_test) {
 }
 END_TEST
 
+START_TEST (fs_close_extra_fds_test) {
+  mark_point();
+  pr_fs_close_extra_fds();
+}
+END_TEST
+
 START_TEST (fs_get_usable_fd_test) {
   int fd, res;
 
@@ -4642,6 +4648,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_split_path_test);
   tcase_add_test(testcase, fs_join_path_test);
   tcase_add_test(testcase, fs_virtual_path_test);
+  tcase_add_test(testcase, fs_close_extra_fds_test);
   tcase_add_test(testcase, fs_get_usable_fd_test);
   tcase_add_test(testcase, fs_get_usable_fd2_test);
   tcase_add_test(testcase, fs_getsize_test);

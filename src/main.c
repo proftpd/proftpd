@@ -2232,6 +2232,7 @@ int main(int argc, char *argv[], char **envp) {
 
   memset(&session, 0, sizeof(session));
 
+  pr_fs_close_extra_fds();
   pr_proctitle_init(argc, argv, envp);
 
   /* Seed rand */
