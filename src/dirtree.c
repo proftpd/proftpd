@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2636,7 +2636,7 @@ int fixup_servers(xaset_t *list) {
 }
 
 static void set_tcp_bufsz(server_rec *s) {
-  int sockfd;
+  int proto = -1, sockfd;
   socklen_t optlen = 0;
   struct protoent *p = NULL;
 
@@ -2645,6 +2645,14 @@ static void set_tcp_bufsz(server_rec *s) {
 #endif
 
   p = getprotobyname("tcp");
+  if (p != NULL) {
+    proto = p->p_proto;
+  }
+
+#ifdef HAVE_ENDPROTOENT
+  endprotoent();
+#endif
+
   if (p == NULL) {
 #ifndef PR_TUNABLE_RCVBUFSZ
     s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
@@ -2662,18 +2670,18 @@ static void set_tcp_bufsz(server_rec *s) {
     pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
 
 #ifndef PR_TUNABLE_XFER_BUFFER_SIZE
-  /* Choose the smaller of the two TCP buffer sizes as the overall transfer
-   * size (for use by the data transfer layer).
-   */
-   xfer_bufsz = tcp_sndbufsz < tcp_rcvbufsz ? tcp_sndbufsz : tcp_rcvbufsz;
+    /* Choose the smaller of the two TCP buffer sizes as the overall transfer
+     * size (for use by the data transfer layer).
+     */
+     xfer_bufsz = tcp_sndbufsz < tcp_rcvbufsz ? tcp_sndbufsz : tcp_rcvbufsz;
 #else
-  xfer_bufsz = PR_TUNABLE_XFER_BUFFER_SIZE;
+    xfer_bufsz = PR_TUNABLE_XFER_BUFFER_SIZE;
 #endif /* PR_TUNABLE_XFER_BUFFER_SIZE */
 
     return;
   }
 
-  sockfd = socket(AF_INET, SOCK_STREAM, p->p_proto);
+  sockfd = socket(AF_INET, SOCK_STREAM, proto);
   if (sockfd < 0) {
     s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
     s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
