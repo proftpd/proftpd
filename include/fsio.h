@@ -403,6 +403,9 @@ int pr_fs_glob(const char *, int, int (*errfunc)(const char *, int), glob_t *);
 void pr_fs_globfree(glob_t *);
 void pr_resolve_fs_map(void);
 
+/* Close all but the main three fds. */
+void pr_fs_close_extra_fds(void);
+
 /* The main three fds (stdin, stdout, stderr) need to be protected, reserved
  * for use.  This function uses dup(2) to open new fds on the given fd
  * until the new fd is not one of the big three.

@@ -6169,6 +6169,61 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
   return (buf > start ? start : NULL);
 }
 
+#define FSIO_MAX_FD_COUNT		1024
+
+void pr_fs_close_extra_fds(void) {
+  register unsigned int i;
+  long nfiles = 0;
+  struct rlimit rlim;
+
+  /* Close any but the big three open fds.
+   *
+   * First, use getrlimit() to obtain the maximum number of open files
+   * for this process -- then close that number.
+   */
+#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
+# if defined(RLIMIT_NOFILE)
+  if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
+# elif defined(RLIMIT_OFILE)
+  if (getrlimit(RLIMIT_OFILE, &rlim) < 0) {
+# endif
+    /* Ignore ENOSYS (and EPERM, since some libc's use this as ENOSYS); pick
+     * some arbitrary high number.
+     */
+    nfiles = FSIO_MAX_FD_COUNT;
+
+  } else {
+    nfiles = rlim.rlim_max;
+  }
+
+#else /* no RLIMIT_NOFILE or RLIMIT_OFILE */
+   nfiles = FSIO_MAX_FD_COUNT;
+#endif
+
+  /* Yes, using a long for the nfiles variable is not quite kosher; it should
+   * be an unsigned type, otherwise a large limit (say, RLIMIT_INFINITY)
+   * might overflow the data type.  In that case, though, we want to know
+   * about it -- and using a signed type, we will know if the overflowed
+   * value is a negative number.  Chances are we do NOT want to be closing
+   * fds whose value is as high as they can possibly get; that's too many
+   * fds to iterate over.  Long story short, using a long int is just fine.
+   * (Plus it makes mod_exec work on Mac OSX 10.4; without this tweak,
+   * mod_exec's forked processes never return/exit.)
+   */
+
+  if (nfiles < 0 ||
+      nfiles > FSIO_MAX_FD_COUNT) {
+    nfiles = FSIO_MAX_FD_COUNT;
+  }
+
+  /* Close the "non-standard" file descriptors. */
+  for (i = 3; i < nfiles; i++) {
+    /* This is a potentially long-running loop, so handle signals. */
+    pr_signals_handle();
+    (void) close(i);
+  }
+}
+
 /* Be generous in the maximum allowed number of dup fds, in our search for
  * one that is outside the big three.
  *
