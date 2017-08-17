@@ -127,13 +127,13 @@ recommended.
 An example MySQL schema looks like:
 <pre>
   CREATE TABLE sftpuserkeys (
-    user VARCHAR(8192) NOT NULL,
+    user VARCHAR(256) NOT NULL,
     user_key VARCHAR(8192) NOT NULL
   );
   CREATE INDEX sftpuserkeys_idx ON sftpuserkeys (user);
 
   CREATE TABLE sftphostkeys (
-    host VARCHAR(8192) NOT NULL,
+    host VARCHAR(256) NOT NULL,
     host_key VARCHAR(8192) NOT NULL
   );
   CREATE INDEX sftphostkeys_idx ON sftphostkeys (host);
