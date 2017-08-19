@@ -1273,6 +1273,8 @@ START_TEST (fsio_sys_utimes_test) {
   struct timeval tvs[3];
   pr_fh_t *fh;
 
+  memset(tvs, 0, sizeof(tvs));
+
   res = pr_fsio_utimes(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -1302,6 +1304,8 @@ START_TEST (fsio_sys_utimes_chroot_guard_test) {
   int res;
   struct timeval tvs[3];
 
+  memset(tvs, 0, sizeof(tvs));
+
   res = pr_fsio_guard_chroot(TRUE);
   fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
  
@@ -1325,6 +1329,8 @@ START_TEST (fsio_sys_futimes_test) {
   struct timeval tvs[3];
   pr_fh_t *fh;
   
+  memset(tvs, 0, sizeof(tvs));
+
   res = pr_fsio_futimes(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
