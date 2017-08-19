@@ -1273,6 +1273,8 @@ START_TEST (fsio_sys_utimes_test) {
   struct timeval tvs[3];
   pr_fh_t *fh;
 
+  memset(tvs, 0, sizeof(tvs));
+
   res = pr_fsio_utimes(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -1302,6 +1304,8 @@ START_TEST (fsio_sys_utimes_chroot_guard_test) {
   int res;
   struct timeval tvs[3];
 
+  memset(tvs, 0, sizeof(tvs));
+
   res = pr_fsio_guard_chroot(TRUE);
   fail_unless(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
  
@@ -1325,6 +1329,8 @@ START_TEST (fsio_sys_futimes_test) {
   struct timeval tvs[3];
   pr_fh_t *fh;
   
+  memset(tvs, 0, sizeof(tvs));
+
   res = pr_fsio_futimes(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -2940,13 +2946,13 @@ START_TEST (fs_copy_file_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  src_path = fsio_copy_src_path;
+  src_path = (char *) fsio_copy_src_path;
   res = pr_fs_copy_file(src_path, NULL);
   fail_unless(res < 0, "Failed to handle null destination path");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  dst_path = fsio_copy_dst_path;
+  dst_path = (char *) fsio_copy_dst_path;
   res = pr_fs_copy_file(src_path, dst_path);
   fail_unless(res < 0, "Failed to handle nonexistent source path");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
@@ -3004,8 +3010,8 @@ START_TEST (fs_copy_file2_test) {
   char *src_path, *dst_path, *text;
   pr_fh_t *fh;
 
-  src_path = fsio_copy_src_path;
-  dst_path = fsio_copy_dst_path;
+  src_path = (char *) fsio_copy_src_path;
+  dst_path = (char *) fsio_copy_dst_path;
   flags = PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE;
 
   (void) unlink(src_path);

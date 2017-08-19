@@ -410,16 +410,20 @@ char *json_encode(const JsonNode *node)
 
 char *json_encode_string(const char *str)
 {
+	char *encoded_str;
 	SB sb;
 	sb_init(&sb);
 	
 	emit_string(&sb, str);
 	
-	return sb_finish(&sb);
+	encoded_str = json_strdup(sb_finish(&sb));
+	sb_free(&sb);
+	return encoded_str;
 }
 
 char *json_stringify(const JsonNode *node, const char *space)
 {
+	char *str;
 	SB sb;
 	sb_init(&sb);
 	
@@ -428,7 +432,9 @@ char *json_stringify(const JsonNode *node, const char *space)
 	else
 		emit_value(&sb, node);
 	
-	return sb_finish(&sb);
+	str = json_strdup(sb_finish(&sb));
+	sb_free(&sb);
+	return str;
 }
 
 void json_delete(JsonNode *node)
