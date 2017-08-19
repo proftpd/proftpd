@@ -288,7 +288,11 @@ static int get_val_from_node(pool *p, JsonNode *node, JsonTag tag, void *val) {
        * as a string, then decode it again.
        */
       if (node->children.head != NULL) {
-        array->array = json_decode(json_encode(node->children.head));
+        char *encoded_str = NULL;
+
+        encoded_str = json_encode(node->children.head);
+        array->array = json_decode(encoded_str);
+        free(encoded_str);
 
       } else {
         array->array = json_mkarray();
@@ -312,7 +316,11 @@ static int get_val_from_node(pool *p, JsonNode *node, JsonTag tag, void *val) {
        * as a string, then decode it again.
        */
       if (node->children.head != NULL) {
-        object->object = json_decode(json_encode(node->children.head));
+        char *encoded_str = NULL;
+
+        encoded_str = json_encode(node->children.head);
+        object->object = json_decode(encoded_str);
+        free(encoded_str);
 
       } else {
         object->object = json_mkobject();
