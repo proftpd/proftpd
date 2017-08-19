@@ -340,7 +340,7 @@ static pr_table_entry_t *tab_entry_next(pr_table_t *tab) {
 }
 
 static void tab_entry_remove(pr_table_t *tab, pr_table_entry_t *e) {
-  pr_table_entry_t *h;
+  pr_table_entry_t *h = NULL;
 
   h = tab->chains[e->idx];
   tab->entremove(&h, e);
@@ -391,8 +391,8 @@ static unsigned int tab_get_seed(void) {
 
 int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
     const void *value_data, size_t value_datasz) {
-  unsigned int h, idx;
-  pr_table_entry_t *e, *n;
+  unsigned int h = 0, idx = 0;
+  pr_table_entry_t *e = NULL, *n = NULL;
 
   if (tab == NULL ||
       key_data == NULL ||
@@ -538,8 +538,8 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
 
 const void *pr_table_kget(pr_table_t *tab, const void *key_data,
     size_t key_datasz, size_t *value_datasz) {
-  unsigned int h;
-  pr_table_entry_t *head, *ent;
+  unsigned int h = 0;
+  pr_table_entry_t *head = NULL, *ent = NULL;
 
   if (tab == NULL) {
     errno = EINVAL;
@@ -629,8 +629,8 @@ const void *pr_table_kget(pr_table_t *tab, const void *key_data,
 
 const void *pr_table_kremove(pr_table_t *tab, const void *key_data,
     size_t key_datasz, size_t *value_datasz) {
-  unsigned int h, idx;
-  pr_table_entry_t *head, *ent;
+  unsigned int h = 0, idx = 0;
+  pr_table_entry_t *head = NULL, *ent = NULL;
 
   if (tab == NULL ||
       key_data == NULL) {
