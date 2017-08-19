@@ -2536,12 +2536,6 @@ int main(int argc, char *argv[], char **envp) {
     pr_session_end(PR_SESS_END_FL_SYNTAX_CHECK);
   }
 
-  /* After configuration is complete, make sure that passwd, group
-   * aren't held open (unnecessary fds for master daemon)
-   */
-  endpwent();
-  endgrent();
-
   /* Security */
   {
     uid_t *uid = (uid_t *) get_param_ptr(main_server->conf, "UserID", FALSE);
@@ -2567,6 +2561,12 @@ int main(int argc, char *argv[], char **envp) {
       }
     }
   }
+
+  /* After configuration is complete, make sure that passwd, group
+   * aren't held open (unnecessary fds for master daemon)
+   */
+  endpwent();
+  endgrent();
 
   main_umask = get_param_ptr(main_server->conf, "Umask", FALSE);
   if (main_umask == NULL) {
