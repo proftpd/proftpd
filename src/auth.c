@@ -1784,6 +1784,14 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
     }
   }
 
+  if (anon_config != NULL) {
+    config_user_name = get_param_ptr(anon_config->subset, "UserName", FALSE);
+    if (config_user_name != NULL &&
+        real_user != NULL) {
+      *real_user = config_user_name;
+    }
+  }
+
   return anon_config;
 }
 
