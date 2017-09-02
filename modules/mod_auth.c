@@ -1043,6 +1043,11 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
   origuser = user;
   c = pr_auth_get_anon_config(p, &user, &ourname, &anonname);
   if (c != NULL) {
+    pr_trace_msg("auth", 13,
+      "found <Anonymous> config: login user = %s, config user = %s, "
+      "anon name = %s", user != NULL ? user : "(null)",
+      ourname != NULL ? ourname : "(null)",
+      anonname != NULL ? anonname : "(null)");
     session.anon_config = c;
   }
 
