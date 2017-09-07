@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # ---------------------------------------------------------------------------
-# Copyright (C) 2000-2015 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2017 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@ my @data;
 
 my %opts = ();
 GetOptions(\%opts,
+  'change-home',
   'change-password',
   'delete-group',
   'delete-user',
@@ -210,6 +211,30 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
 
     handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
       gecos => $gecos, home => $home, shell => $shell);
+
+    close_output_file();
+
+    # done
+    exit 0;
+  }
+
+  # Now check for the --change-home option.  If present, lookup the given name
+  # in the password file, and reuse all the information except for the home.
+  if (defined($opts{'change-home'})) {
+    if (!defined($opts{'home'})) {
+      die "$program: --change-home requires use of --home\n";
+    }
+
+    open_output_file();
+
+    my ($pass, $uid, $gid, $gecos, $home, $shell) = find_passwd_entry(name =>
+      $opts{'name'});
+
+    # We trick this function into not prompting for a password by acting
+    # as if we are handling a new password.
+    handle_passwd_entry(name => $opts{'name'}, uid => $uid, gid => $gid,
+      gecos => $gecos, home => $opts{'home'}, shell => $shell,
+      new_passwd => $pass);
 
     close_output_file();
 
@@ -956,6 +981,12 @@ usage: $program [--help] [--hash|--group|--passwd]
     --shell     Shell for the user (required).  Recommended: /bin/false
 
     --uid       Numerical user ID (required)
+
+    --change-home
+
+                Update only the home directory field for a user.  This option
+                requires that the --name and --passwd options be used, but no
+                others.
 
     --change-password
 
