@@ -54,6 +54,7 @@
 - Issue 536 - Support TLSv1.3 (assuming OpenSSL support).
 - Bug 4312 - Close extra file descriptors at startup.
 - Bug 4314 - <Anonymous> with AuthAliasOnly in effect does not work as expected.
+- Issue 568 - CreateHome NoRootPrivs only works partially.
 - Bug 4313 - ExtendedLog incorrectly/unexpectedly logs unknown/unsupported
   commands.
 
