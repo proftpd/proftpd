@@ -2115,20 +2115,33 @@ MODRET log_any(cmd_rec *cmd) {
       continue;
     }
 
-    if (cmd->cmd_class & lf->lf_incl_classes) {
-      log_cmd = TRUE;
-    }
+    if (cmd->cmd_class != 0) {
+      /* If the command is unknown, then we only want to log if this
+       * ExtendedLog is configured to log ALL commands (Bug#4313).
+       */
+      if (cmd->cmd_id >= 0) {
+        if (cmd->cmd_class & lf->lf_incl_classes) {
+          log_cmd = TRUE;
+        }
 
-    if (cmd->cmd_class & lf->lf_excl_classes) {
-      log_cmd = FALSE;
-    }
+        if (cmd->cmd_class & lf->lf_excl_classes) {
+          log_cmd = FALSE;
+        }
 
-    /* If the logging class of this command is unknown (defaults to zero),
-     * AND this ExtendedLog is configured to log ALL commands, log it.
-     */
-    if (cmd->cmd_class == 0 &&
-        lf->lf_incl_classes == CL_ALL) {
-      log_cmd = TRUE;
+      } else {
+        /* Handle unknown command. */
+        if (lf->lf_incl_classes == CL_ALL) {
+          log_cmd = TRUE;
+        }
+      }
+
+    } else {
+      /* If the logging class of this command is unknown (defaults to zero),
+       * AND this ExtendedLog is configured to log ALL commands, log it.
+       */
+      if (lf->lf_incl_classes == CL_ALL) {
+        log_cmd = TRUE;
+      }
     }
 
     if (log_cmd) {
