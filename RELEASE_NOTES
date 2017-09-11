@@ -18,6 +18,8 @@ ChangeLog files.
     is used (Issue #505).
   + The mod_xfer module now supports the RANG FTP command; see
     https://tools.ietf.org/html/draft-bryan-ftp-range-08 (Issue #351).
+  + The ftpasswd script now supports a --change-home option, for changing
+    the home directory of a user in an AuthUserFile (Issue #566).
 
 
   + New Configuration Directives
