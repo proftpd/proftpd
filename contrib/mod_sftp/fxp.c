@@ -2536,7 +2536,9 @@ static uint32_t fxp_attrs_write(pool *p, struct fxp_buffer *fxb,
   if (fxp_session->client_version <= 3) {
     perms = st->st_mode;
 
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags);
+    const uint32_t flag_mask = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
+      SSH2_FX_ATTR_ACMODTIME|SSH2_FX_ATTR_EXTENDED;
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags & flag_mask);
 
     if (flags & SSH2_FX_ATTR_SIZE) {
       len += sftp_msg_write_long(&(fxb->buf), &(fxb->buflen), st->st_size);
@@ -2572,7 +2574,9 @@ static uint32_t fxp_attrs_write(pool *p, struct fxp_buffer *fxb,
 
     file_type = fxp_get_file_type(st->st_mode);
 
-    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags);
+    const uint32_t flag_mask = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_OWNERGROUP|SSH2_FX_ATTR_PERMISSIONS|
+      SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_LINK_COUNT|SSH2_FX_ATTR_EXTENDED;
+    len += sftp_msg_write_int(&(fxb->buf), &(fxb->buflen), flags & flag_mask);
     len += sftp_msg_write_byte(&(fxb->buf), &(fxb->buflen), file_type);
 
     if (flags & SSH2_FX_ATTR_SIZE) {
