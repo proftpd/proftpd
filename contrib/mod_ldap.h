@@ -29,6 +29,7 @@ extern int ldap_logfd;
 extern LDAP *ld;
 extern char *ldap_authbind_dn;
 
-extern int pr_ldap_connect(LDAP **, int);
+int pr_ldap_connect(LDAP **, int);
+const char *pr_ldap_interpolate_filter(pool *, char *, const char *); 
 
 #endif /* MOD_LDAP_H */
