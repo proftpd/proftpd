@@ -10208,7 +10208,15 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
     /* How much non-path data do we expect to be associated with this entry? */
 #ifdef PR_USE_XATTR
-    max_entry_metadata = (1024 * 4);
+    /* Note that the "extra space" to allocate for extended attributes is
+     * currently a bit of a guess.  Initially, this was 4K; that was causing
+     * slower directory listings due to the need for more READDIR requests,
+     * since we were sending fewer entries back (limited by the max packet
+     * size) per READDIR request.
+     *
+     * Now, we are trying 1K, and will see how that does.
+     */
+    max_entry_metadata = 1024;
 #else
     max_entry_metadata = 256;
 #endif /* PR_USE_XATTR */
