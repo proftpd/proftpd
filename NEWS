@@ -34,6 +34,8 @@
 - Bug 4312 - Close extra file descriptors at startup.
 - Bug 4314 - <Anonymous> with AuthAliasOnly in effect does not work as expected.
 - Issue 568 - CreateHome NoRootPrivs only works partially.
+- Issue 578 - SFTP OPEN response includes attribute flags that are not actually
+  provided.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
