@@ -1354,10 +1354,6 @@ static uint32_t fxp_attrs_clear_unsupported(uint32_t attr_flags) {
     attr_flags &= ~SSH2_FX_ATTR_MIME_TYPE;
   }
 
-  if (attr_flags & SSH2_FX_ATTR_LINK_COUNT) {
-    attr_flags &= ~SSH2_FX_ATTR_LINK_COUNT;
-  }
-
   if (attr_flags & SSH2_FX_ATTR_UNTRANSLATED_NAME) {
     attr_flags &= ~SSH2_FX_ATTR_UNTRANSLATED_NAME;
   }
