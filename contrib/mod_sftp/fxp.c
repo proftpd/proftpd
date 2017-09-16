@@ -3969,7 +3969,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   unsigned char *buf, *ptr;
   char *supported_digests;
   const char *digest_name, *reason;
-  uint32_t buflen, bufsz, status_code;
+  uint32_t buflen, bufsz, expected_buflen, status_code;
   struct fxp_packet *resp;
   int data_len, res, xerrno = 0;
   struct stat st;
@@ -3978,7 +3978,8 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   unsigned long nblocks;
   off_t range_len, total_len = 0;
   void *data;
-  BIO *bio, *fd_bio, *md_bio;
+  BIO *bio;
+  EVP_MD_CTX md_ctx;
   const EVP_MD *md;
 
   pr_trace_msg(trace_channel, 8, "client sent check-file request: "
@@ -4287,15 +4288,29 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  md_bio = BIO_new(BIO_f_md());
+  /* Calculate the size of the response buffer, based on the number of blocks.
+   * Our already-allocated response buffer might be too small (see Issue #576).
+   *
+   * Each block needs at most EVP_MAX_MD_SIZE bytes, plus 4 bytes for the
+   * length prefix.
+   */
+  expected_buflen = FXP_RESPONSE_DATA_DEFAULT_SZ +
+    (nblocks * (EVP_MAX_MD_SIZE + 4));
+  if (buflen < expected_buflen) {
+    pr_trace_msg(trace_channel, 15, "allocated larger buffer (%lu bytes) for "
+      "check-file request on '%s', %s digest, %lu %s",
+      (unsigned long) expected_buflen, path, digest_name, nblocks,
+      nblocks == 1 ? "block/checksum" : "nblocks/checksums");
+
+    buflen = bufsz = expected_buflen;
+    buf = ptr = palloc(fxp->pool, bufsz);
+  }
 
   /* XXX Check the return value here */
-  BIO_set_md(md_bio, md);
+  EVP_MD_CTX_init(&md_ctx);
 
-  fd_bio = BIO_new(BIO_s_fd());
-  BIO_set_fd(fd_bio, PR_FH_FD(fh), BIO_NOCLOSE);
-
-  bio = BIO_push(md_bio, fd_bio);
+  bio = BIO_new(BIO_s_fd());
+  BIO_set_fd(bio, PR_FH_FD(fh), BIO_NOCLOSE);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
@@ -4319,7 +4334,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 
     res = BIO_read(bio, data, data_len);
     if (res < 0) {
-      if (BIO_should_read(fd_bio)) {
+      if (BIO_should_read(bio)) {
         continue;
       }
 
@@ -4350,10 +4365,14 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
       resp->payload = ptr;
       resp->payload_sz = (bufsz - buflen);
 
+      /* Cleanup. */
+      BIO_free(bio);
+      EVP_MD_CTX_cleanup(&md_ctx);
+
       return fxp_packet_write(resp);
 
     } else if (res == 0) {
-      if (BIO_should_retry(fd_bio) != 0) {
+      if (BIO_should_retry(bio) != 0) {
         continue;
       }
 
@@ -4362,16 +4381,14 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     }
 
     if (blocksz != 0) {
-      char digest[EVP_MAX_MD_SIZE];
-      unsigned int digest_len;
+      unsigned char digest[EVP_MAX_MD_SIZE];
+      unsigned int digest_len = 0;
 
-      (void) BIO_flush(bio);
-      digest_len = BIO_gets(md_bio, digest, sizeof(digest));
+      EVP_DigestInit(&md_ctx, md);
+      EVP_DigestUpdate(&md_ctx, data, res);
+      EVP_DigestFinal(&md_ctx, digest, &digest_len);
 
-      sftp_msg_write_data(&buf, &buflen, (unsigned char *) digest, digest_len,
-        FALSE);
-
-      (void) BIO_reset(md_bio);
+      sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
 
       total_len += res; 
       if (len > 0 &&
@@ -4382,17 +4399,19 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   }
 
   if (blocksz == 0) {
-    char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_len;
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_len = 0;
 
-    (void) BIO_flush(bio);
-    digest_len = BIO_gets(md_bio, digest, sizeof(digest));
+    EVP_DigestInit(&md_ctx, md);
+    EVP_DigestUpdate(&md_ctx, data, res);
+    EVP_DigestFinal(&md_ctx, digest, &digest_len);
 
-    sftp_msg_write_data(&buf, &buflen, (unsigned char *) digest, digest_len,
-      FALSE);
+    sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
   }
 
-  BIO_free_all(bio);
+  /* Cleanup. */
+  BIO_free(bio);
+  EVP_MD_CTX_cleanup(&md_ctx);
   pr_fsio_close(fh);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
