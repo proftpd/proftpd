@@ -1327,6 +1327,44 @@ static void fxp_msg_write_extpair(unsigned char **buf, uint32_t *buflen,
     TRUE);
 }
 
+static uint32_t fxp_attrs_clear_unsupported(uint32_t attr_flags) {
+
+  /* Clear any unsupported flags. */
+  if (attr_flags & SSH2_FX_ATTR_ALLOCATION_SIZE) {
+    attr_flags &= ~SSH2_FX_ATTR_ALLOCATION_SIZE;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+    attr_flags &= ~SSH2_FX_ATTR_SUBSECOND_TIMES;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_ACL) {
+    attr_flags &= ~SSH2_FX_ATTR_ACL;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_BITS) {
+    attr_flags &= ~SSH2_FX_ATTR_BITS;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_TEXT_HINT) {
+    attr_flags &= ~SSH2_FX_ATTR_TEXT_HINT;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_MIME_TYPE) {
+    attr_flags &= ~SSH2_FX_ATTR_MIME_TYPE;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_UNTRANSLATED_NAME) {
+    attr_flags &= ~SSH2_FX_ATTR_UNTRANSLATED_NAME;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_CTIME) {
+    attr_flags &= ~SSH2_FX_ATTR_CTIME;
+  }
+
+  return attr_flags;
+}
+
 static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     uint32_t attr_flags, array_header *xattrs, unsigned char **buf,
     uint32_t *buflen, struct fxp_packet *fxp) {
@@ -7325,6 +7363,8 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+
   /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
    * flags.
@@ -7581,6 +7621,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
   fxp_attrs_write(fxp->pool, fxb, fxh->fh->fh_path, &st, attr_flags, fake_user,
     fake_group);
 
@@ -8287,6 +8328,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
   fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   /* fxp_attrs_write will have changed the buf/buflen fields in the buffer. */
@@ -9130,6 +9172,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fh->fh_path, strerror(errno));
   }
  
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
    */
@@ -12107,6 +12151,8 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+
   /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
    * flags.
@@ -12381,6 +12427,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
   fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   buf = fxb->buf;
