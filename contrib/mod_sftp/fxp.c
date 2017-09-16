@@ -1331,34 +1331,50 @@ static uint32_t fxp_attrs_clear_unsupported(uint32_t attr_flags) {
 
   /* Clear any unsupported flags. */
   if (attr_flags & SSH2_FX_ATTR_ALLOCATION_SIZE) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported ALLOCATION_SIZE attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_ALLOCATION_SIZE;
   }
 
   if (attr_flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported SUBSECOND_TIMES attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_SUBSECOND_TIMES;
   }
 
   if (attr_flags & SSH2_FX_ATTR_ACL) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported ACL attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_ACL;
   }
 
   if (attr_flags & SSH2_FX_ATTR_BITS) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported BITS attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_BITS;
   }
 
   if (attr_flags & SSH2_FX_ATTR_TEXT_HINT) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported TEXT_HINT attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_TEXT_HINT;
   }
 
   if (attr_flags & SSH2_FX_ATTR_MIME_TYPE) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported MIME_TYPE attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_MIME_TYPE;
   }
 
   if (attr_flags & SSH2_FX_ATTR_UNTRANSLATED_NAME) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported UNTRANSLATED_NAME attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_UNTRANSLATED_NAME;
   }
 
   if (attr_flags & SSH2_FX_ATTR_CTIME) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported CTIME attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_CTIME;
   }
 
