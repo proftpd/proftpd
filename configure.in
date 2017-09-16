@@ -1394,6 +1394,8 @@ AC_TRY_LINK([
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
+  #else
+  # error "we are not on AIX"
   #endif
   ],
   [
@@ -1413,6 +1415,8 @@ AC_TRY_LINK([
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
+  #else
+  # error "we are not on AIX"
   #endif
   ],
   [
@@ -1431,6 +1435,8 @@ AC_TRY_LINK([
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
+  #else
+  # error "we are not on AIX"
   #endif
   ],
   [
