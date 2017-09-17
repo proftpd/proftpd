@@ -161,6 +161,16 @@ START_TEST (json_object_to_text_test) {
   fail_unless(strcmp(text, expected) == 0, "Expected '%s', got '%s'", expected,
     text);
 
+  (void) pr_json_object_set_string(p, json, "foo", "bar");
+  expected = "{\"foo\":\"bar\"}";
+
+  mark_point();
+  text = pr_json_object_to_text(p, json, "");
+  fail_unless(text != NULL, "Failed to get text for object: %s",
+    strerror(errno));
+  fail_unless(strcmp(text, expected) == 0, "Expected '%s', got '%s'", expected,
+    text);
+
   (void) pr_json_object_free(json);
 }
 END_TEST
@@ -1802,6 +1812,58 @@ START_TEST(json_text_validate_test) {
 }
 END_TEST
 
+START_TEST(json_type_name_test) {
+  const char *res, *expected;
+
+  res = pr_json_type_name(0);
+  fail_unless(res == NULL, "Failed to handle invalid JSON type ID 0");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  expected = "boolean";
+  res = pr_json_type_name(PR_JSON_TYPE_BOOL);
+  fail_unless(res != NULL, "Failed to handle JSON_TYPE_BOOL: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  expected = "number";
+  res = pr_json_type_name(PR_JSON_TYPE_NUMBER);
+  fail_unless(res != NULL, "Failed to handle JSON_TYPE_NUMBER: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  expected = "null";
+  res = pr_json_type_name(PR_JSON_TYPE_NULL);
+  fail_unless(res != NULL, "Failed to handle JSON_TYPE_NULL: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  expected = "string";
+  res = pr_json_type_name(PR_JSON_TYPE_STRING);
+  fail_unless(res != NULL, "Failed to handle JSON_TYPE_STRING: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  expected = "array";
+  res = pr_json_type_name(PR_JSON_TYPE_ARRAY);
+  fail_unless(res != NULL, "Failed to handle JSON_TYPE_ARRAY: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  expected = "object";
+  res = pr_json_type_name(PR_JSON_TYPE_OBJECT);
+  fail_unless(res != NULL, "Failed to handle JSON_TYPE_OBJECT: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+}
+END_TEST
+
 Suite *tests_get_json_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1852,6 +1914,7 @@ Suite *tests_get_json_suite(void) {
   tcase_add_test(testcase, json_array_append_object_test);
 
   tcase_add_test(testcase, json_text_validate_test);
+  tcase_add_test(testcase, json_type_name_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
