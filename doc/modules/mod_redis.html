@@ -22,6 +22,7 @@ The <code>mod_redis</code> module enables ProFTPD support for caching data in
   <li><a href="#RedisEngine">RedisEngine</a>
   <li><a href="#RedisLog">RedisLog</a>
   <li><a href="#RedisLogOnCommand">RedisLogOnCommand</a>
+  <li><a href="#RedisLogOnEvent">RedisLogOnEvent</a>
   <li><a href="#RedisOptions">RedisOptions</a>
   <li><a href="#RedisSentinel">RedisSentinel</a>
   <li><a href="#RedisServer">RedisServer</a>
@@ -91,18 +92,52 @@ Example:
 <pre>
   LogFormat file-transfers "%h %l %u %t \"%r\" %s %b"
   RedisLogOnCommand APPE,RETR,STOR,STOU file-transfers
-
-  LogFormat sessions "%{iso8601}"
-  RedisLogOnCommand CONNECT,DISCONNECT sessions
 </pre>
 
 <p>
-In addition to specific FTP commands, the <em>commands</em> list can specify
+<b>Note</b> that <code>RedisLogOnCommand</code> does <b>not</b> currently
+support the logging <i>classes</i> that the <code>ExtendedLog</code> directive
+supports.
+
+<p>
+<hr>
+<h3><a name="RedisLogOnEvent">RedisLogOnEvent</a></h3>
+<strong>Syntax:</strong> RedisLogOnEvent <em>events format-name</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_redis<br>
+<strong>Compatibility:</strong> 1.3.7rc1 and later
+
+<p>
+The <code>RedisLogOnEvent</code> directive configures the use of Redis for
+<em>logging</em>.  Whenever one of the comma-separated list of <em>events</em>
+occurs, <code>mod_redis</code> will compose a JSON object, using the
+<a href="mod_log.html#LogFormat"><code>LogFormat</code></a> named by
+<em>format-name</em> as a <i>template</i> for the fields to include in the
+JSON object.  The JSON object of that event will then be appended to a list
+stored in Redis, using <em>format-name</em> as the key name.  Multiple
+<code>RedisLogOnEvent</code> directives can be used, for different log formats
+for different events.
+
+<p>
+More on the use of Redis logging, including a table showing how
+<code>LogFormat</code> variables are mapped to JSON object keys can be found
+<a href="#Logging">here</a>.
+
+<p>
+Example:
+<pre>
+  LogFormat sessions "%{iso8601} %a"
+  RedisLogOnEvent CONNECT,DISCONNECT sessions
+</pre>
+
+<p>
+In addition to specific FTP commands, the <em>events</em> list can specify
 "ALL", for logging on <b>all</b> commands.  Or it can <i>include</i> the
-"CONNECT" and "DISCONNECT" <i>commands</i>, which can be useful for logging the
+"CONNECT" and "DISCONNECT" <i>events</i>, which can be useful for logging the
 start and end times of a session.  <b>Note</b> that
-<code>RedisLogOnCommand</code> does <b>not</b> currently support the logging
-<i>classes</i> that the <code>ExtendedLog</code> directive supports.
+<code>RedisLogOnEvent</code> <i>does</i> support the logging <i>classes</i>
+that the <code>ExtendedLog</code> directive supports.
 
 <p>
 <hr>
@@ -337,6 +372,11 @@ logging objects:
   <tr>
     <td>&nbsp;<code>%E</code>&nbsp;</td>
     <td>session_end_reason</td>
+  </tr>
+
+  <tr>
+    <td>&nbsp;<code>%{epoch}</code>&nbsp;</td>
+    <td>Unix timestamp, in seconds since Jan 1 1970.</td>
   </tr>
 
   <tr>

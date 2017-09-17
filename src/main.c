@@ -628,8 +628,9 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   /* Set the pool used by the Response API for this command. */
   pr_response_set_pool(cmd->pool);
 
-  for (cp = cmd->argv[0]; *cp; cp++)
+  for (cp = cmd->argv[0]; *cp; cp++) {
     *cp = toupper(*cp);
+  }
 
   if (cmd->cmd_class == 0) {
     cmd->cmd_class = get_command_class(cmd->argv[0]);

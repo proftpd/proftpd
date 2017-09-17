@@ -50,6 +50,7 @@ TEST_API_DEPS=\
   $(top_builddir)/src/help.o \
   $(top_builddir)/src/display.o \
   $(top_builddir)/src/json.o \
+  $(top_builddir)/src/jot.o \
   $(top_builddir)/src/redis.o
 
 TEST_API_LIBS=-lcheck -lm
@@ -95,6 +96,7 @@ TEST_API_OBJS=\
   api/display.o \
   api/misc.o \
   api/json.o \
+  api/jot.o \
   api/redis.o \
   api/stubs.o \
   api/tests.o

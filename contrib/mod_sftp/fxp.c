@@ -1371,8 +1371,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
         st.st_mode != attrs->st_mode) {
       cmd_rec *cmd;
 
-      cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_CHMOD");
-      cmd->arg = pstrdup(fxp->pool, path);
+      cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHMOD", pstrdup(fxp->pool, path));
       if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chmod of '%s' blocked by <Limit> configuration", path);
@@ -1436,8 +1435,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     if (do_chown) {
       cmd_rec *cmd;
 
-      cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_CHGRP");
-      cmd->arg = pstrdup(fxp->pool, path);
+      cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHGRP", pstrdup(fxp->pool, path));
       if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chown of '%s' blocked by <Limit> configuration", path);
@@ -4084,8 +4082,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_DIGEST");
-  cmd->arg = pstrdup(fxp->pool, path);
+  cmd = fxp_cmd_alloc(fxp->pool, "SITE_DIGEST", pstrdup(fxp->pool, path));
   if (!dir_check(fxp->pool, cmd, "READ", path, NULL)) {
     xerrno = EACCES;
 
