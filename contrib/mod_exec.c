@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_exec -- a module for executing external scripts
- * Copyright (c) 2002-2016 TJ Saunders
+ * Copyright (c) 2002-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,8 +34,8 @@
 #define MOD_EXEC_VERSION	"mod_exec/0.9.16"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030701
-# error "ProFTPD 1.3.7rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030605
+# error "ProFTPD 1.3.6 or later required"
 #endif
 
 module exec_module;
