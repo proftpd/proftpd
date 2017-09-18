@@ -491,15 +491,7 @@ sub set_up {
 sub extlog_retr_default {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/extlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
+  my $setup = test_setup($tmpdir, 'extlog');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -512,39 +504,17 @@ sub extlog_retr_default {
     die("Can't open $test_file: $!");
   }
 
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
-
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     ExtendedLog => "$ext_log ALL",
 
     IfModules => {
@@ -554,7 +524,8 @@ sub extlog_retr_default {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -572,7 +543,7 @@ sub extlog_retr_default {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw($test_file);
       unless ($conn) {
@@ -590,7 +561,6 @@ sub extlog_retr_default {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -599,7 +569,7 @@ sub extlog_retr_default {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -609,91 +579,88 @@ sub extlog_retr_default {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if (open(my $fh, "< $ext_log")) {
-    while (my $line = <$fh>) {
-      chomp($line);
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      while (my $line = <$fh>) {
+        chomp($line);
 
-      if ($ENV{TEST_VERBOSE}) { 
-        print STDERR "$line\n";
+        if ($ENV{TEST_VERBOSE}) { 
+          print STDERR "$line\n";
+        }
+
+        if ($line !~ /^127\.0\.0\.1 UNKNOWN/) {
+          die("Unexpected ExtendedLog first line: $line");
+        }
+
+        if ($line =~ /\"USER (\S+)\" (\d+) /) {
+          my $logged_user = $1;
+          my $resp_code = $2;
+
+          my $expected = $setup->{user};
+          $self->assert($expected eq $logged_user,
+            "Expected user '$expected', got '$logged_user'");
+
+          $expected = '331';
+          $self->assert($expected eq $resp_code,
+            "Expected response code '$expected', got '$resp_code'");
+
+        } elsif ($line =~ /\"PASS \(hidden\)\" (\d+) /) {
+          my $resp_code = $1;
+
+          my $expected = '230';
+          $self->assert($expected eq $resp_code,
+            "Expected response code '$expected', got '$resp_code'");
+
+        } elsif ($line =~ /\"PASV\" (\d+) /) {
+          my $resp_code = $1;
+
+          my $expected = '227';
+          $self->assert($expected eq $resp_code,
+            "Expected response code '$expected', got '$resp_code'");
+
+        } elsif ($line =~ /\"RETR (\S+)\" (\d+) (\d+)/) {
+          my $logged_path = $1;
+          my $resp_code = $2;
+          my $xfer_len = $3;
+
+          my $expected = $test_file;
+          $self->assert($expected eq $logged_path,
+            "Expected transferred path '$expected', got '$logged_path'");
+
+          $expected = '226';
+          $self->assert($expected eq $resp_code,
+            "Expected response code '$expected', got '$resp_code'");
+
+          $expected = 14;
+          $self->assert($expected == $xfer_len,
+            "Expected tranferred bytes $expected, got $xfer_len");
+
+        } elsif ($line =~ /\"QUIT\" (\d+) /) {
+          my $resp_code = $1;
+
+          my $expected = '221';
+          $self->assert($expected eq $resp_code,
+            "Expected response code '$expected', got '$resp_code'");
+
+        } else {
+          die("Unexpected ExtendedLog line: $line");
+        }
       }
 
-      if ($line !~ /^127\.0\.0\.1 UNKNOWN/) {
-        die("Unexpected ExtendedLog line: $line");
-      }
+      close($fh);
 
-      if ($line =~ /\"USER (\S+)\" (\d+) /) {
-        my $logged_user = $1;
-        my $resp_code = $2;
-
-        my $expected = $user;
-        $self->assert($expected eq $logged_user,
-          test_msg("Expected user '$expected', got '$logged_user'"));
-
-        $expected = '331';
-        $self->assert($expected eq $resp_code,
-          test_msg("Expected response code '$expected', got '$resp_code'"));
-
-      } elsif ($line =~ /\"PASS \(hidden\)\" (\d+) /) {
-        my $resp_code = $1;
-
-        my $expected = '230';
-        $self->assert($expected eq $resp_code,
-          test_msg("Expected response code '$expected', got '$resp_code'"));
-
-      } elsif ($line =~ /\"PASV\" (\d+) /) {
-        my $resp_code = $1;
-
-        my $expected = '227';
-        $self->assert($expected eq $resp_code,
-          test_msg("Expected response code '$expected', got '$resp_code'"));
-
-      } elsif ($line =~ /\"RETR (\S+)\" (\d+) (\d+)/) {
-        my $logged_path = $1;
-        my $resp_code = $2;
-        my $xfer_len = $3;
-
-        my $expected = $test_file;
-        $self->assert($expected eq $logged_path,
-          test_msg("Expected transferred path '$expected', got '$logged_path'"));
-
-        $expected = '226';
-        $self->assert($expected eq $resp_code,
-          test_msg("Expected response code '$expected', got '$resp_code'"));
-
-        $expected = 14;
-        $self->assert($expected == $xfer_len,
-          test_msg("Expected tranferred bytes $expected, got $xfer_len"));
-
-      } elsif ($line =~ /\"QUIT\" (\d+) /) {
-        my $resp_code = $1;
-
-        my $expected = '221';
-        $self->assert($expected eq $resp_code,
-          test_msg("Expected response code '$expected', got '$resp_code'"));
-
-      } else {
-        die("Unexpected ExtendedLog line: $line");
-      }
+    } else {
+      die("Can't read $ext_log: $!");
     }
-
-    close($fh);
-
-  } else {
-    die("Can't read $ext_log: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub extlog_retr_bug3137 {
@@ -5450,52 +5417,19 @@ sub extlog_scp_raw_bytes_bug3554 {
 sub extlog_exit_bug3559 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/extlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'extlog');
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'jot:20 response:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     LogFormat => 'custom "%{protocol} %L %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log EXIT custom",
@@ -5507,7 +5441,8 @@ sub extlog_exit_bug3559 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -5525,7 +5460,7 @@ sub extlog_exit_bug3559 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('ascii');
 
       my $conn = $client->stor_raw('test.txt');
@@ -5544,7 +5479,6 @@ sub extlog_exit_bug3559 {
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -5553,7 +5487,7 @@ sub extlog_exit_bug3559 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -5563,70 +5497,66 @@ sub extlog_exit_bug3559 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   # Now, read in the ExtendedLog, and see whether the %I/%O variables
   # are properly populated
-  if (open(my $fh, "< $ext_log")) {
-    my $ok = 0;
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $ok = 0;
 
-    while (my $line = <$fh>) {
-      chomp($line);
+      while (my $line = <$fh>) {
+        chomp($line);
 
-      if ($ENV{TEST_VERBOSE}) {
-        print STDERR "# ExtendedLog: $line\n";
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# ExtendedLog: $line\n";
+        }
+
+        if ($line =~ /^\S+ (\S+) (\S+) (.*?) (\d+) (\d+)$/) {
+          my $local_addr = $1;
+          my $cmd = $2;
+          my $resp = $3;
+          my $bytes_in = $4;
+          my $bytes_out = $5;
+
+          # Only watch for the EXIT command, to get the session total.
+          next unless $cmd eq 'EXIT';
+
+          my $expected = '127.0.0.1';
+          $self->assert($expected eq $local_addr,
+            "Expected %L value $expected, got $local_addr");
+
+          $expected = 108;
+          $self->assert($expected == $bytes_in,
+            "Expected $expected, got $bytes_in");
+
+          # Why would this number vary so widely?  It's because of the notation
+          # used to express the port number in a PASV response.  That port
+          # number is ephemeral, chosen by the kernel.
+
+          my $expected_min = 232;
+          my $expected_max = 286;
+          $self->assert($expected_min <= $bytes_out &&
+                        $expected_max >= $bytes_out,
+            "Expected $expected_min - $expected_max, got $bytes_out");
+
+          $ok = 1;
+        }
       }
 
-      if ($line =~ /^\S+ (\S+) (\S+) (.*?) (\d+) (\d+)$/) {
-        my $local_addr = $1;
-        my $cmd = $2;
-        my $resp = $3;
-        my $bytes_in = $4;
-        my $bytes_out = $5;
+      close($fh);
+      $self->assert($ok == 1, "Did not find expected ExtendedLog lines");
 
-        # Only watch for the EXIT command, to get the session total.
-        next unless $cmd eq 'EXIT';
-
-        my $expected = '127.0.0.1';
-        $self->assert($expected eq $local_addr,
-          test_msg("Expected %L value $expected, got $local_addr"));
-
-        $expected = 108;
-        $self->assert($expected == $bytes_in,
-          test_msg("Expected $expected, got $bytes_in"));
-
-        # Why would this number vary so widely?  It's because of the notation
-        # used to express the port number in a PASV response.  That port
-        # number is ephemeral, chosen by the kernel.
-
-        my $expected_min = 232;
-        my $expected_max = 286;
-        $self->assert($expected_min <= $bytes_out &&
-                      $expected_max >= $bytes_out,
-          test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
-
-        $ok = 1;
-      }
+    } else {
+      die("Can't read $ext_log: $!");
     }
-
-    close($fh);
-    $self->assert($ok == 1,
-      test_msg("Did not find expected ExtendedLog lines"));
-
-  } else {
-    die("Can't read $ext_log: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub extlog_eos_reason_quit {

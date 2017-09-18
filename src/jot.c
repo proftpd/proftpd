@@ -1944,20 +1944,48 @@ static int is_jottable_class(cmd_rec *cmd, int included_classes,
     int excluded_classes) {
   int jottable = FALSE;
 
-  if (cmd->cmd_class & included_classes) {
-    jottable = TRUE;
-  }
+  if (cmd->cmd_class != 0) {
+    /* If the command is unknown, then we only want to log if this filter is
+     * configured to log ALL commands (Bug#4313).
+     */
+    if (cmd->cmd_id >= 0) {
+      if (cmd->cmd_class & included_classes) {
+        jottable = TRUE;
+      }
 
-  if (cmd->cmd_class & excluded_classes) {
-    jottable = FALSE;
-  }
+      if (cmd->cmd_class & excluded_classes) {
+        jottable = FALSE;
+      }
 
-  /* If the logging class of this command is unknown (defaults to zero),
-   * AND this filter logs ALL events, it is jottable.
-   */
-  if (cmd->cmd_class == 0 &&
-      included_classes == CL_ALL) {
-    jottable = TRUE;
+    } else {
+      /* Handle unknown command.  The "CONNECT" and "EXIT" commands are
+       * internally generated, and thus have special treatment.
+       */
+
+      if ((cmd->cmd_class & CL_CONNECT) ||
+          (cmd->cmd_class & CL_DISCONNECT)) {
+        if (cmd->cmd_class & included_classes) {
+          jottable = TRUE;
+        }
+
+        if (cmd->cmd_class & excluded_classes) {
+          jottable = FALSE;
+        }
+
+      } else {
+        if (included_classes == CL_ALL) {
+          jottable = TRUE;
+        }
+      }
+    }
+
+  } else {
+    /* If the logging class of this command is unknown (defaults to zero),
+     * AND this filter logs ALL events, it is jottable.
+     */
+    if (included_classes == CL_ALL) {
+      jottable = TRUE;
+    }
   }
 
   return jottable;
@@ -2204,6 +2232,10 @@ static int parse_short_id(const char *text, unsigned char *logfmt_id) {
       *logfmt_id = LOGFMT_META_RAW_BYTES_OUT;
       break;
 
+    case 'P':
+      *logfmt_id = LOGFMT_META_PID;
+      break;
+
     case 'R':
       *logfmt_id = LOGFMT_META_RESPONSE_MS;
       break;
@@ -2270,6 +2302,10 @@ static int parse_short_id(const char *text, unsigned char *logfmt_id) {
 
     case 's':
       *logfmt_id = LOGFMT_META_RESPONSE_CODE;
+      break;
+
+    case 't':
+      *logfmt_id = LOGFMT_META_TIME;
       break;
 
     case 'u':
@@ -2767,7 +2803,7 @@ static array_header *filter_text_to_array(pool *p, char *text) {
 }
 
 static int filter_get_classes(pool *p, array_header *names,
-    int *included_classes, int *excluded_classes) {
+    int *included_classes, int *excluded_classes, int flags) {
   register unsigned int i;
   int incl, excl, exclude = FALSE;
 
@@ -2994,7 +3030,7 @@ pr_jot_filters_t *pr_jot_filters_create(pool *p, const char *rules,
       int res;
 
       res = filter_get_classes(sub_pool, names, &included_classes,
-        &excluded_classes);
+        &excluded_classes, flags);
       if (res < 0) {
         int xerrno = errno;
 
