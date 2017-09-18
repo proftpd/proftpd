@@ -1040,10 +1040,10 @@ START_TEST (jot_resolve_logfmt_ids_test) {
       strerror(errno));
   }
 
-  fail_unless(resolve_on_meta_count == 21,
-    "Expected on_meta count 21, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 27,
-    "Expected on_default count 27, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_meta_count == 20,
+    "Expected on_meta count 20, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 28,
+    "Expected on_default count 28, got %u", resolve_on_default_count);
 }
 END_TEST
 
@@ -1412,10 +1412,10 @@ START_TEST (jot_resolve_logfmts_test) {
       strerror(errno));
   }
 
-  fail_unless(resolve_on_meta_count == 21,
-    "Expected on_meta count 21, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 27,
-    "Expected on_default count 27, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_meta_count == 20,
+    "Expected on_meta count 20, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 28,
+    "Expected on_default count 28, got %u", resolve_on_default_count);
   fail_unless(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }

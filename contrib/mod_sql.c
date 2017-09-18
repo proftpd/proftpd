@@ -2688,7 +2688,7 @@ static int resolve_numeric_val(cmd_rec *cmd, const char *val) {
   }
 
   if (idx < 0 ||
-      idx > (cmd->argc - 3)) {
+      (cmd->argc - 3) < idx) {
     return -1;
   }
 
