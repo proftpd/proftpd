@@ -180,7 +180,7 @@ int pr_jot_resolve_logfmt(pool *p, cmd_rec *cmd, pr_jot_filters_t *filters,
   int (*on_meta)(pool *, pr_jot_ctx_t *, unsigned char, const char *,
     const void *),
   int (*on_default)(pool *, pr_jot_ctx_t *, unsigned char),
-  int (*on_other)(pool *, pr_jot_ctx_t *, unsigned char));
+  int (*on_other)(pool *, pr_jot_ctx_t *, unsigned char *, size_t));
 
 /* Canned `on_meta` callback to use when resolving LogFormat strings into
  * JSON objects.

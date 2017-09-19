@@ -1060,7 +1060,7 @@ static int resolve_on_default(pool *jot_pool, pr_jot_ctx_t *jot_ctx,
 }
 
 static int resolve_on_other(pool *jot_pool, pr_jot_ctx_t *jot_ctx,
-    unsigned char ch) {
+    unsigned char *text, size_t text_len) {
   resolve_on_other_count++;
   return 0;
 }
@@ -1272,8 +1272,8 @@ START_TEST (jot_resolve_logfmt_on_other_test) {
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
   fail_unless(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 2,
-    "Expected on_other count 2, got %u", resolve_on_other_count);
+  fail_unless(resolve_on_other_count == 1,
+    "Expected on_other count 1, got %u", resolve_on_other_count);
 }
 END_TEST
 
