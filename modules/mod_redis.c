@@ -214,7 +214,6 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
       "' configured", NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = jot_filters;
   c->argv[1] = pstrdup(c->pool, fmt_name);
   c->argv[2] = log_fmt;
@@ -265,7 +264,6 @@ MODRET set_redislogonevent(cmd_rec *cmd) {
       "' configured", NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = jot_filters;
   c->argv[1] = pstrdup(c->pool, fmt_name);
   c->argv[2] = log_fmt;
