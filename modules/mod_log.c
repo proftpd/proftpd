@@ -609,15 +609,17 @@ static int resolve_on_default(pool *p, pr_jot_ctx_t *jot_ctx,
   return 0;
 }
 
-static int resolve_on_other(pool *p, pr_jot_ctx_t *jot_ctx, unsigned char ch) {
+static int resolve_on_other(pool *p, pr_jot_ctx_t *jot_ctx,
+    unsigned char *text, size_t text_len) {
   struct extlog_buffer *log;
 
   log = jot_ctx->log;
   if (log->buflen > 0) {
-    pr_trace_msg(trace_channel, 19, "appending text '%c' (1) to buffer", ch);
-    *(log->buf) = ch;
-    log->buf++;
-    log->buflen--;
+    pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
+      (int) text_len, text, (unsigned long) text_len);
+    memcpy(log->buf, text, text_len);
+    log->buf += text_len;
+    log->buflen -= text_len;
   }
 
   return 0;

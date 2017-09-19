@@ -2031,7 +2031,8 @@ static int jot_resolve_on_default(pool *p, pr_jot_ctx_t *ctx,
   return 0;
 }
 
-static int jot_resolve_on_other(pool *p, pr_jot_ctx_t *ctx, unsigned char ch) {
+static int jot_resolve_on_other(pool *p, pr_jot_ctx_t *ctx, unsigned char *text,
+    size_t text_len) {
   return 0;
 }
 
@@ -2107,8 +2108,9 @@ int pr_jot_resolve_logfmt(pool *p, cmd_rec *cmd, pr_jot_filters_t *filters,
     int (*on_meta)(pool *, pr_jot_ctx_t *, unsigned char, const char *,
       const void *),
     int (*on_default)(pool *, pr_jot_ctx_t *, unsigned char),
-    int (*on_other)(pool *, pr_jot_ctx_t *, unsigned char)) {
-  int jottable = FALSE, res = 0;
+    int (*on_other)(pool *, pr_jot_ctx_t *, unsigned char *, size_t)) {
+  int jottable = FALSE, res;
+  size_t text_len;
 
   if (p == NULL ||
       cmd == NULL ||
@@ -2134,51 +2136,76 @@ int pr_jot_resolve_logfmt(pool *p, cmd_rec *cmd, pr_jot_filters_t *filters,
     on_other = jot_resolve_on_other;
   }
 
+  text_len = 0;
+  res = 0;
+
   while (*logfmt) {
     pr_signals_handle();
 
     if (res < 0) {
-      return  -1;
+      return -1;
     }
 
-    if (*logfmt == LOGFMT_META_START) {
-      /* Special handling for the CONNECT/DISCONNECT meta. */
-      switch (*(logfmt + 1)) {
-        case LOGFMT_META_CONNECT:
-          if (cmd->cmd_class == CL_CONNECT) {
-            pr_trace_msg(trace_channel, 17, "resolving LogFormat ID %u (%s)",
-              LOGFMT_META_CONNECT,
-              pr_jot_get_logfmt_id_name(LOGFMT_META_CONNECT));
-            int val = TRUE;
-            res = (on_meta)(p, ctx, LOGFMT_META_CONNECT, NULL, &val);
-          }
+    /* Scan the buffer until we reach a variable.  Keep track of how much
+     * we've scanned, so that that entire segment of text can be given
+     * to the `on_other` callback at once.
+     */
+    if (*logfmt != LOGFMT_META_START) {
+      logfmt++;
+      text_len++;
+      continue;
+    }
 
-          /* Don't forget to advance past the META_START and META_CONNECT. */
-          logfmt += 2;
-          break;
-
-        case LOGFMT_META_DISCONNECT:
-          if (cmd->cmd_class == CL_DISCONNECT) {
-            pr_trace_msg(trace_channel, 17, "resolving LogFormat ID %u (%s)",
-              LOGFMT_META_DISCONNECT,
-              pr_jot_get_logfmt_id_name(LOGFMT_META_DISCONNECT));
-            int val = TRUE;
-            res = (on_meta)(p, ctx, LOGFMT_META_DISCONNECT, NULL, &val);
-          }
-
-          /* Don't forget to advance past the META_START and
-           * META_DISCONNECT.
-           */
-          logfmt += 2;
-          break;
-
-        default:
-          res = resolve_meta(p, &logfmt, ctx, cmd, on_meta, on_default);
+    if (text_len > 0) {
+      res = (on_other)(p, ctx, logfmt - text_len, text_len);
+      if (res < 0) {
+        return -1;
       }
 
-    } else {
-      res = (on_other)(p, ctx, *logfmt);
-      logfmt++;
+      /* Reset our non-variable segment length for the next iteration. */
+      text_len = 0;
+    }
+
+    /* Special handling for the CONNECT/DISCONNECT meta. */
+    switch (*(logfmt + 1)) {
+      case LOGFMT_META_CONNECT:
+        if (cmd->cmd_class == CL_CONNECT) {
+          pr_trace_msg(trace_channel, 17, "resolving LogFormat ID %u (%s)",
+            LOGFMT_META_CONNECT,
+            pr_jot_get_logfmt_id_name(LOGFMT_META_CONNECT));
+          int val = TRUE;
+          res = (on_meta)(p, ctx, LOGFMT_META_CONNECT, NULL, &val);
+        }
+
+        /* Don't forget to advance past the META_START and META_CONNECT. */
+        logfmt += 2;
+        break;
+
+      case LOGFMT_META_DISCONNECT:
+        if (cmd->cmd_class == CL_DISCONNECT) {
+          pr_trace_msg(trace_channel, 17, "resolving LogFormat ID %u (%s)",
+            LOGFMT_META_DISCONNECT,
+            pr_jot_get_logfmt_id_name(LOGFMT_META_DISCONNECT));
+          int val = TRUE;
+          res = (on_meta)(p, ctx, LOGFMT_META_DISCONNECT, NULL, &val);
+        }
+
+        /* Don't forget to advance past the META_START and
+         * META_DISCONNECT.
+         */
+        logfmt += 2;
+        break;
+
+      default:
+        res = resolve_meta(p, &logfmt, ctx, cmd, on_meta, on_default);
+    }
+  }
+
+  /* "Flush" any remaining non-variable text. */
+  if (text_len > 0) {
+    res = (on_other)(p, ctx, logfmt - text_len, text_len);
+    if (res < 0) {
+      return -1;
     }
   }
 

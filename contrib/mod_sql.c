@@ -1010,15 +1010,16 @@ static int sql_resolve_on_default(pool *p, pr_jot_ctx_t *jot_ctx,
 }
 
 static int sql_resolve_on_other(pool *p, pr_jot_ctx_t *jot_ctx,
-    unsigned char ch) {
+    unsigned char *text, size_t text_len) {
   struct sql_resolved *resolved;
 
   resolved = jot_ctx->log;
   if (resolved->buflen > 0) {
-    pr_trace_msg(trace_channel, 19, "appending text '%c' (1) to buffer", ch);
-    *(resolved->buf) = ch;
-    resolved->buf++;
-    resolved->buflen--;
+    pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
+      (int) text_len, text, (unsigned long) text_len);
+    memcpy(resolved->buf, text, text_len);
+    resolved->buf += text_len;
+    resolved->buflen -= text_len;
   }
 
   return 0;
