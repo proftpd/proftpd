@@ -358,21 +358,24 @@ static void tab_entry_remove(pr_table_t *tab, pr_table_entry_t *e) {
 static unsigned int tab_get_seed(void) {
   unsigned int seed = 0;
 #ifndef PR_USE_OPENSSL
-  FILE *fp = NULL;
-  size_t nitems = 0;
+  int fd = -1, xerrno = 0;
+  ssize_t nread = 0;
 #endif /* Not PR_USE_OPENSSL */
 
 #ifdef PR_USE_OPENSSL
   RAND_bytes((unsigned char *) &seed, sizeof(seed));
 #else
-  /* Try reading from /dev/urandom, if present */
-  fp = fopen("/dev/urandom", "rb");
-  if (fp != NULL) {
-    nitems = fread(&seed, sizeof(seed), 1, fp);
-    (void) fclose(fp);
+  /* Try reading from /dev/urandom, if present.  Use non-blocking IO, so that
+   * we do not block/wait; many platforms alias /dev/urandom to /dev/random.
+   */
+  fd = open("/dev/urandom", O_RDONLY|O_NONBLOCK);
+  if (fd >= 0) {
+    nread = read(fd, &seed, sizeof(seed));
+    xerrno = errno;
+    (void) close(fd);
   }
 
-  if (nitems == 0) {
+  if (nread < 0) {
     time_t now = time(NULL);
 
     /* No /dev/urandom present (e.g. we might be in a chroot) or not able
@@ -865,6 +868,7 @@ pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains) {
 
   tab->seed = tab_get_seed();
   tab->nmaxents = PR_TABLE_DEFAULT_MAX_ENTS;
+
   return tab;
 }
 

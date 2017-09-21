@@ -171,7 +171,7 @@ cmd_rec *pr_cmd_alloc(pool *p, unsigned int argc, ...) {
   if (argc > 0) {
     register unsigned int i = 0;
 
-    cmd->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
+    cmd->argv = pcalloc(cmd->pool, sizeof(void *) * (argc + 1));
     va_start(args, argc);
 
     for (i = 0; i < argc; i++) {

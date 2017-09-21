@@ -354,6 +354,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_readme)],
     },
 
+    't/modules/mod_redis.t' => {
+      order => ++$order,
+      test_class => [qw(mod_redis)],
+    },
+
     't/modules/mod_rewrite.t' => {
       order => ++$order,
       test_class => [qw(mod_rewrite)],

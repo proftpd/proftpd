@@ -22691,6 +22691,8 @@ cat >>conftest.$ac_ext <<_ACEOF
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
+  #else
+  # error "we are not on AIX"
   #endif
 
 int
@@ -22757,6 +22759,8 @@ cat >>conftest.$ac_ext <<_ACEOF
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
+  #else
+  # error "we are not on AIX"
   #endif
 
 int
@@ -22822,6 +22826,8 @@ cat >>conftest.$ac_ext <<_ACEOF
   #include <sys/types.h>
   #ifdef HAVE_USERSEC_H
   # include <usersec.h>
+  #else
+  # error "we are not on AIX"
   #endif
 
 int

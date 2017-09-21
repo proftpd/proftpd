@@ -970,9 +970,7 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
 MODRET sql_sqlite_quote(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   modret_t *mr = NULL;
-  char *unescaped = NULL;
-  char *escaped = NULL;
-  char *tmp;
+  char *unescaped = NULL, *escaped = NULL, *ptr = NULL;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_escapestring");
@@ -998,9 +996,10 @@ MODRET sql_sqlite_quote(cmd_rec *cmd) {
   }
 
   unescaped = cmd->argv[1];
-  tmp = sqlite3_mprintf("%q", unescaped);
-  escaped = pstrdup(cmd->pool, tmp);
-  sqlite3_free(tmp);
+  ptr = sqlite3_mprintf("%q", unescaped);
+  escaped = pstrdup(cmd->pool, ptr);
+  pr_trace_msg(trace_channel, 17, "quoted '%s' to '%s'", unescaped, escaped);
+  sqlite3_free(ptr);
 
   close_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, entry->name);
   sql_sqlite_close(close_cmd);

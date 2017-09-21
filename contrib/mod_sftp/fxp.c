@@ -1327,6 +1327,60 @@ static void fxp_msg_write_extpair(unsigned char **buf, uint32_t *buflen,
     TRUE);
 }
 
+static uint32_t fxp_attrs_clear_unsupported(uint32_t attr_flags) {
+
+  /* Clear any unsupported flags. */
+  if (attr_flags & SSH2_FX_ATTR_ALLOCATION_SIZE) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported ALLOCATION_SIZE attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_ALLOCATION_SIZE;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported SUBSECOND_TIMES attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_SUBSECOND_TIMES;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_ACL) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported ACL attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_ACL;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_BITS) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported BITS attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_BITS;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_TEXT_HINT) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported TEXT_HINT attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_TEXT_HINT;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_MIME_TYPE) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported MIME_TYPE attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_MIME_TYPE;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_UNTRANSLATED_NAME) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported UNTRANSLATED_NAME attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_UNTRANSLATED_NAME;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_CTIME) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported CTIME attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_CTIME;
+  }
+
+  return attr_flags;
+}
+
 static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     uint32_t attr_flags, array_header *xattrs, unsigned char **buf,
     uint32_t *buflen, struct fxp_packet *fxp) {
@@ -1371,8 +1425,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
         st.st_mode != attrs->st_mode) {
       cmd_rec *cmd;
 
-      cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_CHMOD");
-      cmd->arg = pstrdup(fxp->pool, path);
+      cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHMOD", pstrdup(fxp->pool, path));
       if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chmod of '%s' blocked by <Limit> configuration", path);
@@ -1436,8 +1489,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     if (do_chown) {
       cmd_rec *cmd;
 
-      cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_CHGRP");
-      cmd->arg = pstrdup(fxp->pool, path);
+      cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHGRP", pstrdup(fxp->pool, path));
       if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chown of '%s' blocked by <Limit> configuration", path);
@@ -4084,8 +4136,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  cmd = pr_cmd_alloc(fxp->pool, 1, "SITE_DIGEST");
-  cmd->arg = pstrdup(fxp->pool, path);
+  cmd = fxp_cmd_alloc(fxp->pool, "SITE_DIGEST", pstrdup(fxp->pool, path));
   if (!dir_check(fxp->pool, cmd, "READ", path, NULL)) {
     xerrno = EACCES;
 
@@ -7325,6 +7376,8 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+
   /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
    * flags.
@@ -7581,6 +7634,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
   fxp_attrs_write(fxp->pool, fxb, fxh->fh->fh_path, &st, attr_flags, fake_user,
     fake_group);
 
@@ -8287,6 +8341,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
   fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   /* fxp_attrs_write will have changed the buf/buflen fields in the buffer. */
@@ -9130,6 +9185,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       fh->fh_path, strerror(errno));
   }
  
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+
   /* If the SFTPOption for ignoring perms for SFTP uploads is set, handle
    * it by clearing the SSH2_FX_ATTR_PERMISSIONS flag.
    */
@@ -10208,7 +10265,15 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
     /* How much non-path data do we expect to be associated with this entry? */
 #ifdef PR_USE_XATTR
-    max_entry_metadata = (1024 * 4);
+    /* Note that the "extra space" to allocate for extended attributes is
+     * currently a bit of a guess.  Initially, this was 4K; that was causing
+     * slower directory listings due to the need for more READDIR requests,
+     * since we were sending fewer entries back (limited by the max packet
+     * size) per READDIR request.
+     *
+     * Now, we are trying 1K, and will see how that does.
+     */
+    max_entry_metadata = 1024;
 #else
     max_entry_metadata = 256;
 #endif /* PR_USE_XATTR */
@@ -12099,6 +12164,8 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+
   /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
    * handle it by clearing the SSH2_FX_ATTR_UIDGID and SSH2_FX_ATTR_OWNERGROUP
    * flags.
@@ -12373,6 +12440,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   fxb->buf = buf;
   fxb->buflen = buflen;
 
+  attr_flags = fxp_attrs_clear_unsupported(attr_flags);
   fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   buf = fxb->buf;

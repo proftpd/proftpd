@@ -4134,7 +4134,7 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
 
   if (ssl == NULL) {
     pr_trace_msg(trace_channel, 4, "%s",
-      "unable to get issuing cert: no SSL session provided");
+      "unable to get issuing cert: no TLS session provided");
     errno = EINVAL;
     return NULL;
   }
@@ -4142,7 +4142,7 @@ static X509 *ocsp_get_issuing_cert(pool *p, X509 *cert, SSL *ssl) {
   ctx = SSL_get_SSL_CTX(ssl);
   if (ctx == NULL) {
     pr_trace_msg(trace_channel, 4,
-      "no SSL_CTX found for SSL session: %s", tls_get_errors());
+      "no SSL_CTX found for TLS session: %s", tls_get_errors());
     errno = EINVAL;
     return NULL;
   }
@@ -4359,7 +4359,7 @@ static int ocsp_check_response(pool *p, X509 *cert, X509 *issuer, SSL *ssl,
   ctx = SSL_get_SSL_CTX(ssl);
   if (ctx == NULL) {
     pr_trace_msg(trace_channel, 4,
-      "no SSL_CTX found for SSL session: %s", tls_get_errors());
+      "no SSL_CTX found for TLS session: %s", tls_get_errors());
 
     errno = EINVAL;
     return -1;
@@ -5305,7 +5305,7 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
 
   } else {
     pr_trace_msg(trace_channel, 8, "%s",
-      "no server certificate found for SSL session");
+      "no server certificate found for TLS session");
   }
 
   if (resp == NULL) {
@@ -6123,14 +6123,14 @@ static int tls_init_ctx(void) {
       /* SSL session caching has been explicitly turned off. */
 
       pr_log_debug(DEBUG3, MOD_TLS_VERSION
-        ": TLSSessionCache off, disabling SSL session caching and setting "
+        ": TLSSessionCache off, disabling TLS session caching and setting "
         "NoSessionReuseRequired TLSOption");
 
       SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_OFF);
 
       /* Make sure we automatically relax the "SSL session reuse required
        * for data connections" requirement; to enforce such a requirement
-       * SSL session caching MUST be enabled.  So if session caching has been
+       * TLS session caching MUST be enabled.  So if session caching has been
        * explicitly disabled, relax that policy as well.
        */
       tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
@@ -7276,7 +7276,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   blocking = tls_get_block(conn);
   if (blocking) {
     /* Put the connection in non-blocking mode for the duration of the
-     * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
+     * TLS handshake.  This lets us handle EAGAIN/retries better (i.e.
      * without spinning in a tight loop and consuming the CPU).
      */
     if (pr_inet_set_nonblock(conn->pool, conn) < 0) {
@@ -7529,7 +7529,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 #endif /* ALPN */
 
   /* Manually update the raw bytes counters with the network IO from the
-   * SSL handshake.
+   * TLS handshake.
    */
   session.total_raw_in += (BIO_number_read(rbio) +
     BIO_number_read(wbio));
@@ -7661,7 +7661,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     if (reused > 0) {
       pr_log_writefile(tls_logfd, MOD_TLS_VERSION, "%s",
-        "client reused previous SSL session for control connection");
+        "client reused previous TLS session for control connection");
     }
 
   /* TLS handshake on the data channel... */
@@ -7678,11 +7678,11 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
       /* Ensure that the following conditions are met:
        *
-       *   1. The client reused an existing SSL session
-       *   2. The reused SSL session matches the SSL session from the control
+       *   1. The client reused an existing TLS session
+       *   2. The reused TLS session matches the TLS session from the control
        *      connection.
        *
-       * Shutdown the SSL session unless the conditions are met.  By
+       * Shutdown the TLS session unless the conditions are met.  By
        * requiring these conditions, we make sure that the client which is
        * talking to us on the control connection is indeed the same client
        * that is using this data connection.  Without these checks, a
@@ -7691,7 +7691,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
       reused = SSL_session_reused(ssl);
       if (reused != 1) {
-        tls_log("%s", "client did not reuse SSL session, rejecting data "
+        tls_log("%s", "client did not reuse TLS session, rejecting data "
           "connection (see the NoSessionReuseRequired TLSOptions parameter)");
         tls_end_sess(ssl, session.d, 0);
         pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -7699,7 +7699,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         return -1;
       }
 
-      tls_log("%s", "client reused SSL session for data connection");
+      tls_log("%s", "client reused TLS session for data connection");
 
       ctrl_sess = SSL_get_session(ctrl_ssl);
       if (ctrl_sess != NULL) {
@@ -7711,7 +7711,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
           matching_sess = tls_compare_session_ids(ctrl_sess, data_sess);
           if (matching_sess != 0) {
-            tls_log("Client did not reuse SSL session from control channel, "
+            tls_log("Client did not reuse TLS session from control channel, "
               "rejecting data connection (see the NoSessionReuseRequired "
               "TLSOptions parameter)");
             tls_end_sess(ssl, session.d, 0);
@@ -7723,12 +7723,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
             long sess_created, sess_expires;
             time_t now;
 
-            /* The SSL session ID for data and control channels matches.
+            /* The TLS session ID for data and control channels matches.
              *
              * Many sites are using mod_tls such that OpenSSL's internal
              * session caching is being used.  And by default, that
              * cache expires sessions after 300 secs (5 min).  It's possible
-             * that the control channel SSL session will expire soon;
+             * that the control channel TLS session will expire soon;
              * unless the client renegotiates that session, the internal
              * cache will expire the cached session, and the next data
              * transfer could fail (since mod_tls won't allow that session ID
@@ -7748,18 +7748,18 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
               remaining = (unsigned long) ((sess_created + sess_expires) - now);
 
               if (remaining <= 60) {
-                tls_log("control channel SSL session expires in %lu secs "
+                tls_log("control channel TLS session expires in %lu secs "
                   "(%lu session cache expiration)", remaining, sess_expires);
                 tls_log("%s", "Consider using 'TLSSessionCache internal:' to "
                   "increase the session cache expiration if necessary, or "
-                  "renegotiate the control channel SSL session");
+                  "renegotiate the control channel TLS session");
               }
             }
           }
 
         } else {
           /* This should never happen, so log if it does. */
-          tls_log("%s", "BUG: unable to determine whether client reused SSL "
+          tls_log("%s", "BUG: unable to determine whether client reused TLS "
             "session: SSL_get_session() for data connection returned NULL");
           tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
           tls_end_sess(ssl, session.d, 0);
@@ -7770,7 +7770,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
       } else {
         /* This should never happen, so log if it does. */
-        tls_log("%s", "BUG: unable to determine whether client reused SSL "
+        tls_log("%s", "BUG: unable to determine whether client reused TLS "
           "session: SSL_get_session() for control connection returned NULL!");
         tls_log("%s", "rejecting data connection (see TLSOption NoSessionReuseRequired)");
         tls_end_sess(ssl, session.d, 0);
@@ -7836,7 +7836,7 @@ static int tls_connect(conn_t *conn) {
   blocking = tls_get_block(conn);
   if (blocking) {
     /* Put the connection in non-blocking mode for the duration of the
-     * SSL handshake.  This lets us handle EAGAIN/retries better (i.e.
+     * TLS handshake.  This lets us handle EAGAIN/retries better (i.e.
      * without spinning in a tight loop and consuming the CPU).
      */
     if (pr_inet_set_nonblock(conn->pool, conn) < 0) {
@@ -7938,7 +7938,7 @@ static int tls_connect(conn_t *conn) {
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
 
   /* Manually update the raw bytes counters with the network IO from the
-   * SSL handshake.
+   * TLS handshake.
    */
   session.total_raw_in += (BIO_number_read(rbio) +
     BIO_number_read(wbio));
@@ -8787,7 +8787,7 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "WANT_READ encountered while reading SSL data on fd %d, "
+          "WANT_READ encountered while reading TLS data on fd %d, "
           "waiting to read data", fd);
         err = tls_readmore(fd);
         if (err > 0) {
@@ -8810,7 +8810,7 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * block, so we wait a little while for it.
          */
         pr_trace_msg(trace_channel, 17,
-          "WANT_WRITE encountered while writing SSL data on fd %d, "
+          "WANT_WRITE encountered while writing TLS data on fd %d, "
           "waiting to send data", fd);
         err = tls_writemore(fd);
         if (err > 0) {
@@ -9246,7 +9246,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
     v = pstrdup(p, SSL_get_version(ssl));
     pr_env_set(p, k, v);
 
-    /* Process the SSL session-related environ variable. */
+    /* Process the TLS session-related environ variable. */
     ssl_session = SSL_get_session(ssl);
     if (ssl_session) {
       const unsigned char *sess_data;
@@ -9267,7 +9267,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
       pr_env_set(p, k, sess_id);
     }
 
-    /* Process the SSL cipher-related environ variables. */
+    /* Process the TLS cipher-related environ variables. */
     cipher = (SSL_CIPHER *) SSL_get_current_cipher(ssl);
     if (cipher) {
       char buf[10] = {'\0'};
@@ -11048,7 +11048,7 @@ static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl, unsigned char *id,
    * Just to be sure, check if OpenSSL is giving us a negative ID length.
    */
   if (sess_id_len <= 0) {
-    tls_log("OpenSSL invoked SSL session cache 'get' callback with session "
+    tls_log("OpenSSL invoked TLS session cache 'get' callback with session "
       "ID length %d, returning null", sess_id_len);
     return NULL;
   }
@@ -11363,7 +11363,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
             X509_free(ctrl_cert);
             X509_free(data_cert);
 
-            /* Properly shutdown the SSL session. */
+            /* Properly shutdown the TLS session. */
             tls_end_sess(ssl, session.d, 0);
             pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
             pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -11540,7 +11540,7 @@ static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
 
       } else {
         pr_trace_msg(trace_channel, 3,
-          "no SSL found in stream notes for '%s'", TLS_NETIO_NOTE);
+          "no TLS found in stream notes for '%s'", TLS_NETIO_NOTE);
       }
     }
   }
@@ -12202,11 +12202,11 @@ MODRET tls_ccc(cmd_rec *cmd) {
   tls_log("received CCC, clearing control channel protection");
 
   /* Send the OK response asynchronously; the spec dictates that the
-   * response be sent prior to performing the SSL session shutdown.
+   * response be sent prior to performing the TLS session shutdown.
    */
   pr_response_send_async(R_200, _("Clearing control channel protection"));
 
-  /* Close the SSL session, but only one the control channel.
+  /* Close the TLS session, but only one the control channel.
    * The data channel, if protected, should remain so.
    */
 
@@ -14475,7 +14475,7 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
   if (ssl_ctx != NULL) {
     time_t now;
 
-    /* Help out with the SSL session cache grooming by flushing any
+    /* Help out with the TLS session cache grooming by flushing any
      * expired sessions out right now.  The client is closing its
      * connection to us anyway, so some additional latency here shouldn't
      * be noticed.  Right?
@@ -14490,31 +14490,31 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
     long res;
 
     res = SSL_CTX_sess_accept(ssl_ctx);
-    tls_log("[stat]: SSL sessions attempted: %ld", res);
+    tls_log("[stat]: SSL/TLS sessions attempted: %ld", res);
 
     res = SSL_CTX_sess_accept_good(ssl_ctx);
-    tls_log("[stat]: SSL sessions established: %ld", res);
+    tls_log("[stat]: SSL/TLS sessions established: %ld", res);
 
     res = SSL_CTX_sess_accept_renegotiate(ssl_ctx);
-    tls_log("[stat]: SSL sessions renegotiated: %ld", res);
+    tls_log("[stat]: SSL/TLS sessions renegotiated: %ld", res);
 
     res = SSL_CTX_sess_hits(ssl_ctx);
-    tls_log("[stat]: SSL sessions resumed: %ld", res);
+    tls_log("[stat]: SSL/TLS sessions resumed: %ld", res);
 
     res = SSL_CTX_sess_number(ssl_ctx);
-    tls_log("[stat]: SSL sessions in cache: %ld", res);
+    tls_log("[stat]: SSL/TLS sessions in cache: %ld", res);
 
     res = SSL_CTX_sess_cb_hits(ssl_ctx);
-    tls_log("[stat]: SSL session cache hits: %ld", res);
+    tls_log("[stat]: SSL/TLS session cache hits: %ld", res);
 
     res = SSL_CTX_sess_misses(ssl_ctx);
-    tls_log("[stat]: SSL session cache misses: %ld", res);
+    tls_log("[stat]: SSL/TLS session cache misses: %ld", res);
 
     res = SSL_CTX_sess_timeouts(ssl_ctx);
-    tls_log("[stat]: SSL session cache timeouts: %ld", res);
+    tls_log("[stat]: SSL/TLS session cache timeouts: %ld", res);
 
     res = SSL_CTX_sess_cache_full(ssl_ctx);
-    tls_log("[stat]: SSL session cache size exceeded: %ld", res);
+    tls_log("[stat]: SSL/TLS session cache size exceeded: %ld", res);
   }
 
   if (tls_pkey != NULL) {
@@ -14556,7 +14556,7 @@ static void tls_timeout_ev(const void *event_data, void *user_data) {
   if (session.c &&
       ctrl_ssl != NULL &&
       (tls_flags & TLS_SESS_ON_CTRL)) {
-    /* Try to properly close the SSL session down on the control channel,
+    /* Try to properly close the TLS session down on the control channel,
      * if there is one.
      */ 
     tls_end_sess(ctrl_ssl, session.c, 0);
@@ -15649,7 +15649,7 @@ static int tls_sess_init(void) {
 
   /* Update the session ID context to use.  This is important; it ensures
    * that the session IDs for this particular vhost will differ from those
-   * for another vhost.  An external SSL session cache will possibly
+   * for another vhost.  An external TLS session cache will possibly
    * cache sessions from all vhosts together, and we need to keep them
    * separate.
    */
