@@ -41,6 +41,8 @@
 #include <lber.h>
 #include <ldap.h>
 
+#include <mod_ldap.h>
+
 module ldap_module;
 
 static int ldap_logfd = -1;
