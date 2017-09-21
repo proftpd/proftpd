@@ -45,7 +45,7 @@
 
 module ldap_module;
 
-static int ldap_logfd = -1;
+int ldap_logfd = -1;
 static pool *ldap_pool = NULL;
 
 static const char *trace_channel = "ldap";
@@ -361,7 +361,7 @@ static void ldap_tracelog_cb(const char *msg) {
 }
 #endif /* no LBER_OPT_LOG_PRINT_FN */
 
-static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
+int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
   unsigned int start_server_index;
   char *item;
   LDAPURLDesc *url;
@@ -464,7 +464,7 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
   return -1;
 }
 
-static const char *pr_ldap_interpolate_filter(pool *p, char *template,
+const char *pr_ldap_interpolate_filter(pool *p, char *template,
     const char *value) {
   const char *escaped_value, *filter;
 
