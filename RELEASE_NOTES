@@ -36,6 +36,8 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    AllowForeignAddress class-name
+
     ExecEnviron %b (Issue #515)
 
     RedisServer db-index (Issue #550)

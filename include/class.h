@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2016 The ProFTPD Project team
+ * Copyright (c) 2003-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ typedef struct pr_class_t {
 /* Returns the class object associated with the given name, or NULL if
  * there is no matching class object.
  */
-const pr_class_t *pr_class_find(const char *);
+const pr_class_t *pr_class_find(const char *name);
 
 /* Iterate through the Class list, returning the next class.  Returns NULL
  * once the end of the list is reached.  If prev is NULL, the iterator
@@ -53,16 +53,22 @@ const pr_class_t *pr_class_find(const char *);
  */
 const pr_class_t *pr_class_get(const pr_class_t *prev);
 
+/* Returns TRUE if the given class object rules are satisfied/fulfilled by
+ * the provided address, FALSE if not, and -1 on error.
+ */
+int pr_class_satisfied(pool *p, const pr_class_t *cls,
+  const pr_netaddr_t *addr);
+
 /* Returns the class object for which the given address matches every rule.
  * If multiple classes exist that might match the given address, the first
  * defined class matches.
  */
-const pr_class_t *pr_class_match_addr(const pr_netaddr_t *);
+const pr_class_t *pr_class_match_addr(const pr_netaddr_t *addr);
 
 /* Start a new class object, allocated from the given pool, with the given
  * name.
  */
-int pr_class_open(pool *, const char *);
+int pr_class_open(pool *p, const char *name);
 
 /* Close the current class object.
  *
@@ -72,13 +78,13 @@ int pr_class_open(pool *, const char *);
 int pr_class_close(void);
 
 /* Add the given ACL object to the currently opened class object. */
-int pr_class_add_acl(const pr_netacl_t *);
+int pr_class_add_acl(const pr_netacl_t *acl);
 
 /* Set the Satisfy flag on the currently opened class object. */
-int pr_class_set_satisfy(int);
+int pr_class_set_satisfy(int flags);
 
 /* Set a note on the currently opened class object. */
-int pr_class_add_note(const char *, void *, size_t);
+int pr_class_add_note(const char *key, void *val, size_t valsz);
 
 /* For internal use only. */
 void init_class(void);
