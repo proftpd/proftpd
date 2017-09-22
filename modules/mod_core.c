@@ -4086,7 +4086,8 @@ MODRET core_eprt(cmd_rec *cmd) {
   pr_netaddr_t na;
   int family = 0;
   unsigned short port = 0;
-  unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
+  unsigned char *root_revoke = NULL;
+  int allow_foreign_addr = FALSE;
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   char *tmp = NULL;
   config_rec *c;
@@ -4334,11 +4335,43 @@ MODRET core_eprt(cmd_rec *cmd) {
    * the control connection is coming.
    */
 
-  allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
-    FALSE);
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AllowForeignAddress", FALSE);
+  if (c != NULL) {
+    int allowed;
 
-  if (allow_foreign_addr == NULL ||
-      *allow_foreign_addr == FALSE) {
+    allowed = *((int *) c->argv[0]);
+    switch (allowed) {
+      case TRUE:
+        allow_foreign_addr = TRUE;
+        break;
+
+      case FALSE:
+        break;
+
+      default: {
+        char *class_name;
+        const pr_class_t *cls;
+
+        class_name = c->argv[1];
+        cls = pr_class_find(class_name);
+        if (cls != NULL) {
+          if (pr_class_satisfied(cmd->tmp_pool, cls, &na) == TRUE) {
+            allow_foreign_addr = TRUE;
+
+          } else {
+            pr_log_debug(DEBUG8, "<Class> '%s' not satisfied by foreign "
+              "address '%s'", class_name, pr_netaddr_get_ipstr(&na));
+          }
+
+        } else {
+          pr_log_debug(DEBUG8, "<Class> '%s' not found for filtering "
+            "AllowForeignAddress", class_name);
+        }
+      }
+    }
+  }
+
+  if (allow_foreign_addr == FALSE) {
     if (pr_netaddr_cmp(&na, session.c->remote_addr) != 0 || !port) {
       pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)",
         cmd->arg);
