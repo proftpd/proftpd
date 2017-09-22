@@ -118,7 +118,7 @@ static void log_events(cmd_rec *cmd) {
     return;
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "RedisLogOnCommand", FALSE);
+  c = find_config(CURRENT_CONF, CONF_PARAM, "RedisLogOnCommand", FALSE);
   while (c != NULL) {
     pr_signals_handle();
 
@@ -126,7 +126,7 @@ static void log_events(cmd_rec *cmd) {
     c = find_config_next(c, c->next, CONF_PARAM, "RedisLogOnCommand", FALSE);
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "RedisLogOnEvent", FALSE);
+  c = find_config(CURRENT_CONF, CONF_PARAM, "RedisLogOnEvent", FALSE);
   while (c != NULL) {
     pr_signals_handle();
 
@@ -180,7 +180,7 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   pr_jot_filters_t *jot_filters;
 
   CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON|CONF_DIR);
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
@@ -218,6 +218,7 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   c->argv[1] = pstrdup(c->pool, fmt_name);
   c->argv[2] = log_fmt;
 
+  c->flags |= CF_MERGEDOWN_MULTI;
   return PR_HANDLED(cmd);
 }
 
@@ -229,7 +230,7 @@ MODRET set_redislogonevent(cmd_rec *cmd) {
   pr_jot_filters_t *jot_filters;
 
   CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON|CONF_DIR);
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
@@ -268,6 +269,7 @@ MODRET set_redislogonevent(cmd_rec *cmd) {
   c->argv[1] = pstrdup(c->pool, fmt_name);
   c->argv[2] = log_fmt;
 
+  c->flags |= CF_MERGEDOWN_MULTI;
   return PR_HANDLED(cmd);
 }
 
