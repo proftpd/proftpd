@@ -4,6 +4,7 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
+use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
 use IO::Socket::INET6;
@@ -21,7 +22,17 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  redis_log_on_command_per_dir => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   redis_log_on_event => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  redis_log_on_event_per_dir => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -199,6 +210,135 @@ sub redis_log_on_command {
   test_cleanup($setup->{log_file}, $ex);
 }
 
+sub redis_log_on_command_per_dir {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'redis');
+
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($sub_dir);
+
+  my $fmt_name = 'custom';
+  redis_list_delete($fmt_name);
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:20 redis:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    if ($^O eq 'darwin') {
+      # Mac OSX hack
+      $sub_dir = '/private' . $sub_dir;
+    }
+
+    print $fh <<EOC;
+<IfModule mod_redis.c>
+  RedisEngine on
+  RedisServer 127.0.0.1:6379
+  RedisLog $setup->{log_file}
+  LogFormat $fmt_name "%a %u"
+
+  <Directory $sub_dir>
+    RedisLogOnCommand PWD $fmt_name
+  </Directory>
+</IfModule>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->pwd();
+      $client->cwd('test.d');
+      $client->pwd();
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    my $data = redis_list_getall($fmt_name);
+
+    if ($ENV{TEST_VERBOSE}) {
+      use Data::Dumper;
+      print STDERR "# Redis data:\n", Dumper($data), "\n";
+    }
+
+    my $nrecords = scalar(@$data);
+    $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
+
+    require JSON;
+    my $record = decode_json($data->[0]);
+
+    my $expected = $setup->{user};
+    $self->assert($record->{user} eq $expected,
+      "Expected user '$expected', got '$record->{user}'");
+
+    my $expected = '127.0.0.1';
+    $self->assert($record->{remote_ip} eq $expected,
+      "Expected remote IP '$expected', got '$record->{remote_ip}'");
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
 sub redis_log_on_event {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -293,22 +433,151 @@ sub redis_log_on_event {
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
-      print STDERR "# $fmt_name records:\n", Dumper($data), "\n";
+      print STDERR "# Redis data:\n", Dumper($data), "\n";
     }
 
     my $nrecords = scalar(@$data);
-    my $expected = 5;
+    my $expected = 4;
     $self->assert($nrecords == $expected,
       "Expected $expected records, got $nrecords");
 
     require JSON;
-    my $record = decode_json($data->[4]);
+    my $record = decode_json($data->[3]);
 
     $expected = $setup->{user};
     $self->assert($record->{user} eq $expected,
       "Expected user '$expected', got '$record->{user}'");
 
     $expected = '127.0.0.1';
+    $self->assert($record->{remote_ip} eq $expected,
+      "Expected remote IP '$expected', got '$record->{remote_ip}'");
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub redis_log_on_event_per_dir {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'redis');
+
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($sub_dir);
+
+  my $fmt_name = 'custom';
+  redis_list_delete($fmt_name);
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:20 redis:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    if ($^O eq 'darwin') {
+      # Mac OSX hack
+      $sub_dir = '/private' . $sub_dir;
+    }
+
+    print $fh <<EOC;
+<IfModule mod_redis.c>
+  RedisEngine on
+  RedisServer 127.0.0.1:6379
+  RedisLog $setup->{log_file}
+  LogFormat $fmt_name "%a %u"
+
+  <Directory $sub_dir>
+    RedisLogOnEvent PWD $fmt_name
+  </Directory>
+</IfModule>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->pwd();
+      $client->cwd('test.d');
+      $client->pwd();
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    my $data = redis_list_getall($fmt_name);
+
+    if ($ENV{TEST_VERBOSE}) {
+      use Data::Dumper;
+      print STDERR "# Redis data:\n", Dumper($data), "\n";
+    }
+
+    my $nrecords = scalar(@$data);
+    $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
+
+    require JSON;
+    my $record = decode_json($data->[0]);
+
+    my $expected = $setup->{user};
+    $self->assert($record->{user} eq $expected,
+      "Expected user '$expected', got '$record->{user}'");
+
+    my $expected = '127.0.0.1';
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
