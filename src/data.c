@@ -1502,6 +1502,17 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 #endif /* !HAVE_SOLARIS_SENDFILE */
 
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
+
+#if defined(HAVE_SOLARIS_SENDFILE)
+    /* If no data could be written (e.g. the file was truncated), we're
+     * done (Bug#4318).
+     */
+    if (len == 0) {
+      pr_signals_handle();
+      break;
+    }
+#endif /* !HAVE_SOLARIS_SENDFILE */
+
     if (len != -1 &&
         len < count) {
       /* Under Linux semantics, this occurs when a signal has interrupted
@@ -1607,7 +1618,6 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
     len = (int) parms.bytes_sent;
 
     if (rc < -1 || rc == 1) {
-
 #endif /* HAVE_AIX_SENDFILE */
 
       /* IMO, BSD's semantics are warped.  Apparently, since we have our
