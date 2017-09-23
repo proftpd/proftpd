@@ -1488,13 +1488,16 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     return -1;
   }
 
-  if (session.auth_mech) {
+  if (session.auth_mech != NULL) {
     pr_log_debug(DEBUG2, "user '%s' authenticated by %s", user,
       session.auth_mech);
   }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "user '%s' authenticated via '%s' method", user, method);
+
+  pr_env_unset(cmd->pool, "SFTP_USER_AUTH_METHOD");
+  pr_env_set(cmd->pool, "SFTP_USER_AUTH_METHOD", method);
 
   /* This allows for the %s response code LogFormat variable to be populated
    * in an AUTH ExtendedLog.
