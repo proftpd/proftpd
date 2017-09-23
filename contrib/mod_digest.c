@@ -314,21 +314,59 @@ static int CRC32_Free(CRC32_CTX *ctx) {
 }
 
 static int crc32_init(EVP_MD_CTX *ctx) {
-  return CRC32_Init(ctx->md_data);
+  void *md_data;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  md_data = EVP_MD_CTX_md_data(ctx);
+#else
+  md_data = ctx->md_data;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  return CRC32_Init(md_data);
 }
 
 static int crc32_update(EVP_MD_CTX *ctx, const void *data, size_t datasz) {
-  return CRC32_Update(ctx->md_data, data, datasz);
+  void *md_data;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  md_data = EVP_MD_CTX_md_data(ctx);
+#else
+  md_data = ctx->md_data;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  return CRC32_Update(md_data, data, datasz);
 }
 
 static int crc32_final(EVP_MD_CTX *ctx, unsigned char *md) {
-  return CRC32_Final(md, ctx->md_data);
+  void *md_data;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  md_data = EVP_MD_CTX_md_data(ctx);
+#else
+  md_data = ctx->md_data;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  return CRC32_Final(md, md_data);
 }
 
 static int crc32_free(EVP_MD_CTX *ctx) {
-  return CRC32_Free(ctx->md_data);
+  void *md_data;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  md_data = EVP_MD_CTX_md_data(ctx);
+#else
+  md_data = ctx->md_data;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  return CRC32_Free(md_data);
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
 static const EVP_MD crc32_md = {
   NID_undef,
   NID_undef,
@@ -343,9 +381,30 @@ static const EVP_MD crc32_md = {
   CRC32_BLOCK,
   sizeof(EVP_MD *) + sizeof(CRC32_CTX)
 };
+#endif /* Older OpenSSLs */
 
 static const EVP_MD *EVP_crc32(void) {
-  return &crc32_md;
+  const EVP_MD *md;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
+   * this, to avoid a resource leak.
+   */
+  md = EVP_MD_meth_new(NID_undef, NID_undef);
+  EVP_MD_meth_set_input_blocksize(md, CRC32_BLOCK);
+  EVP_MD_meth_set_result_size(md, CRC32_DIGEST_LENGTH);
+  EVP_MD_meth_set_app_datasize(md, sizeof(EVP_MD *) + sizeof(CRC32_CTX));
+  EVP_MD_meth_set_init(md, crc32_init);
+  EVP_MD_meth_set_update(md, crc32_update);
+  EVP_MD_meth_set_final(md, crc32_final);
+  EVP_MD_meth_set_cleanup(md, crc32_free);
+  EVP_MD_meth_set_flags(md, 0);
+#else
+  md = &crc32_md;
+#endif /* prior to OpenSSL-1.1.0 */
+
+  return md;
 }
 
 static const char *get_errors(void) {
@@ -974,7 +1033,11 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
   struct stat st;
   unsigned char *buf;
   size_t bufsz, readsz, iter_count;
-  EVP_MD_CTX md_ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+  EVP_MD_CTX ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+  EVP_MD_CTX *pctx;
 
   fh = pr_fsio_open(path, O_RDONLY);
   if (fh == NULL) {
@@ -1028,12 +1091,22 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
     return -1;
   }
 
-  EVP_MD_CTX_init(&md_ctx);
-  if (EVP_DigestInit_ex(&md_ctx, md, NULL) != 1) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+  pctx = &ctx;
+#else
+  pctx = EVP_MD_CTX_new();
+#endif /* prior to OpenSSL-1.1.0 */
+
+  EVP_MD_CTX_init(pctx);
+  if (EVP_DigestInit_ex(pctx, md, NULL) != 1) {
     pr_log_debug(DEBUG1, MOD_DIGEST_VERSION
       ": error preparing digest context: %s", get_errors());
     (void) pr_fsio_close(fh);
-    EVP_MD_CTX_cleanup(&md_ctx);
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
+    EVP_MD_CTX_free(pctx);
+# endif /* OpenSSL-1.1.0 and later */
     errno = EPERM;
     return -1;
   }
@@ -1067,7 +1140,7 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
       continue;
     }
 
-    if (EVP_DigestUpdate(&md_ctx, buf, res) != 1) {
+    if (EVP_DigestUpdate(pctx, buf, res) != 1) {
       pr_log_debug(DEBUG1, MOD_DIGEST_VERSION
         ": error updating digest: %s", get_errors());
     }
@@ -1091,7 +1164,10 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
   (void) pr_fsio_close(fh);
 
   if (len != 0) {
-    EVP_MD_CTX_cleanup(&md_ctx);
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
+    EVP_MD_CTX_free(pctx);
+# endif /* OpenSSL-1.1.0 and later */
     pr_log_debug(DEBUG3, MOD_DIGEST_VERSION
       ": failed to read all %" PR_LU " bytes of '%s' (premature EOF?)",
       (pr_off_t) len, path);
@@ -1099,15 +1175,22 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
     return -1;
   }
 
-  if (EVP_DigestFinal_ex(&md_ctx, digest, digest_len) != 1) {
+  if (EVP_DigestFinal_ex(pctx, digest, digest_len) != 1) {
     pr_log_debug(DEBUG1, MOD_DIGEST_VERSION
       ": error finishing digest: %s", get_errors());
-    EVP_MD_CTX_cleanup(&md_ctx);
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
+    EVP_MD_CTX_free(pctx);
+# endif /* OpenSSL-1.1.0 and later */
     errno = EPERM;
     return -1;
   }
 
-  EVP_MD_CTX_cleanup(&md_ctx);
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
+  EVP_MD_CTX_free(pctx);
+# endif /* OpenSSL-1.1.0 and later */
+
   return 0;
 }
 
