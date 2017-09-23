@@ -319,25 +319,30 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
         }
       }
 
-      pr_log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
-        (cmd_type == PRE_CMD ? "PRE_CMD" :
-         cmd_type == CMD ? "CMD" :
-         cmd_type == POST_CMD ? "POST_CMD" :
-         cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" :
-         cmd_type == LOG_CMD ? "LOG_CMD" :
-         cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
-         "(unknown)"),
-        cmdargstr, c->m->name);
+      /* Skip logging the internal CONNECT/DISCONNECT commands. */
+      if (!(cmd->cmd_class & CL_CONNECT) &&
+          !(cmd->cmd_class & CL_DISCONNECT)) {
 
-      pr_trace_msg("command", 7, "dispatching %s command '%s' to mod_%s.c",
-        (cmd_type == PRE_CMD ? "PRE_CMD" :
-         cmd_type == CMD ? "CMD" :
-         cmd_type == POST_CMD ? "POST_CMD" :
-         cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" :
-         cmd_type == LOG_CMD ? "LOG_CMD" :
-         cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
-         "(unknown)"),
-        cmdargstr, c->m->name);
+        pr_log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
+          (cmd_type == PRE_CMD ? "PRE_CMD" :
+           cmd_type == CMD ? "CMD" :
+           cmd_type == POST_CMD ? "POST_CMD" :
+           cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" :
+           cmd_type == LOG_CMD ? "LOG_CMD" :
+           cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
+           "(unknown)"),
+          cmdargstr, c->m->name);
+
+        pr_trace_msg("command", 7, "dispatching %s command '%s' to mod_%s.c",
+          (cmd_type == PRE_CMD ? "PRE_CMD" :
+           cmd_type == CMD ? "CMD" :
+           cmd_type == POST_CMD ? "POST_CMD" :
+           cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" :
+           cmd_type == LOG_CMD ? "LOG_CMD" :
+           cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
+           "(unknown)"),
+          cmdargstr, c->m->name);
+      }
 
       cmd->cmd_class |= c->cmd_class;
 
