@@ -1208,6 +1208,16 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   set_userauth_methods();
 
+  /* Populate the environment for the requested authentication method,
+   * so that it can be recorded regardless of success/failure.  Note that
+   * the "none" method is not really expected by users, so we deliberately
+   * skip/omit that value.
+   */
+  if (strcmp(method, "none") != 0) {
+    pr_env_unset(cmd->pool, "SFTP_USER_AUTH_METHOD");
+    pr_env_set(cmd->pool, "SFTP_USER_AUTH_METHOD", method);
+  }
+
   /* In order for the actual user password (if any) to be populated properly
    * in the PRE_CMD PASS dispatch (e.g. this is needed for modules like
    * mod_radius; see Bug#3676), the PRE_CMD PASS dispatch needs to happen
@@ -1495,9 +1505,6 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "user '%s' authenticated via '%s' method", user, method);
-
-  pr_env_unset(cmd->pool, "SFTP_USER_AUTH_METHOD");
-  pr_env_set(cmd->pool, "SFTP_USER_AUTH_METHOD", method);
 
   /* This allows for the %s response code LogFormat variable to be populated
    * in an AUTH ExtendedLog.
