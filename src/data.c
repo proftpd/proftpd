@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1499,14 +1499,19 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 # endif
 #endif /* !HAVE_SOLARIS_SENDFILE */
 
+    errno = 0;
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
 
     /* If no data could be written (e.g. the file was truncated), we're
      * done (Bug#4318).
      */
     if (len == 0) {
+      if (errno != EINTR) {
+        break;
+      }
+
+      /* Handle our interrupting signal, and continue. */
       pr_signals_handle();
-      break;
     }
 
     if (len != -1 &&
