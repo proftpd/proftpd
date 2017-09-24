@@ -36,6 +36,8 @@
 - Issue 568 - CreateHome NoRootPrivs only works partially.
 - Issue 578 - SFTP OPEN response includes attribute flags that are not actually
   provided.
+- Bug 4318 - Truncation of file while being downloaded with sendfile enabled
+  causes timeouts due to infinite loop.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
