@@ -254,16 +254,18 @@ static void log_event(pr_redis_t *redis, config_rec *c, cmd_rec *cmd) {
   size_t payload_len = 0;
   unsigned char *log_fmt, *key_fmt;
 
-  tmp_pool = make_sub_pool(cmd->tmp_pool);
   jot_filters = c->argv[0];
   fmt_name = c->argv[1];
   log_fmt = c->argv[2];
   key_fmt = c->argv[3];
 
-  if (log_fmt == NULL) {
+  if (jot_filters == NULL ||
+      fmt_name == NULL ||
+      log_fmt == NULL) {
     return;
   }
 
+  tmp_pool = make_sub_pool(cmd->tmp_pool);
   jot_ctx = pcalloc(tmp_pool, sizeof(pr_jot_ctx_t));
   json = pr_json_object_alloc(tmp_pool);
   jot_ctx->log = json;
@@ -400,19 +402,27 @@ MODRET set_redislog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisLogOnCommand commands log-fmt [key] */
+/* usage: RedisLogOnCommand "none"|commands log-fmt [key] */
 MODRET set_redislogoncommand(cmd_rec *cmd) {
   config_rec *c, *logfmt_config;
   const char *fmt_name, *rules;
   unsigned char *log_fmt = NULL, *key_fmt = NULL;
   pr_jot_filters_t *jot_filters;
 
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON|CONF_DIR);
+
   if (cmd->argc < 3 ||
       cmd->argc > 4) {
+
+    if (cmd->argc == 2 &&
+        strcasecmp(cmd->argv[1], "none") == 0) {
+       c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+       c->flags |= CF_MERGEDOWN;
+       return PR_HANDLED(cmd);
+    }
+
     CONF_ERROR(cmd, "wrong number of parameters");
   }
-
-  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON|CONF_DIR);
 
   c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
@@ -488,15 +498,27 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisLogOnEvent events log-fmt [key] */
+/* usage: RedisLogOnEvent "none"|events log-fmt [key] */
 MODRET set_redislogonevent(cmd_rec *cmd) {
   config_rec *c, *logfmt_config;
   const char *fmt_name, *rules;
   unsigned char *log_fmt = NULL, *key_fmt = NULL;
   pr_jot_filters_t *jot_filters;
 
-  CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON|CONF_DIR);
+
+  if (cmd->argc < 3 ||
+      cmd->argc > 4) {
+
+    if (cmd->argc == 2 &&
+        strcasecmp(cmd->argv[1], "none") == 0) {
+       c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+       c->flags |= CF_MERGEDOWN;
+       return PR_HANDLED(cmd);
+    }
+
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
