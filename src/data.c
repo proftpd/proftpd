@@ -1503,7 +1503,6 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
 
-#if defined(HAVE_SOLARIS_SENDFILE)
     /* If no data could be written (e.g. the file was truncated), we're
      * done (Bug#4318).
      */
@@ -1511,7 +1510,6 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
       pr_signals_handle();
       break;
     }
-#endif /* !HAVE_SOLARIS_SENDFILE */
 
     if (len != -1 &&
         len < count) {
