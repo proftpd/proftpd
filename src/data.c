@@ -1637,6 +1637,9 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
         pr_signals_handle();
 
+	/* no more data in file to transfer - file was truncated while transfer */
+	if (len == 0) break;
+
         /* If we got everything in this transaction, we're done. */
         if (len >= count) {
           break;
