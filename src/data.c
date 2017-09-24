@@ -1501,14 +1501,19 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 # endif
 #endif /* !HAVE_SOLARIS_SENDFILE */
 
+    errno = 0;
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
 
     /* If no data could be written (e.g. the file was truncated), we're
      * done (Bug#4318).
      */
     if (len == 0) {
+      if (errno != EINTR) {
+        break;
+      }
+
+      /* Handle our interrupting signal, and continue. */
       pr_signals_handle();
-      break;
     }
 
     if (len != -1 &&
