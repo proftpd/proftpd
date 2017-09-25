@@ -1508,7 +1508,8 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
      * done (Bug#4318).
      */
     if (len == 0) {
-      if (errno != EINTR) {
+      if (errno != EINTR &&
+          errno != EAGAIN) {
         break;
       }
 
