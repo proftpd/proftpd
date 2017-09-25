@@ -6521,7 +6521,7 @@ static int core_init(void) {
   pr_help_add(C_PASV, _("(returns address/port)"), TRUE);
   pr_help_add(C_EPRT, _("<sp> |proto|addr|port|"), TRUE);
   pr_help_add(C_EPSV, _("(returns port |||port|)"), TRUE);
-  pr_help_add(C_ALLO, _("is not implemented (ignored)"), FALSE);
+  pr_help_add(C_ALLO, _("<sp> size"), TRUE);
   pr_help_add(C_RNFR, _("<sp> pathname"), TRUE);
   pr_help_add(C_RNTO, _("<sp> pathname"), TRUE);
   pr_help_add(C_DELE, _("<sp> pathname"), TRUE);
