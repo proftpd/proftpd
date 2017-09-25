@@ -90,15 +90,19 @@ static void conn_cleanup_cb(void *cv) {
    * we really care if they fail, though?
    */
 
-  if (c->instrm) {
+  if (c->instrm != NULL) {
     pr_netio_close(c->instrm);
-    c->instrm = NULL;
   }
 
-  if (c->outstrm && c->outstrm != c->instrm) {
+  if (c->outstrm != NULL &&
+      c->outstrm != c->instrm) {
     pr_netio_close(c->outstrm);
-    c->outstrm = NULL;
   }
+
+  /* Set these to NULL only AFTER comparing them with each other, and closing
+   * them.  Otherwise, we may try to close the same stream twice.
+   */
+  c->instrm = c->outstrm = NULL;
 
   if (c->listen_fd != -1) {
     close(c->listen_fd);
@@ -315,6 +319,14 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s",
         strerror(errno));
     }
+
+#ifdef SO_REUSEPORT
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (void *) &one,
+        sizeof(one)) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEPORT: %s",
+        strerror(errno));
+    }
+#endif /* SO_REUSEPORT */
 
     /* Allow socket keep-alive messages. */
     if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &one,
