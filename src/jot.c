@@ -2170,10 +2170,10 @@ int pr_jot_resolve_logfmt(pool *p, cmd_rec *cmd, pr_jot_filters_t *filters,
     switch (*(logfmt + 1)) {
       case LOGFMT_META_CONNECT:
         if (cmd->cmd_class == CL_CONNECT) {
+          int val = TRUE;
           pr_trace_msg(trace_channel, 17, "resolving LogFormat ID %u (%s)",
             LOGFMT_META_CONNECT,
             pr_jot_get_logfmt_id_name(LOGFMT_META_CONNECT));
-          int val = TRUE;
           res = (on_meta)(p, ctx, LOGFMT_META_CONNECT, NULL, &val);
         }
 
@@ -2183,10 +2183,10 @@ int pr_jot_resolve_logfmt(pool *p, cmd_rec *cmd, pr_jot_filters_t *filters,
 
       case LOGFMT_META_DISCONNECT:
         if (cmd->cmd_class == CL_DISCONNECT) {
+          int val = TRUE;
           pr_trace_msg(trace_channel, 17, "resolving LogFormat ID %u (%s)",
             LOGFMT_META_DISCONNECT,
             pr_jot_get_logfmt_id_name(LOGFMT_META_DISCONNECT));
-          int val = TRUE;
           res = (on_meta)(p, ctx, LOGFMT_META_DISCONNECT, NULL, &val);
         }
 
