@@ -146,6 +146,10 @@ static int core_netio_close_cb(pr_netio_stream_t *nstrm) {
   if (nstrm->strm_fd != -1) {
     res = close(nstrm->strm_fd);
     nstrm->strm_fd = -1;
+
+  } else {
+    errno = EBADF;
+    res = -1;
   }
 
   return res;
