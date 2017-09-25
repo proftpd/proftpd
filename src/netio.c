@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -141,10 +141,12 @@ static void core_netio_abort_cb(pr_netio_stream_t *nstrm) {
 }
 
 static int core_netio_close_cb(pr_netio_stream_t *nstrm) {
-  int res;
+  int res = 0;
 
-  res = close(nstrm->strm_fd);
-  nstrm->strm_fd = -1;
+  if (nstrm->strm_fd != -1) {
+    res = close(nstrm->strm_fd);
+    nstrm->strm_fd = -1;
+  }
 
   return res;
 }
