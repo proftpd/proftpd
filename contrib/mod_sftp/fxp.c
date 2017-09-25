@@ -297,6 +297,8 @@ struct fxp_extpair {
 static pool *fxp_pool = NULL;
 static int fxp_use_gmt = TRUE;
 
+/* FSOptions */
+static unsigned long fxp_fsio_opts = 0UL;
 static unsigned int fxp_min_client_version = 1;
 static unsigned int fxp_max_client_version = 6;
 static unsigned int fxp_utf8_protocol_version = 4;
@@ -7493,6 +7495,11 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: FSTAT %s", name);
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
+#ifdef PR_USE_XATTR
+    if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
+      attr_flags |= SSH2_FX_ATTR_EXTENDED;
+    }
+#endif /* PR_USE_XATTR */
   }
 
   fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
@@ -7644,6 +7651,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
   uint32_t buflen, bufsz;
   struct fxp_packet *resp;
   cmd_rec *cmd;
+  config_rec *c;
 
   fxp_session->client_version = sftp_msg_read_int(fxp->pool, &fxp->payload,
     &fxp->payload_sz);
@@ -7732,6 +7740,22 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
   }
 
   fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
+
+  /* Look up the FSOptions here, for use later (Issue #593).  We do not need
+   * set these for the FSIO API; that is already done by mod_core.  Instead,
+   * we look them up for ourselves, for our own consumption/use.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "FSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    fxp_fsio_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "FSOptions", FALSE);
+  }
 
   pr_event_generate("mod_sftp.sftp.protocol-version",
     &(fxp_session->client_version));
@@ -8183,7 +8207,9 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
 #ifdef PR_USE_XATTR
-    attr_flags |= SSH2_FX_ATTR_EXTENDED;
+    if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
+      attr_flags |= SSH2_FX_ATTR_EXTENDED;
+    }
 #endif /* PR_USE_XATTR */
   }
 
@@ -10404,7 +10430,9 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
      * to protocol version 6 clients.
      */
 #ifdef PR_USE_XATTR
-    attr_flags |= SSH2_FX_ATTR_EXTENDED;
+    if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
+      attr_flags |= SSH2_FX_ATTR_EXTENDED;
+    }
 #endif /* PR_USE_XATTR */
   }
 
@@ -12262,7 +12290,9 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
 #ifdef PR_USE_XATTR
-    attr_flags |= SSH2_FX_ATTR_EXTENDED;
+    if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
+      attr_flags |= SSH2_FX_ATTR_EXTENDED;
+    }
 #endif /* PR_USE_XATTR */
   }
 
