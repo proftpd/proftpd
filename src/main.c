@@ -612,9 +612,13 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   cmd->server = main_server;
 
   if (flags & PR_CMD_DISPATCH_FL_CLEAR_RESPONSE) {
-    pr_trace_msg("response", 9,
-      "clearing response lists before dispatching command '%s'",
-      (char *) cmd->argv[0]);
+    /* Skip logging the internal CONNECT/DISCONNECT commands. */
+    if (!(cmd->cmd_class & CL_CONNECT) &&
+        !(cmd->cmd_class & CL_DISCONNECT)) {
+      pr_trace_msg("response", 9,
+        "clearing response lists before dispatching command '%s'",
+        (char *) cmd->argv[0]);
+    }
     pr_response_clear(&resp_list);
     pr_response_clear(&resp_err_list);
   }
