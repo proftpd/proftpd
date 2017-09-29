@@ -41,9 +41,11 @@
 #include <lber.h>
 #include <ldap.h>
 
+#include <mod_ldap.h>
+
 module ldap_module;
 
-static int ldap_logfd = -1;
+int ldap_logfd = -1;
 static pool *ldap_pool = NULL;
 
 static const char *trace_channel = "ldap";
@@ -149,7 +151,7 @@ static char *ldap_dn, *ldap_dnpass,
             *ldap_user_uid_filter = NULL,
             *ldap_gid_basedn = NULL, *ldap_group_gid_filter = NULL,
             *ldap_group_name_filter = NULL, *ldap_group_member_filter = NULL,
-            *ldap_defaultauthscheme = "crypt", *ldap_authbind_dn = NULL,
+            *ldap_defaultauthscheme = "crypt",
             *ldap_genhdir_prefix = NULL, *ldap_default_quota = NULL,
             *ldap_attr_uid = "uid",
             *ldap_attr_uidnumber = "uidNumber",
@@ -162,6 +164,7 @@ static char *ldap_dn, *ldap_dnpass,
             *ldap_attr_ftpquota = "ftpQuota",
             *ldap_attr_ftpquota_profiledn = "ftpQuotaProfileDN",
             *ldap_attr_ssh_pubkey = "sshPublicKey";
+char *ldap_authbind_dn;
 #ifdef HAS_LDAP_INITIALIZE
 static char *ldap_server_url;
 #endif /* HAS_LDAP_INITIALIZE */
@@ -183,7 +186,7 @@ static gid_t ldap_defaultgid = -1;
 static int ldap_use_tls = FALSE;
 #endif
 
-static LDAP *ld = NULL;
+LDAP *ld = NULL;
 static array_header *cached_quota = NULL;
 static array_header *cached_ssh_pubkeys = NULL;
 
@@ -209,7 +212,7 @@ static void pr_ldap_unbind(void) {
   ld = NULL;
 }
 
-static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
+int do_ldap_connect(LDAP **conn_ld, int do_bind) {
   int res, version;
 #ifdef HAS_LDAP_SASL_BIND_S
   struct berval bindcred;
@@ -358,7 +361,7 @@ static void ldap_tracelog_cb(const char *msg) {
 }
 #endif /* no LBER_OPT_LOG_PRINT_FN */
 
-static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
+int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
   unsigned int start_server_index;
   char *item;
   LDAPURLDesc *url;
@@ -461,7 +464,7 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
   return -1;
 }
 
-static const char *pr_ldap_interpolate_filter(pool *p, char *template,
+const char *pr_ldap_interpolate_filter(pool *p, char *template,
     const char *value) {
   const char *escaped_value, *filter;
 
