@@ -65,9 +65,9 @@ unless <code>AllowLogSymlinks</code> is explicitly set to <em>on</em>
 <p>
 <hr>
 <h3><a name="RedisLogOnCommand">RedisLogOnCommand</a></h3>
-<strong>Syntax:</strong> RedisLogOnCommand <em>commands format-name</em><br>
+<strong>Syntax:</strong> RedisLogOnCommand <em>"none"|commands format-name [key]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
 <strong>Module:</strong> mod_redis<br>
 <strong>Compatibility:</strong> 1.3.6rc5 and later
 
@@ -78,9 +78,17 @@ occurs, <code>mod_redis</code> will compose a JSON object, using the
 <a href="mod_log.html#LogFormat"><code>LogFormat</code></a> named by
 <em>format-name</em> as a <i>template</i> for the fields to include in the
 JSON object.  The JSON object of that event will then be appended to a list
-stored in Redis, using <em>format-name</em> as the key name.  Multiple
+stored in Redis, using <em>format-name</em> as the default key name.  Multiple
 <code>RedisLogOnCommand</code> directives can be used, for different log formats
 for different events.
+
+<p>
+The optional <em>key</em> parameter, if present, specifies the value to use
+as the Redis key.  This <em>key</em> parameter supports all of the
+<code>LogFormat</code> variables, thus you can use <i>e.g.</i>:
+<pre>
+  RedisLogOnCommand RETR,STOR xferlog %m:ftpxfer:%u
+</pre>
 
 <p>
 More on the use of Redis logging, including a table showing how
@@ -91,7 +99,21 @@ More on the use of Redis logging, including a table showing how
 Example:
 <pre>
   LogFormat file-transfers "%h %l %u %t \"%r\" %s %b"
-  RedisLogOnCommand APPE,RETR,STOR,STOU file-transfers
+
+  # Only log to Redis for uploads in this directory
+  <Directory /path/to/inbox>
+    RedisLogOnCommand APPE,STOR,STOU file-transfers
+  </Directory>
+
+  # Only log to Redis for downloads from this directory
+  <Directory /path/to/pub>
+    RedisLogOnCommand RETR file-transfers
+  </Directory>
+
+  # ...but prevent Redis logging in this subdirectory
+  <Directory /path/to/pub/subdir>
+    RedisLogOnCommand none
+  </Directory
 </pre>
 
 <p>
@@ -102,9 +124,9 @@ supports.
 <p>
 <hr>
 <h3><a name="RedisLogOnEvent">RedisLogOnEvent</a></h3>
-<strong>Syntax:</strong> RedisLogOnEvent <em>events format-name</em><br>
+<strong>Syntax:</strong> RedisLogOnEvent <em>"none"|events format-name [key]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code><br>
 <strong>Module:</strong> mod_redis<br>
 <strong>Compatibility:</strong> 1.3.7rc1 and later
 
@@ -115,9 +137,17 @@ occurs, <code>mod_redis</code> will compose a JSON object, using the
 <a href="mod_log.html#LogFormat"><code>LogFormat</code></a> named by
 <em>format-name</em> as a <i>template</i> for the fields to include in the
 JSON object.  The JSON object of that event will then be appended to a list
-stored in Redis, using <em>format-name</em> as the key name.  Multiple
+stored in Redis, using <em>format-name</em> as the default key name.  Multiple
 <code>RedisLogOnEvent</code> directives can be used, for different log formats
 for different events.
+
+<p>
+The optional <em>key</em> parameter, if present, specifies the value to use
+as the Redis key.  This <em>key</em> parameter supports all of the
+<code>LogFormat</code> variables, thus you can use <i>e.g.</i>:
+<pre>
+  RedisLogOnEvent READ ftp.download.%u.%m:%f
+</pre>
 
 <p>
 More on the use of Redis logging, including a table showing how

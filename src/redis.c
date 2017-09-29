@@ -6298,8 +6298,8 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
   return -1;
 }
 
-int pr_redis_sentinel_get_master(pool *p, pr_redis_t *redis, const char *name,
-    pr_netaddr_t **addr) {
+int pr_redis_sentinel_get_master_addr(pool *p, pr_redis_t *redis,
+    const char *name, pr_netaddr_t **addr) {
   errno = ENOSYS;
   return -1;
 }

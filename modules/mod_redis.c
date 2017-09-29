@@ -56,54 +56,284 @@ static int redis_sess_init(void);
 static pr_table_t *jot_logfmt2json = NULL;
 static const char *trace_channel = "redis";
 
+/* TODO: Refactor this into a pr_jot_resolved_t structure, with shared/common
+ * resolver callbacks, similar to the shared parser callbacks.
+ */
+
+struct redis_buffer {
+  char *ptr, *buf;
+  size_t bufsz, buflen;
+};
+
+static void redis_buffer_append_text(struct redis_buffer *log, const char *text,
+    size_t text_len) {
+  if (text == NULL ||
+      text_len == 0) {
+    return;
+  }
+
+  if (text_len > log->buflen) {
+    text_len = log->buflen;
+  }
+
+  pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
+    (int) text_len, text, (unsigned long) text_len);
+  memcpy(log->buf, text, text_len);
+  log->buf += text_len;
+  log->buflen -= text_len;
+}
+
+static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
+    unsigned char logfmt_id, const char *jot_hint, const void *val) {
+  struct redis_buffer *log;
+
+  log = jot_ctx->log;
+  if (log->buflen > 0) {
+    const char *text = NULL;
+    size_t text_len = 0;
+    char buf[1024];
+
+    switch (logfmt_id) {
+      case LOGFMT_META_MICROSECS: {
+        unsigned long num;
+
+        num = *((double *) val);
+        text_len = snprintf(buf, sizeof(buf)-1, "%06lu", num);
+        buf[text_len] = '\0';
+        text = buf;
+        break;
+      }
+
+      case LOGFMT_META_MILLISECS: {
+        unsigned long num;
+
+        num = *((double *) val);
+        text_len = snprintf(buf, sizeof(buf)-1, "%03lu", num);
+        buf[text_len] = '\0';
+        text = buf;
+        break;
+      }
+
+      case LOGFMT_META_LOCAL_PORT:
+      case LOGFMT_META_REMOTE_PORT:
+      case LOGFMT_META_RESPONSE_CODE: {
+        int num;
+
+        num = *((double *) val);
+        text_len = snprintf(buf, sizeof(buf)-1, "%d", num);
+        buf[text_len] = '\0';
+        text = buf;
+        break;
+      }
+
+      case LOGFMT_META_UID: {
+        uid_t uid;
+
+        uid = *((double *) val);
+        text = pr_uid2str(p, uid);
+        break;
+      }
+
+      case LOGFMT_META_GID: {
+        gid_t gid;
+
+        gid = *((double *) val);
+        text = pr_gid2str(p, gid);
+        break;
+      }
+
+      case LOGFMT_META_BYTES_SENT:
+      case LOGFMT_META_FILE_OFFSET:
+      case LOGFMT_META_FILE_SIZE:
+      case LOGFMT_META_RAW_BYTES_IN:
+      case LOGFMT_META_RAW_BYTES_OUT:
+      case LOGFMT_META_RESPONSE_MS:
+      case LOGFMT_META_XFER_MS: {
+        off_t num;
+
+        num = *((double *) val);
+        text_len = snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) num);
+        buf[text_len] = '\0';
+        text = buf;
+        break;
+      }
+
+      case LOGFMT_META_EPOCH:
+      case LOGFMT_META_PID: {
+        unsigned long num;
+
+        num = *((double *) val);
+        text_len = snprintf(buf, sizeof(buf)-1, "%lu", num);
+        buf[text_len] = '\0';
+        text = buf;
+        break;
+      }
+
+      case LOGFMT_META_FILE_MODIFIED: {
+        int truth;
+
+        truth = *((int *) val);
+        text = truth ? "true" : "false";
+        break;
+      }
+
+      case LOGFMT_META_SECONDS: {
+        float num;
+
+        num = *((double *) val);
+        text_len = snprintf(buf, sizeof(buf)-1, "%0.3f", num);
+        buf[text_len] = '\0';
+        text = buf;
+        break;
+      }
+
+      case LOGFMT_META_ANON_PASS:
+      case LOGFMT_META_BASENAME:
+      case LOGFMT_META_CLASS:
+      case LOGFMT_META_CMD_PARAMS:
+      case LOGFMT_META_COMMAND:
+      case LOGFMT_META_DIR_NAME:
+      case LOGFMT_META_DIR_PATH:
+      case LOGFMT_META_ENV_VAR:
+      case LOGFMT_META_EOS_REASON:
+      case LOGFMT_META_FILENAME:
+      case LOGFMT_META_GROUP:
+      case LOGFMT_META_IDENT_USER:
+      case LOGFMT_META_ISO8601:
+      case LOGFMT_META_LOCAL_FQDN:
+      case LOGFMT_META_LOCAL_IP:
+      case LOGFMT_META_LOCAL_NAME:
+      case LOGFMT_META_METHOD:
+      case LOGFMT_META_NOTE_VAR:
+      case LOGFMT_META_ORIGINAL_USER:
+      case LOGFMT_META_PROTOCOL:
+      case LOGFMT_META_REMOTE_HOST:
+      case LOGFMT_META_REMOTE_IP:
+      case LOGFMT_META_RENAME_FROM:
+      case LOGFMT_META_RESPONSE_STR:
+      case LOGFMT_META_TIME:
+      case LOGFMT_META_USER:
+      case LOGFMT_META_VERSION:
+      case LOGFMT_META_VHOST_IP:
+      case LOGFMT_META_XFER_FAILURE:
+      case LOGFMT_META_XFER_PATH:
+      case LOGFMT_META_XFER_STATUS:
+      case LOGFMT_META_XFER_TYPE:
+      default:
+        text = val;
+    }
+
+    if (text != NULL &&
+        text_len == 0) {
+      text_len = strlen(text);
+    }
+
+    redis_buffer_append_text(log, text, text_len);
+  }
+
+  return 0;
+}
+
+static int resolve_on_other(pool *p, pr_jot_ctx_t *jot_ctx, unsigned char *text,
+    size_t text_len) {
+  struct redis_buffer *log;
+
+  log = jot_ctx->log;
+  redis_buffer_append_text(log, (const char *) text, text_len);
+  return 0;
+}
+
 static void log_event(pr_redis_t *redis, config_rec *c, cmd_rec *cmd) {
   pool *tmp_pool;
   int res;
   pr_jot_ctx_t *jot_ctx;
   pr_jot_filters_t *jot_filters;
+  pr_json_object_t *json;
   const char *fmt_name = NULL;
   char *payload = NULL;
   size_t payload_len = 0;
-  unsigned char *log_fmt;
+  unsigned char *log_fmt, *key_fmt;
 
-  tmp_pool = make_sub_pool(cmd->tmp_pool);
   jot_filters = c->argv[0];
   fmt_name = c->argv[1];
   log_fmt = c->argv[2];
+  key_fmt = c->argv[3];
 
-  if (log_fmt == NULL) {
+  if (jot_filters == NULL ||
+      fmt_name == NULL ||
+      log_fmt == NULL) {
     return;
   }
 
+  tmp_pool = make_sub_pool(cmd->tmp_pool);
   jot_ctx = pcalloc(tmp_pool, sizeof(pr_jot_ctx_t));
-  jot_ctx->log = pr_json_object_alloc(tmp_pool);
+  json = pr_json_object_alloc(tmp_pool);
+  jot_ctx->log = json;
   jot_ctx->user_data = jot_logfmt2json;
 
   res = pr_jot_resolve_logfmt(tmp_pool, cmd, jot_filters, log_fmt, jot_ctx,
     pr_jot_on_json, NULL, NULL);
   if (res == 0) {
-    payload = pr_json_object_to_text(tmp_pool, jot_ctx->log, "");
+    payload = pr_json_object_to_text(tmp_pool, json, "");
     payload_len = strlen(payload);
     pr_trace_msg(trace_channel, 8, "generated JSON payload for %s: %.*s",
       (char *) cmd->argv[0], (int) payload_len, payload);
 
   } else {
-    (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
-      "error generating JSON formatted log message: %s", strerror(errno));
+    /* EPERM indicates that the message was filtered. */
+    if (errno != EPERM) {
+      (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
+        "error generating JSON formatted log message: %s", strerror(errno));
+    }
+
     payload = NULL;
     payload_len = 0;
   }
 
+  pr_json_object_free(json);
+
   if (payload_len > 0) {
-    res = pr_redis_list_append(redis, &redis_module, fmt_name, payload,
+    const char *key;
+
+    if (key_fmt != NULL) {
+      struct redis_buffer *rb;
+      char key_buf[1024];
+
+      rb = pcalloc(tmp_pool, sizeof(struct redis_buffer));
+      rb->bufsz = rb->buflen = sizeof(key_buf)-1;
+      rb->ptr = rb->buf = key_buf;
+
+      jot_ctx->log = rb;
+
+      res = pr_jot_resolve_logfmt(tmp_pool, cmd, NULL, key_fmt, jot_ctx,
+        resolve_on_meta, NULL, resolve_on_other);
+      if (res == 0) {
+        size_t key_buflen;
+
+        key_buflen = rb->bufsz - rb->buflen;
+        key = pstrndup(tmp_pool, key_buf, key_buflen);
+
+      } else {
+        (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
+          "error resolving Redis key format: %s", strerror(errno));
+        key = fmt_name;
+      }
+
+    } else {
+      key = fmt_name;
+    }
+
+    res = pr_redis_list_append(redis, &redis_module, key, payload,
       payload_len);
     if (res < 0) {
       (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
-        "error appending log message to '%s': %s", fmt_name, strerror(errno));
+        "error appending log message to '%s': %s", key, strerror(errno));
+
+    } else {
+      pr_trace_msg(trace_channel, 17, "appended log message to '%s'", key);
     }
   }
 
-  pr_json_object_free(jot_ctx->log);
   destroy_pool(tmp_pool);
 }
 
@@ -118,7 +348,7 @@ static void log_events(cmd_rec *cmd) {
     return;
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "RedisLogOnCommand", FALSE);
+  c = find_config(CURRENT_CONF, CONF_PARAM, "RedisLogOnCommand", FALSE);
   while (c != NULL) {
     pr_signals_handle();
 
@@ -126,7 +356,7 @@ static void log_events(cmd_rec *cmd) {
     c = find_config_next(c, c->next, CONF_PARAM, "RedisLogOnCommand", FALSE);
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "RedisLogOnEvent", FALSE);
+  c = find_config(CURRENT_CONF, CONF_PARAM, "RedisLogOnEvent", FALSE);
   while (c != NULL) {
     pr_signals_handle();
 
@@ -172,17 +402,29 @@ MODRET set_redislog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisLogOnCommand commands log-fmt */
+/* usage: RedisLogOnCommand "none"|commands log-fmt [key] */
 MODRET set_redislogoncommand(cmd_rec *cmd) {
   config_rec *c, *logfmt_config;
   const char *fmt_name, *rules;
-  unsigned char *log_fmt = NULL;
+  unsigned char *log_fmt = NULL, *key_fmt = NULL;
   pr_jot_filters_t *jot_filters;
 
-  CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON|CONF_DIR);
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  if (cmd->argc < 3 ||
+      cmd->argc > 4) {
+
+    if (cmd->argc == 2 &&
+        strcasecmp(cmd->argv[1], "none") == 0) {
+       c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+       c->flags |= CF_MERGEDOWN;
+       return PR_HANDLED(cmd);
+    }
+
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
   rules = cmd->argv[1];
   jot_filters = pr_jot_filters_create(c->pool, rules,
@@ -214,24 +456,71 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
       "' configured", NULL));
   }
 
+  if (cmd->argc == 4) {
+    int res;
+    pool *tmp_pool;
+    pr_jot_ctx_t *jot_ctx;
+    pr_jot_parsed_t *jot_parsed;
+    char *key_text;
+    unsigned char key_fmtbuf[1024];
+    size_t key_fmtlen;
+
+    tmp_pool = make_sub_pool(cmd->tmp_pool);
+    jot_ctx = pcalloc(tmp_pool, sizeof(pr_jot_ctx_t));
+    jot_parsed = pcalloc(tmp_pool, sizeof(pr_jot_parsed_t));
+    jot_parsed->bufsz = jot_parsed->buflen = sizeof(key_fmtbuf)-1;
+    jot_parsed->ptr = jot_parsed->buf = key_fmtbuf;
+
+    jot_ctx->log = jot_parsed;
+
+    key_text = cmd->argv[3];
+    res = pr_jot_parse_logfmt(tmp_pool, key_text, jot_ctx,
+      pr_jot_parse_on_meta, pr_jot_parse_on_unknown, pr_jot_parse_on_other, 0);
+    if (res < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing Redis key '",
+        key_text, "': ", strerror(errno), NULL));
+    }
+
+    destroy_pool(tmp_pool);
+
+    key_fmtlen = jot_parsed->bufsz - jot_parsed->buflen;
+    key_fmtbuf[key_fmtlen] = '\0';
+    key_fmt = (unsigned char *) pstrndup(c->pool, (char *) key_fmtbuf,
+      key_fmtlen);
+  }
+
   c->argv[0] = jot_filters;
   c->argv[1] = pstrdup(c->pool, fmt_name);
   c->argv[2] = log_fmt;
+  c->argv[3] = key_fmt;
 
+  c->flags |= CF_MERGEDOWN_MULTI;
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisLogOnEvent events log-fmt */
+/* usage: RedisLogOnEvent "none"|events log-fmt [key] */
 MODRET set_redislogonevent(cmd_rec *cmd) {
   config_rec *c, *logfmt_config;
   const char *fmt_name, *rules;
-  unsigned char *log_fmt = NULL;
+  unsigned char *log_fmt = NULL, *key_fmt = NULL;
   pr_jot_filters_t *jot_filters;
 
-  CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON|CONF_DIR);
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  if (cmd->argc < 3 ||
+      cmd->argc > 4) {
+
+    if (cmd->argc == 2 &&
+        strcasecmp(cmd->argv[1], "none") == 0) {
+       c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+       c->flags |= CF_MERGEDOWN;
+       return PR_HANDLED(cmd);
+    }
+
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
   rules = cmd->argv[1];
   jot_filters = pr_jot_filters_create(c->pool, rules,
@@ -264,10 +553,45 @@ MODRET set_redislogonevent(cmd_rec *cmd) {
       "' configured", NULL));
   }
 
+  if (cmd->argc == 4) {
+    int res;
+    pool *tmp_pool;
+    pr_jot_ctx_t *jot_ctx;
+    pr_jot_parsed_t *jot_parsed;
+    char *key_text;
+    unsigned char key_fmtbuf[1024];
+    size_t key_fmtlen;
+
+    tmp_pool = make_sub_pool(cmd->tmp_pool);
+    jot_ctx = pcalloc(tmp_pool, sizeof(pr_jot_ctx_t));
+    jot_parsed = pcalloc(tmp_pool, sizeof(pr_jot_parsed_t));
+    jot_parsed->bufsz = jot_parsed->buflen = sizeof(key_fmtbuf)-1;
+    jot_parsed->ptr = jot_parsed->buf = key_fmtbuf;
+
+    jot_ctx->log = jot_parsed;
+
+    key_text = cmd->argv[3];
+    res = pr_jot_parse_logfmt(tmp_pool, key_text, jot_ctx,
+      pr_jot_parse_on_meta, pr_jot_parse_on_unknown, pr_jot_parse_on_other, 0);
+    if (res < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing Redis key '",
+        key_text, "': ", strerror(errno), NULL));
+    }
+
+    destroy_pool(tmp_pool);
+
+    key_fmtlen = jot_parsed->bufsz - jot_parsed->buflen;
+    key_fmtbuf[key_fmtlen] = '\0';
+    key_fmt = (unsigned char *) pstrndup(c->pool, (char *) key_fmtbuf,
+      key_fmtlen);
+  }
+
   c->argv[0] = jot_filters;
   c->argv[1] = pstrdup(c->pool, fmt_name);
   c->argv[2] = log_fmt;
+  c->argv[3] = key_fmt;
 
+  c->flags |= CF_MERGEDOWN_MULTI;
   return PR_HANDLED(cmd);
 }
 

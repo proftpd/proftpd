@@ -2158,23 +2158,27 @@ MODRET set_pathdenyfilter(cmd_rec *cmd) {
   return set_regex(cmd, cmd->argv[0], "deny");
 }
 
+/* usage: AllowForeignAddress on|off|class */
 MODRET set_allowforeignaddress(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
+  char *class_name = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
+  if (bool == -1) {
+    /* Not a boolean?  Assume it's a <Class> name, then. */
+    class_name = cmd->argv[1];
+  }
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
+  c->argv[1] = pstrdup(c->pool, class_name);
 
   c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 
@@ -3826,7 +3830,8 @@ MODRET core_port(cmd_rec *cmd) {
 #endif /* PR_USE_IPV6 */
   unsigned int h1, h2, h3, h4, p1, p2;
   unsigned short port;
-  unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
+  unsigned char *root_revoke = NULL;
+  int allow_foreign_addr = FALSE;
   config_rec *c;
   const char *proto;
 
@@ -3975,11 +3980,43 @@ MODRET core_port(cmd_rec *cmd) {
    * the control connection is coming.
    */
 
-  allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
-    FALSE);
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AllowForeignAddress", FALSE);
+  if (c != NULL) {
+    int allowed;
 
-  if (allow_foreign_addr == NULL ||
-      *allow_foreign_addr == FALSE) {
+    allowed = *((int *) c->argv[0]);
+    switch (allowed) {
+      case TRUE:
+        allow_foreign_addr = TRUE;
+        break;
+
+      case FALSE:
+        break;
+
+      default: {
+        char *class_name;
+        const pr_class_t *cls;
+
+        class_name = c->argv[1];
+        cls = pr_class_find(class_name);
+        if (cls != NULL) {
+          if (pr_class_satisfied(cmd->tmp_pool, cls, port_addr) == TRUE) {
+            allow_foreign_addr = TRUE;
+
+          } else {
+            pr_log_debug(DEBUG8, "<Class> '%s' not satisfied by foreign "
+              "address '%s'", class_name, pr_netaddr_get_ipstr(port_addr));
+          }
+
+        } else {
+          pr_log_debug(DEBUG8, "<Class> '%s' not found for filtering "
+            "AllowForeignAddress", class_name);
+        }
+      }
+    }
+  }
+
+  if (allow_foreign_addr == FALSE) {
     const pr_netaddr_t *remote_addr = session.c->remote_addr;
 
 #ifdef PR_USE_IPV6
@@ -4033,7 +4070,7 @@ MODRET core_port(cmd_rec *cmd) {
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
 
   /* If we already have a data connection open, kill it. */
-  if (session.d) {
+  if (session.d != NULL) {
     pr_inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
@@ -4049,7 +4086,8 @@ MODRET core_eprt(cmd_rec *cmd) {
   pr_netaddr_t na;
   int family = 0;
   unsigned short port = 0;
-  unsigned char *allow_foreign_addr = NULL, *root_revoke = NULL;
+  unsigned char *root_revoke = NULL;
+  int allow_foreign_addr = FALSE;
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   char *tmp = NULL;
   config_rec *c;
@@ -4297,11 +4335,43 @@ MODRET core_eprt(cmd_rec *cmd) {
    * the control connection is coming.
    */
 
-  allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
-    FALSE);
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AllowForeignAddress", FALSE);
+  if (c != NULL) {
+    int allowed;
 
-  if (allow_foreign_addr == NULL ||
-      *allow_foreign_addr == FALSE) {
+    allowed = *((int *) c->argv[0]);
+    switch (allowed) {
+      case TRUE:
+        allow_foreign_addr = TRUE;
+        break;
+
+      case FALSE:
+        break;
+
+      default: {
+        char *class_name;
+        const pr_class_t *cls;
+
+        class_name = c->argv[1];
+        cls = pr_class_find(class_name);
+        if (cls != NULL) {
+          if (pr_class_satisfied(cmd->tmp_pool, cls, &na) == TRUE) {
+            allow_foreign_addr = TRUE;
+
+          } else {
+            pr_log_debug(DEBUG8, "<Class> '%s' not satisfied by foreign "
+              "address '%s'", class_name, pr_netaddr_get_ipstr(&na));
+          }
+
+        } else {
+          pr_log_debug(DEBUG8, "<Class> '%s' not found for filtering "
+            "AllowForeignAddress", class_name);
+        }
+      }
+    }
+  }
+
+  if (allow_foreign_addr == FALSE) {
     if (pr_netaddr_cmp(&na, session.c->remote_addr) != 0 || !port) {
       pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)",
         cmd->arg);
@@ -6451,7 +6521,7 @@ static int core_init(void) {
   pr_help_add(C_PASV, _("(returns address/port)"), TRUE);
   pr_help_add(C_EPRT, _("<sp> |proto|addr|port|"), TRUE);
   pr_help_add(C_EPSV, _("(returns port |||port|)"), TRUE);
-  pr_help_add(C_ALLO, _("is not implemented (ignored)"), FALSE);
+  pr_help_add(C_ALLO, _("<sp> size"), TRUE);
   pr_help_add(C_RNFR, _("<sp> pathname"), TRUE);
   pr_help_add(C_RNTO, _("<sp> pathname"), TRUE);
   pr_help_add(C_DELE, _("<sp> pathname"), TRUE);
