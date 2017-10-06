@@ -3995,7 +3995,11 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   off_t range_len, total_len = 0;
   void *data;
   BIO *bio;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   EVP_MD_CTX md_ctx;
+#endif /* prior to OpenSSL-1.1.0 */
+  EVP_MD_CTX *pctx;
   const EVP_MD *md;
 
   pr_trace_msg(trace_channel, 8, "client sent check-file request: "
@@ -4321,8 +4325,13 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     buf = ptr = palloc(fxp->pool, bufsz);
   }
 
-  /* XXX Check the return value here */
-  EVP_MD_CTX_init(&md_ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+  pctx = &md_ctx;
+  EVP_MD_CTX_init(pctx);
+#else
+  pctx = EVP_MD_CTX_new();
+#endif /* prior to OpenSSL-1.1.0 */
 
   bio = BIO_new(BIO_s_fd());
   BIO_set_fd(bio, PR_FH_FD(fh), BIO_NOCLOSE);
@@ -4382,7 +4391,13 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 
       /* Cleanup. */
       BIO_free(bio);
-      EVP_MD_CTX_cleanup(&md_ctx);
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+      EVP_MD_CTX_cleanup(pctx);
+#else
+      EVP_MD_CTX_free(pctx);
+#endif /* prior to OpenSSL-1.1.0 */
 
       return fxp_packet_write(resp);
 
@@ -4399,9 +4414,9 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
       unsigned char digest[EVP_MAX_MD_SIZE];
       unsigned int digest_len = 0;
 
-      EVP_DigestInit(&md_ctx, md);
-      EVP_DigestUpdate(&md_ctx, data, res);
-      EVP_DigestFinal(&md_ctx, digest, &digest_len);
+      EVP_DigestInit(pctx, md);
+      EVP_DigestUpdate(pctx, data, res);
+      EVP_DigestFinal(pctx, digest, &digest_len);
 
       sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
 
@@ -4417,16 +4432,21 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_len = 0;
 
-    EVP_DigestInit(&md_ctx, md);
-    EVP_DigestUpdate(&md_ctx, data, res);
-    EVP_DigestFinal(&md_ctx, digest, &digest_len);
+    EVP_DigestInit(pctx, md);
+    EVP_DigestUpdate(pctx, data, res);
+    EVP_DigestFinal(pctx, digest, &digest_len);
 
     sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
   }
 
   /* Cleanup. */
   BIO_free(bio);
-  EVP_MD_CTX_cleanup(&md_ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+  EVP_MD_CTX_cleanup(pctx);
+#else
+  EVP_MD_CTX_free(pctx);
+#endif /* prior to OpenSSL-1.1.0 */
   pr_fsio_close(fh);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
