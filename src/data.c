@@ -213,9 +213,8 @@ static int data_passive_open(const char *reason, off_t size) {
 
 static int data_active_open(const char *reason, off_t size) {
   conn_t *c;
-  int bind_port, rev;
+  int bind_port, rev, *root_revoke = NULL;
   const pr_netaddr_t *bind_addr = NULL;
-  unsigned char *root_revoke = NULL;
 
   if (session.c->remote_addr == NULL) {
     /* An opened but unconnected connection? */
@@ -244,7 +243,14 @@ static int data_active_open(const char *reason, off_t size) {
   bind_port = session.c->local_port-1;
 
   root_revoke = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
-  if (root_revoke != NULL) {
+  if (root_revoke == NULL) {
+    /* In the absence of any explicit RootRevoke, the default behavior is to
+     * change the source port.  This means we are technically noncompliant,
+     * but most clients do not enforce this behavior.
+     */
+    bind_port = INPORT_ANY;
+
+  } else {
     /* A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
      * 2 indicates 'NonCompliantActiveTransfer'.  We change the source port for
      * a RootRevoke value of 2, and for a value of 1, we make sure that

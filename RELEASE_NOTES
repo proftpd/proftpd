@@ -9,17 +9,33 @@ ChangeLog files.
 1.3.7rc1
 ---------
 
+  + RootRevoke is now on by default, meaning that once authentication succeeds,
+    all root privileges are dropped by default, unless the UserOwner directive
+    (which requires root privileges) is used (Bug#4241).
+
   + The mod_ident module is no longer automatically built by default.
     To include the mod_ident module in the build, it must be explicitly
     requested via --enable-ident or --with-shared=mod_ident.
+
+    This means that configuration files using the IdentLookups directive
+    will now want to using an enclosing <IfModule> section, like so:
+
+      <IfModule mod_ident.c>
+        IdentLookups off
+      </IfModule>
+
   + The mod_tls module now performs basic sanity checks of configured TLS
-    files on startup (Issue #491).
+    files on startup (Issue#491).
+
   + The mod_deflate module now supports MODE Z data transfers when TLS
-    is used (Issue #505).
+    is used (Issue#505).
+
   + The mod_xfer module now supports the RANG FTP command; see
-    https://tools.ietf.org/html/draft-bryan-ftp-range-08 (Issue #351).
+    https://tools.ietf.org/html/draft-bryan-ftp-range-08 (Issue#351).
+
   + The ftpasswd script now supports a --change-home option, for changing
-    the home directory of a user in an AuthUserFile (Issue #566).
+    the home directory of a user in an AuthUserFile (Issue#566).
+
   + Refactored the LogFormat handling code so that it is not longer
     duplicated by mod_log, mod_sql, etc.  The new Jot API is the common API
     to be used by modules for LogFormat variables and logging.
@@ -27,32 +43,34 @@ ChangeLog files.
 
   + New Configuration Directives
 
-    RedisLogOnEvent (Issue #392)
+    RedisLogOnEvent (Issue#392)
 
-    RedisOptions (Issue #477)
+    RedisOptions (Issue#477)
 
-    RedisSentinel (Issue #396)
+    RedisSentinel (Issue#396)
 
 
   + Changed Configuration Directives
 
     AllowForeignAddress class-name
 
-    ExecEnviron %b (Issue #515)
+    ExecEnviron %b (Issue#515)
 
-    RedisServer db-index (Issue #550)
+    RedisServer db-index (Issue#550)
 
-    RewriteMap idnatrans (Issue #231)
+    RewriteMap idnatrans (Issue#231)
+
+    RootRevoke on (Bug#4241)
 
     SFTPCipher, SFTPDigest
       Weak algorithms now disabled by default (Bug#4279)
 
-    TLSProtocol TLSv1.3 (Issue #536)
+    TLSProtocol TLSv1.3 (Issue#536)
 
     TLSServerCipherPreference
       The TLSServerCipherPreference directive is now enabled by default.
 
-    TLSStaplingOptions NoFakeTryLater (Issue #518)
+    TLSStaplingOptions NoFakeTryLater (Issue#518)
 
 
   + Removed Configuration Directives
