@@ -3830,8 +3830,7 @@ MODRET core_port(cmd_rec *cmd) {
 #endif /* PR_USE_IPV6 */
   unsigned int h1, h2, h3, h4, p1, p2;
   unsigned short port;
-  unsigned char *root_revoke = NULL;
-  int allow_foreign_addr = FALSE;
+  int allow_foreign_addr = FALSE, *root_revoke = NULL;
   config_rec *c;
   const char *proto;
 
@@ -4086,8 +4085,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   pr_netaddr_t na;
   int family = 0;
   unsigned short port = 0;
-  unsigned char *root_revoke = NULL;
-  int allow_foreign_addr = FALSE;
+  int allow_foreign_addr = FALSE, *root_revoke = NULL;
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   char *tmp = NULL;
   config_rec *c;

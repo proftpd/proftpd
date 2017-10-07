@@ -442,7 +442,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   const char *grantmsg = NULL, *user;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
-    have_all_timeout, *root_revoke = NULL, *authenticated;
+    have_all_timeout, *authenticated;
+  int root_revoke = TRUE;
   struct stat st;
 
   /* Was there a precending USER command? Was the client successfully
@@ -664,13 +665,27 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
   login_succeeded(cmd->tmp_pool, user);
 
-  /* A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
-   * 2 indicates 'NonCompliantActiveTransfer'.  We will drop root privs for any
-   * RootRevoke value greater than 0.
-   */
-  root_revoke = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
-  if (root_revoke != NULL &&
-      *root_revoke > 0) {
+  /* Should we give up root privs completely here? */
+  c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
+  if (c != NULL) {
+    root_revoke = *((int *) c->argv[0]);
+
+    if (root_revoke == FALSE) {
+      pr_log_debug(DEBUG8, "retaining root privileges per RootRevoke setting");
+    }
+
+  } else {
+    /* Do a recursive look for any UserOwner directives; honoring that
+     * configuration also requires root privs.
+     */
+    c = find_config(main_server->conf, CONF_PARAM, "UserOwner", TRUE);
+    if (c != NULL) {
+      pr_log_debug(DEBUG9, "retaining root privileges per UserOwner setting");
+      root_revoke = FALSE;
+    }
+  }
+
+  if (root_revoke) {
     pr_signals_block();
     PRIVS_ROOT
     PRIVS_REVOKE
@@ -678,18 +693,6 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
     /* Disable future attempts at UID/GID manipulation. */
     session.disable_id_switching = TRUE;
-
-    if (*root_revoke == 1) {
-      /* If the server's listening port is less than 1024, block PORT
-       * commands (effectively allowing only passive connections, which is
-       * not necessarily a Bad Thing).  Only log this here -- the blocking
-       * will need to occur in mod_core's handling of the PORT/EPRT commands.
-       */
-      if (session.c->local_port < 1024) {
-        pr_log_debug(DEBUG0,
-          "RootRevoke in effect, active data transfers may not succeed");
-      }
-    }
 
     pr_log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
   }
@@ -3802,8 +3805,8 @@ MODRET set_rootrevoke(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) root_revoke;
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = root_revoke;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
