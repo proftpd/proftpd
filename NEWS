@@ -64,6 +64,9 @@
 - Bug 4320 - Confusing mod_sftp log message "disconnected by user (Application
   error)" changed to "(Application disconnected)".
 - Bug 4241 - RootRevoke should be on/true by default.
+- Bug 4281 - Redesign support for Backend SQLAuthType for MySQL.  If the MySQL
+  client library cannot support the SQLAuthType Backend, mod_sql_mysql will
+  emit a warning on startup.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------

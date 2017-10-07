@@ -1072,19 +1072,6 @@ static modret_t *sql_auth_empty(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
-static modret_t *sql_auth_backend(cmd_rec *cmd, const char *plaintext,
-    const char *ciphertext) {
-  modret_t *mr = NULL;
-
-  if (*ciphertext == '\0') {
-    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
-  }
-
-  mr = sql_dispatch(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
-    plaintext, ciphertext), "sql_checkauth");
-  return mr;
-}
-
 #if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
 static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
@@ -4183,8 +4170,9 @@ MODRET sql_auth_check(cmd_rec *cmd) {
     char *ciphertext = cmd->argv[0];
     char *plaintext = cmd->argv[2];
 
-    if (ah == NULL)
+    if (ah == NULL) {
       sql_log(DEBUG_AUTH, "%s", "warning: no SQLAuthTypes configured");
+    }
 
     for (i = 0; ah && i < ah->nelts; i++) {
       struct sql_authtype_handler *sah;
@@ -4193,7 +4181,7 @@ MODRET sql_auth_check(cmd_rec *cmd) {
       sql_log(DEBUG_AUTH, "checking password using SQLAuthType '%s'",
         sah->name);
 
-      mr = sah->cb(cmd, plaintext, ciphertext);
+      mr = (sah->cb)(cmd, plaintext, ciphertext);
       if (!MODRET_ISERROR(mr)) {
 	sql_log(DEBUG_AUTH, "'%s' SQLAuthType handler reports success",
           sah->name);
@@ -5803,7 +5791,6 @@ static void sql_mod_unload_ev(const void *event_data, void *user_data) {
 
     pr_event_unregister(&sql_module, NULL, NULL);
 
-    (void) sql_unregister_authtype("Backend");
     (void) sql_unregister_authtype("Crypt");
     (void) sql_unregister_authtype("Empty");
     (void) sql_unregister_authtype("Plaintext");
@@ -5895,7 +5882,6 @@ static int sql_init(void) {
 #endif /* PR_SHARED_MODULE */
 
   /* Register our built-in auth handlers. */
-  (void) sql_register_authtype("Backend", sql_auth_backend);
   (void) sql_register_authtype("Crypt", sql_auth_crypt);
   (void) sql_register_authtype("Empty", sql_auth_empty);
   (void) sql_register_authtype("Plaintext", sql_auth_plaintext);

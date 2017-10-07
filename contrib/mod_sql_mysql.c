@@ -1570,29 +1570,6 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   return mod_create_data(cmd, (void *) escaped);
 }
 
-/*
- * cmd_checkauth: some backend databases may provide backend-specific
- *  methods to check passwords.  This function takes a plaintext password
- *  and a hashed password and checks to see if they are the same.
- *
- * Inputs:
- *  cmd->argv[0]: connection name
- *  cmd->argv[1]: plaintext string
- *  cmd->argv[2]: hashed string
- *
- * Returns:
- *  PR_HANDLED(cmd)                        -- passwords match
- *  PR_ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
- *  PR_ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
- *  PR_ERROR_INT(cmd, PR_AUTH_DISABLEPWD)  -- password is disabled
- *  PR_ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
- *  PR_ERROR(cmd)                          -- unknown error
- *
- * Notes:
- *  If this backend does not provide this functionality, this cmd *must*
- *  return ERROR.
- */
-
 /* Per the MySQL docs for the PASSWORD function, MySQL pre-4.1 passwords
  * are always 16 bytes; MySQL 4.1 passwords are 41 bytes AND start with '*'.
  * See:
@@ -1727,38 +1704,14 @@ static int match_mysql_passwds(const char *hashed, size_t hashed_len,
   return matched;
 }
 
-MODRET cmd_checkauth(cmd_rec *cmd) {
-  conn_entry_t *entry = NULL;
+static modret_t *sql_mysql_password(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
   char scrambled[256] = {'\0'};
-  char *plaintxt = NULL, *hashed = NULL;
-  size_t plaintxt_len = 0, hashed_len = 0, scrambled_len = 0;
+  size_t plaintext_len = 0, ciphertext_len = 0, scrambled_len = 0;
   int success = 0;
 
-  sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_checkauth");
-
-  sql_check_cmd(cmd, "cmd_checkauth");
-
-  if (cmd->argc != 3) {
-    sql_log(DEBUG_FUNC, "exiting \tmysql cmd_checkauth");
-    return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
-  }
-
-  /* get the named connection -- not used in this case, but for consistency */
-  entry = sql_get_connection(cmd->argv[0]);
-  if (entry == NULL) {
-    sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
-    return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
-  }
-
-  if (cmd->argv[1] == NULL) {
-    sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
-    return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
-  }
-
-  plaintxt = cmd->argv[1];
-  plaintxt_len = strlen(plaintxt);
-  hashed = cmd->argv[2];
-  hashed_len = strlen(hashed);
+  plaintext_len = strlen(plaintext);
+  ciphertext_len = strlen(ciphertext);
 
   /* Checking order (damn MySQL API changes):
    *
@@ -1772,11 +1725,11 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
   if (success == FALSE) {
     memset(scrambled, '\0', sizeof(scrambled));
 
-    my_make_scrambled_password(scrambled, plaintxt, plaintxt_len);
+    my_make_scrambled_password(scrambled, plaintext, plaintext_len);
     scrambled_len = strlen(scrambled);
 
-    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
-      "my_make_scrambled_password");
+    success = match_mysql_passwds(ciphertext, ciphertext_len, scrambled,
+      scrambled_len, "my_make_scrambled_password");
   }
 #endif /* HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD */
 
@@ -1789,11 +1742,11 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s",
       "warning: support for this legacy MySQ-3.xL password algorithm will be dropped from MySQL in the future");
 
-    my_make_scrambled_password_323(scrambled, plaintxt, plaintxt_len);
+    my_make_scrambled_password_323(scrambled, plaintext, plaintext_len);
     scrambled_len = strlen(scrambled);
 
-    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
-      "my_make_scrambled_password_323");
+    success = match_mysql_passwds(ciphertext, ciphertext_len, scrambled,
+      scrambled_len, "my_make_scrambled_password_323");
   }
 #endif /* HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD_323 */
 
@@ -1802,14 +1755,14 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     memset(scrambled, '\0', sizeof(scrambled));
 
 # if MYSQL_VERSION_ID >= 40100 && MYSQL_VERSION_ID < 40101
-    make_scrambled_password(scrambled, plaintxt, 1, NULL);
+    make_scrambled_password(scrambled, plaintext, 1, NULL);
 # else
-    make_scrambled_password(scrambled, plaintxt);
+    make_scrambled_password(scrambled, plaintext);
 # endif
     scrambled_len = strlen(scrambled);
 
-    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
-      "make_scrambled_password");
+    success = match_mysql_passwds(ciphertext, ciphertext_len, scrambled,
+      scrambled_len, "make_scrambled_password");
   }
 #endif /* HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD */
 
@@ -1822,11 +1775,11 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s",
       "warning: support for this legacy MySQ-3.xL password algorithm will be dropped from MySQL in the future");
 
-    make_scrambled_password_323(scrambled, plaintxt);
+    make_scrambled_password_323(scrambled, plaintext);
     scrambled_len = strlen(scrambled);
 
-    success = match_mysql_passwds(hashed, hashed_len, scrambled, scrambled_len,
-      "make_scrambled_password_323");
+    success = match_mysql_passwds(ciphertext, ciphertext_len, scrambled,
+      scrambled_len, "make_scrambled_password_323");
   }
 #endif /* HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323 */
 
@@ -1834,7 +1787,6 @@ MODRET cmd_checkauth(cmd_rec *cmd) {
     sql_log(DEBUG_FUNC, "%s", "password mismatch");
   }
 
-  sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
   return success ? PR_HANDLED(cmd) : PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
@@ -1924,7 +1876,6 @@ MODRET cmd_cleanup(cmd_rec *cmd) {
  */
 static cmdtable sql_mysql_cmdtable[] = {
   { CMD, "sql_close",            G_NONE, cmd_close,            FALSE, FALSE },
-  { CMD, "sql_checkauth",        G_NONE, cmd_checkauth,        FALSE, FALSE },
   { CMD, "sql_cleanup",          G_NONE, cmd_cleanup,          FALSE, FALSE },
   { CMD, "sql_defineconnection", G_NONE, cmd_defineconnection, FALSE, FALSE },
   { CMD, "sql_escapestring",     G_NONE, cmd_escapestring,     FALSE, FALSE },
@@ -1940,6 +1891,35 @@ static cmdtable sql_mysql_cmdtable[] = {
 
   { 0, NULL }
 };
+
+/* Configuration handlers
+ */
+
+MODRET set_sqlauthtypes(cmd_rec *cmd) {
+#if MYSQL_VERSION_ID >= 50600 && \
+    !defined(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD) && \
+    !defined(HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323) && \
+    !defined(HAVE_MYSQL_MY_MAKE_SCRAMBLED_PASSWORD_323)
+  register unsigned int i;
+
+  /* If we are using MySQL 5.6.x or later, AND we only have the
+   * my_make_scrambled_password() MySQL function available, AND the Backend
+   * SQLAuthType is used, then we must fail the directive; see Bug#4281.
+   */
+
+  for (i = 1; i < cmd->argc; i++) {
+    const char *auth_type;
+
+    auth_type = cmd->argv[i];
+    if (strcasecmp(auth_type, "Backend") == 0) {
+      pr_log_pri(PR_LOG_NOTICE, "%s: WARNING: MySQL client library uses MySQL SHA256 password format, and Backend SQLAuthType cannot succeed; consider using MD5/SHA1/SHA256 SQLAuthType using mod_sql_passwd", (char *) cmd->argv[0]);
+      break;
+    }
+  }
+#endif
+
+  return PR_DECLINED(cmd);
+}
 
 /* Event handlers
  */
@@ -1957,17 +1937,18 @@ static void sql_mysql_mod_load_ev(const void *event_data, void *user_data) {
 }
 
 static void sql_mysql_mod_unload_ev(const void *event_data, void *user_data) {
-
   if (strcmp("mod_sql_mysql.c", (const char *) event_data) == 0) {
+    /* Unregister ourselves from all events. */
+    pr_event_unregister(&sql_mysql_module, NULL, NULL);
+
     /* Unegister ourselves with mod_sql. */
+    (void) sql_unregister_authtype("Backend");
+
     if (sql_unregister_backend("mysql") < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_SQL_MYSQL_VERSION
         ": notice: error unregistering backend: %s", strerror(errno));
       pr_session_end(0);
     }
-
-    /* Unregister ourselves from all events. */
-    pr_event_unregister(&sql_mysql_module, NULL, NULL);
   }
 }
 
@@ -1982,6 +1963,8 @@ static int sql_mysql_init(void) {
   pr_event_register(&sql_mysql_module, "core.module-unload",
     sql_mysql_mod_unload_ev, NULL);
 
+  /* Register our auth handler. */
+  (void) sql_register_authtype("Backend", sql_mysql_password);
   return 0;
 }
 
@@ -1999,8 +1982,13 @@ static int sql_mysql_sess_init(void) {
   return 0;
 }
 
-/*
- * sql_mysql_module: The standard module struct for all ProFTPD modules.
+static conftable sql_mysql_conftab[] = {
+  { "SQLAuthTypes",	set_sqlauthtypes,	NULL },
+
+  { NULL, NULL, NULL }
+};
+
+/* sql_mysql_module: The standard module struct for all ProFTPD modules.
  *  We use the pre-fork handler to initialize the conn_cache array header.
  *  Other backend modules may not need any init functions, or may need
  *  to extend the init functions to initialize other internal variables.
@@ -2016,7 +2004,7 @@ module sql_mysql_module = {
   "sql_mysql",
 
   /* Module configuration directive handlers */
-  NULL,
+  sql_mysql_conftab,
 
   /* Module command handlers */
   NULL,
