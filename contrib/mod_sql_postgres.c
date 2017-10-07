@@ -1479,58 +1479,6 @@ MODRET cmd_escapestring(cmd_rec *cmd) {
 }
 
 /*
- * cmd_checkauth: some backend databases may provide backend-specific
- *  methods to check passwords.  This function takes a cleartext password
- *  and a hashed password and checks to see if they are the same.
- *
- * Inputs:
- *  cmd->argv[0]: connection name
- *  cmd->argv[1]: cleartext string
- *  cmd->argv[2]: hashed string
- *
- * Returns:
- *  PR_HANDLED(cmd)                        -- passwords match
- *  PR_ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
- *  PR_ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
- *  PR_ERROR_INT(cmd, PR_AUTH_DISABLEPWD)  -- password is disabled
- *  PR_ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
- *  PR_ERROR(cmd)                          -- unknown error
- *
- * Notes:
- *  If this backend does not provide this functionality, this cmd *must*
- *  return ERROR.
- */
-MODRET cmd_checkauth(cmd_rec *cmd) {
-  conn_entry_t *entry = NULL;
-
-  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_checkauth");
-
-  sql_check_cmd(cmd, "cmd_checkauth");
-
-  if (cmd->argc != 3) {
-    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
-    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
-  }
-
-  /* get the named connection -- not used in this case, but for consistency */
-  entry = sql_get_connection(cmd->argv[0]);
-  if (entry == NULL) {
-    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
-    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
-  }
-
-  sql_log(DEBUG_WARN, MOD_SQL_POSTGRES_VERSION
-    ": Postgres does not support the 'Backend' SQLAuthType");
-
-  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
-
-  /* PostgreSQL doesn't provide this functionality */
-  return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-    "Postgres does not support the 'Backend' SQLAuthType");
-}
-
-/*
  * cmd_identify: returns API information and an identification string for 
  *  the backend handler.  mod_sql will call this at initialization and 
  *  display the identification string.  The API version information is 
@@ -1596,7 +1544,6 @@ MODRET cmd_cleanup(cmd_rec *cmd) {
  *  aren't defined.
  */
 static cmdtable sql_postgres_cmdtable[] = {
-  { CMD, "sql_checkauth",        G_NONE, cmd_checkauth,        FALSE, FALSE },
   { CMD, "sql_cleanup",          G_NONE, cmd_cleanup,          FALSE, FALSE },
   { CMD, "sql_close",            G_NONE, cmd_close,            FALSE, FALSE },
   { CMD, "sql_defineconnection", G_NONE, cmd_defineconnection, FALSE, FALSE },

@@ -1009,23 +1009,6 @@ MODRET sql_sqlite_quote(cmd_rec *cmd) {
   return mod_create_data(cmd, escaped);
 }
 
-MODRET sql_sqlite_checkauth(cmd_rec *cmd) {
-  sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_checkauth");
-
-  if (cmd->argc != 3) {
-    sql_log(DEBUG_FUNC, "exiting \tsqlite cmd_checkauth");
-    return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION, "badly formed request");
-  }
-
-  sql_log(DEBUG_WARN, MOD_SQL_SQLITE_VERSION
-    ": SQLite does not support the 'Backend' SQLAuthType");
-  sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_checkauth");
-
-  /* SQLite doesn't provide this functionality. */
-  return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-    "SQLite does not support the 'Backend' SQLAuthType");
-}
-
 MODRET sql_sqlite_identify(cmd_rec *cmd) {
   sql_data_t *sd = NULL;
 
@@ -1042,7 +1025,6 @@ MODRET sql_sqlite_identify(cmd_rec *cmd) {
 }  
 
 static cmdtable sql_sqlite_cmdtable[] = {
-  { CMD, "sql_checkauth",	G_NONE, sql_sqlite_checkauth,	FALSE, FALSE },
   { CMD, "sql_close",		G_NONE, sql_sqlite_close,	FALSE, FALSE },
   { CMD, "sql_cleanup",		G_NONE, sql_sqlite_cleanup,	FALSE, FALSE },
   { CMD, "sql_defineconnection",G_NONE, sql_sqlite_def_conn,	FALSE, FALSE },

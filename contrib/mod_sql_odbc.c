@@ -1630,22 +1630,6 @@ MODRET sqlodbc_exit(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET sqlodbc_checkauth(cmd_rec *cmd) {
-  sql_log(DEBUG_FUNC, "%s", "entering \todbc cmd_checkauth");
-
-  if (cmd->argc != 3) {
-    sql_log(DEBUG_FUNC, "exiting \todbc cmd_checkauth");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "badly formed request");
-  }
-
-  /* This mod_sql backend doesn't support any database-specific password
-   * checking mechanisms.
-   */
-
-  sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_checkauth");
-  return PR_ERROR(cmd);
-}
-
 MODRET sqlodbc_identify(cmd_rec *cmd) {
   sql_data_t *sd = NULL;
 
@@ -1673,7 +1657,6 @@ static cmdtable sqlodbc_cmdtable[] = {
   { CMD, "sql_query",		G_NONE, sqlodbc_query,	FALSE, FALSE },
   { CMD, "sql_escapestring",	G_NONE, sqlodbc_quote,	FALSE, FALSE },
   { CMD, "sql_exit",		G_NONE, sqlodbc_exit,	FALSE, FALSE },
-  { CMD, "sql_checkauth",	G_NONE, sqlodbc_checkauth, FALSE, FALSE },
   { CMD, "sql_identify",	G_NONE, sqlodbc_identify, FALSE, FALSE },
 
   { 0, NULL }
