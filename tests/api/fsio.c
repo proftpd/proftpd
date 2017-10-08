@@ -2314,7 +2314,7 @@ START_TEST (fsio_sys_chroot_with_error_test) {
   fail_unless(err != NULL, "Failed to populate error");
 
   expected = pstrcat(p,
-    "chroot() failed with \"Operation not permitted [",
+    "chroot() failed with \"", strerror(xerrno), " [",
     xerrno == ENOENT ? "ENOENT" : "EPERM", " (",
     get_errnum(p, xerrno), ")]\"", NULL);
   errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
