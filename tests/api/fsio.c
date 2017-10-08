@@ -2291,7 +2291,7 @@ START_TEST (fsio_sys_chown_with_error_test) {
 END_TEST
 
 START_TEST (fsio_sys_chroot_with_error_test) {
-  int res;
+  int res, xerrno = 0;
   pr_error_t *err = NULL;
   const char *errstr, *expected;
 
@@ -2299,20 +2299,24 @@ START_TEST (fsio_sys_chroot_with_error_test) {
   res = pr_fsio_chroot_with_error(NULL, fsio_testdir_path, NULL);
   fail_unless(res < 0, "Failed to handle non-existent file '%s'",
     fsio_testdir_path);
-  fail_unless(errno == EPERM, "Expected EPERM (%d), %s (%d)", EPERM,
+  fail_unless(errno == EPERM || errno == ENOENT,
+    "Expected EPERM (%d) or ENOENT (%d), %s (%d)", EPERM, ENOENT,
     strerror(errno), errno);
 
   mark_point();
   res = pr_fsio_chroot_with_error(p, fsio_testdir_path, &err);
+  xerrno = errno;
   fail_unless(res < 0, "Failed to handle non-existent file '%s'",
     fsio_testdir_path);
-  fail_unless(errno == EPERM, "Expected EPERM (%d), %s (%d)", EPERM,
+  fail_unless(errno == EPERM || errno == ENOENT,
+    "Expected EPERM (%d) or ENOENT (%d), %s (%d)", EPERM, ENOENT,
     strerror(errno), errno);
   fail_unless(err != NULL, "Failed to populate error");
 
   expected = pstrcat(p,
-    "chroot() failed with \"Operation not permitted [EPERM (",
-    get_errnum(p, EPERM), ")]\"", NULL);
+    "chroot() failed with \"Operation not permitted [",
+    xerrno == ENOENT ? "ENOENT" : "EPERM", " (",
+    get_errnum(p, xerrno), ")]\"", NULL);
   errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
   fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
     expected, errstr);
