@@ -30,6 +30,7 @@
 #define PR_FSIO_H
 
 #include "conf.h"
+#include "error.h"
 
 #ifdef PR_USE_XATTR
 # if defined(HAVE_SYS_EXTATTR_H)
@@ -291,6 +292,34 @@ int pr_fsio_fsetxattr(pool *, pr_fh_t *, const char *, void *, size_t, int);
 /* setxattr flags */
 #define PR_FSIO_XATTR_FL_CREATE		0x001
 #define PR_FSIO_XATTR_FL_REPLACE	0x002
+
+/* Error-using variants of the FSIO API. */
+int pr_fsio_chmod_with_error(pool *p, const char *path, mode_t mode,
+  pr_error_t **err);
+int pr_fsio_chown_with_error(pool *p, const char *path, uid_t uid, gid_t gid,
+  pr_error_t **err);
+int pr_fsio_chroot_with_error(pool *p, const char *path, pr_error_t **err);
+int pr_fsio_close_with_error(pool *p, pr_fh_t *fh, pr_error_t **err);
+int pr_fsio_fchmod_with_error(pool *p, pr_fh_t *fh, mode_t mode,
+  pr_error_t **err);
+int pr_fsio_fchown_with_error(pool *p, pr_fh_t *fh, uid_t uid, gid_t gid,
+  pr_error_t **err);
+int pr_fsio_lchown_with_error(pool *p, const char *path, uid_t uid, gid_t gid,
+  pr_error_t **err);
+int pr_fsio_mkdir_with_error(pool *p, const char *path, mode_t mode,
+  pr_error_t **err);
+pr_fh_t *pr_fsio_open_with_error(pool *p, const char *path, int flags,
+  pr_error_t **err);
+int pr_fsio_read_with_error(pool *p, pr_fh_t *fh, char *buf, size_t sz,
+  pr_error_t **err);
+int pr_fsio_rename_with_error(pool *p, const char *from, const char *to,
+  pr_error_t **err);
+int pr_fsio_rmdir_with_error(pool *p, const char *path, pr_error_t **err);
+int pr_fsio_stat_with_error(pool *p, const char *path, struct stat *st,
+  pr_error_t **err);
+int pr_fsio_unlink_with_error(pool *p, const char *path, pr_error_t **err);
+int pr_fsio_write_with_error(pool *p, pr_fh_t *fh, const char *buf, size_t sz,
+  pr_error_t **err);
 
 /* Set a flag determining whether we guard against write operations in
  * certain sensitive directories while we are chrooted, e.g. "Roaring Beast"

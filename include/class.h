@@ -27,16 +27,18 @@
 #ifndef PR_CLASS_H
 #define PR_CLASS_H
 
+#include "table.h"
+#include "netaddr.h"
 #include "netacl.h"
 
-typedef struct pr_class_t {
+typedef struct class_struc {
   pool *cls_pool;
   char *cls_name;
   unsigned int cls_satisfy;
   array_header *cls_acls;
   pr_table_t *cls_notes;
 
-  struct pr_class_t *cls_next;
+  struct class_struc *cls_next;
 } pr_class_t;
 
 #define PR_CLASS_SATISFY_ANY	0

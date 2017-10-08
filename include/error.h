@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2016 The ProFTPD Project team
+ * Copyright (c) 2016-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,11 @@
 #ifndef PR_ERROR_H
 #define PR_ERROR_H
 
-#include "conf.h"
+#include "os.h"
 #include "pool.h"
+#include "table.h"
+#include "dirtree.h"
+#include "modules.h"
 
 typedef struct err_rec pr_error_t;
 

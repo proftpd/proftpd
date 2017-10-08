@@ -358,8 +358,8 @@ START_TEST (error_strerror_minimal_test) {
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
     res);
 
-  expected = pstrcat(p, "No such file or directory (ENOENT [",
-    get_errnum(p, xerrno), "])", NULL);
+  expected = pstrcat(p, "No such file or directory [ENOENT (",
+    get_errnum(p, xerrno), ")]", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -371,7 +371,7 @@ START_TEST (error_strerror_minimal_test) {
   err = pr_error_create(p, xerrno);
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
-  expected = "Success (EOK [0])";
+  expected = "Success [EOK (0)]";
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -385,8 +385,8 @@ START_TEST (error_strerror_minimal_test) {
   err = pr_error_create(p, xerrno);
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
-  expected = pstrcat(p, strerror(xerrno), " (<unknown/unsupported error> [",
-    get_errnum(p, xerrno), "])", NULL);
+  expected = pstrcat(p, strerror(xerrno), " [<unknown/unsupported error> (",
+    get_errnum(p, xerrno), ")]", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -401,8 +401,8 @@ START_TEST (error_strerror_minimal_test) {
   what = "test";
   pr_error_set_what(err, what);
 
-  expected = pstrcat(p, what, " failed with \"", strerror(xerrno), " (ENOSYS [",
-    get_errnum(p, xerrno), "])\"", NULL);
+  expected = pstrcat(p, what, " failed with \"", strerror(xerrno), " [ENOSYS (",
+    get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -417,7 +417,7 @@ START_TEST (error_strerror_minimal_test) {
   pr_error_set_what(err, what);
 
   expected = pstrcat(p, what, " failed with \"", strerror(xerrno),
-    " (ENOSYS [", get_errnum(p, xerrno), "])\"", NULL);
+    " [ENOSYS (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -448,8 +448,8 @@ START_TEST (error_strerror_terse_test) {
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
     res);
 
-  expected = pstrcat(p, "No such file or directory (ENOENT [",
-    get_errnum(p, xerrno), "])", NULL);
+  expected = pstrcat(p, "No such file or directory [ENOENT (",
+    get_errnum(p, xerrno), ")]", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -464,7 +464,7 @@ START_TEST (error_strerror_terse_test) {
   pr_error_set_what(err, what);
 
   expected = pstrcat(p, what, " failed with \"", strerror(xerrno),
-    " (ENOENT [", get_errnum(p, xerrno), "])\"", NULL);
+    " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -498,7 +498,7 @@ START_TEST (error_strerror_detailed_test) {
   /* no what */
   expected = pstrcat(p, "in core, UID ", get_uid(p), ", GID ", get_gid(p),
     " failed with \"", strerror(xerrno),
-    " (ENOENT [", get_errnum(p, xerrno), "])\"", NULL);
+    " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -509,7 +509,7 @@ START_TEST (error_strerror_detailed_test) {
 
   expected = pstrcat(p, "in core [api/error.c:507], UID ", get_uid(p),
     ", GID ", get_gid(p), " failed with \"", strerror(xerrno),
-    " (ENOENT [", get_errnum(p, xerrno), "])\"", NULL);
+    " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -522,7 +522,7 @@ START_TEST (error_strerror_detailed_test) {
 
   expected = pstrcat(p, "in api/error.c:507, UID ", get_uid(p), ", GID ",
     get_gid(p), " failed with \"", strerror(xerrno),
-    " (ENOENT [", get_errnum(p, xerrno), "])\"", NULL);
+    " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -547,8 +547,8 @@ START_TEST (error_strerror_detailed_test) {
     strerror(errno));
 
   expected = pstrcat(p, "UID ", get_uid(p), ", GID ", get_gid(p),
-    " attempting to ", what, " failed with \"", strerror(xerrno), " (ENOENT [",
-    get_errnum(p, xerrno), "])\"", NULL);
+    " attempting to ", what, " failed with \"", strerror(xerrno), " [ENOENT (",
+    get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -568,8 +568,8 @@ START_TEST (error_strerror_detailed_test) {
 
   expected = pstrcat(p, "user ", session.user, " (UID ", get_uid(p),
     ", GID ", get_gid(p), ") via ftp attempting to ", what,
-    " failed with \"No such file or directory (ENOENT [",
-    get_errnum(p, xerrno), "])\"", NULL);
+    " failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -582,8 +582,8 @@ START_TEST (error_strerror_detailed_test) {
 
   expected = pstrcat(p, "in core [api/error.c:566], UID ", get_uid(p),
     ", GID ", get_gid(p), " via ftp attempting to ", what,
-    " failed with \"", strerror(xerrno), " (ENOENT [",
-    get_errnum(p, xerrno), "])\"", NULL);
+    " failed with \"", strerror(xerrno), " [ENOENT (",
+    get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -596,7 +596,7 @@ START_TEST (error_strerror_detailed_test) {
 
   expected = pstrcat(p, "in core [api/error.c:566], user ", session.user,
     " via ftp attempting to ", what, " failed with \"", strerror(xerrno),
-    " (ENOENT [", get_errnum(p, xerrno), "])\"", NULL);
+    " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -609,8 +609,8 @@ START_TEST (error_strerror_detailed_test) {
 
   expected = pstrcat(p, "in core [api/error.c:566], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") attempting to ", what,
-    " failed with \"", strerror(xerrno), " (ENOENT [",
-    get_errnum(p, xerrno), "])\"", NULL);
+    " failed with \"", strerror(xerrno), " [ENOENT (",
+    get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -626,8 +626,8 @@ START_TEST (error_strerror_detailed_test) {
 
   expected = pstrcat(p, "in core [api/error.c:566], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") via ftp wanted to ", why,
-    " but ", what, " failed with \"", strerror(xerrno), " (ENOENT [",
-    get_errnum(p, xerrno), "])\"", NULL);
+    " but ", what, " failed with \"", strerror(xerrno), " [ENOENT (",
+    get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, 0);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -682,8 +682,8 @@ START_TEST (error_strerror_detailed_explained_test) {
     session.user, " (UID ", get_uid(p), ", GID ",
     get_gid(p), ") via ftp wanted to ", why,
     " but open() using path = 'path', flags = O_RDONLY, mode = 0755 "
-    "failed with \"", strerror(xerrno), " (ENOENT [", get_errnum(p, xerrno),
-    "])\" because test mode is not real", NULL);
+    "failed with \"", strerror(xerrno), " [ENOENT (", get_errnum(p, xerrno),
+    ")]\" because test mode is not real", NULL);
   res = pr_error_strerror(err, 0);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
