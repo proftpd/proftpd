@@ -825,6 +825,122 @@ MODRET redis_log_any(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+static int is_redis_log_config(config_rec *c, const char *name, size_t namelen,
+    unsigned int config_id) {
+  int matched = FALSE;
+
+  if (c->config_type == CONF_PARAM &&
+      c->argc == 4 &&
+      c->config_id == config_id &&
+      strncmp(name, c->name, namelen + 1) == 0) {
+    matched = TRUE;
+  }
+
+  return matched;
+}
+
+static int prune_redis_log_config(pool *p, xaset_t *set, const char *name,
+    size_t namelen, unsigned int config_id) {
+  config_rec *c;
+  int needs_pruning = FALSE, pruned = FALSE;
+
+  /* Bottom up pruning; handle subsets first. */
+  for (c = (config_rec *) set->xas_list; c; c = c->next) {
+    pr_signals_handle();
+
+    if (c->subset == NULL) {
+      continue;
+    }
+
+    if (prune_redis_log_config(p, c->subset, name, namelen,
+        config_id) == TRUE) {
+      pruned = TRUE;
+    }
+  }
+
+  /* Look for the named directive, specifically looking for any "none"
+   * configurations.
+   */
+  for (c = (config_rec *) set->xas_list; c; c = c->next) {
+    pr_signals_handle();
+
+    if (is_redis_log_config(c, name, namelen, config_id) == TRUE) {
+      if (c->argv[0] == NULL ||
+          c->argv[1] == NULL ||
+          c->argv[2] == NULL) {
+        needs_pruning = TRUE;
+        break;
+      }
+    }
+  }
+
+  if (needs_pruning) {
+    pr_config_remove(set, name, 0, FALSE);
+    pruned = TRUE;
+  }
+
+  return pruned;
+}
+
+MODRET redis_post_pass(cmd_rec *cmd) {
+  const char *name;
+  int pruned = FALSE;
+
+  if (redis_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (main_server->conf == NULL ||
+      main_server->conf->xas_list == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Process the config tree for RedisLogOnCommand/Event "none" directives,
+   * so that they work as expected.
+   *
+   * Since RedisLogOnCommand/Event allow for multiple simultaneous occurrences
+   * (via CF_MERGEDOWN_MULTI), due to multiple possible filters/formats, we
+   * cannot simply assume that the CF_MERGEDOWN flag for the "none" case will
+   * do as we want.  Instead, we have manually prune any competing
+   * RedisLogOnCommand/Event directives, for a given directory level, whenever
+   * we encounter a "none" directive.
+   */
+
+  name = "RedisLogOnCommand";
+  if (find_config(main_server->conf, CONF_PARAM, name, TRUE) != NULL) {
+    size_t namelen;
+    unsigned int config_id;
+
+    namelen = strlen(name);
+    config_id = pr_config_get_id(name);
+    if (prune_redis_log_config(cmd->tmp_pool, main_server->conf, name, namelen,
+        config_id) == TRUE) {
+      pruned = TRUE;
+    }
+  }
+
+  name = "RedisLogOnEvent";
+  if (find_config(main_server->conf, CONF_PARAM, name, TRUE) != NULL) {
+    size_t namelen;
+    unsigned int config_id;
+
+    namelen = strlen(name);
+    config_id = pr_config_get_id(name);
+    if (prune_redis_log_config(cmd->tmp_pool, main_server->conf, name, namelen,
+        config_id) == TRUE) {
+      pruned = TRUE;
+    }
+  }
+
+  if (pruned) {
+    pr_log_debug(DEBUG9, MOD_REDIS_VERSION
+      ": Pruned configuration for Redis logging");
+    pr_config_dump(NULL, main_server->conf, NULL);
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -1011,8 +1127,9 @@ static conftable redis_conftab[] = {
 };
 
 static cmdtable redis_cmdtab[] = {
-  { LOG_CMD,		C_ANY,	G_NONE,	redis_log_any,	FALSE,	FALSE },
-  { LOG_CMD_ERR,	C_ANY,	G_NONE,	redis_log_any,	FALSE,	FALSE },
+  { POST_CMD,		C_PASS,	G_NONE,	redis_post_pass, FALSE,	FALSE },
+  { LOG_CMD,		C_ANY,	G_NONE,	redis_log_any,	 FALSE,	FALSE },
+  { LOG_CMD_ERR,	C_ANY,	G_NONE,	redis_log_any,	 FALSE,	FALSE },
 
   { 0, NULL }
 };
