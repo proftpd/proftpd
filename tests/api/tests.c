@@ -72,6 +72,7 @@ static struct testsuite_info suites[] = {
   { "json",		tests_get_json_suite },
   { "jot",		tests_get_jot_suite },
   { "redis",		tests_get_redis_suite },
+  { "error",		tests_get_error_suite },
 
   { NULL, NULL }
 };

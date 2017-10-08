@@ -81,6 +81,7 @@ Suite *tests_get_misc_suite(void);
 Suite *tests_get_json_suite(void);
 Suite *tests_get_jot_suite(void);
 Suite *tests_get_redis_suite(void);
+Suite *tests_get_error_suite(void);
 
 /* Temporary hack/placement for this variable, until we get to testing
  * the Signals API.
