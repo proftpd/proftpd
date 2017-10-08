@@ -25,6 +25,10 @@
 /* Error API */
 
 #include "error.h"
+#include "proftpd.h"
+#include "str.h"
+#include "session.h"
+#include "trace.h"
 
 #define PR_ERROR_BUFSZ		32
 
@@ -639,7 +643,7 @@ static const char *get_errno_desc(int xerrno) {
 
 /* Returns string of:
  *
- *  "${err_desc} (${err_name} [${err_errno}])"
+ *  "${err_desc} [${err_name} (${err_errno})]"
  */
 static const char *get_failure(pr_error_t *err) {
   const char *failure = NULL;
@@ -656,8 +660,8 @@ static const char *get_failure(pr_error_t *err) {
     err->err_desc = get_errno_desc(err->err_errno);
   }
 
-  failure = pstrcat(err->err_pool, err->err_desc, " (", err->err_name,
-    " [", errnum, "])", NULL);
+  failure = pstrcat(err->err_pool, err->err_desc, " [", err->err_name,
+    " (", errnum, ")]", NULL);
 
   return failure;
 }

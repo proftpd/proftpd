@@ -96,6 +96,13 @@ static void tear_down(void) {
   }
 }
 
+static const char *get_errnum(pool *err_pool, int xerrno) {
+  char errnum[32];
+  memset(errnum, '\0', sizeof(errnum));
+  snprintf(errnum, sizeof(errnum)-1, "%d", xerrno);
+  return pstrdup(err_pool, errnum);
+}
+
 /* Tests */
 
 START_TEST (fsio_sys_open_test) {
@@ -2221,6 +2228,469 @@ START_TEST (fsio_sys_closedir_test) {
 }
 END_TEST
 
+START_TEST (fsio_sys_chmod_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_chmod_with_error(NULL, fsio_test_path, 0755, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_chmod_with_error(p, fsio_test_path, 0755, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "chmod() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_chown_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_chown_with_error(NULL, fsio_test_path, 1, 1, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_chown_with_error(p, fsio_test_path, 1, 1, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "chown() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_chroot_with_error_test) {
+  int res, xerrno = 0;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_chroot_with_error(NULL, fsio_testdir_path, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_testdir_path);
+  fail_unless(errno == EPERM || errno == ENOENT,
+    "Expected EPERM (%d) or ENOENT (%d), %s (%d)", EPERM, ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_chroot_with_error(p, fsio_testdir_path, &err);
+  xerrno = errno;
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_testdir_path);
+  fail_unless(errno == EPERM || errno == ENOENT,
+    "Expected EPERM (%d) or ENOENT (%d), %s (%d)", EPERM, ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "chroot() failed with \"", strerror(xerrno), " [",
+    xerrno == ENOENT ? "ENOENT" : "EPERM", " (",
+    get_errnum(p, xerrno), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_close_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_close_with_error(NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_close_with_error(p, NULL, &err);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "close() failed with \"Invalid argument [EINVAL (",
+    get_errnum(p, EINVAL), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_fchmod_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_fchmod_with_error(NULL, NULL, 0755, NULL);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_fchmod_with_error(p, NULL, 0755, &err);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "fchmod() failed with \"Invalid argument [EINVAL (",
+    get_errnum(p, EINVAL), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_fchown_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_fchown_with_error(NULL, NULL, 1, 1, NULL);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_fchown_with_error(p, NULL, 1, 1, &err);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "fchown() failed with \"Invalid argument [EINVAL (",
+    get_errnum(p, EINVAL), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_lchown_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_lchown_with_error(NULL, fsio_test_path, 1, 1, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_lchown_with_error(p, fsio_test_path, 1, 1, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "lchown() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_mkdir_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected, *path;
+
+  path = "/tmp/foo/bar/baz/quxx/quzz.d";
+
+  mark_point();
+  res = pr_fsio_mkdir_with_error(NULL, path, 0755, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_testdir_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_mkdir_with_error(p, path, 0755, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_testdir_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "mkdir() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_open_with_error_test) {
+  pr_fh_t *fh;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  fh = pr_fsio_open_with_error(NULL, fsio_test_path, O_RDONLY, NULL);
+  fail_unless(fh == NULL, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  fh = pr_fsio_open_with_error(p, fsio_test_path, O_RDONLY, &err);
+  fail_unless(fh == NULL, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "open() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_read_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_read_with_error(NULL, NULL, NULL, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_read_with_error(p, NULL, NULL, 0, &err);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "read() failed with \"Invalid argument [EINVAL (",
+    get_errnum(p, EINVAL), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_rename_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_rename_with_error(NULL, fsio_test_path, fsio_test2_path, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_rename_with_error(p, fsio_test_path, fsio_test2_path, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "rename() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_rmdir_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_rmdir_with_error(NULL, fsio_testdir_path, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_testdir_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_rmdir_with_error(p, fsio_testdir_path, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_testdir_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "rmdir() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_stat_with_error_test) {
+  int res;
+  struct stat st;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_stat_with_error(NULL, fsio_test_path, &st, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_stat_with_error(p, fsio_test_path, &st, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "stat() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_unlink_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_unlink_with_error(NULL, fsio_test_path, NULL);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_unlink_with_error(p, fsio_test_path, &err);
+  fail_unless(res < 0, "Failed to handle non-existent file '%s'",
+    fsio_test_path);
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), %s (%d)", ENOENT,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "unlink() failed with \"No such file or directory [ENOENT (",
+    get_errnum(p, ENOENT), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
+START_TEST (fsio_sys_write_with_error_test) {
+  int res;
+  pr_error_t *err = NULL;
+  const char *errstr, *expected;
+
+  mark_point();
+  res = pr_fsio_write_with_error(NULL, NULL, NULL, 0, NULL);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_write_with_error(p, NULL, NULL, 0, &err);
+  fail_unless(res < 0, "Failed to handle null fh");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), %s (%d)", EINVAL,
+    strerror(errno), errno);
+  fail_unless(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "write() failed with \"Invalid argument [EINVAL (",
+    get_errnum(p, EINVAL), ")]\"", NULL);
+  expected = "write() failed with \"Invalid argument [EINVAL (22)]\"";
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  fail_unless(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  pr_error_destroy(err);
+}
+END_TEST
+
 START_TEST (fsio_statcache_clear_cache_test) {
   int expected, res;
   struct stat st;
@@ -4231,6 +4701,23 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_opendir_test);
   tcase_add_test(testcase, fsio_sys_readdir_test);
   tcase_add_test(testcase, fsio_sys_closedir_test);
+
+  /* FSIO with error tests */
+  tcase_add_test(testcase, fsio_sys_chmod_with_error_test);
+  tcase_add_test(testcase, fsio_sys_chown_with_error_test);
+  tcase_add_test(testcase, fsio_sys_chroot_with_error_test);
+  tcase_add_test(testcase, fsio_sys_close_with_error_test);
+  tcase_add_test(testcase, fsio_sys_fchmod_with_error_test);
+  tcase_add_test(testcase, fsio_sys_fchown_with_error_test);
+  tcase_add_test(testcase, fsio_sys_lchown_with_error_test);
+  tcase_add_test(testcase, fsio_sys_mkdir_with_error_test);
+  tcase_add_test(testcase, fsio_sys_open_with_error_test);
+  tcase_add_test(testcase, fsio_sys_read_with_error_test);
+  tcase_add_test(testcase, fsio_sys_rename_with_error_test);
+  tcase_add_test(testcase, fsio_sys_rmdir_with_error_test);
+  tcase_add_test(testcase, fsio_sys_stat_with_error_test);
+  tcase_add_test(testcase, fsio_sys_unlink_with_error_test);
+  tcase_add_test(testcase, fsio_sys_write_with_error_test);
 
   /* FSIO statcache tests */
   tcase_add_test(testcase, fsio_statcache_clear_cache_test);
