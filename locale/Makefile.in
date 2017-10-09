@@ -11,12 +11,12 @@ VPATH=@srcdir@
 include $(top_builddir)/Make.rules
 
 CONTACT_ADDRESS=core@proftpd.org
-COPYRIGHT_HOLDER="The ProFTPD Project"
+COPYRIGHT_HOLDER=The ProFTPD Project
 PACKAGE=proftpd
 
 # This file is generated using:
 #
-#   `find ../ -name "*.[ch]" -print | grep -v tests\/ | egrep "contrib|include|modules|src" | sort > files.txt'
+#   `find .. -name "*.[ch]" -print | grep -v tests\/ | egrep "contrib|include|modules|src" | sort > files.txt'
 #
 # and is then checked into git.
 FILES=files.txt
@@ -41,9 +41,9 @@ all:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
-$(PACKAGE).pot:
+$(PACKAGE).pot: .PHONY
 	$(RM) $(PACKAGE).pot
-	$(XGETTEXT) -L C --keyword=_ --flag=_:1:pass-c-format --keyword=N_ --flag=N_:1:pass-c-format --no-wrap --copyright-holder $(COPYRIGHT_HOLDER) --msgid-bugs-address $(CONTACT_ADDRESS) --sort-by-file -f $(FILES) -o $(PACKAGE).pot
+	$(XGETTEXT) -L C --keyword=_ --flag=_:1:pass-c-format --keyword=N_ --flag=N_:1:pass-c-format --no-wrap --package-name=$(PACKAGE) --copyright-holder="$(COPYRIGHT_HOLDER)" --msgid-bugs-address="$(CONTACT_ADDRESS)" --sort-by-file -f $(FILES) -o $(PACKAGE).pot
 
 locale: $(LANGS)
 
