@@ -28,6 +28,7 @@
 
 #include "conf.h"
 #include "privs.h"
+#include "error.h"
 
 #include <ctype.h>
 
@@ -5337,6 +5338,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   int res;
   char *decoded_path, *dir;
   struct stat st;
+  pr_error_t *err = NULL;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -5426,13 +5428,28 @@ MODRET core_rmd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (pr_fsio_rmdir(dir) < 0) {
+  res = pr_fsio_rmdir_with_error(cmd->pool, dir, &err);
+  if (res < 0) {
     int xerrno = errno;
+
+    pr_error_set_where(err, &core_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(cmd->pool, "remove directory '", dir, "'",
+      NULL));
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error removing directory '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
+
+    if (err != NULL) {
+      pr_log_debug(DEBUG9, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_debug(DEBUG9, "error removing directory '%s': %s", dir,
+        strerror(xerrno));
+    }
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -5761,6 +5778,7 @@ MODRET core_dele(cmd_rec *cmd) {
   int res;
   char *decoded_path, *path, *fullpath;
   struct stat st;
+  pr_error_t *err = NULL;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -5866,15 +5884,27 @@ MODRET core_dele(cmd_rec *cmd) {
   }
 #endif /* !EISDIR */
  
-  if (pr_fsio_unlink(path) < 0) {
+  res = pr_fsio_unlink_with_error(cmd->pool, path, &err);
+  if (res < 0) {
     int xerrno = errno;
+
+    pr_error_set_where(err, &core_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(cmd->pool, "delete file '", path, "'", NULL));
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error deleting '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), path, strerror(xerrno));
 
-    pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(xerrno));
+    if (err != NULL) {
+      pr_log_debug(DEBUG3, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_debug(DEBUG3, "error deleting '%s': %s", path, strerror(xerrno));
+    }
+
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -5904,6 +5934,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   char *decoded_path, *path;
   unsigned char *allow_overwrite = NULL;
   struct stat st;
+  pr_error_t *err = NULL;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -5980,9 +6011,21 @@ MODRET core_rnto(cmd_rec *cmd) {
   }
 
   if (!path ||
-      !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
-      pr_fsio_rename(session.xfer.path, path) == -1) {
+      !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
+    pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(EPERM));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
+  res = pr_fsio_rename_with_error(cmd->pool, session.xfer.path, path, &err);
+  if (res < 0) {
     int xerrno = errno;
+
+    pr_error_set_where(err, &core_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(cmd->pool, "rename '", session.xfer.path,
+      "' to '", path, "'", NULL));
 
     if (xerrno == EISDIR) {
       /* In this case, the client has requested that a directory be renamed
@@ -6005,13 +6048,17 @@ MODRET core_rnto(cmd_rec *cmd) {
         "Cannot rename directory '%s' across a filesystem mount point",
         session.xfer.path);
 
+      if (err != NULL) {
+        pr_error_destroy(err);
+        err = NULL;
+      }
+
       /* Use EPERM, rather than EISDIR, to get slightly more informative
        * error messages.
        */
       xerrno = EPERM;
 
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
+      pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -6025,8 +6072,13 @@ MODRET core_rnto(cmd_rec *cmd) {
         pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
         strerror(xerrno));
 
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
+      if (err != NULL) {
+        pr_log_debug(DEBUG9, "%s", pr_error_strerror(err, 0));
+        pr_error_destroy(err);
+        err = NULL;
+      }
+
+      pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
       errno = xerrno;
@@ -6054,9 +6106,23 @@ MODRET core_rnto(cmd_rec *cmd) {
     }
 
     /* Once copied, unlink the original file. */
-    if (pr_fsio_unlink(session.xfer.path) < 0) {
-      pr_log_debug(DEBUG0, "error unlinking '%s': %s", session.xfer.path,
-        strerror(errno));
+    res = pr_fsio_unlink_with_error(cmd->pool, session.xfer.path, &err);
+    if (res < 0) {
+      xerrno = errno;
+
+      pr_error_set_where(err, &core_module, __FILE__, __LINE__ - 4);
+      pr_error_set_why(err, pstrcat(cmd->pool, "delete file '",
+        session.xfer.path, "'", NULL));
+
+      if (err != NULL) {
+        pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+        pr_error_destroy(err);
+        err = NULL;
+
+      } else {
+        pr_log_debug(DEBUG0, "error deleting '%s': %s", session.xfer.path,
+          strerror(xerrno));
+      }
     }
   }
 

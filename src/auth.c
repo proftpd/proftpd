@@ -28,6 +28,7 @@
 
 #include "conf.h"
 #include "privs.h"
+#include "error.h"
 
 static pool *auth_pool = NULL;
 static size_t auth_max_passwd_len = PR_TUNABLE_PASSWORD_MAX;
@@ -1904,6 +1905,8 @@ int pr_auth_chroot(const char *path) {
   time_t now;
   char *tz = NULL;
   const char *default_tz;
+  pool *tmp_pool;
+  pr_error_t *err = NULL;
 
   if (path == NULL) {
     errno = EINVAL;
@@ -1940,25 +1943,39 @@ int pr_auth_chroot(const char *path) {
    * our pr_localtime() routine now, which will cause libc (via localtime(2))
    * to load the tzinfo data into memory, and hopefully retain it (Bug#3431).
    */
+  tmp_pool = make_sub_pool(session.pool);
   now = time(NULL);
   (void) pr_localtime(NULL, &now);
 
   pr_event_generate("core.chroot", path);
 
   PRIVS_ROOT
-  res = pr_fsio_chroot(path);
+  res = pr_fsio_chroot_with_error(tmp_pool, path, &err);
   xerrno = errno;
   PRIVS_RELINQUISH
 
   if (res < 0) {
-    pr_log_pri(PR_LOG_ERR, "chroot to '%s' failed for user '%s': %s", path,
-      session.user ? session.user : "(unknown)", strerror(xerrno));
+    pr_error_set_where(err, NULL, __FILE__, __LINE__ - 5);
+    pr_error_set_why(err, pstrcat(tmp_pool, "chroot to directory '", path,
+      "'", NULL));
 
+    if (err != NULL) {
+      pr_log_pri(PR_LOG_ERR, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_pri(PR_LOG_ERR, "chroot to '%s' failed for user '%s': %s", path,
+        session.user ? session.user : "(unknown)", strerror(xerrno));
+    }
+
+    destroy_pool(tmp_pool);
     errno = xerrno;
     return -1;
   }
 
   pr_log_debug(DEBUG1, "Environment successfully chroot()ed");
+  destroy_pool(tmp_pool);
   return 0;
 }
 

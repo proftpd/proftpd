@@ -28,6 +28,7 @@
 
 #include "conf.h"
 #include "privs.h"
+#include "error.h"
 
 #ifdef HAVE_SYS_SENDFILE_H
 # include <sys/sendfile.h>
@@ -484,8 +485,10 @@ static int xfer_parse_cmdlist(const char *name, config_rec *c,
 }
 
 static int transmit_normal(pool *p, char *buf, size_t bufsz) {
+  int xerrno;
   long nread;
   size_t read_len;
+  pr_error_t *err = NULL;
 
   read_len = bufsz;
   if (session.range_len > 0) {
@@ -494,14 +497,24 @@ static int transmit_normal(pool *p, char *buf, size_t bufsz) {
     }
   }
 
-  nread = pr_fsio_read(retr_fh, buf, read_len);
+  nread = pr_fsio_read_with_error(p, retr_fh, buf, read_len, &err);
+  xerrno = errno;
+
   if (nread < 0) {
-    int xerrno = errno;
+    pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(p, "normal download of '", retr_fh->fh_path,
+      "'", NULL));
 
     (void) pr_trace_msg("fileperms", 1, "RETR, user '%s' (UID %s, GID %s): "
       "error reading from '%s': %s", session.user,
       pr_uid2str(p, session.uid), pr_gid2str(p, session.gid),
       retr_fh->fh_path, strerror(xerrno));
+
+    if (err != NULL) {
+      pr_log_debug(DEBUG9, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+    }
 
     errno = xerrno;
     return 0;
@@ -743,15 +756,28 @@ static void stor_chown(pool *p) {
   if (session.fsuid != (uid_t) -1 &&
       xfer_path != NULL) {
     int res, xerrno = 0;
+    pr_error_t *err = NULL;
 
     PRIVS_ROOT
-    res = pr_fsio_lchown(xfer_path, session.fsuid, session.fsgid);
+    res = pr_fsio_lchown_with_error(p, xfer_path, session.fsuid, session.fsgid,
+      &err);
     xerrno = errno;
     PRIVS_RELINQUISH
 
     if (res < 0) {
-      pr_log_pri(PR_LOG_WARNING, "lchown(%s) as root failed: %s", xfer_path,
-        strerror(xerrno));
+      pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 6);
+      pr_error_set_why(err, pstrcat(p, "set UserOwner of '", xfer_path,
+        "'", NULL));
+
+      if (err != NULL) {
+        pr_log_pri(PR_LOG_WARNING, "%s", pr_error_strerror(err, 0));
+        pr_error_destroy(err);
+        err = NULL;
+
+      } else {
+        pr_log_pri(PR_LOG_WARNING, "lchown(%s) as root failed: %s", xfer_path,
+          strerror(xerrno));
+      }
 
     } else {
       if (session.fsgid != (gid_t) -1) {
@@ -782,13 +808,24 @@ static void stor_chown(pool *p) {
        */
       xerrno = 0;
       PRIVS_ROOT
-      res = pr_fsio_chmod(xfer_path, st.st_mode);
+      res = pr_fsio_chmod_with_error(p, xfer_path, st.st_mode, &err);
       xerrno = errno;
       PRIVS_RELINQUISH
 
       if (res < 0) {
-        pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
-          (unsigned int) st.st_mode, strerror(xerrno));
+        pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 5);
+        pr_error_set_why(err, pstrcat(p, "restore SUID/SGID on '", xfer_path,
+          "'", NULL));
+
+        if (err != NULL) {
+          pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+          pr_error_destroy(err);
+          err = NULL;
+
+        } else {
+          pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
+            (unsigned int) st.st_mode, strerror(xerrno));
+        }
 
       } else {
         pr_log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
@@ -800,6 +837,7 @@ static void stor_chown(pool *p) {
              xfer_path != NULL) {
     register unsigned int i;
     int res, use_root_privs = TRUE, xerrno = 0;
+    pr_error_t *err = NULL;
 
     /* Check if session.fsgid is in session.gids.  If not, use root privs. */
     for (i = 0; i < session.gids->nelts; i++) {
@@ -815,7 +853,8 @@ static void stor_chown(pool *p) {
       PRIVS_ROOT
     }
 
-    res = pr_fsio_lchown(xfer_path, (uid_t) -1, session.fsgid);
+    res = pr_fsio_lchown_with_error(p, xfer_path, (uid_t) -1, session.fsgid,
+      &err);
     xerrno = errno;
 
     if (use_root_privs) {
@@ -823,8 +862,19 @@ static void stor_chown(pool *p) {
     }
 
     if (res < 0) {
-      pr_log_pri(PR_LOG_WARNING, "%slchown(%s) failed: %s",
-        use_root_privs ? "root " : "", xfer_path, strerror(xerrno));
+      pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 9);
+      pr_error_set_why(err, pstrcat(p, "set GroupOwner of '", xfer_path, "'",
+        NULL));
+
+      if (err != NULL) {
+        pr_log_pri(PR_LOG_WARNING, "%s", pr_error_strerror(err, 0));
+        pr_error_destroy(err);
+        err = NULL;
+
+      } else {
+        pr_log_pri(PR_LOG_WARNING, "%slchown(%s) failed: %s",
+          use_root_privs ? "root " : "", xfer_path, strerror(xerrno));
+      }
 
     } else {
       pr_log_debug(DEBUG2, "%slchown(%s) to GID %s successful",
@@ -842,7 +892,7 @@ static void stor_chown(pool *p) {
         PRIVS_ROOT
       }
 
-      res = pr_fsio_chmod(xfer_path, st.st_mode);
+      res = pr_fsio_chmod_with_error(p, xfer_path, st.st_mode, &err);
       xerrno = errno;
 
       if (use_root_privs) {
@@ -850,15 +900,26 @@ static void stor_chown(pool *p) {
       }
 
       if (res < 0) {
-        pr_log_debug(DEBUG0, "%schmod(%s) to %04o failed: %s",
-          use_root_privs ? "root " : "", xfer_path, (unsigned int) st.st_mode,
-          strerror(xerrno));
+        pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 8);
+        pr_error_set_why(err, pstrcat(p, "restore SUID/SGID of '", xfer_path,
+          "'", NULL));
+
+        if (err != NULL) {
+          pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+          pr_error_destroy(err);
+          err = NULL;
+
+        } else {
+          pr_log_debug(DEBUG0, "%schmod(%s) to %04o failed: %s",
+            use_root_privs ? "root " : "", xfer_path, (unsigned int) st.st_mode,
+            strerror(xerrno));
+        }
       }
     }
   }
 }
 
-static void retr_abort(void) {
+static void retr_abort(pool *p) {
   /* Isn't necessary to send anything here, just cleanup */
 
   if (retr_fh) {
@@ -869,20 +930,37 @@ static void retr_abort(void) {
   _log_transfer('o', 'i');
 }
 
-static void retr_complete(void) {
+static void retr_complete(pool *p) {
   pr_fsio_close(retr_fh);
   retr_fh = NULL;
 }
 
-static void stor_abort(void) {
+static void stor_abort(pool *p) {
+  int res, xerrno = 0;
+  pool *tmp_pool;
+  pr_error_t *err = NULL;
   unsigned char *delete_stores = NULL;
 
-  if (stor_fh) {
-    if (pr_fsio_close(stor_fh) < 0) {
-      int xerrno = errno;
+  tmp_pool = make_sub_pool(p);
 
-      pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
-        stor_fh->fh_path, strerror(xerrno));
+  if (stor_fh != NULL) {
+    res = pr_fsio_close_with_error(tmp_pool, stor_fh, &err);
+    xerrno = errno;
+
+    if (res < 0) {
+      pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
+      pr_error_set_why(err, pstrcat(tmp_pool, "close file '", stor_fh->fh_path,
+        "'", NULL));
+
+      if (err != NULL) {
+        pr_log_pri(PR_LOG_NOTICE, "%s", pr_error_strerror(err, 0));
+        pr_error_destroy(err);
+        err = NULL;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
+         stor_fh->fh_path, strerror(xerrno));
+      }
  
       errno = xerrno;
     }
@@ -901,38 +979,86 @@ static void stor_abort(void) {
       if (session.xfer.path_hidden) {
         pr_log_debug(DEBUG5, "removing aborted HiddenStores file '%s'",
           session.xfer.path_hidden);
-        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
-          if (errno != ENOENT) {
-            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
-              session.xfer.path_hidden, strerror(errno));
+
+        res = pr_fsio_unlink_with_error(tmp_pool, session.xfer.path_hidden,
+          &err);
+        xerrno = errno;
+
+        if (res < 0) {
+          pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 5);
+          pr_error_set_why(err, pstrcat(tmp_pool, "delete HiddenStores file '",
+            session.xfer.path_hidden, "'", NULL));
+
+          if (xerrno != ENOENT) {
+            if (err != NULL) {
+              pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+
+            } else {
+              pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+                session.xfer.path_hidden, strerror(xerrno));
+            }
           }
+
+          pr_error_destroy(err);
+          err = NULL;
         } 
       }
     }
   }
 
-  if (session.xfer.path) {
+  if (session.xfer.path != NULL) {
     if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
-      if (pr_fsio_unlink(session.xfer.path) < 0) {
-        pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
-          session.xfer.path, strerror(errno));
+
+      res = pr_fsio_unlink_with_error(tmp_pool, session.xfer.path, &err);
+      xerrno = errno;
+
+      if (res < 0) {
+        pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
+        pr_error_set_why(err, pstrcat(tmp_pool, "delete aborted file '",
+          session.xfer.path, "'", NULL));
+
+        if (err != NULL) {
+          pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+          pr_error_destroy(err);
+          err = NULL;
+
+        } else {
+          pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
+            session.xfer.path, strerror(xerrno));
+        }
       }
     }
   }
 
+  destroy_pool(tmp_pool);
   _log_transfer('i', 'i');
 }
 
-static int stor_complete(void) {
-  int res = 0;
+static int stor_complete(pool *p) {
+  int res, xerrno = 0;
+  pool *tmp_pool;
+  pr_error_t *err = NULL;
 
-  if (pr_fsio_close(stor_fh) < 0) {
-    int xerrno = errno;
+  tmp_pool = make_sub_pool(p);
+  res = pr_fsio_close_with_error(tmp_pool, stor_fh, &err);
+  xerrno = errno;
 
-    pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
-      stor_fh->fh_path, strerror(xerrno));
+  if (res < 0) {
+    pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(tmp_pool, "close uploaded file '",
+      stor_fh->fh_path, "'", NULL));
+
+    if (err != NULL) {
+      pr_log_pri(PR_LOG_NOTICE, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
+        stor_fh->fh_path, strerror(xerrno));
+    }
 
     /* We will unlink failed writes, but only if it's a HiddenStores file.
      * Other files will need to be explicitly deleted/removed by the client.
@@ -941,11 +1067,28 @@ static int stor_complete(void) {
       if (session.xfer.path_hidden) {
         pr_log_debug(DEBUG5, "failed to close HiddenStores file '%s', removing",
           session.xfer.path_hidden);
-        if (pr_fsio_unlink(session.xfer.path_hidden) < 0) {
-          if (errno != ENOENT) {
-            pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
-              session.xfer.path_hidden, strerror(errno));
+
+        res = pr_fsio_unlink_with_error(tmp_pool, session.xfer.path_hidden,
+          &err);
+        xerrno = errno;
+
+        if (res < 0) {
+          pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
+          pr_error_set_why(err, pstrcat(tmp_pool, "close HiddenStores file '",
+            session.xfer.path_hidden, "'", NULL));
+
+          if (xerrno != ENOENT) {
+            if (err != NULL) {
+              pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+
+            } else {
+              pr_log_debug(DEBUG0, "error deleting HiddenStores file '%s': %s",
+                session.xfer.path_hidden, strerror(xerrno));
+            }
           }
+
+          pr_error_destroy(err);
+          err = NULL;
         } 
       }
     }
@@ -954,6 +1097,7 @@ static int stor_complete(void) {
     res = -1;
   }
 
+  destroy_pool(tmp_pool);
   stor_fh = NULL;
   return res;
 }
@@ -1628,6 +1772,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   struct stat st;
   off_t start_offset = 0, upload_len = 0;
   off_t curr_offset, curr_pos = 0;
+  pr_error_t *err = NULL;
 
   memset(&st, 0, sizeof(st));
 
@@ -1668,9 +1813,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
         session.xfer.path_hidden);
     }
 
-    stor_fh = pr_fsio_open(session.xfer.path_hidden, oflags);
+    stor_fh = pr_fsio_open_with_error(cmd->pool, session.xfer.path_hidden,
+      oflags, &err);
+    xerrno = errno;
+
     if (stor_fh == NULL) {
-      xerrno = errno;
+      pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 5);
+      pr_error_set_why(err, pstrcat(cmd->pool, "open HiddenStores file '",
+        session.xfer.path_hidden, "'", NULL));
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
@@ -1702,7 +1852,10 @@ MODRET xfer_stor(cmd_rec *cmd) {
       }
     }
 
-    stor_fh = pr_fsio_open(appe_path, O_CREAT|O_WRONLY);
+    stor_fh = pr_fsio_open_with_error(cmd->pool, appe_path, O_CREAT|O_WRONLY,
+      &err);
+    xerrno = errno;
+
     if (stor_fh != NULL) {
       if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
         pr_log_debug(DEBUG4, "unable to seek to end of '%s' for appending: %s",
@@ -1713,6 +1866,10 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     } else {
       xerrno = errno;
+
+      pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 15);
+      pr_error_set_why(err, pstrcat(cmd->pool, "append to file '", appe_path,
+        "'", NULL));
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
@@ -1732,9 +1889,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     /* Normal session */
-    stor_fh = pr_fsio_open(path, open_flags);
+    stor_fh = pr_fsio_open_with_error(cmd->pool, path, open_flags, &err);
+    xerrno = errno;
+
     if (stor_fh == NULL) {
-      xerrno = errno;
+      pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
+      pr_error_set_why(err, pstrcat(cmd->pool, "upload file '", path, "'",
+        NULL));
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
@@ -1804,8 +1965,16 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   if (stor_fh == NULL) {
-    pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
-      strerror(xerrno));
+    if (err != NULL) {
+      pr_log_debug(DEBUG4, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
+        strerror(xerrno));
+    }
+
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -1867,7 +2036,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, upload_len) < 0) {
     xerrno = errno;
 
-    stor_abort();
+    stor_abort(cmd->pool);
     pr_data_abort(0, TRUE);
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -1914,7 +2083,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
         "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, path);
 
       /* Abort the transfer. */
-      stor_abort();
+      stor_abort(cmd->pool);
 
       /* Set errno to EFBIG (or the most appropriate alternative). */
 #if defined(EFBIG)
@@ -1936,12 +2105,18 @@ MODRET xfer_stor(cmd_rec *cmd) {
      * be doing short writes, and we ideally should be more resilient/graceful
      * in the face of such things.
      */
-    res = pr_fsio_write(stor_fh, lbuf, len);
+    res = pr_fsio_write_with_error(cmd->pool, stor_fh, lbuf, len, &err);
+    xerrno = errno;
+
     if (res != len) {
       xerrno = EIO;
 
       if (res < 0) {
         xerrno = errno;
+
+        pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 9);
+        pr_error_set_why(err, pstrcat(cmd->pool, "writing '", stor_fh->fh_path,
+          "'", NULL));
       }
 
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
@@ -1950,7 +2125,13 @@ MODRET xfer_stor(cmd_rec *cmd) {
         pr_gid2str(cmd->tmp_pool, session.gid), stor_fh->fh_path,
         strerror(xerrno));
 
-      stor_abort();
+      if (err != NULL) {
+        pr_log_debug(DEBUG9, "%s", pr_error_strerror(err, 0));
+        pr_error_destroy(err);
+        err = NULL;
+      }
+
+      stor_abort(cmd->pool);
       pr_data_abort(xerrno, FALSE);
 
       pr_cmd_set_errno(cmd, xerrno);
@@ -1974,7 +2155,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
           upload_len != 1 ? "bytes" : "byte", path);
 
         /* Abort the transfer. */
-        stor_abort();
+        stor_abort(cmd->pool);
 
         pr_data_abort(xerrno, FALSE);
         pr_cmd_set_errno(cmd, xerrno);
@@ -1985,7 +2166,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   if (XFER_ABORTED) {
-    stor_abort();
+    stor_abort(cmd->pool);
     pr_data_abort(0, FALSE);
 
     pr_cmd_set_errno(cmd, EIO);
@@ -1997,7 +2178,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Default abort errno, in case session.d et al has already gone away */
     xerrno = ECONNABORTED;
 
-    stor_abort();
+    stor_abort(cmd->pool);
 
     if (session.d != NULL &&
         session.d->instrm != NULL) {
@@ -2020,7 +2201,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       upload_len != 1 ? "bytes" : "byte", path);
 
     /* Abort the transfer. */
-    stor_abort();
+    stor_abort(cmd->pool);
 
     pr_data_abort(xerrno, FALSE);
     pr_cmd_set_errno(cmd, xerrno);
@@ -2031,7 +2212,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   /* If no throttling is configured, this does nothing. */
   pr_throttle_pause(nbytes_stored, TRUE);
 
-  if (stor_complete() < 0) {
+  if (stor_complete(cmd->pool) < 0) {
     xerrno = errno;
 
     _log_transfer('i', 'i');
@@ -2454,6 +2635,7 @@ MODRET xfer_post_retr(cmd_rec *cmd) {
 }
 
 MODRET xfer_retr(cmd_rec *cmd) {
+  int xerrno = 0;
   const char *dir = NULL;
   char *lbuf;
   struct stat st;
@@ -2462,20 +2644,31 @@ MODRET xfer_retr(cmd_rec *cmd) {
   long bufsz, len = 0;
   off_t start_offset = 0, download_len = 0;
   off_t curr_offset, curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
+  pr_error_t *err = NULL;
 
   /* Prepare for any potential throttling. */
   pr_throttle_init(cmd);
 
   dir = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
 
-  retr_fh = pr_fsio_open(dir, O_RDONLY);
+  retr_fh = pr_fsio_open_with_error(cmd->pool, dir, O_RDONLY, &err);
+  xerrno = errno;
+
   if (retr_fh == NULL) {
-    int xerrno = errno;
+    pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(cmd->pool, "download file '", dir, "'",
+      NULL));
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
       "error opening '%s': %s", (char *) cmd->argv[0], session.user,
       pr_uid2str(cmd->tmp_pool, session.uid),
       pr_gid2str(cmd->tmp_pool, session.gid), dir, strerror(xerrno));
+
+    if (err != NULL) {
+      pr_log_debug(DEBUG9, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+    }
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -2646,7 +2839,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, download_len) < 0) {
     int xerrno = errno;
 
-    retr_abort();
+    retr_abort(cmd->pool);
     pr_data_abort(0, TRUE);
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -2675,7 +2868,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       nbytes_max_retrieve != 1 ? "bytes" : "byte", dir);
 
     /* Abort the transfer. */
-    retr_abort();
+    retr_abort(cmd->pool);
 
     /* Set errno to EPERM ("Operation not permitted") */
     pr_data_abort(EPERM, FALSE);
@@ -2719,7 +2912,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
        */
       int already_aborted = FALSE, xerrno = errno;
 
-      retr_abort();
+      retr_abort(cmd->pool);
 
       /* Do we need to abort the data transfer here?  It's possible that
        * the transfer has already been aborted, e.g. via the TCP OOB marker
@@ -2781,7 +2974,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   }
 
   if (XFER_ABORTED) {
-    retr_abort();
+    retr_abort(cmd->pool);
     pr_data_abort(0, FALSE);
 
     pr_cmd_set_errno(cmd, EIO);
@@ -2798,7 +2991,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
      */
     pr_throttle_pause(session.xfer.total_bytes, TRUE);
 
-    retr_complete();
+    retr_complete(cmd->pool);
     xfer_displayfile();
     pr_data_close(FALSE);
   }
@@ -2817,10 +3010,10 @@ MODRET xfer_abor(cmd_rec *cmd) {
   }
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    stor_abort();
+    stor_abort(cmd->pool);
 
   } else if (session.xfer.direction == PR_NETIO_IO_WR) {
-    retr_abort();
+    retr_abort(cmd->pool);
   }
 
   pr_data_abort(0, FALSE);
@@ -3939,12 +4132,12 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   if (stor_fh != NULL) {
      /* An upload is occurring... */
     pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
-    stor_abort();
+    stor_abort(session.pool);
   
   } else if (retr_fh != NULL) {
     /* A download is occurring... */
     pr_trace_msg(trace_channel, 6, "session exiting, aborting download");
-    retr_abort();
+    retr_abort(session.pool);
   }
 
   if (session.sf_flags & SF_XFER) {
@@ -4020,11 +4213,11 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 static void xfer_timedout(const char *reason) {
   if (stor_fh != NULL) {
     pr_trace_msg(trace_channel, 6, "%s, aborting upload", reason);
-    stor_abort();
+    stor_abort(session.pool);
 
   } else if (retr_fh != NULL) {
     pr_trace_msg(trace_channel, 6, "%s, aborting download", reason);
-    retr_abort();
+    retr_abort(session.pool);
   }
 }
 

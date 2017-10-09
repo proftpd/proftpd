@@ -24,6 +24,7 @@
 
 #include "conf.h"
 #include "privs.h"
+#include "error.h"
 
 #define MOD_FACTS_VERSION		"mod_facts/0.6"
 
@@ -894,12 +895,14 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
 
 static int facts_modify_unix_group(pool *p, const char *path,
     const char *group) {
+  int res, xerrno = 0;
   gid_t gid;
-  char *tmp = NULL;
+  char *ptr = NULL;
+  pr_error_t *err = NULL;
 
-  gid = strtoul(group, &tmp, 10);
-  if (tmp &&
-      *tmp) {
+  gid = strtoul(group, &ptr, 10);
+  if (ptr &&
+      *ptr) {
     /* Try to lookup the GID using the value as a name. */
     gid = pr_auth_name2gid(p, group);
     if (gid == (gid_t) -1) {
@@ -909,9 +912,26 @@ static int facts_modify_unix_group(pool *p, const char *path,
     }
   }
 
-  if (pr_fsio_chown(path, (uid_t) -1, gid) < 0) {
-    pr_log_debug(DEBUG5, MOD_FACTS_VERSION
-      ": error modifying UNIX.group fact for '%s': %s", path, strerror(errno));
+  res = pr_fsio_chown_with_error(p, path, (uid_t) -1, gid, &err);
+  xerrno = errno;
+
+  if (res < 0) {
+    pr_error_set_where(err, &facts_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(p, "modify UNIX.group fact for '", path,
+      "'", NULL));
+
+    if (err != NULL) {
+      pr_log_debug(DEBUG5, MOD_FACTS_VERSION ": %s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_debug(DEBUG5, MOD_FACTS_VERSION
+        ": error modifying UNIX.group fact for '%s': %s", path,
+        strerror(xerrno));
+    }
+
+    errno = xerrno;
     return -1;
   }
 
@@ -919,20 +939,40 @@ static int facts_modify_unix_group(pool *p, const char *path,
 }
 
 static int facts_modify_unix_mode(pool *p, const char *path, char *mode_str) {
+  int res, xerrno = 0;
   mode_t mode;
-  char *tmp = NULL;
+  char *ptr = NULL;
+  pr_error_t *err = NULL;
 
-  mode = strtoul(mode_str, &tmp, 8);
-  if (tmp &&
-      *tmp) {
+  mode = strtoul(mode_str, &ptr, 8);
+  if (ptr &&
+      *ptr) {
     pr_log_debug(DEBUG3, MOD_FACTS_VERSION
       ": UNIX.mode fact '%s' is not an octal number", mode_str);
+    errno = EINVAL;
     return -1;
   }
 
-  if (pr_fsio_chmod(path, mode) < 0) {
-    pr_log_debug(DEBUG5, MOD_FACTS_VERSION
-      ": error modifying UNIX.mode fact for '%s': %s", path, strerror(errno));
+  res = pr_fsio_chmod_with_error(p, path, mode, &err);
+  xerrno = errno;
+
+  if (res < 0) {
+    pr_error_set_where(err, &facts_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(p, "modify UNIX.mode fact for '", path, "'",
+      NULL));
+
+    if (err != NULL) {
+      pr_log_debug(DEBUG5, MOD_FACTS_VERSION ": %s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_debug(DEBUG5, MOD_FACTS_VERSION
+        ": error modifying UNIX.mode fact for '%s': %s", path,
+        strerror(xerrno));
+    }
+
+    errno = xerrno;
     return -1;
   }
 
