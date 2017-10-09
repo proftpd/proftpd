@@ -358,7 +358,7 @@ static void tab_entry_remove(pr_table_t *tab, pr_table_entry_t *e) {
 static unsigned int tab_get_seed(void) {
   unsigned int seed = 0;
 #ifndef PR_USE_OPENSSL
-  int fd = -1, xerrno = 0;
+  int fd = -1;
   ssize_t nread = 0;
 #endif /* Not PR_USE_OPENSSL */
 
@@ -371,7 +371,6 @@ static unsigned int tab_get_seed(void) {
   fd = open("/dev/urandom", O_RDONLY|O_NONBLOCK);
   if (fd >= 0) {
     nread = read(fd, &seed, sizeof(seed));
-    xerrno = errno;
     (void) close(fd);
   }
 
