@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -324,16 +324,27 @@ static int write_entry(int fd) {
     return -1;
   }
 
+#if !defined(HAVE_PWRITE)
   if (lseek(fd, entry_lock.l_start, SEEK_SET) < 0) {
     return -1;
   }
+#endif /* HAVE_PWRITE */
 
+#if defined(HAVE_PWRITE)
+  res = pwrite(fd, &entry, sizeof(entry), entry_lock.l_start);
+#else
   res = write(fd, &entry, sizeof(entry));
+#endif /* HAVE_PWRITE */
+
   while (res != sizeof(entry)) {
     if (res < 0) {
       if (errno == EINTR) {
         pr_signals_handle();
+#if defined(HAVE_PWRITE)
+        res = pwrite(fd, &entry, sizeof(entry), entry_lock.l_start);
+#else
         res = write(fd, &entry, sizeof(entry));
+#endif /* HAVE_PWRITE */
         continue;
       }
 
@@ -348,10 +359,12 @@ static int write_entry(int fd) {
     return -1;
   }
 
+#if !defined(HAVE_PWRITE)
   /* Rewind. */
   if (lseek(fd, entry_lock.l_start, SEEK_SET) < 0) {
     return -1;
   }
+#endif /* HAVE_PWRITE */
 
   return 0;
 }
@@ -977,17 +990,20 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
 
   memset(&scan_entry, '\0', sizeof(scan_entry));
 
-  /* NOTE: use readv(2)? */
+  /* NOTE: use readv(2), pread(2)? */
   while (TRUE) {
     while ((res = read(scoreboard_fd, &scan_entry, sizeof(scan_entry))) <= 0) {
-      if (res < 0 && errno == EINTR) {
+      int xerrno = errno;
+
+      if (res < 0 &&
+          xerrno == EINTR) {
         pr_signals_handle();
         continue;
-
-      } else {
-        unlock_scoreboard();
-        return NULL;
       }
+
+      unlock_scoreboard();
+      errno = xerrno;
+      return NULL;
     }
 
     if (scan_entry.sce_pid) {
