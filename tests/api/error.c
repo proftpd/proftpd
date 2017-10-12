@@ -496,7 +496,7 @@ START_TEST (error_strerror_detailed_test) {
     res);
 
   /* no what */
-  expected = pstrcat(p, "in core, UID ", get_uid(p), ", GID ", get_gid(p),
+  expected = pstrcat(p, "in API, UID ", get_uid(p), ", GID ", get_gid(p),
     " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -507,7 +507,7 @@ START_TEST (error_strerror_detailed_test) {
   res2 = pr_error_set_where(err, NULL, __FILE__, __LINE__);
   fail_unless(res2 == 0, "Failed to set error where: %s", strerror(errno));
 
-  expected = pstrcat(p, "in core [api/error.c:507], UID ", get_uid(p),
+  expected = pstrcat(p, "in API [api/error.c:507], UID ", get_uid(p),
     ", GID ", get_gid(p), " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -580,7 +580,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_NAMES;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in core [api/error.c:566], UID ", get_uid(p),
+  expected = pstrcat(p, "in API [api/error.c:566], UID ", get_uid(p),
     ", GID ", get_gid(p), " via ftp attempting to ", what,
     " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -594,7 +594,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_IDS;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in core [api/error.c:566], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:566], user ", session.user,
     " via ftp attempting to ", what, " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -607,7 +607,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_PROTOCOL;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in core [api/error.c:566], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:566], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") attempting to ", what,
     " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -624,7 +624,7 @@ START_TEST (error_strerror_detailed_test) {
   res2 = pr_error_set_why(err, why);
   fail_unless(res2 == 0, "Failed to set why: %s", strerror(errno));
 
-  expected = pstrcat(p, "in core [api/error.c:566], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:566], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") via ftp wanted to ", why,
     " but ", what, " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);

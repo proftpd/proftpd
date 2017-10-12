@@ -541,7 +541,7 @@ static const char *get_where(pr_error_t *err) {
       where = pstrcat(err->err_pool, "mod_", err->err_module->name, NULL);
 
     } else {
-      where = pstrdup(err->err_pool, "core");
+      where = pstrdup(err->err_pool, "API");
     }
   }
 
@@ -1029,7 +1029,7 @@ static void trace_explained_error(module *m, const char *name,
 
   } else {
     pr_trace_msg(trace_channel, 9,
-      "'%s' explanations (from core), failed to explain '%s': %s", name,
+      "'%s' explanations (from API), failed to explain '%s': %s", name,
       what, strerror(xerrno));
   }
 }
