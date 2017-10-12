@@ -390,7 +390,7 @@ int pr_session_set_idle(void) {
 }
 
 int pr_session_set_protocol(const char *sess_proto) {
-  int count, res, xerrno;
+  int count, res = 0, xerrno = 0;
 
   if (sess_proto == NULL) {
     errno = EINVAL;
@@ -403,17 +403,11 @@ int pr_session_set_protocol(const char *sess_proto) {
       pstrdup(session.pool, sess_proto), 0);
     xerrno = errno;
 
-    /* Update the scoreboard entry for this session with the protocol. */
-    pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto,
-      NULL);
-
-    errno = xerrno;
-    return res;
+  } else {
+    res = pr_table_add(session.notes, pstrdup(session.pool, "protocol"),
+      pstrdup(session.pool, sess_proto), 0);
+    xerrno = errno;
   }
-
-  res = pr_table_add(session.notes, pstrdup(session.pool, "protocol"),
-    pstrdup(session.pool, sess_proto), 0);
-  xerrno = errno;
 
   /* Update the scoreboard entry for this session with the protocol. */
   pr_scoreboard_entry_update(session.pid, PR_SCORE_PROTOCOL, sess_proto, NULL);

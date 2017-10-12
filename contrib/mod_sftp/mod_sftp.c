@@ -235,6 +235,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   const char *k, *v;
 
   sftp_conn = conn;
+  pr_session_set_protocol("ssh2");
 
   if (sftp_opts & SFTP_OPT_PESSIMISTIC_KEXINIT) {
     /* If we are being pessimistic, we will send our version string to the
@@ -2378,10 +2379,11 @@ static int sftp_sess_init(void) {
     }
   }
 
+  pr_session_set_protocol("ssh2");
+
   /* Use our own "authenticated yet?" check. */
   set_auth_check(sftp_have_authenticated);
 
-  pr_session_set_protocol("ssh2");
   pr_cmd_set_handler(sftp_cmd_loop);
 
   /* Check for any UseEncoding directives.  Specifically, we're interested
