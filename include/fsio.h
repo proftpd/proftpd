@@ -306,6 +306,8 @@ int pr_fsio_fchown_with_error(pool *p, pr_fh_t *fh, uid_t uid, gid_t gid,
   pr_error_t **err);
 int pr_fsio_lchown_with_error(pool *p, const char *path, uid_t uid, gid_t gid,
   pr_error_t **err);
+int pr_fsio_lstat_with_error(pool *p, const char *path, struct stat *st,
+  pr_error_t **err);
 int pr_fsio_mkdir_with_error(pool *p, const char *path, mode_t mode,
   pr_error_t **err);
 pr_fh_t *pr_fsio_open_with_error(pool *p, const char *path, int flags,

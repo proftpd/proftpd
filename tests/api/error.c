@@ -725,7 +725,9 @@ START_TEST (error_explain_accept_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_accept(err, -1, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Failed to handle null explainer");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -789,7 +791,9 @@ START_TEST (error_explain_bind_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_bind(err, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -853,7 +857,9 @@ START_TEST (error_explain_chdir_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_chdir(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -917,7 +923,9 @@ START_TEST (error_explain_chmod_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_chmod(err, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -981,7 +989,9 @@ START_TEST (error_explain_chown_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_chown(err, NULL, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1045,7 +1055,9 @@ START_TEST (error_explain_chroot_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_chroot(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1109,7 +1121,9 @@ START_TEST (error_explain_close_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_close(err, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1173,7 +1187,9 @@ START_TEST (error_explain_closedir_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_closedir(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1237,7 +1253,9 @@ START_TEST (error_explain_connect_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_connect(err, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1301,7 +1319,9 @@ START_TEST (error_explain_fchmod_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fchmod(err, -1, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1365,7 +1385,9 @@ START_TEST (error_explain_fchown_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fchown(err, -1, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1429,7 +1451,9 @@ START_TEST (error_explain_fclose_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fclose(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1493,7 +1517,9 @@ START_TEST (error_explain_fcntl_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fcntl(err, -1, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1557,7 +1583,9 @@ START_TEST (error_explain_fdopen_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fdopen(err, -1, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1621,7 +1649,9 @@ START_TEST (error_explain_flock_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_flock(err, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1685,7 +1715,9 @@ START_TEST (error_explain_fopen_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fopen(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1749,7 +1781,9 @@ START_TEST (error_explain_fork_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fork(err);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1813,7 +1847,9 @@ START_TEST (error_explain_fstat_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fstat(err, -1, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1877,7 +1913,9 @@ START_TEST (error_explain_fstatfs_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fstatfs(err, -1, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -1941,7 +1979,9 @@ START_TEST (error_explain_fstatvfs_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fstatvfs(err, -1, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2005,7 +2045,9 @@ START_TEST (error_explain_fsync_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_fsync(err, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2069,7 +2111,9 @@ START_TEST (error_explain_ftruncate_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_ftruncate(err, -1, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2133,7 +2177,9 @@ START_TEST (error_explain_futimes_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_futimes(err, -1, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2198,7 +2244,9 @@ START_TEST (error_explain_getaddrinfo_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_getaddrinfo(err, NULL, NULL, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2262,7 +2310,9 @@ START_TEST (error_explain_gethostbyname_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_gethostbyname(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2326,7 +2376,9 @@ START_TEST (error_explain_gethostbyname2_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_gethostbyname2(err, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2390,7 +2442,9 @@ START_TEST (error_explain_gethostname_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_gethostname(err, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2456,7 +2510,9 @@ START_TEST (error_explain_getnameinfo_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_getnameinfo(err, NULL, 0, NULL, 0, NULL, 0, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2520,7 +2576,9 @@ START_TEST (error_explain_getpeername_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_getpeername(err, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2584,7 +2642,9 @@ START_TEST (error_explain_getrlimit_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_getrlimit(err, -1, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2648,7 +2708,9 @@ START_TEST (error_explain_getsockname_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_getsockname(err, -1, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2713,7 +2775,9 @@ START_TEST (error_explain_getsockopt_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_getsockopt(err, -1, -1, -1, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2777,7 +2841,9 @@ START_TEST (error_explain_lchown_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_lchown(err, NULL, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2841,7 +2907,9 @@ START_TEST (error_explain_link_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_link(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2905,7 +2973,9 @@ START_TEST (error_explain_listen_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_listen(err, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -2969,7 +3039,9 @@ START_TEST (error_explain_lseek_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_lseek(err, -1, 0, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3033,7 +3105,9 @@ START_TEST (error_explain_lstat_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_lstat(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3097,7 +3171,9 @@ START_TEST (error_explain_mkdir_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_mkdir(err, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3161,7 +3237,9 @@ START_TEST (error_explain_mkdtemp_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_mkdtemp(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3225,7 +3303,9 @@ START_TEST (error_explain_mkstemp_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_mkstemp(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3289,7 +3369,9 @@ START_TEST (error_explain_open_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_open(err, NULL, 0, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3353,7 +3435,9 @@ START_TEST (error_explain_opendir_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_opendir(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3417,7 +3501,9 @@ START_TEST (error_explain_read_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_read(err, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3481,7 +3567,9 @@ START_TEST (error_explain_readdir_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_readdir(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3545,7 +3633,9 @@ START_TEST (error_explain_readlink_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_readlink(err, NULL, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3609,7 +3699,9 @@ START_TEST (error_explain_readv_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_readv(err, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3673,7 +3765,9 @@ START_TEST (error_explain_rename_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_rename(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3737,7 +3831,9 @@ START_TEST (error_explain_rmdir_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_rmdir(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3801,7 +3897,9 @@ START_TEST (error_explain_setegid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setegid(err, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3865,7 +3963,9 @@ START_TEST (error_explain_seteuid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_seteuid(err, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3929,7 +4029,9 @@ START_TEST (error_explain_setgid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setgid(err, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -3993,7 +4095,9 @@ START_TEST (error_explain_setregid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setregid(err, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4057,7 +4161,9 @@ START_TEST (error_explain_setresgid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setresgid(err, -1, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4121,7 +4227,9 @@ START_TEST (error_explain_setresuid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setresuid(err, -1, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4185,7 +4293,9 @@ START_TEST (error_explain_setreuid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setreuid(err, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4249,7 +4359,9 @@ START_TEST (error_explain_setrlimit_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setrlimit(err, -1, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4314,7 +4426,9 @@ START_TEST (error_explain_setsockopt_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setsockopt(err, -1, -1, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4378,7 +4492,9 @@ START_TEST (error_explain_setuid_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_setuid(err, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4442,7 +4558,9 @@ START_TEST (error_explain_socket_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_socket(err, -1, -1, -1);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4506,7 +4624,9 @@ START_TEST (error_explain_stat_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_stat(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4570,7 +4690,9 @@ START_TEST (error_explain_statfs_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_statfs(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4634,7 +4756,9 @@ START_TEST (error_explain_statvfs_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_statvfs(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4698,7 +4822,9 @@ START_TEST (error_explain_symlink_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_symlink(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4762,7 +4888,9 @@ START_TEST (error_explain_truncate_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_truncate(err, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4826,7 +4954,9 @@ START_TEST (error_explain_unlink_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_unlink(err, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4890,7 +5020,9 @@ START_TEST (error_explain_utimes_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_utimes(err, NULL, NULL);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -4954,7 +5086,9 @@ START_TEST (error_explain_write_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_write(err, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
@@ -5018,7 +5152,9 @@ START_TEST (error_explain_writev_test) {
   fail_unless(err != NULL, "Failed to allocate error: %s", strerror(errno));
 
   res = pr_error_explain_writev(err, -1, NULL, 0);
-  fail_unless(res == 0, "Failed to explain error: %s", strerror(errno));
+  fail_unless(res < 0, "Unexpectedly explained error");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
 
   memset(&m, 0, sizeof(m));
   m.name = "error";
