@@ -5852,10 +5852,22 @@ MODRET core_dele(cmd_rec *cmd) {
    */
   memset(&st, 0, sizeof(st));
   pr_fs_clear_cache2(path);
-  if (pr_fsio_lstat(path, &st) < 0) {
+  res = pr_fsio_lstat_with_error(cmd->tmp_pool, path, &st, &err);
+  if (res < 0) {
     int xerrno = errno;
 
-    pr_log_debug(DEBUG3, "unable to lstat '%s': %s", path, strerror(xerrno));
+    pr_error_set_where(err, &core_module, __FILE__, __LINE__ - 4);
+    pr_error_set_why(err, pstrcat(cmd->pool, "check file '", path, "'", NULL));
+
+    if (err != NULL) {
+      pr_log_debug(DEBUG3, "%s", pr_error_strerror(err, 0));
+      pr_error_destroy(err);
+      err = NULL;
+
+    } else {
+      pr_log_debug(DEBUG3, "unable to lstat '%s': %s", path, strerror(xerrno));
+    }
+
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);

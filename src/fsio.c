@@ -4018,7 +4018,10 @@ int pr_fsio_mkdir_with_error(pool *p, const char *path, mode_t mode,
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_mkdir(*err, path, mode);
+      if (pr_error_explain_mkdir(*err, path, mode) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -4564,7 +4567,10 @@ int pr_fsio_rmdir_with_error(pool *p, const char *path, pr_error_t **err) {
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_rmdir(*err, path);
+      if (pr_error_explain_rmdir(*err, path) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -4610,7 +4616,10 @@ int pr_fsio_stat_with_error(pool *p, const char *path, struct stat *st,
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_stat(*err, path, st);
+      if (pr_error_explain_stat(*err, path, st) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -4668,6 +4677,29 @@ int pr_fsio_lstat(const char *path, struct stat *st) {
   pr_trace_msg(trace_channel, 8, "using %s lstat() for path '%s'", fs->fs_name,
     path);
   return fs_cache_lstat(fs ? fs : root_fs, path, st);
+}
+
+int pr_fsio_lstat_with_error(pool *p, const char *path, struct stat *st,
+    pr_error_t **err) {
+  int res;
+
+  res = pr_fsio_lstat(path, st);
+  if (res < 0) {
+    int xerrno = errno;
+
+    if (p != NULL &&
+        err != NULL) {
+      *err = pr_error_create(p, xerrno);
+      if (pr_error_explain_lstat(*err, path, st) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
+    }
+
+    errno = xerrno;
+  }
+
+  return res;
 }
 
 int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
@@ -4787,7 +4819,10 @@ int pr_fsio_rename_with_error(pool *p, const char *rnfr, const char *rnto,
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_rename(*err, rnfr, rnto);
+      if (pr_error_explain_rename(*err, rnfr, rnto) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -4837,7 +4872,10 @@ int pr_fsio_unlink_with_error(pool *p, const char *path, pr_error_t **err) {
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_unlink(*err, path);
+      if (pr_error_explain_unlink(*err, path) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -4980,7 +5018,10 @@ pr_fh_t *pr_fsio_open_with_error(pool *p, const char *name, int flags,
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_open(*err, name, flags, PR_OPEN_MODE);
+      if (pr_error_explain_open(*err, name, flags, PR_OPEN_MODE) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5049,7 +5090,10 @@ int pr_fsio_close_with_error(pool *p, pr_fh_t *fh, pr_error_t **err) {
         fd = fh->fh_fd;
       }
 
-      (void) pr_error_explain_close(*err, fd);
+      if (pr_error_explain_close(*err, fd) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5101,7 +5145,10 @@ int pr_fsio_read_with_error(pool *p, pr_fh_t *fh, char *buf, size_t sz,
       }
 
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_read(*err, fd, buf, sz);
+      if (pr_error_explain_read(*err, fd, buf, sz) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5152,7 +5199,10 @@ int pr_fsio_write_with_error(pool *p, pr_fh_t *fh, const char *buf, size_t sz,
       }
 
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_write(*err, fd, buf, sz);
+      if (pr_error_explain_write(*err, fd, buf, sz) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5370,7 +5420,10 @@ int pr_fsio_chmod_with_error(pool *p, const char *path, mode_t mode,
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_chmod(*err, path, mode);
+      if (pr_error_explain_chmod(*err, path, mode) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5423,7 +5476,10 @@ int pr_fsio_fchmod_with_error(pool *p, pr_fh_t *fh, mode_t mode,
       }
 
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_fchmod(*err, fd, mode);
+      if (pr_error_explain_fchmod(*err, fd, mode) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5474,7 +5530,10 @@ int pr_fsio_chown_with_error(pool *p, const char *path, uid_t uid, gid_t gid,
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_chown(*err, path, uid, gid);
+      if (pr_error_explain_chown(*err, path, uid, gid) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5527,7 +5586,10 @@ int pr_fsio_fchown_with_error(pool *p, pr_fh_t *fh, uid_t uid, gid_t gid,
       }
 
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_fchown(*err, fd, uid, gid);
+      if (pr_error_explain_fchown(*err, fd, uid, gid) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -5578,7 +5640,10 @@ int pr_fsio_lchown_with_error(pool *p, const char *path, uid_t uid, gid_t gid,
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_lchown(*err, path, uid, gid);
+      if (pr_error_explain_lchown(*err, path, uid, gid) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
@@ -6301,7 +6366,10 @@ int pr_fsio_chroot_with_error(pool *p, const char *path, pr_error_t **err) {
     if (p != NULL &&
         err != NULL) {
       *err = pr_error_create(p, xerrno);
-      (void) pr_error_explain_chroot(*err, path);
+      if (pr_error_explain_chroot(*err, path) < 0) {
+        pr_error_destroy(*err);
+        *err = NULL;
+      }
     }
 
     errno = xerrno;
