@@ -342,6 +342,8 @@ START_TEST (error_strerror_minimal_test) {
   pr_error_t *err;
   const char *res, *expected, *what;
 
+  pr_error_use_formats(PR_ERROR_FORMAT_DEFAULT);
+
   xerrno = errno = ENOENT;
   expected = strerror(xerrno);
   res = pr_error_strerror(NULL, format);
@@ -361,6 +363,14 @@ START_TEST (error_strerror_minimal_test) {
   expected = pstrcat(p, "No such file or directory [ENOENT (",
     get_errnum(p, xerrno), ")]", NULL);
   res = pr_error_strerror(err, format);
+  fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  pr_error_use_formats(format);
+  expected = pstrcat(p, "No such file or directory [ENOENT (",
+    get_errnum(p, xerrno), ")]", NULL);
+  res = pr_error_strerror(err, 0);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
     res);
@@ -424,6 +434,7 @@ START_TEST (error_strerror_minimal_test) {
     res);
 
   pr_error_destroy(err);
+  pr_error_use_formats(PR_ERROR_FORMAT_DEFAULT);
 }
 END_TEST
 
@@ -431,6 +442,8 @@ START_TEST (error_strerror_terse_test) {
   int format = PR_ERROR_FORMAT_USE_TERSE, xerrno;
   pr_error_t *err;
   const char *res, *expected, *what;
+
+  pr_error_use_formats(PR_ERROR_FORMAT_USE_TERSE);
 
   xerrno = errno = ENOENT;
   expected = strerror(xerrno);
@@ -448,8 +461,7 @@ START_TEST (error_strerror_terse_test) {
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
     res);
 
-  expected = pstrcat(p, "No such file or directory [ENOENT (",
-    get_errnum(p, xerrno), ")]", NULL);
+  expected = pstrdup(p, "No such file or directory");
   res = pr_error_strerror(err, format);
   fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
@@ -471,6 +483,7 @@ START_TEST (error_strerror_terse_test) {
     res);
 
   pr_error_destroy(err);
+  pr_error_use_formats(PR_ERROR_FORMAT_DEFAULT);
 }
 END_TEST
 
@@ -478,6 +491,8 @@ START_TEST (error_strerror_detailed_test) {
   int format = PR_ERROR_FORMAT_USE_DETAILED, xerrno, res2, error_details;
   pr_error_t *err;
   const char *res, *expected, *what, *why;
+
+  pr_error_use_formats(PR_ERROR_FORMAT_DEFAULT);
 
   xerrno = errno = ENOENT;
   expected = strerror(xerrno);
@@ -504,10 +519,22 @@ START_TEST (error_strerror_detailed_test) {
   fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
     res);
 
+  /* Exercise the "lineno = 0" code path. */
+  res2 = pr_error_set_where(err, NULL, __FILE__, 0);
+  fail_unless(res2 == 0, "Failed to set error where: %s", strerror(errno));
+
+  expected = pstrcat(p, "in API [api/error.c], UID ", get_uid(p),
+    ", GID ", get_gid(p), " failed with \"", strerror(xerrno),
+    " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
+  res = pr_error_strerror(err, format);
+  fail_unless(res != NULL, "Failed to format error: %s", strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
   res2 = pr_error_set_where(err, NULL, __FILE__, __LINE__);
   fail_unless(res2 == 0, "Failed to set error where: %s", strerror(errno));
 
-  expected = pstrcat(p, "in API [api/error.c:507], UID ", get_uid(p),
+  expected = pstrcat(p, "in API [api/error.c:534], UID ", get_uid(p),
     ", GID ", get_gid(p), " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -520,7 +547,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_MODULE;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in api/error.c:507, UID ", get_uid(p), ", GID ",
+  expected = pstrcat(p, "in api/error.c:534, UID ", get_uid(p), ", GID ",
     get_gid(p), " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -580,7 +607,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_NAMES;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in API [api/error.c:566], UID ", get_uid(p),
+  expected = pstrcat(p, "in API [api/error.c:593], UID ", get_uid(p),
     ", GID ", get_gid(p), " via ftp attempting to ", what,
     " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -594,7 +621,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_IDS;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in API [api/error.c:566], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:593], user ", session.user,
     " via ftp attempting to ", what, " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -607,7 +634,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_PROTOCOL;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in API [api/error.c:566], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:593], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") attempting to ", what,
     " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -624,7 +651,7 @@ START_TEST (error_strerror_detailed_test) {
   res2 = pr_error_set_why(err, why);
   fail_unless(res2 == 0, "Failed to set why: %s", strerror(errno));
 
-  expected = pstrcat(p, "in API [api/error.c:566], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:593], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") via ftp wanted to ", why,
     " but ", what, " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -678,7 +705,7 @@ START_TEST (error_strerror_detailed_explained_test) {
   res2 = pr_error_explain_open(err, "path", O_RDONLY, 0755);
   fail_unless(res2 == 0, "Failed to explain error: %s", strerror(errno));
 
-  expected = pstrcat(p, "in mod_", m.name, " [api/error.c:672], user ",
+  expected = pstrcat(p, "in mod_", m.name, " [api/error.c:699], user ",
     session.user, " (UID ", get_uid(p), ", GID ",
     get_gid(p), ") via ftp wanted to ", why,
     " but open() using path = 'path', flags = O_RDONLY, mode = 0755 "
