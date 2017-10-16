@@ -424,7 +424,7 @@ MODRET set_includeoptions(cmd_rec *cmd) {
       opts |= PR_PARSER_INCLUDE_OPT_IGNORE_WILDCARDS;
 
     } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown IncludeOption '",
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown IncludeOption '",
         cmd->argv[i], "'", NULL));
     }
   }
@@ -711,19 +711,21 @@ MODRET set_satisfy(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_CLASS);
 
-  if (strcasecmp(cmd->argv[1], "any") == 0)
+  if (strcasecmp(cmd->argv[1], "any") == 0) {
     satisfy = PR_CLASS_SATISFY_ANY;
 
-  else if (strcasecmp(cmd->argv[1], "all") == 0)
+  } else if (strcasecmp(cmd->argv[1], "all") == 0) {
     satisfy = PR_CLASS_SATISFY_ALL;
 
-  else
+  } else {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid parameter: '",
       cmd->argv[1], "'", NULL));
+  }
 
-  if (pr_class_set_satisfy(satisfy) < 0)
+  if (pr_class_set_satisfy(satisfy) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting Satisfy: ",
       strerror(errno), NULL));
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -734,8 +736,8 @@ MODRET set_scoreboardfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   if (pr_set_scoreboard(cmd->argv[1]) < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to use '",
-      cmd->argv[1], "': ", strerror(errno), NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+      "': ", strerror(errno), NULL));
   }
 
   return PR_HANDLED(cmd);
@@ -747,8 +749,8 @@ MODRET set_scoreboardmutex(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   if (pr_set_scoreboard_mutex(cmd->argv[1]) < 0) {
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to use '",
-      cmd->argv[1], "': ", strerror(errno), NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", cmd->argv[1],
+      "': ", strerror(errno), NULL));
   }
 
   return PR_HANDLED(cmd);
@@ -797,8 +799,10 @@ MODRET set_serverport(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   port = atoi(cmd->argv[1]);
-  if (port < 0 || port > 65535)
-    CONF_ERROR(cmd,"value must be between 0 and 65535");
+  if (port < 0 ||
+      port > 65535) {
+    CONF_ERROR(cmd, "value must be between 0 and 65535");
+  }
 
   s->ServerPort = port;
   return PR_HANDLED(cmd);
@@ -895,16 +899,20 @@ MODRET set_defaultserver(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
-  if (!bool)
+  if (!bool) {
     return PR_HANDLED(cmd);
+  }
 
   /* DefaultServer is not allowed if already set somewhere */
-  for (s = (server_rec *) server_list->xas_list; s; s = s->next)
-    if (find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE))
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    if (find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE)) {
       CONF_ERROR(cmd, "DefaultServer has already been set");
+    }
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -1004,7 +1012,7 @@ MODRET set_maxcommandrate(cmd_rec *cmd) {
 
     if (max_cmd_interval < 1) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": interval must be greater than zero", NULL));
+        "interval must be greater than zero", NULL));
     }
   }
 
@@ -1023,17 +1031,21 @@ MODRET set_maxconnrate(cmd_rec *cmd) {
   long conn_max = 0L;
   char *endp = NULL;
 
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 2)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT);
 
   conn_max = strtol(cmd->argv[1], &endp, 10);
 
-  if (endp && *endp)
+  if (endp && *endp) {
     CONF_ERROR(cmd, "invalid connection rate");
+  }
 
-  if (conn_max < 0)
+  if (conn_max < 0) {
     CONF_ERROR(cmd, "connection rate must be positive");
+  }
 
   max_connects = conn_max;
 
@@ -1041,9 +1053,10 @@ MODRET set_maxconnrate(cmd_rec *cmd) {
   if (cmd->argc-1 == 2) {
     max_connect_interval = atoi(cmd->argv[2]);
 
-    if (max_connect_interval < 1)
+    if (max_connect_interval < 1) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": interval must be greater than zero", NULL));
+        "interval must be greater than zero", NULL));
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -1094,8 +1107,9 @@ MODRET set_socketbindtight(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   SocketBindTight = bool;
   return PR_HANDLED(cmd);
@@ -1256,8 +1270,9 @@ MODRET set_multilinerfc2228(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
@@ -1303,8 +1318,9 @@ MODRET set_tcpnodelay(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -1539,8 +1555,9 @@ MODRET set_trace(cmd_rec *cmd) {
   int per_session = FALSE;
   unsigned int idx = 1;
 
-  if (cmd->argc-1 < 1)
+  if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT);
 
   /* Look for the optional "session" keyword, which will indicate that these
@@ -1620,12 +1637,14 @@ MODRET set_trace(cmd_rec *cmd) {
 /* usage: TraceLog path */
 MODRET set_tracelog(cmd_rec *cmd) {
 #ifdef PR_USE_TRACE
-  if (cmd->argc-1 != 1)
+  if (cmd->argc-1 != 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (pr_fs_valid_path(cmd->argv[1]) < 0)
+  if (pr_fs_valid_path(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, "must be an absolute path");
+  }
 
   trace_log = pstrdup(cmd->server->pool, cmd->argv[1]);
   if (pr_trace_set_file(trace_log) < 0) {
@@ -1739,9 +1758,10 @@ MODRET set_umask(cmd_rec *cmd) {
 
   tmp_umask = (mode_t) strtol(cmd->argv[1], &endp, 8);
 
-  if (endp && *endp)
+  if (endp && *endp) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' is not a valid umask", NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(mode_t));
@@ -1757,9 +1777,10 @@ MODRET set_umask(cmd_rec *cmd) {
      */
     tmp_umask = (mode_t) strtol(cmd->argv[2], &endp, 8);
 
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2],
         "' is not a valid umask", NULL));
+    }
 
     c = add_config_param("DirUmask", 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(mode_t));
@@ -1983,15 +2004,15 @@ MODRET set_timesgmt(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
   c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 
@@ -2020,12 +2041,12 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
     flags = pr_filter_parse_flags(cmd->tmp_pool, cmd->argv[2]);
     if (flags < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": badly formatted flags parameter: '", cmd->argv[2], "'", NULL));
+        "badly formatted flags parameter: '", cmd->argv[2], "'", NULL));
     }
 
     if (flags == 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": unknown filter flags '", cmd->argv[2], "'", NULL));
+        "unknown filter flags '", cmd->argv[2], "'", NULL));
     }
 
     regex_flags |= flags;
@@ -2082,12 +2103,12 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
     flags = pr_filter_parse_flags(cmd->tmp_pool, cmd->argv[2]);
     if (flags < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": badly formatted flags parameter: '", cmd->argv[2], "'", NULL));
+        "badly formatted flags parameter: '", cmd->argv[2], "'", NULL));
     }
 
     if (flags == 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        ": unknown filter flags '", cmd->argv[2], "'", NULL));
+        "unknown filter flags '", cmd->argv[2], "'", NULL));
     }
 
     regex_flags |= flags;
@@ -2130,17 +2151,24 @@ MODRET set_passiveports(cmd_rec *cmd) {
   pasv_max_port = atoi(cmd->argv[2]);
 
   /* Sanity check */
-  if (pasv_min_port <= 0 || pasv_min_port > 65535)
+  if (pasv_min_port <= 0 ||
+      pasv_min_port > 65535) {
     CONF_ERROR(cmd, "min port must be allowable port number");
+  }
 
-  if (pasv_max_port <= 0 || pasv_max_port > 65535)
+  if (pasv_max_port <= 0 ||
+      pasv_max_port > 65535) {
     CONF_ERROR(cmd, "max port must be allowable port number");
+  }
 
-  if (pasv_min_port < 1024 || pasv_max_port < 1024)
+  if (pasv_min_port < 1024 ||
+      pasv_max_port < 1024) {
     CONF_ERROR(cmd, "port numbers must be above 1023");
+  }
 
-  if (pasv_max_port <= pasv_min_port)
+  if (pasv_max_port <= pasv_min_port) {
     CONF_ERROR(cmd, "min port must be less than max port");
+  }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
@@ -2399,7 +2427,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
     } else {
       return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
-        ": unknown classifier used: '", cmd->argv[2], "'", NULL));
+        "unknown classifier used: '", cmd->argv[2], "'", NULL));
     }
   }
 
@@ -2484,8 +2512,9 @@ MODRET set_hidenoaccess(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -2586,8 +2615,9 @@ MODRET set_allowoverride(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   /* Set the precedence for this config_rec based on its configuration
    * context.
@@ -2643,23 +2673,28 @@ MODRET add_anonymous(cmd_rec *cmd) {
 
   dir = cmd->argv[1];
 
-  if (*dir != '/' && *dir != '~')
+  if (*dir != '/' && *dir != '~') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") absolute pathname "
       "required", NULL));
+  }
 
-  if (strchr(dir, '*'))
+  if (strchr(dir, '*')) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
       "in pathname", NULL));
+  }
 
-  if (strncmp(dir, "/", 2) == 0)
+  if (strncmp(dir, "/", 2) == 0) {
     CONF_ERROR(cmd, "'/' not permitted for anonymous root directory");
+  }
 
-  if (*(dir+strlen(dir)-1) != '/')
+  if (*(dir+strlen(dir)-1) != '/') {
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
+  }
 
-  if (!dir)
+  if (dir == NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[1], ": ",
       strerror(errno), NULL));
+  }
 
   c = pr_parser_config_ctxt_open(dir);
 
@@ -3137,8 +3172,9 @@ MODRET set_authorder(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   /* Check to see if the directive has already been set */
-  if (find_config(cmd->server->conf, CONF_PARAM, cmd->argv[0], FALSE))
+  if (find_config(cmd->server->conf, CONF_PARAM, cmd->argv[0], FALSE)) {
     CONF_ERROR(cmd, "AuthOrder has already been configured");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   module_list = make_array(c->pool, 0, sizeof(char *));
@@ -3177,8 +3213,9 @@ MODRET set_ignorehidden(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_LIMIT);
 
   bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  if (bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -3193,8 +3230,9 @@ MODRET set_displaychdir(cmd_rec *cmd) {
   int bool = FALSE;
 
   if (cmd->argc-1 < 1 ||
-      cmd->argc-1 > 2)
+      cmd->argc-1 > 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
@@ -3211,7 +3249,6 @@ MODRET set_displaychdir(cmd_rec *cmd) {
   *((int *) c->argv[1]) = bool;
 
   c->flags |= CF_MERGEDOWN;
-
   return PR_HANDLED(cmd);
 }
 
@@ -3220,7 +3257,6 @@ MODRET set_displayconnect(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
   return PR_HANDLED(cmd);
 }
 
@@ -3446,8 +3482,9 @@ MODRET regex_filters(cmd_rec *cmd) {
   /* Don't apply the filter checks to passwords (arguments to the PASS
    * command).
    */
-  if (strcasecmp(cmd->argv[0], C_PASS) == 0)
+  if (strcasecmp(cmd->argv[0], C_PASS) == 0) {
     return PR_DECLINED(cmd);
+  }
 
   /* Check for an AllowFilter */
   allow_regex = get_param_ptr(CURRENT_CONF, "AllowFilter", FALSE);
