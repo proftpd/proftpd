@@ -334,6 +334,7 @@ unsigned int pr_error_use_details(unsigned int use_details);
    PR_ERROR_DETAILS_USE_PROTOCOL|PR_ERROR_DETAILS_USE_MODULE| \
    PR_ERROR_DETAILS_USE_FILE)
 
+/* Set the list of allowed formats (verbosity). */
 unsigned int pr_error_use_formats(unsigned int use_formats);
 #define PR_ERROR_FORMAT_USE_DETAILED		0x001
 #define PR_ERROR_FORMAT_USE_TERSE		0x002
