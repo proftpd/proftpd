@@ -6136,10 +6136,11 @@ MODRET core_feat(cmd_rec *cmd) {
   /* Sort the features, for a prettier output. */
   qsort(feats->elts, feats->nelts, sizeof(char *), feat_cmp);
 
-  pr_response_add(R_211, "%s", _("Features:"));
+  feat = pstrcat(cmd->tmp_pool, "Features:", NULL);
   for (i = 0; i < feats->nelts; i++) {
-    pr_response_add(R_DUP, "%s", ((const char **) feats->elts)[i]);
+    feat = pstrcat(cmd->tmp_pool, feat, "\r\n ", ((const char **)feats->elts)[i], NULL);
   }
+  pr_response_add(R_211, "%s", feat);
   pr_response_add(R_DUP, _("End"));
 
   return PR_HANDLED(cmd);
