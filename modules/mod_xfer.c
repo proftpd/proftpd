@@ -2679,7 +2679,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   if (pr_fsio_fstat(retr_fh, &st) < 0) {
     /* Error stat'ing the file. */
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_fsio_close(retr_fh);
     retr_fh = NULL;
@@ -2759,7 +2759,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     }
 
     if (pr_fsio_lseek(retr_fh, start_offset, SEEK_SET) == (off_t) -1) {
-      int xerrno = errno;
+      xerrno = errno;
       pr_fsio_close(retr_fh);
       errno = xerrno;
       retr_fh = NULL;
@@ -2837,7 +2837,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   }
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, download_len) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     retr_abort(cmd->pool);
     pr_data_abort(0, TRUE);
@@ -2910,8 +2910,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
       /* Make sure that the errno value, needed for the pr_data_abort() call,
        * is preserved; errno itself might be overwritten in retr_abort().
        */
-      int already_aborted = FALSE, xerrno = errno;
+      int already_aborted = FALSE;
 
+      xerrno = errno;
       retr_abort(cmd->pool);
 
       /* Do we need to abort the data transfer here?  It's possible that
