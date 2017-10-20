@@ -67,6 +67,8 @@
 - Bug 4281 - Redesign support for Backend SQLAuthType for MySQL.  If the MySQL
   client library cannot support the SQLAuthType Backend, mod_sql_mysql will
   emit a warning on startup.
+- Bug 4319 - FTP uploads frequently break due to "Interrupted system call"
+  error.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
