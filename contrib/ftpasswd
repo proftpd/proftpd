@@ -47,7 +47,7 @@ GetOptions(\%opts,
   'change-home',
   'change-password',
   'delete-group',
-  'delete-user',
+  'delete-user:s',
   'des',
   'enable-group-passwd',
   'file=s',
@@ -293,8 +293,11 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
   if (defined($opts{'delete-group'})) {
     open_output_file();
 
-    handle_group_entry(name => $opts{'name'},
-      delete_group => $opts{'delete-group'});
+    handle_group_entry(
+      name => $opts{'name'},
+      delete_group => $opts{'delete-group'},
+      delete_user => $opts{'delete-user'}
+    );
 
     close_output_file();
 
@@ -303,17 +306,23 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
   }
 
   # make sure the required options are present
-  die "$program: --group: missing required argument: --gid\n"
-    unless (defined($opts{'gid'}));
+  unless (defined($opts{'delete-user'})) {
+    die "$program: --group: missing required argument: --gid\n"
+      unless (defined($opts{'gid'}));
+  }
 
   die "$program: --group: missing required argument: --name\n"
     unless (defined($opts{'name'}));
 
   open_output_file();
 
-  handle_group_entry(gid => $opts{'gid'}, members => $opts{'m'},
-    name => $opts{'name'}, delete_user => $opts{'delete-user'},
-    delete_group => $opts{'delete-group'});
+  handle_group_entry(
+    gid => $opts{'gid'},
+    members => $opts{'m'},
+    name => $opts{'name'},
+    delete_user => $opts{'delete-user'},
+    delete_group => $opts{'delete-group'}
+  );
 
   close_output_file();
 
@@ -769,6 +778,13 @@ sub handle_group_entry {
   if ($delete_group) {
     print STDOUT "$program: entry deleted\n";
     return;
+  }
+
+  if ($delete_user) {
+    $members =~ s/$delete_user//g;
+    $members =~ s/,,/,/g;
+    $members =~ s/^,//g;
+    $members =~ s/,$//g;
   }
 
   # format: $name:$passwd:$gid:$members
