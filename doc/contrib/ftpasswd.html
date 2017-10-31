@@ -275,6 +275,13 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
 
                 Remove the entry for the given group name from the file.
 
+    --delete-user
+
+                Remove the named user from the given group name from the file.
+                Example:
+
+        $ ftpasswd --group --file=... --name=ftpd --delete-user=bob
+
     --enable-group-passwd
 
                 Prompt for a group password.  This is disabled by default,
