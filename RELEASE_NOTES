@@ -36,6 +36,8 @@ ChangeLog files.
   + The ftpasswd script now supports a --change-home option, for changing
     the home directory of a user in an AuthUserFile (Issue#566).
 
+  + The ftpasswd script supports deleting a user from a group (Issue#620).
+
   + Refactored the LogFormat handling code so that it is not longer
     duplicated by mod_log, mod_sql, etc.  The new Jot API is the common API
     to be used by modules for LogFormat variables and logging.
