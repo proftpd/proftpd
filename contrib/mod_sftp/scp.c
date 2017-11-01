@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1643,6 +1643,8 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
       }
     }
 
+    session.xfer.path = sftp_misc_vroot_abs_path(session.xfer.p,
+      session.xfer.path, FALSE);
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -2282,6 +2284,8 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
   pr_fsio_close(sp->fh);
   sp->fh = NULL;
 
+  session.xfer.path = sftp_misc_vroot_abs_path(session.xfer.p,
+    session.xfer.path, FALSE);
   (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
   (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
@@ -2835,7 +2839,8 @@ int sftp_scp_close_session(uint32_t channel_id) {
                 curr_path = pstrdup(scp_pool, elt->fh->fh_path);
 
                 /* Write out an 'incomplete' TransferLog entry for this. */
-                abs_path = dir_abs_path(scp_pool, elt->best_path, TRUE);
+                abs_path = sftp_misc_vroot_abs_path(scp_pool, elt->best_path,
+                  TRUE);
             
                 if (elt->recvlen > 0) {
                   xferlog_write(0, pr_netaddr_get_sess_remote_name(),

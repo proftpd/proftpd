@@ -1605,6 +1605,10 @@ MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
 /* Event handlers
  */
 
+static void sftp_chroot_ev(const void *event_data, void *user_data) {
+  (void) pr_table_add_dup(session.notes, "mod_sftp.chroot-path", event_data, 0);
+}
+
 extern pid_t mpid;
 
 static void sftp_exit_ev(const void *event_data, void *user_data) {
@@ -2009,13 +2013,15 @@ static int sftp_sess_init(void) {
   int times_gmt = TRUE;
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPEngine", FALSE);
-  if (c) {
+  if (c != NULL) {
     sftp_engine = *((int *) c->argv[0]);
   }
 
-  if (!sftp_engine)
+  if (sftp_engine == FALSE) {
     return 0;
+  }
 
+  pr_event_register(&sftp_module, "core.chroot", sftp_chroot_ev, NULL);
   pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
 #ifdef PR_USE_DEVEL
   pr_event_register(&sftp_module, "core.signal.USR2", sftp_sigusr2_ev, NULL);

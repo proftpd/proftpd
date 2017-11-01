@@ -2984,7 +2984,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
   }
 
   /* Write an 'incomplete' TransferLog entry for this. */
-  abs_path = dir_abs_path(fxh->pool, real_path, TRUE);
+  abs_path = sftp_misc_vroot_abs_path(fxh->pool, real_path, TRUE);
 
   if (fxh->fh_flags == O_RDONLY) {
     direction = 'o';
@@ -4650,7 +4650,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   fxp_cmd_dispatch(cmd);
 
   /* Write a TransferLog entry as well. */
-  abs_path = dir_abs_path(fxp->pool, dst, TRUE);
+  abs_path = sftp_misc_vroot_abs_path(fxp->pool, dst, TRUE);
   xferlog_write(0, session.c->remote_name, st.st_size, abs_path, 'b', 'i',
     'r', session.user, 'c', "_");
 
@@ -6585,6 +6585,8 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
       } else {
         pr_response_add(R_226, "%s", "Transfer complete");
+        session.xfer.path = sftp_misc_vroot_abs_path(cmd2->pool,
+          session.xfer.path, FALSE);
         fxp_cmd_dispatch(cmd2);
       }
     }
@@ -11305,7 +11307,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
     /* The TransferLog format wants the full path to the deleted file,
      * regardless of a chroot.
      */
-    abs_path = dir_abs_path(fxp->pool, path, TRUE);
+    abs_path = sftp_misc_vroot_abs_path(fxp->pool, path, TRUE);
 
     xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
       'b', 'd', 'r', session.user, 'c', "_");
