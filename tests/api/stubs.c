@@ -30,6 +30,7 @@ session_t session;
 
 char ServerType = SERVER_STANDALONE;
 int ServerUseReverseDNS = 1;
+unsigned char is_master = FALSE;
 server_rec *main_server = NULL;
 pid_t mpid = 1;
 module *static_modules[] = { NULL };
