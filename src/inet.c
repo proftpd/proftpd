@@ -321,10 +321,17 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
     }
 
 #ifdef SO_REUSEPORT
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (void *) &one,
-        sizeof(one)) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEPORT: %s",
-        strerror(errno));
+    /* Note that we only want to use this socket option if we are NOT the
+     * master/parent daemon.  Otherwise, we would allow multiple daemon
+     * processes to bind to the same socket, causing unexpected terror
+     * and madness (see Issue #622).
+     */
+    if (!is_master) {
+      if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (void *) &one,
+          sizeof(one)) < 0) {
+        pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEPORT: %s",
+          strerror(errno));
+      }
     }
 #endif /* SO_REUSEPORT */
 
