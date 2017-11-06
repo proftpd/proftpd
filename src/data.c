@@ -1178,6 +1178,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         }
 
         if (len > 0) {
+          pr_trace_msg(trace_channel, 19, "read %d %s from network", len,
+            len != 1 ? "bytes" : "byte");
+
           buflen += len;
 
           if (timeout_stalled) {
@@ -1281,6 +1284,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       }
 
       if (len > 0) {
+        pr_trace_msg(trace_channel, 19, "read %d %s from network", len,
+          len != 1 ? "bytes" : "byte");
+
         if (data_first_byte_read == FALSE) {
           if (pr_trace_get_level(timing_channel)) {
             unsigned long elapsed_ms;
@@ -1381,6 +1387,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       }
 
       if (bwrote > 0) {
+        pr_trace_msg(trace_channel, 19, "wrote %d %s to network", bwrote,
+          bwrote != 1 ? "bytes" : "byte");
+
         if (data_first_byte_written == FALSE) {
           if (pr_trace_get_level(timing_channel)) {
             unsigned long elapsed_ms;
