@@ -756,10 +756,13 @@ sub handle_group_entry {
       $found = 1;
 
       # If we have not been given an explicit password, reuse the existing one.
-      $passwd = $entry[2] unless $passwd;
+      $passwd = $entry[1] unless $passwd;
 
       # If we have not been given an explicit GID, reuse the existing one.
       $gid = $entry[2] unless $gid;
+
+      # If we have not been given explicit members, reuse the existing ones.
+      $members = $entry[3] if $members eq '';
 
       last;
     }
