@@ -7800,7 +7800,7 @@ static int tls_connect(conn_t *conn) {
   SSL *ssl = NULL;
   BIO *rbio = NULL, *wbio = NULL;
 
-  if (!ssl_ctx) {
+  if (ssl_ctx == NULL) {
     tls_log("%s", "unable to start session: null SSL_CTX");
     return -1;
   }
@@ -7809,6 +7809,14 @@ static int tls_connect(conn_t *conn) {
   if (ssl == NULL) {
     tls_log("error: unable to start session: %s",
       ERR_error_string(ERR_get_error(), NULL));
+    return -2;
+  }
+
+  /* Make sure our SSL object uses client methods (Issue#618). */
+  if (SSL_set_ssl_method(ssl, SSLv23_client_method()) != 1) {
+    tls_log("error: unable to set client methods: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    SSL_free(ssl);
     return -2;
   }
 
@@ -7847,9 +7855,7 @@ static int tls_connect(conn_t *conn) {
 
   pr_signals_handle();
   res = SSL_connect(ssl);
-  if (res == -1) {
-    xerrno = errno;
-  }
+  xerrno = errno;
 
   if (blocking) {
     /* Return the connection to blocking mode. */
