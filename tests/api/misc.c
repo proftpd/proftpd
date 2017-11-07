@@ -32,12 +32,16 @@ static pool *p = NULL;
 static unsigned int schedule_called = 0;
 static const char *misc_test_shutmsg = "/tmp/prt-shutmsg.dat";
 static const char *misc_test_readlink = "/tmp/prt-readlink.lnk";
+static const char *misc_test_readlink2_dir = "/tmp/prt-readlink/";
+static const char *misc_test_readlink2 = "/tmp/prt-readlink/test.lnk";
 
 /* Fixtures */
 
 static void set_up(void) {
   (void) unlink(misc_test_readlink);
+  (void) unlink(misc_test_readlink2);
   (void) unlink(misc_test_shutmsg);
+  (void) rmdir(misc_test_readlink2_dir);
 
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
@@ -59,7 +63,9 @@ static void set_up(void) {
 
 static void tear_down(void) {
   (void) unlink(misc_test_readlink);
+  (void) unlink(misc_test_readlink2);
   (void) unlink(misc_test_shutmsg);
+  (void) rmdir(misc_test_readlink2_dir);
 
   pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
@@ -639,7 +645,63 @@ START_TEST (dir_readlink_test) {
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
 
+  /* Now use a relative path, and a chroot deeper down than one diretory, and
+   * a deeper/longer source path.
+   */
+  memset(buf, '\0', bufsz);
+  dst_path = "./file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/tmp/prt-readlink/file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  (void) rmdir(misc_test_readlink2_dir);
+  (void) mkdir(misc_test_readlink2_dir, 0777);
+  path = misc_test_readlink2;
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  session.chroot_path = "/tmp/foo/bar";
+  flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless((size_t) res == expected_pathlen,
+    "Expected length %lu, got %d (%s)", (unsigned long) expected_pathlen, res,
+    buf);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* Now use a relative path that does not start with '.', and a chroot
+   * deeper down than one diretory, and a deeper/longer source path.
+   */
+  memset(buf, '\0', bufsz);
+  dst_path = "file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "/tmp/prt-readlink/file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  (void) rmdir(misc_test_readlink2_dir);
+  (void) mkdir(misc_test_readlink2_dir, 0777);
+  path = misc_test_readlink2;
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  session.chroot_path = "/tmp/foo/bar";
+  flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless((size_t) res == expected_pathlen,
+    "Expected length %lu, got %d (%s)", (unsigned long) expected_pathlen, res,
+    buf);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
   (void) unlink(misc_test_readlink);
+  (void) unlink(misc_test_readlink2);
+  (void) rmdir(misc_test_readlink2_dir);
 }
 END_TEST
 
