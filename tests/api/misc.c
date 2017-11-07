@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2016 The ProFTPD Project team
+ * Copyright (c) 2015-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -530,6 +530,28 @@ START_TEST (dir_readlink_test) {
   fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   fail_unless((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
+  fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
+    expected_path, buf);
+
+  /* Now use a relative path that does not start with '.' */
+  memset(buf, '\0', bufsz);
+  dst_path = "file.txt";
+  dst_pathlen = strlen(dst_path);
+  expected_path = "./file.txt";
+  expected_pathlen = strlen(expected_path);
+
+  (void) unlink(path);
+  res = symlink(dst_path, path);
+  fail_unless(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
+    strerror(errno));
+
+  session.chroot_path = "/tmp";
+  flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
+  res = dir_readlink(p, path, buf, bufsz, flags);
+  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  fail_unless((size_t) res == expected_pathlen,
+    "Expected length %lu, got %d (%s)", (unsigned long) expected_pathlen, res,
+    buf);
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
 
