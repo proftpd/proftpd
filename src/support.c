@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -440,6 +440,9 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
     return -1;
   }
 
+  pr_trace_msg("fsio", 9,
+    "dir_readlink() read link '%.*s' for path '%s'", (int) len, buf, path);
+
   if (len == 0 ||
       (size_t) len == bufsz) {
     /* If we read nothing in, OR if the given buffer was completely
@@ -530,15 +533,24 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
      */
 
     ptr = strrchr(path, '/');
-    if (ptr != NULL &&
-        ptr != path) {
-      char *parent_dir;
+    if (ptr != NULL) {
+      if (ptr != path) {
+        char *parent_dir;
 
-      parent_dir = pstrndup(tmp_pool, path, (ptr - path));
-      dst_path = pdircat(tmp_pool, parent_dir, dst_path, NULL);
+        parent_dir = pstrndup(tmp_pool, path, (ptr - path));
+        dst_path = pdircat(tmp_pool, parent_dir, dst_path, NULL);
 
-    } else {
-      dst_path = pdircat(tmp_pool, path, dst_path, NULL);
+      } else {
+        /* Watch out for the case where the destination path might start
+         * with a period.
+         */
+        if (*dst_path != '.') {
+          dst_path = pdircat(tmp_pool, path, dst_path, NULL);
+
+        } else {
+          dst_path = pdircat(tmp_pool, "/", dst_path, NULL);
+        }
+      }
     }
   }
 
