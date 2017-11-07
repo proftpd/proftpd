@@ -223,6 +223,16 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  list_symlink_rel_path_subdir_chrooted_bug4322 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
+  list_symlink_rel_path_subdir_cwd_chrooted_bug4322 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
   # XXX Plenty of other tests needed: params, maxfiles, maxdirs, depth, etc
 };
 
@@ -6294,7 +6304,7 @@ sub list_symlink_rel_path_chrooted_bug4322 {
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
       if ($ENV{TEST_VERBOSE}) {
-        print STDERR "# $buf\n";
+        print STDERR "# LIST:\n$buf\n";
       }
 
       $res = {};
@@ -6307,6 +6317,263 @@ sub list_symlink_rel_path_chrooted_bug4322 {
 
       my $list_count = scalar(keys(%$res));
       my $expected = 8;
+      $self->assert($list_count == $expected,
+        "Expected $expected entries, got $list_count");
+
+      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
+        "Expected '/domains/test.oxilion.nl/public_html'");
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub list_symlink_rel_path_subdir_chrooted_bug4322 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $dst_path = 'domains/test.oxilion.nl/public_html';
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/test.d/$dst_path");
+  mkpath($dst_dir);
+
+  my $cwd = getcwd();
+  unless (chdir("$tmpdir/test.d")) {
+    die("Can't chdir to $tmpdir: $!");
+  }
+
+  unless (symlink("./$dst_path", 'public_html')) {
+    die("Can't symlink 'public_html' to './$dst_path': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->list_raw('test.d');
+      unless ($conn) {
+        die("LIST test.d failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      my $res = $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# LIST:\n$buf\n";
+      }
+
+      $res = {};
+      my $lines = [split(/(\r)?\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      my $list_count = scalar(keys(%$res));
+      my $expected = 2;
+      $self->assert($list_count == $expected,
+        "Expected $expected entries, got $list_count");
+
+      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
+        "Expected '/domains/test.oxilion.nl/public_html'");
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $dst_path = 'domains/test.oxilion.nl/public_html';
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/test.d/$dst_path");
+  mkpath($dst_dir);
+
+  my $cwd = getcwd();
+  unless (chdir("$tmpdir/test.d")) {
+    die("Can't chdir to $tmpdir: $!");
+  }
+
+  unless (symlink("./$dst_path", 'public_html')) {
+    die("Can't symlink 'public_html' to './$dst_path': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->cwd('test.d');
+
+      my $conn = $client->list_raw();
+      unless ($conn) {
+        die("LIST failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      my $res = $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# LIST:\n$buf\n";
+      }
+
+      $res = {};
+      my $lines = [split(/(\r)?\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      my $list_count = scalar(keys(%$res));
+      my $expected = 2;
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
