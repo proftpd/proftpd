@@ -541,15 +541,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
         dst_path = pdircat(tmp_pool, parent_dir, dst_path, NULL);
 
       } else {
-        /* Watch out for the case where the destination path might start
-         * with a period.
-         */
-        if (*dst_path != '.') {
-          dst_path = pdircat(tmp_pool, path, dst_path, NULL);
-
-        } else {
-          dst_path = pdircat(tmp_pool, "/", dst_path, NULL);
-        }
+        dst_path = pdircat(tmp_pool, "/", dst_path, NULL);
       }
     }
   }
