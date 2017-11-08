@@ -6238,6 +6238,10 @@ sub list_symlink_rel_path_chrooted_bug4322 {
     die("Can't symlink 'public_html' to './$dst_path': $!");
   }
 
+  unless (symlink("$dst_path", 'public_html2')) {
+    die("Can't symlink 'public_html2' to '$dst_path': $!");
+  }
+
   unless (chdir($cwd)) {
     die("Can't chdir to $cwd: $!");
   }
@@ -6302,6 +6306,7 @@ sub list_symlink_rel_path_chrooted_bug4322 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# LIST:\n$buf\n";
@@ -6309,20 +6314,27 @@ sub list_symlink_rel_path_chrooted_bug4322 {
 
       $res = {};
       my $lines = [split(/(\r)?\n/, $buf)];
+      my $line_count = 0;
       foreach my $line (@$lines) {
         if ($line =~ /\s+(\S+)$/) {
+          $line_count++;
           $res->{$1} = 1;
         }
       }
 
+      my $expected = 9;
+      $self->assert($line_count == $expected,
+        "Expected $expected lines, got $line_count");
+
+      # The keys are the filenames; we have two symlinks pointing to the same
+      # file.  Hence the different line vs key counts.
       my $list_count = scalar(keys(%$res));
-      my $expected = 8;
+      $expected = 8;
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
       $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
         "Expected '/domains/test.oxilion.nl/public_html'");
-      $client->quit();
     };
     if ($@) {
       $ex = $@;
@@ -6364,6 +6376,10 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
 
   unless (symlink("./$dst_path", 'public_html')) {
     die("Can't symlink 'public_html' to './$dst_path': $!");
+  }
+
+  unless (symlink("$dst_path", 'public_html2')) {
+    die("Can't symlink 'public_html2' to '$dst_path': $!");
   }
 
   unless (chdir($cwd)) {
@@ -6430,6 +6446,7 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# LIST:\n$buf\n";
@@ -6437,20 +6454,27 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
 
       $res = {};
       my $lines = [split(/(\r)?\n/, $buf)];
+      my $line_count = 0;
       foreach my $line (@$lines) {
         if ($line =~ /\s+(\S+)$/) {
+          $line_count++;
           $res->{$1} = 1;
         }
       }
 
+      my $expected = 3;
+      $self->assert($line_count == $expected,
+        "Expected $expected lines, got $line_count");
+
+      # The keys are the filenames; we have two symlinks pointing to the same
+      # file.  Hence the different line vs key counts.
       my $list_count = scalar(keys(%$res));
-      my $expected = 2;
+      $expected = 2;
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
       $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
         "Expected '/domains/test.oxilion.nl/public_html'");
-      $client->quit();
     };
     if ($@) {
       $ex = $@;
@@ -6492,6 +6516,10 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
 
   unless (symlink("./$dst_path", 'public_html')) {
     die("Can't symlink 'public_html' to './$dst_path': $!");
+  }
+
+  unless (symlink("$dst_path", 'public_html2')) {
+    die("Can't symlink 'public_html2' to '$dst_path': $!");
   }
 
   unless (chdir($cwd)) {
@@ -6559,6 +6587,7 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# LIST:\n$buf\n";
@@ -6566,20 +6595,27 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
 
       $res = {};
       my $lines = [split(/(\r)?\n/, $buf)];
+      my $line_count = 0;
       foreach my $line (@$lines) {
         if ($line =~ /\s+(\S+)$/) {
+          $line_count++;
           $res->{$1} = 1;
         }
       }
 
+      my $expected = 3;
+      $self->assert($line_count == $expected,
+        "Expected $expected lines, got $line_count");
+
+      # The keys are the filenames; we have two symlinks pointing to the same
+      # file.  Hence the different line vs key counts.
       my $list_count = scalar(keys(%$res));
-      my $expected = 2;
+      $expected = 2;
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
       $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
         "Expected '/domains/test.oxilion.nl/public_html'");
-      $client->quit();
     };
     if ($@) {
       $ex = $@;

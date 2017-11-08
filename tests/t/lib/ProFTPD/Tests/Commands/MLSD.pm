@@ -3183,6 +3183,10 @@ sub mlsd_symlink_rel_path_chrooted_bug4322 {
     die("Can't symlink 'public_html' to './$dst_path': $!");
   }
 
+  unless (symlink("$dst_path", 'public_html2')) {
+    die("Can't symlink 'public_html2' to '$dst_path': $!");
+  }
+
   unless (chdir($cwd)) {
     die("Can't chdir to $cwd: $!");
   }
@@ -3244,6 +3248,7 @@ sub mlsd_symlink_rel_path_chrooted_bug4322 {
       my $buf;
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
+      $client->quit();
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# MLSD:\n$buf\n";
@@ -3259,21 +3264,24 @@ sub mlsd_symlink_rel_path_chrooted_bug4322 {
       }
 
       my $count = scalar(keys(%$res));
-      my $expected = 10;
+      my $expected = 11;
       unless ($count == $expected) {
         die("MLSD returned wrong number of entries (expected $expected, got $count)");
       }
 
-      # public_html is a symlink to domains/test.oxilion.nl/public_html.
-      # According to RFC3659, the unique fact for both of these should thus
-      # be the same, since they are the same underlying object.
+      # public_html and public_html2 are symlinks to
+      # domains/test.oxilion.nl/public_html.  According to RFC3659, the unique
+      # fact for both of these should thus be the same, since they are the same
+      # underlying object.
 
       $expected = 'OS.unix=symlink';
       my $got = $res->{'public_html'}->{type};
       $self->assert(qr/$expected/i, $got,
         "Expected type fact '$expected', got '$got'");
 
-      $client->quit();
+      $got = $res->{'public_html2'}->{type};
+      $self->assert(qr/$expected/i, $got,
+        "Expected type fact '$expected', got '$got'");
     };
     if ($@) {
       $ex = $@;
@@ -3315,6 +3323,10 @@ sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
 
   unless (symlink("./$dst_path", 'public_html')) {
     die("Can't symlink 'public_html' to './$dst_path': $!");
+  }
+
+  unless (symlink("$dst_path", 'public_html2')) {
+    die("Can't symlink 'public_html2' to '$dst_path': $!");
   }
 
   unless (chdir($cwd)) {
@@ -3378,6 +3390,7 @@ sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
       my $buf;
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
+      $client->quit();
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# MLSD:\n$buf\n";
@@ -3393,21 +3406,24 @@ sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
       }
 
       my $count = scalar(keys(%$res));
-      my $expected = 4;
+      my $expected = 5;
       unless ($count == $expected) {
         die("MLSD returned wrong number of entries (expected $expected, got $count)");
       }
 
-      # public_html is a symlink to domains/test.oxilion.nl/public_html.
-      # According to RFC3659, the unique fact for both of these should thus
-      # be the same, since they are the same underlying object.
+      # public_html and public_html2 are symlinks to
+      # domains/test.oxilion.nl/public_html.  According to RFC3659, the unique
+      # fact for both of these should thus be the same, since they are the same
+      # underlying object.
 
       $expected = 'OS.unix=symlink';
       my $got = $res->{'public_html'}->{type};
       $self->assert(qr/$expected/i, $got,
         "Expected type fact '$expected', got '$got'");
 
-      $client->quit();
+      $got = $res->{'public_html2'}->{type};
+      $self->assert(qr/$expected/i, $got,
+        "Expected type fact '$expected', got '$got'");
     };
     if ($@) {
       $ex = $@;
@@ -3449,6 +3465,10 @@ sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
 
   unless (symlink("./$dst_path", 'public_html')) {
     die("Can't symlink 'public_html' to './$dst_path': $!");
+  }
+
+  unless (symlink("$dst_path", 'public_html2')) {
+    die("Can't symlink 'public_html2' to '$dst_path': $!");
   }
 
   unless (chdir($cwd)) {
@@ -3513,6 +3533,7 @@ sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
       my $buf;
       $conn->read($buf, 8192, 30);
       eval { $conn->close() };
+      $client->quit();
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# MLSD:\n$buf\n";
@@ -3528,21 +3549,24 @@ sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
       }
 
       my $count = scalar(keys(%$res));
-      my $expected = 4;
+      my $expected = 5;
       unless ($count == $expected) {
         die("MLSD returned wrong number of entries (expected $expected, got $count)");
       }
 
-      # public_html is a symlink to domains/test.oxilion.nl/public_html.
-      # According to RFC3659, the unique fact for both of these should thus
-      # be the same, since they are the same underlying object.
+      # public_html and public_html2 are symlinks to
+      # domains/test.oxilion.nl/public_html.  According to RFC3659, the unique
+      # fact for both of these should thus be the same, since they are the same
+      # underlying object.
 
       $expected = 'OS.unix=symlink';
       my $got = $res->{'public_html'}->{type};
       $self->assert(qr/$expected/i, $got,
         "Expected type fact '$expected', got '$got'");
 
-      $client->quit();
+      $got = $res->{'public_html2'}->{type};
+      $self->assert(qr/$expected/i, $got,
+        "Expected type fact '$expected', got '$got'");
     };
     if ($@) {
       $ex = $@;
