@@ -42,6 +42,8 @@ ChangeLog files.
     duplicated by mod_log, mod_sql, etc.  The new Jot API is the common API
     to be used by modules for LogFormat variables and logging.
 
+  + Generated new DH parameters for mod_sftp, mod_tls.
+
 
   + New Configuration Directives
 
