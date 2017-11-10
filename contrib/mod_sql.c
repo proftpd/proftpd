@@ -6333,6 +6333,8 @@ static int sql_sess_init(void) {
       pr_sql_conn_policy = SQL_CONN_POLICY_PERCALL;
     }
 
+    sql_set_backend(c->argv[1]);
+
     if (sql_define_conn(tmp_pool, MOD_SQL_DEF_CONN_NAME, c->argv[1], c->argv[2],
         c->argv[0], c->argv[3], c->argv[4], c->argv[5], c->argv[6], c->argv[7],
         c->argv[8]) < 0) {
@@ -6409,6 +6411,11 @@ static int sql_sess_init(void) {
       c = find_config_next(c, c->next, CONF_PARAM, "SQLNamedConnectInfo",
         FALSE);
     }
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SQLEngine", FALSE);
+  if (c != NULL) {
+    sql_set_backend(c->argv[0]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLLogOnEvent", FALSE);
