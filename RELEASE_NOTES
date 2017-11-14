@@ -47,6 +47,8 @@ ChangeLog files.
 
   + New Configuration Directives
 
+    AuthFileOptions InsecurePerms
+
     RedisLogOnEvent (Issue#392)
 
     RedisOptions (Issue#477)
