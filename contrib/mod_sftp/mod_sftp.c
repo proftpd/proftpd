@@ -1460,6 +1460,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "IgnoreSFTPSetExtendedAttributes") == 0) {
       opts |= SFTP_OPT_IGNORE_SFTP_SET_XATTRS;
 
+    } else if (strcmp(cmd->argv[i], "IncludeSFTPTimes") == 0) {
+      opts |= SFTP_OPT_INCLUDE_SFTP_TIMES;
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
         cmd->argv[i], "'", NULL));
