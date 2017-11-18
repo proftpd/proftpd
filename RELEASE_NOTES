@@ -71,6 +71,8 @@ ChangeLog files.
     SFTPCipher, SFTPDigest
       Weak algorithms now disabled by default (Bug#4279)
 
+    SFTPOptions IncludeSFTPTimes (Rebex lib bug)
+
     TLSProtocol TLSv1.3 (Issue#536)
 
     TLSServerCipherPreference

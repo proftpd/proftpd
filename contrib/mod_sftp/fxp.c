@@ -7683,6 +7683,15 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
   fxb->buflen = buflen;
 
   attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+  if (fxp_session->client_version > 3 &&
+      sftp_opts & SFTP_OPT_INCLUDE_SFTP_TIMES) {
+    pr_trace_msg(trace_channel, 17,
+      "SFTPOption IncludeSFTPTimes in effect; assuring presence of "
+      "ACCESSTIME/MODIFYTIME attributes");
+    attr_flags |= SSH2_FX_ATTR_ACCESSTIME;
+    attr_flags |= SSH2_FX_ATTR_MODIFYTIME;
+  }
+
   fxp_attrs_write(fxp->pool, fxb, fxh->fh->fh_path, &st, attr_flags, fake_user,
     fake_group);
 
@@ -8409,6 +8418,15 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   fxb->buflen = buflen;
 
   attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+  if (fxp_session->client_version > 3 &&
+      sftp_opts & SFTP_OPT_INCLUDE_SFTP_TIMES) {
+    pr_trace_msg(trace_channel, 17,
+      "SFTPOption IncludeSFTPTimes in effect; assuring presence of "
+      "ACCESSTIME/MODIFYTIME attributes");
+    attr_flags |= SSH2_FX_ATTR_ACCESSTIME;
+    attr_flags |= SSH2_FX_ATTR_MODIFYTIME;
+  }
+
   fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   /* fxp_attrs_write will have changed the buf/buflen fields in the buffer. */
@@ -12512,6 +12530,15 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   fxb->buflen = buflen;
 
   attr_flags = fxp_attrs_clear_unsupported(attr_flags);
+  if (fxp_session->client_version > 3 &&
+      sftp_opts & SFTP_OPT_INCLUDE_SFTP_TIMES) {
+    pr_trace_msg(trace_channel, 17,
+      "SFTPOption IncludeSFTPTimes in effect; assuring presence of "
+      "ACCESSTIME/MODIFYTIME attributes");
+    attr_flags |= SSH2_FX_ATTR_ACCESSTIME;
+    attr_flags |= SSH2_FX_ATTR_MODIFYTIME;
+  }
+
   fxp_attrs_write(fxp->pool, fxb, path, &st, attr_flags, fake_user, fake_group);
 
   buf = fxb->buf;
