@@ -1736,11 +1736,13 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
                 action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
+#ifdef SSL3_MT_NEWSESSION_TICKET
             case SSL3_MT_NEWSESSION_TICKET:
               tls_log("[msg] %s %s 'NewSessionTicket' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
                 bytes_str);
               break;
+#endif /* SSL3_MT_NEWSESSION_TICKET */
 
             case SSL3_MT_CERTIFICATE:
               tls_log("[msg] %s %s 'Certificate' Handshake message (%u %s)",
@@ -3731,29 +3733,41 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
    *  http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#tls-extensiontype-values-1
    */
   switch (type) {
+# ifdef TLSEXT_TYPE_server_name
     case TLSEXT_TYPE_server_name:
         extension_name = "server name";
         break;
+# endif
 
+# ifdef TLSEXT_TYPE_max_fragment_length
     case TLSEXT_TYPE_max_fragment_length:
         extension_name = "max fragment length";
         break;
+# endif
 
+# ifdef TLSEXT_TYPE_client_certificate_url
     case TLSEXT_TYPE_client_certificate_url:
         extension_name = "client certificate URL";
         break;
+# endif
 
+# ifdef TLSEXT_TYPE_trusted_ca_keys
     case TLSEXT_TYPE_trusted_ca_keys:
         extension_name = "trusted CA keys";
         break;
+# endif
 
+# ifdef TLSEXT_TYPE_truncated_hmac
     case TLSEXT_TYPE_truncated_hmac:
         extension_name = "truncated HMAC";
         break;
+# endif
 
+# ifdef TLSEXT_TYPE_status_request
     case TLSEXT_TYPE_status_request:
         extension_name = "status request";
         break;
+# endif
 
 # ifdef TLSEXT_TYPE_user_mapping
     case TLSEXT_TYPE_user_mapping:
@@ -6541,7 +6555,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
 #if !defined(OPENSSL_NO_TLSEXT)
   if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    /* Note that older OpenSSL versions, e.g. 0.9.8, do not implement this
+     * callback.  Newer versions which DO implement it do as via a macro.
+     */
+# ifdef SSL_set_tlsext_debug_callback
     SSL_set_tlsext_debug_callback(ssl, tls_tlsext_cb);
+# endif /* SSL_set_tlsext_debug_callback */
   }
 #endif /* !OPENSSL_NO_TLSEXT */
 
@@ -13676,7 +13695,7 @@ static tls_pkey_t *tls_find_pkey(server_rec *s, int flags) {
 
 static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
     int flags) {
-  int res, *pass_len;
+  int res, *pass_len = NULL;
   tls_pkey_t *k = NULL;
   const char *key_type = "unsupported";
   char buf[256], **key_data = NULL;
