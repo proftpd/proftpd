@@ -2072,18 +2072,10 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       /* Make sure it matches our current server. */
       if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
 
-        if ((c != NULL && c->config_type == CONF_ANON &&
-            !strcmp(score->sce_user, user)) || c == NULL) {
-
-          /* This small hack makes sure that cur is incremented properly
-           * when dealing with anonymous logins (the timing of anonymous
-           * login updates to the scoreboard makes this...odd).
-           */
-          if (c != NULL &&
-              c->config_type == CONF_ANON &&
-              cur == 0) {
-              cur = 1;
-          }
+        if ((c != NULL &&
+             c->config_type == CONF_ANON &&
+             strcmp(score->sce_user, user) == 0) ||
+            c == NULL) {
 
           /* Only count authenticated clients, as per the documentation. */
           if (strncmp(score->sce_user, "(none)", 7) == 0) {
@@ -2094,20 +2086,9 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
 
           /* Count up sessions on a per-host basis. */
 
-          if (!strcmp(score->sce_client_addr,
-              pr_netaddr_get_ipstr(session.c->remote_addr))) {
+          if (strcmp(score->sce_client_addr,
+              pr_netaddr_get_ipstr(session.c->remote_addr)) == 0) {
             same_host = TRUE;
-
-            /* This small hack makes sure that hcur is incremented properly
-             * when dealing with anonymous logins (the timing of anonymous
-             * login updates to the scoreboard makes this...odd).
-             */
-            if (c != NULL &&
-                c->config_type == CONF_ANON &&
-                hcur == 0) {
-              hcur = 1;
-            }
-
             hcur++;
           }
 
@@ -2116,7 +2097,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
             usersessions++;
 
             /* Count up unique hosts. */
-            if (!same_host) {
+            if (same_host == FALSE) {
               hostsperuser++;
             }
           }
@@ -2212,7 +2193,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       maxstr = maxc->argv[1];
     }
 
-    if (*max && hcur > *max) {
+    if (*max &&
+        hcur > *max) {
       char maxn[20] = {'\0'};
 
       pr_event_generate("mod_auth.max-clients-per-host", session.c);
@@ -2240,7 +2222,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       maxstr = maxc->argv[1];
     }
 
-    if (*max && usersessions > *max) {
+    if (*max &&
+        usersessions > *max) {
       char maxn[20] = {'\0'};
 
       pr_event_generate("mod_auth.max-clients-per-user", user);
@@ -2267,7 +2250,8 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       maxstr = maxc->argv[1];
     }
 
-    if (*max && cur > *max) {
+    if (*max &&
+        cur > *max) {
       char maxn[20] = {'\0'};
 
       pr_event_generate("mod_auth.max-clients", NULL);
