@@ -801,7 +801,8 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
   entry = sqlodbc_get_conn(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_open");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   } 
 
   conn = (db_conn_t *) entry->data;
@@ -1009,7 +1010,8 @@ MODRET sqlodbc_close(cmd_rec *cmd) {
   entry = sqlodbc_get_conn(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_close");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1137,7 +1139,8 @@ MODRET sqlodbc_select(cmd_rec *cmd) {
   entry = sqlodbc_get_conn(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_select");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
  
   conn = (db_conn_t *) entry->data;
@@ -1286,7 +1289,8 @@ MODRET sqlodbc_insert(cmd_rec *cmd) {
   entry = sqlodbc_get_conn(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_insert");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1377,7 +1381,8 @@ MODRET sqlodbc_update(cmd_rec *cmd) {
   entry = sqlodbc_get_conn(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_update");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1484,7 +1489,8 @@ MODRET sqlodbc_query(cmd_rec *cmd) {
   entry = sqlodbc_get_conn(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_query");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1587,7 +1593,8 @@ MODRET sqlodbc_quote(cmd_rec *cmd) {
   entry = sqlodbc_get_conn(cmd->argv[0]);
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_escapestring");
-    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   /* Make sure the connection is open. */

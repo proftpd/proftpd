@@ -260,10 +260,23 @@ static const char *get_named_conn_backend(const char *conn_name) {
     struct sql_named_conn *snc;
 
     for (snc = sql_named_conns; snc; snc = snc->next) {
+      pr_trace_msg(trace_channel, 17,
+        "comparing requested named connection '%s' with '%s'", conn_name,
+        snc->conn_name);
+
       if (strcmp(snc->conn_name, conn_name) == 0) {
         return snc->backend;
       }
     }
+
+    pr_trace_msg(trace_channel, 17,
+      "unable to find named connection '%s': no such named connection found",
+      conn_name);
+
+  } else {
+    pr_trace_msg(trace_channel, 17,
+      "unable to find named connection '%s': no named connections registered",
+      conn_name);
   }
 
   errno = ENOENT;
@@ -518,14 +531,24 @@ static modret_t *sql_dispatch(cmd_rec *cmd, char *cmdname) {
 static struct sql_backend *sql_get_backend(const char *backend) {
   struct sql_backend *sb;
 
-  if (!sql_backends)
+  if (sql_backends == NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "unable to find '%s' backend: no backends registered", backend);
     return NULL;
-
-  for (sb = sql_backends; sb; sb = sb->next) {
-    if (strcasecmp(sb->backend, backend) == 0)
-      return sb;
   }
 
+  for (sb = sql_backends; sb; sb = sb->next) {
+    pr_trace_msg(trace_channel, 17,
+      "comparing requested backend '%s' with '%s'", backend, sb->backend);
+
+    if (strcasecmp(sb->backend, backend) == 0) {
+      return sb;
+    }
+  }
+
+  pr_trace_msg(trace_channel, 17,
+    "unable to find '%s' backend: no such backend found", backend);
+  errno = ENOENT;
   return NULL;
 }
 
@@ -563,6 +586,7 @@ int sql_register_backend(const char *backend, cmdtable *cmdtab) {
 
   sql_backends = sb;
   sql_nbackends++;
+  pr_trace_msg(trace_channel, 8, "registered '%s' backend", backend);
 
   return 0;
 }
@@ -5896,7 +5920,7 @@ static int sql_init(void) {
 static int sql_sess_init(void) {
   char *authstr = NULL;
   config_rec *c = NULL;
-  void *ptr = NULL;
+  void *default_backend = NULL, *ptr = NULL;
   unsigned char *negative_cache = NULL;
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
@@ -5928,12 +5952,12 @@ static int sql_sess_init(void) {
     }
   }
 
-  ptr = get_param_ptr(main_server->conf, "SQLBackend", FALSE);
-  sql_default_cmdtable = sql_set_backend(ptr);
+  default_backend = get_param_ptr(main_server->conf, "SQLBackend", FALSE);
+  sql_default_cmdtable = sql_set_backend(default_backend);
   if (sql_default_cmdtable == NULL) {
-    if (ptr != NULL) {
+    if (default_backend != NULL) {
       sql_log(DEBUG_INFO, "unable to load '%s' SQL backend: %s",
-        (char *) ptr, strerror(errno));
+        (char *) default_backend, strerror(errno));
 
     } else {
       sql_log(DEBUG_INFO, "unable to load SQL backend: %s", strerror(errno));
@@ -5943,8 +5967,9 @@ static int sql_sess_init(void) {
     return -1;
   }
 
-  if (ptr != NULL) {
-    pr_trace_msg(trace_channel, 9, "loaded '%s' SQL backend", (char *) ptr);
+  if (default_backend != NULL) {
+    pr_trace_msg(trace_channel, 9, "loaded '%s' SQL backend",
+      (char *) default_backend);
   }
 
   /* Construct our internal cache structure for this session. */
@@ -6369,6 +6394,12 @@ static int sql_sess_init(void) {
           pr_sql_conn_policy = SQL_CONN_POLICY_PERCALL;
         }
 
+        /* Make sure we set the correct backend driver here, so that we
+         * dispatch to the correct module's command table when defining the
+         * connection.
+         */
+        sql_set_backend(c->argv[1]);
+
         if (sql_define_conn(tmp_pool, c->argv[0], c->argv[3], c->argv[4],
             c->argv[2], c->argv[5], c->argv[6], c->argv[7], c->argv[8],
             c->argv[9], c->argv[10]) < 0) {
@@ -6409,6 +6440,13 @@ static int sql_sess_init(void) {
       c = find_config_next(c, c->next, CONF_PARAM, "SQLNamedConnectInfo",
         FALSE);
     }
+  }
+
+  /* Make sure we use the default SQLBackend here, after processing any
+   * SQLNamedConnectInfos.
+   */
+  if (default_backend != NULL) {
+    sql_set_backend(default_backend);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLLogOnEvent", FALSE);
