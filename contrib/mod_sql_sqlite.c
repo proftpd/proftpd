@@ -84,16 +84,20 @@ static void db_trace(void *user_data, const char *trace_msg) {
 static conn_entry_t *sql_sqlite_get_conn(char *name) {
   register unsigned int i = 0;
 
-  if (!name)
+  if (name == NULL) {
+    errno = EINVAL;
     return NULL;
+  }
 
   for (i = 0; i < conn_cache->nelts; i++) {
     conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
 
-    if (strcmp(name, entry->name) == 0)
+    if (strcmp(name, entry->name) == 0) {
       return entry;
+    }
   }
 
+  errno = ENOENT;
   return NULL;
 }
 
@@ -301,7 +305,7 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_open");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   } 
 
   conn = (db_conn_t *) entry->data;
@@ -434,7 +438,7 @@ MODRET sql_sqlite_close(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_close");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -591,7 +595,7 @@ MODRET sql_sqlite_select(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_select");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
  
   conn = (db_conn_t *) entry->data;
@@ -699,7 +703,7 @@ MODRET sql_sqlite_insert(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_insert");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -788,7 +792,7 @@ MODRET sql_sqlite_update(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_update");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -909,7 +913,7 @@ MODRET sql_sqlite_query(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_query");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -987,7 +991,7 @@ MODRET sql_sqlite_quote(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_escapestring");
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   /* Make sure the connection is open. */

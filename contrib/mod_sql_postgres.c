@@ -389,7 +389,7 @@ MODRET cmd_open(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   } 
 
   conn = (db_conn_t *) entry->data;
@@ -610,7 +610,7 @@ MODRET cmd_close(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -952,7 +952,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
   
   conn = (db_conn_t *) entry->data;
@@ -1097,7 +1097,7 @@ MODRET cmd_insert(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1201,7 +1201,7 @@ MODRET cmd_update(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1332,7 +1332,7 @@ MODRET cmd_query(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1443,7 +1443,7 @@ MODRET cmd_escapestring(cmd_rec *cmd) {
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "unknown named connection");
+      pstrcat(cmd->tmp_pool, "unknown named connection: ", cmd->argv[0], NULL));
   }
 
   conn = (db_conn_t *) entry->data;
