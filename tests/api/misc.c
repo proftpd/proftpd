@@ -1247,6 +1247,46 @@ START_TEST (snprintf_test) {
 }
 END_TEST
 
+START_TEST (snprintfl_test) {
+  char *buf;
+  size_t bufsz;
+  int res, expected;
+
+  res = pr_snprintfl(NULL, -1, NULL, 0, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  bufsz = 1;
+  buf = palloc(p, bufsz);
+
+  res = pr_snprintfl(NULL, -1, buf, 0, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null format");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_snprintfl(__FILE__, __LINE__, buf, 0, "%d", 0);
+  fail_unless(res == 0, "Failed to handle zero-length buffer");
+
+  res = pr_snprintfl(__FILE__, __LINE__, buf, bufsz, "%d", 0);
+  fail_unless(res < 0, "Failed to handle too-small buffer");
+  fail_unless(errno == ENOSPC, "Expected ENOSPC (%d), got %s (%d)", ENOSPC,
+    strerror(errno), errno);
+
+  res = pr_snprintfl(__FILE__, __LINE__, buf, bufsz, "%s", "foobar");
+  fail_unless(res < 0, "Failed to handle too-small buffer");
+  fail_unless(errno == ENOSPC, "Expected ENOSPC (%d), got %s (%d)", ENOSPC,
+    strerror(errno), errno);
+
+  bufsz = 32;
+  buf = palloc(p, bufsz);
+
+  expected = 6;
+  res = pr_snprintfl(__FILE__, __LINE__, buf, bufsz, "%s", "foobar");
+  fail_unless(res == expected, "Expected %d, got %d", expected, res);
+}
+END_TEST
+
 START_TEST (path_subst_uservar_test) {
   const char *path = NULL, *res, *original, *expected;
 
@@ -1395,6 +1435,7 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, timeval2millis_test);
   tcase_add_test(testcase, gettimeofday_millis_test);
   tcase_add_test(testcase, snprintf_test);
+  tcase_add_test(testcase, snprintfl_test);
   tcase_add_test(testcase, path_subst_uservar_test);
 
   suite_add_tcase(suite, testcase);

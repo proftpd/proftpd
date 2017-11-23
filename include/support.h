@@ -120,7 +120,20 @@ int pr_snprintf(char *buf, size_t bufsz, const char *fmt, ...)
   ;
 #endif
 
+/* Just like pr_snprintf(), except that the caller can provide their
+ * source code location.
+ */
+int pr_snprintfl(const char *file, int lineno, char *buf, size_t bufsz,
+  const char *fmt, ...)
+#ifdef __GNUC__
+  __attribute__ ((format (printf, 5, 6)));
+#else
+  ;
+#endif
+
 int pr_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list msg);
+int pr_vsnprintfl(const char *file, int lineno, char *buf, size_t bufsz,
+  const char *fmt, va_list msg);
 
 /* Resolve/substitute any "%u" variables in the path.  Returns the resolved
  * path, or NULL if there was an error.

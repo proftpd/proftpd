@@ -1138,9 +1138,9 @@ const char *pr_strtime2(time_t t, int use_gmtime) {
   }
 
   if (tr != NULL) {
-    pr_snprintf(buf, sizeof(buf), "%s %s %02d %02d:%02d:%02d %d",
-      days[tr->tm_wday], mons[tr->tm_mon], tr->tm_mday, tr->tm_hour,
-      tr->tm_min, tr->tm_sec, tr->tm_year + 1900);
+    pr_snprintfl(__FILE__, __LINE__, buf, sizeof(buf),
+      "%s %s %02d %02d:%02d:%02d %d", days[tr->tm_wday], mons[tr->tm_mon],
+      tr->tm_mday, tr->tm_hour, tr->tm_min, tr->tm_sec, tr->tm_year + 1900);
   }
 
   buf[sizeof(buf)-1] = '\0';
@@ -1175,7 +1175,8 @@ int pr_gettimeofday_millis(uint64_t *millis) {
   return 0;
 }
 
-int pr_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list msg) {
+int pr_vsnprintfl(const char *file, int lineno, char *buf, size_t bufsz,
+    const char *fmt, va_list msg) {
   int res, xerrno = 0;
 
   if (buf == NULL ||
@@ -1211,13 +1212,38 @@ int pr_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list msg) {
    */
   if (res < 0 &&
       xerrno == ENOSPC) {
-    pr_log_pri(PR_LOG_WARNING,
-      "error writing format string '%s' into %lu-byte buffer: %s", fmt,
-      (unsigned long) bufsz, strerror(xerrno));
+    if (file != NULL &&
+        lineno > 0) {
+      pr_log_pri(PR_LOG_WARNING,
+        "%s:%d: error writing format string '%s' into %lu-byte buffer: %s",
+        file, lineno, fmt, (unsigned long) bufsz, strerror(xerrno));
+
+    } else {
+      pr_log_pri(PR_LOG_WARNING,
+        "error writing format string '%s' into %lu-byte buffer: %s", fmt,
+        (unsigned long) bufsz, strerror(xerrno));
+    }
+
     pr_log_stacktrace(-1, NULL);
   }
 
   errno = xerrno;
+  return res;
+}
+
+int pr_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list msg) {
+  return pr_vsnprintfl(NULL, -1, buf, bufsz, fmt, msg);
+}
+
+int pr_snprintfl(const char *file, int lineno, char *buf, size_t bufsz,
+    const char *fmt, ...) {
+  va_list msg;
+  int res;
+
+  va_start(msg, fmt);
+  res = pr_vsnprintfl(file, lineno, buf, bufsz, fmt, msg);
+  va_end(msg);
+
   return res;
 }
 
@@ -1226,7 +1252,7 @@ int pr_snprintf(char *buf, size_t bufsz, const char *fmt, ...) {
   int res;
 
   va_start(msg, fmt);
-  res = pr_vsnprintf(buf, bufsz, fmt, msg);
+  res = pr_vsnprintfl(NULL, -1, buf, bufsz, fmt, msg);
   va_end(msg);
 
   return res;
