@@ -779,7 +779,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%06lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%06lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -789,7 +789,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%03lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%03lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -801,7 +801,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         int num;
 
         num = (int) *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%d", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%d", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -833,7 +833,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         off_t num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -844,7 +844,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -862,7 +862,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         float num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%0.3f", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%0.3f", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -2372,7 +2372,7 @@ static void _setstats(cmd_rec *cmd, int fstor, int fretr, int bstor,
   char *usrwhere, *where;
   modret_t *mr = NULL;
 
-  snprintf(query, sizeof(query),
+  pr_snprintf(query, sizeof(query),
            "%s = %s + %i, %s = %s + %i, %s = %s + %i, %s = %s + %i",
            cmap.sql_fstor, cmap.sql_fstor, fstor,
            cmap.sql_fretr, cmap.sql_fretr, fretr,

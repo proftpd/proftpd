@@ -239,7 +239,7 @@ int pr_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
     return EAI_FAMILY;
 
   if (serv != NULL && servlen > (size_t) 1)
-    snprintf(serv, servlen, "%lu", (unsigned long) ntohs(sai->sin_port));
+    pr_snprintf(serv, servlen, "%lu", (unsigned long) ntohs(sai->sin_port));
 
   if (host != NULL && hostlen > (size_t) 1) {
     struct hostent *he = NULL;

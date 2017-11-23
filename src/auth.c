@@ -1313,7 +1313,7 @@ const char *pr_auth_uid2name(pool *p, uid_t uid) {
 
   if (!have_name) {
     /* TODO: This conversion is data type sensitive, per Bug#4164. */
-    snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) uid);
+    pr_snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) uid);
     res = namebuf;
 
     if (auth_caching & PR_AUTH_CACHE_FL_BAD_UID2NAME) {
@@ -1369,7 +1369,7 @@ const char *pr_auth_gid2name(pool *p, gid_t gid) {
 
   if (!have_name) {
     /* TODO: This conversion is data type sensitive, per Bug#4164. */
-    snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) gid);
+    pr_snprintf(namebuf, sizeof(namebuf)-1, "%lu", (unsigned long) gid);
     res = namebuf;
 
     if (auth_caching & PR_AUTH_CACHE_FL_BAD_GID2NAME) {
@@ -2064,7 +2064,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
 
   for (i = 0; i < nproc_gids; i++) {
     char buf[64];
-    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) proc_gids[i]);
+    pr_snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) proc_gids[i]);
     buf[sizeof(buf)-1] = '\0';
 
     strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);

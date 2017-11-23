@@ -557,10 +557,10 @@ MODRET set_moduleorder(cmd_rec *cmd) {
       if (strcmp(cmd->argv[i], cmd->argv[j]) == 0) {
         char ibuf[4], jbuf[4];
 
-        snprintf(ibuf, sizeof(ibuf), "%u", i);
+        pr_snprintf(ibuf, sizeof(ibuf), "%u", i);
         ibuf[sizeof(ibuf)-1] = '\0';
 
-        snprintf(jbuf, sizeof(jbuf), "%u", j);
+        pr_snprintf(jbuf, sizeof(jbuf), "%u", j);
         jbuf[sizeof(jbuf)-1] = '\0';
 
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,

@@ -1025,7 +1025,7 @@ static const char *fxp_strtime(pool *p, time_t t) {
 
   tm = pr_gmtime(p, &t);
   if (tm != NULL) {
-    snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
+    pr_snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
       days[tm->tm_wday], mons[tm->tm_mon], tm->tm_mday, tm->tm_hour,
       tm->tm_min, tm->tm_sec, tm->tm_year + 1900);
 
@@ -1198,7 +1198,7 @@ static void fxp_status_write(pool *p, unsigned char **buf, uint32_t *buflen,
   pr_response_clear(&resp_err_list);
 
   memset(num, '\0', sizeof(num));
-  snprintf(num, sizeof(num)-1, "%lu", (unsigned long) status_code);
+  pr_snprintf(num, sizeof(num)-1, "%lu", (unsigned long) status_code);
   num[sizeof(num)-1] = '\0';
   pr_response_add(pstrdup(p, num), "%s", status_msg);
 
@@ -1862,31 +1862,32 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
     }
   }
 
-  snprintf(ptr, bufsz - buflen, "type=%s;", fxp_strftype(st->st_mode));
+  pr_snprintf(ptr, bufsz - buflen, "type=%s;", fxp_strftype(st->st_mode));
   buflen = strlen(buf);
   ptr = buf + buflen;
 
   if (flags & SSH2_FX_ATTR_SIZE) {
-    snprintf(ptr, bufsz - buflen, "size=%" PR_LU ";", (pr_off_t) st->st_size);
+    pr_snprintf(ptr, bufsz - buflen, "size=%" PR_LU ";",
+      (pr_off_t) st->st_size);
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
 
   if ((flags & SSH2_FX_ATTR_UIDGID) ||
       (flags & SSH2_FX_ATTR_OWNERGROUP)) {
-    snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
+    pr_snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
       pr_uid2str(NULL, st->st_uid));
     buflen = strlen(buf);
     ptr = buf + buflen;
 
-    snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
+    pr_snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
       pr_gid2str(NULL, st->st_gid));
     buflen = strlen(buf);
     ptr = buf + buflen;
   }
 
   if (flags & SSH2_FX_ATTR_PERMISSIONS) {
-    snprintf(ptr, bufsz - buflen, "UNIX.mode=%04o;",
+    pr_snprintf(ptr, bufsz - buflen, "UNIX.mode=%04o;",
       (unsigned int) st->st_mode & 07777);
     buflen = strlen(buf);
     ptr = buf + buflen;
@@ -1898,7 +1899,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
       tm = pr_gmtime(p, (const time_t *) &st->st_atime);
       if (tm != NULL) {
-        snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
+        pr_snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
           tm->tm_sec);
         buflen = strlen(buf);
@@ -1911,7 +1912,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
       tm = pr_gmtime(p, (const time_t *) &st->st_mtime);
       if (tm != NULL) {
-        snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
+        pr_snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
           tm->tm_sec);
 
@@ -1930,7 +1931,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
       tm = pr_gmtime(p, (const time_t *) &st->st_atime);
       if (tm != NULL) {
-        snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
+        pr_snprintf(ptr, bufsz - buflen, "access=%04d%02d%02d%02d%02d%02d;",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
           tm->tm_sec);
 
@@ -1948,7 +1949,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
       tm = pr_gmtime(p, (const time_t *) &st->st_mtime);
       if (tm != NULL) {
-        snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
+        pr_snprintf(ptr, bufsz - buflen, "modify=%04d%02d%02d%02d%02d%02d;",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
           tm->tm_sec);
 
@@ -1962,7 +1963,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
     }
 
     if (flags & SSH2_FX_ATTR_LINK_COUNT) {
-      snprintf(ptr, bufsz - buflen, "UNIX.nlink=%lu;",
+      pr_snprintf(ptr, bufsz - buflen, "UNIX.nlink=%lu;",
         (unsigned long) st->st_nlink);
       buflen = strlen(buf);
       ptr = buf + buflen;
@@ -2797,7 +2798,7 @@ static char *fxp_get_path_listing(pool *p, const char *path, struct stat *st,
 
   group_len = MAX(strlen(group), 8);
 
-  snprintf(listing, sizeof(listing)-1,
+  pr_snprintf(listing, sizeof(listing)-1,
     "%s %3u %-*s %-*s %8" PR_LU " %s %s", mode_str,
     (unsigned int) st->st_nlink, user_len, user, group_len, group,
     (pr_off_t) st->st_size, time_str, path);
@@ -7712,7 +7713,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
     &fxp->payload_sz);
 
   memset(version_str, '\0', sizeof(version_str));
-  snprintf(version_str, sizeof(version_str)-1, "%lu",
+  pr_snprintf(version_str, sizeof(version_str)-1, "%lu",
     (unsigned long) fxp_session->client_version);
 
   cmd = fxp_cmd_alloc(fxp->pool, "INIT", version_str);
@@ -12807,7 +12808,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     datalen);
 
   memset(cmd_arg, '\0', sizeof(cmd_arg)); 
-  snprintf(cmd_arg, sizeof(cmd_arg)-1, "%s %" PR_LU " %lu", name,
+  pr_snprintf(cmd_arg, sizeof(cmd_arg)-1, "%s %" PR_LU " %lu", name,
     (pr_off_t) offset, (unsigned long) datalen);
   cmd = fxp_cmd_alloc(fxp->pool, "WRITE", cmd_arg);
   cmd->cmd_class = CL_WRITE|CL_SFTP;

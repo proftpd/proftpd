@@ -27,6 +27,7 @@
 #include "error.h"
 #include "proftpd.h"
 #include "str.h"
+#include "support.h"
 #include "session.h"
 #include "trace.h"
 
@@ -446,13 +447,13 @@ unsigned int pr_error_use_formats(unsigned int use_formats) {
 
 static const char *get_uid(pr_error_t *err, char *uid, size_t uidsz) {
   memset(uid, '\0', uidsz);
-  snprintf(uid, uidsz-1, "%lu", (unsigned long) err->err_uid);
+  pr_snprintf(uid, uidsz-1, "%lu", (unsigned long) err->err_uid);
   return uid;
 }
 
 static const char *get_gid(pr_error_t *err, char *gid, size_t gidsz) {
   memset(gid, '\0', gidsz);
-  snprintf(gid, gidsz-1, "%lu", (unsigned long) err->err_gid);
+  pr_snprintf(gid, gidsz-1, "%lu", (unsigned long) err->err_gid);
   return gid;
 }
 
@@ -561,7 +562,7 @@ static const char *get_where(pr_error_t *err) {
         char linenum[PR_ERROR_BUFSZ];
 
         memset(linenum, '\0', sizeof(linenum));
-        snprintf(linenum, sizeof(linenum)-1, "%u", err->err_lineno);
+        pr_snprintf(linenum, sizeof(linenum)-1, "%u", err->err_lineno);
 
         where = pstrcat(err->err_pool, where, ":", linenum,
           used_brackets ? "]" : "", NULL);
@@ -650,7 +651,7 @@ static const char *get_failure(pr_error_t *err) {
   char errnum[PR_ERROR_BUFSZ];
 
   memset(errnum, '\0', sizeof(errnum));
-  snprintf(errnum, sizeof(errnum)-1, "%d", err->err_errno);
+  pr_snprintf(errnum, sizeof(errnum)-1, "%d", err->err_errno);
 
   if (err->err_name == NULL) {
     err->err_name = get_errno_name(err->err_errno);

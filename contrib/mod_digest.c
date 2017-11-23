@@ -1364,13 +1364,14 @@ static const char *get_key_for_cache(pool *p, const char *path, time_t mtime,
   char mtime_str[256], start_str[256], len_str[256];
 
   memset(mtime_str, '\0', sizeof(mtime_str));
-  snprintf(mtime_str, sizeof(mtime_str)-1, "%llu", (unsigned long long) mtime);
+  pr_snprintf(mtime_str, sizeof(mtime_str)-1, "%llu",
+    (unsigned long long) mtime);
 
   memset(start_str, '\0', sizeof(start_str));
-  snprintf(start_str, sizeof(start_str)-1, "%" PR_LU, (pr_off_t) start);
+  pr_snprintf(start_str, sizeof(start_str)-1, "%" PR_LU, (pr_off_t) start);
 
   memset(len_str, '\0', sizeof(len_str));
-  snprintf(len_str, sizeof(len_str)-1, "%llu", (unsigned long long) len);
+  pr_snprintf(len_str, sizeof(len_str)-1, "%llu", (unsigned long long) len);
 
   key = pstrcat(p, path, "@", mtime_str, ",", start_str, "+", len_str, NULL);
   return key;

@@ -2054,7 +2054,7 @@ static const char *get_printable_subjaltname(pool *p, const char *data,
       *(ptr++) = data[i];
 
     } else {
-      snprintf(ptr, reslen - (ptr - res), "\\x%02x", data[i]);
+      pr_snprintf(ptr, reslen - (ptr - res), "\\x%02x", data[i]);
       ptr += 4;
     }
   }
@@ -2158,7 +2158,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
         san_datalen = ASN1_STRING_length(alt_name->d.ip);
         if (san_datalen == 4) {
           /* IPv4 address */
-          snprintf(san_ipstr, sizeof(san_ipstr)-1, "%u.%u.%u.%u",
+          pr_snprintf(san_ipstr, sizeof(san_ipstr)-1, "%u.%u.%u.%u",
             san_data[0], san_data[1], san_data[2], san_data[3]);
           have_ipstr = TRUE;
 
@@ -2656,7 +2656,7 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     stdin_argv[0] = pstrdup(tmp_pool, tls_passphrase_provider);
 
     memset(nbuf, '\0', sizeof(nbuf));
-    snprintf(nbuf, sizeof(nbuf)-1, "%u", (unsigned int) s->ServerPort);
+    pr_snprintf(nbuf, sizeof(nbuf)-1, "%u", (unsigned int) s->ServerPort);
     nbuf[sizeof(nbuf)-1] = '\0';
     stdin_argv[1] = pstrcat(tmp_pool, s->ServerName, ":", nbuf, NULL);
 
@@ -8532,7 +8532,7 @@ static int tls_dotlogin_allow(const char *user) {
   home = dir_realpath(tmp_pool, pwd->pw_dir);
   PRIVS_RELINQUISH
 
-  snprintf(buf, sizeof(buf), "%s/.tlslogin", home ? home : pwd->pw_dir);
+  pr_snprintf(buf, sizeof(buf), "%s/.tlslogin", home ? home : pwd->pw_dir);
   buf[sizeof(buf)-1] = '\0';
 
   /* No need for the temporary pool any more. */
@@ -8910,7 +8910,7 @@ static int tls_seed_prng(void) {
   if (!tls_rand_file) {
     /* The ftpd's random file is (openssl-dir)/.rnd */
     memset(rand_file, '\0', sizeof(rand_file));
-    snprintf(rand_file, sizeof(rand_file)-1, "%s/.rnd",
+    pr_snprintf(rand_file, sizeof(rand_file)-1, "%s/.rnd",
       X509_get_default_cert_area());
     tls_rand_file = rand_file;
   }
@@ -9150,7 +9150,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     X509_PUBKEY *pubkey;
 
     memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf) - 1, "%lu", X509_get_version(cert) + 1);
+    pr_snprintf(buf, sizeof(buf) - 1, "%lu", X509_get_version(cert) + 1);
     buf[sizeof(buf)-1] = '\0';
 
     k = pstrcat(p, env_prefix, "M_VERSION", NULL);
@@ -9159,7 +9159,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
 
     if (serial->length < 4) {
       memset(buf, '\0', sizeof(buf));
-      snprintf(buf, sizeof(buf) - 1, "%lu", ASN1_INTEGER_get(serial));
+      pr_snprintf(buf, sizeof(buf) - 1, "%lu", ASN1_INTEGER_get(serial));
       buf[sizeof(buf)-1] = '\0';
 
       k = pstrcat(p, env_prefix, "M_SERIAL", NULL);
@@ -9323,7 +9323,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
       }
 
       memset(buf, '\0', sizeof(buf));
-      snprintf(buf, sizeof(buf), "%d", cipher_bits_possible);
+      pr_snprintf(buf, sizeof(buf), "%d", cipher_bits_possible);
       buf[sizeof(buf)-1] = '\0';
 
       k = pstrdup(p, "TLS_CIPHER_KEYSIZE_POSSIBLE");
@@ -9331,7 +9331,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
       pr_env_set(p, k, v);
 
       memset(buf, '\0', sizeof(buf));
-      snprintf(buf, sizeof(buf), "%d", cipher_bits_used);
+      pr_snprintf(buf, sizeof(buf), "%d", cipher_bits_used);
       buf[sizeof(buf)-1] = '\0';
 
       k = pstrdup(p, "TLS_CIPHER_KEYSIZE_USED");
@@ -9365,7 +9365,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
       pr_signals_handle();
 
       k = pcalloc(p, klen);
-      snprintf(k, klen - 1, "%s%u", "TLS_CLIENT_CERT_CHAIN", i + 1);
+      pr_snprintf(k, klen - 1, "%s%u", "TLS_CLIENT_CERT_CHAIN", i + 1);
 
       bio = BIO_new(BIO_s_mem());
       PEM_write_bio_X509(bio, sk_X509_value(sk_cert_chain, i));
@@ -10495,7 +10495,7 @@ static void sess_cache_printf(void *ctrl, const char *fmt, ...) {
   memset(buf, '\0', sizeof(buf));
 
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';
@@ -10727,7 +10727,7 @@ static void ocsp_cache_printf(void *ctrl, const char *fmt, ...) {
   memset(buf, '\0', sizeof(buf));
 
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';
@@ -13428,7 +13428,7 @@ MODRET set_tlspresharedkey(cmd_rec *cmd) {
     char buf[32];
 
     memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%u", (unsigned int) PSK_MAX_IDENTITY_LEN);
+    pr_snprintf(buf, sizeof(buf)-1, "%u", (unsigned int) PSK_MAX_IDENTITY_LEN);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "TLSPreSharedKey identity '", identity, "' exceed maximum length ",
@@ -14760,7 +14760,7 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
       return NULL;
   }
 
-  res = snprintf(buf, sizeof(buf)-1, "%s %s for the %s#%d (%s) server: ",
+  res = pr_snprintf(buf, sizeof(buf)-1, "%s %s for the %s#%d (%s) server: ",
     key_type, flags != TLS_PASSPHRASE_FL_PKCS12_PASSWD ? "key" : "password",
     pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
   buf[res] = '\0';

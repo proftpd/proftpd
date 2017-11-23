@@ -98,7 +98,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%06lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%06lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -108,7 +108,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%03lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%03lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -120,7 +120,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         int num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%d", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%d", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -152,7 +152,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         off_t num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -163,7 +163,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -181,7 +181,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         float num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%0.3f", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%0.3f", num);
         buf[text_len] = '\0';
         text = buf;
         break;

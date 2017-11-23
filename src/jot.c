@@ -1470,7 +1470,7 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
           *ch = toupper((int) *ch);
         }
 
-        len = snprintf(buf, sizeof(buf)-1, "%s %s", (char *) cmd->argv[0],
+        len = pr_snprintf(buf, sizeof(buf)-1, "%s %s", (char *) cmd->argv[0],
           (char *) cmd->argv[1]);
 
         method = pstrndup(p, buf, len);
@@ -1858,7 +1858,7 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
       /* Convert microsecs to millisecs. */
       millis = now.tv_usec / 1000;
 
-      snprintf(ts + len, sizeof(ts) - len - 1, ",%03lu", millis);
+      pr_snprintf(ts + len, sizeof(ts) - len - 1, ",%03lu", millis);
       res = (on_meta)(p, ctx, logfmt_id, NULL, ts);
       break;
     }

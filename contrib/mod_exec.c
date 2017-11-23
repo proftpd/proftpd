@@ -904,7 +904,7 @@ static const char *exec_subst_var(pool *tmp_pool, const char *varstr,
     memset(buf, '\0', sizeof(buf));
 
     if (session.xfer.p != NULL) {
-      snprintf(buf, sizeof(buf)-1, "%" PR_LU,
+      pr_snprintf(buf, sizeof(buf)-1, "%" PR_LU,
         (pr_off_t) session.xfer.total_bytes);
     }
 

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2016 The ProFTPD Project team
+ * Copyright (c) 2006-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -126,7 +126,7 @@ static int trace_write(const char *channel, int level, const char *msg,
     /* Convert microsecs to millisecs. */
     millis = now.tv_usec / 1000;
 
-    len = snprintf(buf + buflen, sizeof(buf) - buflen, ",%03lu", millis);
+    len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, ",%03lu", millis);
     buflen += len;
   }
 
@@ -140,7 +140,7 @@ static int trace_write(const char *channel, int level, const char *msg,
   }
 
   if (use_conn_ips == FALSE) {
-    len = snprintf(buf + buflen, sizeof(buf) - buflen, " [%u] <%s:%d>: %s",
+    len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, " [%u] <%s:%d>: %s",
       (unsigned int) (session.pid ? session.pid : getpid()), channel, level,
       msg);
     buflen += len;
@@ -153,7 +153,7 @@ static int trace_write(const char *channel, int level, const char *msg,
     server_ip = pr_netaddr_get_ipstr(session.c->local_addr);
     server_port = pr_netaddr_get_port(session.c->local_addr);
 
-    len = snprintf(buf + buflen, sizeof(buf) - buflen,
+    len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
       " [%u] (client %s, server %s:%d) <%s:%d>: %s",
       (unsigned int) (session.pid ? session.pid : getpid()),
       client_ip != NULL ? client_ip : "none",
@@ -584,7 +584,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     }
   }
 
-  buflen = vsnprintf(buf, sizeof(buf)-1, fmt, msg);
+  buflen = pr_vsnprintf(buf, sizeof(buf)-1, fmt, msg);
 
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf)-1] = '\0';

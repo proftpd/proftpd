@@ -887,7 +887,7 @@ void pr_data_abort(int err, int quiet) {
     if (msg == NULL &&
         (msg = strerror(err)) == NULL ) {
 
-      if (snprintf(msgbuf, sizeof(msgbuf),
+      if (pr_snprintf(msgbuf, sizeof(msgbuf),
           _("Unknown or out of range errno [%d]"), err) > 0)
 	msg = msgbuf;
     }

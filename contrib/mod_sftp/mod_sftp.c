@@ -282,7 +282,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
 
   memset(buf, '\0', sizeof(buf));
   k = pstrdup(session.pool, "SSH_CONNECTION");
-  snprintf(buf, sizeof(buf)-1, "%.50s %d %.50s %d",
+  pr_snprintf(buf, sizeof(buf)-1, "%.50s %d %.50s %d",
     pr_netaddr_get_ipstr(conn->remote_addr), conn->remote_port,
     pr_netaddr_get_ipstr(conn->local_addr), conn->local_port);
   v = pstrdup(session.pool, buf);
@@ -1851,7 +1851,7 @@ static void pool_printf(const char *fmt, ...) {
   memset(buf, '\0', sizeof(buf));
 
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';

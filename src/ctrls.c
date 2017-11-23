@@ -460,7 +460,7 @@ int pr_ctrls_add_response(pr_ctrls_t *ctrl, char *fmt, ...) {
 
   /* Affix the message */
   va_start(resp, fmt);
-  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, resp);
+  pr_vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, resp);
   va_end(resp);
 
   buf[sizeof(buf) - 1] = '\0';
@@ -1131,7 +1131,7 @@ int pr_ctrls_connect(const char *socket_file) {
    */
 
   cl_sock.sun_family = AF_UNIX;
-  snprintf(cl_sock.sun_path, sizeof(cl_sock.sun_path) - 1, "%s%05u",
+  pr_snprintf(cl_sock.sun_path, sizeof(cl_sock.sun_path) - 1, "%s%05u",
     "/tmp/ftp.cl", (unsigned int) getpid());
   len = sizeof(cl_sock);
 

@@ -267,7 +267,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
   char server_addr[128];
 
   memset(server_addr, '\0', sizeof(server_addr));
-  snprintf(server_addr, sizeof(server_addr)-1, "%s:%d",
+  pr_snprintf(server_addr, sizeof(server_addr)-1, "%s:%d",
     pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
   server_addr[sizeof(server_addr)-1] = '\0';
 
@@ -334,7 +334,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
       pr_event_generate("mod_xfer.max-transfers-per-host", session.c);
 
       memset(maxn, '\0', sizeof(maxn));
-      snprintf(maxn, sizeof(maxn)-1, "%u", max);
+      pr_snprintf(maxn, sizeof(maxn)-1, "%u", max);
       pr_response_send(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
         maxn, NULL));
       pr_log_debug(DEBUG4, "MaxTransfersPerHost %u exceeded for %s for "
@@ -406,7 +406,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
       pr_event_generate("mod_xfer.max-transfers-per-user", session.user);
 
       memset(maxn, '\0', sizeof(maxn));
-      snprintf(maxn, sizeof(maxn)-1, "%u", max);
+      pr_snprintf(maxn, sizeof(maxn)-1, "%u", max);
       pr_response_send(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
         maxn, NULL));
       pr_log_debug(DEBUG4, "MaxTransfersPerUser %u exceeded for %s for "
@@ -1503,7 +1503,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
         char pid_buf[32];
 
         memset(pid_buf, '\0', sizeof(pid_buf));
-        snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
+        pr_snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
           (unsigned long) session.pid);
         prefix = sreplace(cmd->pool, prefix, "%P", pid_buf, NULL);
       }
@@ -1512,7 +1512,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
         char pid_buf[32];
 
         memset(pid_buf, '\0', sizeof(pid_buf));
-        snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
+        pr_snprintf(pid_buf, sizeof(pid_buf)-1, "%lu",
           (unsigned long) session.pid);
         suffix = sreplace(cmd->pool, suffix, "%P", pid_buf, NULL);
       }

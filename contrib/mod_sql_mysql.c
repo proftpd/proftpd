@@ -317,7 +317,7 @@ static modret_t *build_error(cmd_rec *cmd, db_conn_t *conn) {
     return PR_ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  snprintf(num, 20, "%u", mysql_errno(conn->mysql));
+  pr_snprintf(num, 20, "%u", mysql_errno(conn->mysql));
   return PR_ERROR_MSG(cmd, pstrdup(cmd->pool, num),
     pstrdup(cmd->pool, (char *) mysql_error(conn->mysql)));
 }

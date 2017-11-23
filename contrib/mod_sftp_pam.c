@@ -378,7 +378,7 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
 
   if (!(sftppam_opts & SFTP_PAM_OPT_NO_TTY)) {
     memset(sftppam_tty, '\0', sizeof(sftppam_tty));
-    snprintf(sftppam_tty, sizeof(sftppam_tty), "/dev/ftpd%02lu",
+    pr_snprintf(sftppam_tty, sizeof(sftppam_tty), "/dev/ftpd%02lu",
       (unsigned long) (session.pid ? session.pid : getpid()));
     sftppam_tty[sizeof(sftppam_tty)-1] = '\0';
 

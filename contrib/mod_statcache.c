@@ -1975,7 +1975,7 @@ MODRET set_statcachecapacity(cmd_rec *cmd) {
     char str[32];
 
     memset(str, '\0', sizeof(str));
-    snprintf(str, sizeof(str), "%d", (int) STATCACHE_COLS_PER_ROW);
+    pr_snprintf(str, sizeof(str), "%d", (int) STATCACHE_COLS_PER_ROW);
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "parameter must be ", str,
       " or greater", NULL));
   }

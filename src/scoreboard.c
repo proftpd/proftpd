@@ -58,7 +58,7 @@ static const char *trace_channel = "scoreboard";
 static char *handle_score_str(const char *fmt, va_list cmdap) {
   static char buf[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE] = {'\0'};
   memset(buf, '\0', sizeof(buf));
-  vsnprintf(buf, sizeof(buf), fmt, cmdap);
+  pr_vsnprintf(buf, sizeof(buf), fmt, cmdap);
   buf[sizeof(buf)-1] = '\0';
   return buf;
 }
@@ -1199,7 +1199,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
       case PR_SCORE_CLIENT_ADDR: {
           pr_netaddr_t *remote_addr = va_arg(ap, pr_netaddr_t *);
 
-          snprintf(entry.sce_client_addr, sizeof(entry.sce_client_addr),
+          pr_snprintf(entry.sce_client_addr, sizeof(entry.sce_client_addr),
             "%s", remote_addr ? pr_netaddr_get_ipstr(remote_addr) :
             "(unknown)");
           entry.sce_client_addr[sizeof(entry.sce_client_addr) - 1] = '\0';
@@ -1218,7 +1218,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
 
           memset(entry.sce_client_name, '\0', sizeof(entry.sce_client_name));
 
-          snprintf(entry.sce_client_name,
+          pr_snprintf(entry.sce_client_name,
             str_getlen(remote_name, sizeof(entry.sce_client_name)-1) + 1,
             "%s", remote_name);
           entry.sce_client_name[sizeof(entry.sce_client_name)-1] = '\0';
@@ -1286,7 +1286,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
           pr_netaddr_t *server_addr = va_arg(ap, pr_netaddr_t *);
           int server_port = va_arg(ap, int);
 
-          snprintf(entry.sce_server_addr, sizeof(entry.sce_server_addr),
+          pr_snprintf(entry.sce_server_addr, sizeof(entry.sce_server_addr),
             "%s:%d", server_addr ? pr_netaddr_get_ipstr(server_addr) :
             "(unknown)", server_port);
           entry.sce_server_addr[sizeof(entry.sce_server_addr)-1] = '\0';
