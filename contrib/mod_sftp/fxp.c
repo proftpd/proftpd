@@ -2904,7 +2904,7 @@ static int fxp_handle_add(uint32_t channel_id, struct fxp_handle *fxh) {
 static struct fxp_handle *fxp_handle_create(pool *p) {
   unsigned char *data;
   char *handle;
-  size_t data_len, handle_len;
+  size_t data_len;
   pool *sub_pool;
   struct fxp_handle *fxh;
 
@@ -2919,13 +2919,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
   data_len = 8;
   data = palloc(p, data_len);
 
-  handle_len = (2 * data_len);
-  handle = palloc(fxh->pool, handle_len + 1);
-  handle[handle_len] = '\0';
-
   while (TRUE) {
-    register unsigned int i;
-
     /* Keep trying until mktemp(3) returns a string that we haven't used
      * yet.  We need to avoid collisions.
      */
@@ -2934,9 +2928,7 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
     RAND_bytes(data, data_len);
 
     /* Encode the data as hex to create the handle ID. */
-    for (i = 0; i < data_len; i++) {
-      sprintf((char *) &(handle[i*2]), "%02x", data[i]);
-    }
+    handle = pr_str_bin2hex(fxh->pool, data, data_len, PR_STR_FL_HEX_USE_LC);
 
     if (fxp_handle_get(handle) == NULL) {
       fxh->name = handle;

@@ -5720,9 +5720,8 @@ static void scrub_ticket_keys(void) {
 static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
     unsigned char *iv, EVP_CIPHER_CTX *cipher_ctx, HMAC_CTX *hmac_ctx,
     int mode) {
-  register unsigned int i;
   struct tls_ticket_key *k;
-  char key_name_str[33];
+  char *key_name_str;
 
   /* Note: should we have a list of ciphers from which we randomly choose,
    * when creating a key?  I.e. should the keys themselves hold references
@@ -5745,10 +5744,8 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
     /* Creating a new session ticket.  Always use the first key in the set. */
     k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
 
-    for (i = 0; i < 16; i++) {
-      sprintf((char *) &(key_name_str[i*2]), "%02x", k->key_name[i]);
-    }
-    key_name_str[sizeof(key_name_str)-1] = '\0';
+    key_name_str = pr_str_bin2hex(session.pool, k->key_name, 16,
+      PR_STR_FL_HEX_USE_LC);
 
     pr_trace_msg(trace_channel, 3,
       "TLS session ticket: encrypting using key '%s' for %s session",
@@ -5797,10 +5794,8 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
     struct tls_ticket_key *newest_key;
     time_t key_age, now;
 
-    for (i = 0; i < 16; i++) {
-      sprintf((char *) &(key_name_str[i*2]), "%02x", key_name[i]);
-    }
-    key_name_str[sizeof(key_name_str)-1] = '\0';
+    key_name_str = pr_str_bin2hex(session.pool, key_name, 16,
+      PR_STR_FL_HEX_USE_LC);
 
     k = get_ticket_key(key_name, 16);
     if (k == NULL) {
