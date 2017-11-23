@@ -339,6 +339,9 @@
 /* Define if you have the getgrouplist function.  */
 #undef HAVE_GETGROUPLIST
 
+/* Define if your getgrouplist(3) function takes ints. */
+#undef HAVE_GETGROUPLIST_TAKES_INTS
+
 /* Define if you have the getgroups function.  */
 #undef HAVE_GETGROUPS
 

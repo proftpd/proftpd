@@ -1253,7 +1253,12 @@ static int get_groups_by_getgrouplist(const char *user, gid_t primary_gid,
     "using getgrouplist(3) to look up group membership");
 
   memset(group_ids, 0, sizeof(group_ids));
-  if (getgrouplist(user, primary_gid, group_ids, &ngroups) < 0) {
+#ifdef HAVE_GETGROUPLIST_TAKES_INTS
+  res = getgrouplist(user, primary_gid, (int *) group_ids, &ngroups);
+#else
+  res = getgrouplist(user, primary_gid, group_ids, &ngroups);
+#endif
+  if (res < 0) {
     int xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING, "getgrouplist(3) error: %s", strerror(xerrno));

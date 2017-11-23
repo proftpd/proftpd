@@ -1731,6 +1731,25 @@ AC_TYPE_MODE_T
 AC_TYPE_OFF_T
 AC_TYPE_GETGROUPS
 
+dnl Check the function signature of getgrouplist()
+AC_MSG_CHECKING([whether the getgrouplist(3) function takes ints])
+AC_TRY_LINK([
+  #define _GNU_SOURCE
+  #ifdef HAVE_GRP_H
+  # include <grp.h>
+  #endif
+  #ifdef HAVE_UNISTD_H
+  # include <unistd.h>
+  #endif
+], [
+  int (*f)(const char *, int, int *, int *) = getgrouplist;
+], [
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_GETGROUPLIST_TAKES_INTS, 1, [Define if getgrouplist3() takes ints as arguments])
+], [
+  AC_MSG_RESULT(no)
+])
+
 AC_HEADER_TIME
 AC_STRUCT_TM
 
