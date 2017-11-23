@@ -2699,8 +2699,11 @@ static int resolve_numeric_val(cmd_rec *cmd, const char *val) {
     return -1;
   }
 
-  if (idx < 0 ||
-      (cmd->argc - 3) < idx) {
+  if (idx < 0) {
+    return -1;
+  }
+
+  if ((cmd->argc - 3) < (unsigned int) idx) {
     return -1;
   }
 
