@@ -301,7 +301,7 @@ static int exec_passphrase_provider(server_rec *s, char *buf, int buflen,
     stdin_argv[0] = pstrdup(tmp_pool, passphrase_provider);
 
     memset(nbuf, '\0', sizeof(nbuf));
-    snprintf(nbuf, sizeof(nbuf)-1, "%u", (unsigned int) s->ServerPort);
+    pr_snprintf(nbuf, sizeof(nbuf)-1, "%u", (unsigned int) s->ServerPort);
     nbuf[sizeof(nbuf)-1] = '\0';
     stdin_argv[1] = pstrcat(tmp_pool, s->ServerName, ":", nbuf, NULL);
     stdin_argv[2] = pstrdup(tmp_pool, path);
@@ -614,7 +614,7 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
   register unsigned int attempt;
 
   memset(prompt, '\0', sizeof(prompt));
-  res = snprintf(prompt, sizeof(prompt)-1,
+  res = pr_snprintf(prompt, sizeof(prompt)-1,
     "Host key for the %s#%d (%s) server: ",
     pr_netaddr_get_ipstr(k->server->addr), k->server->ServerPort,
     k->server->ServerName);
@@ -1775,7 +1775,7 @@ const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
     char c[4];
 
     memset(c, '\0', sizeof(c));
-    snprintf(c, sizeof(c), "%02x:", fp_data[i]);
+    pr_snprintf(c, sizeof(c), "%02x:", fp_data[i]);
     fp = pstrcat(p, fp, &c, NULL);
   }
   fp[strlen(fp)-1] = '\0';

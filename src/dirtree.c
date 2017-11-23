@@ -2534,7 +2534,7 @@ int fixup_servers(xaset_t *list) {
               /* Create the bind record using the IPv4-mapped IPv6 version of
                * this address.
                */
-              snprintf(ipbuf, INET6_ADDRSTRLEN, "::ffff:%s", ipstr);
+              pr_snprintf(ipbuf, INET6_ADDRSTRLEN, "::ffff:%s", ipstr);
               ipstr = pstrdup(s->pool, ipbuf);
             }
           }
@@ -2856,7 +2856,7 @@ char *get_context_name(cmd_rec *cmd) {
        * handle their own arbitrary configuration contexts.
        */
       memset(cbuf, '\0', sizeof(cbuf));
-      snprintf(cbuf, sizeof(cbuf), "%d", cmd->config->config_type);
+      pr_snprintf(cbuf, sizeof(cbuf), "%d", cmd->config->config_type);
       return cbuf;
   }
 }

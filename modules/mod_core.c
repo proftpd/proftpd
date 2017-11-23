@@ -512,7 +512,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
           /* Create the bind record using the IPv4-mapped IPv6 version of
            * this address.
            */
-          snprintf(ipbuf, INET6_ADDRSTRLEN, "::ffff:%s", ipstr);
+          pr_snprintf(ipbuf, INET6_ADDRSTRLEN, "::ffff:%s", ipstr);
           ipstr = ipbuf;
         }
       }
@@ -1206,7 +1206,7 @@ MODRET set_socketoptions(cmd_rec *cmd) {
           char val_str[33];
 
           memset(val_str, '\0', sizeof(val_str));
-          snprintf(val_str, sizeof(val_str)-1, "%d", idle);
+          pr_snprintf(val_str, sizeof(val_str)-1, "%d", idle);
 
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
             "badly formatted TCP keepalive spec: idle time '", val_str,
@@ -1217,7 +1217,7 @@ MODRET set_socketoptions(cmd_rec *cmd) {
           char val_str[33];
 
           memset(val_str, '\0', sizeof(val_str));
-          snprintf(val_str, sizeof(val_str)-1, "%d", count);
+          pr_snprintf(val_str, sizeof(val_str)-1, "%d", count);
 
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
             "badly formatted TCP keepalive spec: count '", val_str,
@@ -1228,7 +1228,7 @@ MODRET set_socketoptions(cmd_rec *cmd) {
           char val_str[33];
 
           memset(val_str, '\0', sizeof(val_str));
-          snprintf(val_str, sizeof(val_str)-1, "%d", intvl);
+          pr_snprintf(val_str, sizeof(val_str)-1, "%d", intvl);
 
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
             "badly formatted TCP keepalive spec: interval time '", val_str,
@@ -1299,7 +1299,7 @@ MODRET set_tcpbacklog(cmd_rec *cmd) {
     char str[32];
 
     memset(str, '\0', sizeof(str));
-    snprintf(str, sizeof(str)-1, "%u", (unsigned int) SOMAXCONN);
+    pr_snprintf(str, sizeof(str)-1, "%u", (unsigned int) SOMAXCONN);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       "parameter must be less than SOMAXCONN (", str, ")", NULL));
@@ -2235,7 +2235,7 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
   if (nbytes > PR_TUNABLE_CMD_BUFFER_SIZE) {
     char max[1024];
 
-    snprintf(max, sizeof(max)-1, "%lu", (unsigned long)
+    pr_snprintf(max, sizeof(max)-1, "%lu", (unsigned long)
       PR_TUNABLE_CMD_BUFFER_SIZE);
     max[sizeof(max)-1] = '\0';
 
@@ -3944,15 +3944,15 @@ MODRET core_port(cmd_rec *cmd) {
 #ifdef PR_USE_IPV6
   if (pr_netaddr_use_ipv6()) {
     if (pr_netaddr_get_family(session.c->remote_addr) == AF_INET6) {
-      snprintf(buf, sizeof(buf), "::ffff:%u.%u.%u.%u", h1, h2, h3, h4);
+      pr_snprintf(buf, sizeof(buf), "::ffff:%u.%u.%u.%u", h1, h2, h3, h4);
 
     } else {
-      snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
+      pr_snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
     }
 
   } else
 #endif /* PR_USE_IPV6 */
-  snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
+  pr_snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
   buf[sizeof(buf)-1] = '\0';
 
   port_addr = pr_netaddr_get_addr(cmd->tmp_pool, buf, NULL);
@@ -5220,7 +5220,7 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
           cdpath != NULL;
           cdpath = find_config_next(cdpath, cdpath->next, CONF_PARAM, "CDPath", TRUE)) {
         cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
-        snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
+        pr_snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
                  ((char *) cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
                  ndir);
@@ -5276,7 +5276,7 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
           cdpath != NULL;
           cdpath = find_config_next(cdpath, cdpath->next, CONF_PARAM, "CDPath", TRUE)) {
         cdir = palloc(cmd->tmp_pool, strlen(cdpath->argv[0]) + strlen(ndir) + 2);
-        snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
+        pr_snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
                  "%s%s%s", (char *) cdpath->argv[0],
                 ((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
                 ndir);
@@ -5702,12 +5702,12 @@ MODRET core_mdtm(cmd_rec *cmd) {
 
       tm = pr_gmtime(cmd->tmp_pool, &st.st_mtime);
       if (tm != NULL) {
-        snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
+        pr_snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour,
           tm->tm_min, tm->tm_sec);
 
       } else {
-        snprintf(buf, sizeof(buf), "00000000000000");
+        pr_snprintf(buf, sizeof(buf), "00000000000000");
       }
 
       pr_response_add(R_213, "%s", buf);
@@ -6538,7 +6538,7 @@ static const char *core_get_sess_bytes_str(void *data, size_t datasz) {
   off_t bytes = *((off_t *) data);
 
   memset(buf, '\0', sizeof(buf));
-  snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) bytes);
+  pr_snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) bytes);
 
   return pstrdup(session.pool, buf);
 }
@@ -6548,7 +6548,7 @@ static const char *core_get_sess_files_str(void *data, size_t datasz) {
   unsigned int files = *((unsigned int *) data);
 
   memset(buf, '\0', sizeof(buf));
-  snprintf(buf, sizeof(buf)-1, "%u", files);
+  pr_snprintf(buf, sizeof(buf)-1, "%u", files);
 
   return pstrdup(session.pool, buf);
 }
@@ -6558,7 +6558,7 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
   off_t bytes = *((off_t *) data);
 
   memset(buf, '\0', sizeof(buf));
-  snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) bytes);
+  pr_snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) bytes);
 
   return pstrdup(session.pool, buf);
 }

@@ -337,7 +337,7 @@ static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
   char numstr[20];
 
   memset(errstr, '\0', sizeof(errstr));
-  snprintf((char *) errstr, sizeof(errstr)-1, "%s", "(no data)");
+  pr_snprintf((char *) errstr, sizeof(errstr)-1, "%s", "(no data)");
 
   res = SQLGetDiagRec(handle_type, handle, recno++, state, &odbc_errno,
     errstr, sizeof(errstr), &errlen);
@@ -361,7 +361,7 @@ static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
    * have logged all the previous errors.
    */
   memset(numstr, '\0', sizeof(numstr));
-  snprintf(numstr, 20, "%d", (int) odbc_errno);
+  pr_snprintf(numstr, 20, "%d", (int) odbc_errno);
 
   return PR_ERROR_MSG(cmd, numstr, (char *) errstr);
 }
@@ -519,7 +519,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   break;
                 }
 
-                snprintf(buf, sizeof(buf), "%hd", col_cval);
+                pr_snprintf(buf, sizeof(buf), "%hd", col_cval);
                 buf[sizeof(buf)-1] = '\0';
 
                 *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, buf);
@@ -557,7 +557,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   break;
                 }
 
-                snprintf(buf, sizeof(buf), "%hd", col_cval);
+                pr_snprintf(buf, sizeof(buf), "%hd", col_cval);
                 buf[sizeof(buf)-1] = '\0';
 
                 *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, buf);
@@ -595,7 +595,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   break;
                 }
 
-                snprintf(buf, sizeof(buf), "%d", col_cval);
+                pr_snprintf(buf, sizeof(buf), "%d", col_cval);
                 buf[sizeof(buf)-1] = '\0';
 
                 *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, buf);
@@ -633,7 +633,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   break;
                 }
 
-                snprintf(buf, sizeof(buf), "%ld", col_cval);
+                pr_snprintf(buf, sizeof(buf), "%ld", col_cval);
                 buf[sizeof(buf)-1] = '\0';
 
                 *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, buf);
@@ -671,7 +671,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   break;
                 }
 
-                snprintf(buf, sizeof(buf), "%ld", col_cval);
+                pr_snprintf(buf, sizeof(buf), "%ld", col_cval);
                 buf[sizeof(buf)-1] = '\0';
 
                 *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, buf);
@@ -709,7 +709,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   break;
                 }
 
-                snprintf(buf, sizeof(buf), "%f", col_cval);
+                pr_snprintf(buf, sizeof(buf), "%f", col_cval);
                 buf[sizeof(buf)-1] = '\0';
 
                 *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, buf);
@@ -747,7 +747,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   break;
                 }
 
-                snprintf(buf, sizeof(buf), "%f", col_cval);
+                pr_snprintf(buf, sizeof(buf), "%f", col_cval);
                 buf[sizeof(buf)-1] = '\0';
 
                 *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, buf);

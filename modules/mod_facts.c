@@ -246,7 +246,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
 
   if (facts_opts & FACTS_OPT_SHOW_MODIFY) {
     if (info->tm != NULL) {
-      len = snprintf(ptr, bufsz, "modify=%04d%02d%02d%02d%02d%02d;",
+      len = pr_snprintf(ptr, bufsz, "modify=%04d%02d%02d%02d%02d%02d;",
         info->tm->tm_year+1900, info->tm->tm_mon+1, info->tm->tm_mday,
         info->tm->tm_hour, info->tm->tm_min, info->tm->tm_sec);
 
@@ -259,34 +259,34 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   }
 
   if (facts_opts & FACTS_OPT_SHOW_PERM) {
-    len = snprintf(ptr, bufsz - buflen, "perm=%s;", info->perm);
+    len = pr_snprintf(ptr, bufsz - buflen, "perm=%s;", info->perm);
     buflen += len;
     ptr = buf + buflen;
   }
 
   if (!S_ISDIR(info->st.st_mode) &&
       (facts_opts & FACTS_OPT_SHOW_SIZE)) {
-    len = snprintf(ptr, bufsz - buflen, "size=%" PR_LU ";",
+    len = pr_snprintf(ptr, bufsz - buflen, "size=%" PR_LU ";",
       (pr_off_t) info->st.st_size);
     buflen += len;
     ptr = buf + buflen;
   }
 
   if (facts_opts & FACTS_OPT_SHOW_TYPE) {
-    len = snprintf(ptr, bufsz - buflen, "type=%s;", info->type);
+    len = pr_snprintf(ptr, bufsz - buflen, "type=%s;", info->type);
     buflen += len;
     ptr = buf + buflen;
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIQUE) {
-    len = snprintf(ptr, bufsz - buflen, "unique=%lXU%lX;",
+    len = pr_snprintf(ptr, bufsz - buflen, "unique=%lXU%lX;",
       (unsigned long) info->st.st_dev, (unsigned long) info->st.st_ino);
     buflen += len;
     ptr = buf + buflen;
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_GROUP) {
-    len = snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
+    len = pr_snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
       pr_gid2str(NULL, info->st.st_gid));
     buflen += len;
     ptr = buf + buflen;
@@ -294,21 +294,21 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
 
   if (!(facts_mlinfo_opts & FACTS_MLINFO_FL_NO_NAMES)) {
     if (facts_opts & FACTS_OPT_SHOW_UNIX_GROUP_NAME) {
-      len = snprintf(ptr, bufsz - buflen, "UNIX.groupname=%s;", info->group);
+      len = pr_snprintf(ptr, bufsz - buflen, "UNIX.groupname=%s;", info->group);
       buflen += len;
       ptr = buf + buflen;
     }
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_MODE) {
-    len = snprintf(ptr, bufsz - buflen, "UNIX.mode=0%o;",
+    len = pr_snprintf(ptr, bufsz - buflen, "UNIX.mode=0%o;",
       (unsigned int) info->st.st_mode & 07777);
     buflen += len;
     ptr = buf + buflen;
   }
 
   if (facts_opts & FACTS_OPT_SHOW_UNIX_OWNER) {
-    len = snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
+    len = pr_snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
       pr_uid2str(NULL, info->st.st_uid));
     buflen += len;
     ptr = buf + buflen;
@@ -316,7 +316,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
 
   if (!(facts_mlinfo_opts & FACTS_MLINFO_FL_NO_NAMES)) {
     if (facts_opts & FACTS_OPT_SHOW_UNIX_OWNER_NAME) {
-      len = snprintf(ptr, bufsz - buflen, "UNIX.ownername=%s;", info->user);
+      len = pr_snprintf(ptr, bufsz - buflen, "UNIX.ownername=%s;", info->user);
       buflen += len;
       ptr = buf + buflen;
     }
@@ -327,7 +327,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
 
     mime_type = facts_mime_type(info);
     if (mime_type != NULL) {
-      len = snprintf(ptr, bufsz - buflen, "media-type=%s;",
+      len = pr_snprintf(ptr, bufsz - buflen, "media-type=%s;",
         mime_type);
       buflen += len;
       ptr = buf + buflen;
@@ -335,10 +335,10 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   }
 
   if (flags & FACTS_MLINFO_FL_APPEND_CRLF) {
-    len = snprintf(ptr, bufsz - buflen, " %s\r\n", info->path);
+    len = pr_snprintf(ptr, bufsz - buflen, " %s\r\n", info->path);
 
   } else {
-    len = snprintf(ptr, bufsz - buflen, " %s", info->path);
+    len = pr_snprintf(ptr, bufsz - buflen, " %s", info->path);
   }
 
   buf[bufsz-1] = '\0';

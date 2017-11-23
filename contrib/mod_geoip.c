@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_geoip -- a module for looking up country/city/etc for clients
- * Copyright (c) 2010-2016 TJ Saunders
+ * Copyright (c) 2010-2017 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -934,16 +934,16 @@ static void get_geoip_data(array_header *geoips, const char *ip_addr) {
         }
 
         memset(area_code_str, '\0', sizeof(area_code_str));
-        snprintf(area_code_str, sizeof(area_code_str)-1, "%d",
+        pr_snprintf(area_code_str, sizeof(area_code_str)-1, "%d",
           geoip_record->area_code);
         geoip_area_code = pstrdup(session.pool, area_code_str);
 
         memset(lat_str, '\0', sizeof(lat_str));
-        snprintf(lat_str, sizeof(lat_str)-1, "%f", geoip_record->latitude);
+        pr_snprintf(lat_str, sizeof(lat_str)-1, "%f", geoip_record->latitude);
         geoip_latitude = pstrdup(session.pool, lat_str);
 
         memset(lon_str, '\0', sizeof(lon_str));
-        snprintf(lon_str, sizeof(lon_str)-1, "%f", geoip_record->longitude);
+        pr_snprintf(lon_str, sizeof(lon_str)-1, "%f", geoip_record->longitude);
         geoip_longitude = pstrdup(session.pool, lon_str);
 
         if (geoip_record->region != NULL &&

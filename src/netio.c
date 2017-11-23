@@ -991,7 +991,7 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
 int pr_netio_vprintf(pr_netio_stream_t *nstrm, const char *fmt, va_list msg) {
   char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   buf[sizeof(buf)-1] = '\0';
 
   return pr_netio_write(nstrm, buf, strlen(buf));
@@ -1023,7 +1023,7 @@ int pr_netio_printf_async(pr_netio_stream_t *nstrm, char *fmt, ...) {
   }
 
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
   buf[sizeof(buf)-1] = '\0';
 

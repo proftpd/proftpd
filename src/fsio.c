@@ -1587,7 +1587,7 @@ static void statcache_dumpf(const char *fmt, ...) {
   memset(buf, '\0', sizeof(buf));
 
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';
@@ -3302,7 +3302,7 @@ char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
       raw_path = pcalloc(p, raw_pathlen + 1);
 
       for (i = 0; i < pathlen; i++) {
-        snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
+        pr_snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
           "0x%02x ", (unsigned char) path[i]);
       }
 
@@ -3377,7 +3377,7 @@ char *pr_fs_encode_path(pool *p, const char *path) {
       raw_path = pcalloc(p, raw_pathlen + 1);
 
       for (i = 0; i < pathlen; i++) {
-        snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
+        pr_snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
           "0x%02x ", (unsigned char) path[i]);
       }
 
@@ -4335,7 +4335,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
      */
     tmpl_len = dst_dirlen + 15;
     tmpl = pcalloc(p, tmpl_len);
-    snprintf(tmpl, tmpl_len-1, "%s/.dstXXXXXXXXX",
+    pr_snprintf(tmpl, tmpl_len-1, "%s/.dstXXXXXXXXX",
       dst_dirlen > 1 ? dst_dir : "");
 
     /* Use mkdtemp(3) to create the temporary directory (in the same destination
@@ -7457,7 +7457,7 @@ static void fs_printf(const char *fmt, ...) {
 
   memset(buf, '\0', sizeof(buf));
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf)-1, fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf)-1, fmt, msg);
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';

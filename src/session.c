@@ -466,10 +466,10 @@ const char *pr_session_get_ttyname(pool *p) {
 
   memset(ttybuf, '\0', sizeof(ttybuf));
 #if (defined(BSD) && (BSD >= 199103))
-  snprintf(ttybuf, sizeof(ttybuf), "%s%ld", tty_proto,
+  pr_snprintf(ttybuf, sizeof(ttybuf), "%s%ld", tty_proto,
     (long) (session.pid ? session.pid : getpid()));
 #else
-  snprintf(ttybuf, sizeof(ttybuf), "%s%d", tty_proto,
+  pr_snprintf(ttybuf, sizeof(ttybuf), "%s%d", tty_proto,
     (int) (session.pid ? session.pid : getpid()));
 #endif
 

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2007-2016 The ProFTPD Project team
+ * Copyright (c) 2007-2017 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -162,7 +162,7 @@ void pr_proctitle_set_str(const char *str) {
 
 # if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
   /* We can overwrite individual argv[] arguments.  Semi-nice. */
-  snprintf(prog_argv[0], maxlen, "%s", proc_title_buf);
+  pr_snprintf(prog_argv[0], maxlen, "%s", proc_title_buf);
   p = &prog_argv[0][procbuflen];
 
   while (p < prog_last_argv) {
@@ -215,12 +215,12 @@ void pr_proctitle_set(const char *fmt, ...) {
 #ifdef HAVE_SETPROCTITLE
 # if __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
   /* FreeBSD's setproctitle() automatically prepends the process name. */
-  vsnprintf(proc_title_buf, sizeof(proc_title_buf), fmt, msg);
+  pr_vsnprintf(proc_title_buf, sizeof(proc_title_buf), fmt, msg);
 
 # else /* FREEBSD4 */
   /* Manually append the process name for non-FreeBSD platforms. */
-  snprintf(proc_title_buf, sizeof(proc_title_buf), "%s", "proftpd: ");
-  vsnprintf(proc_title_buf + strlen(proc_title_buf),
+  pr_snprintf(proc_title_buf, sizeof(proc_title_buf), "%s", "proftpd: ");
+  pr_vsnprintf(proc_title_buf + strlen(proc_title_buf),
     sizeof(proc_title_buf) - strlen(proc_title_buf), fmt, msg);
 
 # endif /* FREEBSD4 */
@@ -228,8 +228,8 @@ void pr_proctitle_set(const char *fmt, ...) {
 
 #else /* HAVE_SETPROCTITLE */
   /* Manually append the process name for non-setproctitle() platforms. */
-  snprintf(proc_title_buf, sizeof(proc_title_buf), "%s", "proftpd: ");
-  vsnprintf(proc_title_buf + strlen(proc_title_buf),
+  pr_snprintf(proc_title_buf, sizeof(proc_title_buf), "%s", "proftpd: ");
+  pr_vsnprintf(proc_title_buf + strlen(proc_title_buf),
     sizeof(proc_title_buf) - strlen(proc_title_buf), fmt, msg);
 
 #endif /* HAVE_SETPROCTITLE */
@@ -251,7 +251,7 @@ void pr_proctitle_set(const char *fmt, ...) {
 
 # if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
   /* We can overwrite individual argv[] arguments.  Semi-nice. */
-  snprintf(prog_argv[0], maxlen, "%s", proc_title_buf);
+  pr_snprintf(prog_argv[0], maxlen, "%s", proc_title_buf);
   p = &prog_argv[0][procbuflen];
 
   while (p < prog_last_argv) {

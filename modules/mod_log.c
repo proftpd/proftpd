@@ -380,7 +380,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%06lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%06lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -390,7 +390,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%03lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%03lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -402,7 +402,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         int num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%d", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%d", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -434,7 +434,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         off_t num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%" PR_LU, (pr_off_t) num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -445,7 +445,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         unsigned long num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%lu", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%lu", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -463,7 +463,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         float num;
 
         num = *((double *) val);
-        text_len = snprintf(buf, sizeof(buf)-1, "%0.3f", num);
+        text_len = pr_snprintf(buf, sizeof(buf)-1, "%0.3f", num);
         buf[text_len] = '\0';
         text = buf;
         break;
@@ -493,8 +493,9 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
           text_len = strftime(buf, sizeof(buf) - 1, time_fmt, &t);
           if (internal_fmt == TRUE) {
             if (text_len < sizeof(buf)) {
-              text_len += snprintf(buf + text_len, sizeof(buf) - text_len - 1,
-                "%c%.2d%.2d]", sign, (with_tz / 60), (with_tz % 60));
+              text_len += pr_snprintf(buf + text_len,
+                sizeof(buf) - text_len - 1, "%c%.2d%.2d]", sign,
+                (with_tz / 60), (with_tz % 60));
             }
           }
 

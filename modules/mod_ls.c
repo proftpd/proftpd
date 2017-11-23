@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project
+ * Copyright (c) 2001-2017 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -374,7 +374,7 @@ static int sendline(int flags, char *fmt, ...) {
   }
 
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';
@@ -434,7 +434,7 @@ static char units[6][2] =
 
 static void ls_fmt_filesize(char *buf, size_t buflen, off_t sz) {
   if (!opt_h || sz < 1000) {
-    snprintf(buf, buflen, "%8" PR_LU, (pr_off_t) sz);
+    pr_snprintf(buf, buflen, "%8" PR_LU, (pr_off_t) sz);
 
   } else {
     register unsigned int i = 0;
@@ -446,7 +446,7 @@ static void ls_fmt_filesize(char *buf, size_t buflen, off_t sz) {
       i++;
     }
 
-    snprintf(buf, buflen, "%7.1f%s", size, units[i]);
+    pr_snprintf(buf, buflen, "%7.1f%s", size, units[i]);
   }
 }
 
@@ -537,7 +537,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           char replace[32];
 
           memset(replace, '\0', sizeof(replace));
-          replace_len = snprintf(replace, sizeof(replace)-1, "\\%03o",
+          replace_len = pr_snprintf(replace, sizeof(replace)-1, "\\%03o",
             display_name[i]);
 
           for (k = 0; k < replace_len; k++) {
@@ -764,10 +764,10 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         m[1] = (mode & S_IRUSR) ? 'r' : '-';
 
         if (ls_curtime - sort_time > 180 * 24 * 60 * 60) {
-          snprintf(timeline, sizeof(timeline), "%5d", t->tm_year+1900);
+          pr_snprintf(timeline, sizeof(timeline), "%5d", t->tm_year+1900);
 
         } else {
-          snprintf(timeline, sizeof(timeline), "%02d:%02d", t->tm_hour,
+          pr_snprintf(timeline, sizeof(timeline), "%02d:%02d", t->tm_hour,
             t->tm_min);
         }
 
@@ -775,13 +775,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
         if (opt_1) {
           /* One file per line, with no info other than the file name.  Easy. */
-          snprintf(nameline, sizeof(nameline)-1, "%s",
+          pr_snprintf(nameline, sizeof(nameline)-1, "%s",
             pr_fs_encode_path(cmd->tmp_pool, display_name));
 
         } else {
           if (!opt_n) {
             /* Format nameline using user/group names. */
-            snprintf(nameline, sizeof(nameline)-1,
+            pr_snprintf(nameline, sizeof(nameline)-1,
               "%s %3d %-8s %-8s %s %s %2d %s %s", m, (int) st.st_nlink,
               MAP_UID(st.st_uid), MAP_GID(st.st_gid), s,
               months[t->tm_mon], t->tm_mday, timeline,
@@ -789,7 +789,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
           } else {
             /* Format nameline using user/group IDs. */
-            snprintf(nameline, sizeof(nameline)-1,
+            pr_snprintf(nameline, sizeof(nameline)-1,
               "%s %3d %-8u %-8u %s %s %2d %s %s", m, (int) st.st_nlink,
               (unsigned) st.st_uid, (unsigned) st.st_gid, s,
               months[t->tm_mon], t->tm_mday, timeline,
@@ -819,7 +819,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
           if (!opt_L && list_show_symlinks) {
             if (sizeof(nameline) - strlen(nameline) > 4) {
-              snprintf(buf, sizeof(nameline) - strlen(nameline) - 4,
+              pr_snprintf(buf, sizeof(nameline) - strlen(nameline) - 4,
                 " -> %s", l);
             } else {
               pr_log_pri(PR_LOG_NOTICE, "notice: symlink '%s' yields an "
@@ -921,7 +921,7 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
 
   p = (struct filename *) pcalloc(fpool, sizeof(struct filename));
   p->line = pcalloc(fpool, l + 2);
-  snprintf(p->line, l + 1, "%s%s", name, suffix);
+  pr_snprintf(p->line, l + 1, "%s%s", name, suffix);
 
   if (tail) {
     tail->down = p;
@@ -1946,7 +1946,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
       pw = pr_auth_getpwnam(cmd->tmp_pool, i ? pbuffer : session.user);
       if (pw) {
-        snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
+        pr_snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
 
       } else {
         pbuffer[0] = '\0';
@@ -2289,7 +2289,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
         char replace[32];
 
         memset(replace, '\0', sizeof(replace));
-        replace_len = snprintf(replace, sizeof(replace)-1, "\\%03o",
+        replace_len = pr_snprintf(replace, sizeof(replace)-1, "\\%03o",
           display_name[i]);
 
         for (k = 0; k < replace_len; k++) {
@@ -3060,8 +3060,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
     pb[i] = '\0';
 
     pw = pr_auth_getpwnam(cmd->tmp_pool, i ? pb : session.user);
-    if (pw) {
-      snprintf(pb, sizeof(pb), "%s%s", pw->pw_dir, p);
+    if (pw != NULL) {
+      pr_snprintf(pb, sizeof(pb), "%s%s", pw->pw_dir, p);
       sstrncpy(buf, pb, sizeof(buf));
       target = buf;
     }

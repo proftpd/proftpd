@@ -1910,7 +1910,7 @@ static int auth_scan_scoreboard(void) {
   char curr_server_addr[80] = {'\0'};
   const char *client_addr = pr_netaddr_get_ipstr(session.c->remote_addr);
 
-  snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
+  pr_snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
     pr_netaddr_get_ipstr(session.c->local_addr), main_server->ServerPort);
   curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
@@ -1991,7 +1991,7 @@ static int auth_scan_scoreboard(void) {
         msg = c->argv[1];
 
       memset(maxstr, '\0', sizeof(maxstr));
-      snprintf(maxstr, sizeof(maxstr), "%u", *max);
+      pr_snprintf(maxstr, sizeof(maxstr), "%u", *max);
       maxstr[sizeof(maxstr)-1] = '\0';
 
       pr_response_send(R_530, "%s", sreplace(session.pool, msg,
@@ -2055,7 +2055,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
   if (user != NULL) {
     char curr_server_addr[80] = {'\0'};
 
-    snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
+    pr_snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
       pr_netaddr_get_ipstr(session.c->local_addr), main_server->ServerPort);
     curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
@@ -2168,7 +2168,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
       pr_event_generate("mod_auth.max-clients-per-class",
         session.conn_class->cls_name);
 
-      snprintf(maxn, sizeof(maxn), "%u", *max);
+      pr_snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -2199,7 +2199,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
 
       pr_event_generate("mod_auth.max-clients-per-host", session.c);
 
-      snprintf(maxn, sizeof(maxn), "%u", *max);
+      pr_snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -2228,7 +2228,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
 
       pr_event_generate("mod_auth.max-clients-per-user", user);
 
-      snprintf(maxn, sizeof(maxn), "%u", *max);
+      pr_snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -2256,7 +2256,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
 
       pr_event_generate("mod_auth.max-clients", NULL);
 
-      snprintf(maxn, sizeof(maxn), "%u", *max);
+      pr_snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -2282,7 +2282,7 @@ static int auth_count_scoreboard(cmd_rec *cmd, const char *user) {
 
       pr_event_generate("mod_auth.max-hosts-per-user", user);
 
-      snprintf(maxn, sizeof(maxn), "%u", *max);
+      pr_snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);

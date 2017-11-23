@@ -232,7 +232,7 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
   } else if (strncmp(var, "%p", 3) == 0) {
     char *port = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
-    snprintf(port, 8, "%d", main_server->ServerPort);
+    pr_snprintf(port, 8, "%d", main_server->ServerPort);
     port[7] = '\0';
     return port;
 
@@ -241,7 +241,7 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
   } else if (strncmp(var, "%P", 3) == 0) {
     char *pid = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
-    snprintf(pid, 8, "%lu", (unsigned long) getpid());
+    pr_snprintf(pid, 8, "%lu", (unsigned long) getpid());
     pid[7] = '\0';
     return pid;
 
@@ -300,7 +300,7 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
   } else if (strncmp(var, "%t", 3) == 0) {
     char *timestr = pcalloc(cmd->tmp_pool, 80 * sizeof(char));
-    snprintf(timestr, 80, "%lu", (unsigned long) time(NULL));
+    pr_snprintf(timestr, 80, "%lu", (unsigned long) time(NULL));
     timestr[79] = '\0';
     return timestr;
 
@@ -330,7 +330,7 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     if (tm != NULL) {
       if (varlen == 7) {
         /* %{TIME} */
-        snprintf(time_str, sizeof(time_str)-1, "%04d%02d%02d%02d%02d%02d",
+        pr_snprintf(time_str, sizeof(time_str)-1, "%04d%02d%02d%02d%02d%02d",
           tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour,
           tm->tm_min, tm->tm_sec);
 
@@ -338,38 +338,39 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
         switch (var[7]) {
           case 'D':
             /* %{TIME_DAY} */
-            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mday);
+            pr_snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mday);
             break;
 
           case 'H':
             /* %{TIME_HOUR} */
-            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_hour);
+            pr_snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_hour);
             break;
 
           case 'M':
             if (var[8] == 'I') {
               /* %{TIME_MIN} */
-              snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_min);
+              pr_snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_min);
 
             } else if (var[8] == 'O') {
               /* %{TIME_MON} */
-              snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mon + 1);
+              pr_snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_mon + 1);
             }
             break;
 
           case 'S':
             /* %{TIME_SEC} */
-            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_sec);
+            pr_snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_sec);
             break;
 
           case 'W':
             /* %{TIME_WDAY} */
-            snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_wday);
+            pr_snprintf(time_str, sizeof(time_str)-1, "%02d", tm->tm_wday);
             break;
 
           case 'Y':
             /* %{TIME_YEAR} */
-            snprintf(time_str, sizeof(time_str)-1, "%04d", tm->tm_year + 1900);
+            pr_snprintf(time_str, sizeof(time_str)-1, "%04d",
+              tm->tm_year + 1900);
             break;
 
           default:
@@ -979,15 +980,16 @@ static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
 
     if (matches == &rewrite_rule_matches) {
       /* Substitute "$N" backreferences for RewriteRule matches */
-      snprintf(buf, sizeof(buf), "$%u", i);
+      pr_snprintf(buf, sizeof(buf), "$%u", i);
 
     } else if (matches == &rewrite_cond_matches) {
       /* Substitute "%N" backreferences for RewriteCondition matches */
-      snprintf(buf, sizeof(buf), "%%%u", i);
+      pr_snprintf(buf, sizeof(buf), "%%%u", i);
     }
 
-    if (!replacement_pattern)
+    if (replacement_pattern == NULL) {
       replacement_pattern = pstrdup(cmd->pool, pattern);
+    }
 
     /* Make sure there's a backreference for this in the substitution
      * pattern.

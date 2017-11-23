@@ -1696,7 +1696,7 @@ static int send_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
    *  0       (future proof field for sending atime usecs)
    */
 
-  snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "T%lu 0 %lu 0",
+  pr_snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "T%lu 0 %lu 0",
     (unsigned long) (st->st_mtime > 0 ? st->st_mtime : 0),
     (unsigned long) (st->st_atime > 0 ? st->st_atime : 0));
 
@@ -1735,7 +1735,7 @@ static int send_dirinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   memset(ctrl_msg, '\0', sizeof(ctrl_msg));
-  snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "D%04o 0 %.1024s",
+  pr_snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "D%04o 0 %.1024s",
     (unsigned int) (st->st_mode & SFTP_SCP_ST_MODE_MASK), tmp);
 
   pr_trace_msg(trace_channel, 3, "sending '%s' D (directory): %s", sp->path,
@@ -1773,7 +1773,7 @@ static int send_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   }
 
   memset(ctrl_msg, '\0', sizeof(ctrl_msg));
-  snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "C%04o %" PR_LU " %.1024s",
+  pr_snprintf((char *) ctrl_msg, sizeof(ctrl_msg), "C%04o %" PR_LU " %.1024s",
     (unsigned int) (st->st_mode & SFTP_SCP_ST_MODE_MASK),
     (pr_off_t) st->st_size, tmp);
 

@@ -5316,7 +5316,7 @@ static char *f2s(pool *p, float num, size_t *len) {
 
   sz = 32;
   s = pcalloc(p, sz + 1);
-  res = snprintf(s, sz, "%0.3f", num);
+  res = pr_snprintf(s, sz, "%0.3f", num);
 
   *len = res;
   return s;

@@ -1201,7 +1201,7 @@ static void table_printf(const char *fmt, ...) {
 
   memset(buf, '\0', sizeof(buf));
   va_start(msg, fmt);
-  vsnprintf(buf, sizeof(buf)-1, fmt, msg);
+  pr_vsnprintf(buf, sizeof(buf)-1, fmt, msg);
   va_end(msg);
 
   buf[sizeof(buf)-1] = '\0';

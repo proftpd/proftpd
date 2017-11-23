@@ -390,7 +390,7 @@ static char *wrap2_get_client(wrap2_conn_t *conn) {
   hostinfo = wrap2_get_hostinfo(conn->client);
 
   if (strcasecmp(wrap2_get_user(conn), WRAP2_UNKNOWN) != 0) {
-    snprintf(both, sizeof(both), "%s@%s", conn->user, hostinfo);
+    pr_snprintf(both, sizeof(both), "%s@%s", conn->user, hostinfo);
     both[sizeof(both)-1] = '\0';
     return both;
   }
