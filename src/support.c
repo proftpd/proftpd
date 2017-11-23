@@ -1138,7 +1138,7 @@ const char *pr_strtime2(time_t t, int use_gmtime) {
   }
 
   if (tr != NULL) {
-    snprintf(buf, sizeof(buf), "%s %s %02d %02d:%02d:%02d %d",
+    pr_snprintf(buf, sizeof(buf), "%s %s %02d %02d:%02d:%02d %d",
       days[tr->tm_wday], mons[tr->tm_mon], tr->tm_mday, tr->tm_hour,
       tr->tm_min, tr->tm_sec, tr->tm_year + 1900);
   }
@@ -1173,6 +1173,63 @@ int pr_gettimeofday_millis(uint64_t *millis) {
   }
 
   return 0;
+}
+
+int pr_vsnprintf(char *buf, size_t bufsz, const char *fmt, va_list msg) {
+  int res, xerrno = 0;
+
+  if (buf == NULL ||
+      fmt == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (bufsz == 0) {
+    return 0;
+  }
+
+  res = vsnprintf(buf, bufsz, fmt, msg);
+  xerrno = errno;
+
+  if (res < 0) {
+    /* Unexpected error. */
+
+#ifdef EOVERFLOW
+    if (xerrno == EOVERFLOW) {
+      xerrno = ENOSPC;
+    }
+#endif /* EOVERFLOW */
+
+  } else if ((size_t) res >= bufsz) {
+    /* Buffer too small. */
+    xerrno = ENOSPC;
+    res = -1;
+  }
+
+  /* We are mostly concerned with tracking down the locations of truncated
+   * buffers, hence the stacktrace logging only for these conditions.
+   */
+  if (res < 0 &&
+      xerrno == ENOSPC) {
+    pr_log_pri(PR_LOG_WARNING,
+      "error writing format string '%s' into %lu-byte buffer: %s", fmt,
+      (unsigned long) bufsz, strerror(xerrno));
+    pr_log_stacktrace(-1, NULL);
+  }
+
+  errno = xerrno;
+  return res;
+}
+
+int pr_snprintf(char *buf, size_t bufsz, const char *fmt, ...) {
+  va_list msg;
+  int res;
+
+  va_start(msg, fmt);
+  res = pr_vsnprintf(buf, bufsz, fmt, msg);
+  va_end(msg);
+
+  return res;
 }
 
 /* Substitute any appearance of the %u variable in the given string with
