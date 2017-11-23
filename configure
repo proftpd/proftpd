@@ -27171,9 +27171,13 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-  #define _BSD_SOURCE
-  #include <grp.h>
-  #include <unistd.h>
+  #define _GNU_SOURCE
+  #ifdef HAVE_GRP_H
+  # include <grp.h>
+  #endif
+  #ifdef HAVE_UNISTD_H
+  # include <unistd.h>
+  #endif
 
 int
 main ()
