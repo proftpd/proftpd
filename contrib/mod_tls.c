@@ -11369,7 +11369,6 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 
         pr_gettimeofday_millis(&start_ms);
 
-        tls_log("%s", "starting TLS negotiation on data connection");
         tls_data_need_init_handshake = TRUE;
         if (tls_accept(session.d, TRUE) < 0) {
           tls_log("%s",
