@@ -7449,6 +7449,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
             }
 #endif /* TLSv1.2 */
 
+#ifdef SSL_OP_NO_TLSv1_3
+            if (ssl_opts & SSL_OP_NO_TLSv1_3) {
+              proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
+                "TLSv1.3", NULL);
+            }
+#endif /* TLSv1.3 */
+
             tls_log("%s: perhaps client requested disabled TLS protocol "
               "version: %s", msg, proto_str);
             break;
