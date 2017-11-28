@@ -290,7 +290,7 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   const char *stmt = NULL;
-  int res;
+  int res, xerrno = 0;
   unsigned int nretries = 0;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tsqlite cmd_open");
@@ -326,18 +326,23 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
+  /* Note that we do NOT automatically create the database if it does not
+   * exist; we do not know the schema a database should have a priori.
+   */
   PRIVS_ROOT
-  res = sqlite3_open(conn->dsn, &(conn->dbh));
+  res = sqlite3_open_v2(conn->dsn, &(conn->dbh), SQLITE_OPEN_READWRITE, NULL);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (res != SQLITE_OK) {
-    char *errstr = pstrdup(cmd->pool, sqlite3_errmsg(conn->dbh));
+    char *errstr;
 
-    sql_log(DEBUG_FUNC, "error opening SQLite database '%s': %s",
-      conn->dsn, errstr);
+    errstr = pstrcat(cmd->pool, sqlite3_errmsg(conn->dbh),
+      " (", strerror(xerrno), ")", NULL);
+    sql_log(DEBUG_FUNC, "error opening SQLite database '%s': %s", conn->dsn,
+      errstr);
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_open");
-
     return PR_ERROR_MSG(cmd, MOD_SQL_SQLITE_VERSION, errstr);
   }
 
