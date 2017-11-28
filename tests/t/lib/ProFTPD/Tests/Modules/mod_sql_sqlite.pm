@@ -443,6 +443,11 @@ my $TESTS = {
     test_class => [qw(forking rootprivs)],
   },
 
+  sql_sqlite_log_db_enoent_issue654 => {
+    order => ++$order,
+    test_class => [qw(forking bug)],
+  },
+
 };
 
 sub new {
@@ -6021,69 +6026,14 @@ EOS
 sub sql_sqlite_auth_type_backend_bug3511 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sqlite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'sqlite');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
-  # Build up sqlite3 command to create users, groups tables and populate them
-  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
-
-  if (open(my $fh, "> $db_script")) {
-    print $fh <<EOS;
-CREATE TABLE users (
-  userid TEXT,
-  passwd TEXT,
-  uid INTEGER,
-  gid INTEGER,
-  homedir TEXT, 
-  shell TEXT,
-  lastdir TEXT
-);
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
-
-CREATE TABLE groups (
-  groupname TEXT,
-  gid INTEGER,
-  members TEXT
-);
-INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
-EOS
-
-    unless (close($fh)) {
-      die("Can't write $db_script: $!");
-    }
-
-  } else {
-    die("Can't open $db_script: $!");
-  }
-
-  my $cmd = "sqlite3 $db_file < $db_script";
-  build_db($cmd, $db_script);
-
-  # Make sure that, if we're running as root, the database file has
-  # the permissions/privs set for use by proftpd
-  if ($< == 0) {
-    unless (chmod(0666, $db_file)) {
-      die("Can't set perms on $db_file to 0666: $!");
-    }
-  }
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -6094,80 +6044,30 @@ EOS
         SQLAuthTypes => 'backend',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
+        SQLLogFile => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  # Open pipes, for use between the parent and child processes.  Specifically,
-  # the child will indicate when it's done with its test by writing a message
-  # to the parent.
-  my ($rfh, $wfh);
-  unless (pipe($rfh, $wfh)) {
-    die("Can't open pipe: $!");
-  }
+  # As of Bug#4281, the mod_sql module no longer supports the "Backend"
+  # SQLAuthType itself.  Which means that attempting to use it here, with
+  # mod_sql_sqlite, will cause the server to not start up at all.
 
   my $ex;
 
-  # Fork child
-  $self->handle_sigchld();
-  defined(my $pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+  # This should silently fail.
+  server_start($setup->{config_file});
 
-      eval { $client->login($user, $passwd) };
-      unless ($@) {
-        die("Login succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 530;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code")); 
-
-      $expected = "Login incorrect.";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($config_file, $rfh) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
+  # This is where we detect the actual problem.
+  eval { server_stop($setup->{pid_file}) };
+  unless ($@) {
+    $ex = "Server start with bad config unexpectedly";
   }
 
-  # Stop server
-  server_stop($pid_file);
-
-  $self->assert_child_ok($pid);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sql_sqllog_pass_ok_var_s_bug3528 {
@@ -15077,6 +14977,88 @@ EOS
       $self->assert($file_gid != 0, "Expected GID non-0, got $file_gid");
     };
 
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub sql_sqlite_log_db_enoent_issue654 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sqlite');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'sql:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+        SQLNamedQuery => 'session_start FREEFORM "INSERT INTO ftpsessions (user, ip_addr, timestamp) VALUES (\'%u\', \'%L\', \'%{time:%Y-%m-%d %H:%M:%S}\')"',
+        SQLLog => 'PASS session_start',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
+      unless ($@) {
+        $client->quit();
+        die("Login succeeded unexpectedly");
+      }
+    };
     if ($@) {
       $ex = $@;
     }
