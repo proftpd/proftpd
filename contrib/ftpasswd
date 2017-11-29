@@ -130,12 +130,12 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
 
   # determine to which file to write the passwd entry
   if (defined($opts{'file'})) {
-    $output_file = $opts{'file'}; 
+    $output_file = $opts{'file'};
     print STDOUT "$program: using alternate file: $output_file\n"
 
   } else {
     $output_file = $default_passwd_file;
-  } 
+  }
 
   # make sure that the required arguments are present
   die "$program: --passwd: missing required argument: --name\n"
@@ -363,7 +363,7 @@ sub check_shell {
     if ($line eq $shell) {
       $result = 1;
       last;
-    } 
+    }
   }
 
   close(SHELLS);
@@ -646,7 +646,7 @@ sub get_passwd {
       my @string = split('', $hash);
       my $prefix = $string[0] . $string[1] . $string[2];
 
-      if ($prefix ne '$1$') { 
+      if ($prefix ne '$1$') {
         print STDOUT "You requested MD5 passwords but your system does not support it.  Defaulting to DES passwords.\n\n";
       }
 
@@ -716,16 +716,16 @@ sub get_syspasswd {
     while (chomp(my $line = <SHADOW>)) {
       next unless $line =~ /^$user/;
       $syspasswd = (split(':', $line))[1];
-      last; 
+      last;
     }
     close(SHADOW);
 
-    # if the password is still "x", you have problems 
+    # if the password is still "x", you have problems
     if ($syspasswd eq "x") {
       die "$program: unable to retrieve shadow password.\nContact your system
 administrator.\n";
     }
-  } 
+  }
 
   return $syspasswd;
 }
@@ -808,6 +808,15 @@ sub handle_group_entry {
     } else {
       $members = $add_user;
     }
+
+    # Remove any duplicates and resort
+    # NOTE: probably should simplify with with uniq from List::MoreUtils
+    my @array_members = split(',', $members);
+    my %hash_members  = map { $_, 1 } @array_members  ;
+    my @unique_members = keys %hash_members  ;
+    @unique_members = sort { "\L$a" cmp "\L$b" } @unique_members;
+    $members  = join(',', @{unique_members});
+
   }
 
   # Ensure that we have a sorted list of unique members
@@ -853,12 +862,12 @@ sub handle_passwd_entry {
 
   # Make sure the given home directory is NOT a relative path (what a
   # horrible idea).
- 
+
   unless ($home =~ /^\//) {
     print STDOUT "$program: error: relative path given for home directory\n";
     exit 8;
   }
-  
+
   # check to see whether we should update the fields for this user (because
   # they already exist), or create a new entry
 
@@ -979,7 +988,7 @@ usage: $program [--help] [--hash|--group|--passwd]
   You will be prompted for the password to use of the user, which will be
   encrypted, and written out as the encrypted string.  New entries are
   appended to the file by default.
- 
+
   By default, using --passwd will write output to "$default_passwd_file".
 
   Error exit values:
@@ -1040,7 +1049,7 @@ usage: $program [--help] [--hash|--group|--passwd]
                 is the same as the current password.
 
     --delete-user
- 
+
                 Remove the entry for the given user name from the file.
 
     -l          Lock the password of the named account.  This option disables a
@@ -1123,7 +1132,12 @@ usage: $program [--help] [--hash|--group|--passwd]
     -m
     --member    User name to be a member of the group.  This argument may be
                 used multiple times to specify the full list of users to be
-                members of this group.
+                members of this group.  This option will remove all user entries
+                from the file.
+
+    --add-member User name to be added to the existing group.  This argument
+                can be used together with --member option.  This argument can't
+                be used multiple times.
 
     --des       Use the DES algorithm for encrypting passwords.  The default
                 is the MD5 algorithm.
@@ -1202,4 +1216,3 @@ sub version {
 }
 
 # ---------------------------------------------------------------------------
-
