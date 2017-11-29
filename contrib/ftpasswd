@@ -810,8 +810,11 @@ sub handle_group_entry {
     }
   }
 
+  # Ensure that we have a sorted list of unique members
+  my $names = join(',', sort { $a <=> $b } keys(map { _ => 1 } split(',', $members)));
+
   # format: $name:$passwd:$gid:$members
-  push(@data, "$name:$passwd:$gid:$members");
+  push(@data, "$name:$passwd:$gid:$names");
 
   # always sort by GIDs before printing out the file
   @data = map { $_->[0] }
@@ -1090,6 +1093,13 @@ usage: $program [--help] [--hash|--group|--passwd]
   By default, using --group will write output to "$default_group_file".
 
   Options:
+
+    --add-member
+
+                Add the named member to the given group name from the file.
+                Example:
+
+        $ ftpasswd --group --file=... --name=ftpd --add-member=bob
 
     --delete-group
 

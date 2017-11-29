@@ -41,6 +41,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  ftpasswd_add_dup_member_to_group => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -660,6 +665,79 @@ sub ftpasswd_add_member_to_group_issue625 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ftpasswd_add_dup_member_to_group {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'contrib');
+
+  my $ftpasswd = get_ftpasswd_bin();
+
+  # Remove the user from the group
+  my $cmd = "$ftpasswd --group --file=$setup->{auth_group_file} --name=$setup->{group} --delete-member=$setup->{user} >> $setup->{log_file} 2>&1";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing ftpasswd: $cmd\n";
+  }
+  `$cmd`;
+
+  # Now add them back in
+  $cmd = "$ftpasswd --group --file=$setup->{auth_group_file} --name=$setup->{group} --add-member=$setup->{user} >> $setup->{log_file} 2>&1";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing ftpasswd: $cmd\n";
+  }
+  `$cmd`;
+
+  # And repeat this addition.  We should NOT see the same member listed
+  # twice for the group.
+  $cmd = "$ftpasswd --group --file=$setup->{auth_group_file} --name=$setup->{group} --add-member=$setup->{user} >> $setup->{log_file} 2>&1";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing ftpasswd: $cmd\n";
+  }
+  `$cmd`;
+
+  my $ex;
+
+  eval {
+    if (open(my $fh, "< $setup->{auth_group_file}")) {
+      my $members;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDOUT "# $line\n";
+        }
+
+        if ($line =~ /^$setup->{group}:.*:(.*?)$/) {
+          $members = $1;
+        }
+      }
+
+      close($fh);
+      $self->assert($members, "Expected group $setup->{group} not found");
+
+      my $items = [sort(split(',', $members))];
+
+      my $last;
+      foreach my $item (@$items) {
+        if (defined($last) &&
+            $item eq $last) {
+          die("Duplicate group member $item found");
+        }
+
+        $last = $item;
+      }
+
+    } else {
+      die("Can't read $setup->{auth_group_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
 
   test_cleanup($setup->{log_file}, $ex);
 }
