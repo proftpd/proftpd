@@ -40785,6 +40785,7 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
+      #include <openssl/crypto.h>
       #include <openssl/fips.h>
       int main(int argc, char *argv[]) {
       # ifdef OPENSSL_FIPS
