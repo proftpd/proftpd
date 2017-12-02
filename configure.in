@@ -3226,6 +3226,7 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_TRY_RUN(
     [
+      #include <openssl/crypto.h>
       #include <openssl/fips.h>
       int main(int argc, char *argv[]) {
       # ifdef OPENSSL_FIPS
