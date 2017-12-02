@@ -48,6 +48,7 @@
   properly.
 - Issue 656 - Segfault with mod_sftp+mod_sftp_pam after successful
   authentication using keyboard-interactive method.
+- Issue 660 - autoconf always fails to detect support for FIPS.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
