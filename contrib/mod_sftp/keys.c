@@ -995,7 +995,7 @@ static EVP_PKEY *get_pkey_from_data(pool *p, unsigned char *pkey_data,
 
     if (sftp_keys_validate_ecdsa_params(curve, point) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "erorr validating EC public key: %s", strerror(errno));
+        "error validating EC public key: %s", strerror(errno));
       EC_POINT_free(point);
       EC_KEY_free(ec);
       return NULL;
