@@ -2254,7 +2254,7 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
   if (idx < 0) {
     pr_trace_msg(trace_channel, 12,
       "unable to check certificate CommonName against '%s': "
-      "no CommoName atribute found", name);
+      "no CommoName attribute found", name);
     return 0;
   }
 
