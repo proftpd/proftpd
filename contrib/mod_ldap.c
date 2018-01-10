@@ -930,7 +930,7 @@ static void parse_quota(pool *p, const char *replace, char *str) {
   cached_quota->nelts = 1;
 
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-    "parsing ftpQuota atribute value '%s'", str);
+    "parsing ftpQuota attribute value '%s'", str);
 
   while ((token = strsep(&str, ","))) {
     pr_signals_handle();

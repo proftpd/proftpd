@@ -2262,7 +2262,7 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
   if (cn_entry == NULL) {
     pr_trace_msg(trace_channel, 12,
       "unable to check certificate CommonName against '%s': "
-      "error obtaining CommoName atribute found: %s", name, tls_get_errors());
+      "error obtaining CommoName attribute found: %s", name, tls_get_errors());
     return 0;
   }
 
@@ -2271,7 +2271,7 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
   if (cn_asn1 == NULL) {
     pr_trace_msg(trace_channel, 12,
       "unable to check certificate CommonName against '%s': "
-      "error converting CommoName atribute to ASN.1: %s", name,
+      "error converting CommoName attribute to ASN.1: %s", name,
       tls_get_errors());
     return 0;
   }

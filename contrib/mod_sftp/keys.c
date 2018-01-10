@@ -1975,7 +1975,7 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       if (sftp_keys_validate_ecdsa_params(EC_KEY_get0_group(ec),
           EC_KEY_get0_public_key(ec)) < 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "erorr validating EC public key: %s", strerror(errno));
+          "error validating EC public key: %s", strerror(errno));
         EC_KEY_free(ec);
         EVP_PKEY_free(pkey);
         return -1;
@@ -1983,7 +1983,7 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
       if (validate_ecdsa_private_key(ec)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "erorr validating EC private key: %s", strerror(errno));
+          "error validating EC private key: %s", strerror(errno));
         EC_KEY_free(ec);
         EVP_PKEY_free(pkey);
         return -1;
