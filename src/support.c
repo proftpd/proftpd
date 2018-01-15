@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -419,7 +419,7 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 /* Performs chroot-aware handling of symlinks. */
 int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
     int flags) {
-  int is_abs_dst, clean_flags, len, res = -1;
+  int is_abs_dst, len, res = -1;
   size_t chroot_pathlen = 0, adj_pathlen = 0;
   char *dst_path, *adj_path;
   pool *tmp_pool;
@@ -549,8 +549,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
   adj_pathlen = bufsz + 1;
   adj_path = pcalloc(tmp_pool, adj_pathlen);
 
-  clean_flags = PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH;
-  res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, clean_flags);
+  res = pr_fs_clean_path2(dst_path, adj_path, adj_pathlen-1, 0);
   if (res == 0) {
     pr_trace_msg("fsio", 19,
       "cleaned symlink path '%s', yielding '%s'", dst_path, adj_path);

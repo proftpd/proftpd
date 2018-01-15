@@ -233,6 +233,11 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  list_symlink_rel_path_chrooted_bug4333 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
   # XXX Plenty of other tests needed: params, maxfiles, maxdirs, depth, etc
 };
 
@@ -6333,8 +6338,13 @@ sub list_symlink_rel_path_chrooted_bug4322 {
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
-      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
-        "Expected '/domains/test.oxilion.nl/public_html'");
+      if ($ENV{TEST_VERBOSE}) {
+        use Data::Dumper;
+        print STDERR "# res:\n", Dumper($res), "\n";
+      }
+
+      $self->assert($res->{'domains/test.oxilion.nl/public_html'},
+        "Expected 'domains/test.oxilion.nl/public_html'");
     };
     if ($@) {
       $ex = $@;
@@ -6473,8 +6483,13 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
-      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
-        "Expected '/domains/test.oxilion.nl/public_html'");
+      if ($ENV{TEST_VERBOSE}) {
+        use Data::Dumper;
+        print STDERR "# res:\n", Dumper($res), "\n";
+      }
+
+      $self->assert($res->{'domains/test.oxilion.nl/public_html'},
+        "Expected 'domains/test.oxilion.nl/public_html'");
     };
     if ($@) {
       $ex = $@;
@@ -6614,8 +6629,181 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
-      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
-        "Expected '/domains/test.oxilion.nl/public_html'");
+      if ($ENV{TEST_VERBOSE}) {
+        use Data::Dumper;
+        print STDERR "# res:\n", Dumper($res), "\n";
+      }
+
+      $self->assert($res->{'domains/test.oxilion.nl/public_html'},
+        "Expected 'domains/test.oxilion.nl/public_html'");
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub list_symlink_rel_path_chrooted_bug4333 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $sub_dir1 = File::Spec->rel2abs("$tmpdir/dir1");
+  mkpath($sub_dir1);
+
+  my $sub_dir2 = File::Spec->rel2abs("$tmpdir/dir1/dir2");
+  mkpath($sub_dir2);
+
+  my $test_file1 = File::Spec->rel2abs("$sub_dir1/testfile1");
+  if (open(my $fh, "> $test_file1")) {
+    close($fh);
+
+  } else {
+    die("Can't open $test_file1: $!");
+  }
+
+  my $test_file2 = File::Spec->rel2abs("$sub_dir2/testfile2");
+  if (open(my $fh, "> $test_file2")) {
+    close($fh);
+
+  } else {
+    die("Can't open $test_file2: $!");
+  }
+
+  my $cwd = getcwd();
+  unless (chdir($tmpdir)) {
+    die("Can't chdir to $tmpdir: $!");
+  }
+
+  unless (symlink("dir1", 'link1')) {
+    die("Can't symlink 'link1' to 'dir1': $!");
+  }
+
+  unless (chdir($sub_dir2)) {
+    die("Can't chdir to $sub_dir2: $!");
+  }
+
+  unless (symlink("dir2", 'link2')) {
+    die("Can't symlink 'link2' to 'dir2': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir1, $sub_dir2)) {
+      die("Can't set perms on $sub_dir1, $sub_dir2 to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir1, $sub_dir2)) {
+      die("Can't set owner of $sub_dir1, $sub_dir2 to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->list_raw();
+      unless ($conn) {
+        die("LIST failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      my $res = $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# LIST:\n$buf\n";
+      }
+
+      $res = {};
+      my $lines = [split(/(\r)?\n/, $buf)];
+      my $line_count = 0;
+      foreach my $line (@$lines) {
+        if ($line =~ /\s+(\S+)$/) {
+          $line_count++;
+          $res->{$1} = 1;
+        }
+      }
+
+      my $expected = 8;
+      $self->assert($line_count == $expected,
+        "Expected $expected lines, got $line_count");
+
+      # The keys are the filenames; we have two symlinks pointing to the same
+      # file.  Hence the different line vs key counts.
+      my $list_count = scalar(keys(%$res));
+      $expected = 7;
+      $self->assert($list_count == $expected,
+        "Expected $expected entries, got $list_count");
+
+      if ($ENV{TEST_VERBOSE}) {
+        use Data::Dumper;
+        print STDERR "# res:\n", Dumper($res), "\n";
+      }
+
+      $self->assert(!exists($res->{'/dir'}), "Expected no '/dir1'");
+      $client->quit();
     };
     if ($@) {
       $ex = $@;

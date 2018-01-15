@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2017 The ProFTPD Project team
+ * Copyright (c) 2015-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -560,7 +560,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "../file.txt";
   dst_pathlen = strlen(dst_path);
-  expected_path = "/file.txt";
+  expected_path = "file.txt";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
@@ -582,7 +582,7 @@ START_TEST (dir_readlink_test) {
   memset(buf, '\0', bufsz);
   dst_path = "../file.txt";
   dst_pathlen = strlen(dst_path);
-  expected_path = "/file.txt";
+  expected_path = "file.txt";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
