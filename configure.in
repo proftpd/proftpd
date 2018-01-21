@@ -411,6 +411,9 @@ AC_ARG_WITH(modules,
 
 dnl Memcache
 if test x"$enable_memcache" = xyes; then
+  AC_CHECK_LIB(memcached, memcached_create)
+  AC_CHECK_LIB(memcachedutil, libmemcached_util_ping)
+
   # Yes, we DO want mod_memcache AFTER the other modules in the static
   # module list. Otherwise, the module load ordering will be such that
   # memcache support will not work as expected
@@ -420,6 +423,8 @@ fi
 
 dnl Redis
 if test x"$enable_redis" = xyes; then
+  AC_CHECK_LIB(hiredis, redisConnect)
+
   # Yes, we DO want mod_redis AFTER the other modules in the static
   # module list. Otherwise, the module load ordering will be such that
   # Redis support will not work as expected.
