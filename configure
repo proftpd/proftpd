@@ -16933,6 +16933,149 @@ fi
 
 
 if test x"$enable_memcache" = xyes; then
+
+{ echo "$as_me:$LINENO: checking for memcached_create in -lmemcached" >&5
+echo $ECHO_N "checking for memcached_create in -lmemcached... $ECHO_C" >&6; }
+if test "${ac_cv_lib_memcached_memcached_create+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lmemcached  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char memcached_create ();
+int
+main ()
+{
+return memcached_create ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_lib_memcached_memcached_create=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_memcached_memcached_create=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_memcached_memcached_create" >&5
+echo "${ECHO_T}$ac_cv_lib_memcached_memcached_create" >&6; }
+if test $ac_cv_lib_memcached_memcached_create = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBMEMCACHED 1
+_ACEOF
+
+  LIBS="-lmemcached $LIBS"
+
+fi
+
+
+{ echo "$as_me:$LINENO: checking for libmemcached_util_ping in -lmemcachedutil" >&5
+echo $ECHO_N "checking for libmemcached_util_ping in -lmemcachedutil... $ECHO_C" >&6; }
+if test "${ac_cv_lib_memcachedutil_libmemcached_util_ping+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lmemcachedutil  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char libmemcached_util_ping ();
+int
+main ()
+{
+return libmemcached_util_ping ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_lib_memcachedutil_libmemcached_util_ping=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_memcachedutil_libmemcached_util_ping=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_memcachedutil_libmemcached_util_ping" >&5
+echo "${ECHO_T}$ac_cv_lib_memcachedutil_libmemcached_util_ping" >&6; }
+if test $ac_cv_lib_memcachedutil_libmemcached_util_ping = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBMEMCACHEDUTIL 1
+_ACEOF
+
+  LIBS="-lmemcachedutil $LIBS"
+
+fi
+
+
   # Yes, we DO want mod_memcache AFTER the other modules in the static
   # module list. Otherwise, the module load ordering will be such that
   # memcache support will not work as expected
@@ -16941,6 +17084,78 @@ if test x"$enable_memcache" = xyes; then
 fi
 
 if test x"$enable_redis" = xyes; then
+
+{ echo "$as_me:$LINENO: checking for redisConnect in -lhiredis" >&5
+echo $ECHO_N "checking for redisConnect in -lhiredis... $ECHO_C" >&6; }
+if test "${ac_cv_lib_hiredis_redisConnect+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lhiredis  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char redisConnect ();
+int
+main ()
+{
+return redisConnect ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_lib_hiredis_redisConnect=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_hiredis_redisConnect=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_hiredis_redisConnect" >&5
+echo "${ECHO_T}$ac_cv_lib_hiredis_redisConnect" >&6; }
+if test $ac_cv_lib_hiredis_redisConnect = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBHIREDIS 1
+_ACEOF
+
+  LIBS="-lhiredis $LIBS"
+
+fi
+
+
   # Yes, we DO want mod_redis AFTER the other modules in the static
   # module list. Otherwise, the module load ordering will be such that
   # Redis support will not work as expected.
@@ -18145,7 +18360,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 18148 "configure"
+#line 18363 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
