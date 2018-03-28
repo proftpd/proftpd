@@ -1001,7 +1001,7 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 void pr_getopt_reset(void) {
 #if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(FREEBSD10) || \
+    defined(FREEBSD10) || defined(FREEBSD11) || \
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
     defined(DARWIN10) || defined(DARWIN11) || defined(DARWIN12) || \
     defined(DARWIN13) || defined(DARWIN14)
