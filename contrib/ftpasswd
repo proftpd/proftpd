@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # ---------------------------------------------------------------------------
-# Copyright (C) 2000-2017 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2018 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -811,7 +811,8 @@ sub handle_group_entry {
   }
 
   # Ensure that we have a sorted list of unique members
-  my $names = join(',', sort { $a <=> $b } keys(map { _ => 1 } split(',', $members)));
+  my $uniq_members = { map { $_ => 1 } split(',', $members) };
+  my $names = join(',', sort { $a <=> $b } keys(%$uniq_members));
 
   # format: $name:$passwd:$gid:$members
   push(@data, "$name:$passwd:$gid:$names");
@@ -1099,7 +1100,7 @@ usage: $program [--help] [--hash|--group|--passwd]
                 Add the named member to the given group name from the file.
                 Example:
 
-        $ ftpasswd --group --file=... --name=ftpd --add-member=bob
+        \$ ftpasswd --group --file=... --name=ftpd --add-member=bob
 
     --delete-group
 
