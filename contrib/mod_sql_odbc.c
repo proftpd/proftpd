@@ -378,7 +378,8 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
   sd = (sql_data_t *) pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
   res = SQLNumResultCols(conn->sth, &ncols);
-  if (res != SQL_SUCCESS && res != SQL_SUCCESS_WITH_INFO) {
+  if (res != SQL_SUCCESS &&
+      res != SQL_SUCCESS_WITH_INFO) {
     char *err;
     SQLCHAR *state = NULL;
 
@@ -857,7 +858,8 @@ MODRET sqlodbc_open(cmd_rec *cmd) {
 
   res = SQLConnect(conn->dbh, (SQLCHAR *) conn->dsn, SQL_NTS,
     (SQLCHAR *) conn->user, SQL_NTS, (SQLCHAR *) conn->pass, SQL_NTS);
-  if (res != SQL_SUCCESS) {
+  if (res != SQL_SUCCESS &&
+      res != SQL_SUCCESS_WITH_INFO) {
     sql_log(DEBUG_FUNC, "error connecting to dsn '%s': %s", conn->dsn,
       sqlodbc_strerror(res));
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_open");
