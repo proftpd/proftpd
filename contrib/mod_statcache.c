@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_statcache -- a module implementing caching of stat(2),
  *                           fstat(2), and lstat(2) calls
- * Copyright (c) 2013-2017 TJ Saunders
+ * Copyright (c) 2013-2018 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1370,7 +1370,7 @@ static int statcache_fsio_unlink(pr_fs_t *fs, const char *path) {
 static int statcache_fsio_open(pr_fh_t *fh, const char *path, int flags) {
   int res, xerrno;
 
-  res = open(path, flags);
+  res = open(path, flags, PR_OPEN_MODE);
   xerrno = errno;
 
   if (res >= 0) {
