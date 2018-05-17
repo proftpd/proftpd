@@ -5161,7 +5161,9 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_fgetsize_test);
   tcase_add_test(testcase, fs_fadvise_test);
   tcase_add_test(testcase, fs_have_access_test);
+#if defined(HAVE_STATFS_F_TYPE) || defined(HAVE_STATFS_F_FSTYPENAME)
   tcase_add_test(testcase, fs_is_nfs_test);
+#endif
   tcase_add_test(testcase, fs_valid_path_test);
   tcase_add_test(testcase, fsio_smkdir_test);
   tcase_add_test(testcase, fsio_getpipebuf_test);
