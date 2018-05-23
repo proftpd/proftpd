@@ -60,7 +60,7 @@ static unsigned int proc_flags = 0;
 #define PR_PROCTITLE_FL_USE_STATIC		0x001
 
 void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
-  register int i;
+  register int i, j;
   register size_t envpsize;
   char **p;
 
@@ -69,10 +69,11 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
     envpsize += strlen(envp[i]) + 1;
   }
 
-  p = (char **) malloc((i + 1) * sizeof(char *));
+  p = (char **) calloc((i + 1), sizeof(char *));
   if (p != NULL) {
     environ = p;
 
+    j = 0;
     for (i = 0; envp[i] != NULL; i++) {
       size_t envp_len = strlen(envp[i]);
 
@@ -81,13 +82,12 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
         continue;
       }
 
-      environ[i] = malloc(envp_len + 1);
-      if (environ[i] != NULL) {
-        sstrncpy(environ[i], envp[i], envp_len + 1);
+      environ[j++] = malloc(envp_len + 1);
+      if (environ[j] != NULL) {
+        sstrncpy(environ[j], envp[i], envp_len + 1);
       }
     }
 
-    environ[i] = NULL;
   }
 
   prog_argv = argv;
