@@ -452,7 +452,11 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
       }
 
       if (res != -1 ||
+#ifdef	SOLARIS2
+          (hold_errno != EADDRINUSE && hold_errno != EACCES) ||
+#else	/* !SOLARIS2 */
           hold_errno != EADDRINUSE ||
+#endif	/* SOLARIS2 */
           (port != INPORT_ANY && !retry_bind)) {
         break;
       }
