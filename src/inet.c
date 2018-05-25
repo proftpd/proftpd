@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -452,11 +452,16 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
       }
 
       if (res != -1 ||
-#ifdef	SOLARIS2
+        /* Note that on Solaris, bind(2) might fail with EACCES if the
+         * randomly selected port for e.g. passive transfers is used by
+         * NFS.  Thus, for Solaris only, we treat EACCES as the same as
+         * EADDRINUSE.  Silly Solaris.
+         */
+#ifdef SOLARIS2
           (hold_errno != EADDRINUSE && hold_errno != EACCES) ||
-#else	/* !SOLARIS2 */
+#else
           hold_errno != EADDRINUSE ||
-#endif	/* SOLARIS2 */
+#endif /* SOLARIS2 */
           (port != INPORT_ANY && !retry_bind)) {
         break;
       }
