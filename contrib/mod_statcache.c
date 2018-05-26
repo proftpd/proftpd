@@ -2409,8 +2409,7 @@ static void statcache_postparse_ev(const void *event_data, void *user_data) {
   statcache_table = table;
   statcache_tablesz = tablesz;
   statcache_table_stats = statcache_table;
-  statcache_table_data = ((struct statcache_entry *) statcache_table) +
-    (6 * sizeof(uint32_t));
+  statcache_table_data = (struct statcache_entry *) (statcache_table + (6 * sizeof(uint32_t)));
 
   statcache_nrows = (statcache_capacity / STATCACHE_COLS_PER_ROW);
   statcache_rowlen = (STATCACHE_COLS_PER_ROW * sizeof(struct statcache_entry));
