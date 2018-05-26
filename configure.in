@@ -2153,6 +2153,9 @@ AC_CHECK_MEMBER(struct statfs.f_fstypename,
     #if HAVE_SYS_VFS_H
     # include <sys/vfs.h>
     #endif
+    #if HAVE_SYS_STATFS_H
+    # include <sys/statfs.h>
+    #endif
   ])
 
 AC_CHECK_MEMBER(struct statfs.f_type,
@@ -2169,6 +2172,9 @@ AC_CHECK_MEMBER(struct statfs.f_type,
     #endif
     #if HAVE_SYS_VFS_H
     # include <sys/vfs.h>
+    #endif
+    #if HAVE_SYS_STATFS_H
+    # include <sys/statfs.h>
     #endif
   ])
 
