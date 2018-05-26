@@ -6400,6 +6400,26 @@ MODRET core_post_pass(cmd_rec *cmd) {
   }
 #endif /* PR_USE_TRACE */
 
+  /* If "SocketOptions keepalive off" is in effect, disable TCP keepalives
+   * for the control connection as well (Bug#4340).
+   */
+  if (main_server->tcp_keepalive->keepalive_enabled == FALSE) {
+    int keepalive = 0;
+
+    pr_trace_msg("inet", 17, "disabling SO_KEEPALIVE on socket fd %d",
+      session.c->wfd);
+    if (setsockopt(session.c->wfd, SOL_SOCKET, SO_KEEPALIVE, (void *)
+        &keepalive, sizeof(int)) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "error setting SO_KEEPALIVE on socket fd %d: %s", session.c->wfd,
+        strerror(errno));
+
+    } else {
+      pr_trace_msg("inet", 15, "disabled SO_KEEPALIVE on socket fd %d",
+        session.c->wfd);
+    }
+  }
+
   /* Look for a configured MaxCommandRate. */
   c = find_config(main_server->conf, CONF_PARAM, "MaxCommandRate", FALSE);
   if (c) {
