@@ -35785,6 +35785,9 @@ cat >>conftest.$ac_ext <<_ACEOF
     #if HAVE_SYS_VFS_H
     # include <sys/vfs.h>
     #endif
+    #if HAVE_SYS_STATFS_H
+    # include <sys/statfs.h>
+    #endif
 
 
 int
@@ -35837,6 +35840,9 @@ cat >>conftest.$ac_ext <<_ACEOF
     #endif
     #if HAVE_SYS_VFS_H
     # include <sys/vfs.h>
+    #endif
+    #if HAVE_SYS_STATFS_H
+    # include <sys/statfs.h>
     #endif
 
 
@@ -35915,6 +35921,9 @@ cat >>conftest.$ac_ext <<_ACEOF
     #if HAVE_SYS_VFS_H
     # include <sys/vfs.h>
     #endif
+    #if HAVE_SYS_STATFS_H
+    # include <sys/statfs.h>
+    #endif
 
 
 int
@@ -35967,6 +35976,9 @@ cat >>conftest.$ac_ext <<_ACEOF
     #endif
     #if HAVE_SYS_VFS_H
     # include <sys/vfs.h>
+    #endif
+    #if HAVE_SYS_STATFS_H
+    # include <sys/statfs.h>
     #endif
 
 
