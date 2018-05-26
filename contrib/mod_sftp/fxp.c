@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2018 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -11480,7 +11480,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RNFR, old_path);
-  cmd2->cmd_class =  CL_MISC|CL_WRITE;
+  cmd2->cmd_class = CL_MISC|CL_WRITE;
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
