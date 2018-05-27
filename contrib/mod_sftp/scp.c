@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2018 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1456,7 +1456,8 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
           pstrdup(p, sp->best_path), 0) < 0) {
         if (errno != EEXIST) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error adding 'mod_xfer.store-path: %s", strerror(errno));
+            "error adding 'mod_xfer.store-path for SCP upload: %s",
+            strerror(errno));
         }
       }
     }
@@ -2059,6 +2060,15 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
     if (strcmp(sp->path, cmd->arg) != 0) {
       sp->path = pstrdup(scp_session->pool, cmd->arg);
+    }
+  }
+
+  if (pr_table_add(cmd->notes, "mod_xfer.retr-path",
+      pstrdup(cmd->pool, sp->path), 0) < 0) {
+    if (errno != EEXIST) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error adding 'mod_xfer.retr-path' for SCP download: %s",
+        strerror(errno));
     }
   }
 
