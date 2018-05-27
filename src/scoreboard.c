@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,7 +58,13 @@ static const char *trace_channel = "scoreboard";
 static char *handle_score_str(const char *fmt, va_list cmdap) {
   static char buf[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE] = {'\0'};
   memset(buf, '\0', sizeof(buf));
-  pr_vsnprintf(buf, sizeof(buf), fmt, cmdap);
+
+  /* Note that we deliberately do NOT use pr_vsnprintf() here, since
+   * truncation of long strings is often normal for these entries; consider
+   * paths longer than PR_TUNABLE_SCOREBOARD_BUFFER_SIZE (Issue#683).
+   */
+  vsnprintf(buf, sizeof(buf)-1, fmt, cmdap);
+
   buf[sizeof(buf)-1] = '\0';
   return buf;
 }
