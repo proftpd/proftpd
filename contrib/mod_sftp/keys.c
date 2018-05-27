@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2018 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2780,7 +2780,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-  DSA_SIG_get0(&sig_r, &sig_s, sig);
+  DSA_SIG_get0(sig, &sig_r, &sig_s);
 #else
   sig_r = sig->r;
   sig_s = sig->s;
@@ -2960,7 +2960,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-  ECDSA_SIG_get0(&sig_r, &sig_s, sig);
+  ECDSA_SIG_get0(sig, &sig_r, &sig_s);
 #else
   sig_r = sig->r;
   sig_s = sig->s;
@@ -3307,7 +3307,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       dsa_sig = DSA_SIG_new();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-      DSA_SIG_get0(&sig_r, &sig_s, dsa_sig);
+      DSA_SIG_get0(sig, &sig_r, &sig_s);
 #else
       sig_r = dsa_sig->r;
       sig_s = dsa_sig->s;
@@ -3426,7 +3426,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-      ECDSA_SIG_get0(&sig_r, &sig_s, ecdsa_sig);
+      ECDSA_SIG_get0(ecdsa_sig, &sig_r, &sig_s);
 #else
       sig_r = ecdsa_sig->r;
       sig_s = ecdsa_sig->s;
