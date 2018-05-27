@@ -1224,7 +1224,7 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
 
           memset(entry.sce_client_name, '\0', sizeof(entry.sce_client_name));
 
-          pr_snprintf(entry.sce_client_name,
+          snprintf(entry.sce_client_name,
             str_getlen(remote_name, sizeof(entry.sce_client_name)-1) + 1,
             "%s", remote_name);
           entry.sce_client_name[sizeof(entry.sce_client_name)-1] = '\0';
