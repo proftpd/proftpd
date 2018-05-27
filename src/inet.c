@@ -262,6 +262,7 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(DARWIN9) || defined(DARWIN10) || defined(DARWIN11) || \
     defined(DARWIN12) || defined(DARWIN13) || defined(DARWIN14) || \
+    defined(DARWIN15) || defined(DARWIN16) || defined(DARWIN17) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
@@ -287,6 +288,7 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(DARWIN9) || defined(DARWIN10) || defined(DARWIN11) || \
     defined(DARWIN12) || defined(DARWIN13) || defined(DARWIN14) || \
+    defined(DARWIN15) || defined(DARWIN16) || defined(DARWIN17) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
