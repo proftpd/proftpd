@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2017 The ProFTPD Project team
+ * Copyright (c) 2015-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1212,7 +1212,7 @@ START_TEST (snprintf_test) {
   size_t bufsz;
   int res, expected;
 
-  res = pr_snprintf(NULL, 0, NULL, 0);
+  res = pr_snprintf(NULL, 0, NULL);
   fail_unless(res < 0, "Failed to handle null buffer");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -1220,7 +1220,7 @@ START_TEST (snprintf_test) {
   bufsz = 1;
   buf = palloc(p, bufsz);
 
-  res = pr_snprintf(buf, 0, NULL, 0);
+  res = pr_snprintf(buf, 0, NULL);
   fail_unless(res < 0, "Failed to handle null format");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -1252,7 +1252,7 @@ START_TEST (snprintfl_test) {
   size_t bufsz;
   int res, expected;
 
-  res = pr_snprintfl(NULL, -1, NULL, 0, NULL, 0);
+  res = pr_snprintfl(NULL, -1, NULL, 0, NULL);
   fail_unless(res < 0, "Failed to handle null buffer");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -1260,7 +1260,7 @@ START_TEST (snprintfl_test) {
   bufsz = 1;
   buf = palloc(p, bufsz);
 
-  res = pr_snprintfl(NULL, -1, buf, 0, NULL, 0);
+  res = pr_snprintfl(NULL, -1, buf, 0, NULL);
   fail_unless(res < 0, "Failed to handle null format");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);

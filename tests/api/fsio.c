@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4397,11 +4397,17 @@ START_TEST (fs_virtual_path_test) {
 }
 END_TEST
 
+#if 0
+/* This test is commented out, since libcheck is very unhappy when we
+ * close its logging fds out from underneath it.  Thus we keep this
+ * test here, for any future tinkering, just not enabled by default.
+ */
 START_TEST (fs_close_extra_fds_test) {
   mark_point();
   pr_fs_close_extra_fds();
 }
 END_TEST
+#endif
 
 START_TEST (fs_get_usable_fd_test) {
   int fd, res;
@@ -5153,7 +5159,9 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_split_path_test);
   tcase_add_test(testcase, fs_join_path_test);
   tcase_add_test(testcase, fs_virtual_path_test);
+#if 0
   tcase_add_test(testcase, fs_close_extra_fds_test);
+#endif
   tcase_add_test(testcase, fs_get_usable_fd_test);
   tcase_add_test(testcase, fs_get_usable_fd2_test);
   tcase_add_test(testcase, fs_getsize_test);
