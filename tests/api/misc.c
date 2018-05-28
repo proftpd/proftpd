@@ -309,6 +309,7 @@ START_TEST (dir_readlink_test) {
     res = dir_readlink(p, path, buf, bufsz, flags);
     fail_unless(res == 0, "Failed to handle empty symlink");
   }
+  (void) unlink(path);
 
   /* Not chrooted, absolute dst path */
   memset(buf, '\0', bufsz);
