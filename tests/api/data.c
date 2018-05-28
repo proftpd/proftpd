@@ -291,7 +291,8 @@ START_TEST (data_sendfile_test) {
   mark_point();
   res = pr_data_sendfile(fd, &offset, 1);
   fail_unless(res < 0, "Failed to handle bad file descriptor");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  fail_unless(errno == EBADF || errno == EINVAL,
+    "Expected EBADF (%d) || EINVAL (%d), got %s (%d)", EBADF, EINVAL,
     strerror(errno), errno);
 
   fh = pr_fsio_open(data_test_path, O_CREAT|O_EXCL|O_WRONLY);
