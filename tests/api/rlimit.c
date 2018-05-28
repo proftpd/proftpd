@@ -184,7 +184,9 @@ Suite *tests_get_rlimit_suite(void) {
   tcase_add_test(testcase, rlimit_cpu_test);
   tcase_add_test(testcase, rlimit_files_test);
   tcase_add_test(testcase, rlimit_memory_test);
+#ifdef	RLIMIT_NPROC
   tcase_add_test(testcase, rlimit_nproc_test);
+#endif	/* RLIMIT_NPROC */
 
   suite_add_tcase(suite, testcase);
   return suite;
