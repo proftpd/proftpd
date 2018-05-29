@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1345,7 +1345,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
          * file for ASCII conversion (Bug#4277).
          */
         tmp_pool = make_sub_pool(session.xfer.p);
-        pr_pool_tag(tmp_pool, "ASCII upload");
+        pr_pool_tag(tmp_pool, "ASCII download");
 
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
