@@ -24,7 +24,12 @@
 
 /* Inet API tests */
 
+#include <stdlib.h>
+
 #include "tests.h"
+
+#define	PR_TEST_DNS_RESOLVER	((getenv("PR_TEST_DNS_RESOLVER") == NULL) ? \
+			    "8.8.8.8" : getenv("PR_TEST_DNS_RESOLVER"))
 
 static pool *p = NULL;
 
@@ -525,8 +530,8 @@ START_TEST (inet_connect_ipv4_test) {
 #if defined(PR_USE_NETWORK_TESTS)
   /* Try connecting to Google's DNS server. */
 
-  addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
-  fail_unless(addr != NULL, "Failed to resolve '8.8.8.8': %s",
+  addr = pr_netaddr_get_addr(p, PR_TEST_DNS_RESOLVER, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", PR_TEST_DNS_RESOLVER,
     strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);
@@ -544,10 +549,11 @@ START_TEST (inet_connect_ipv4_test) {
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);
-  fail_if(res < 0, "Failed to connect to 8.8.8.8#53: %s", strerror(errno));
+  fail_if(res < 0, "Failed to connect to %s#53: %s", PR_TEST_DNS_RESOLVER,
+    strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);
-  fail_unless(res < 0, "Failed to connect to 8.8.8.8#53: %s",
+  fail_unless(res < 0, "Failed to connect to %s#53: %s", PR_TEST_DNS_RESOLVER,
     strerror(errno));
   fail_unless(errno == EISCONN, "Expected EISCONN (%d), got %s (%d)",
     EISCONN, strerror(errno), errno);
@@ -656,16 +662,16 @@ START_TEST (inet_connect_nowait_test) {
 #if defined(PR_USE_NETWORK_TESTS)
   /* Try connecting to Google's DNS server. */
 
-  addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
-  fail_unless(addr != NULL, "Failed to resolve '8.8.8.8': %s",
+  addr = pr_netaddr_get_addr(p, PR_TEST_DNS_RESOLVER, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", PR_TEST_DNS_RESOLVER,
     strerror(errno));
 
   res = pr_inet_connect_nowait(p, conn, addr, 53);
   if (res < 0 &&
       errno != ECONNREFUSED &&
       errno != EBADF) {
-    fail_unless(res != -1, "Failed to connect to 8.8.8.8#53: %s",
-      strerror(errno));
+    fail_unless(res != -1, "Failed to connect to %s#53: %s",
+      PR_TEST_DNS_RESOLVER, strerror(errno));
   }
 
   pr_inet_close(p, conn);
