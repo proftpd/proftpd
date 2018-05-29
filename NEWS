@@ -23,6 +23,7 @@
 - Bug 4279 - Disable Blowfish, RC4, RIPE-MD160 SSH2 algorithms by default.
 - Bug 4306 - AllowChrootSymlinks off could cause login failures depending on
   filesystem permissions.
+- Issue 269 - Disable building of mod_ident by default.
 - Issue 501 - mod_ctrls: error: unable to bind to local socket: Address already
   in use.
 - Issue 507 - Failed to handle multiple %{env:...} variables in single word
