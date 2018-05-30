@@ -615,6 +615,9 @@
 /* Define if you have the strtoull function.  */
 #undef HAVE_STRTOULL
 
+/* Define if you have the sysconf() function.  */
+#undef HAVE_SYSCONF
+
 /* Define if you have the tzset function.  */
 #undef HAVE_TZSET
 
