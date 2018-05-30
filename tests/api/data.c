@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2016 The ProFTPD Project team
+ * Copyright (c) 2015-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -292,7 +292,7 @@ START_TEST (data_sendfile_test) {
   res = pr_data_sendfile(fd, &offset, 1);
   fail_unless(res < 0, "Failed to handle bad file descriptor");
   fail_unless(errno == EBADF || errno == EINVAL,
-    "Expected EBADF (%d) || EINVAL (%d), got %s (%d)", EBADF, EINVAL,
+    "Expected EBADF (%d) or EINVAL (%d), got %s (%d)", EBADF, EINVAL,
     strerror(errno), errno);
 
   fh = pr_fsio_open(data_test_path, O_CREAT|O_EXCL|O_WRONLY);
