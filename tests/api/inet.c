@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2017 The ProFTPD Project team
+ * Copyright (c) 2014-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,12 @@
 
 static pool *p = NULL;
 
+/* Use Google's DNS resolvers by default. */
+static const char *dns_resolver = "8.8.8.8";
+
 static void set_up(void) {
+  const char *use_resolver = NULL;
+
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
@@ -36,6 +41,11 @@ static void set_up(void) {
   init_netaddr();
   init_netio();
   init_inet();
+
+  use_resolver = getenv("PR_USE_DNS_RESOLVER");
+  if (use_resolver != NULL) {
+    dns_resolver = use_resolver;
+  }
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("inet", 1, 20);
@@ -523,10 +533,8 @@ START_TEST (inet_connect_ipv4_test) {
     ECONNREFUSED, strerror(errno), errno);
 
 #if defined(PR_USE_NETWORK_TESTS)
-  /* Try connecting to Google's DNS server. */
-
-  addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
-  fail_unless(addr != NULL, "Failed to resolve '8.8.8.8': %s",
+  addr = pr_netaddr_get_addr(p, dns_resolver, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", dns_resolver,
     strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);
@@ -544,10 +552,11 @@ START_TEST (inet_connect_ipv4_test) {
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);
-  fail_if(res < 0, "Failed to connect to 8.8.8.8#53: %s", strerror(errno));
+  fail_if(res < 0, "Failed to connect to %s#53: %s", dns_resolver,
+    strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);
-  fail_unless(res < 0, "Failed to connect to 8.8.8.8#53: %s",
+  fail_unless(res < 0, "Failed to connect to %s#53: %s", dns_resolver,
     strerror(errno));
   fail_unless(errno == EISCONN, "Expected EISCONN (%d), got %s (%d)",
     EISCONN, strerror(errno), errno);
@@ -656,15 +665,15 @@ START_TEST (inet_connect_nowait_test) {
 #if defined(PR_USE_NETWORK_TESTS)
   /* Try connecting to Google's DNS server. */
 
-  addr = pr_netaddr_get_addr(p, "8.8.8.8", NULL);
-  fail_unless(addr != NULL, "Failed to resolve '8.8.8.8': %s",
+  addr = pr_netaddr_get_addr(p, dns_resolver, NULL);
+  fail_unless(addr != NULL, "Failed to resolve '%s': %s", dns_resolver,
     strerror(errno));
 
   res = pr_inet_connect_nowait(p, conn, addr, 53);
   if (res < 0 &&
       errno != ECONNREFUSED &&
       errno != EBADF) {
-    fail_unless(res != -1, "Failed to connect to 8.8.8.8#53: %s",
+    fail_unless(res != -1, "Failed to connect to %s#53: %s", dns_resolver,
       strerror(errno));
   }
 
