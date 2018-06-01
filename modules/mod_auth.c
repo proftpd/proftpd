@@ -2668,7 +2668,7 @@ MODRET auth_pass(cmd_rec *cmd) {
       /* Set auth_tries to -1 so that the session is disconnected after
        * POST_CMD_ERR and LOG_CMD_ERR events are processed.
        */
-      auth_retries = -1;
+      auth_tries = -1;
     }
 
     return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : _("Login incorrect."));
