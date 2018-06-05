@@ -3714,19 +3714,19 @@ MODRET core_pasv(cmd_rec *cmd) {
       /* Make sure that the family is NOT IPv6, even though the family of the
        * local and remote ends match.  The PASV command cannot be used for
        * IPv6 addresses (Bug#3745).
+       *
+       * However, SOME clients and ALGs ARE able to properly handle the
+       * PASV response, even for an IPv6 address.  So we relax this code
+       * to merely warn about possible incompatibilities, rather than
+       * rejecting the command outright.
        */
       if (pr_netaddr_get_family(session.c->local_addr) == AF_INET6) {
-        int xerrno = EPERM;
-
-        pr_log_debug(DEBUG0,
-          "Unable to handle PASV for IPv6 address '%s', rejecting command",
+        pr_log_pri(PR_LOG_INFO,
+          "sending a PASV response for an IPv6 address '%s'; some FTP clients "
+          "may have interoperability issues with this response",
           pr_netaddr_get_ipstr(session.c->local_addr));
-        pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
-          strerror(xerrno));
-
-        pr_cmd_set_errno(cmd, xerrno);
-        errno = xerrno;
-        return PR_ERROR(cmd);
+        pr_log_pri(PR_LOG_INFO, "%s", "please configure your FTP client "
+          "to use the IPv6-compatible EPSV/EPRT commands");
       }
     }
 #endif /* PR_USE_IPV6 */
