@@ -1447,51 +1447,51 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     return recv_finfo(p, channel_id, sp, data, datalen);
   }
 
-  if (!sp->recvd_data &&
-      sp->recvlen != sp->filesz) {
-    if (cmd == NULL) {
-      cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
+  /* Always truncate before writing the contents to file to ensure proper
+   * file length, and inform the storage subsystem of the data size.
+   */
+  if (S_ISREG(sp->st_mode)) {
+    pr_trace_msg(trace_channel, 9, "truncating file '%s' to %" PR_LU " bytes",
+      sp->fh->fh_path, (pr_off_t) sp->filesz);
 
-      if (pr_table_add(cmd->notes, "mod_xfer.store-path",
-          pstrdup(p, sp->best_path), 0) < 0) {
-        if (errno != EEXIST) {
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error adding 'mod_xfer.store-path for SCP upload: %s",
-            strerror(errno));
-        }
-      }
-    }
+    if (pr_fsio_ftruncate(sp->fh, sp->filesz) < 0) {
+      int xerrno = errno;
 
-    pr_throttle_init(cmd);
+      pr_trace_msg(trace_channel, 2, "error truncating '%s' to %" PR_LU
+        " bytes: %s", sp->best_path, (pr_off_t) sp->filesz, strerror(xerrno));
 
-    /* recv_data() indicates that it has received all of the data, including
-     * the end-of-data marker, by returning 1.  If that happens, we need
-     * to continue one to the end-of-path processing.
-     */
-    res = recv_data(p, channel_id, sp, data, datalen);
-    if (res != 1) {
-      return res;
+      write_confirm(p, channel_id, 1,
+        pstrcat(p, sp->filename, ": error truncating file: ",
+        strerror(xerrno), NULL));
+      sp->wrote_errors = TRUE;
     }
   }
 
   if (sp->wrote_errors == FALSE) {
-    /* The uploaded file may be smaller than an existing file; call
-     * pr_fsio_truncate() to ensure proper file size.
-     */
-    if (S_ISREG(sp->st_mode)) {
-      pr_trace_msg(trace_channel, 9, "truncating file '%s' to %" PR_LU " bytes",
-        sp->fh->fh_path, (pr_off_t) sp->filesz);
+    if (!sp->recvd_data &&
+        sp->recvlen != sp->filesz) {
+      if (cmd == NULL) {
+        cmd = scp_cmd_alloc(p, C_STOR, sp->best_path);
 
-      if (pr_fsio_ftruncate(sp->fh, sp->filesz) < 0) {
-        int xerrno = errno;
+        if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+            pstrdup(p, sp->best_path), 0) < 0) {
+          if (errno != EEXIST) {
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "error adding 'mod_xfer.store-path for SCP upload: %s",
+              strerror(errno));
+          }
+        }
+      }
 
-        pr_trace_msg(trace_channel, 2, "error truncating '%s' to %" PR_LU
-          " bytes: %s", sp->best_path, (pr_off_t) sp->filesz, strerror(xerrno));
+      pr_throttle_init(cmd);
 
-        write_confirm(p, channel_id, 1,
-          pstrcat(p, sp->filename, ": error truncating file: ",
-          strerror(xerrno), NULL));
-        sp->wrote_errors = TRUE;
+      /* recv_data() indicates that it has received all of the data, including
+       * the end-of-data marker, by returning 1.  If that happens, we need
+       * to continue one to the end-of-path processing.
+       */
+      res = recv_data(p, channel_id, sp, data, datalen);
+      if (res != 1) {
+        return res;
       }
     }
   }
