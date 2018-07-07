@@ -26,6 +26,12 @@
 
 #include "tests.h"
 
+#ifdef PR_USE_XATTR
+#ifndef ENOATTR
+# define ENOATTR ENODATA
+#endif
+#endif
+
 static pool *p = NULL;
 
 static char *fsio_cwd = NULL;
