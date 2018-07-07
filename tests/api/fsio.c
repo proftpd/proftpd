@@ -27,9 +27,10 @@
 #include "tests.h"
 
 #ifdef PR_USE_XATTR
-#ifndef ENOATTR
-# define ENOATTR ENODATA
-#endif
+/* Handle the case where ENOATTR may not be defined. */
+# ifndef ENOATTR
+#  define ENOATTR ENODATA
+# endif
 #endif
 
 static pool *p = NULL;
