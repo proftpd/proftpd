@@ -1627,7 +1627,7 @@ if test x"$ac_add_mod_cap" = xyes; then
 fi
 
 AC_CHECK_HEADERS(bstring.h crypt.h ctype.h execinfo.h iconv.h inttypes.h langinfo.h limits.h locale.h)
-AC_CHECK_HEADERS(string.h strings.h stropts.h)
+AC_CHECK_HEADERS(paths.h string.h strings.h stropts.h)
 AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/ucred.h sys/uio.h sys/socket.h)
 AC_MSG_CHECKING(for net/if.h)
 AC_TRY_COMPILE([
