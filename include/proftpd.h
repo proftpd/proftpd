@@ -100,6 +100,9 @@ typedef struct {
    */
 
   int disable_id_switching;		/* Disable UID/GID switching */
+#ifdef SOLARIS2
+  int priv_aware;			/* process posses all privs it needs */
+#endif /* SOLARIS2 */
   uid_t uid, ouid;                      /* Current and original UIDs */
   gid_t gid;                            /* Current GID */
 

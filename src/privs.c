@@ -185,7 +185,11 @@ int pr_privs_root(const char *file, int lineno) {
 
   pr_signals_block();
 
+#ifdef SOLARIS2
+  if (!session.disable_id_switching && !session.priv_aware) {
+#else
   if (!session.disable_id_switching) {
+#endif
 
 #if defined(HAVE_SETEUID)
     if (seteuid(PR_ROOT_UID) < 0) {
@@ -247,7 +251,12 @@ int pr_privs_user(const char *file, int lineno) {
 
   pr_signals_block();
 
+#ifdef SOLARIS2
+  if (!session.disable_id_switching && !session.priv_aware) {
+#else
   if (!session.disable_id_switching) {
+#endif
+
 #if defined(HAVE_SETEUID)
     if (seteuid(PR_ROOT_UID) < 0) {
       int priority = (errno == EPERM ? PR_LOG_NOTICE : PR_LOG_ERR);
@@ -335,7 +344,12 @@ int pr_privs_relinquish(const char *file, int lineno) {
 
   pr_signals_block();
 
+#ifdef SOLARIS2
+  if (!session.disable_id_switching && !session.priv_aware) {
+#else
   if (!session.disable_id_switching) {
+#endif
+
 #if defined(HAVE_SETEUID)
     if (geteuid() != PR_ROOT_UID) {
       if (seteuid(PR_ROOT_UID) < 0) {
