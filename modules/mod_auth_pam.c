@@ -106,7 +106,7 @@ static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
   for (i = 0; i < num_msg; i++) {
     response[i].resp_retcode = 0; /* PAM_SUCCESS; */
 
-    switch (msg[i]->msg_style) {
+    switch (msg[0][i].msg_style) {
     case PAM_PROMPT_ECHO_ON:
       pr_trace_msg(trace_channel, 9, "received PAM_PROMPT_ECHO_ON message");
 
@@ -131,9 +131,9 @@ static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
     case PAM_RADIO_TYPE:
 #endif /* PAM_RADIO_TYPE */
       pr_trace_msg(trace_channel, 9, "received %s response: %s",
-        msg[i]->msg_style == PAM_TEXT_INFO ? "PAM_TEXT_INFO" :
-          msg[i]->msg_style == PAM_ERROR_MSG ? "PAM_ERROR_MSG" :
-          "PAM_RADIO_TYPE", msg[i]->msg);
+        msg[0][i].msg_style == PAM_TEXT_INFO ? "PAM_TEXT_INFO" :
+          msg[0][i].msg_style == PAM_ERROR_MSG ? "PAM_ERROR_MSG" :
+          "PAM_RADIO_TYPE", msg[0][i].msg);
 
       /* Ignore it, but pam still wants a NULL response... */
       response[i].resp = NULL;
