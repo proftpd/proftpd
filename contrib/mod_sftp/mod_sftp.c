@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2018 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1211,6 +1211,8 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
           insecure_hostkey_perms = TRUE;
           break;
         }
+
+        c = find_config_next(c, c->next, CONF_PARAM, "SFTPOptions", FALSE);
       }
 
       if (insecure_hostkey_perms) {
