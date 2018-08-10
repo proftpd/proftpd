@@ -1861,9 +1861,13 @@ int pr_auth_is_valid_shell(xaset_t *ctx, const char *shell) {
   int res = TRUE;
   unsigned char *require_valid_shell;
 
-  if (shell == NULL) {
-    return res;
-  }
+  /*
+   * if password entry for user account does not provide a shell,
+   * then we should assume a default one, which is defined
+   * at compile time.
+   */
+  if ((shell == NULL) || (shell[0] == '\0'))
+    shell = PR_DEFAULT_SHELL;
 
   require_valid_shell = get_param_ptr(ctx, "RequireValidShell", FALSE);
 

@@ -254,4 +254,17 @@
 # define PR_TUNABLE_FS_STATCACHE_MAX_AGE	30
 #endif
 
+/* default shell to use when shell member at pwentry is empty. */
+#ifdef	HAVE_PATHS_H
+# include <paths.h>
+
+# ifdef	_PATH_BSHELL
+#  define	PR_DEFAULT_SHELL	_PATH_BSHELL
+# else
+#  define	PR_DEFAULT_SHELL	""
+# endif
+#else
+# define	PR_DEFAULT_SHELL	""
+#endif
+
 #endif /* PR_OPTIONS_H */
