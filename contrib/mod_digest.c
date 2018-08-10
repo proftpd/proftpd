@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_digest - File hashing/checksumming module
  * Copyright (c) Mathias Berchtold <mb@smartftp.com>
- * Copyright (c) 2016-2017 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2016-2018 TJ Saunders <tj@castaglia.org>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,6 +75,11 @@
 # include <openssl/bio.h>
 # include <openssl/evp.h>
 # include <openssl/err.h>
+#endif
+
+/* Define if you have the LibreSSL library.  */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL  1
 #endif
 
 module digest_module;
