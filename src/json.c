@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017 The ProFTPD Project team
+ * Copyright (c) 2017-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -288,7 +288,7 @@ static int get_val_from_node(pool *p, JsonNode *node, JsonTag tag, void *val) {
        * as a string, then decode it again.
        */
       if (node->children.head != NULL) {
-        array->array = json_decode(json_encode(node->children.head));
+        array->array = json_decode(json_encode(node));
 
       } else {
         array->array = json_mkarray();
@@ -312,7 +312,7 @@ static int get_val_from_node(pool *p, JsonNode *node, JsonTag tag, void *val) {
        * as a string, then decode it again.
        */
       if (node->children.head != NULL) {
-        object->object = json_decode(json_encode(node->children.head));
+        object->object = json_decode(json_encode(node));
 
       } else {
         object->object = json_mkobject();
