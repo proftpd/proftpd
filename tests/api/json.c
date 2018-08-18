@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2017 The ProFTPD Project team
+ * Copyright (c) 2017-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -733,6 +733,7 @@ END_TEST
 START_TEST(json_object_get_array_test) {
   int res;
   const char *key, *text;
+  char *expected = NULL, *str = NULL;
   pr_json_array_t *val = NULL;
   pr_json_object_t *json;
 
@@ -789,6 +790,11 @@ START_TEST(json_object_get_array_test) {
   fail_unless(res == 0, "Failed to handle existing key '%s': %s", key,
     strerror(errno));
   fail_unless(val != NULL, "Expected array, got null");
+
+  expected = "[\"baz\"]";
+  str = pr_json_array_to_text(p, val, "");
+  fail_unless(strcmp(str, expected) == 0,
+    "Expected '%s', got '%s'", expected, str);
 
   mark_point();
   (void) pr_json_array_free(val);
@@ -857,6 +863,7 @@ END_TEST
 START_TEST(json_object_get_object_test) {
   int res;
   const char *key, *text;
+  char *expected = NULL, *str = NULL;
   pr_json_object_t *json, *val = NULL;
 
   mark_point();
@@ -912,6 +919,11 @@ START_TEST(json_object_get_object_test) {
   fail_unless(res == 0, "Failed to handle existing key '%s': %s", key,
     strerror(errno));
   fail_unless(val != NULL, "Expected object, got null");
+
+  expected = "{\"baz\":null}";
+  str = pr_json_object_to_text(p, val, "");
+  fail_unless(strcmp(str, expected) == 0,
+    "Expected '%s', got '%s'", expected, str);
 
   mark_point();
   (void) pr_json_object_free(val);
@@ -1564,6 +1576,7 @@ START_TEST(json_array_get_array_test) {
   int res;
   unsigned int idx;
   const char *text;
+  char *expected = NULL, *str = NULL;
   pr_json_array_t *json, *val = NULL;
 
   mark_point();
@@ -1613,6 +1626,11 @@ START_TEST(json_array_get_array_test) {
   fail_unless(res == 0, "Failed to handle existing index %u: %s", idx,
     strerror(errno));
   fail_unless(val != NULL, "Expected array, got null");
+
+  expected = "[\"baz\"]";
+  str = pr_json_array_to_text(p, val, "");
+  fail_unless(strcmp(str, expected) == 0,
+    "Expected '%s', got '%s'", expected, str);
 
   mark_point();
   (void) pr_json_array_free(val);
@@ -1674,6 +1692,7 @@ START_TEST(json_array_get_object_test) {
   int res;
   unsigned int idx;
   const char *text;
+  char *expected = NULL, *str = NULL;
   pr_json_object_t *val = NULL;
   pr_json_array_t *json;
 
@@ -1724,6 +1743,11 @@ START_TEST(json_array_get_object_test) {
   fail_unless(res == 0, "Failed to handle existing index %u: %s", idx,
     strerror(errno));
   fail_unless(val != NULL, "Expected object, got null");
+
+  expected = "{}";
+  str = pr_json_object_to_text(p, val, "");
+  fail_unless(strcmp(str, expected) == 0,
+    "Expected '%s', got '%s'", expected, str);
 
   mark_point();
   (void) pr_json_object_free(val);
