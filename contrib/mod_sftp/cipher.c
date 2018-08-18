@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2018 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -448,7 +448,12 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
+#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
+  if (EVP_CipherInit_ex(cipher_ctx, cipher->cipher, NULL, NULL,
+    cipher->iv, 0) != 1) {
+#else
   if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, cipher->iv, 0) != 1) {
+#endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing %s cipher for decryption: %s", cipher->algo,
       sftp_crypto_get_errors());
@@ -472,7 +477,11 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       cipher->algo);
   }
 
+#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
+  if (EVP_CipherInit_ex(cipher_ctx, NULL, NULL, cipher->key, NULL, -1) != 1) {
+#else
   if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, NULL, -1) != 1) {
+#endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error re-initializing %s cipher for decryption: %s", cipher->algo,
       sftp_crypto_get_errors());
@@ -637,7 +646,12 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
+#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
+  if (EVP_CipherInit_ex(cipher_ctx, cipher->cipher, NULL, NULL,
+    cipher->iv, 1) != 1) {
+#else
   if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, cipher->iv, 1) != 1) {
+#endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing %s cipher for encryption: %s", cipher->algo,
       sftp_crypto_get_errors());
@@ -661,7 +675,11 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       cipher->algo);
   }
 
+#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
+  if (EVP_CipherInit_ex(cipher_ctx, NULL, NULL, cipher->key, NULL, -1) != 1) {
+#else
   if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, NULL, -1) != 1) {
+#endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error re-initializing %s cipher for encryption: %s", cipher->algo,
       sftp_crypto_get_errors());

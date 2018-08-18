@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2017 The ProFTPD Project team
+dnl Copyright (c) 2001-2018 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -3343,6 +3343,30 @@ if test x"$pr_use_openssl" = xyes; then
     [
       AC_MSG_RESULT(yes)
       AC_DEFINE(PR_USE_OPENSSL_ECC, 1, [Define if your OpenSSL supports ECC])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether OpenSSL has EVP_CipherInit_ex support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/evp.h>
+    ],
+    [
+      (void) EVP_CipherInit_ex(NULL, NULL, NULL, NULL, NULL, 1);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_EVP_CIPHERINIT_EX, 1, [Define if your OpenSSL supports EVP_CipherInit_ex])
     ],
     [
       AC_MSG_RESULT(no)
