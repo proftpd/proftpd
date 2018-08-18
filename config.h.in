@@ -1105,6 +1105,10 @@
  */
 #undef PR_USE_OPENSSL_ECC
 
+/* Define if OpenSSL EVP_CipherInit_ex support, if available, should be used.
+ */
+#undef PR_USE_OPENSSL_EVP_CIPHERINIT_EX
+
 /* Define if OpenSSL support (with FIPS enabled), if available, should be
  * used.
  */
