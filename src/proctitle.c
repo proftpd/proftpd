@@ -82,9 +82,10 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
         continue;
       }
 
-      environ[j++] = malloc(envp_len + 1);
+      environ[j] = malloc(envp_len + 1);
       if (environ[j] != NULL) {
         sstrncpy(environ[j], envp[i], envp_len + 1);
+        j++;
       }
     }
 
