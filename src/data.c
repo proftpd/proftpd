@@ -1208,13 +1208,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
               buflen > 1) {
             size_t outlen = 0;
 
-            /* Use a temporary pool for the CRLF conversion, lest the
-             * session.xfer.p pool grow quite large while downloading a large
-             * file for ASCII conversion (Bug#4277).
-             */
             if (tmp_pool == NULL) {
-              tmp_pool = make_sub_pool(session.pool);
-              pr_pool_tag(tmp_pool, "ASCII download");
+              tmp_pool = make_sub_pool(session.xfer.p);
+              pr_pool_tag(tmp_pool, "ASCII upload");
             }
 
             res = pr_ascii_ftp_from_crlf(tmp_pool, buf, buflen, &buf, &outlen);
@@ -1342,12 +1338,8 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         char *out = NULL;
         size_t outlen = 0;
 
-        /* Use a temporary pool for the CRLF conversion, lest the
-         * session.xfer.p pool grow quite large while downloading a large
-         * file for ASCII conversion (Bug#4277).
-         */
         if (tmp_pool == NULL) {
-          tmp_pool = make_sub_pool(session.pool);
+          tmp_pool = make_sub_pool(session.xfer.p);
           pr_pool_tag(tmp_pool, "ASCII download");
         }
 
