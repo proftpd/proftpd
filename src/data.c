@@ -1386,6 +1386,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         }
 
         destroy_pool(tmp_pool);
+        free(session.xfer.buf);
         errno = xerrno;
         return -1;
       }
@@ -1417,6 +1418,13 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         cl_buf += buflen;
         total += buflen;
       }
+
+      /* Yes, we are using malloc et al here, rather than the memory pools.
+       * See Bug#4352 for details.
+       */
+      free(session.xfer.buf);
+      session.xfer.buf = NULL;
+      session.xfer.buflen = 0;
     }
 
     len = total;
