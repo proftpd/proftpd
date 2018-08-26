@@ -1315,6 +1315,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       int bwrote = 0;
       int buflen = cl_size;
       unsigned int xferbuflen;
+      char *xfer_buf = NULL;
 
       pr_signals_handle();
 
@@ -1355,6 +1356,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
             strerror(errno));
 
         } else {
+          xfer_buf = session.xfer.buf;
           session.xfer.buf = out;
           session.xfer.buflen = xferbuflen = outlen;
         }
@@ -1378,7 +1380,12 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         }
 
         destroy_pool(tmp_pool);
-        free(session.xfer.buf);
+        if (xfer_buf != NULL) {
+          /* Free up the malloc'd memory. */
+          free(session.xfer.buf);
+          session.xfer.buf = xfer_buf;
+        }
+
         errno = xerrno;
         return -1;
       }
@@ -1411,12 +1418,13 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         total += buflen;
       }
 
-      /* Yes, we are using malloc et al here, rather than the memory pools.
-       * See Bug#4352 for details.
-       */
-      free(session.xfer.buf);
-      session.xfer.buf = NULL;
-      session.xfer.buflen = 0;
+      if (xfer_buf != NULL) {
+        /* Yes, we are using malloc et al here, rather than the memory pools.
+         * See Bug#4352 for details.
+         */
+        free(session.xfer.buf);
+        session.xfer.buf = xfer_buf;
+      }
     }
 
     len = total;
