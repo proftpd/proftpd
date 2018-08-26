@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project
+ * Copyright (c) 2001-2018 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -6812,15 +6812,15 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
-      sizeof(fs.f_bsize) > 4) {
+      sizeof(fs.f_frsize) > 4) {
 
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
 
   } else {
-    *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
   res = 0;
@@ -6868,15 +6868,15 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
-      sizeof(fs.f_bsize) > 4) {
+      sizeof(fs.f_frsize) > 4) {
 
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
 
   } else {
-    *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
   res = 0;
@@ -6924,15 +6924,15 @@ static int fs_getsize(int fd, char *path, off_t *fs_size) {
    * we'll use typecasting.
    */
   if (sizeof(fs.f_bavail) > 4 ||
-      sizeof(fs.f_bsize) > 4) {
+      sizeof(fs.f_frsize) > 4) {
 
     /* In order to return a size in KB, as get_fs_size() does, we need
      * to divide by 1024.
      */
-    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_bsize) / 1024);
+    *fs_size = (((off_t) fs.f_bavail * (off_t) fs.f_frsize) / 1024);
 
   } else {
-    *fs_size = get_fs_size(fs.f_bavail, fs.f_bsize);
+    *fs_size = get_fs_size(fs.f_bavail, fs.f_frsize);
   }
 
   res = 0;
