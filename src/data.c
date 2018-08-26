@@ -1213,7 +1213,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
              * file for ASCII conversion (Bug#4277).
              */
             if (tmp_pool == NULL) {
-              tmp_pool = make_sub_pool(session.xfer.p);
+              tmp_pool = make_sub_pool(session.pool);
               pr_pool_tag(tmp_pool, "ASCII download");
             }
 
@@ -1347,7 +1347,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
          * file for ASCII conversion (Bug#4277).
          */
         if (tmp_pool == NULL) {
-          tmp_pool = make_sub_pool(session.xfer.p);
+          tmp_pool = make_sub_pool(session.pool);
           pr_pool_tag(tmp_pool, "ASCII download");
         }
 
