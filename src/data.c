@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2018 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1198,12 +1198,10 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
               buflen > 1) {
             size_t outlen = 0;
 
-            /* Use a temporary pool for the CRLF conversion, lest the
-             * session.xfer.p pool grow quite large while downloading a large
-             * file for ASCII conversion (Bug#4277).
-             */
-            tmp_pool = make_sub_pool(session.xfer.p);
-            pr_pool_tag(tmp_pool, "ASCII download");
+            if (tmp_pool == NULL) {
+              tmp_pool = make_sub_pool(session.xfer.p);
+              pr_pool_tag(tmp_pool, "ASCII download");
+            }
 
             res = pr_ascii_ftp_from_crlf(tmp_pool, buf, buflen, &buf, &outlen);
             if (res < 0) {
@@ -1305,6 +1303,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       int bwrote = 0;
       int buflen = cl_size;
       unsigned int xferbuflen;
+      char *xfer_buf = NULL;
 
       pr_signals_handle();
 
@@ -1328,12 +1327,10 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         char *out = NULL;
         size_t outlen = 0;
 
-        /* Use a temporary pool for the CRLF conversion, lest the
-         * session.xfer.p pool grow quite large while downloading a large
-         * file for ASCII conversion (Bug#4277).
-         */
-        tmp_pool = make_sub_pool(session.xfer.p);
-        pr_pool_tag(tmp_pool, "ASCII upload");
+        if (tmp_pool == NULL) {
+          tmp_pool = make_sub_pool(session.xfer.p);
+          pr_pool_tag(tmp_pool, "ASCII upload");
+        }
 
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
@@ -1347,6 +1344,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
             strerror(errno));
 
         } else {
+          xfer_buf = session.xfer.buf;
           session.xfer.buf = out;
           session.xfer.buflen = xferbuflen = outlen;
         }
@@ -1371,6 +1369,12 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         }
 
         destroy_pool(tmp_pool);
+        if (xfer_buf != NULL) {
+          /* Free up the malloc'd memory. */
+          free(session.xfer.buf);
+          session.xfer.buf = xfer_buf;
+        }
+
         errno = xerrno;
         return -1;
       }
@@ -1398,6 +1402,14 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         cl_size -= buflen;
         cl_buf += buflen;
         total += buflen;
+      }
+
+      if (xfer_buf != NULL) {
+        /* Yes, we are using malloc et al here, rather than the memory pools.
+         * See Bug#4352 for details.
+         */
+        free(session.xfer.buf);
+        session.xfer.buf = xfer_buf;
       }
     }
 
