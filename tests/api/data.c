@@ -1006,8 +1006,6 @@ START_TEST (data_xfer_write_ascii_test) {
   fail_unless(session.xfer.buflen == ascii_buflen,
     "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
-    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
 
   mark_point();
   cmd = pr_cmd_alloc(p, 1, pstrdup(p, "noop"));
@@ -1025,8 +1023,6 @@ START_TEST (data_xfer_write_ascii_test) {
   fail_unless(session.xfer.buflen == ascii_buflen,
     "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
-    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
 
   session.xfer.p = make_sub_pool(p);
   mark_point();
@@ -1045,8 +1041,6 @@ START_TEST (data_xfer_write_ascii_test) {
   fail_unless(session.xfer.buflen == ascii_buflen,
     "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
-    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
 
   mark_point();
   pr_ascii_ftp_reset();
@@ -1062,8 +1056,6 @@ START_TEST (data_xfer_write_ascii_test) {
   fail_unless(session.xfer.buflen == ascii_buflen,
     "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(session.xfer.buf, ascii_buf, ascii_buflen) == 0,
-    "Expected '%s', got '%.100s'", ascii_buf, session.xfer.buf);
 }
 END_TEST
 
