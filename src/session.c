@@ -113,7 +113,7 @@ void pr_session_disconnect(module *m, int reason_code,
   }
 
   if (reason_code == PR_SESS_DISCONNECT_SEGFAULT) {
-    flags |= PR_SESS_END_FL_ERROR;
+    flags |= PR_SESS_END_FL_NOEXIT;
   }
 
   pr_session_end(flags);
