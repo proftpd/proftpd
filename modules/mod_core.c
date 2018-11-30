@@ -959,6 +959,32 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET set_masqueradepassiveportsorigin(cmd_rec *cmd) {
+    int port;
+    config_rec *c = NULL;
+
+    CHECK_ARGS(cmd, 1);
+    CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+    port = atoi(cmd->argv[1]);
+
+    /* Sanity check */
+    if (port <= 0 ||
+            port > 65535) {
+        CONF_ERROR(cmd, "port must be allowable port number");
+    }
+
+    if (port < 1024) {
+        CONF_ERROR(cmd, "port must be above 1023");
+    }
+
+    c = add_config_param(cmd->argv[0], 1, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = port;
+
+    return PR_HANDLED(cmd);
+}
+
 MODRET set_maxinstances(cmd_rec *cmd) {
   long max_instances;
   char *endp;
@@ -3671,6 +3697,7 @@ MODRET core_pwd(cmd_rec *cmd) {
 
 MODRET core_pasv(cmd_rec *cmd) {
   unsigned int port = 0;
+  int masquerade_port_offset = 0;
   char *addrstr = NULL, *tmp = NULL;
   config_rec *c = NULL;
   const pr_netaddr_t *bind_addr;
@@ -3756,6 +3783,13 @@ MODRET core_pasv(cmd_rec *cmd) {
         "unable to find open port in PassivePorts range %d-%d: "
         "defaulting to INPORT_ANY (consider defining a larger PassivePorts "
         "range)", pasv_min_port, pasv_max_port);
+    } else {
+      c = find_config(main_server->conf, CONF_PARAM, "MasqueradePassivePortsOrigin", FALSE);
+      if (c != NULL) {
+        if (c->argv[0] != NULL) {
+          masquerade_port_offset = *((int *) c->argv[0]) - pasv_min_port;
+        }
+      }
     }
   }
 
@@ -3799,6 +3833,7 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   /* Now tell the client our address/port */
   port = session.data_port = session.d->local_port;
+  port += masquerade_port_offset;
   session.sf_flags |= SF_PASSIVE;
 
   addrstr = (char *) pr_netaddr_get_ipstr(session.d->local_addr);
@@ -7144,6 +7179,7 @@ static conftable core_conftab[] = {
   { "Include",			set_include,	 		NULL },
   { "IncludeOptions",		set_includeoptions, 		NULL },
   { "MasqueradeAddress",	set_masqueradeaddress,		NULL },
+  { "MasqueradePassivePortsOrigin",	set_masqueradepassiveportsorigin,		NULL },
   { "MaxCommandRate",		set_maxcommandrate,		NULL },
   { "MaxConnectionRate",	set_maxconnrate,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
