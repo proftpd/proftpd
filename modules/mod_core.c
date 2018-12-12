@@ -3827,7 +3827,6 @@ MODRET core_pasv(cmd_rec *cmd) {
         }
       }
     }
-
   } else {
     c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
     if (c != NULL) {
@@ -3838,9 +3837,11 @@ MODRET core_pasv(cmd_rec *cmd) {
   }
 
   /* Fixup the address string for the PASV response. */
-  tmp = strrchr(addrstr, ':');
-  if (tmp) {
-    addrstr = tmp + 1;
+  if (addrstr != NULL) {
+    tmp = strrchr(addrstr, ':');
+    if (tmp) {
+      addrstr = tmp + 1;
+    }
   }
 
   /* If we already have a passive listen data connection open, kill it. */
@@ -3967,9 +3968,14 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   if (addrstr == NULL) {
     addrstr = (char *) pr_netaddr_get_ipstr(session.d->local_addr);
+
+    /* Fixup the address string for the PASV response. */
+    tmp = strrchr(addrstr, ':');
+    if (tmp) {
+      addrstr = tmp + 1;
+    }
   }
 
-  /* Fixup the address string for the PASV response. */
   for (tmp = addrstr; *tmp; tmp++) {
     if (*tmp == '.') {
       *tmp = ',';
