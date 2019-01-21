@@ -3634,6 +3634,11 @@ MODRET core_quit(cmd_rec *cmd) {
    * the session.
    */
 
+  /* This event allows modules to distinguish between a client
+   * using QUIT, and one being disconnected for any reason whatsoever.
+   */
+  pr_event_generate("core.quit", NULL);
+
   return PR_HANDLED(cmd);
 }
 
