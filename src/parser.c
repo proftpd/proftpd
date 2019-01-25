@@ -1249,7 +1249,7 @@ int parse_config_path2(pool *p, const char *path, unsigned int depth) {
     }
   }
 
-  pr_log_pri(PR_LOG_DEBUG, "processing configuration directory '%s'", dup_path);
+  pr_trace_msg(trace_channel, 3, "processing configuration directory '%s'", dup_path);
 
   dirh = pr_fsio_opendir(dup_path);
   if (dirh == NULL) {
