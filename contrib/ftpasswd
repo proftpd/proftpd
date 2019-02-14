@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # ---------------------------------------------------------------------------
-# Copyright (C) 2000-2018 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2019 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,9 +118,20 @@ if (defined($opts{'use-cracklib'})) {
   }
 }
 
+# Make sure that the given --home path exists, and is a directory.
+if (exists($opts{'home'})) {
+  my $path = $opts{'home'};
+  unless (-e $path) {
+    die "$program: --home $path does not exist\n";
+  }
+
+  unless (-d $path) {
+    die "$program: --home $path is not a directory\n";
+  }
+}
+
 # make sure that both passwd and group modes haven't been simultaneously
 # requested
-
 if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
     (exists($opts{'passwd'}) && exists($opts{'hash'})) ||
     (exists($opts{'group'}) && exists($opts{'hash'}))) {

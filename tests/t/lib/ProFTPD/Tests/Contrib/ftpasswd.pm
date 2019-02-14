@@ -46,6 +46,15 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  ftpasswd_home_missing => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  ftpasswd_home_not_directory => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
 };
 
 sub new {
@@ -354,7 +363,7 @@ sub ftpasswd_change_home_issue566 {
   $self->handle_sigchld();
 
   # Change the home directory
-  my $cmd = "$ftpasswd --passwd --file=$setup->{auth_user_file} --name=$setup->{user} --change-home --home=/tmp/foo/bar >> $setup->{log_file} 2>&1";
+  my $cmd = "$ftpasswd --passwd --file=$setup->{auth_user_file} --name=$setup->{user} --change-home --home=/tmp >> $setup->{log_file} 2>&1";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing ftpasswd: $cmd\n";
@@ -366,21 +375,16 @@ sub ftpasswd_change_home_issue566 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      # Try to login; should fail
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
-      eval { $client->login($setup->{user}, $setup->{passwd}) };
-      unless ($@) {
-        die("Login succeeded unexpectedly");
-      }
-
+      $client->login($setup->{user}, $setup->{passwd});
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected = 530;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
-      $expected = 'Login incorrect.';
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
@@ -733,6 +737,105 @@ sub ftpasswd_add_dup_member_to_group {
 
     } else {
       die("Can't read $setup->{auth_group_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ftpasswd_home_missing {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'contrib');
+
+  my $ftpasswd = get_ftpasswd_bin();
+
+  # Change the home directory, specifying a non-existent home directory
+  my $cmd = "$ftpasswd --passwd --file=$setup->{auth_user_file} --name=$setup->{user} --change-home --home=/tmp/foo/bar 2>&1";
+
+  my $ex;
+  eval {
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "Executing ftpasswd: $cmd\n";
+    }
+
+    if (open(my $cmdh, "$cmd |")) {
+      while (my $line = <$cmdh>) {
+        chomp($line);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "OUT: $line\n";
+        }
+      }
+
+      if (close($cmdh)) {
+        die("ftpasswd command succeeded unexpectedly using --home with nonexistent path");
+      }
+
+      my $exit_status = $? >> 8;
+      unless ($exit_status != 0) {
+        die('Missing --home directory succeeded unexpectedly');
+      }
+
+    } else {
+      die("Can't execute '$cmd': $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ftpasswd_home_not_directory {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'contrib');
+
+  my $ftpasswd = get_ftpasswd_bin();
+
+  # Change the home directory, specifying a file as a home directory.
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $cmd = "$ftpasswd --passwd --file=$setup->{auth_user_file} --name=$setup->{user} --change-home --home=$test_file 2>&1";
+
+  my $ex;
+  eval {
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "Executing ftpasswd: $cmd\n";
+    }
+
+    if (open(my $cmdh, "$cmd |")) {
+      while (my $line = <$cmdh>) {
+        chomp($line);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "OUT: $line\n";
+        }
+      }
+
+      if (close($cmdh)) {
+        die("ftpasswd command succeeded unexpectedly using --home with non-directory path");
+      }
+
+      my $exit_status = $? >> 8;
+      unless ($exit_status != 0) {
+        die('Non-directory --home directory succeeded unexpectedly');
+      }
+
+    } else {
+      die("Can't execute '$cmd': $!");
     }
   };
   if ($@) {
