@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2017 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2019 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -8047,9 +8047,6 @@ static int tls_connect(conn_t *conn) {
 
 static void tls_cleanup(int flags) {
 
-  tls_sess_cache_close();
-  tls_ocsp_cache_close();
-
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   if (tls_crypto_device) {
     ENGINE_cleanup();
@@ -8066,6 +8063,12 @@ static void tls_cleanup(int flags) {
     SSL_CTX_free(ssl_ctx);
     ssl_ctx = NULL;
   }
+
+  /* Close the session cache only AFTER the SSL context has been
+   * freed/deleted (Issue #795).
+   */
+  tls_sess_cache_close();
+  tls_ocsp_cache_close();
 
   if (tls_tmp_dhs) {
     register unsigned int i;
