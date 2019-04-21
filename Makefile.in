@@ -127,8 +127,8 @@ install-headers: $(DESTDIR)$(includedir)/proftpd
 install-pkgconfig: $(DESTDIR)$(pkgconfigdir)
 	@echo 'prefix=$(prefix)' > proftpd.pc
 	@echo 'exec_prefix=$${prefix}' >> proftpd.pc
-	@echo 'libdir=$${prefix}/lib/proftpd' >> proftpd.pc
-	@echo 'includedir=$${prefix}/include/proftpd' >> proftpd.pc
+	@echo 'libdir=${libdir}/proftpd' >> proftpd.pc
+	@echo 'includedir=${includedir}/proftpd' >> proftpd.pc
 	@echo '' >> proftpd.pc
 	@echo 'Name: ProFTPD' >> proftpd.pc
 	@echo 'Description: Professional FTP Daemon' >> proftpd.pc
