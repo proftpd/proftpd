@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2018 The ProFTPD Project team
+ * Copyright (c) 2001-2019 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -5170,21 +5170,6 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
   struct stat st;
 
   orig_dir = ndir;
-
-  pr_fs_clear_cache2(ndir);
-  if (pr_fsio_lstat(ndir, &st) == 0) {
-    if (S_ISLNK(st.st_mode)) {
-      char buf[PR_TUNABLE_PATH_MAX];
-      int len;
-
-      len = dir_readlink(cmd->tmp_pool, ndir, buf, sizeof(buf)-1,
-        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-      if (len > 0) {
-        buf[len] = '\0';
-        ndir = pstrdup(cmd->tmp_pool, buf);
-      }
-    }
-  }
 
   ptr = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
   if (ptr != NULL) {
