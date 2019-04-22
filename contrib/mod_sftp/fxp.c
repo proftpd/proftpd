@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2018 TJ Saunders
+ * Copyright (c) 2008-2019 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12500,7 +12500,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   }
 
   pr_trace_msg(trace_channel, 8, "sending response: ATTRS %s",
-    fxp_strattrs(fxp->pool, &st, NULL));
+    fxp_strattrs(fxp->pool, &st, &attr_flags));
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_ATTRS);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
