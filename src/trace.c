@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2017 The ProFTPD Project team
+ * Copyright (c) 2006-2019 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -596,7 +596,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     /* Note that vsnprintf() returns the number of characters _that would have
      * been printed if buffer were unlimited_.  Be careful of this.
      */
-    buflen = sizeof(buf)-1; 
+    buflen = sizeof(buf)-1;
   }
 
   /* Trim trailing newlines. */
