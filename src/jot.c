@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017 The ProFTPD Project team
+ * Copyright (c) 2017-2019 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2810,7 +2810,7 @@ int pr_jot_scan_logfmt(pool *p, unsigned char *logfmt, unsigned char logfmt_id,
 
   return 0;
 }
-  
+
 static array_header *filter_text_to_array(pool *p, char *text) {
   char delim;
   size_t text_len;
