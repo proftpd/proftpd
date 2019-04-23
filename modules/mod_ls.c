@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project
+ * Copyright (c) 2001-2019 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ static int sendline(int flags, char *fmt, ...)
 #define LS_FL_NO_ERROR_IF_ABSENT	0x0001
 #define LS_FL_LIST_ONLY			0x0002
 #define LS_FL_NLST_ONLY			0x0004
-#define LS_FL_NO_ADJUSTED_SYMLINKS	0x0008
+#define LS_FL_ADJUSTED_SYMLINKS		0x0008
 #define LS_FL_SORTED_NLST		0x0010
 static unsigned long list_flags = 0UL;
 
@@ -572,12 +572,12 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           return 0;
         }
 
-        if (list_flags & LS_FL_NO_ADJUSTED_SYMLINKS) {
-          len = pr_fsio_readlink(name, m, sizeof(m) - 1);
-
-        } else {
+        if (list_flags & LS_FL_ADJUSTED_SYMLINKS) {
           len = dir_readlink(p, name, m, sizeof(m) - 1,
             PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+
+        } else {
+          len = pr_fsio_readlink(name, m, sizeof(m) - 1);
         }
 
         if (len < 0) {
@@ -615,12 +615,12 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         return 0;
       }
 
-      if (list_flags & LS_FL_NO_ADJUSTED_SYMLINKS) {
-        len = pr_fsio_readlink(name, l, sizeof(l) - 1);
-
-      } else {
+      if (list_flags & LS_FL_ADJUSTED_SYMLINKS) {
         len = dir_readlink(p, name, l, sizeof(l) - 1,
           PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+
+      } else {
+        len = pr_fsio_readlink(name, l, sizeof(l) - 1);
       }
 
       if (len < 0) {
@@ -2441,12 +2441,12 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       }
     }
 
-    if (list_flags & LS_FL_NO_ADJUSTED_SYMLINKS) {
-      i = pr_fsio_readlink(p, file, sizeof(file) - 1);
-
-    } else {
+    if (list_flags & LS_FL_ADJUSTED_SYMLINKS) {
       i = dir_readlink(cmd->tmp_pool, p, file, sizeof(file) - 1,
         PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+
+    } else {
+      i = pr_fsio_readlink(p, file, sizeof(file) - 1);
     }
 
     if (i > 0) {
@@ -3564,8 +3564,11 @@ MODRET set_listoptions(cmd_rec *cmd) {
       } else if (strcasecmp(cmd->argv[i], "NoErrorIfAbsent") == 0) {
         flags |= LS_FL_NO_ERROR_IF_ABSENT;
 
+      } else if (strcasecmp(cmd->argv[i], "AdjustedSymlinks") == 0) {
+        flags |= LS_FL_ADJUSTED_SYMLINKS;
+
       } else if (strcasecmp(cmd->argv[i], "NoAdjustedSymlinks") == 0) {
-        flags |= LS_FL_NO_ADJUSTED_SYMLINKS;
+        /* Ignored, for backward compatibility. */
 
       } else if (strcasecmp(cmd->argv[i], "SortedNLST") == 0) {
         flags |= LS_FL_SORTED_NLST;

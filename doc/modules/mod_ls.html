@@ -111,7 +111,7 @@ and neither directive affects permissions, real ownership or access control
 <p>
 <hr>
 <h3><a name="ListOptions">ListOptions</a></h3>
-<strong>Syntax:</strong> ListOptions <em>options [strict [maxdepth depth] [maxfiles count] [maxdirs count] [LISTOnly] [NLSTOnly] [NoErrorIfAbsent] [NoAdjustedSymlinks] [SortedNLST]</em><br>
+<strong>Syntax:</strong> ListOptions <em>options [strict [maxdepth depth] [maxfiles count] [maxdirs count] [LISTOnly] [NLSTOnly] [NoErrorIfAbsent] [AdjustedSymlinks] [SortedNLST]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code>, <code>&lt;Directory&gt;</code>, .ftpaccess<br>
 <strong>Module:</strong> mod_ls<br>
@@ -154,15 +154,15 @@ The currently supported <em>flags</em> are:
   </li>
 
   <p>
-  <li><code>NoAdjustedSymlinks</code><br>
+  <li><code>AdjustedSymlinks</code><br>
     <p>
-    By default, <code>mod_ls</code> tries to automatically adjust any
-    symlink destination paths when the FTP session is chrooted, so that
-    the adjusted symlinks work properly <i>e.g.</i> for FTP clients.
+    This <em>flag</em> tells <code>mod_ls</code> to try to automatically
+    adjust any symlink destination paths when the FTP session is chrooted,
+    so that the adjusted symlinks work properly <i>e.g.</i> for FTP clients.
 
     <p>
     <b>Note</b> that this <em>flag</em> first appeared in
-    <code>proftpd-1.3.6rc2</code>.
+    <code>proftpd-1.3.7rc1</code>.
   </li>
 
   <p>
@@ -250,7 +250,7 @@ this, like so:
 <hr><br>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2017 The ProFTPD Project<br>
+&copy; Copyright 2000-2019 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
