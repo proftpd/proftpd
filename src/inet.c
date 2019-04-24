@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2018 The ProFTPD Project team
+ * Copyright (c) 2001-2019 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -263,6 +263,7 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
     defined(DARWIN9) || defined(DARWIN10) || defined(DARWIN11) || \
     defined(DARWIN12) || defined(DARWIN13) || defined(DARWIN14) || \
     defined(DARWIN15) || defined(DARWIN16) || defined(DARWIN17) || \
+    defined(DARWIN18) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
@@ -289,6 +290,7 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
     defined(DARWIN9) || defined(DARWIN10) || defined(DARWIN11) || \
     defined(DARWIN12) || defined(DARWIN13) || defined(DARWIN14) || \
     defined(DARWIN15) || defined(DARWIN16) || defined(DARWIN17) || \
+    defined(DARWIN18) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5SCO_SV6) || defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2

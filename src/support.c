@@ -1005,7 +1005,7 @@ void pr_getopt_reset(void) {
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
     defined(DARWIN10) || defined(DARWIN11) || defined(DARWIN12) || \
     defined(DARWIN13) || defined(DARWIN14) || defined(DARWIN15) || \
-    defined(DARWIN16) || defined(DARWIN17)
+    defined(DARWIN16) || defined(DARWIN17) || defined(DARWIN18)
   optreset = 1;
   opterr = 1;
   optind = 1;
