@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2019 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1217,7 +1217,6 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
   config_rec *c;
   int res;
-  struct stat st;
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
@@ -1244,21 +1243,6 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   }
 
   pr_fs_clear_cache2(decoded_path);
-  if (pr_fsio_lstat(decoded_path, &st) == 0) {
-    if (S_ISLNK(st.st_mode)) {
-      char buf[PR_TUNABLE_PATH_MAX];
-      int len;
-
-      memset(buf, '\0', sizeof(buf));
-      len = dir_readlink(cmd->tmp_pool, decoded_path, buf, sizeof(buf)-1,
-        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-      if (len > 0) {
-        buf[len] = '\0';
-        decoded_path = pstrdup(cmd->tmp_pool, buf);
-      }
-    }
-  }
-
   path = dir_best_path(cmd->tmp_pool, decoded_path);
 
   if (path == NULL ||
@@ -1737,29 +1721,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
   } else if (session.xfer.xfer_type == STOR_APPEND) {
-    const char *appe_path;
-
-    /* Need to handle the case where the path may be a symlink, and we are
-     * chrooted (Bug#4219).
-     */
-    appe_path = session.xfer.path;
-
-    pr_fs_clear_cache2(appe_path);
-    if (pr_fsio_lstat(appe_path, &st) == 0) {
-      if (S_ISLNK(st.st_mode)) {
-        char buf[PR_TUNABLE_PATH_MAX];
-
-        memset(buf, '\0', sizeof(buf));
-        len = dir_readlink(cmd->tmp_pool, appe_path, buf, sizeof(buf)-1,
-          PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-        if (len > 0) {
-          buf[len] = '\0';
-          appe_path = pstrdup(cmd->pool, buf);
-        }
-      }
-    }
-
-    stor_fh = pr_fsio_open(appe_path, O_CREAT|O_WRONLY);
+    stor_fh = pr_fsio_open(session.xfer.path, O_CREAT|O_WRONLY);
     if (stor_fh != NULL) {
       if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
         pr_log_debug(DEBUG4, "unable to seek to end of '%s' for appending: %s",
@@ -1774,7 +1736,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
       (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
         "error opening '%s': %s", (char *) cmd->argv[0], session.user,
         pr_uid2str(cmd->tmp_pool, session.uid),
-        pr_gid2str(cmd->tmp_pool, session.gid), appe_path, strerror(xerrno));
+        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path,
+          strerror(xerrno));
     }
 
   } else {
@@ -2170,7 +2133,6 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   mode_t fmode;
   unsigned char *allow_restart = NULL;
   config_rec *c;
-  struct stat st;
 
   xfer_logged_sendfile_decline_msg = FALSE;
 
@@ -2199,30 +2161,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   }
 
   pr_fs_clear_cache2(decoded_path);
-  if (pr_fsio_lstat(decoded_path, &st) == 0) {
-    if (S_ISLNK(st.st_mode)) {
-      char buf[PR_TUNABLE_PATH_MAX];
-      int len;
-
-      memset(buf, '\0', sizeof(buf));
-      len = dir_readlink(cmd->tmp_pool, decoded_path, buf, sizeof(buf)-1,
-        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-      if (len > 0) {
-        buf[len] = '\0';
-        dir = pstrdup(cmd->tmp_pool, buf);
-
-      } else {
-        dir = dir_realpath(cmd->tmp_pool, decoded_path);
-      }
-
-    } else {
-      dir = dir_realpath(cmd->tmp_pool, decoded_path);
-    }
-
-  } else {
-    dir = dir_realpath(cmd->tmp_pool, decoded_path);
-  }
-
+  dir = dir_realpath(cmd->tmp_pool, decoded_path);
   if (dir == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
     int xerrno = errno;

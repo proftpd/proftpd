@@ -5253,7 +5253,6 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
 MODRET core_rmd(cmd_rec *cmd) {
   int res;
   char *decoded_path, *dir;
-  struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -5298,31 +5297,7 @@ MODRET core_rmd(cmd_rec *cmd) {
       return PR_ERROR(cmd);
   }
 
-  pr_fs_clear_cache2(dir);
-  if (pr_fsio_lstat(dir, &st) == 0) {
-    if (S_ISLNK(st.st_mode)) {
-      char buf[PR_TUNABLE_PATH_MAX];
-      int len;
-
-      memset(buf, '\0', sizeof(buf));
-      len = dir_readlink(cmd->tmp_pool, dir, buf, sizeof(buf)-1,
-        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-      if (len > 0) {
-        buf[len] = '\0';
-        dir = pstrdup(cmd->tmp_pool, buf);
-
-      } else {
-        dir = dir_canonical_path(cmd->tmp_pool, dir);
-      }
-
-    } else {
-      dir = dir_canonical_path(cmd->tmp_pool, dir);
-    }
-
-  } else {
-    dir = dir_canonical_path(cmd->tmp_pool, dir);
-  }
-
+  dir = dir_canonical_path(cmd->tmp_pool, dir);
   if (dir == NULL) {
     int xerrno = EINVAL;
 
@@ -5517,27 +5492,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
   path = decoded_path;
 
   pr_fs_clear_cache2(path);
-  if (pr_fsio_lstat(path, &st) == 0) {
-    if (S_ISLNK(st.st_mode)) {
-      char buf[PR_TUNABLE_PATH_MAX];
-      int len;
-
-      memset(buf, '\0', sizeof(buf));
-      len = dir_readlink(cmd->tmp_pool, path, buf, sizeof(buf)-1,
-        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-      if (len > 0) {
-        buf[len] = '\0';
-        path = pstrdup(cmd->tmp_pool, buf);
-
-      } else {
-        path = dir_realpath(cmd->tmp_pool, decoded_path);
-      }
-
-    } else {
-      path = dir_realpath(cmd->tmp_pool, decoded_path);
-    }
-  }
-
+  path = dir_realpath(cmd->tmp_pool, decoded_path);
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
       pr_fsio_stat(path, &st) == -1) {
@@ -5627,21 +5582,6 @@ MODRET core_size(cmd_rec *cmd) {
   }
 
   pr_fs_clear_cache2(decoded_path);
-  if (pr_fsio_lstat(decoded_path, &st) == 0) {
-    if (S_ISLNK(st.st_mode)) {
-      char buf[PR_TUNABLE_PATH_MAX];
-      int len;
-
-      memset(buf, '\0', sizeof(buf));
-      len = dir_readlink(cmd->tmp_pool, decoded_path, buf, sizeof(buf)-1,
-        PR_DIR_READLINK_FL_HANDLE_REL_PATH);
-      if (len > 0) {
-        buf[len] = '\0';
-        decoded_path = pstrdup(cmd->tmp_pool, buf);
-      }
-    }
-  }
-
   path = dir_realpath(cmd->tmp_pool, decoded_path);
   if (path != NULL) {
     pr_fs_clear_cache2(path);
