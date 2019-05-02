@@ -1294,6 +1294,9 @@ static struct tls_label tls_ciphersuite_labels[] = {
   { 0x00C4, "TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256" },
   { 0x00C5, "TLS_DH_anon_WITH_CAMELLIA_256_CBC_SHA256" },
   { 0x00FF, "TLS_EMPTY_RENEGOTIATION_INFO_SCSV" },
+  { 0x1301, "TLS_AES_128_GCM_SHA256" },
+  { 0x1302, "TLS_AES_256_GCM_SHA384" },
+  { 0x1303, "TLS_CHACHA20_POLY1305_SHA256" },
   { 0xC001, "TLS_ECDH_ECDSA_WITH_NULL_SHA" },
   { 0xC002, "TLS_ECDH_ECDSA_WITH_RC4_128_SHA" },
   { 0xC003, "TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA" },
@@ -1381,6 +1384,15 @@ static struct tls_label tls_extension_labels[] = {
   { 21, "padding" },
   { 22, "encrypt_then_mac" },
   { 23, "extended_master_secret" },
+  { 41, "psk" },
+  { 42, "early_data" },
+  { 43, "supported_versions" },
+  { 44, "cookie" },
+  { 45, "psk_kex_modes" },
+  { 47, "certificate_authorities" },
+  { 49, "post_handshake_auth" },
+  { 50, "signature_algorithms_cert" },
+  { 51, "key_share" },
   { 35, "session_ticket" },
   { 0xFF01, "renegotiate" },
   { 13172, "next_proto_neg" },
@@ -1660,6 +1672,12 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
     case TLS1_2_VERSION:
       version_str = "TLSv1.2";
       break;
+
+# if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    case TLS1_3_VERSION:
+      version_str = "TLSv1.3";
+      break;
+# endif
 #endif
 
     default:
@@ -1682,6 +1700,9 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
       version == TLS1_1_VERSION ||
       version == TLS1_2_VERSION ||
+# if OPENSSL_VERSION_NUMBER >= 0x10101000L
+      version == TLS1_3_VERSION ||
+# endif
 #endif
       version == TLS1_VERSION) {
 
@@ -3939,9 +3960,51 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
         break;
 # endif
 
+# ifdef TLSEXT_TYPE_signed_certificate_timestamp
+    case TLSEXT_TYPE_signed_certificate_timestamp:
+        extension_name = "signed certificate timestamp";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_encrypt_then_mac
+    case TLSEXT_TYPE_encrypt_then_mac:
+        extension_name = "encrypt then mac";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_extended_master_secret
+    case TLSEXT_TYPE_extended_master_secret:
+        extension_name = "extended master secret";
+        break;
+# endif
+
 # ifdef TLSEXT_TYPE_session_ticket
     case TLSEXT_TYPE_session_ticket:
         extension_name = "session ticket";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_psk
+    case TLSEXT_TYPE_psk:
+        extension_name = "PSK";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_supported_versions
+    case TLSEXT_TYPE_supported_versions:
+        extension_name = "supported versions";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_psk_kex_modes
+    case TLSEXT_TYPE_psk_kex_modes:
+        extension_name = "PSK KEX modes";
+        break;
+# endif
+
+# ifdef TLSEXT_TYPE_key_share
+    case TLSEXT_TYPE_key_share:
+        extension_name = "key share";
         break;
 # endif
 
@@ -5764,7 +5827,7 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
         SSL_get_cipher_name(ssl), sess_key_len);
     }
 
-    if (RAND_bytes(iv, 16) != 1) {
+    if (RAND_bytes(iv, EVP_CIPHER_iv_length(cipher)) != 1) {
       pr_trace_msg(trace_channel, 3,
         "unable to initialize session ticket key IV: %s", tls_get_errors());
       return -1;
@@ -5787,7 +5850,7 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
 # endif /* OpenSSL-1.0.0 and later */
 
     memcpy(key_name, k->key_name, 16);
-    return 0;
+    return 1;
   }
 
   if (mode == 0) {
