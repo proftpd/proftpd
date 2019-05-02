@@ -1384,6 +1384,7 @@ static struct tls_label tls_extension_labels[] = {
   { 21, "padding" },
   { 22, "encrypt_then_mac" },
   { 23, "extended_master_secret" },
+  { 35, "session_ticket" },
   { 41, "psk" },
   { 42, "early_data" },
   { 43, "supported_versions" },
@@ -1393,7 +1394,6 @@ static struct tls_label tls_extension_labels[] = {
   { 49, "post_handshake_auth" },
   { 50, "signature_algorithms_cert" },
   { 51, "key_share" },
-  { 35, "session_ticket" },
   { 0xFF01, "renegotiate" },
   { 13172, "next_proto_neg" },
 
