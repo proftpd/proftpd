@@ -344,7 +344,7 @@ static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
 /* Command handlers
  */
 
-static void login_failed(pool *p, const char *user) {
+void login_failed(pool *p, const char *user) {
 #ifdef HAVE_LOGINFAILED
   const char *host, *sess_ttyname;
   int res, xerrno;
@@ -407,7 +407,7 @@ MODRET auth_log_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-static void login_succeeded(pool *p, const char *user) {
+void login_succeeded(pool *p, const char *user) {
 #ifdef HAVE_LOGINSUCCESS
   const char *host, *sess_ttyname;
   char *msg = NULL;

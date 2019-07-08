@@ -114,6 +114,9 @@ static FILE *grpf = NULL;
 static int unix_persistent_passwd = FALSE;
 static const char *trace_channel = "auth.unix";
 
+void login_failed(pool *, const char *);
+void login_succeded(pool *, const char *);
+
 #undef PASSWD
 #define PASSWD		pwdfname
 #undef GROUP
@@ -867,64 +870,6 @@ MODRET pw_authz(cmd_rec *cmd) {
  * cmd->argv[1] = user
  * cmd->argv[2] = cleartext
  */
-
-#ifdef HAVE_AUTHENTICATE
-static void login_succeeded(pool *p, const char *user) {
-#ifdef HAVE_LOGINSUCCESS
-  const char *host, *sess_ttyname;
-  char *msg = NULL;
-  int res, xerrno;
-
-  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
-  sess_ttyname = pr_session_get_ttyname(p);
-
-  PRIVS_ROOT
-  res = loginsuccess((char *) user, (char *) host, (char *) sess_ttyname, &msg);
-  xerrno = errno;
-  PRIVS_RELINQUISH
-
-  if (res == 0) {
-    if (msg != NULL) {
-      pr_trace_msg(trace_channel, 14, "AIX loginsuccess() report: %s", msg);
-    }
-
-  } else {
-    pr_trace_msg(trace_channel, 3, "AIX loginsuccess() error for user '%s', "
-      "host '%s', tty '%s': (%d) %s", user, host, sess_ttyname, errno, strerror(errno));
-  }
-
-  if (msg != NULL) {
-    free(msg);
-  }
-#endif /* HAVE_LOGINSUCCESS */
-}
-
-static void login_failed(pool *p, const char *user) {
-#ifdef HAVE_LOGINFAILED
-  const char *host, *sess_ttyname;
-  int res, xerrno;
-
-  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
-  sess_ttyname = pr_session_get_ttyname(p);
-
-  PRIVS_ROOT
-  res = loginfailed((char *) user, (char *) host, (char *) sess_ttyname,
-    AUDIT_FAIL);
-  xerrno = errno;
-  PRIVS_RELINQUISH
-
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 14, "AIX loginfailed() error for user '%s', "
-      "host '%s', tty '%s', reason %d: %s", user, host, sess_ttyname,
-      AUDIT_FAIL, strerror(errno));
-  } else {
-    pr_trace_msg(trace_channel, 14, "AIX loginfailed() successful for user '%s', "
-      "host '%s', tty '%s', reason %d: %s", user, host, sess_ttyname,
-      AUDIT_FAIL, strerror(errno));
-  }
-#endif /* HAVE_LOGINFAILED */
-}
-#endif /* HAVE_AUTHENTICATE */
 
 MODRET pw_check(cmd_rec *cmd) {
   const char *cpw = cmd->argv[0];
