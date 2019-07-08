@@ -35,6 +35,10 @@
 # include <crypt.h>
 #endif
 
+#ifdef HAVE_SYS_AUDIT_H
+# include <sys/audit.h>
+#endif
+
 #ifdef PR_USE_SHADOW
 # ifdef HAVE_SHADOW_H
 #   include <shadow.h>
@@ -864,6 +868,64 @@ MODRET pw_authz(cmd_rec *cmd) {
  * cmd->argv[2] = cleartext
  */
 
+#ifdef HAVE_AUTHENTICATE
+static void login_succeeded(pool *p, const char *user) {
+#ifdef HAVE_LOGINSUCCESS
+  const char *host, *sess_ttyname;
+  char *msg = NULL;
+  int res, xerrno;
+
+  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
+  sess_ttyname = pr_session_get_ttyname(p);
+
+  PRIVS_ROOT
+  res = loginsuccess((char *) user, (char *) host, (char *) sess_ttyname, &msg);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res == 0) {
+    if (msg != NULL) {
+      pr_trace_msg(trace_channel, 14, "AIX loginsuccess() report: %s", msg);
+    }
+
+  } else {
+    pr_trace_msg(trace_channel, 3, "AIX loginsuccess() error for user '%s', "
+      "host '%s', tty '%s': (%d) %s", user, host, sess_ttyname, errno, strerror(errno));
+  }
+
+  if (msg != NULL) {
+    free(msg);
+  }
+#endif /* HAVE_LOGINSUCCESS */
+}
+
+static void login_failed(pool *p, const char *user) {
+#ifdef HAVE_LOGINFAILED
+  const char *host, *sess_ttyname;
+  int res, xerrno;
+
+  host = pr_netaddr_get_dnsstr(session.c->remote_addr);
+  sess_ttyname = pr_session_get_ttyname(p);
+
+  PRIVS_ROOT
+  res = loginfailed((char *) user, (char *) host, (char *) sess_ttyname,
+    AUDIT_FAIL);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 14, "AIX loginfailed() error for user '%s', "
+      "host '%s', tty '%s', reason %d: %s", user, host, sess_ttyname,
+      AUDIT_FAIL, strerror(errno));
+  } else {
+    pr_trace_msg(trace_channel, 14, "AIX loginfailed() successful for user '%s', "
+      "host '%s', tty '%s', reason %d: %s", user, host, sess_ttyname,
+      AUDIT_FAIL, strerror(errno));
+  }
+#endif /* HAVE_LOGINFAILED */
+}
+#endif /* HAVE_AUTHENTICATE */
+
 MODRET pw_check(cmd_rec *cmd) {
   const char *cpw = cmd->argv[0];
   const char *pw = cmd->argv[2];
@@ -1002,6 +1064,11 @@ MODRET pw_check(cmd_rec *cmd) {
         "AIX authenticate result: %d (msg '%.100s')", res, msg);
 
     } while (reenter != 0);
+    if (res == 0) {
+      login_succeeded(cmd->tmp_pool, user);
+    } else {
+      login_failed(cmd->tmp_pool, user);
+    }
     PRIVS_RELINQUISH
 
     /* AIX indicates failure with a return value of 1. */

@@ -1433,7 +1433,9 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     pr_response_add_err(R_530, "Login incorrect.");
     pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
-    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+    if (res < 0) {
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+    }
     pr_response_clear(&resp_err_list);
 
     pr_cmd_dispatch_phase(cmd, res == 0 ? POST_CMD : POST_CMD_ERR, 0);
