@@ -35,10 +35,6 @@
 # include <crypt.h>
 #endif
 
-#ifdef HAVE_SYS_AUDIT_H
-# include <sys/audit.h>
-#endif
-
 #ifdef PR_USE_SHADOW
 # ifdef HAVE_SHADOW_H
 #   include <shadow.h>
