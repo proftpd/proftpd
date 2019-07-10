@@ -173,6 +173,9 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
         user);
       *send_userauth_fail = TRUE;
       errno = EINVAL;
+      pr_response_add_err(R_501, "Login incorrect.");
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
       return 0;
 
     case PR_AUTH_AGEPWD:

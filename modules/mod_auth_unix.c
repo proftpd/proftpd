@@ -114,7 +114,6 @@ static FILE *grpf = NULL;
 static int unix_persistent_passwd = FALSE;
 static const char *trace_channel = "auth.unix";
 
-void login_failed(pool *, const char *);
 void login_succeded(pool *, const char *);
 
 #undef PASSWD
@@ -1011,8 +1010,6 @@ MODRET pw_check(cmd_rec *cmd) {
     } while (reenter != 0);
     if (res == 0) {
       login_succeeded(cmd->tmp_pool, user);
-    } else {
-      login_failed(cmd->tmp_pool, user);
     }
     PRIVS_RELINQUISH
 
