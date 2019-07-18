@@ -42,6 +42,10 @@
 
 #include "privs.h"
 
+#ifdef PR_USE_OPENSSL
+# include <openssl/opensslv.h>
+#endif /* PR_USE_OPENSSL */
+
 int (*cmd_auth_chk)(cmd_rec *);
 void (*cmd_handler)(server_rec *, conn_t *);
 
@@ -2077,9 +2081,9 @@ static void show_settings(void) {
 
 #ifdef PR_USE_OPENSSL
 # ifdef PR_USE_OPENSSL_FIPS
-    printf("%s", "    + OpenSSL support (FIPS enabled)\n");
+    printf("    + OpenSSL support (%s, FIPS enabled)\n", OPENSSL_VERSION_TEXT);
 # else
-    printf("%s", "    + OpenSSL support\n");
+    printf("    + OpenSSL support (%s)\n", OPENSSL_VERSION_TEXT);
 # endif /* PR_USE_OPENSSL_FIPS */
 #else
   printf("%s", "    - OpenSSL support\n");
