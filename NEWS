@@ -63,6 +63,7 @@
   Bug#4219 have been rolled back.
 - Issue 795 - Unable to connect to ProFTPD using TLSSessionTickets and TLSv1.3.
 - Bug 4372 - SITE CPFR/CPTO do not honor <Limit> configurations.
+- Issue 807 - Using "TLSProtocol SSLv23" does not enable all protocol versions.
 
 1.3.6 - Released 09-Apr-2017
 --------------------------------
