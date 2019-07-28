@@ -12696,6 +12696,15 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
       if (strncasecmp(cmd->argv[i], "SSLv23", 7) == 0) {
         tls_protocol |= TLS_PROTO_SSL_V3;
         tls_protocol |= TLS_PROTO_TLS_V1;
+#ifdef SSL_OP_NO_TLSv1_1
+        tls_protocol |= TLS_PROTO_TLS_V1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
+        tls_protocol |= TLS_PROTO_TLS_V1_2;
+#endif
+#ifdef SSL_OP_NO_TLSv1_3
+        tls_protocol |= TLS_PROTO_TLS_V1_3;
+#endif
 
       } else if (strncasecmp(cmd->argv[i], "SSLv3", 6) == 0) {
         tls_protocol |= TLS_PROTO_SSL_V3;
