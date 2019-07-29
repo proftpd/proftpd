@@ -12702,9 +12702,6 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 #ifdef SSL_OP_NO_TLSv1_2
         tls_protocol |= TLS_PROTO_TLS_V1_2;
 #endif
-#ifdef SSL_OP_NO_TLSv1_3
-        tls_protocol |= TLS_PROTO_TLS_V1_3;
-#endif
 
       } else if (strncasecmp(cmd->argv[i], "SSLv3", 6) == 0) {
         tls_protocol |= TLS_PROTO_SSL_V3;
