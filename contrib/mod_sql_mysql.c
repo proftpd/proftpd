@@ -132,6 +132,7 @@
 #include "../contrib/mod_sql.h"
 
 #include <mysql.h>
+#include <stdbool.h>
 
 /* The my_make_scrambled_password{,_323} functions are not part of the public
  * MySQL API and are not declared in any of the MySQL header files. But the
@@ -496,7 +497,11 @@ MODRET cmd_open(cmd_rec *cmd) {
    *  http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html
    */
   if (!(pr_sql_opts & SQL_OPT_NO_RECONNECT)) {
+#if MYSQL_VERSION_ID >= 80000
+    bool reconnect = true;
+#else
     my_bool reconnect = TRUE;
+#endif
     mysql_options(conn->mysql, MYSQL_OPT_RECONNECT, &reconnect);
   }
 #endif
