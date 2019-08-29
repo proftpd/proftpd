@@ -852,8 +852,19 @@ of supported key exchange algorithms is:
   <li>diffie-hellman-group1-sha1
   <li>rsa1024-sha1
 </ul>
-By default, all of the above key exchange algorithms are presented to the
-client, in the above order, during the key exchange.
+By default, all of the above key exchange algorithms <i>except
+<code>diffie-hellman-group1-sha1</code></i> are presented to the client, in
+the above order, during the key exchange.
+
+<p>
+<b>Note</b> that the <code>diffie-hellman-group1-sha1</code> key exchange
+algorithm uses a weak hardcoded Diffie-Hellman group, and thus is <b>not</b>
+enabled by default.  To enable this key exchange algorithm, you must
+configure the <code>SFTPKeyExchanges</code> list to <b>explicitly</b> include
+this algorithm, <i>or</i> use the following in your configuration:
+<pre>
+  SFTPOptions AllowWeakDH
+</pre>
 
 <p>
 In general, there is no need to use this directive unless only one specific
@@ -2548,7 +2559,7 @@ deal with this issue, then, you can hopefully upgrade to ProFTPD 1.3.6 or later,
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2008-2017 TJ Saunders<br>
+&copy; Copyright 2008-2019 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
