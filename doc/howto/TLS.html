@@ -35,8 +35,8 @@ Example <a href="../contrib/mod_tls.html"><code>mod_tls</code></a> configuration
     TLSEngine on
     TLSLog /var/ftpd/tls.log
 
-    <font color=green># Support both SSLv3 and TLSv1</font>
-    TLSProtocol SSLv3 TLSv1
+    <font color=green># Support TLSv1, TLSv1.1, and TLSv1.2</font>
+    TLSProtocol TLSv1 TLSv1.1 TLSv1.2
 
     <font color=green># Are clients required to use FTP over TLS when talking to this server?</font>
     TLSRequired off
@@ -64,6 +64,14 @@ Example <a href="../contrib/mod_tls.html"><code>mod_tls</code></a> configuration
 
   &lt;/IfModule&gt;
 </pre>
+
+<p><a name="TLSCertificates"></a>
+<b>Managing Certificates</b><br>
+Here are some widely used tools for generating and managing TLS certificates:
+<ul>
+  <li><a href="https://certbot.eff.org/">Certbot</a>
+  <li><a href="https://letsencrypt.org/">Let's Encrypt</a>
+</ul>
 
 <p><a name="TLSDebugging"></a>
 <b>Debugging</b><br>
@@ -1267,7 +1275,7 @@ configured files were not properly matched up.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2017 The ProFTPD Project<br>
+&copy; Copyright 2017-2019 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
