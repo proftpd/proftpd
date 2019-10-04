@@ -77,6 +77,11 @@
 # endif
 #endif /* PR_USE_SIA */
 
+#ifdef HAVE_SYSCONF
+#include <stdlib.h>
+#include <unistd.h>
+#endif	/* HAVE_SYSCONF */
+
 #ifdef CYGWIN
 typedef void *HANDLE;
 typedef unsigned long DWORD;
@@ -132,6 +137,18 @@ static const char *trace_channel = "auth.unix";
 #define AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE	0x0010
 
 static unsigned long auth_unix_opts = 0UL;
+
+#ifdef HAVE_SYSCONF
+/* will be allocated at session initialization.  */
+static gid_t *group_ids = NULL;
+static int ngroups = 0;
+#else
+/* let's make group_ids static, if sysconf() is not available
+ * also note we allocate + 1 to make array ready for get_groups_by_initgroups()
+ */
+static gid_t group_ids[NGROUPS_MAX + 1];
+static int ngroups = NGROUPS_MAX;
+#endif
 
 /* Necessary prototypes */
 static void auth_unix_exit_ev(const void *, void *);
@@ -1136,8 +1153,6 @@ static int get_groups_by_getgrset(const char *user, gid_t primary_gid,
     struct group *(*my_getgrgid)(gid_t)) {
   int res;
 #ifdef HAVE_GETGRSET
-  gid_t group_ids[NGROUPS_MAX];
-  unsigned int ngroups = 0;
   register unsigned int i;
   char *grgid, *grouplist, *ptr;
 
@@ -1166,8 +1181,8 @@ static int get_groups_by_getgrset(const char *user, gid_t primary_gid,
 
     pr_signals_handle();
 
-    if (ngroups >= sizeof(group_ids)) {
-      /* Reached capacity of the group_ids array. */
+    if (i >= ngroups) {
+      /* Reached capacity of the group_ids array. should not happen */
       break;
     }
 
@@ -1179,8 +1194,8 @@ static int get_groups_by_getgrset(const char *user, gid_t primary_gid,
       continue;
     }
 
-    group_ids[ngroups] = gid;
-    ngroups++;
+    group_ids[i] = gid;
+    i++;
 
     grgid = strsep(&grouplist, ",");
   }
@@ -1220,8 +1235,7 @@ static int get_groups_by_getgrouplist(const char *user, gid_t primary_gid,
   int res;
 #ifdef HAVE_GETGROUPLIST
   int use_getgrouplist = TRUE;
-  gid_t group_ids[NGROUPS_MAX];
-  int ngroups = NGROUPS_MAX;
+  int group_count = ngroups;
   register int i;
 
   /* Determine whether to use getgrouplist(3), if available.  Older glibc
@@ -1254,11 +1268,12 @@ static int get_groups_by_getgrouplist(const char *user, gid_t primary_gid,
 
   memset(group_ids, 0, sizeof(group_ids));
 #ifdef HAVE_GETGROUPLIST_TAKES_INTS
-  res = getgrouplist(user, primary_gid, (int *) group_ids, &ngroups);
+  res = getgrouplist(user, primary_gid, (int *) group_ids, &group_count);
 #else
-  res = getgrouplist(user, primary_gid, group_ids, &ngroups);
+  res = getgrouplist(user, primary_gid, group_ids, &group_count);
 #endif
   if (res < 0) {
+    /* should not happen, given we use sysconf */
     int xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING, "getgrouplist(3) error: %s", strerror(xerrno));
@@ -1267,7 +1282,7 @@ static int get_groups_by_getgrouplist(const char *user, gid_t primary_gid,
     return -1;
   }
 
-  for (i = 0; i < ngroups; i++) {
+  for (i = 0; i < group_count; i++) {
     struct group *gr;
 
     gr = my_getgrgid(group_ids[i]);
@@ -1338,8 +1353,7 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
     struct group *(*my_getgrgid)(gid_t)) {
   int res;
 #if defined(HAVE_INITGROUPS) && defined(HAVE_GETGROUPS)
-  gid_t group_ids[NGROUPS_MAX+1];
-  int ngroups, use_initgroups = TRUE, xerrno;
+  int use_initgroups = TRUE, xerrno, group_count;
   register int i;
 
   /* On Mac OSX, the getgroups(2) man page has this unsettling tidbit:
@@ -1393,8 +1407,9 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
     return -1;
   }
 
-  ngroups = getgroups(NGROUPS_MAX+1, group_ids);
-  if (ngroups < 0) {
+  group_count = getgroups(ngroups + 1, group_ids);
+  if (group_count < 0) {
+    /* should not happen with sysconf() */
     xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING, "getgroups(2) error: %s", strerror(xerrno));
@@ -1403,7 +1418,7 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
     return -1;
   }
 
-  for (i = 0; i < ngroups; i++) {
+  for (i = 0; i < group_count; i++) {
     struct group *gr;
 
     gr = my_getgrgid(group_ids[i]);
@@ -1624,7 +1639,20 @@ static int auth_unix_init(void) {
   _pw_stayopen = 1;
 #endif
 
-  return 0;
+#ifdef HAVE_SYSCONF
+  ngroups = sysconf(_SC_NGROUPS_MAX);
+  /* we allocate + 1 to make array ready for get_groups_by_initgroups(),
+   * which somewhat assumes (NGROUPS_MAX + 1)
+   */
+  group_ids = calloc(ngroups + 1, sizeof (gid_t));
+#else
+  ngroups = NGROUPS_MAX;
+#endif
+
+  /* indicate initialization failure upon calloc() fail
+   * 0 (group_ids != NULL) indicates success, non-zero otherwise
+   */
+  return group_ids == NULL;
 }
 
 static int auth_unix_sess_init(void) {
