@@ -50,4 +50,11 @@
 /* The following macros first appeared in 1.3.6rc2. */
 #define _sql_make_cmd			sql_make_cmd
 
+/*
+ * USE_IPV6 is required by mod_gss.
+ */
+#ifdef PR_USE_IPV6
+#define USE_IPV6			1
+#endif
+
 #endif /* PR_COMPAT_H */
