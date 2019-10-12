@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.6a
+1.3.6a - Released 12-Oct-2019
 --------------------------------
 - Bug 4304 - Configure script wrongly detects AIX lastlog functions.
 - Bug 4306 - AllowChrootSymlinks off could cause login failures depending on
