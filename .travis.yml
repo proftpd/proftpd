@@ -51,7 +51,8 @@ install:
   # for zlib support
   - sudo apt-get install -y zlib1g-dev
   # for static code analysis
-  - sudo apt-get install -y cppcheck rats
+  # - sudo apt-get install -y cppcheck
+  # - sudo apt-get install rats
   # for integration/regression test
   - sudo apt-get install -y libtest-unit-perl
   - sudo apt-get install -y libwww-perl libnet-telnet-perl
