@@ -1133,12 +1133,11 @@ static int check_ip_access(xaset_t *set, char *name) {
 static int check_limit_allow(config_rec *c, cmd_rec *cmd) {
   unsigned char *allow_all = NULL;
 
-  /* If session.groups is null, this means no authentication
-   * attempt has been made, so we simply check for the
-   * very existance of an AllowGroup, and assume (for now) it's
-   * allowed.  This works because later calls to check_limit_allow()
-   * WILL have filled in the group members and we can truely check
-   * group membership at that time.  Same goes for AllowUser.
+  /* If session.groups is null, this means no authentication attempt has been
+   * made, so we simply check for the very existence of an AllowGroup, and
+   * assume (for now) it's allowed.  This works because later calls to
+   * check_limit_allow() WILL have filled in the group members and we can
+   * truly check group membership at that time.  Same goes for AllowUser.
    */
 
   if (!session.user) {

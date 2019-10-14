@@ -1789,7 +1789,7 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
               supports_hostbased == FALSE) {
             pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
               ": Server %s: cannot support authentication method '%s' "
-              "without SFTPAuthorizedHostKeys configuraion", s->ServerName,
+              "without SFTPAuthorizedHostKeys configuration", s->ServerName,
               meth->method_name);
             pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
               NULL);
@@ -1799,7 +1799,7 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
               supports_publickey == FALSE) {
             pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
               ": Server %s: cannot support authentication method '%s' "
-              "without SFTPAuthorizedUserKeys configuraion", s->ServerName,
+              "without SFTPAuthorizedUserKeys configuration", s->ServerName,
               meth->method_name);
             pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
               NULL);

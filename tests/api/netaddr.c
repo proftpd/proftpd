@@ -1314,7 +1314,7 @@ START_TEST (netaddr_v6tov4_test) {
     strerror(errno));
 
   addr = pr_netaddr_v6tov4(p, addr2);
-  fail_unless(addr != NULL, "Failed to convert '%s' to IPv4 addres: %s",
+  fail_unless(addr != NULL, "Failed to convert '%s' to IPv4 address: %s",
     name, strerror(errno));
   fail_unless(pr_netaddr_get_family(addr) == AF_INET,
     "Expected %d, got %d", AF_INET, pr_netaddr_get_family(addr));
@@ -1357,7 +1357,7 @@ START_TEST (netaddr_v4tov6_test) {
 
   addr = pr_netaddr_v4tov6(p, addr2);
 #ifdef PR_USE_IPV6
-  fail_unless(addr != NULL, "Failed to convert '%s' to IPv6 addres: %s",
+  fail_unless(addr != NULL, "Failed to convert '%s' to IPv6 address: %s",
     name, strerror(errno));
   fail_unless(pr_netaddr_get_family(addr) == AF_INET6,
     "Expected %d, got %d", AF_INET6, pr_netaddr_get_family(addr));

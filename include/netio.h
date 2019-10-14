@@ -53,7 +53,7 @@
 
 /* Network I/O stream session flags */
 
-/* This indicates that netio functions are allowed to be interruped by
+/* This indicates that netio functions are allowed to be interrupted by
  * EINTR, and to return -2.
  */
 #define PR_NETIO_SESS_INTR		(1 << 1)

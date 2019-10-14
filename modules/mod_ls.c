@@ -1529,7 +1529,7 @@ static void ls_terminate(void) {
     discard_output();
 
     if (!XFER_ABORTED) {
-      /* An error has occured, other than client ABOR */
+      /* An error has occurred, other than client ABOR */
       if (ls_errno) {
         pr_data_abort(ls_errno,FALSE);
 

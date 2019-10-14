@@ -1437,7 +1437,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     }
   }
 
-  /* Otherwise everthing is good */
+  /* Otherwise everything is good */
   if (pr_table_add(cmd->notes, "mod_xfer.store-path",
       pstrdup(cmd->pool, path), 0) < 0) {
     if (errno != EEXIST) {
@@ -1656,7 +1656,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* Otherwise everthing is good */
+  /* Otherwise everything is good */
   if (pr_table_add(cmd->notes, "mod_xfer.store-path",
       pstrdup(cmd->pool, filename), 0) < 0) {
     if (errno != EEXIST) {
@@ -2541,7 +2541,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  /* Otherwise everthing is good */
+  /* Otherwise everything is good */
   if (pr_table_add(cmd->notes, "mod_xfer.retr-path",
       pstrdup(cmd->pool, dir), 0) < 0) {
     if (errno != EEXIST) {

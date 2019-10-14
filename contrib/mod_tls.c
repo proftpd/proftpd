@@ -1021,7 +1021,7 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
           /* In OpenSSL-0.9.8l and later, SSL session renegotiations are
            * automatically disabled.  Thus if the admin has not explicitly
-           * configured support for client-initiated renegotations via the
+           * configured support for client-initiated renegotiations via the
            * AllowClientRenegotiations TLSOption, then we need to disconnect
            * the client here.  Otherwise, the client would hang (up to the
            * TLSTimeoutHandshake limit).  Since we know, right now, that the
@@ -2217,7 +2217,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
           } else {
             if (san_datalen == 16) {
               /* We need to handle the case where the iPAddress SAN might
-               * have contained an IPv4-mapped IPv6 adress, and we're
+               * have contained an IPv4-mapped IPv6 address, and we're
                * comparing against an IPv4 address.
                */
               if (san_ipstrlen > 7 &&
@@ -3577,7 +3577,7 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
         /* In OpenSSL-0.9.8l and later, SSL session renegotiations
          * (both client- and server-initiated) are automatically disabled.
          * Unless the admin explicitly configured support for
-         * client-initiated renegotations via the AllowClientRenegotiations
+         * client-initiated renegotiations via the AllowClientRenegotiations
          * TLSOption, we can't request renegotiations ourselves.
          */
         && (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) 
@@ -6225,7 +6225,7 @@ static int tls_init_ctx(void) {
     long timeout = 0;
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-    /* If we support renegotations, then make the cache lifetime be 10%
+    /* If we support renegotiations, then make the cache lifetime be 10%
      * longer than the control connection renegotiation timer.
      */
     timeout = 15840;
@@ -7570,7 +7570,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         "error disabling TCP_NODELAY on data conn: %s", strerror(errno));
     }
 
-    /* Reenable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
+    /* Re-enable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
     if (pr_inet_set_proto_cork(conn->wfd, 1) < 0) {
       pr_trace_msg(trace_channel, 9,
         "error re-enabling TCP_CORK on data conn: %s", strerror(errno));
@@ -7718,7 +7718,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 #if OPENSSL_VERSION_NUMBER == 0x009080cfL
   /* In OpenSSL-0.9.8l, SSL session renegotiations are automatically
    * disabled.  Thus if the admin explicitly configured support for
-   * client-initiated renegotations via the AllowClientRenegotiations
+   * client-initiated renegotiations via the AllowClientRenegotiations
    * TLSOption, then we need to do some hackery to enable renegotiations.
    */
   if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
@@ -8083,7 +8083,7 @@ static int tls_connect(conn_t *conn) {
 #if OPENSSL_VERSION_NUMBER == 0x009080cfL
   /* In OpenSSL-0.9.8l, SSL session renegotiations are automatically
    * disabled.  Thus if the admin explicitly configured support for
-   * client-initiated renegotations via the AllowClientRenegotiations
+   * client-initiated renegotiations via the AllowClientRenegotiations
    * TLSOption, then we need to do some hackery to enable renegotiations.
    */
   if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
@@ -10214,7 +10214,7 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
   pool *tmp_pool = NULL;
   array_header *ocsp_urls = NULL;
 
-  /* Set a default verification error here; it will be superceded as needed
+  /* Set a default verification error here; it will be superseded as needed
    * later during the verification process.
    */
   X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
@@ -11690,7 +11690,7 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
         /* In OpenSSL-0.9.8l and later, SSL session renegotiations
          * (both client- and server-initiated) are automatically disabled.
          * Unless the admin explicitly configured support for
-         * client-initiated renegotations via the AllowClientRenegotiations
+         * client-initiated renegotiations via the AllowClientRenegotiations
          * TLSOption, we can't request renegotiations ourselves.
          */
         && (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)
@@ -15241,13 +15241,10 @@ static int tls_sess_init(void) {
 
     res = pr_namebind_count(main_server);
     if (res == 0) {
-      /* No need for this modules's control channel NetIO handlers
-       * anymore.
-       */
+      /* No need for this module's control channel NetIO handlers anymore. */
       pr_unregister_netio(PR_NETIO_STRM_CTRL);
 
-      /* No need for all the OpenSSL stuff in this process space, either.
-       */
+      /* No need for all the OpenSSL stuff in this process space, either. */
       tls_cleanup(TLS_CLEANUP_FL_SESS_INIT);
       tls_scrub_pkeys();
     }

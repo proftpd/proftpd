@@ -260,7 +260,7 @@ of an unusable (to the FTP server) IP address?  Yes!
 The solution was to use <code>mod_rewrite</code> to rewrite the address in
 the sent <code>PORT</code> command, replacing the internal LAN address with
 the IP address of the client that <code>proftpd</code> saw.  Below is the
-configuation used to make this work:
+configuration used to make this work:
 <pre>
   # This is necessary, to keep proftpd from complaining about mismatched
   # addresses in this situation

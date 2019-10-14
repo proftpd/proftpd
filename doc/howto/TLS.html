@@ -56,7 +56,7 @@ Example <a href="../contrib/mod_tls.html"><code>mod_tls</code></a> configuration
     TLSVerifyClient off
 
     <font color=green># Allow SSL/TLS renegotiations when the client requests them, but
-    # do not force the renegotations.  Some clients do not support
+    # do not force the renegotiations.  Some clients do not support
     # SSL/TLS renegotiations; when mod_tls forces a renegotiation, these
     # clients will close the data connection, or there will be a timeout
     # on an idle data connection.</font>
@@ -904,11 +904,11 @@ The culprit behind this is most likely SSL/TLS renegotiations.  By default,
 <code>mod_tls</code> uses SSL/TLS renegotiations to periodically update the
 session key which protects the data being transferred; see the
 <a href="../contrib/mod_tls.html#TLSRenegotiate"><code>TLSRenegotiate</code></a> documentation for more details, particularly the time-based <i>and</i>
-bytes-based limits at which renegotations are forced.
+bytes-based limits at which renegotiations are forced.
 
 <p>
 Some FTPS clients, however, do not support server-initiated SSL/TLS
-renegotations.  When the server does try to force a renegotiation, the client
+renegotiations.  When the server does try to force a renegotiation, the client
 fails that new handshake, cannot upload/download any more data over the
 protected channel, and the transfer will eventually time out.  Alternatively,
 the transfer could terminate strangely in the middle of the upload/download.

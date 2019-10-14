@@ -865,7 +865,7 @@ The currently implemented options are:
   <p>
   <li><code>EnableDiags</code><br>
     Sets callbacks in the OpenSSL library such that <b>a lot</b> of
-    SSL/TLS protcol information is logged to the
+    SSL/TLS protocol information is logged to the
     <a href="#TLSLog"><code>TLSLog</code></a> file.  This option is very
     useful when debugging strange interactions with FTPS clients.
 
@@ -954,7 +954,7 @@ The currently implemented options are:
   <li><code>StdEnvVars</code><br>
     <p>
     Sets the following environment variables, if applicable.  These environment
-    variables are then avaiable for use, such as in <code>LogFormat</code>s.
+    variables are then available for use, such as in <code>LogFormat</code>s.
     Note that doing so may increase the memory size of the process quite a bit:
     <table border=1 summary="Standard Environment Variables">
       <tr>
@@ -1418,7 +1418,7 @@ requested, the client is given a timeout of 30 seconds, by default, to perform
 the renegotiation.  To change the default control channel renegotiation
 timeout, use <em>ctrl</em> followed by a number, greater than zero, in seconds.
 Use <em>data</em> followed by a number, greater than zero, of kilobytes to
-change the default data channel renegotiation threshhold.  The <em>timeout</em>
+change the default data channel renegotiation threshold.  The <em>timeout</em>
 parameter, followed by a positive number of seconds, is used to change the
 length of time given to a client to complete a requested renegotiation, after
 which the SSL session will be shutdown.  By default, <code>mod_tls</code>
@@ -1451,7 +1451,7 @@ Examples:
     # Change only the timeout for renegotiations to be 5 minutes
     TLSRenegotiate timeout 300
 
-    # Change all of the above renegotiation threshholds using one directive
+    # Change all of the above renegotiation thresholds using one directive
     TLSRenegotiate ctrl 3600 data 512000 required off timeout 300
 
     # To disable renegotiations entirely
@@ -1714,7 +1714,7 @@ age.  <b>Note</b> that the <i>minimum</i> key age is 60 seconds.
 Only a maximum of 25 session ticket keys will be kept in memory by default;
 older/expired keys will be destroyed.  This maximum count of keys can
 be changed using the <em>count</em> parameter.  <b>Note</b> that there is a
-minimum count (1) of ticket keys; attemping to specify a smaller <em>count</em>
+minimum count (1) of ticket keys; attempting to specify a smaller <em>count</em>
 is a configuration error.
 
 <p>

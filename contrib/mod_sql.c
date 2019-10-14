@@ -4640,7 +4640,7 @@ MODRET set_sqluserinfo(cmd_rec *cmd) {
     char *user = NULL, *userbyid = NULL, *userset = NULL, *usersetfast = NULL;
     char *param, *ptr = NULL;
 
-    /* If only one paramter is used, it must be of the "custom:/" form. */
+    /* If only one parameter is used, it must be of the "custom:/" form. */
     param = cmd->argv[1];
     if (strncmp("custom:/", param, 8) != 0) {
       CONF_ERROR(cmd, "badly formatted parameter");
@@ -4731,7 +4731,7 @@ MODRET set_sqlgroupinfo(cmd_rec *cmd) {
       *groupset = NULL, *groupsetfast = NULL;
     char *param, *ptr = NULL;
 
-    /* If only one paramter is used, it must be of the "custom:/" form. */
+    /* If only one parameter is used, it must be of the "custom:/" form. */
     param = cmd->argv[1];
     if (strncmp("custom:/", param, 8) != 0) {
       CONF_ERROR(cmd, "badly formatted parameter");

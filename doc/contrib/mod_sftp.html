@@ -1241,7 +1241,7 @@ To prevent <code>mod_sftp</code> from attempting rekeying, use:
   SFTPRekey none
 </pre>
 Note that disabling rekeying altogether is a Very Bad Idea.  While rekeying 
-can cause delays in the SSH2 sesssion, it is intended to guard against certain
+can cause delays in the SSH2 session, it is intended to guard against certain
 attacks.  You should therefore <b>only</b> disable rekeying for certain
 SSH2 clients which cannot support rekeying.  Please report those clients
 (<b>including</b> the client version) to the mod_sftp maintainer, so that that
@@ -1364,7 +1364,7 @@ a <code>SFTPTrafficPolicy</code> setting in your configuration, <i>e.g.</i>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_sftp</code> module is distributed with ProFTPD.  For including
-<code>mod_sftp</code> as a staticly linked module, use:
+<code>mod_sftp</code> as a statically linked module, use:
 <pre>
   $ ./configure --enable-openssl --with-modules=mod_sftp ...
 </pre>
@@ -1667,7 +1667,7 @@ log message:
   client sent buggy/malicious packet payload length, ignoring
 </pre>
 <b>However</b>, this log message can also be caused by other factors.  It
-is the combination of this error message, <b>and</b> the negotation of
+is the combination of this error message, <b>and</b> the negotiation of
 the <code>blowfish-ctr</code> cipher, that indicates the use of these
 buggy clients.
 

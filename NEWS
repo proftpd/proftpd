@@ -1215,7 +1215,7 @@
 - Bug 3249 - mod_ban support for TimeoutLogin.
 - Bug 3253 - Support for %S variable in SQL queries.
 - Bug 3247 - "TLSRequired auth" and "TLSOptions AllowPerUser" are incompatible.
-- Bug 3256 - "SO_OOBINLINE" error occuring again.  This is a regression of
+- Bug 3256 - "SO_OOBINLINE" error occurring again.  This is a regression of
   Bug 2332 caused by code movement in 1.3.2.
 - Bug 3258 - Log cluttered with "using sendfile capability" messages.
 - Bug 3261 - Badly formatted TLSRenegotiate directive causes proftpd to hang.
@@ -1702,7 +1702,7 @@
   on Solaris.  This happens because of the default permissions on /dev/log
   on Solaris.
 - Portability tweaks for Mac OS 10.4.
-- Bug 2729 - Authorative PAM authentication doesn't work.  The mod_auth_pam
+- Bug 2729 - Authoritative PAM authentication doesn't work.  The mod_auth_pam
   module still had code for supporting the deprecated AuthPAMAuthoritative
   directive.  As per Bug #2440, however, the AuthOrder directive should
   be used for configuring authoritativeness.  This fixes mod_auth_pam
@@ -1736,7 +1736,7 @@
 - Bug 2587 - HideNoAccess does not work for DefaultRoot/<Anonymous> logins.
 - Bug 2590 - AIX uses unsigned int for ULONG_MAX, causing printf format warning.
 - Bug 2591 - wrong argument type in call to pr_log_debug in mod_delay.c on AIX.
-- Bug 2593 - `make install-modules' does not honour DESTDIR enviroment variable.
+- Bug 2593 - `make install-modules' does not honour DESTDIR environment variable.
 - Bug 2596 - STAT command can cause segfault.
 - Bug 2588 - AIX requires _USE_IRS #define to use hstrerror().
 - Bug 2582 - ProFTPD on Tru64 with SIA does not call sia_ses_estab().
@@ -2712,7 +2712,7 @@
 - Bug 1432 - Pedantic handling of leading whitespace in FTP commands
 - Bug 1652 - Add connection-rate limiting mechanism
 - Bug 1662 - Define _GNU_SOURCE
-- Bug 1486 - mod_ls is extremly slow
+- Bug 1486 - mod_ls is extremely slow
 - Bug 1669 - Filename meta (%f) not correctly expanded for some commands
              in WRITE logging class
 - Bug 1065 - New directives to limit file size on upload and download
@@ -2999,7 +2999,7 @@ new mod_sql from author
 1.2.2rc2 - Released 20-Apr-2001
 -------------------------------
 The `AllowChmod' directive has been deprecated, and will not work
-consistantly.  Use <Limit SITE_CHMOD> instead.
+consistently.  Use <Limit SITE_CHMOD> instead.
 
 - Bug 1112 - Compilation fix for IRIX 6.2.
 - Bug 1128 - Fixed possibled Linux sendfile() corruption issue.
@@ -3193,7 +3193,7 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
     <virtualhost> (remote host[remote ip]).
 - mod_ldap for authentication against LDAP directories is now in place.
 - ftpwho/ftpcount -- a grammatical error corrected, and they now build
-    as seperate binaries.
+    as separate binaries.
 - Fixed the 'no names, just UIDs' bug.
 - Added genuser.pl to facilitate AuthUserFile entry creation.
 - Umask now takes an optional second argument, specifying a directory umask.

@@ -465,7 +465,7 @@ config_rec *find_config_next2(config_rec *prev, config_rec *c, int type,
    * level first.
    *
    * The `recurse` argument tells us HOW to perform that search, e.g.
-   * how to do our DFS (depth-first search) approch:
+   * how to do our DFS (depth-first search) approach:
    *
    *  recurse = 0:
    *    Start at c, search all `next` nodes in list, i.e. all nodes at

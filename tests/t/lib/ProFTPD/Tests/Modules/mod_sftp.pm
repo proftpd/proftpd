@@ -21686,7 +21686,7 @@ sub sftp_open_abs_symlink_enoent {
       my $path = 'test.d/test.lnk';
       my $fh = $sftp->open($path, O_RDWR);
       if ($fh) {
-        die("Opening $path suceeded unexpectedly");
+        die("Opening $path succeeded unexpectedly");
       }
 
       my ($err_code, $err_name) = $sftp->error();
@@ -21826,7 +21826,7 @@ sub sftp_open_abs_symlink_enoent_chrooted_bug4219 {
       my $path = 'test.d/test.lnk';
       my $fh = $sftp->open($path, O_RDWR);
       if ($fh) {
-        die("Opening $path suceeded unexpectedly");
+        die("Opening $path succeeded unexpectedly");
       }
 
       my ($err_code, $err_name) = $sftp->error();

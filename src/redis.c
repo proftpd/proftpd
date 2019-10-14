@@ -675,7 +675,7 @@ int pr_redis_conn_set_namespace(pr_redis_t *redis, module *m,
     }
 
   } else {
-    /* A NULL prefix means the caller is removing their namespace maping. */
+    /* A NULL prefix means the caller is removing their namespace mapping. */
     (void) pr_table_kremove(redis->namespace_tab, m, sizeof(module *), NULL);
   }
 

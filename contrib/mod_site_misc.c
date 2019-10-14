@@ -1258,7 +1258,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
       return PR_DECLINED(cmd);
     }
 
-    /* If we have at least 7 parameters, AND the last paramter is "UTC"
+    /* If we have at least 7 parameters, AND the last parameter is "UTC"
      * (case-insensitive), then it's a candidate for the atime/mtime/ctime
      * variant.
      */

@@ -3454,8 +3454,7 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
       sess_tally.files_out_used >= sess_limit.files_out_avail) {
 
     if (!have_err_response) {
-
-      /* Report the reaching of the treshold. */
+      /* Report the reaching of the threshold. */
       quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_OUT(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),
@@ -3466,8 +3465,7 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
     sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
     if (!have_err_response) {
-
-      /* Report the reaching of the treshold. */
+      /* Report the reaching of the threshold. */
       quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_FILES_XFER(cmd));
       pr_response_add_err(R_DUP, _("%s: notice: quota reached: used %s"),

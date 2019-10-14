@@ -353,7 +353,7 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
  *
  * This handling is different from the MLST handler's use of
  * facts_mlinfo_add() because MLST gets to send its line back on the control
- * channel, wherease MLSD's output is sent via a data transfer, much like
+ * channel, whereas MLSD's output is sent via a data transfer, much like
  * LIST or NLST.
  */
 static pool *mlinfo_pool = NULL;

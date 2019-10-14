@@ -557,7 +557,7 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
       return -1;
   }
 
-  /* Send an appropriate response code down the stream asychronously. */
+  /* Send an appropriate response code down the stream asynchronously. */
   pr_response_send_async(R_426, _("Transfer aborted. Data connection closed."));
 
   pr_netio_shutdown(nstrm, 1);
@@ -880,7 +880,7 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         continue;
       }
 
-      /* Some other error occured */
+      /* Some other error occurred */
       nstrm->strm_errno = xerrno;
 
       /* If this is the control stream, and the error indicates a

@@ -194,7 +194,7 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
       tmp2 = strchr(tmp, '}');
       if (tmp2 == NULL) {
         /* No closing '}' found in this string, so no need to look for any
-         * aother '%{' opening sequence.  Just move on.
+         * another '%{' opening sequence.  Just move on.
          */
         tmp = NULL;
         break;

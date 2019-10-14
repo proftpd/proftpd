@@ -584,7 +584,7 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
   unsigned int match_count = 0;
 
   /* If we've got a binding configured for this exact address, return it
-   * straightaway.
+   * straight away.
    */
   ipbind = pr_ipbind_find(addr, port, TRUE);
   if (ipbind != NULL) {

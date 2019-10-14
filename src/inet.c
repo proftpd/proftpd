@@ -439,7 +439,7 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
 
     /* According to one expert, the very nature of the FTP protocol, and it's
      * multiple data-connections creates problems with "rapid-fire" connections
-     * (transfering lots of files) causing an eventual "Address already in use"
+     * (transferring lots of files) causing an eventual "Address already in use"
      * error.  As a result, this nasty kludge retries ten times (once per
      * second) if the port being bound to is INPORT_ANY.
      */
@@ -1737,7 +1737,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, const pr_netaddr_t *addr,
       int xerrno = errno;
 
       /* If we can't even get the IP address as a string, then something
-       * is very wrong, and we should not contine to handle this connection.
+       * is very wrong, and we should not continue to handle this connection.
        */
 
       pr_trace_msg(trace_channel, 3,

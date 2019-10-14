@@ -8159,7 +8159,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
       lock_type_str, fxh->fh->fh_path, (pr_off_t) offset);
   }
 
-  pr_trace_msg("lock", 9, "attemping to %s lock file '%s'", lock_type_str,
+  pr_trace_msg("lock", 9, "attempting to %s lock file '%s'", lock_type_str,
     fxh->fh->fh_path);
 
   while (fcntl(fxh->fh->fh_fd, F_SETLKW, &lock) < 0) {
@@ -13297,7 +13297,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
       fxh->fh->fh_path, (pr_off_t) offset);
   }
 
-  pr_trace_msg("lock", 9, "attemping to unlock file '%s'", fxh->fh->fh_path);
+  pr_trace_msg("lock", 9, "attempting to unlock file '%s'", fxh->fh->fh_path);
 
   while (fcntl(fxh->fh->fh_fd, F_SETLK, &lock) < 0) {
     int xerrno;

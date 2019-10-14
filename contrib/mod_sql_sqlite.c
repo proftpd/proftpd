@@ -514,11 +514,11 @@ MODRET sql_sqlite_def_conn(cmd_rec *cmd) {
 
   if (conn_pool == NULL) {
     pr_log_pri(PR_LOG_WARNING, "WARNING: the mod_sql_sqlite module has not "
-      "been properly intialized.  Please make sure your --with-modules "
+      "been properly initialized.  Please make sure your --with-modules "
       "configure option lists mod_sql *before* mod_sql_sqlite, and recompile.");
 
     sql_log(DEBUG_FUNC, "%s", "The mod_sql_sqlite module has not been properly "
-      "intialized.  Please make sure your --with-modules configure option "
+      "initialized.  Please make sure your --with-modules configure option "
       "lists mod_sql *before* mod_sql_sqlite, and recompile.");
     sql_log(DEBUG_FUNC, "%s", "exiting \tsqlite cmd_defineconnection");
 

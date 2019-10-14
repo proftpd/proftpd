@@ -265,7 +265,7 @@ static int auth_sess_init(void) {
     }
 
   } else {
-    /* We're probably handling a HOST comand, and the server changed; just
+    /* We're probably handling a HOST command, and the server changed; just
      * update the SERVER_LABEL field.
      */
     pr_scoreboard_entry_update(session.pid,
@@ -446,7 +446,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   int root_revoke = TRUE;
   struct stat st;
 
-  /* Was there a precending USER command? Was the client successfully
+  /* Was there a preceding USER command? Was the client successfully
    * authenticated?
    */
   authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);

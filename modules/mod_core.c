@@ -1336,7 +1336,7 @@ MODRET set_user(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* 1.1.7, no longer force user/group lookup inside <Anonymous>
-   * it's now defered until authentication occurs.
+   * it's now deferred until authentication occurs.
    */
 
   if (!cmd->config || cmd->config->config_type != CONF_ANON) {
@@ -5083,7 +5083,7 @@ MODRET core_post_host(cmd_rec *cmd) {
     reset_server_auth_order();
 
 #ifdef PR_USE_TRACE
-    /* XXX Restore orginal Trace settings. */
+    /* XXX Restore original Trace settings. */
 
     /* Restore original TraceOptions settings. */
     (void) pr_trace_set_options(PR_TRACE_OPT_DEFAULT);
@@ -6907,7 +6907,7 @@ static int core_sess_init(void) {
   /* Set some Variable entries for Display files. */
 
   if (pr_var_set(session.pool, "%{bytes_xfer}", 
-      "Number of bytes transfered in this transfer", PR_VAR_TYPE_FUNC,
+      "Number of bytes transferred in this transfer", PR_VAR_TYPE_FUNC,
       (void *) core_get_xfer_bytes_str, &session.xfer.total_bytes,
       sizeof(off_t *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{bytes_fer} variable: %s",
@@ -6931,7 +6931,7 @@ static int core_sess_init(void) {
   }
 
   if (pr_var_set(session.pool, "%{total_bytes_xfer}", 
-      "Number of bytes transfered during a session", PR_VAR_TYPE_FUNC,
+      "Number of bytes transferred during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_bytes_str, &session.total_bytes,
       sizeof(off_t *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_bytes_fer} variable: %s",
@@ -6955,7 +6955,7 @@ static int core_sess_init(void) {
   }
 
   if (pr_var_set(session.pool, "%{total_files_xfer}", 
-      "Number of files transfered during a session", PR_VAR_TYPE_FUNC,
+      "Number of files transferred during a session", PR_VAR_TYPE_FUNC,
       (void *) core_get_sess_files_str, &session.total_files_xfer,
       sizeof(unsigned int *)) < 0) {
     pr_log_debug(DEBUG6, "error setting %%{total_files_xfer} variable: %s",

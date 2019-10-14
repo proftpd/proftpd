@@ -6252,7 +6252,7 @@ int pr_fsio_fsetxattr(pool *p, pr_fh_t *fh, const char *name, void *val,
   return res;
 }
 
-/* If the wrapped chroot() function suceeds (eg returns 0), then all
+/* If the wrapped chroot() function succeeds (e.g. returns 0), then all
  * pr_fs_ts currently registered in the fs_map will have their paths
  * rewritten to reflect the new root.
  */

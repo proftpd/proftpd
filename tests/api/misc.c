@@ -622,7 +622,7 @@ START_TEST (dir_readlink_test) {
     expected_path, buf);
 
   /* Now use a relative path that does not start with '.', and a chroot
-   * deeper down than one diretory.
+   * deeper down than one directory.
    */
   memset(buf, '\0', bufsz);
   dst_path = "file.txt";
@@ -645,7 +645,7 @@ START_TEST (dir_readlink_test) {
   fail_unless(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
     expected_path, buf);
 
-  /* Now use a relative path, and a chroot deeper down than one diretory, and
+  /* Now use a relative path, and a chroot deeper down than one directory, and
    * a deeper/longer source path.
    */
   memset(buf, '\0', bufsz);
@@ -673,7 +673,7 @@ START_TEST (dir_readlink_test) {
     expected_path, buf);
 
   /* Now use a relative path that does not start with '.', and a chroot
-   * deeper down than one diretory, and a deeper/longer source path.
+   * deeper down than one directory, and a deeper/longer source path.
    */
   memset(buf, '\0', bufsz);
   dst_path = "file.txt";

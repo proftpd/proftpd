@@ -352,7 +352,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
       /* KLUDGE: disable umask() for not G_WRITE operations.  Config/
        * Directory walking code will be completely redesigned in 1.3,
-       * this is only necessary for perfomance reasons in 1.1/1.2
+       * this is only necessary for performance reasons in 1.1/1.2
        */
 
       if (!c->group || strcmp(c->group, G_WRITE) != 0)
@@ -2104,7 +2104,7 @@ static void show_settings(void) {
 #ifdef PR_USE_SHADOW
   printf("%s", "    + Shadow file support\n");
 #else
-  printf("%s", "    - Shadow file suppport\n");
+  printf("%s", "    - Shadow file support\n");
 #endif /* PR_USE_SHADOW */
 
 #ifdef PR_USE_SENDFILE

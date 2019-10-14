@@ -616,7 +616,7 @@ START_TEST (data_xfer_read_binary_test) {
 
   mark_point();
   res = pr_data_xfer(buf, bufsz);
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == ECONNABORTED,
     "Expected ECONNABORTED (%d), got %s (%d)", ECONNABORTED,
     strerror(errno), errno);
@@ -639,7 +639,7 @@ START_TEST (data_xfer_read_binary_test) {
   session.xfer.buflen = 0;
 
   res = pr_data_xfer(buf, bufsz);
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -712,7 +712,7 @@ START_TEST (data_xfer_write_binary_test) {
 
   mark_point();
   res = pr_data_xfer(buf, buflen);
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == ECONNABORTED,
     "Expected ECONNABORTED (%d), got %s (%d)", ECONNABORTED,
     strerror(errno), errno);
@@ -729,7 +729,7 @@ START_TEST (data_xfer_write_binary_test) {
   mark_point();
   data_write_eagain = TRUE;
   res = pr_data_xfer(buf, buflen);
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -782,7 +782,7 @@ START_TEST (data_xfer_read_ascii_test) {
 
   mark_point();
   res = pr_data_xfer(buf, bufsz);
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == ECONNABORTED,
     "Expected ECONNABORTED (%d), got %s (%d)", ECONNABORTED,
     strerror(errno), errno);
@@ -811,7 +811,7 @@ START_TEST (data_xfer_read_ascii_test) {
   res = pr_data_xfer(buf, bufsz);
   session.sf_flags &= ~SF_ASCII;
 
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -947,7 +947,7 @@ START_TEST (data_xfer_write_ascii_test) {
 
   mark_point();
   res = pr_data_xfer(buf, buflen);
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == ECONNABORTED,
     "Expected ECONNABORTED (%d), got %s (%d)", ECONNABORTED,
     strerror(errno), errno);
@@ -968,7 +968,7 @@ START_TEST (data_xfer_write_ascii_test) {
   res = pr_data_xfer(buf, buflen);
   session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
-  fail_unless(res < 0, "Transfered data unexpectedly");
+  fail_unless(res < 0, "Transferred data unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 

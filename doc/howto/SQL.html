@@ -497,7 +497,7 @@ configuration directives to set these limits lower as needed.
 
 <p>
 This problem also presents itself in terms of queries using UID/GID of 65533,
-<i>e.g.</i> when you see queries like this againt your database:
+<i>e.g.</i> when you see queries like this against your database:
 <pre>
   SELECT groupname FROM ftp_groups WHERE (gid = 65533) LIMIT 1
 </pre>
@@ -509,7 +509,7 @@ These defaults can be changed using <a href="../contrib/mod_sql.html#SQLDefaultU
 <font color=red>Question</font>: Do I have to configure a real shell for my
 SQL-defined users?<br>
 <font color=blue>Answer</font>: No. The <code>proftpd</code> daemon only checks
-the shell for a user in order to provide compatibilty with other FTP daemons,
+the shell for a user in order to provide compatibility with other FTP daemons,
 which do the same check; <code>proftpd</code> itself does not spawn the shell.
 See the <a href="../modules/mod_auth.html#RequireValidShell"><code>RequireValidShell</code></a> configuration directive for turning this check off.
 

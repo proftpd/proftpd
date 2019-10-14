@@ -210,7 +210,7 @@ static config_rec *wrap_resolve_user(pool *p, const char **user) {
   char *ourname = NULL, *anonname = NULL;
   unsigned char is_alias = FALSE, force_anon = FALSE;
 
-  /* Precendence rules:
+  /* Precedence rules:
    *   1. Search for UserAlias directive.
    *   2. Search for Anonymous directive.
    *   3. Normal user login

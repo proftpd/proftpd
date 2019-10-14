@@ -673,7 +673,7 @@ int main(int argc, char *argv[]) {
   /* Process command line options. */
   process_opts(argc, argv);
 
-  /* Verify that the scoreboard file is useable. */
+  /* Verify that the scoreboard file is usable. */
   verify_scoreboard_file();
 
   /* Install signal handlers. */

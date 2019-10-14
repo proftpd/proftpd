@@ -189,7 +189,7 @@ int pr_jot_on_json(pool *p, pr_jot_ctx_t *ctx, unsigned char logfmt_id,
   const char *key, const void *val);
 
 /* Scans the given parsed LogFormat buffer for the given LogFormat ID, and
- * invokes the `on_meta` callback for each occurence found.
+ * invokes the `on_meta` callback for each occurrence found.
  */
 int pr_jot_scan_logfmt(pool *p, unsigned char *logfmt, unsigned char logfmt_id,
   pr_jot_ctx_t *ctx,

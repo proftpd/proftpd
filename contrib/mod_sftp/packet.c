@@ -508,7 +508,7 @@ static int read_packet_padding_len(int sockfd, struct ssh2_packet *pkt,
     unsigned char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
 
   if (*buflen > sizeof(char)) {
-    /* XXX Assume the data in the buffer is unecrypted, and thus usable. */
+    /* XXX Assume the data in the buffer is unencrypted, and thus usable. */
     memmove(&pkt->padding_len, buf + *offset, sizeof(char));
 
     /* Advance the buffer past the byte we just read off. */
@@ -1167,7 +1167,7 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
 
   if (buflen > 0) {
     /* We have encrypted data, which means we don't need as many of the
-     * iovec slots as for unecrypted data.
+     * iovec slots as for unencrypted data.
      */
 
     if (!sent_version_id) {

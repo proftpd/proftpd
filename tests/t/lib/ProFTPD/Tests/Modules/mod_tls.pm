@@ -1354,7 +1354,7 @@ sub tls_list_no_session_reuse {
         die("Can't login: " . $client->last_message());
       }
 
-      # Since we are requiring SSL session resuse for data transfers,
+      # Since we are requiring SSL session reuse for data transfers,
       # and this client is not using SSL session resumption, I expect
       # this data transfer to fail.
       eval { 
@@ -1503,7 +1503,7 @@ sub tls_list_with_no_session_reuse_required_opt {
         die("Can't login: " . $client->last_message());
       }
 
-      # Since we are NOT requiring SSL session resuse for data transfers,
+      # Since we are NOT requiring SSL session reuse for data transfers,
       # and this client is not using SSL session resumption, I expect
       # this data transfer to succeed.
       my $res = $client->list('.');
@@ -8687,7 +8687,7 @@ sub tls_opts_multiple_lines_bug3800 {
         die("Can't login: " . $client->last_message());
       }
 
-      # Since we are NOT requiring SSL session resuse for data transfers,
+      # Since we are NOT requiring SSL session reuse for data transfers,
       # and this client is not using SSL session resumption, I expect
       # this data transfer to succeed.
       my $res = $client->list('.');
@@ -9528,7 +9528,7 @@ sub tls_session_cache_off_bug3869 {
         die("Can't login: " . $client->last_message());
       }
 
-      # Since we are NOT requiring SSL session resuse for data transfers,
+      # Since we are NOT requiring SSL session reuse for data transfers,
       # and this client is not using SSL session resumption, I expect
       # this data transfer to succeed.
       my $res = $client->list('.');

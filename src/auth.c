@@ -1583,7 +1583,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
   unsigned char is_alias = FALSE, *auth_alias_only = NULL;
   unsigned long config_flags = (PR_CONFIG_FIND_FL_SKIP_DIR|PR_CONFIG_FIND_FL_SKIP_LIMIT|PR_CONFIG_FIND_FL_SKIP_DYNDIR);
 
-  /* Precendence rules:
+  /* Precedence rules:
    *   1. Search for UserAlias directive.
    *   2. Search for Anonymous directive.
    *   3. Normal user login
