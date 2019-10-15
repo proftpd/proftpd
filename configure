@@ -20860,7 +20860,7 @@ ENABLE_TESTS="\"\""
 # Check whether --enable-tests was given.
 if test "${enable_tests+set}" = set; then
   enableval=$enable_tests;
-    if test "$enableval" != xno ; then
+    if test x"$enableval" != xno ; then
 
 for ac_header in check.h
 do
