@@ -9,6 +9,7 @@ ChangeLog files.
 1.3.6b
 ---------
   + Fixed pre-authentication remote denial-of-service issue (Issue #846).
+  + Backported fix for building mod_sql_mysql using MySQL 8 (Issue #824).
 
 1.3.6a
 ---------
