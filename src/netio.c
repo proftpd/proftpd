@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2019 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1446,6 +1446,7 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
       }
 
       nstrm->strm_errno = 0;
+      errno = EOF;
       break;
     }
 

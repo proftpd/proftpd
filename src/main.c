@@ -462,6 +462,7 @@ int pr_cmd_read(cmd_rec **res) {
   static long cmd_bufsz = -1;
   static char *cmd_buf = NULL;
   int cmd_buflen;
+  unsigned int too_large_count = 0;
   char *ptr;
 
   if (res == NULL) {
@@ -487,8 +488,15 @@ int pr_cmd_read(cmd_rec **res) {
     if (cmd_buflen < 0) {
       if (errno == E2BIG) {
         /* The client sent a too-long command which was ignored; give
-         * them another chance?
+         * them a few more chances, with minor delays?
          */
+        too_large_count++;
+        pr_timer_usleep(250 * 1000);
+
+        if (too_large_count > 3) {
+          return -1;
+        }
+
         continue;
       }
 
