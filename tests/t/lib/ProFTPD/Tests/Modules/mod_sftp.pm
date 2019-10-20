@@ -1284,6 +1284,11 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
+  sftp_config_maxclientsperuser_issue750 => {
+    order => ++$order,
+    test_class => [qw(bug forking mod_digest sftp ssh2)],
+  },
+
   sftp_multi_channels => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
@@ -41679,6 +41684,132 @@ EOC
   }
 
   unlink($log_file);
+}
+
+sub sftp_config_maxclientsperuser_issue750 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    MaxClientsPerUser => 1,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $first_ssh2 = Net::SSH2->new();
+      my $second_ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      # First, we'll try to login with normal user/password; this should
+      # succeed.
+      unless ($first_ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $first_ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($first_ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $first_ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $first_sftp = $first_ssh2->sftp();
+      unless ($first_sftp) {
+        my ($err_code, $err_name, $err_str) = $first_ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # Then we'll try to login again with the same user; this should fail.
+      unless ($second_ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $second_ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($second_ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $second_ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # MaxClientsPerUser et al are enforced _after_ authentication, thus we
+      # need to interact a little more, to ensure that we have been
+      # disconnected.
+      my $second_sftp = $second_ssh2->sftp();
+      if ($second_sftp) {
+        die("Second login succeeded unexpectedly");
+      }
+
+      $second_ssh2->disconnect();
+      $second_ssh2 = undef;
+
+      $first_sftp = undef;
+      $first_ssh2->disconnect();
+      $first_ssh2 = undef;
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sftp_multi_channels {
