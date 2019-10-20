@@ -49,6 +49,16 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  tls_login_with_sni_issue850 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  tls_login_with_sni_ignored_issue850 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   tls_list_no_session_reuse => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -489,7 +499,6 @@ sub tls_login_rsa {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -620,7 +629,6 @@ sub tls_login_dsa {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSDSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -751,7 +759,6 @@ sub tls_double_auth {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -888,7 +895,6 @@ sub tls_login_pkcs12 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSPKCS12File => $pkcs12_file,
         TLSCACertificateFile => $ca_file,
@@ -1019,7 +1025,6 @@ sub tls_dh_ciphersuite {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -1161,7 +1166,6 @@ sub tls_crl_file_ok {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -1259,6 +1263,257 @@ sub tls_crl_file_ok {
   unlink($log_file);
 }
 
+sub tls_login_with_sni_issue850 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $host = 'castaglia';
+
+  # Configure a name-based <VirtualHost> for our testing.
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerAlias $host
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <Limit LOGIN>
+    DenyAll
+  </Limit>
+</VirtualHost>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Encryption => 'E',
+        Port => $port,
+        SSL_hostname => $host,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      if ($client->login($setup->{user}, $setup->{passwd})) {
+        die("Login succeeded unexpectedly");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_login_with_sni_ignored_issue850 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSOptions => 'IgnoreSNI',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $host = 'castaglia';
+
+  # Configure a name-based <VirtualHost> for our testing.
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerAlias $host
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <Limit LOGIN>
+    DenyAll
+  </Limit>
+</VirtualHost>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Encryption => 'E',
+        Port => $port,
+        SSL_hostname => $host,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
 sub tls_list_no_session_reuse {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -1314,7 +1569,6 @@ sub tls_list_no_session_reuse {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -1461,7 +1715,6 @@ sub tls_list_with_no_session_reuse_required_opt {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -1606,7 +1859,6 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'off',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -1767,7 +2019,6 @@ sub tls_list_ok_tls_required_by_dir_bug2178 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'off',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -1938,7 +2189,6 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'off',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -2109,7 +2359,6 @@ sub tls_list_ok_tls_required_by_ftpaccess_bug2178 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'off',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -2235,7 +2484,6 @@ sub tls_incompatible_config_bug3247 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'auth',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -2320,7 +2568,6 @@ sub tls_implicit_ssl_bug3266 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSOptions => 'UseImplicitSSL',
         TLSRSACertificateFile => $cert_file,
@@ -2467,7 +2714,6 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -2658,7 +2904,6 @@ sub tls_opts_std_env_vars {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -2838,7 +3083,6 @@ sub tls_opts_std_env_vars_client_vars {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -3015,7 +3259,6 @@ sub tls_opts_ipaddr_required_ipv4 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -3172,7 +3415,6 @@ sub tls_opts_ipaddr_required_ipv6 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -3327,7 +3569,6 @@ sub tls_opts_allow_per_user_tlsrequired_on_anon_login_bug3325 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -3485,7 +3726,6 @@ sub tls_opts_allow_per_user_tlsrequired_on_user_login_bug3325 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -3646,7 +3886,6 @@ sub tls_opts_allow_per_user_tlsrequired_auth_user_login_bug3325 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'auth',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -3807,7 +4046,6 @@ sub tls_opts_allow_per_user_tlsrequired_ctrl_user_login_bug3325 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'ctrl',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -3968,7 +4206,6 @@ sub tls_opts_allow_per_user_tlsrequired_data_user_login_bug3325 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'data',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -4123,7 +4360,6 @@ sub tls_opts_allow_per_user_tlsrequired_on_ifsess_login_bug3325 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -4313,7 +4549,6 @@ sub tls_rest_2gb_last_byte {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -4526,7 +4761,6 @@ sub tls_rest_4gb_last_byte {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -4703,7 +4937,6 @@ sub tls_stor_empty_file {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -4865,7 +5098,6 @@ sub tls_retr_empty_file {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -5027,7 +5259,6 @@ sub tls_required_on_feat_allowed_bug3420 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -5164,7 +5395,6 @@ sub tls_implicit_ssl_bug3437 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'off',
         TLSOptions => 'UseImplicitSSL',
         TLSRSACertificateFile => $cert_file,
@@ -5310,7 +5540,6 @@ sub tls_ccc_list_bug3465 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'off',
         TLSOptions => 'NoSessionReuseRequired',
         TLSRSACertificateFile => $cert_file,
@@ -5637,7 +5866,6 @@ sub tls_opts_commonname_required_bug3512 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -5804,7 +6032,6 @@ sub tls_opts_dns_name_required {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -5971,7 +6198,6 @@ sub tls_opts_ip_addr_dns_name_cn_required {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -6142,7 +6368,6 @@ sub tls_site_chmod_ok {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -6293,7 +6518,6 @@ sub tls_default_tlsrequired {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
       },
@@ -6431,7 +6655,6 @@ sub tls_protocols_default {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -6570,7 +6793,6 @@ sub tls_protocols_with_ftps {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -6709,7 +6931,6 @@ sub tls_protocols_without_ftps {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -6846,7 +7067,6 @@ sub tls_ifsess_protocols_with_ftps {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -7004,7 +7224,6 @@ sub tls_ifsess_protocols_without_ftps {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -7162,7 +7381,6 @@ sub tls_sess_cache_internal_bug3580 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -7298,7 +7516,6 @@ sub tls_passphraseprovider {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -7433,7 +7650,6 @@ sub tls_verify_order_crl_bug3658 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -7599,7 +7815,6 @@ sub tls_verify_order_ocsp {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -7770,7 +7985,6 @@ sub tls_verify_order_ocsp_https {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -7936,7 +8150,6 @@ sub tls_client_cert_verify_failed_selfsigned_cert_only_bug3742 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -8137,7 +8350,6 @@ sub tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -8338,7 +8550,6 @@ sub tls_client_cert_verify_ok_server_selfsigned_cert_in_chain_bug3742 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -8487,7 +8698,6 @@ sub tls_opts_allow_dot_login {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -8644,7 +8854,6 @@ sub tls_opts_multiple_lines_bug3800 {
       'mod_tls.c' => [
         "TLSEngine on",
         "TLSLog $log_file",
-        "TLSProtocol SSLv3 TLSv1",
         "TLSRequired on",
         "TLSRSACertificateFile $cert_file",
         "TLSCACertificateFile $ca_file",
@@ -8785,7 +8994,6 @@ sub tls_config_tlsmasqueradeaddress_bug3862 {
       'mod_tls.c' => [
         "TLSEngine on",
         "TLSLog $log_file",
-        "TLSProtocol SSLv3 TLSv1",
         "TLSRequired on",
         "TLSRSACertificateFile $cert_file",
         "TLSCACertificateFile $ca_file",
@@ -8937,7 +9145,6 @@ sub tls_config_tlsdhparamfile_bug3868 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -9478,7 +9685,6 @@ sub tls_session_cache_off_bug3869 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -9625,7 +9831,6 @@ sub tls_limit_prot_bug3887 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -9821,7 +10026,6 @@ sub tls_config_tlsusername_bug3899 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -9970,7 +10174,6 @@ sub tls_sscn_no_args_bug3955 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -10114,7 +10317,6 @@ sub tls_sscn_too_many_args_bug3955 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -10258,7 +10460,6 @@ sub tls_sscn_bad_arg_bug3955 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -10411,7 +10612,6 @@ sub tls_sscn_toggle_bug3955 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -10605,7 +10805,6 @@ sub tls_config_limit_sscn_bug3955 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $log_file,
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -10732,7 +10931,6 @@ sub tls_config_missing_certs {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $setup->{log_file},
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSOptions => 'EnableDiags',
       },
@@ -10892,7 +11090,6 @@ sub tls_stapling_on_bug4175 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $setup->{log_file},
-        TLSProtocol => 'SSLv3 TLSv1',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,

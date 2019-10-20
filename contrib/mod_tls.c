@@ -75,13 +75,14 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.8"
+#define MOD_TLS_VERSION		"mod_tls/2.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
 # error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
+extern pr_response_t *resp_list, *resp_err_list;
 extern session_t session;
 extern xaset_t *server_list;
 extern int ServerUseReverseDNS;
@@ -534,6 +535,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_VERIFY_CERT_CN				0x0800
 #define TLS_OPT_NO_AUTO_ECDH				0x1000
 #define TLS_OPT_ALLOW_WEAK_DH				0x2000
+#define TLS_OPT_IGNORE_SNI				0x4000
 
 /* mod_tls SSCN modes */
 #define TLS_SSCN_MODE_SERVER				0
@@ -12371,11 +12373,74 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET tls_post_auth(cmd_rec *cmd) {
+  const char *sni = NULL;
+  server_rec *named_server = NULL;
+  cmd_rec *host_cmd = NULL;
+
+  if (tls_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* We are specifically looking for SNI provided by the client during
+   * a successful AUTH TLS handshake.
+   */
+  if (session.rfc2228_mech == NULL ||
+      strncmp(session.rfc2228_mech, "TLS", 4) != 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
+  if (sni == NULL) {
+    /* No SNI provided. */
+    return PR_DECLINED(cmd);
+  }
+
+  if (tls_opts & TLS_OPT_IGNORE_SNI) {
+    pr_trace_msg(trace_channel, 5,
+      "client sent SNI '%s', ignoring due to IgnoreSNI TLSOption", sni);
+    return PR_DECLINED(cmd);
+  }
+
+  named_server = pr_namebind_get_server(sni, main_server->addr,
+    session.c->local_port);
+  if (named_server == NULL) {
+    pr_trace_msg(trace_channel, 5,
+      "client sent SNI '%s', but no matching host found", sni);
+    return PR_DECLINED(cmd);
+  }
+
+  if (named_server == main_server) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Set a session flag indicating that the main_server pointer changed. */
+  pr_log_debug(DEBUG0,
+    "Changing to server '%s' (ServerAlias %s) due to TLS SNI",
+    named_server->ServerName, sni);
+  session.prev_server = main_server;
+  main_server = named_server;
+
+  pr_event_generate("core.session-reinit", named_server);
+
+  /* Now we need to inform the modules of the changed config, to let them
+   * do their checks.
+   */
+
+  host_cmd = pr_cmd_alloc(cmd->tmp_pool, 2, C_HOST, sni, NULL);
+  pr_cmd_dispatch_phase(host_cmd, POST_CMD, 0);
+  pr_cmd_dispatch_phase(host_cmd, LOG_CMD, 0);
+  pr_response_clear(&resp_list);
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET tls_post_pass(cmd_rec *cmd) {
   config_rec *protocols_config;
 
-  if (!tls_engine)
+  if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
 
   /* At this point, we can look up the Protocols config if the client has been
    * authenticated, which may have been tweaked via mod_ifsession's 
@@ -13377,6 +13442,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "ExportCertData") == 0) {
       opts |= TLS_OPT_EXPORT_CERT_DATA;
+
+    } else if (strcmp(cmd->argv[i], "IgnoreSNI") == 0) {
+      opts |= TLS_OPT_IGNORE_SNI;
 
     } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
       pr_log_debug(DEBUG0, MOD_TLS_VERSION
@@ -16023,6 +16091,7 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
   { CMD,	"SSCN",	G_NONE,	tls_sscn,	TRUE,	FALSE,	CL_SEC },
   { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE },
+  { POST_CMD,	C_AUTH,	G_NONE,	tls_post_auth,	FALSE,	FALSE },
   { 0,	NULL }
 };
 
