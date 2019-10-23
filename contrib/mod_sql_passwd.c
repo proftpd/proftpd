@@ -51,6 +51,9 @@
 # include <openssl/objects.h>
 #endif
 
+/* From lib/bcrypt.c */
+extern int bcrypt_hashpass(const char *, const char *, char *, size_t);
+
 module sql_passwd_module;
 
 static int sql_passwd_engine = FALSE;
@@ -478,6 +481,17 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
   return hash;
 }
 
+static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
+  const unsigned char *p1 = b1, *p2 = b2;
+  int ret = 0;
+
+  for (; n > 0; n--) {
+    ret |= *p1++ ^ *p2++;
+  }
+
+  return (ret != 0);
+}
+
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
   const EVP_MD *md;
@@ -489,7 +503,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
   char *copytext;
   const char *encodedtext;
 
-  if (!sql_passwd_engine) {
+  if (sql_passwd_engine == FALSE) {
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -709,7 +723,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     }
   }
 
-  if (strcmp((char *) encodedtext, copytext) == 0) {
+  if (timingsafe_bcmp(encodedtext, copytext, strlen(copytext)) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -725,7 +739,7 @@ static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
   char hashed[128];
 
-  if (!sql_passwd_engine) {
+  if (sql_passwd_engine == FALSE) {
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -738,7 +752,7 @@ static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  if (strcmp(hashed, ciphertext) == 0) {
+  if (timingsafe_bcmp(hashed, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -838,16 +852,14 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (strcmp((char *) encodedtext, ciphertext) == 0) {
+  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
-
-  } else {
-    pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
-      encodedtext);
-
-    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
-      ciphertext, encodedtext);
   }
+
+  pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
+    encodedtext);
+  pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
+    ciphertext, encodedtext);
 
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
@@ -929,16 +941,14 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (strcmp((char *) encodedtext, ciphertext) == 0) {
+  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
-
-  } else {
-    pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
-      encodedtext);
-
-    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
-      ciphertext, encodedtext);
   }
+
+  pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
+    encodedtext);
+  pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
+    ciphertext, encodedtext);
 
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
@@ -1022,16 +1032,14 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (strcmp((char *) encodedtext, ciphertext) == 0) {
+  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
-
-  } else {
-    pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
-      encodedtext);
-
-    pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
-      ciphertext, encodedtext);
   }
+
+  pr_trace_msg(trace_channel, 9, "expected '%s', got '%s'", ciphertext,
+    encodedtext);
+  pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
+    ciphertext, encodedtext);
 
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 # else
