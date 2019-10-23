@@ -276,6 +276,9 @@
 /* Define if you have the dirfd function.  */
 #undef HAVE_DIRFD
 
+/* Define if you have the explicit_bzero function.  */
+#undef HAVE_EXPLICIT_BZERO
+
 /* Define if you have the endprotoent function.  */
 #undef HAVE_ENDPROTOENT
 
