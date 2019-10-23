@@ -15806,7 +15806,7 @@ LIB_DEPS="\"\""
 
 
 
-LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o hanson-tpl.o ccan-json.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o hanson-tpl.o ccan-json.o blf.o bcrypt.o"
 
 
 # Check whether --with-getopt was given.
@@ -34215,7 +34215,8 @@ done
 
 
 
-for ac_func in memcpy mempcpy memset_s mkdir mkstemp mlock mlockall munlock munlockall
+
+for ac_func in explicit_bzero memcpy mempcpy memset_s mkdir mkstemp mlock mlockall munlock munlockall
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
