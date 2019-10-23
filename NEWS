@@ -21,6 +21,7 @@
 - Issue 750 - MaxClientsPerUser not enforced for SFTP logins when mod_digest
   enabled.
 - Issue 850 - mod_tls should honor SNI in TLS handshake.
+- Issue 692 - Support bcrypt passwords in mod_sql_passwd.
 
 1.3.7rc2 - Released 19-Oct-2019
 --------------------------------
