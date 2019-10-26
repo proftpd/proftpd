@@ -9,6 +9,8 @@ ChangeLog files.
 1.3.7rc3
 ---------
 
+  + mod_sftp now supports OpenSSH-specific private host keys (Issue#793).
+
   + mod_tls now honors client-provided SNI as part of the TLS handshake,
     for implementing name-based virtual hosts via TLS SNI.
 
