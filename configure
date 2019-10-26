@@ -15806,7 +15806,7 @@ LIB_DEPS="\"\""
 
 
 
-LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o hanson-tpl.o ccan-json.o blf.o bcrypt.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o hanson-tpl.o ccan-json.o openbsd-blowfish.o openbsd-bcrypt.o"
 
 
 # Check whether --with-getopt was given.

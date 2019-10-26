@@ -32,7 +32,7 @@
 #include "config.h"
 
 #include <sys/types.h>
-#include "blf.h"
+#include "openbsd-blowfish.h"
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -217,7 +217,7 @@ static int
 decode_base64(u_int8_t *buffer, size_t len, const char *b64data)
 {
 	u_int8_t *bp = buffer;
-	const u_int8_t *p = b64data;
+	const u_int8_t *p = (const unsigned char *) b64data;
 	u_int8_t c1, c2, c3, c4;
 
 	while (bp < buffer + len) {
@@ -259,7 +259,7 @@ decode_base64(u_int8_t *buffer, size_t len, const char *b64data)
 int
 encode_base64(char *b64buffer, const u_int8_t *data, size_t len)
 {
-	u_int8_t *bp = b64buffer;
+	u_int8_t *bp = (unsigned char *) b64buffer;
 	const u_int8_t *p = data;
 	u_int8_t c1, c2;
 
