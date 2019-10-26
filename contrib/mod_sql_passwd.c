@@ -51,7 +51,7 @@
 # include <openssl/objects.h>
 #endif
 
-/* From lib/bcrypt.c */
+/* From lib/openbsd-bcrypt.c */
 extern int bcrypt_hashpass(const char *, const char *, char *, size_t);
 
 module sql_passwd_module;
