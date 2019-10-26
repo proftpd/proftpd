@@ -105,6 +105,20 @@ static int keys_rsa_min_nbits = 768;
 static int keys_dsa_min_nbits = 384;
 static int keys_ec_min_nbits = 160;
 
+/* OpenSSH's homegrown private key file format.
+ *
+ * See the PROTOCOL.key file in the OpenSSH source distribution for details
+ * on their homegrown private key format.  See also the implementations in
+ * sskey.c#sshkey_private_to_blob2 (for writing private keys) and
+ * sshkey.c#sshkey_parse_private2 (for reading private keys).  The values
+ * for different encryption ciphers are in the `ciphers[]` table in cipher.c.
+ */
+
+#define SFTP_OPENSSH_BEGIN		"-----BEGIN OPENSSH PRIVATE KEY-----\n"
+#define SFTP_OPENSSH_END		"-----END OPENSSH PRIVATE KEY-----\n"
+#define SFTP_OPENSSH_BEGIN_LEN		(sizeof(SFTP_OPENSSH_BEGIN) - 1)
+#define SFTP_OPENSSH_END_LEN		(sizeof(SFTP_OPENSSH_END) - 1)
+
 static const char *trace_channel = "ssh2";
 
 static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
@@ -526,6 +540,42 @@ static char *get_page(size_t sz, void **ptr) {
   return ((char *) p);
 }
 
+static int is_openssh_private_key(int fd) {
+  struct stat st;
+  char begin_buf[SFTP_OPENSSH_BEGIN_LEN], end_buf[SFTP_OPENSSH_END_LEN];
+  ssize_t len;
+  off_t minsz;
+
+  if (fstat(fd, &st) < 0) {
+    return -1;
+  }
+
+  minsz = SFTP_OPENSSH_BEGIN_LEN + SFTP_OPENSSH_END_LEN;
+  if (st.st_size < minsz) {
+    return FALSE;
+  }
+
+  len = pread(fd, begin_buf, sizeof(begin_buf), 0);
+  if (len != sizeof(begin_buf)) {
+    return FALSE;
+  }
+
+  if (memcmp(begin_buf, SFTP_OPENSSH_BEGIN, SFTP_OPENSSH_BEGIN_LEN) != 0) {
+    return FALSE;
+  }
+
+  len = pread(fd, end_buf, sizeof(end_buf),  st.st_size - SFTP_OPENSSH_END_LEN);
+  if (len != sizeof(end_buf)) {
+    return FALSE;
+  }
+
+  if (memcmp(end_buf, SFTP_OPENSSH_END, SFTP_OPENSSH_END_LEN) != 0) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
 static int get_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
   static int need_banner = TRUE;
   struct sftp_pkey_data *pdata = d;
@@ -607,9 +657,9 @@ static int get_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
 
 static int get_passphrase(struct sftp_pkey *k, const char *path) {
   char prompt[256];
-  FILE *fp;
+  FILE *fp = NULL;
   EVP_PKEY *pkey = NULL;
-  int fd, prompt_fd = -1, res, xerrno;
+  int fd, prompt_fd = -1, res, xerrno, openssh_format = FALSE;
   struct sftp_pkey_data pdata;
   register unsigned int attempt;
 
@@ -636,26 +686,35 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
   if (fd <= STDERR_FILENO) {
     res = pr_fs_get_usable_fd(fd);
     if (res >= 0) {
-      close(fd);
+      (void) close(fd);
       fd = res;
     }
   }
 
-  fp = fdopen(fd, "r");
-  if (fp == NULL) {
-    xerrno = errno;
+  openssh_format = is_openssh_private_key(fd);
+  if (openssh_format != TRUE) {
+    fp = fdopen(fd, "r");
+    if (fp == NULL) {
+      xerrno = errno;
 
-    (void) close(fd); 
-    SYSerr(SYS_F_FOPEN, xerrno);
+      (void) close(fd);
+      SYSerr(SYS_F_FOPEN, xerrno);
 
-    errno = xerrno;
+      errno = xerrno;
+      return -1;
+    }
+
+    /* As the file contains sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(fp, NULL, _IONBF, 0);
+
+  } else {
+    pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
+      ": detected OpenSSH-encoded private SFTPHostKey '%s'; use `ssh-keygen -e -m PEM -f %s` to convert to supported PEM-encoded key", path, path);
+    (void) close(fd);
     return -1;
   }
-
-  /* As the file contains sensitive data, we do not want it lingering
-   * around in stdio buffers.
-   */
-  (void) setvbuf(fp, NULL, _IONBF, 0);
 
   k->host_pkey = get_page(PEM_BUFSIZE, &k->host_pkey_ptr);
   if (k->host_pkey == NULL) {
