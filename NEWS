@@ -23,6 +23,7 @@
 - Issue 850 - mod_tls should honor SNI in TLS handshake.
 - Issue 692 - Support bcrypt passwords in mod_sql_passwd.
 - Issue 793 - mod_sftp does not support OpenSSH-specific private key format.
+- Bug 4221 - Add support for ssh-ed25519 public keys.
 
 1.3.7rc2 - Released 19-Oct-2019
 --------------------------------

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2019 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,6 +102,7 @@ struct sftp_kex {
    *  "ssh-dss"      --> KEX_HOSTKEY_DSA
    *  "ssh-rsa"      --> KEX_HOSTKEY_RSA
    *  "ecdsa-sha2-*" --> KEX_HOSTKEY_ECDSA_*
+   *  "ssh-ed25519"  --> KEX_HOSTKEY_ED25519
    */
   enum sftp_key_type_e use_hostkey_type;
 
@@ -1592,10 +1593,14 @@ static const char *get_kexinit_hostkey_algo_list(pool *p) {
 
   /* Our list of supported hostkey algorithms depends on the hostkeys
    * that have been configured.  Show a preference for RSA over DSA,
-   * and ECDSA over both RSA and DSA.
+   * and ECDSA over both RSA and DSA, and ED25519 over all.
    *
    * XXX Should this be configurable later?
    */
+
+  if (sftp_keys_have_ed25519_hostkey() == 0) {
+    list = pstrcat(p, list, *list ? "," : "", "ssh-ed25519", NULL);
+  }
 
 #ifdef PR_USE_OPENSSL_ECC
   res = sftp_keys_have_ecdsa_hostkey(p, &nids);
@@ -1974,6 +1979,13 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
     return 0;
   }
 #endif /* PR_USE_OPENSSL_ECC */
+
+#ifdef PR_USE_SODIUM
+  if (strncmp(algo, "ssh-ed25519", 12) == 0) {
+    kex->use_hostkey_type = SFTP_KEY_ED25519;
+    return 0;
+  }
+#endif /* PR_USE_SODIUM */
 
   /* XXX Need to handle "x509v3-ssh-dss", "x509v3-ssh-rsa", "x509v3-sign"
    * algorithms here.

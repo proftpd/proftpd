@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2018 TJ Saunders
+ * Copyright (c) 2008-2019 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ static const char *sftp_server_version = SFTP_ID_DEFAULT_STRING;
 #define SFTP_HOSTKEY_FL_CLEAR_RSA_KEY		0x001
 #define SFTP_HOSTKEY_FL_CLEAR_DSA_KEY		0x002
 #define SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY		0x004
+#define SFTP_HOSTKEY_FL_CLEAR_ED25519_KEY	0x008
 
 static const char *trace_channel = "ssh2";
 
@@ -1156,7 +1157,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: SFTPHostKey path|"agent:/..."|"NoRSA"|"NoDSA"|"NoECDSA"" */
+/* usage: SFTPHostKey path|"agent:/..."|"NoRSA"|"NoDSA"|"NoECDSA"|"NoED25519" */
 MODRET set_sftphostkey(cmd_rec *cmd) {
   struct stat st;
   int flags = 0;
@@ -1174,6 +1175,9 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
 
   } else if (strncasecmp(cmd->argv[1], "NoECDSA", 8) == 0) {
     flags |= SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY;
+
+  } else if (strncasecmp(cmd->argv[1], "NoED25519", 10) == 0) {
+    flags |= SFTP_HOSTKEY_FL_CLEAR_ED25519_KEY;
   }
 
   if (strncmp(cmd->argv[1], "agent:", 6) != 0 &&
@@ -2198,6 +2202,15 @@ static int sftp_sess_init(void) {
         } else {
           pr_trace_msg(trace_channel, 9, "cleared ECDSA hostkey(s)");
         }
+
+      } else if (flags & SFTP_HOSTKEY_FL_CLEAR_ED25519_KEY) {
+        if (sftp_keys_clear_ed25519_hostkey() < 0) {
+          pr_trace_msg(trace_channel, 13,
+            "error clearing ED25519 hostkey(s): %s", strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 9, "cleared ED25519 hostkey(s)");
+        }
       }
     }
 
@@ -2205,11 +2218,13 @@ static int sftp_sess_init(void) {
   }
 
   /* Support having either an RSA hostkey, a DSA hostkey, an ECDSA hostkey,
-   * or any combination thereof.  But we have to have at least one hostkey.
+   * an ED25519 hostkey, or any combination thereof.  But we have to have at
+   * least one hostkey.
    */
   if (sftp_keys_have_dsa_hostkey() < 0 &&
       sftp_keys_have_rsa_hostkey() < 0 &&
-      sftp_keys_have_ecdsa_hostkey(sftp_pool, NULL) < 0) {
+      sftp_keys_have_ecdsa_hostkey(sftp_pool, NULL) < 0 &&
+      sftp_keys_have_ed25519_hostkey()) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no available host keys, unable to handle session");
     errno = EACCES;
