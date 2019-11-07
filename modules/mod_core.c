@@ -1450,7 +1450,8 @@ MODRET set_fscachepolicy(cmd_rec *cmd) {
     if (strncasecmp(cmd->argv[i], "size", 5) == 0) {
       int size;
 
-      size = atoi(cmd->argv[i++]);
+      i++;
+      size = atoi(cmd->argv[i]);
       if (size < 1) {
         CONF_ERROR(cmd, "size parameter must be greater than 1");
       }
@@ -1460,7 +1461,8 @@ MODRET set_fscachepolicy(cmd_rec *cmd) {
     } else if (strncasecmp(cmd->argv[i], "maxAge", 7) == 0) {
       int max_age;
 
-      max_age = atoi(cmd->argv[i++]);
+      i++;
+      max_age = atoi(cmd->argv[i]);
       if (max_age < 1) {
         CONF_ERROR(cmd, "maxAge parameter must be greater than 1");
       }
