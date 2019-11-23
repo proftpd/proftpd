@@ -3458,7 +3458,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       dsa_sig = DSA_SIG_new();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-      DSA_SIG_get0(sig, &sig_r, &sig_s);
+      DSA_SIG_get0(dsa_sig, &sig_r, &sig_s);
 #else
       sig_r = dsa_sig->r;
       sig_s = dsa_sig->s;
