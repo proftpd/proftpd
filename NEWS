@@ -23,6 +23,7 @@
 - Issue 793 - mod_sftp does not support OpenSSH-specific private key format.
   Now mod_sftp detects such keys, and logs a hint about reformatting them
   to a supported format.
+- Issue 863 - Directory listing is slower compared to previous ProFTPD versions.
 
 1.3.6b - Released 19-Oct-2019
 --------------------------------
