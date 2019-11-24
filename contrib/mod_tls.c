@@ -9777,10 +9777,10 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
+  crls = X509_STORE_CTX_get1_crls(store_ctx, issuer);
 #elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
       !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_get1_crls(store_ctx, subject);
+  crls = X509_STORE_get1_crls(store_ctx, issuer);
 #else
   /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
   crls = NULL;
@@ -9799,6 +9799,9 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
         ASN1_INTEGER *sn;
 
         revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), j);
+        if (revoked == NULL) {
+          continue;
+        }
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
         sn = X509_REVOKED_get0_serialNumber(revoked);
