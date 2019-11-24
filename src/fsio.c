@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project
+ * Copyright (c) 2001-2019 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1123,17 +1123,13 @@ static int fs_cmp(const void *a, const void *b) {
 
 /* Statcache stuff */
 struct fs_statcache {
+  xasetmember_t *next, *prev;
   pool *sc_pool;
+  const char *sc_path;
   struct stat sc_stat;
   int sc_errno;
   int sc_retval;
   time_t sc_cached_ts;
-};
-
-struct fs_statcache_evict_data {
-  time_t now;
-  time_t max_age;
-  pr_table_t *cache_tab;
 };
 
 static const char *statcache_channel = "fs.statcache";
@@ -1147,13 +1143,15 @@ static unsigned int statcache_flags = 0;
  * for the same path will be different for the two system calls.
  */
 static pr_table_t *stat_statcache_tab = NULL;
+static xaset_t *stat_statcache_set = NULL;
 static pr_table_t *lstat_statcache_tab = NULL;
+static xaset_t *lstat_statcache_set = NULL;
 
 #define fs_cache_lstat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_LSTAT)
 #define fs_cache_stat(f, p, s) cache_stat((f), (p), (s), FSIO_FILE_STAT)
 
 static const struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
-    const char *path, size_t path_len, time_t now) {
+    xaset_t *cache_set, const char *path, size_t path_len, time_t now) {
   const struct fs_statcache *sc = NULL;
 
   if (pr_table_count(cache_tab) == 0) {
@@ -1179,6 +1177,7 @@ static const struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
       (unsigned long) age, age != 1 ? "secs" : "sec",
       (unsigned long) statcache_max_age);
     (void) pr_table_remove(cache_tab, path, NULL);
+    (void) xaset_remove(cache_set, (xasetmember_t *) sc);
     destroy_pool(sc->sc_pool);
   }
 
@@ -1186,86 +1185,49 @@ static const struct fs_statcache *fs_statcache_get(pr_table_t *cache_tab,
   return NULL;
 }
 
-static int fs_statcache_evict_expired(const void *key_data, size_t key_datasz,
-    const void *value_data, size_t value_datasz, void *user_data) {
-  const struct fs_statcache *sc;
-  struct fs_statcache_evict_data *evict_data;
+static int fs_statcache_evict(pr_table_t *cache_tab, xaset_t *cache_set,
+    time_t now) {
   time_t age;
-  pr_table_t *cache_tab = NULL;
+  xasetmember_t *item;
+  struct fs_statcache *sc;
 
-  sc = value_data;
-  evict_data = user_data;
-
-  cache_tab = evict_data->cache_tab;
-  age = evict_data->now - sc->sc_cached_ts;
-  if (age > evict_data->max_age) {
-    pr_trace_msg(statcache_channel, 14,
-      "entry for '%s' expired (age %lu %s > max age %lu), evicting",
-      (char *) key_data, (unsigned long) age, age != 1 ? "secs" : "sec",
-      (unsigned long) evict_data->max_age);
-    (void) pr_table_kremove(cache_tab, key_data, key_datasz, NULL);
-    destroy_pool(sc->sc_pool);
+  if (cache_set->xas_list == NULL) {
+    /* Should never happen. */
+    errno = EPERM;
+    return -1;
   }
 
-  return 0;
-}
-
-static int fs_statcache_evict(pr_table_t *cache_tab, time_t now) {
-  int res, table_count;
-  struct fs_statcache_evict_data evict_data;
-
-  /* We try to make room in two passes.  First, evict any item that has
-   * exceeded the maximum age.  After that, if we are still not low enough,
-   * lower the maximum age, and try again.  If not enough room by then, then
-   * we'll try again on the next stat.
+  /* We only need to remove the FIRST expired item; it should be the first
+   * item in the list, since we keep the list in insert (and thus expiry)
+   * order.
    */
- 
-  evict_data.now = now; 
-  evict_data.max_age = statcache_max_age;
-  evict_data.cache_tab = cache_tab;
 
-  res = pr_table_do(cache_tab, fs_statcache_evict_expired, &evict_data,
-    PR_TABLE_DO_FL_ALL);
-  if (res < 0) {
-    pr_trace_msg(statcache_channel, 4,
-      "error evicting expired items: %s", strerror(errno));
-  }
+  item = cache_set->xas_list;
+  sc = (struct fs_statcache *) item;
+  age = now - sc->sc_cached_ts;
 
-  table_count = pr_table_count(cache_tab);
-  if (table_count < 0 ||
-      (unsigned int) table_count < statcache_size) {
-    return 0;
-  }
-
-  /* Try for a shorter max age. */
-  if (statcache_max_age > 10) {
-    evict_data.max_age = (statcache_max_age - 10);
-    res = pr_table_do(cache_tab, fs_statcache_evict_expired, &evict_data,
-      PR_TABLE_DO_FL_ALL);
-    if (res < 0) {
-      pr_trace_msg(statcache_channel, 4,
-        "error evicting expired items: %s", strerror(errno));
-    }
-  }
-
-  table_count = pr_table_count(cache_tab);
-  if (table_count < 0 ||
-      (unsigned int) table_count < statcache_size) {
-    return 0;
+  if (age < statcache_max_age) {
+    errno = ENOENT;
+    return -1;
   }
 
   pr_trace_msg(statcache_channel, 14,
-    "still not enough room in cache (size %d >= max %d)",
-    pr_table_count(cache_tab), statcache_size);
-  errno = EPERM;
-  return -1;
+    "entry for '%s' expired (age %lu %s > max age %lu), evicting",
+    sc->sc_path, (unsigned long) age, age != 1 ? "secs" : "sec",
+    (unsigned long) statcache_max_age);
+
+  (void) pr_table_remove(cache_tab, sc->sc_path, NULL);
+  (void) xaset_remove(cache_set, (xasetmember_t *) sc);
+  destroy_pool(sc->sc_pool);
+  return 0;
 }
 
 /* Returns 1 if we successfully added a cache entry, 0 if not, and -1 if
  * there was an error.
  */
-static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
-    size_t path_len, struct stat *st, int xerrno, int retval, time_t now) {
+static int fs_statcache_add(pr_table_t *cache_tab, xaset_t *cache_set,
+    const char *path, size_t path_len, struct stat *st, int xerrno,
+    int retval, time_t now) {
   int res, table_count;
   pool *sc_pool;
   struct fs_statcache *sc;
@@ -1279,24 +1241,27 @@ static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
   table_count = pr_table_count(cache_tab);
   if (table_count > 0 &&
       (unsigned int) table_count >= statcache_size) {
-    /* We've reached capacity, and need to evict some items to make room. */
-    if (fs_statcache_evict(cache_tab, now) < 0) {
+    /* We've reached capacity, and need to evict an item to make room. */
+    if (fs_statcache_evict(cache_tab, cache_set, now) < 0) {
       pr_trace_msg(statcache_channel, 8,
         "unable to evict enough items from the cache: %s", strerror(errno));
     }
+
+    /* We did not evict any items, and so are at capacity. */
+    return 0;
   }
 
   sc_pool = make_sub_pool(statcache_pool);
   pr_pool_tag(sc_pool, "FS statcache entry pool");
   sc = pcalloc(sc_pool, sizeof(struct fs_statcache));
   sc->sc_pool = sc_pool;
+  sc->sc_path = pstrndup(sc_pool, path, path_len);
   memcpy(&(sc->sc_stat), st, sizeof(struct stat));
   sc->sc_errno = xerrno;
   sc->sc_retval = retval;
   sc->sc_cached_ts = now;
 
-  res = pr_table_add(cache_tab, pstrndup(sc_pool, path, path_len), sc,
-    sizeof(struct fs_statcache *));
+  res = pr_table_add(cache_tab, sc->sc_path, sc, sizeof(struct fs_statcache *));
   if (res < 0) {
     int tmp_errno = errno;
 
@@ -1306,6 +1271,9 @@ static int fs_statcache_add(pr_table_t *cache_tab, const char *path,
 
     destroy_pool(sc->sc_pool);
     errno = tmp_errno;
+
+  } else {
+    xaset_insert_end(cache_set, (xasetmember_t *) sc);
   }
 
   return (res == 0 ? 1 : res);
@@ -1317,7 +1285,8 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   char cleaned_path[PR_TUNABLE_PATH_MAX+1], pathbuf[PR_TUNABLE_PATH_MAX+1];
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
   size_t path_len;
-  pr_table_t *cache_tab = NULL; 
+  pr_table_t *cache_tab = NULL;
+  xaset_t *cache_set = NULL;
   const struct fs_statcache *sc = NULL;
   time_t now;
 
@@ -1364,15 +1333,17 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   if (op == FSIO_FILE_STAT) {
     mystat = fs->stat ? fs->stat : sys_stat;
     cache_tab = stat_statcache_tab;
+    cache_set = stat_statcache_set;
 
   } else {
     mystat = fs->lstat ? fs->lstat : sys_lstat;
     cache_tab = lstat_statcache_tab;
+    cache_set = lstat_statcache_set;
   }
 
   path_len = strlen(cleaned_path);
 
-  sc = fs_statcache_get(cache_tab, cleaned_path, path_len, now);
+  sc = fs_statcache_get(cache_tab, cache_set, cleaned_path, path_len, now);
   if (sc != NULL) {
 
     /* Update the given struct stat pointer with the cached info */
@@ -1399,7 +1370,8 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
   }
 
   /* Update the cache */
-  res = fs_statcache_add(cache_tab, cleaned_path, path_len, st, xerrno, retval,     now);
+  res = fs_statcache_add(cache_tab, cache_set, cleaned_path, path_len, st,
+    xerrno, retval, now);
   if (res < 0) {
     pr_trace_msg(trace_channel, 8,
       "error adding cached stat for '%s': %s", cleaned_path, strerror(errno));
@@ -1609,6 +1581,7 @@ void pr_fs_statcache_free(void) {
     pr_table_empty(stat_statcache_tab);
     pr_table_free(stat_statcache_tab);
     stat_statcache_tab = NULL;
+    stat_statcache_set = NULL;
   }
 
   if (lstat_statcache_tab != NULL) {
@@ -1621,6 +1594,7 @@ void pr_fs_statcache_free(void) {
     pr_table_empty(lstat_statcache_tab);
     pr_table_free(lstat_statcache_tab);
     lstat_statcache_tab = NULL;
+    lstat_statcache_set = NULL;
   }
 
   /* Note: we do not need to explicitly destroy each entry in the statcache
@@ -1642,7 +1616,10 @@ void pr_fs_statcache_reset(void) {
   }
 
   stat_statcache_tab = pr_table_alloc(statcache_pool, 0);
+  stat_statcache_set = xaset_create(statcache_pool, NULL);
+
   lstat_statcache_tab = pr_table_alloc(statcache_pool, 0);
+  lstat_statcache_set = xaset_create(statcache_pool, NULL);
 }
 
 int pr_fs_statcache_set_policy(unsigned int size, unsigned int max_age, 
@@ -1701,6 +1678,7 @@ int pr_fs_clear_cache2(const char *path) {
 
       sc = pr_table_remove(stat_statcache_tab, cleaned_path, NULL);
       if (sc != NULL) {
+        (void) xaset_remove(stat_statcache_set, (xasetmember_t *) sc);
         destroy_pool(sc->sc_pool);
       }
 
@@ -1715,6 +1693,7 @@ int pr_fs_clear_cache2(const char *path) {
 
       sc = pr_table_remove(lstat_statcache_tab, cleaned_path, NULL);
       if (sc != NULL) {
+        (void) xaset_remove(lstat_statcache_set, (xasetmember_t *) sc);
         destroy_pool(sc->sc_pool);
       }
 
