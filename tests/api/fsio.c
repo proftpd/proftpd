@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2018 The ProFTPD Project team
+ * Copyright (c) 2008-2019 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,7 +72,6 @@ static void set_up(void) {
     pr_trace_set_levels("fsio", 1, 20);
     pr_trace_set_levels("fs.statcache", 1, 20);
   }
-
 }
 
 static void tear_down(void) {
@@ -3190,6 +3189,7 @@ START_TEST (fsio_statcache_expired_test) {
   pr_fs_statcache_set_policy(cache_size, max_age, 0);
 
   /* First is a cache miss...*/
+  mark_point();
   res = pr_fsio_stat("/tmp", &st);
   fail_unless(res == 0, "Failed to stat '/tmp': %s", strerror(errno));
 
@@ -3197,11 +3197,13 @@ START_TEST (fsio_statcache_expired_test) {
   sleep(max_age + 1);
 
   /* This is another cache miss, hopefully. */
+  mark_point();
   res = pr_fsio_stat("/tmp2", &st);
   fail_unless(res < 0, "Check of '/tmp2' succeeded unexpectedly");
   fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
+  mark_point();
   pr_fs_clear_cache();
 }
 END_TEST

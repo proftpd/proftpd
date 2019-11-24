@@ -7289,7 +7289,9 @@ int init_fs(void) {
   statcache_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(statcache_pool, "FS Statcache Pool");
   stat_statcache_tab = pr_table_alloc(statcache_pool, 0);
+  stat_statcache_set = xaset_create(statcache_pool, NULL);
   lstat_statcache_tab = pr_table_alloc(statcache_pool, 0);
+  lstat_statcache_set = xaset_create(statcache_pool, NULL);
 
   return 0;
 }
