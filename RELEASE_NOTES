@@ -9,6 +9,8 @@ ChangeLog files.
 1.3.7rc3
 ---------
 
+  + Fixed regression in directory listing latency (Issue#863).
+
   + mod_sftp now supports OpenSSH-specific private host keys (Issue#793).
 
   + mod_sftp now supports Ed25519 keys (Bug#4221)
