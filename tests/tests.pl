@@ -293,6 +293,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_facl)],
     },
 
+    't/modules/mod_facts.t' => {
+      order => ++$order,
+      test_class => [qw(mod_facts)],
+    },
+
     't/modules/mod_geoip.t' => {
       order => ++$order,
       test_class => [qw(mod_geoip)],

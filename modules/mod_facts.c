@@ -1987,8 +1987,14 @@ static int facts_sess_init(void) {
   pr_event_register(&facts_module, "core.session-reinit",
     facts_sess_reinit_ev, NULL);
 
+  facts_opts = FACTS_OPT_SHOW_MODIFY|FACTS_OPT_SHOW_PERM|FACTS_OPT_SHOW_SIZE|
+    FACTS_OPT_SHOW_TYPE|FACTS_OPT_SHOW_UNIQUE|
+    FACTS_OPT_SHOW_UNIX_GROUP|FACTS_OPT_SHOW_UNIX_GROUP_NAME|
+    FACTS_OPT_SHOW_UNIX_MODE|FACTS_OPT_SHOW_UNIX_OWNER|
+    FACTS_OPT_SHOW_UNIX_OWNER_NAME;
+
   c = find_config(main_server->conf, CONF_PARAM, "FactsAdvertise", FALSE);
-  if (c) {
+  if (c != NULL) {
     advertise = *((int *) c->argv[0]);
   }
 
@@ -2007,12 +2013,6 @@ static int facts_sess_init(void) {
 
     c = find_config_next(c, c->next, CONF_PARAM, "FactsOptions", FALSE);
   }
-
-  facts_opts = FACTS_OPT_SHOW_MODIFY|FACTS_OPT_SHOW_PERM|FACTS_OPT_SHOW_SIZE|
-    FACTS_OPT_SHOW_TYPE|FACTS_OPT_SHOW_UNIQUE|
-    FACTS_OPT_SHOW_UNIX_GROUP|FACTS_OPT_SHOW_UNIX_GROUP_NAME|
-    FACTS_OPT_SHOW_UNIX_MODE|FACTS_OPT_SHOW_UNIX_OWNER|
-    FACTS_OPT_SHOW_UNIX_OWNER_NAME;
 
   if (pr_module_exists("mod_mime.c") == TRUE) {
     /* Check to see if MIMEEngine is enabled.  Yes, this is slightly
