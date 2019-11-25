@@ -28,7 +28,8 @@ ChangeLog files.
 1.3.7rc2
 ---------
 
-  + Fixed pre-authentication remote denial-of-service issue (Issue #846).
+  + Fixed pre-authentication remote denial-of-service issue (Issue #846,
+    CVE-2019-18217).
 
 1.3.7rc1
 ---------

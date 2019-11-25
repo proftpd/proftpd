@@ -29,7 +29,8 @@
 
 1.3.7rc2 - Released 19-Oct-2019
 --------------------------------
-- Issue 846 - Remote denial-of-service due to issue in network IO handling.
+- Issue 846 - Remote denial-of-service due to issue in network IO handling
+  (CVE-2019-18217).
 
 1.3.7rc1 - Released 12-Oct-2019
 --------------------------------
