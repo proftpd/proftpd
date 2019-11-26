@@ -646,9 +646,17 @@ conn_t *pr_inet_create_conn_portrange(pool *p, const pr_netaddr_t *bind_addr,
       }
 
       c = init_conn(p, -1, bind_addr, ports[i], FALSE, FALSE);
-
-      if (!c &&
+      if (c == NULL &&
+        /* Note that on Solaris, bind(2) might fail with EACCES if the
+         * randomly selected port for e.g. passive transfers is used by
+         * NFS.  Thus, for Solaris only, we treat EACCES as the same as
+         * EADDRINUSE.  Silly Solaris.
+         */
+#ifdef SOLARIS2
+          (inet_errno != EADDRINUSE && inet_errno != EACCES)) {
+#else
           inet_errno != EADDRINUSE) {
+#endif /* SOLARIS2 */
         pr_log_pri(PR_LOG_WARNING, "error initializing connection: %s",
           strerror(inet_errno));
         pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
