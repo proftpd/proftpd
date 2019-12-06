@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2016 The ProFTPD Project
+ * Copyright 2000-2019 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
