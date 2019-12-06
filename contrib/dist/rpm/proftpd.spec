@@ -3,6 +3,7 @@
 # Dynamic modules with no/minimal additional build or runtime dependencies, always built
 #   mod_auth_pam
 #   mod_ban
+#   mod_copy
 #   mod_ctrls_admin
 #   mod_deflate
 #   mod_dnsbl
@@ -340,6 +341,7 @@ fi
 # Compile the module list (note: mod_ifsession is always included - last)
 STANDARD_MODULE_LIST="  mod_auth_pam            \
                         mod_ban                 \
+                        mod_copy                \
                         mod_ctrls_admin         \
                         mod_deflate             \
                         mod_dnsbl               \
@@ -523,6 +525,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_auth_otp.so}
 %{_libexecdir}/proftpd/mod_auth_pam.so
 %{_libexecdir}/proftpd/mod_ban.so
+%{_libexecdir}/proftpd/mod_copy.so
 %{_libexecdir}/proftpd/mod_ctrls_admin.so
 %{_libexecdir}/proftpd/mod_deflate.so
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_digest.so}
