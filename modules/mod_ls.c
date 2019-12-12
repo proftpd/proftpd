@@ -1960,7 +1960,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         int xerrno = errno;
 
-        pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0],
+        pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
           strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
@@ -2203,7 +2203,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         int xerrno = errno;
 
-        pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0], 
+        pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
           strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
@@ -3104,7 +3104,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
             if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
               int xerrno = errno;
 
-              pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0], 
+              pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
                 strerror(xerrno));
 
               pr_cmd_set_errno(cmd, xerrno);
@@ -3131,7 +3131,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
           if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
             int xerrno = errno;
 
-            pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0],
+            pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
               strerror(xerrno));
 
             pr_cmd_set_errno(cmd, xerrno);
@@ -3157,7 +3157,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
       int xerrno = errno;
 
-      pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0],
+      pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
         strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
@@ -3250,7 +3250,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
         if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
           xerrno = errno;
 
-          pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0],
+          pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
             strerror(xerrno));
 
           pr_cmd_set_errno(cmd, xerrno);
@@ -3287,7 +3287,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
             if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
               xerrno = errno;
 
-              pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0],
+              pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
                 strerror(xerrno));
 
               pr_cmd_set_errno(cmd, xerrno);
@@ -3328,7 +3328,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
         if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
           xerrno = errno;
 
-          pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0],
+          pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
             strerror(xerrno));
 
           pr_cmd_set_errno(cmd, xerrno);
@@ -3353,7 +3353,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         int xerrno = errno;
 
-        pr_response_add_err(R_450, "%s: %s", (char *) cmd->argv[0],
+        pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
           strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
@@ -3367,6 +3367,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
     } else if (S_ISDIR(st.st_mode)) {
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         int xerrno = errno;
+
+        pr_response_add_err(R_425, "%s: %s", (char *) cmd->argv[0],
+          strerror(xerrno));
 
         pr_cmd_set_errno(cmd, xerrno);
         errno = xerrno;
