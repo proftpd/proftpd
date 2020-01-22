@@ -28,6 +28,8 @@
 - Issue 859 - Improper handling of TLS CRL lookups.
 - Issue 870 - Leaking PAM handler and data in case of unsuccessful
   authentication.
+- Bug 4385 - SSH authentication fails for many clients due to receiving of
+  SSH_MSG_IGNORE packet.
 
 1.3.6b - Released 19-Oct-2019
 --------------------------------
