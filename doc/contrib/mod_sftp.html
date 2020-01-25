@@ -2176,7 +2176,7 @@ then why do my SFTP uploads fail, when the same configuration allows uploads to 
 <font color=blue>Answer</font>: When a file is uploaded using FTP, the only
 parts of the file uploaded are its <i>contents</i> but <b>not</b> the file
 <i>metadata</i> (<i>e.g.</i> not the file timestamps or permissions).  Separate
-FTP commands are used to sent the file metadata to the server.
+FTP commands are used to send the file metadata to the server.
 
 <p>
 However, the SFTP protocol sends the file metadata <i>as part of the normal upload</i>.  In the configuration above, the limit on <code>SITE CHMOD</code>
@@ -2236,6 +2236,31 @@ file transfers via SFTP and SCP.  It does <b>not</b> support shell access,
 which is what the <code>ssh</code> command-line client tries to use.  The
 above error messages from <code>ssh</code> show that <code>mod_sftp</code>
 refused the shell access requests.
+
+<p><a name="SFTPDirFakeUserGroup">
+<font color=red>Question</font>: I am using <code>DirFakeUser</code> and
+<code>DirFakeGroup</code> in my <code>mod_sftp</code> configuration, but
+they do not work when I run the <code>ls -lh</code> command in the
+<code>sftp</code> command-line client.  Is this a bug?<br><br>
+<font color=blue>Answer</font>: This is unfortunately an issue with OpenSSH's
+<code>sftp</code> command-line client.
+
+<p>
+The <code>mod_sftp</code> module always sends the same information for an
+SFTP directory listing, assuming SFTP protocol version 3 or lower (which is
+what OpenSSH uses); see <a href="https://github.com/proftpd/proftpd/blob/master/contrib/mod_sftp/fxp.c#L2801">here</a>.  The <code>DirFakeUser</code> and
+<code>DirFakeGroup</code> directives will affect the user/group names in that
+"longname" string, which is defined for the <code>SSH_FXP_NAME</code> packet
+described in <a href="https://tools.ietf.org/html/draft-ietf-secsh-filexfer-02#section-7">draft-ietf-secsh-filexfer-02</a>.
+
+<p>
+In looking at the OpenSSH 7.9p1 implementation, we can see the issue in its
+code.  When <code>ls -l</code> is used, the <code>sftp</code> command-line
+client will display the "longname" sent by mod_sftp as-is.  But when
+<code>ls -lh</code> is used, that <code>-h</code> flag causes <code>sftp</code>
+to <b>ignore the "longname"</b>, and try to use only the UID/GID <i>numeric
+values</i> (which are <b>not</b> affected by the
+<code>DirFakeUser/DirFakeGroup</code> directives).
 
 <p><a name="SFTPTectiaHostKey">
 <font color=red>Question</font>: When I try to start proftpd with
