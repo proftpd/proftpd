@@ -32,6 +32,9 @@
   authentication.
 - Bug 4385 - SSH authentication fails for many clients due to receiving of
   SSH_MSG_IGNORE packet.
+- Issue 872 - Show PathAllowFilter, PathDenyFilter failure in system logging.
+  Commands denied by these Filter directives are now logged at the NOTICE
+  level in the system logging.
 
 1.3.7rc2 - Released 19-Oct-2019
 --------------------------------
