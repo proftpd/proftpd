@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
- * Copyright (c) 2007-2019 The ProFTPD Project
+ * Copyright (c) 2007-2020 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
   pr_regex_t *pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
   if (pre != NULL &&
       pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_debug(DEBUG2, MOD_FACTS_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_FACTS_VERSION
       ": %s denied by PathAllowFilter on '%s'", (char *) cmd->argv[0],
       cmd->arg);
     return -1;
@@ -88,7 +88,7 @@ static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
   pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
   if (pre != NULL &&
       pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_debug(DEBUG2, MOD_FACTS_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_FACTS_VERSION
       ": %s denied by PathDenyFilter on '%s'", (char *) cmd->argv[0], cmd->arg);
     return -1;
   }
