@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2019 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -5388,7 +5388,7 @@ MODRET core_rmd(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathAllowFilter",
         (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -5397,7 +5397,7 @@ MODRET core_rmd(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathDenyFilter",
         (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -5501,7 +5501,7 @@ MODRET core_mkd(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathAllowFilter",
         (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -5510,7 +5510,7 @@ MODRET core_mkd(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathDenyFilter",
         (char *) cmd->argv[0], dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -5769,7 +5769,7 @@ MODRET core_dele(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathAllowFilter",
         (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -5778,7 +5778,7 @@ MODRET core_dele(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathDenyFilter",
         (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -5950,7 +5950,7 @@ MODRET core_rnto(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathAllowFilter",
         (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -5959,7 +5959,7 @@ MODRET core_rnto(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathDenyFilter",
         (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -6148,7 +6148,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
       break;
 
     case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathAllowFilter",
         (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
@@ -6157,7 +6157,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
       return PR_ERROR(cmd); 
  
     case PR_FILTER_ERR_FAILS_DENY_FILTER:
-      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter",
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathDenyFilter",
         (char *) cmd->argv[0], path);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
