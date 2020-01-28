@@ -35,6 +35,7 @@
 - Issue 872 - Show PathAllowFilter, PathDenyFilter failure in system logging.
   Commands denied by these Filter directives are now logged at the NOTICE
   level in the system logging.
+- Bug 4382 - Incorrect %F SQLLog with SFTP, not FTP, uploads.
 
 1.3.7rc2 - Released 19-Oct-2019
 --------------------------------
