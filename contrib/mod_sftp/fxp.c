@@ -6630,8 +6630,6 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
       } else {
         pr_response_add(R_226, "%s", "Transfer complete");
-        session.xfer.path = sftp_misc_vroot_abs_path(cmd2->pool,
-          session.xfer.path, FALSE);
         fxp_cmd_dispatch(cmd2);
       }
     }
