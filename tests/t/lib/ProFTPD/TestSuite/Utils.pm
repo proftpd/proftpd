@@ -467,7 +467,7 @@ sub config_write {
       push(@$config, "Group $group_name");
     }
 
-    unless (grep(/^AlloOverride/, @$config) > 0) {
+    unless (grep(/^AllowOverride/, @$config) > 0) {
       push(@$config, "AllowOverride off");
     }
 
@@ -527,6 +527,18 @@ sub config_write {
     print $fh "# Written on: $timestamp\n\n";
 
     if (ref($config) eq 'HASH') {
+      # Write TraceLog, Trace directives at the top of the file, to aid in
+      # debugging.
+      if (defined($config->{TraceLog})) {
+        print $fh "TraceLog $config->{TraceLog}\n";
+        delete($config->{TraceLog});
+      }
+
+      if (defined($config->{Trace})) {
+        print $fh "Trace $config->{Trace}\n";
+        delete($config->{Trace});
+      }
+
       while (my ($k, $v) = each(%$config)) {
         if ($k eq 'IfModules') {
           my $modules = $v;
