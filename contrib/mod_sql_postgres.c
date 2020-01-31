@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2017 TJ Saunders
+ * Copyright (c) 2004-2020 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -810,10 +810,23 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
 
   /* insert the new conn_info into the connection hash */
   entry = sql_add_connection(conn_pool, name, (void *) conn);
+  if (entry == NULL &&
+      errno == EEXIST) {
+    /* Log only connections named other than "default", for debugging
+     * misconfigurations with multiple different SQLNamedConnectInfo
+     * directives using the same name.
+     */
+    if (strcmp(name, "default") != 0) {
+      sql_log(DEBUG_FUNC, "named connection '%s' already exists", name);
+    }
+
+    entry = sql_get_connection(name);
+  }
+
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
     return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
-      "named connection already exists");
+      "error adding named connection");
   }
 
   if (cmd->argc >= 5) {
