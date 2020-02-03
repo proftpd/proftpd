@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -767,9 +767,9 @@ MODRET pw_authz(cmd_rec *cmd) {
   cleartxt_passwd = get_pwd_info(cmd->tmp_pool, user, &lstchg, NULL, &max,
     NULL, &inact, &expire);
   if (cleartxt_passwd == NULL) {
-    pr_log_auth(LOG_WARNING, "no password information found for user '%.100s'",
-      user);
-    return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
+    pr_trace_msg(trace_channel, 3,
+      "no password information found for user '%.100s'", user);
+    return PR_DECLINED(cmd);
   }
 
   cleartxt_passwdlen = strlen(cleartxt_passwd);
