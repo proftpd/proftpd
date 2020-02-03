@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_odbc -- Support for connecting to databases via ODBC
- * Copyright (c) 2003-2017 TJ Saunders
+ * Copyright (c) 2003-2020 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,18 +102,23 @@ static conn_entry_t *sqlodbc_get_conn(char *name) {
 static void *sqlodbc_add_conn(pool *p, char *name, db_conn_t *conn) {
   conn_entry_t *entry = NULL;
 
-  if (!name || !conn || !p)
+  if (p == NULL ||
+      name == NULL ||
+      conn == NULL) {
+    errno = EINVAL;
     return NULL;
-  
-  if (sqlodbc_get_conn(name))
+  }
+
+  if (sqlodbc_get_conn(name) != NULL) {
+    errno = EEXIST;
     return NULL;
+  }
 
   entry = (conn_entry_t *) pcalloc(p, sizeof(conn_entry_t));
   entry->name = name;
   entry->data = conn;
 
   *((conn_entry_t **) push_array(conn_cache)) = entry;
-
   return entry;
 }
 
@@ -1096,10 +1101,23 @@ MODRET sqlodbc_def_conn(cmd_rec *cmd) {
 
   /* Insert the new conn_info into the connection hash */
   entry = sqlodbc_add_conn(conn_pool, name, (void *) conn);
+  if (entry == NULL &&
+      errno == EEXIST) {
+    /* Log only connections named other than "default", for debugging
+     * misconfigurations with multiple different SQLNamedConnectInfo
+     * directives using the same name.
+     */
+    if (strcmp(name, "default") != 0) {
+      sql_log(DEBUG_FUNC, "named connection '%s' already exists", name);
+    }
+
+    entry = sqlodbc_get_conn(name);
+  }
+
   if (entry == NULL) {
     sql_log(DEBUG_FUNC, "%s", "exiting \todbc cmd_defineconnection");
     return PR_ERROR_MSG(cmd, MOD_SQL_ODBC_VERSION,
-      "named connection already exists");
+      "error adding named connection");
   }
 
   if (cmd->argc >= 5) {
