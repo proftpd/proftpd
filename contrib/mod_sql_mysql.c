@@ -1994,13 +1994,16 @@ static int sql_mysql_init(void) {
 }
 
 static int sql_mysql_sess_init(void) {
-  if (conn_pool == NULL) {
-    conn_pool = make_sub_pool(session.pool);
-    pr_pool_tag(conn_pool, "MySQL connection pool");
+  if (conn_pool != NULL) {
+    destroy_pool(conn_pool);
+    conn_cache = NULL;
   }
 
+  conn_pool = make_sub_pool(session.pool);
+  pr_pool_tag(conn_pool, "MySQL connection pool");
+
   if (conn_cache == NULL) {
-    conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
+    conn_cache = make_array(conn_pool, DEF_CONN_POOL_SIZE,
       sizeof(conn_entry_t *));
   }
 
