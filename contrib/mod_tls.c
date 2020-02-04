@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2019 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2020 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -12383,6 +12383,7 @@ MODRET tls_post_auth(cmd_rec *cmd) {
   const char *sni = NULL;
   server_rec *named_server = NULL;
   cmd_rec *host_cmd = NULL;
+  pool *tmp_pool = NULL;
 
   if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
@@ -12433,10 +12434,12 @@ MODRET tls_post_auth(cmd_rec *cmd) {
    * do their checks.
    */
 
-  host_cmd = pr_cmd_alloc(cmd->tmp_pool, 2, C_HOST, sni, NULL);
+  tmp_pool = make_sub_pool(cmd->tmp_pool);
+  host_cmd = pr_cmd_alloc(tmp_pool, 2, pstrdup(tmp_pool, C_HOST), sni, NULL);
   pr_cmd_dispatch_phase(host_cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(host_cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
+  destroy_pool(tmp_pool);
 
   return PR_DECLINED(cmd);
 }
