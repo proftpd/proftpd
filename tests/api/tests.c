@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
    * variable or command-line option.
    */
   srunner_set_log(runner, log_file);
-  if (getenv("XML_TEST_OUTPUT")) {
+  if (getenv("PR_XML_TEST_OUTPUT")) {
     srunner_set_xml(runner, xml_file);
   }
 
