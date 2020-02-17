@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2017 The ProFTPD Project team
+ * Copyright (c) 2014-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -326,6 +326,7 @@ static RETSIGTYPE sig_terminate(int signo) {
       break;
 
 #ifdef SIGXFSZ
+    case SIGXFSZ:
       recvd_signal_flags |= RECEIVED_SIG_XFSZ;
       signame = "SIGXFSZ";
       break;
