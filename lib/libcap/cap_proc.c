@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 1997-8 Andrew G Morgan <morgan@linux.kernel.org>
+ * Copyright (c) 1997-8,2007,2011 Andrew G Morgan <morgan@kernel.org>
  *
- * See end of file for Log.
- *
- * This file deals with setting capabilities on processes.
+ * This file deals with getting and setting capabilities on processes.
  */
+
+#include <sys/prctl.h>
 
 #include "libcap.h"
 
@@ -18,8 +18,9 @@ cap_t cap_get_proc(void)
 	_cap_debug("getting current process' capabilities");
 
 	/* fill the capability sets via a system call */
-	if (capget(&result->head, &result->set)) {
-	    cap_free(&result);
+	if (capget(&result->head, &result->u[0].set)) {
+	    cap_free(result);
+	    result = NULL;
 	}
     }
 
@@ -36,9 +37,8 @@ int cap_set_proc(cap_t cap_d)
     }
 
     _cap_debug("setting process capabilities");
-    retval = capset(&cap_d->head, &cap_d->set);
+    retval = capset(&cap_d->head, &cap_d->u[0].set);
 
-    cap_d->head.version = _LINUX_CAPABILITY_VERSION_1;
     return retval;
 }
 
@@ -58,11 +58,31 @@ int capgetp(pid_t pid, cap_t cap_d)
     _cap_debug("getting process capabilities for proc %d", pid);
 
     cap_d->head.pid = pid;
-    error = capget(&cap_d->head, &cap_d->set);
-    cap_d->head.version = _LINUX_CAPABILITY_VERSION_1;
+    error = capget(&cap_d->head, &cap_d->u[0].set);
     cap_d->head.pid = 0;
 
     return error;
+}
+
+/* allocate space for and return capabilities of target process */
+
+cap_t cap_get_pid(pid_t pid)
+{
+    cap_t result;
+
+    result = cap_init();
+    if (result) {
+	if (capgetp(pid, result) != 0) {
+	    int my_errno;
+
+	    my_errno = errno;
+	    cap_free(result);
+	    errno = my_errno;
+	    result = NULL;
+	}
+    }
+
+    return result;
 }
 
 /* set the caps on a specific process/pg etc.. */
@@ -78,51 +98,94 @@ int capsetp(pid_t pid, cap_t cap_d)
 
     _cap_debug("setting process capabilities for proc %d", pid);
     cap_d->head.pid = pid;
-    error = capset(&cap_d->head, &cap_d->set);
-    cap_d->head.version = _LINUX_CAPABILITY_VERSION_1;
+    error = capset(&cap_d->head, &cap_d->u[0].set);
+    cap_d->head.version = _LIBCAP_CAPABILITY_VERSION;
     cap_d->head.pid = 0;
 
     return error;
 }
 
-/*
- * $Log: cap_proc.c,v $
- * Revision 1.2  2008-08-06 17:00:41  castaglia
- *
- * Bug#3096 - libcap version errors on newer Linux kernel.  Newer Linux kernels
- * have a _LINUX_CAPABILITY_VERSION_2 macro, and redefine the old
- * _LINUX_CAPABILITY_VERSION macro.  To play better with such kernels, redefine
- * the bundled libcap to use _LINUX_CAPABILITY_VERSION_1.
- *
- * Revision 1.1  2003/01/03 02:16:17  jwm
- *
- * Turning mod_linuxprivs into a core module, mod_cap. This is by no means
- * complete.
- *
- * Revision 1.2  1999/09/07 23:14:19  macgyver
- * Updated capabilities library and model.
- *
- * Revision 1.2  1999/04/18 20:50:01  morgan
- * reliable behavior when trying to talk with a kernel that has a more
- * modern capability implementation than the one the library was compiled
- * with.
- *
- * Revision 1.1.1.1  1999/04/17 22:16:31  morgan
- * release 1.0 of libcap
- *
- * Revision 1.5  1998/05/24 22:54:09  morgan
- * updated for 2.1.104
- *
- * Revision 1.4  1997/05/14 05:17:13  morgan
- * bug-fix from zefram (errno no set on success)
- *
- * Revision 1.3  1997/05/04 05:35:46  morgan
- * fixed errno setting. syscalls do this part
- *
- * Revision 1.2  1997/04/28 00:57:11  morgan
- * fixes and zefram's patches
- *
- * Revision 1.1  1997/04/21 04:32:52  morgan
- * Initial revision
- *
- */
+/* the kernel api requires unsigned long arguments */
+#define pr_arg(x) ((unsigned long) x)
+
+/* get a capability from the bounding set */
+
+int cap_get_bound(cap_value_t cap)
+{
+    int result;
+
+    result = prctl(PR_CAPBSET_READ, pr_arg(cap));
+    if (result < 0) {
+	errno = -result;
+	return -1;
+    }
+    return result;
+}
+
+/* drop a capability from the bounding set */
+
+int cap_drop_bound(cap_value_t cap)
+{
+    int result;
+
+    result = prctl(PR_CAPBSET_DROP, pr_arg(cap));
+    if (result < 0) {
+	errno = -result;
+	return -1;
+    }
+    return result;
+}
+
+/* get a capability from the ambient set */
+
+int cap_get_ambient(cap_value_t cap)
+{
+    int result;
+    result = prctl(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_IS_SET),
+		   pr_arg(cap), pr_arg(0), pr_arg(0));
+    if (result < 0) {
+	errno = -result;
+	return -1;
+    }
+    return result;
+}
+
+/* modify a single ambient capability value */
+
+int cap_set_ambient(cap_value_t cap, cap_flag_value_t set)
+{
+    int result, val;
+    switch (set) {
+    case CAP_SET:
+	val = PR_CAP_AMBIENT_RAISE;
+	break;
+    case CAP_CLEAR:
+	val = PR_CAP_AMBIENT_LOWER;
+	break;
+    default:
+	errno = EINVAL;
+	return -1;
+    }
+    result = prctl(PR_CAP_AMBIENT, pr_arg(val), pr_arg(cap),
+		   pr_arg(0), pr_arg(0));
+    if (result < 0) {
+	errno = -result;
+	return -1;
+    }
+    return result;
+}
+
+/* erase all ambient capabilities */
+
+int cap_reset_ambient()
+{
+    int result;
+
+    result = prctl(PR_CAP_AMBIENT, pr_arg(PR_CAP_AMBIENT_CLEAR_ALL),
+		   pr_arg(0), pr_arg(0), pr_arg(0));
+    if (result < 0) {
+	errno = -result;
+	return -1;
+    }
+    return result;
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-8 Andrew G. Morgan <morgan@linux.kernel.org>
+ * Copyright (c) 1997-8 Andrew G. Morgan <morgan@kernel.org>
  *
  * This is a file to make the capability <-> string mappings for
  * libcap.
@@ -14,11 +14,11 @@
  */
 
 struct {
-    int index;
     const char *name;
+    int index;
 } const list[] = {
-#include "cap_names.sed"
-    {-1, NULL}
+#include "cap_names.list.h"
+    {NULL, -1}
 };
 
 /* this should be more than big enough (factor of three at least) */
@@ -59,36 +59,3 @@ int main(void)
 
     exit(0);
 }
-
-/*
- * $Log: _makenames.c,v $
- * Revision 1.1  2003-01-03 02:16:17  jwm
- *
- * Turning mod_linuxprivs into a core module, mod_cap. This is by no means
- * complete.
- *
- * Revision 1.2  1999/09/07 23:14:19  macgyver
- * Updated capabilities library and model.
- *
- * Revision 1.3  1999/05/14 04:46:15  morgan
- * another attempt to fix the bug Chris Evans found
- *
- * Revision 1.2  1999/05/14 04:38:06  morgan
- * Fix from Chris Evans: off by one error when computing the name array
- *
- * Revision 1.1.1.1  1999/04/17 22:16:31  morgan
- * release 1.0 of libcap
- *
- * Revision 1.4  1998/06/07 15:50:12  morgan
- * updated to accommodate kernel's real header file :*)
- *
- * Revision 1.3  1998/05/24 22:54:09  morgan
- * updated for 2.1.104
- *
- * Revision 1.2  1997/05/04 05:35:46  morgan
- * cleaned up to #include sed output. also generates whole cap_names.c file
- *
- * Revision 1.1  1997/04/28 00:57:11  morgan
- * Initial revision
- *
- */
