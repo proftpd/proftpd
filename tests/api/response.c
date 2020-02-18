@@ -87,6 +87,11 @@ START_TEST (response_add_test) {
   const char *last_resp_code = NULL, *last_resp_msg = NULL;
   char *resp_code = R_200, *resp_msg = "OK";
 
+  pr_response_set_pool(NULL);
+
+  mark_point();
+  pr_response_add(resp_code, "%s", resp_msg);
+
   pr_response_set_pool(p);
 
   mark_point();
@@ -117,6 +122,11 @@ START_TEST (response_add_err_test) {
   int res;
   const char *last_resp_code = NULL, *last_resp_msg = NULL;
   char *resp_code = R_450, *resp_msg = "Busy";
+
+  pr_response_set_pool(NULL);
+
+  mark_point();
+  pr_response_add(resp_code, "%s", resp_msg);
 
   pr_response_set_pool(p);
 

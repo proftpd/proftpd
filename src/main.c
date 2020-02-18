@@ -900,8 +900,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
     }
 
-    if (cmd) {
-
+    if (cmd != NULL) {
       /* Detect known commands for other protocols; if found, drop the
        * connection, lest we be used as part of an attack on a different
        * protocol server (Bug#4143).
@@ -917,6 +916,9 @@ static void cmd_loop(server_rec *server, conn_t *c) {
  
       pr_cmd_dispatch(cmd);
       destroy_pool(cmd->pool);
+      session.curr_cmd = NULL;
+      session.curr_cmd_id = 0;
+      session.curr_cmd_rec = NULL;
 
     } else {
       pr_event_generate("core.invalid-command", NULL);
