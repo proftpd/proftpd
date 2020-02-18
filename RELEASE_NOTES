@@ -13,6 +13,9 @@ ChangeLog files.
 
   + Fixed use-after-free vulnerability during data transfers (Issue#903).
 
+  + Addressed out-of-bounds read in mod_cap by removing bundled libcap, and
+    relying solely on the system-provided libcap (Issue#902).
+
   + mod_sftp now supports OpenSSH-specific private host keys (Issue#793).
 
   + mod_sftp now supports Ed25519 keys (Bug#4221)
