@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2018 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -692,7 +692,7 @@ void pr_data_close(int quiet) {
  */
 void pr_data_cleanup(void) {
   /* sanity check */
-  if (session.d) {
+  if (session.d != NULL) {
     pr_inet_lingering_close(session.pool, session.d, timeout_linger);
     session.d = NULL;
   }
@@ -719,7 +719,7 @@ void pr_data_abort(int err, int quiet) {
     strerror(err), err, quiet ? "true" : "false",
     true_abort ? "true" : "false");
 
-  if (session.d) {
+  if (session.d != NULL) {
     if (true_abort == FALSE) {
       pr_inet_lingering_close(session.pool, session.d, timeout_linger);
 
@@ -901,6 +901,11 @@ void pr_data_abort(int err, int quiet) {
     if (true_abort == FALSE) {
       pr_response_add_err(respcode, _("Transfer aborted. %s"), msg ? msg : "");
     }
+
+    /* Forcibly clear the data-transfer instigating command pool from the
+     * Response API.
+     */
+    pr_response_set_pool(NULL);
   }
 
   if (true_abort) {
@@ -933,6 +938,7 @@ static void poll_ctrl(void) {
     res = pr_cmd_read(&cmd);
     if (res < 0) {
       int xerrno;
+
 #if defined(ECONNABORTED)
       xerrno = ECONNABORTED;
 #elif defined(ENOTCONN)
@@ -1001,8 +1007,8 @@ static void poll_ctrl(void) {
 
         pr_response_flush(&resp_err_list);
 
-        destroy_pool(cmd->pool);
         pr_response_set_pool(resp_pool);
+        destroy_pool(cmd->pool);
 
       /* We don't want to actually dispatch the NOOP command, since that
        * would overwrite the scoreboard with the NOOP state; admins probably
@@ -1027,13 +1033,14 @@ static void poll_ctrl(void) {
 
         pr_response_flush(&resp_list);
 
-        destroy_pool(cmd->pool);
         pr_response_set_pool(resp_pool);
+        destroy_pool(cmd->pool);
 
       } else {
         char *title_buf = NULL;
-        int title_len = -1;
-        const char *sce_cmd = NULL, *sce_cmd_arg = NULL;
+        int curr_cmd_id = 0, title_len = -1;
+        const char *curr_cmd = NULL, *sce_cmd = NULL, *sce_cmd_arg = NULL;
+        cmd_rec *curr_cmd_rec = NULL;
 
         pr_trace_msg(trace_channel, 5,
           "client sent '%s' command during data transfer, dispatching",
@@ -1045,6 +1052,9 @@ static void poll_ctrl(void) {
           pr_proctitle_get(title_buf, title_len + 1); 
         }
 
+        curr_cmd = session.curr_cmd;
+        curr_cmd_id = session.curr_cmd_id;
+        curr_cmd_rec = session.curr_cmd_rec;
         sce_cmd = pr_scoreboard_entry_get(PR_SCORE_CMD);
         sce_cmd_arg = pr_scoreboard_entry_get(PR_SCORE_CMD_ARG);
 
@@ -1060,6 +1070,9 @@ static void poll_ctrl(void) {
         }
 
         destroy_pool(cmd->pool);
+        session.curr_cmd = curr_cmd;
+        session.curr_cmd_id = curr_cmd_id;
+        session.curr_cmd_rec = curr_cmd_rec;
       }
 
     } else {
