@@ -1,45 +1,43 @@
 /*
- * Copyright (c) 1997-8 Andrew G Morgan <morgan@linux.kernel.org>
+ * Copyright (c) 1997-8,2007-8 Andrew G Morgan <morgan@kernel.org>
  * Copyright (c) 1997 Andrew Main <zefram@dcs.warwick.ac.uk>
- *
- * See end of file for Log.
  *
  * This file deals with exchanging internal and textual
  * representations of capability sets.
  */
 
+#define _GNU_SOURCE
+#include <stdio.h>
+
 #define LIBCAP_PLEASE_INCLUDE_ARRAY
 #include "libcap.h"
 
 #include <ctype.h>
-#include <stdio.h>
+#include <limits.h>
 
 /* Maximum output text length (16 per cap) */
-#define CAP_TEXT_SIZE    (16*__CAP_BITS)
-
-#define LIBCAP_EFF   01
-#define LIBCAP_INH   02
-#define LIBCAP_PER   04
+#define CAP_TEXT_SIZE    (16*__CAP_MAXBITS)
 
 /*
  * Parse a textual representation of capabilities, returning an internal
  * representation.
  */
 
-#define setbits(A,B) _setbits((__cap_s *)A, (__cap_s *)B)
-static void _setbits(__cap_s *a, __cap_s *b)
+#define raise_cap_mask(flat, c)  (flat)[CAP_TO_INDEX(c)] |= CAP_TO_MASK(c)
+
+static void setbits(cap_t a, const __u32 *b, cap_flag_t set, unsigned blks)
 {
     int n;
-    for (n = __CAP_BLKS; n--; )
-	a->_blk[n] |= b->_blk[n];
+    for (n = blks; n--; ) {
+	a->u[n].flat[set] |= b[n];
+    }
 }
 
-#define clrbits(A,B) _clrbits((__cap_s *)A, (__cap_s *)B)
-static void _clrbits(__cap_s *a, __cap_s *b)
+static void clrbits(cap_t a, const __u32 *b, cap_flag_t set, unsigned blks)
 {
     int n;
-    for (n = __CAP_BLKS; n--; )
-	a->_blk[n] &= ~b->_blk[n];
+    for (n = blks; n--; )
+	a->u[n].flat[set] &= ~b[n];
 }
 
 static char const *namcmp(char const *str, char const *nam)
@@ -53,32 +51,67 @@ static char const *namcmp(char const *str, char const *nam)
     return str;
 }
 
+static void forceall(__u32 *flat, __u32 value, unsigned blks)
+{
+    unsigned n;
+
+    for (n = blks; n--; flat[n] = value);
+
+    return;
+}
+
 static int lookupname(char const **strp)
 {
-    char const *str = *strp;
-    if (isdigit(*str)) {
-	unsigned long n = strtoul(str, (char **)&str, 0);
-	if (n >= __CAP_BITS)
+    union {
+	char const *constp;
+	char *p;
+    } str;
+
+    str.constp = *strp;
+    if (isdigit(*str.constp)) {
+	unsigned long n = strtoul(str.constp, &str.p, 0);
+	if (n >= __CAP_MAXBITS)
 	    return -1;
-	*strp = str;
+	*strp = str.constp;
 	return n;
     } else {
+	int c;
+	unsigned len;
+
+	for (len=0; (c = str.constp[len]); ++len) {
+	    if (!(isalpha(c) || (c == '_'))) {
+		break;
+	    }
+	}
+
+#ifdef GPERF_DOWNCASE
+	const struct __cap_token_s *token_info;
+
+	token_info = __cap_lookup_name(str.constp, len);
+	if (token_info != NULL) {
+	    *strp = str.constp + len;
+	    return token_info->index;
+	}
+#else /* ie., ndef GPERF_DOWNCASE */
 	char const *s;
-	int n;
+	unsigned n;
+
 	for (n = __CAP_BITS; n--; )
-	    if (_cap_names[n] && (s = namcmp(str, _cap_names[n]))) {
+	    if (_cap_names[n] && (s = namcmp(str.constp, _cap_names[n]))) {
 		*strp = s;
 		return n;
 	    }
-	return -1;
+#endif /* def GPERF_DOWNCASE */
+
+	return -1;   	/* No definition available */
     }
 }
 
 cap_t cap_from_text(const char *str)
 {
     cap_t res;
-    __cap_s allones;
     int n;
+    unsigned cap_blks;
 
     if (str == NULL) {
 	_cap_debug("bad argument");
@@ -88,22 +121,39 @@ cap_t cap_from_text(const char *str)
 
     if (!(res = cap_init()))
 	return NULL;
-    for (n = __CAP_BLKS; n--; )
-	allones._blk[n] = -1;
+
+    switch (res->head.version) {
+    case _LINUX_CAPABILITY_VERSION_1:
+	cap_blks = _LINUX_CAPABILITY_U32S_1;
+	break;
+    case _LINUX_CAPABILITY_VERSION_2:
+	cap_blks = _LINUX_CAPABILITY_U32S_2;
+	break;
+    case _LINUX_CAPABILITY_VERSION_3:
+	cap_blks = _LINUX_CAPABILITY_U32S_3;
+	break;
+    default:
+	errno = EINVAL;
+	return NULL;
+    }
+    
     _cap_debug("%s", str);
 
     for (;;) {
+	__u32 list[__CAP_BLKS];
 	char op;
 	int flags = 0, listed=0;
-	__cap_s list = {{0}};
+
+	forceall(list, 0, __CAP_BLKS);
 
 	/* skip leading spaces */
 	while (isspace((unsigned char)*str))
 	    str++;
 	if (!*str) {
-	    _cap_debugcap("e = ", &res->set.effective);
-	    _cap_debugcap("i = ", &res->set.inheritable);
-	    _cap_debugcap("p = ", &res->set.permitted);
+	    _cap_debugcap("e = ", *res, CAP_EFFECTIVE);
+	    _cap_debugcap("i = ", *res, CAP_INHERITABLE);
+	    _cap_debugcap("p = ", *res, CAP_PERMITTED);
+
 	    return res;
 	}
 
@@ -112,12 +162,12 @@ cap_t cap_from_text(const char *str)
 	    for (;;) {
 		if (namcmp(str, "all")) {
 		    str += 3;
-		    list = allones;
+		    forceall(list, ~0, cap_blks);
 		} else {
 		    n = lookupname(&str);
 		    if (n == -1)
 			goto bad;
-		    list.raise_cap(n);
+		    raise_cap_mask(list, n);
 		}
 		if (*str != ',')
 		    break;
@@ -125,10 +175,11 @@ cap_t cap_from_text(const char *str)
 		    goto bad;
 	    }
 	    listed = 1;
-	} else if (*str == '+' || *str == '-')
+	} else if (*str == '+' || *str == '-') {
 	    goto bad;                    /* require a list of capabilities */
-	else
-	    list = allones;
+	} else {
+	    forceall(list, ~0, cap_blks);
+	}
 
 	/* identify first operation on list of capabilities */
 	op = *str++;
@@ -166,28 +217,28 @@ cap_t cap_from_text(const char *str)
 	    case '=':
 	    case 'P':                                              /* =+ */
 	    case 'M':                                              /* =- */
-		clrbits(&res->set.effective,   &list);
-		clrbits(&res->set.inheritable, &list);
-		clrbits(&res->set.permitted,   &list);
-		/* fall through */
+		clrbits(res, list, CAP_EFFECTIVE, cap_blks);
+		clrbits(res, list, CAP_PERMITTED, cap_blks);
+		clrbits(res, list, CAP_INHERITABLE, cap_blks);
 		if (op == 'M')
 		    goto minus;
+		/* fall through */
 	    case '+':
 		if (flags & LIBCAP_EFF)
-		    setbits(&res->set.effective,   &list);
-		if (flags & LIBCAP_INH)
-		    setbits(&res->set.inheritable, &list);
+		    setbits(res, list, CAP_EFFECTIVE, cap_blks);
 		if (flags & LIBCAP_PER)
-		    setbits(&res->set.permitted,   &list);
+		    setbits(res, list, CAP_PERMITTED, cap_blks);
+		if (flags & LIBCAP_INH)
+		    setbits(res, list, CAP_INHERITABLE, cap_blks);
 		break;
 	    case '-':
 	    minus:
-	        if (flags & LIBCAP_EFF)
-		    clrbits(&res->set.effective,   &list);
-		if (flags & LIBCAP_INH)
-		    clrbits(&res->set.inheritable, &list);
+		if (flags & LIBCAP_EFF)
+		    clrbits(res, list, CAP_EFFECTIVE, cap_blks);
 		if (flags & LIBCAP_PER)
-		    clrbits(&res->set.permitted,   &list);
+		    clrbits(res, list, CAP_PERMITTED, cap_blks);
+		if (flags & LIBCAP_INH)
+		    clrbits(res, list, CAP_INHERITABLE, cap_blks);
 		break;
 	    }
 
@@ -207,9 +258,44 @@ cap_t cap_from_text(const char *str)
     }
 
 bad:
-    cap_free(&res);
+    cap_free(res);
+    res = NULL;
     errno = EINVAL;
-    return NULL;
+    return res;
+}
+
+/*
+ * lookup a capability name and return its numerical value
+ */
+int cap_from_name(const char *name, cap_value_t *value_p)
+{
+    int n;
+
+    if (((n = lookupname(&name)) >= 0) && (value_p != NULL)) {
+	*value_p = (unsigned) n;
+    }
+    return -(n < 0);
+}
+
+/*
+ * Convert a single capability index number into a string representation
+ */
+char *cap_to_name(cap_value_t cap)
+{
+    if ((cap < 0) || (cap >= __CAP_BITS)) {
+#if UINT_MAX != 4294967295U
+# error Recompile with correctly sized numeric array
+#endif
+	char *tmp, *result;
+
+	asprintf(&tmp, "%u", cap);
+	result = _libcap_strdup(tmp);
+	free(tmp);
+
+	return result;
+    } else {
+	return _libcap_strdup(_cap_names[cap]);
+    }
 }
 
 /*
@@ -222,12 +308,15 @@ static int getstateflags(cap_t caps, int capno)
 {
     int f = 0;
 
-    if (isset_cap((__cap_s *)(&caps->set.effective),capno))
+    if (isset_cap(caps, capno, CAP_EFFECTIVE)) {
 	f |= LIBCAP_EFF;
-    if (isset_cap((__cap_s *)(&caps->set.inheritable),capno))
-	f |= LIBCAP_INH;
-    if (isset_cap((__cap_s *)(&caps->set.permitted),capno))
+    }
+    if (isset_cap(caps, capno, CAP_PERMITTED)) {
 	f |= LIBCAP_PER;
+    }
+    if (isset_cap(caps, capno, CAP_INHERITABLE)) {
+	f |= LIBCAP_INH;
+    }
 
     return f;
 }
@@ -236,10 +325,12 @@ static int getstateflags(cap_t caps, int capno)
 
 char *cap_to_text(cap_t caps, ssize_t *length_p)
 {
-    static char buf[CAP_TEXT_SIZE+CAP_TEXT_BUFFER_ZONE];
+    char buf[CAP_TEXT_SIZE+CAP_TEXT_BUFFER_ZONE];
     char *p;
-    int histo[8] = {0};
-    int m, n, t;
+    int histo[8];
+    int m, t;
+    unsigned n;
+    unsigned cap_maxbits, cap_blks;
 
     /* Check arguments */
     if (!good_cap_t(caps)) {
@@ -247,16 +338,46 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	return NULL;
     }
 
-    _cap_debugcap("e = ", &caps->set.effective);
-    _cap_debugcap("i = ", &caps->set.inheritable);
-    _cap_debugcap("p = ", &caps->set.permitted);
+    switch (caps->head.version) {
+    case _LINUX_CAPABILITY_VERSION_1:
+	cap_blks = _LINUX_CAPABILITY_U32S_1;
+	break;
+    case _LINUX_CAPABILITY_VERSION_2:
+	cap_blks = _LINUX_CAPABILITY_U32S_2;
+	break;
+    case _LINUX_CAPABILITY_VERSION_3:
+	cap_blks = _LINUX_CAPABILITY_U32S_3;
+	break;
+    default:
+	errno = EINVAL;
+	return NULL;
+    }
 
-    for (n = __CAP_BITS; n--; )
+    cap_maxbits = 32 * cap_blks;
+
+    _cap_debugcap("e = ", *caps, CAP_EFFECTIVE);
+    _cap_debugcap("i = ", *caps, CAP_INHERITABLE);
+    _cap_debugcap("p = ", *caps, CAP_PERMITTED);
+
+    memset(histo, 0, sizeof(histo));
+
+    /* default prevailing state to the upper - unnamed bits */
+    for (n = cap_maxbits-1; n > __CAP_BITS; n--)
 	histo[getstateflags(caps, n)]++;
 
+    /* find which combination of capability sets shares the most bits
+       we bias to preferring non-set (m=0) with the >= 0 test. Failing
+       to do this causes strange things to happen with older systems
+       that don't know about bits 32+. */
     for (m=t=7; t--; )
-	if (histo[t] > histo[m])
+	if (histo[t] >= histo[m])
 	    m = t;
+
+    /* capture remaining bits - selecting m from only the unnamed bits,
+       we maximize the likelihood that we won't see numeric capability
+       values in the text output. */
+    while (n--)
+	histo[getstateflags(caps, n)]++;
 
     /* blank is not a valid capability set */
     p = sprintf(buf, "=%s%s%s",
@@ -267,16 +388,18 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
     for (t = 8; t--; )
 	if (t != m && histo[t]) {
 	    *p++ = ' ';
-	    for (n = 0; n != __CAP_BITS; n++)
+	    for (n = 0; n < cap_maxbits; n++)
 		if (getstateflags(caps, n) == t) {
-		    if (_cap_names[n])
-			p += sprintf(p, "%s,", _cap_names[n]);
-		    else
-			p += sprintf(p, "%d,", n);
-		    if (p - buf > CAP_TEXT_SIZE) {
+		    char *this_cap_name;
+
+		    this_cap_name = cap_to_name(n);
+		    if ((strlen(this_cap_name) + (p - buf)) > CAP_TEXT_SIZE) {
+			cap_free(this_cap_name);
 			errno = ERANGE;
 			return NULL;
 		    }
+		    p += sprintf(p, "%s,", this_cap_name);
+		    cap_free(this_cap_name);
 		}
 	    p--;
 	    n = t & ~m;
@@ -304,41 +427,3 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 
     return (_libcap_strdup(buf));
 }
-
-/*
- * $Log: cap_text.c,v $
- * Revision 1.2  2003-05-15 00:49:13  castaglia
- *
- * Bug#2000 - mod_cap should not use bundled libcap.  This patch updates the
- * bundled libcap; I won't be closing the bug report just yet.
- *
- * Revision 1.1  2003/01/03 02:16:17  jwm
- *
- * Turning mod_linuxprivs into a core module, mod_cap. This is by no means
- * complete.
- *
- * Revision 1.3  2000/07/11 13:36:52  macgyver
- * Minor updates and buffer cleanups.
- *
- * Revision 1.2  1999/09/07 23:14:19  macgyver
- * Updated capabilities library and model.
- *
- * Revision 1.2  1999/04/17 23:25:09  morgan
- * fixes from peeterj
- *
- * Revision 1.1.1.1  1999/04/17 22:16:31  morgan
- * release 1.0 of libcap
- *
- * Revision 1.4  1998/05/24 22:54:09  morgan
- * updated for 2.1.104
- *
- * Revision 1.3  1997/05/04 05:37:00  morgan
- * case sensitvity to capability flags
- *
- * Revision 1.2  1997/04/28 00:57:11  morgan
- * zefram's replacement file with a number of bug fixes from AGM
- *
- * Revision 1.1  1997/04/21 04:32:52  morgan
- * Initial revision
- *
- */
