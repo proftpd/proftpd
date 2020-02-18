@@ -42229,9 +42229,6 @@ for module in $ac_static_modules; do
 
     test x"$addonlibs" = x || ac_addl_libs="$addonlibs $ac_addl_libs"
 
-    adir=`cat $srcdir/modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
-    test x"$adir" = x || ac_addl_dirs="$adir $ac_addl_dirs"
-
   elif test -d $srcdir/modules/$moduledir -o -d $srcdir/contrib/$moduledir; then
     continue
 
@@ -42241,11 +42238,6 @@ echo "$as_me: error: source file '$srcdir/modules/$src' cannot be found -- abort
    { (exit 1); exit 1; }; }
   fi
 done
-
-if test x"$ac_have_libcap" = xyes; then
-  ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/-L\$(top_srcdir)\/lib\/libcap//g'`
-  ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/\$(top_srcdir)\/lib\/libcap//g'`
-fi
 
 ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/ *\$//'`
 ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/^ *//'`
