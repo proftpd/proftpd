@@ -333,7 +333,6 @@ int sftp_kbdint_recv_response(pool *p, uint32_t expected_count,
   array_header *list;
   uint32_t buflen, resp_count;
   struct ssh2_packet *pkt = NULL;
-  int res;
   pool *resp_pool = NULL;
 
   if (p == NULL ||
