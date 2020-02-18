@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003-2017 The ProFTPD Project team
+ * Copyright (c) 2003-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,9 +29,8 @@
  * recommended for security-consious admins. See README.capabilities for more
  * information.
  *
- * ----- DO NOT MODIFY THE TWO LINES BELOW -----
- * $Libraries: -L$(top_builddir)/lib/libcap -lcap$
- * $Directories: $(top_srcdir)/lib/libcap$
+ * ----- DO NOT MODIFY THE LINES BELOW -----
+ * $Libraries: -lcap$
  */
 
 #include <stdio.h>
@@ -45,7 +44,7 @@
 # ifdef HAVE_LINUX_CAPABILITY_H
 #  include <linux/capability.h>
 # endif /* HAVE_LINUX_CAPABILITY_H */
-# include "../lib/libcap/include/sys/capability.h"
+# include <sys/capability.h>
 
 /* What are these for? */
 # undef WNOHANG
