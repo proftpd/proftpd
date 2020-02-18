@@ -223,6 +223,12 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
     return;
   }
 
+  if (resp_pool == NULL) {
+    pr_trace_msg(trace_channel, 1,
+      "no response pool set, ignoring added %s error response", numeric);
+    return;
+  }
+
   va_start(msg, fmt);
   res = pr_vsnprintf(resp_buf, sizeof(resp_buf), fmt, msg);
   va_end(msg);
@@ -273,6 +279,12 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
   va_list msg;
 
   if (fmt == NULL) {
+    return;
+  }
+
+  if (resp_pool == NULL) {
+    pr_trace_msg(trace_channel, 1,
+      "no response pool set, ignoring added %s response", numeric);
     return;
   }
 
