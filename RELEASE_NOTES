@@ -11,6 +11,8 @@ ChangeLog files.
 
   + Fixed regression in directory listing latency (Issue#863).
 
+  + Fixed use-after-free vulnerability during data transfers (Issue#903).
+
   + mod_sftp now supports OpenSSH-specific private host keys (Issue#793).
 
   + mod_sftp now supports Ed25519 keys (Bug#4221)

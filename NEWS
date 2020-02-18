@@ -41,6 +41,7 @@
 - Issue 890 - SFTP publickey authentication fails unexpectedly when user has
   no shadow password info.
 - Issue 898 - ftpasswd fails to restore password file permissions in some cases.
+- Issue 903 - Use-after-free vulnerability in memory pools during data transfer.
 
 1.3.7rc2 - Released 19-Oct-2019
 --------------------------------
