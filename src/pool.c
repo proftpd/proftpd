@@ -397,6 +397,15 @@ void pr_pool_tag(pool *p, const char *tag) {
   p->tag = tag;
 }
 
+const char *pr_pool_get_tag(pool *p) {
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  return p->tag;
+}
+
 /* Release the entire free block list */
 static void pool_release_free_block_list(void) {
   union block_hdr *blok = NULL, *next = NULL;
@@ -514,6 +523,7 @@ static void clear_pool(struct pool_rec *p) {
   p->last = p->first;
   p->first->h.first_avail = p->free_first_avail;
 
+  p->tag = NULL;
   pr_alarms_unblock();
 }
 

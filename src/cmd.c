@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2017 The ProFTPD Project team
+ * Copyright (c) 2009-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -180,6 +180,8 @@ cmd_rec *pr_cmd_alloc(pool *p, unsigned int argc, ...) {
 
     va_end(args);
     cmd->argv[argc] = NULL;
+
+    pr_pool_tag(cmd->pool, cmd->argv[0]);
   }
 
   /* This table will not contain that many entries, so a low number

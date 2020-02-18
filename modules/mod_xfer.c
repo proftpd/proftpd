@@ -4082,6 +4082,7 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
 
   if (session.sf_flags & SF_XFER) {
     cmd_rec *cmd;
+
     pr_data_abort(0, FALSE);
 
     cmd = session.curr_cmd_rec;

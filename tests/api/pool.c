@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -301,6 +301,30 @@ START_TEST (pool_tag_test) {
 }
 END_TEST
 
+START_TEST (pool_get_tag_test) {
+  pool *p;
+  const char *res;
+
+  res = pr_pool_get_tag(NULL);
+  fail_unless(res == NULL, "Failed to handle null pool");
+
+  p = make_sub_pool(permanent_pool);
+
+  mark_point();
+  res = pr_pool_get_tag(p);
+  fail_unless(res == NULL, "Failed to handle untagged pool");
+
+  mark_point();
+  pr_pool_tag(p, "foo");
+  res = pr_pool_get_tag(p);
+  fail_unless(res != NULL, "Failed to get pool tag: %s", strerror(errno));
+  fail_unless(strcmp(res, "foo") == 0, "Expected tag 'foo', got '%s'", res);
+
+  destroy_pool(p);
+
+}
+END_TEST
+
 #if defined(PR_USE_DEVEL)
 START_TEST (pool_debug_memory_test) {
   pool *p, *sub_pool;
@@ -429,6 +453,7 @@ Suite *tests_get_pool_suite(void) {
   tcase_add_test(testcase, pool_pcalloc_test);
   tcase_add_test(testcase, pool_pcallocsz_test);
   tcase_add_test(testcase, pool_tag_test);
+  tcase_add_test(testcase, pool_get_tag_test);
 #if defined(PR_USE_DEVEL)
   tcase_add_test(testcase, pool_debug_memory_test);
   tcase_add_test(testcase, pool_debug_flags_test);

@@ -726,7 +726,6 @@ static void log_exit_ev(const void *event_data, void *user_data) {
 
   tmp_pool = make_sub_pool(session.pool);
   cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, "EXIT"));
-  pr_pool_tag(cmd->pool, "EXIT");
   cmd->cmd_class |= CL_DISCONNECT;
 
   responses_blocked = pr_response_blocked();
@@ -1214,7 +1213,6 @@ static int log_sess_init(void) {
 
     tmp_pool = make_sub_pool(session.pool);
     cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, "CONNECT"));
-    pr_pool_tag(cmd->pool, "CONNECT");
     cmd->cmd_class |= CL_CONNECT;
 
     responses_blocked = pr_response_blocked();
