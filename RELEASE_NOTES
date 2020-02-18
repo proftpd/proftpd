@@ -12,6 +12,8 @@ ChangeLog files.
   + Detect OpenSSH-specific formatted SFTPHostKeys, and log hint for
     converting them to supported format.
   + Fixed use-after-free vulnerability during data transfers (Issue #903).
+  + Fixed out-of-bounds read in mod_cap by updating the bundled libcap
+    (Issue #902).
 
 1.3.6b
 ---------
