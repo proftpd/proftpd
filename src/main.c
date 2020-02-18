@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2019 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -877,11 +877,13 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
 
   *((char **) push_array(tarr)) = NULL;
   cmd->argv = tarr->elts;
+  pr_pool_tag(cmd->pool, cmd->argv[0]);
 
   /* This table will not contain that many entries, so a low number
    * of chains should suffice.
    */
   cmd->notes = pr_table_nalloc(cmd->pool, 0, 8);
+
   return cmd;
 }
 
