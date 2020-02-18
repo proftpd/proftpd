@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -135,6 +135,10 @@ int pr_response_block(int bool) {
 
   errno = EINVAL;
   return -1;
+}
+
+int pr_response_blocked(void) {
+  return resp_blocked;
 }
 
 void pr_response_clear(pr_response_t **head) {

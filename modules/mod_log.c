@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -720,12 +720,25 @@ MODRET log_any(cmd_rec *cmd) {
  */
 
 static void log_exit_ev(const void *event_data, void *user_data) {
+  pool *tmp_pool;
   cmd_rec *cmd;
+  int responses_blocked;
 
-  cmd = pr_cmd_alloc(session.pool, 1, pstrdup(session.pool, "EXIT"));
+  tmp_pool = make_sub_pool(session.pool);
+  cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, "EXIT"));
+  pr_pool_tag(cmd->pool, "EXIT");
   cmd->cmd_class |= CL_DISCONNECT;
+
+  responses_blocked = pr_response_blocked();
+  if (responses_blocked == FALSE) {
+    (void) pr_response_block(TRUE);
+  }
+
   (void) pr_cmd_dispatch_phase(cmd, LOG_CMD,
     PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
+
+  pr_response_block(responses_blocked);
+  destroy_pool(tmp_pool);
 }
 
 static void log_postparse_ev(const void *event_data, void *user_data) {
@@ -1197,14 +1210,23 @@ static int log_sess_init(void) {
   if (dispatched_connect == FALSE) {
     pool *tmp_pool;
     cmd_rec *cmd;
+    int responses_blocked;
 
     tmp_pool = make_sub_pool(session.pool);
     cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, "CONNECT"));
+    pr_pool_tag(cmd->pool, "CONNECT");
     cmd->cmd_class |= CL_CONNECT;
+
+    responses_blocked = pr_response_blocked();
+    if (responses_blocked == FALSE) {
+      (void) pr_response_block(TRUE);
+    }
+
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD,
       PR_CMD_DISPATCH_FL_CLEAR_RESPONSE);
-    destroy_pool(tmp_pool);
 
+    pr_response_block(responses_blocked);
+    destroy_pool(tmp_pool);
     dispatched_connect = TRUE;
   }
 
