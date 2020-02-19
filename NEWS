@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.6c
+1.3.6c - Released 20-Feb-2020
 --------------------------------
 - Issue 810 - mod_tls does not compile with LibreSSL 2.9.x.
 - Issue 750 - MaxClientsPerUser not enforced for SFTP logins when mod_digest
