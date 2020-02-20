@@ -21,6 +21,8 @@
   disposition flag.
 - Issue 908 - mod_sql_passwd fails to compile on FreeBSD due to timingsafe_bcmp
   function.
+- Issue 907 - Implemented support for RSA SHA-2 publickey signatures in
+  mod_sftp, per RFC 8332.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
