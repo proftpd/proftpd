@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -719,6 +719,9 @@ const char *sftp_ssh2_packet_get_mesg_type_desc(unsigned char mesg_type) {
 
     case SFTP_SSH2_MSG_SERVICE_ACCEPT:
       return "SSH_MSG_SERVICE_ACCEPT";
+
+    case SFTP_SSH2_MSG_EXT_INFO:
+      return "SSH_MSG_EXT_INFO";
 
     case SFTP_SSH2_MSG_KEXINIT:
       return "SSH_MSG_KEXINIT";
@@ -1444,6 +1447,38 @@ void sftp_ssh2_packet_handle_disconnect(struct ssh2_packet *pkt) {
   pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_CLIENT_QUIT, explain);
 }
 
+void sftp_ssh2_packet_handle_ext_info(struct ssh2_packet *pkt) {
+  register unsigned int i;
+  uint32_t ext_count;
+
+  ext_count = sftp_msg_read_int(pkt->pool, &pkt->payload, &pkt->payload_len);
+  pr_trace_msg(trace_channel, 9, "client sent EXT_INFO with %lu %s",
+    (unsigned long) ext_count, ext_count != 1 ? "extensions" : "extension");
+
+  for (i = 0; i < ext_count; i++) {
+    char *ext_name = NULL;
+    uint32_t ext_datalen = 0;
+    unsigned char *ext_data;
+
+    ext_name = sftp_msg_read_string(pkt->pool, &pkt->payload,
+      &pkt->payload_len);
+    ext_datalen = sftp_msg_read_int(pkt->pool, &pkt->payload,
+      &pkt->payload_len);
+    ext_data = sftp_msg_read_data(pkt->pool, &pkt->payload,
+      &pkt->payload_len, ext_datalen);
+
+    pr_trace_msg(trace_channel, 9,
+      "client extension: %s (value %lu bytes)", ext_name,
+      (unsigned long) ext_datalen);
+
+    /* TODO: Consider supporting the "no-flow-control" extension from
+     * clients.
+     */
+  }
+
+  destroy_pool(pkt->pool);
+}
+
 void sftp_ssh2_packet_handle_ignore(struct ssh2_packet *pkt) {
   char *str;
   size_t len;
@@ -1574,6 +1609,23 @@ int sftp_ssh2_packet_handle(void) {
       }
       break;
     }
+
+    case SFTP_SSH2_MSG_EXT_INFO:
+      /* We expect any possible EXT_INFO message after NEWKEYS, and before
+       * anything else.
+       */
+      if ((sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) &&
+          !(sftp_sess_state & SFTP_SESS_STATE_HAVE_SERVICE) &&
+          !(sftp_sess_state & SFTP_SESS_STATE_HAVE_EXT_INFO)) {
+        sftp_ssh2_packet_handle_ext_info(pkt);
+        sftp_sess_state |= SFTP_SESS_STATE_HAVE_EXT_INFO;
+        break;
+
+      } else {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "unable to handle %s (%d) message: wrong message order",
+          sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+      }
 
     case SFTP_SSH2_MSG_SERVICE_REQUEST:
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
