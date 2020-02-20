@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2019 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -99,10 +99,12 @@ struct sftp_kex {
 
   /* Client-preferred hostkey type, based on algorithm:
    *
-   *  "ssh-dss"      --> KEX_HOSTKEY_DSA
-   *  "ssh-rsa"      --> KEX_HOSTKEY_RSA
-   *  "ecdsa-sha2-*" --> KEX_HOSTKEY_ECDSA_*
-   *  "ssh-ed25519"  --> KEX_HOSTKEY_ED25519
+   *  "ssh-dss"      --> SFTP_KEY_DSA
+   *  "ssh-rsa"      --> SFTP_KEY_RSA
+   *  "ecdsa-sha2-*" --> SFTP_KEY_ECDSA_*
+   *  "ssh-ed25519"  --> SFTP_KEY_ED25519
+   *  "rsa-sha2-256" --> SFTP_KEY_RSA_SHA256
+   *  "rsa-sha2-512" --> SFTP_KEY_RSA_SHA512
    */
   enum sftp_key_type_e use_hostkey_type;
 
@@ -1113,14 +1115,14 @@ static int create_dh(struct sftp_kex *kex, int type) {
     kex->dh = dh;
 
     switch (type) {
-#ifdef HAVE_SHA512_OPENSSL
+#if defined(HAVE_SHA512_OPENSSL)
       case SFTP_DH_GROUP16_SHA512:
       case SFTP_DH_GROUP18_SHA512:
         kex->hash = EVP_sha512();
         break;
 #endif /* HAVE_SHA512_OPENSSL */
 
-#ifdef HAVE_SHA256_OPENSSL
+#if defined(HAVE_SHA256_OPENSSL)
       case SFTP_DH_GROUP14_SHA256:
         kex->hash = EVP_sha256();
         break;
@@ -1642,6 +1644,14 @@ static const char *get_kexinit_hostkey_algo_list(pool *p) {
 #endif /* PR_USE_OPENSSL_ECC */
 
   if (sftp_keys_have_rsa_hostkey() == 0) {
+#if defined(HAVE_SHA512_OPENSSL)
+    list = pstrcat(p, list, *list ? "," : "", "rsa-sha2-512", NULL);
+#endif /* HAVE_SHA512_OPENSSL */
+
+#if defined(HAVE_SHA256_OPENSSL)
+    list = pstrcat(p, list, *list ? "," : "", "rsa-sha2-256", NULL);
+#endif /* HAVE_SHA256_OPENSSL */
+
     list = pstrcat(p, list, *list ? "," : "", "ssh-rsa", NULL);
   }
 
@@ -1988,6 +1998,20 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_hostkey_type = SFTP_KEY_RSA;
     return 0;
   }
+
+#if defined(HAVE_SHA256_OPENSSL)
+  if (strncmp(algo, "rsa-sha2-256", 12) == 0) {
+    kex->use_hostkey_type = SFTP_KEY_RSA_SHA256;
+    return 0;
+  }
+#endif /* HAVE_SHA256_OPENSSL */
+
+#if defined(HAVE_SHA512_OPENSSL)
+  if (strncmp(algo, "rsa-sha2-512", 12) == 0) {
+    kex->use_hostkey_type = SFTP_KEY_RSA_SHA512;
+    return 0;
+  }
+#endif /* HAVE_SHA512_OPENSSL */
 
 #ifdef PR_USE_OPENSSL_ECC
   if (strncmp(algo, "ecdsa-sha2-nistp256", 20) == 0) {
@@ -2838,6 +2862,16 @@ static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt, char **buf,
     NULL);
 #endif /* PR_USE_SODIUM */
 
+#if defined(HAVE_SHA256_OPENSSL)
+  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "rsa-sha2-256",
+    NULL);
+#endif /* HAVE_SHA256_OPENSSL */
+
+#if defined(HAVE_SHA512_OPENSSL)
+  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "rsa-sha2-512",
+    NULL);
+#endif /* HAVE_SHA512_OPENSSL */
+
 #if defined(PR_USE_OPENSSL_ECC)
   sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "",
     "ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521", NULL);
@@ -2846,6 +2880,9 @@ static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt, char **buf,
   sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-rsa",
     NULL);
   sig_algs = pstrcat(pkt->pool, sig_algs, ",", "ssh-dss", NULL);
+
+  pr_trace_msg(trace_channel, 11,
+    "writing 'server-sig-algs' EXT_INFO extension: %s", sig_algs);
 
   sftp_msg_write_string(buf, buflen, "server-sig-algs");
   sftp_msg_write_string(buf, buflen, sig_algs);

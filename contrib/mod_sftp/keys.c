@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2019 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2111,15 +2111,12 @@ int sftp_keys_compare_keys(pool *p,
 
   remote_key_type = local_key_type = SFTP_KEY_UNKNOWN;
 
-pr_trace_msg(trace_channel, 3, "compare_keys: reading pkey from remote pubkey data (%lu bytes)", remote_pubkey_datalen);
   len = read_pkey_from_data(p, remote_pubkey_data, remote_pubkey_datalen,
     &remote_pkey, &remote_key_type, FALSE);
   if (len == 0) {
     return -1;
   }
-pr_trace_msg(trace_channel, 3, "compare_keys: read pkey from remote pubkey data: len = %lu, key_type = %d", len, remote_key_type);
 
-pr_trace_msg(trace_channel, 3, "compare_keys: reading pkey from local pubkey data (%lu bytes)", local_pubkey_datalen);
   len = read_pkey_from_data(p, local_pubkey_data, local_pubkey_datalen,
     &local_pkey, &local_key_type, FALSE);
   if (len == 0) {
@@ -2132,8 +2129,6 @@ pr_trace_msg(trace_channel, 3, "compare_keys: reading pkey from local pubkey dat
     errno = xerrno;
     return -1;
   }
-
-pr_trace_msg(trace_channel, 3, "compare_keys: read pkey from local pubkey data: len = %lu, key_type = %d", len, local_key_type);
 
   if (remote_pkey != NULL &&
       local_pkey != NULL &&
@@ -2247,7 +2242,7 @@ const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
       digest_name = "sha1";
       break;
 
-#ifdef HAVE_SHA256_OPENSSL
+#if defined(HAVE_SHA256_OPENSSL)
     case SFTP_KEYS_FP_DIGEST_SHA256:
       digest = EVP_sha256();
       digest_name = "sha256";
@@ -3604,7 +3599,9 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
   int res;
 
   switch (key_type) {
-    case SFTP_KEY_RSA: {
+    case SFTP_KEY_RSA:
+    case SFTP_KEY_RSA_SHA256:
+    case SFTP_KEY_RSA_SHA512: {
       res = get_rsa_hostkey_data(p, &buf, &ptr, &buflen);
       if (res < 0) {
         return NULL;
@@ -3863,7 +3860,7 @@ int sftp_keys_have_rsa_hostkey(void) {
 
 static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
     const unsigned char *key_data, uint32_t key_datalen,
-    const unsigned char *data, size_t datalen, size_t *siglen) {
+    const unsigned char *data, size_t datalen, size_t *siglen, int flags) {
   unsigned char *sig_data;
   uint32_t sig_datalen = 0;
 
@@ -3872,7 +3869,7 @@ static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
 
   /* Ask the agent to sign the data for this hostkey for us. */
   sig_data = (unsigned char *) sftp_agent_sign_data(p, agent_path,
-    key_data, key_datalen, data, datalen, &sig_datalen);
+    key_data, key_datalen, data, datalen, &sig_datalen, flags);
 
   if (sig_data == NULL) {
     int xerrno = errno;
@@ -3893,26 +3890,20 @@ static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
   return sig_data;
 }
 
-static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
-    size_t datalen, size_t *siglen) {
+static const unsigned char *get_rsa_signed_data(pool *p, const char *data,
+    size_t datalen, size_t *siglen, const char *sig_name, const EVP_MD *md,
+    int md_nid) {
   RSA *rsa;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0 */
   EVP_MD_CTX *pctx;
-  const EVP_MD *sha1 = EVP_sha1();
   unsigned char dgst[EVP_MAX_MD_SIZE], *sig_data;
   unsigned char *buf, *ptr;
   size_t bufsz;
   uint32_t buflen, dgstlen = 0, sig_datalen = 0, sig_rsalen = 0;
   int res;
-
-  if (sftp_rsa_hostkey->agent_path != NULL) {
-    return agent_sign_data(p, sftp_rsa_hostkey->agent_path,
-      sftp_rsa_hostkey->key_data, sftp_rsa_hostkey->key_datalen, data, datalen,
-      siglen);
-  }
 
   rsa = EVP_PKEY_get1_RSA(sftp_rsa_hostkey->pkey);
   if (rsa == NULL) {
@@ -3943,7 +3934,7 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
   pctx = &ctx;
 #endif /* prior to OpenSSL-1.1.0 */
 
-  EVP_DigestInit(pctx, sha1);
+  EVP_DigestInit(pctx, md);
   EVP_DigestUpdate(pctx, data, datalen);
   EVP_DigestFinal(pctx, dgst, &dgstlen);
 
@@ -3954,7 +3945,7 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
 
   sig_rsalen = RSA_size(rsa);
   sig_data = pcalloc(p, sig_rsalen);
-  res = RSA_sign(NID_sha1, dgst, dgstlen, sig_data, &sig_datalen, rsa);
+  res = RSA_sign(md_nid, dgst, dgstlen, sig_data, &sig_datalen, rsa);
 
   /* Regardless of whether the RSA signing succeeds or fails, we are done
    * with the digest buffer.
@@ -3973,7 +3964,7 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
   ptr = buf = sftp_msg_getbuf(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
-  sftp_msg_write_string(&buf, &buflen, "ssh-rsa");
+  sftp_msg_write_string(&buf, &buflen, sig_name);
   sftp_msg_write_data(&buf, &buflen, sig_data, sig_datalen, TRUE);
 
   pr_memscrub(sig_data, sig_datalen);
@@ -3986,6 +3977,46 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
   *siglen = (bufsz - buflen);
   return ptr;
 }
+
+static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
+    size_t datalen, size_t *siglen) {
+  if (sftp_rsa_hostkey->agent_path != NULL) {
+    return agent_sign_data(p, sftp_rsa_hostkey->agent_path,
+      sftp_rsa_hostkey->key_data, sftp_rsa_hostkey->key_datalen, data, datalen,
+      siglen, 0);
+  }
+
+  return get_rsa_signed_data(p, data, datalen, siglen, "ssh-rsa", EVP_sha1(),
+    NID_sha1);
+}
+
+#if defined(HAVE_SHA256_OPENSSL)
+static const unsigned char *rsa_sha256_sign_data(pool *p,
+    const unsigned char *data, size_t datalen, size_t *siglen) {
+  if (sftp_rsa_hostkey->agent_path != NULL) {
+    return agent_sign_data(p, sftp_rsa_hostkey->agent_path,
+      sftp_rsa_hostkey->key_data, sftp_rsa_hostkey->key_datalen, data, datalen,
+      siglen, SFTP_AGENT_SIGN_FL_USE_RSA_SHA256);
+  }
+
+  return get_rsa_signed_data(p, data, datalen, siglen, "rsa-sha2-256",
+    EVP_sha256(), NID_sha256);
+}
+#endif /* HAVE_SHA256_OPENSSL */
+
+#if defined(HAVE_SHA512_OPENSSL)
+static const unsigned char *rsa_sha512_sign_data(pool *p,
+    const unsigned char *data, size_t datalen, size_t *siglen) {
+  if (sftp_rsa_hostkey->agent_path != NULL) {
+    return agent_sign_data(p, sftp_rsa_hostkey->agent_path,
+      sftp_rsa_hostkey->key_data, sftp_rsa_hostkey->key_datalen, data, datalen,
+      siglen, SFTP_AGENT_SIGN_FL_USE_RSA_SHA512);
+  }
+
+  return get_rsa_signed_data(p, data, datalen, siglen, "rsa-sha2-512",
+    EVP_sha512(), NID_sha512);
+}
+#endif /* HAVE_SHA256_OPENSSL */
 
 /* RFC 4253, Section 6.6, is quite specific about the length of a DSA
  * ("ssh-dss") signature blob.  It is comprised of two integers R and S,
@@ -4016,7 +4047,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
   if (sftp_dsa_hostkey->agent_path != NULL) {
     return agent_sign_data(p, sftp_dsa_hostkey->agent_path,
       sftp_dsa_hostkey->key_data, sftp_dsa_hostkey->key_datalen, data, datalen,
-      siglen);
+      siglen, 0);
   }
 
   dsa = EVP_PKEY_get1_DSA(sftp_dsa_hostkey->pkey);
@@ -4143,7 +4174,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
       if (sftp_ecdsa256_hostkey->agent_path != NULL) {
         return agent_sign_data(p, sftp_ecdsa256_hostkey->agent_path,
           sftp_ecdsa256_hostkey->key_data, sftp_ecdsa256_hostkey->key_datalen,
-          data, datalen, siglen);
+          data, datalen, siglen, 0);
       }
 
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa256_hostkey->pkey);
@@ -4161,7 +4192,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
       if (sftp_ecdsa384_hostkey->agent_path != NULL) {
         return agent_sign_data(p, sftp_ecdsa384_hostkey->agent_path,
           sftp_ecdsa384_hostkey->key_data, sftp_ecdsa384_hostkey->key_datalen,
-          data, datalen, siglen);
+          data, datalen, siglen, 0);
       }
 
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa384_hostkey->pkey);
@@ -4179,7 +4210,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
       if (sftp_ecdsa521_hostkey->agent_path != NULL) {
         return agent_sign_data(p, sftp_ecdsa521_hostkey->agent_path,
           sftp_ecdsa521_hostkey->key_data, sftp_ecdsa521_hostkey->key_datalen,
-          data, datalen, siglen);
+          data, datalen, siglen, 0);
       }
 
       ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa521_hostkey->pkey);
@@ -4313,7 +4344,7 @@ static const unsigned char *ed25519_sign_data(pool *p,
     return agent_sign_data(p, sftp_ed25519_hostkey->agent_path,
       sftp_ed25519_hostkey->ed25519_public_key,
       sftp_ed25519_hostkey->ed25519_public_keylen,
-      data, datalen, siglen);
+      data, datalen, siglen, 0);
   }
 
   sig_buflen = sig_bufsz = slen = datalen + crypto_sign_ed25519_BYTES;
@@ -4364,6 +4395,18 @@ const unsigned char *sftp_keys_sign_data(pool *p,
     case SFTP_KEY_RSA:
       res = rsa_sign_data(p, data, datalen, siglen);
       break;
+
+#if defined(HAVE_SHA256_OPENSSL)
+    case SFTP_KEY_RSA_SHA256:
+      res = rsa_sha256_sign_data(p, data, datalen, siglen);
+      break;
+#endif /* HAVE_SHA256_OPENSSL */
+
+#if defined(HAVE_SHA512_OPENSSL)
+    case SFTP_KEY_RSA_SHA512:
+      res = rsa_sha512_sign_data(p, data, datalen, siglen);
+      break;
+#endif /* HAVE_SHA512_OPENSSL */
 
 #if !defined(OPENSSL_NO_DSA)
     case SFTP_KEY_DSA:
@@ -4430,6 +4473,8 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
 
   switch (pubkey_type) {
     case SFTP_KEY_RSA:
+    case SFTP_KEY_RSA_SHA256:
+    case SFTP_KEY_RSA_SHA512:
       res = (get_pkey_type(pkey) == EVP_PKEY_RSA);
       break;
 
@@ -4504,9 +4549,9 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
   return res;
 }
 
-static int rsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
+static int verify_rsa_signed_data(pool *p, EVP_PKEY *pkey,
     unsigned char *signature, uint32_t signature_len,
-    unsigned char *sig_data, size_t sig_datalen) {
+    unsigned char *sig_data, size_t sig_datalen, const EVP_MD *md, int md_nid) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
@@ -4596,7 +4641,7 @@ static int rsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   pctx = &ctx;
 #endif /* prior to OpenSSL-1.1.0 */
 
-  EVP_DigestInit(pctx, EVP_sha1());
+  EVP_DigestInit(pctx, md);
   EVP_DigestUpdate(pctx, sig_data, sig_datalen);
   EVP_DigestFinal(pctx, digest, &digest_len);
 
@@ -4605,7 +4650,7 @@ static int rsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
 
-  ok = RSA_verify(NID_sha1, digest, digest_len, sig, sig_len, rsa);
+  ok = RSA_verify(md_nid, digest, digest_len, sig, sig_len, rsa);
   if (ok == 1) {
     res = 0;
 
@@ -4619,6 +4664,31 @@ static int rsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   RSA_free(rsa);
   return res;
 }
+
+static int rsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
+    unsigned char *signature, uint32_t signature_len,
+    unsigned char *sig_data, size_t sig_datalen) {
+  return verify_rsa_signed_data(p, pkey, signature, signature_len,
+    sig_data, sig_datalen, EVP_sha1(), NID_sha1);
+}
+
+#if defined(HAVE_SHA256_OPENSSL)
+static int rsa_sha256_verify_signed_data(pool *p, EVP_PKEY *pkey,
+    unsigned char *signature, uint32_t signature_len,
+    unsigned char *sig_data, size_t sig_datalen) {
+  return verify_rsa_signed_data(p, pkey, signature, signature_len,
+    sig_data, sig_datalen, EVP_sha256(), NID_sha256);
+}
+#endif /* HAVE_SHA256_OPENSSL */
+
+#if defined(HAVE_SHA512_OPENSSL)
+static int rsa_sha512_verify_signed_data(pool *p, EVP_PKEY *pkey,
+    unsigned char *signature, uint32_t signature_len,
+    unsigned char *sig_data, size_t sig_datalen) {
+  return verify_rsa_signed_data(p, pkey, signature, signature_len,
+    sig_data, sig_datalen, EVP_sha512(), NID_sha512);
+}
+#endif /* HAVE_SHA512_OPENSSL */
 
 #if !defined(OPENSSL_NO_DSA)
 static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
@@ -5079,6 +5149,34 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     res = rsa_verify_signed_data(p, pkey, signature, signature_len, sig_data,
       sig_datalen);
 
+#if defined(HAVE_SHA256_OPENSSL)
+  } else if (strncmp(sig_type, "rsa-sha2-256", 8) == 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to verify signed data: signature type '%s' does not match "
+        "publickey algorithm '%s'", sig_type, pubkey_algo);
+      errno = EINVAL;
+      return -1;
+    }
+
+    res = rsa_sha256_verify_signed_data(p, pkey, signature, signature_len,
+      sig_data, sig_datalen);
+#endif /* HAVE_SHA256_OPENSSL */
+
+#if defined(HAVE_SHA512_OPENSSL)
+  } else if (strncmp(sig_type, "rsa-sha2-512", 8) == 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to verify signed data: signature type '%s' does not match "
+        "publickey algorithm '%s'", sig_type, pubkey_algo);
+      errno = EINVAL;
+      return -1;
+    }
+
+    res = rsa_sha512_verify_signed_data(p, pkey, signature, signature_len,
+      sig_data, sig_datalen);
+#endif /* HAVE_SHA512_OPENSSL */
+
 #if !defined(OPENSSL_NO_DSA)
   } else if (strncmp(sig_type, "ssh-dss", 8) == 0) {
     res = dsa_verify_signed_data(p, pkey, signature, signature_len, sig_data,
@@ -5111,6 +5209,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unable to verify signed data: unsupported signature algorithm '%s'",
       sig_type);
+    errno = EINVAL;
     return -1;
   }
 

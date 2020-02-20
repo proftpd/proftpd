@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2019 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,9 @@ enum sftp_key_type_e {
   SFTP_KEY_ECDSA_256,
   SFTP_KEY_ECDSA_384,
   SFTP_KEY_ECDSA_521,
-  SFTP_KEY_ED25519
+  SFTP_KEY_ED25519,
+  SFTP_KEY_RSA_SHA256,
+  SFTP_KEY_RSA_SHA512
 };
 
 /* Returns a string of colon-separated lowercase hex characters, representing

@@ -24,10 +24,15 @@ ChangeLog files.
 
   + mod_sftp now supports Ed25519 keys (Bug #4221).
 
+  + mod_sftp now supports RSA SHA-2 publickey signatures, per RFC 8332
+    (Issue #907).
+
   + mod_tls now honors client-provided SNI as part of the TLS handshake,
     for implementing name-based virtual hosts via TLS SNI.
 
   + Changed Configuration Directives
+
+    SFTPOptions NoExtensionNegotiation (Issue #907)
 
     SQLAuthTypes bcrypt
       The mod_sql_passwd module now supports bcrypt-encrypted passwords.
