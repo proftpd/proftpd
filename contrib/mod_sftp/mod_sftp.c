@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2019 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1468,6 +1468,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "IncludeSFTPTimes") == 0) {
       opts |= SFTP_OPT_INCLUDE_SFTP_TIMES;
+
+    } else if (strcmp(cmd->argv[i], "NoExtensionNegotiation") == 0) {
+      opts |= SFTP_OPT_NO_EXT_INFO;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",

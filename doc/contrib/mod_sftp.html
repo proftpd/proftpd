@@ -63,7 +63,8 @@ For those wishing to learn more about the SSH2 and SFTP protocols, see:
   <li><a href="http://www.faqs.org/rfcs/rfc4716.html">SSH Public Key File Format (RFC 4716)</a>
   <li><a href="http://www.vandyke.com/technology/draft-ietf-secsh-filexfer.txt">SFTP Draft</a>
   <li><a href="http://tools.ietf.org/html/draft-ietf-secsh-filexfer-extensions-00">SFTP Extensions Draft</a>
-  <li><a href="http://www.faqs.org/rfcs/rfc5656.html">SSH Elliptic Curve Algorithms (RF C5656)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc5656.html">SSH Elliptic Curve Algorithms (RFC 5656)</a>
+  <li><a href="http://www.faqs.org/rfcs/rfc8308.html">SSH Extension Negotiation (RFC 8308)</a>
 </ul>
 
 <p>
@@ -1141,6 +1142,19 @@ The currently implemented options are:
     <p>
     <b>Note</b> that this option first appeared in
     <code>proftpd-1.3.4rc1</code>.
+  </li>
+
+  <p>
+  <li><code>NoExtensionNegotiation</code><br>
+    <p>
+    By default, <code>mod_sftp</code> will offer/support the SSH extension
+    negotiation, defined by
+    <a href="https://tools.ietf.org/html/rfc8308">RFC 8308</a>.  Use this
+    option to disable support for extension negotiations.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.7rc4</code>.
   </li>
 
   <p>
@@ -2585,7 +2599,7 @@ deal with this issue, then, you can hopefully upgrade to ProFTPD 1.3.6 or later,
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2008-2019 TJ Saunders<br>
+&copy; Copyright 2008-2020 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
