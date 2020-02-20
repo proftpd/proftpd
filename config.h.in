@@ -618,6 +618,9 @@
 /* Define if you have the strtoull function.  */
 #undef HAVE_STRTOULL
 
+/* Define if you have the timingsafe_bcmp function.  */
+#undef HAVE_TIMINGSAFE_BCMP
+
 /* Define if you have the tzset function.  */
 #undef HAVE_TZSET
 
