@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2019 TJ Saunders
+ * Copyright (c) 2009-2020 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -481,6 +481,7 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
   return hash;
 }
 
+#if !defined(HAVE_TIMINGSAFE_BCMP)
 static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
   const unsigned char *p1 = b1, *p2 = b2;
   int ret = 0;
@@ -491,6 +492,7 @@ static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
 
   return (ret != 0);
 }
+#endif /* HAVE_TIMINGSAFE_BCMP */
 
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
