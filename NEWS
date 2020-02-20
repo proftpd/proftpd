@@ -19,6 +19,8 @@
 --------------------------------
 - Bug 4376 - mod_sftp incorrectly handles SFTP protocol version 5/6
   disposition flag.
+- Issue 908 - mod_sql_passwd fails to compile on FreeBSD due to timingsafe_bcmp
+  function.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
