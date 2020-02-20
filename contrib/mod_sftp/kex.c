@@ -2879,7 +2879,9 @@ static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt, char **buf,
 
   sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-rsa",
     NULL);
+#if !defined(OPENSSL_NO_DSA)
   sig_algs = pstrcat(pkt->pool, sig_algs, ",", "ssh-dss", NULL);
+#endif /* OPENSSL_NO_DSA */
 
   pr_trace_msg(trace_channel, 11,
     "writing 'server-sig-algs' EXT_INFO extension: %s", sig_algs);
