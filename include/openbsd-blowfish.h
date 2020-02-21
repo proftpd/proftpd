@@ -68,4 +68,7 @@ void blf_dec(blf_ctx *, u_int32_t *, u_int16_t);
 /* Converts u_int8_t to u_int32_t */
 u_int32_t Blowfish_stream2word(const u_int8_t *, u_int16_t ,
 				    u_int16_t *);
+
+int bcrypt_hashpass(const char *, const char *, char *, size_t);
+
 #endif
