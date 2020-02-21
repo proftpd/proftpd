@@ -36,6 +36,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "conf.h"
+
 #ifdef LINUX
 # ifdef __powerpc__
 #  define _LINUX_BYTEORDER_GENERIC_H
@@ -53,7 +55,6 @@
 # undef WUNTRACED
 #endif /* LINUX */
 
-#include "conf.h"
 #include "privs.h"
 
 #ifdef HAVE_SYS_PRCTL_H
