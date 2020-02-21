@@ -44,7 +44,9 @@
 # ifdef HAVE_LINUX_CAPABILITY_H
 #  include <linux/capability.h>
 # endif /* HAVE_LINUX_CAPABILITY_H */
-# include <sys/capability.h>
+# ifdef HAVE_SYS_CAPABILITY_H
+#  include <sys/capability.h>
+# endif /* HAVE_SYS_CAPABILITY_H */
 
 /* What are these for? */
 # undef WNOHANG
