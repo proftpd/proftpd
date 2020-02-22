@@ -32,6 +32,8 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
+    LogFormat %{transfer-port} (Issue #912)
+
     SFTPOptions NoExtensionNegotiation (Issue #907)
 
     SQLAuthTypes bcrypt
