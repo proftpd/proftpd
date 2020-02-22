@@ -398,7 +398,8 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
 
       case LOGFMT_META_LOCAL_PORT:
       case LOGFMT_META_REMOTE_PORT:
-      case LOGFMT_META_RESPONSE_CODE: {
+      case LOGFMT_META_RESPONSE_CODE:
+      case LOGFMT_META_XFER_PORT: {
         int num;
 
         num = *((double *) val);
@@ -585,6 +586,7 @@ static int resolve_on_default(pool *p, pr_jot_ctx_t *jot_ctx,
       case LOGFMT_META_XFER_FAILURE:
       case LOGFMT_META_XFER_MS:
       case LOGFMT_META_XFER_PATH:
+      case LOGFMT_META_XFER_PORT:
       case LOGFMT_META_XFER_STATUS:
       case LOGFMT_META_XFER_TYPE:
         text = "-";

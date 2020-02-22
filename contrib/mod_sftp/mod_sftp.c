@@ -2135,6 +2135,9 @@ static int sftp_sess_init(void) {
   sftp_pool = make_sub_pool(session.pool);
   pr_pool_tag(sftp_pool, MOD_SFTP_VERSION);
 
+  /* Clear out FTP-isms. */
+  session.data_port = 0;
+
   c = find_config(main_server->conf, CONF_PARAM, "SFTPOptions", FALSE);
   while (c != NULL) {
     unsigned long opts;
