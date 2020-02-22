@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2019 The ProFTPD Project team
+ * Copyright (c) 2017-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -275,6 +275,10 @@ const char *pr_jot_get_logfmt_id_name(unsigned char logfmt_id) {
       name = "FILE_SIZE";
       break;
 
+    case LOGFMT_META_XFER_PORT:
+      name = "XFER_PORT";
+      break;
+
     case LOGFMT_META_XFER_TYPE:
       name = "XFER_TYPE";
       break;
@@ -406,6 +410,8 @@ pr_table_t *pr_jot_get_logfmt2json(pool *p) {
     PR_JSON_TYPE_STRING);
   add_json_info(p, map, LOGFMT_META_XFER_FAILURE,
     PR_JOT_LOGFMT_XFER_FAILURE_KEY, PR_JSON_TYPE_STRING);
+  add_json_info(p, map, LOGFMT_META_XFER_PORT, PR_JOT_LOGFMT_XFER_PORT_KEY,
+    PR_JSON_TYPE_NUMBER);
   add_json_info(p, map, LOGFMT_META_XFER_TYPE, PR_JOT_LOGFMT_XFER_TYPE_KEY,
     PR_JSON_TYPE_STRING);
   add_json_info(p, map, LOGFMT_META_MICROSECS, PR_JOT_LOGFMT_MICROSECS_KEY,
@@ -1024,6 +1030,26 @@ static const char *get_meta_transfer_status(cmd_rec *cmd) {
   }
 
   return transfer_status;
+}
+
+static int get_meta_transfer_port(cmd_rec *cmd) {
+  int transfer_port = 0;
+
+  if (pr_cmd_cmp(cmd, PR_CMD_PASV_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_PORT_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_EPRT_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
+    transfer_port = session.data_port;
+  }
+
+  return transfer_port;
 }
 
 static const char *get_meta_transfer_type(cmd_rec *cmd) {
@@ -1805,6 +1831,23 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
       break;
     }
 
+    case LOGFMT_META_XFER_PORT: {
+      int transfer_port;
+
+      transfer_port = get_meta_transfer_port(cmd);
+      if (transfer_port > 0) {
+        double xfer_port;
+
+        xfer_port = (double) transfer_port;
+        res = (on_meta)(p, ctx, logfmt_id, NULL, &xfer_port);
+
+      } else {
+        res = (on_default)(p, ctx, logfmt_id);
+      }
+
+      break;
+    }
+
     case LOGFMT_META_XFER_TYPE: {
       const char *transfer_type;
 
@@ -2490,6 +2533,11 @@ static int parse_long_id(const char *text, unsigned char *logfmt_id,
   if (strncmp(text, "{transfer-millisecs}", 20) == 0) {
     *logfmt_id = LOGFMT_META_XFER_MS;
     return 20;
+  }
+
+  if (strncmp(text, "{transfer-port}", 15) == 0) {
+    *logfmt_id = LOGFMT_META_XFER_PORT;
+    return 15;
   }
 
   if (strncmp(text, "{transfer-status}", 17) == 0) {
