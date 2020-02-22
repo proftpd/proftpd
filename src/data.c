@@ -897,7 +897,7 @@ void pr_data_abort(int err, int quiet) {
     /* Forcibly clear the data-transfer instigating command pool from the
      * Response API.
      */
-    pr_response_set_pool(NULL);
+    pr_response_set_pool(session.pool);
   }
 
   if (true_abort) {
