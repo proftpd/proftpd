@@ -9442,9 +9442,19 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   if ((open_flags & O_APPEND) ||
       (open_flags & O_WRONLY) ||
       (open_flags & O_RDWR)) {
+
+    /* Advise the platform that we will be only writing this file. */
+    pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_DONTNEED);
+
     session.xfer.direction = PR_NETIO_IO_RD;
 
   } else if (open_flags == O_RDONLY) {
+    /* Advise the platform that we will be only reading this file, and that
+     * we will be accessing the data soon.
+     */
+    pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_SEQUENTIAL);
+    pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_WILLNEED);
+
     session.xfer.direction = PR_NETIO_IO_WR;
   }
 
