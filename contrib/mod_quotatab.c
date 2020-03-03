@@ -50,6 +50,7 @@ typedef struct regtab_obj {
 module quotatab_module;
 
 /* Quota objects for the current session */
+quota_deltas_t quotatab_deltas;
 static quota_table_t *limit_tab = NULL;
 static quota_limit_t sess_limit;
 
