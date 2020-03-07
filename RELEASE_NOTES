@@ -52,6 +52,11 @@ ChangeLog files.
       doc/contrib/mod_tls.html#TLSOption for more details.
 
 
+  + Added API
+
+    FSIO pread(2), pwrite(2) (Issue#317)
+
+
 1.3.7rc2
 ---------
 
