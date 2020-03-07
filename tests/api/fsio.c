@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2019 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -413,6 +413,41 @@ START_TEST (fsio_sys_read_test) {
 }
 END_TEST
 
+START_TEST (fsio_sys_pread_test) {
+  ssize_t res;
+  pr_fh_t *fh;
+  char *buf;
+  size_t buflen;
+
+  res = pr_fsio_pread(NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open("/etc/hosts", O_RDONLY);
+  fail_unless(fh != NULL, "Failed to open /etc/hosts: %s",
+    strerror(errno));
+
+  res = pr_fsio_pread(fh, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  buflen = 32;
+  buf = palloc(p, buflen);
+
+  res = pr_fsio_pread(fh, buf, 0, 0);
+  fail_unless(res < 0, "Failed to handle zero buffer length");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_fsio_pread(fh, buf, 1, 0);
+  fail_unless(res == 1, "Failed to read 1 byte: %s", strerror(errno));
+
+  (void) pr_fsio_close(fh);
+}
+END_TEST
+
 START_TEST (fsio_sys_write_test) {
   int res;
   pr_fh_t *fh;
@@ -441,6 +476,42 @@ START_TEST (fsio_sys_write_test) {
   fail_unless(res == 0, "Failed to handle zero buffer length");
 
   res = pr_fsio_write(fh, buf, buflen);
+  fail_unless((size_t) res == buflen, "Failed to write %lu bytes: %s",
+    (unsigned long) buflen, strerror(errno));
+
+  (void) pr_fsio_close(fh);
+  (void) pr_fsio_unlink(fsio_test_path);
+}
+END_TEST
+
+START_TEST (fsio_sys_pwrite_test) {
+  ssize_t res;
+  pr_fh_t *fh;
+  char *buf;
+  size_t buflen;
+
+  res = pr_fsio_pwrite(NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
+  fail_unless(fh != NULL, "Failed to open '%s': %s", strerror(errno));
+
+  /* XXX What happens if we use NULL buffer, zero length? */
+  res = pr_fsio_pwrite(fh, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null buffer");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  buflen = 32;
+  buf = palloc(p, buflen);
+  memset(buf, 'c', buflen);
+
+  res = pr_fsio_pwrite(fh, buf, 0, 0);
+  fail_unless(res == 0, "Failed to handle zero buffer length");
+
+  res = pr_fsio_pwrite(fh, buf, buflen, 0);
   fail_unless((size_t) res == buflen, "Failed to write %lu bytes: %s",
     (unsigned long) buflen, strerror(errno));
 
@@ -5055,7 +5126,9 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_stat_test);
   tcase_add_test(testcase, fsio_sys_fstat_test);
   tcase_add_test(testcase, fsio_sys_read_test);
+  tcase_add_test(testcase, fsio_sys_pread_test);
   tcase_add_test(testcase, fsio_sys_write_test);
+  tcase_add_test(testcase, fsio_sys_pwrite_test);
   tcase_add_test(testcase, fsio_sys_lseek_test);
   tcase_add_test(testcase, fsio_sys_link_test);
   tcase_add_test(testcase, fsio_sys_link_chroot_guard_test);

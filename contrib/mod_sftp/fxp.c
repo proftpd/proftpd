@@ -9834,7 +9834,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 static int fxp_handle_read(struct fxp_packet *fxp) {
   unsigned char *buf, *data = NULL, *ptr;
   char *file, *name, *ptr2;
-  int res;
+  ssize_t res;
   uint32_t buflen, bufsz, datalen;
   uint64_t offset;
   struct fxp_handle *fxh;
@@ -10015,54 +10015,23 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   }
 
   if (S_ISREG(fxh->fh_st->st_mode)) {
-    if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
-      uint32_t status_code;
-      const char *reason;
-      int xerrno = errno;
+    off_t *file_offset;
 
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error seeking to offset (%" PR_LU " bytes) for '%s': %s",
-        (pr_off_t) offset, fxh->fh->fh_path, strerror(xerrno));
-
-      status_code = fxp_errno2status(xerrno, &reason);
-
-      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
-
-      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
-        reason, NULL);
-
-      fxp_cmd_dispatch_err(cmd);
-
-      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-      resp->payload = ptr;
-      resp->payload_sz = (bufsz - buflen);
-  
-      return fxp_packet_write(resp);
-
-    } else {
-      off_t *file_offset;
-
-      /* Stash the offset at which we're reading from this file. */
-      file_offset = palloc(cmd->pool, sizeof(off_t));
-      *file_offset = (off_t) offset;
-      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
-        sizeof(off_t));
-
-      /* No error. */
-      errno = 0;
-    }
+    /* Stash the offset at which we're reading from this file. */
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
   }
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, NULL);
   pr_throttle_init(cmd2);
 
-  if (datalen) {
+  if (datalen > 0) {
     data = palloc(fxp->pool, datalen);
   }
 
-  res = pr_fsio_read(fxh->fh, (char *) data, datalen);
+  res = pr_fsio_pread(fxh->fh, data, datalen, offset);
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
@@ -12802,7 +12771,8 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 static int fxp_handle_write(struct fxp_packet *fxp) {
   unsigned char *buf, *data, *ptr;
   char cmd_arg[256], *file, *name, *ptr2;
-  int res, xerrno = 0;
+  ssize_t res;
+  int xerrno = 0;
   uint32_t buflen, bufsz, datalen, status_code;
   uint64_t offset;
   struct fxp_handle *fxh;
@@ -12971,40 +12941,13 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   }
 
   if (S_ISREG(fxh->fh_st->st_mode)) {
-    if (pr_fsio_lseek(fxh->fh, offset, SEEK_SET) < 0) {
-      const char *reason;
-      xerrno = errno;
+    off_t *file_offset;
 
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error seeking to offset (%" PR_LU " bytes) for '%s': %s",
-        (pr_off_t) offset, fxh->fh->fh_path, strerror(xerrno));
-
-      status_code = fxp_errno2status(xerrno, &reason);
-
-      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-        "('%s' [%d])", (unsigned long) status_code, reason,
-        xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
-
-      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
-        reason, NULL);
-
-      fxp_cmd_dispatch_err(cmd);
-
-      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-      resp->payload = ptr;
-      resp->payload_sz = (bufsz - buflen);
-  
-      return fxp_packet_write(resp);
-
-    } else {
-      off_t *file_offset;
-
-      /* Stash the offset at which we're writing to this file. */
-      file_offset = palloc(cmd->pool, sizeof(off_t));
-      *file_offset = (off_t) offset;
-      (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
-        sizeof(off_t));
-    }
+    /* Stash the offset at which we're writing to this file. */
+    file_offset = palloc(cmd->pool, sizeof(off_t));
+    *file_offset = (off_t) offset;
+    (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
+      sizeof(off_t));
   }
 
   /* If the open flags have O_APPEND, treat this as an APPE command, rather
@@ -13026,7 +12969,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   pr_throttle_init(cmd2);
   
-  res = pr_fsio_write(fxh->fh, (char *) data, datalen);
+  res = pr_fsio_pwrite(fxh->fh, data, datalen, offset);
   xerrno = errno;
 
   /* Increment the "on-disk" file size with the number of bytes written.
