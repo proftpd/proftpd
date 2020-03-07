@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2019 The ProFTPD Project
+ * Copyright (c) 2001-2020 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -273,8 +273,30 @@ static int sys_close(pr_fh_t *fh, int fd) {
   return close(fd);
 }
 
+static ssize_t sys_pread(pr_fh_t *fh, int fd, void *buf, size_t sz,
+    off_t offset) {
+#if defined(HAVE_PREAD)
+  return pread(fd, buf, sz, offset);
+#else
+  /* XXX Provide an implementation using lseek+read+lseek */
+  errno = ENOSYS;
+  return -1;
+#endif /* HAVE_PREAD */
+}
+
 static int sys_read(pr_fh_t *fh, int fd, char *buf, size_t size) {
   return read(fd, buf, size);
+}
+
+static ssize_t sys_pwrite(pr_fh_t *fh, int fd, const void *buf, size_t sz,
+    off_t offset) {
+#if defined(HAVE_PWRITE)
+  return pwrite(fd, buf, sz, offset);
+#else
+  /* XXX Provide an implementation using lseek+write+lseek */
+  errno = ENOSYS;
+  return -1;
+#endif /* HAVE_PWRITE */
 }
 
 static int sys_write(pr_fh_t *fh, int fd, const char *buf, size_t size) {
@@ -5081,6 +5103,33 @@ int pr_fsio_close_with_error(pool *p, pr_fh_t *fh, pr_error_t **err) {
   return res;
 }
 
+ssize_t pr_fsio_pread(pr_fh_t *fh, void *buf, size_t size, off_t offset) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (fh == NULL ||
+      buf == NULL ||
+      size == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom pread handler.  If there are none,
+   * use the system pread.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->pread) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s pread() for path '%s' (%lu bytes, %"
+    PR_LU " offset)", fs->fs_name, fh->fh_path, (unsigned long) size,
+    (pr_off_t) offset);
+  res = (fs->pread)(fh, fh->fh_fd, buf, size, offset);
+
+  return res;
+}
+
 int pr_fsio_read(pr_fh_t *fh, char *buf, size_t size) {
   int res;
   pr_fs_t *fs;
@@ -5132,6 +5181,33 @@ int pr_fsio_read_with_error(pool *p, pr_fh_t *fh, char *buf, size_t sz,
 
     errno = xerrno;
   }
+
+  return res;
+}
+
+ssize_t pr_fsio_pwrite(pr_fh_t *fh, const void *buf, size_t size,
+    off_t offset) {
+  ssize_t res;
+  pr_fs_t *fs;
+
+  if (fh == NULL ||
+      buf == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom pwrite handler.  If there are none,
+   * use the system pwrite.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->pwrite) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s pwrite() for path '%s' (%lu bytes, %"
+    PR_LU " offset)", fs->fs_name, fh->fh_path, (unsigned long) size,
+    (pr_off_t) offset);
+  res = (fs->pwrite)(fh, fh->fh_fd, buf, size, offset);
 
   return res;
 }
@@ -7236,7 +7312,9 @@ int init_fs(void) {
   root_fs->unlink = sys_unlink;
   root_fs->open = sys_open;
   root_fs->close = sys_close;
+  root_fs->pread = sys_pread;
   root_fs->read = sys_read;
+  root_fs->pwrite = sys_pwrite;
   root_fs->write = sys_write;
   root_fs->lseek = sys_lseek;
   root_fs->link = sys_link;
